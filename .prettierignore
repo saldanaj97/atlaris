@@ -1,0 +1,22 @@
+node_modules
+build
+dist
+coverage
+.env
+*.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.next
+out
+public
+.tmp
+.cache
+.DS_Store
+*.min.js
+*.min.css
+# Ignore all hidden files/folders (optional)
+.*
+
+# Ignore Shadcn UI components
+src/components/ui/*.tsx
