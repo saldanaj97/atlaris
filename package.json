@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.31.9",
     "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.57.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.542.0",
