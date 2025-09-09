@@ -75,8 +75,8 @@ export default [
         },
       ],
 
-      // Enforce await in async functions for TS files
-      '@typescript-eslint/require-await': 'error',
+      // Dont await in async functions for TS files since we are using Next.js
+      '@typescript-eslint/require-await': 'warn',
 
       // Import correctness and hygiene
       'import-x/no-unresolved': 'error',
@@ -111,6 +111,7 @@ export default [
       'src/**/middleware.ts',
       'src/app/**/route.ts',
       'src/app/**/route.tsx',
+      'src/utils/supabase/*.{ts,tsx}',
     ],
     rules: {
       '@typescript-eslint/require-await': 'off',
