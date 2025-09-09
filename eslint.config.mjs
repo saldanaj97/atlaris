@@ -1,6 +1,6 @@
 import { FlatCompat } from '@eslint/eslintrc';
-import js from '@eslint/js';
 import eslintConfigPrettier from 'eslint-config-prettier';
+import importX from 'eslint-plugin-import-x';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
@@ -17,12 +17,12 @@ export default [
       'eslint.config.*',
       'postcss.config.*',
       'tailwind.config.*',
+      'next.config.*',
     ],
   },
-  js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -36,38 +36,88 @@ export default [
     },
     plugins: {
       'react-hooks': reactHooks,
+      'import-x': importX,
+    },
+    settings: {
+      // Teach import-x to parse TS and resolve TS paths/types
+      'import/parsers': {
+        '@typescript-eslint/parser': ['.ts', '.tsx'],
+      },
+      'import/resolver': {
+        typescript: {
+          project: ['./tsconfig.json'],
+          alwaysTryTypes: true,
+        },
+      },
+      react: { version: 'detect' },
     },
     rules: {
       // Ensure proper usage of React Hooks and dependency checks
       'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/exhaustive-deps': 'error',
+
+      // Allow intentionally unused vars/args when prefixed with _
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+
+      // Prefer const maps over enums; disallow enums
+      '@typescript-eslint/prefer-enum-initializers': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'TSEnumDeclaration',
+          message: 'Use const object or as const array instead of enum.',
+        },
+      ],
+
+      // Enforce await in async functions for TS files
+      '@typescript-eslint/require-await': 'error',
+
+      // Import correctness and hygiene
+      'import-x/no-unresolved': 'error',
+      'import-x/named': 'error',
+      'import-x/no-duplicates': 'error',
+      'import-x/no-cycle': ['warn', { maxDepth: 1 }],
+      'import-x/order': [
+        'warn',
+        {
+          groups: [
+            'builtin',
+            'external',
+            'internal',
+            ['parent', 'sibling', 'index'],
+            'object',
+            'type',
+          ],
+          'newlines-between': 'always',
+          alphabetize: { order: 'asc', caseInsensitive: true },
+        },
+      ],
+
+      // TS + React common adjustments
+      'react/prop-types': 'off',
+      'react/react-in-jsx-scope': 'off',
+    },
+  },
+  // Disable require-await where Next.js expects async by convention
+  {
+    files: [
+      'src/middleware.ts',
+      'src/**/middleware.ts',
+      'src/app/**/route.ts',
+      'src/app/**/route.tsx',
+    ],
+    rules: {
+      '@typescript-eslint/require-await': 'off',
     },
   },
   // Next.js recommended + Core Web Vitals via compat until flat config is fully supported upstream
   ...compat.extends('plugin:@next/next/core-web-vitals'),
-  // Ensure JS files use the default parser (espree), not TS parser
-  {
-    files: ['**/*.{js,cjs,mjs,jsx}'],
-    languageOptions: {
-      // default parser (espree) to keep JS out of TS type-checking
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-    },
-    rules: {
-      // Disable TS type-aware rules for JS files
-      '@typescript-eslint/await-thenable': 'off',
-      '@typescript-eslint/no-floating-promises': 'off',
-      '@typescript-eslint/no-misused-promises': 'off',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/restrict-template-expressions': 'off',
-      '@typescript-eslint/unbound-method': 'off',
-      '@typescript-eslint/no-unsafe-enum-comparison': 'off',
-      '@typescript-eslint/require-await': 'off',
-    },
-  },
   // Turn off formatting-related rules to defer to Prettier
   eslintConfigPrettier,
 ];

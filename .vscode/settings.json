@@ -1,4 +1,9 @@
 {
-  "prettier.prettierPath": "node_modules/prettier",
-  "prettier.resolveGlobalModules": false
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.resolveGlobalModules": false,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
 }
