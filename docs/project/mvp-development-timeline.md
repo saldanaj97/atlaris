@@ -11,8 +11,8 @@
 ## Day 2 – Auth & Database
 
 - [x] Implement Google OAuth with Cleark and Supabase.
-- [ ] Test sign up / log in flow.
-- [ ] Confirm DB schema migrations work.
+- [x] Test sign up / log in flow.
+- [x] Confirm DB schema migrations work.
 - [x] Add basic session management in frontend.
 
 ## Day 3 – Plan Creation API

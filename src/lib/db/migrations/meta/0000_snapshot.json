@@ -1,5 +1,5 @@
 {
-  "id": "de18aed8-3dfe-4974-ad2d-5d8fc0b65c88",
+  "id": "644296c1-10c0-4284-9073-f1b9d178cab0",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -122,14 +122,107 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "learning_plans_select_public_anon": {
+          "name": "learning_plans_select_public_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "\"learning_plans\".\"visibility\" = 'public'"
+        },
+        "learning_plans_select_public_auth": {
+          "name": "learning_plans_select_public_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"learning_plans\".\"visibility\" = 'public'"
+        },
+        "learning_plans_select_own": {
+          "name": "learning_plans_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"learning_plans\".\"user_id\" = (select auth.uid())"
+        },
+        "learning_plans_select_service": {
+          "name": "learning_plans_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "learning_plans_insert_own": {
+          "name": "learning_plans_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\"learning_plans\".\"user_id\" = (select auth.uid())"
+        },
+        "learning_plans_insert_service": {
+          "name": "learning_plans_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "learning_plans_update_own": {
+          "name": "learning_plans_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"learning_plans\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"learning_plans\".\"user_id\" = (select auth.uid())"
+        },
+        "learning_plans_update_service": {
+          "name": "learning_plans_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "learning_plans_delete_own": {
+          "name": "learning_plans_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"learning_plans\".\"user_id\" = (select auth.uid())"
+        },
+        "learning_plans_delete_service": {
+          "name": "learning_plans_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
       "checkConstraints": {
         "weekly_hours_check": {
           "name": "weekly_hours_check",
           "value": "\"learning_plans\".\"weekly_hours\" >= 0"
         }
       },
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.modules": {
       "name": "modules",
@@ -251,7 +344,100 @@
           ]
         }
       },
-      "policies": {},
+      "policies": {
+        "modules_select_public_anon": {
+          "name": "modules_select_public_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "modules_select_public_auth": {
+          "name": "modules_select_public_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "modules_select_own_plan": {
+          "name": "modules_select_own_plan",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "modules_select_service": {
+          "name": "modules_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "modules_insert_own_plan": {
+          "name": "modules_insert_own_plan",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "modules_insert_service": {
+          "name": "modules_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "modules_update_own_plan": {
+          "name": "modules_update_own_plan",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      ",
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "modules_update_service": {
+          "name": "modules_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "modules_delete_own_plan": {
+          "name": "modules_delete_own_plan",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "modules_delete_service": {
+          "name": "modules_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
       "checkConstraints": {
         "order_check": {
           "name": "order_check",
@@ -262,7 +448,7 @@
           "value": "\"modules\".\"estimated_minutes\" >= 0"
         }
       },
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.plan_generations": {
       "name": "plan_generations",
@@ -347,9 +533,84 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
+      "policies": {
+        "plan_generations_select_own": {
+          "name": "plan_generations_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "plan_generations_select_service": {
+          "name": "plan_generations_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "plan_generations_insert_own": {
+          "name": "plan_generations_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "plan_generations_insert_service": {
+          "name": "plan_generations_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "plan_generations_update_own": {
+          "name": "plan_generations_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      ",
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "plan_generations_update_service": {
+          "name": "plan_generations_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "plan_generations_delete_own": {
+          "name": "plan_generations_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "plan_generations_delete_service": {
+          "name": "plan_generations_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.resources": {
       "name": "resources",
@@ -453,7 +714,54 @@
           ]
         }
       },
-      "policies": {},
+      "policies": {
+        "resources_select_anon": {
+          "name": "resources_select_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "true"
+        },
+        "resources_select_auth": {
+          "name": "resources_select_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "true"
+        },
+        "resources_insert_service": {
+          "name": "resources_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "resources_update_service": {
+          "name": "resources_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "resources_delete_service": {
+          "name": "resources_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
       "checkConstraints": {
         "duration_minutes_check": {
           "name": "duration_minutes_check",
@@ -464,7 +772,7 @@
           "value": "\"resources\".\"cost_cents\" >= 0"
         }
       },
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.task_progress": {
       "name": "task_progress",
@@ -589,9 +897,84 @@
           ]
         }
       },
-      "policies": {},
+      "policies": {
+        "task_progress_select_own": {
+          "name": "task_progress_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"task_progress\".\"user_id\" = (select auth.uid())"
+        },
+        "task_progress_select_service": {
+          "name": "task_progress_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "task_progress_insert_own": {
+          "name": "task_progress_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        \"task_progress\".\"user_id\" = (select auth.uid()) AND\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n          AND (\n            \"learning_plans\".\"user_id\" = (select auth.uid()) OR\n            \"learning_plans\".\"visibility\" = 'public'\n          )\n        )\n      "
+        },
+        "task_progress_insert_service": {
+          "name": "task_progress_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "task_progress_update_own": {
+          "name": "task_progress_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"task_progress\".\"user_id\" = (select auth.uid())",
+          "withCheck": "\"task_progress\".\"user_id\" = (select auth.uid())"
+        },
+        "task_progress_update_service": {
+          "name": "task_progress_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "task_progress_delete_own": {
+          "name": "task_progress_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"task_progress\".\"user_id\" = (select auth.uid())"
+        },
+        "task_progress_delete_service": {
+          "name": "task_progress_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.task_resources": {
       "name": "task_resources",
@@ -707,14 +1090,107 @@
           ]
         }
       },
-      "policies": {},
+      "policies": {
+        "task_resources_select_public_anon": {
+          "name": "task_resources_select_public_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "task_resources_select_public_auth": {
+          "name": "task_resources_select_public_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "task_resources_select_own_plan": {
+          "name": "task_resources_select_own_plan",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "task_resources_select_service": {
+          "name": "task_resources_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "task_resources_insert_own_plan": {
+          "name": "task_resources_insert_own_plan",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "task_resources_update_own_plan": {
+          "name": "task_resources_update_own_plan",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      ",
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "task_resources_delete_own_plan": {
+          "name": "task_resources_delete_own_plan",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "task_resources_insert_service": {
+          "name": "task_resources_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "task_resources_update_service": {
+          "name": "task_resources_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "task_resources_delete_service": {
+          "name": "task_resources_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
       "checkConstraints": {
         "order_check": {
           "name": "order_check",
           "value": "\"task_resources\".\"order\" >= 1"
         }
       },
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.tasks": {
       "name": "tasks",
@@ -836,7 +1312,100 @@
           ]
         }
       },
-      "policies": {},
+      "policies": {
+        "tasks_select_public_anon": {
+          "name": "tasks_select_public_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "tasks_select_public_auth": {
+          "name": "tasks_select_public_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "tasks_select_own_plan": {
+          "name": "tasks_select_own_plan",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "tasks_select_service": {
+          "name": "tasks_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "tasks_insert_own_plan": {
+          "name": "tasks_insert_own_plan",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "tasks_insert_service": {
+          "name": "tasks_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "tasks_update_own_plan": {
+          "name": "tasks_update_own_plan",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      ",
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "tasks_update_service": {
+          "name": "tasks_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "tasks_delete_own_plan": {
+          "name": "tasks_delete_own_plan",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+        },
+        "tasks_delete_service": {
+          "name": "tasks_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
       "checkConstraints": {
         "order_check": {
           "name": "order_check",
@@ -847,7 +1416,7 @@
           "value": "\"tasks\".\"estimated_minutes\" >= 0"
         }
       },
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.users": {
       "name": "users",
@@ -918,52 +1487,78 @@
           ]
         }
       },
-      "policies": {},
+      "policies": {
+        "users_select_own": {
+          "name": "users_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"users\".\"id\" = (select auth.uid())"
+        },
+        "users_select_service": {
+          "name": "users_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "users_insert_own": {
+          "name": "users_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\"users\".\"id\" = (select auth.uid())"
+        },
+        "users_insert_service": {
+          "name": "users_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "users_update_own_profile": {
+          "name": "users_update_own_profile",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"users\".\"id\" = (select auth.uid())",
+          "withCheck": "\"users\".\"id\" = (select auth.uid())"
+        },
+        "users_update_service": {
+          "name": "users_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "users_delete_service": {
+          "name": "users_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     }
   },
-  "enums": {
-    "public.learning_style": {
-      "name": "learning_style",
-      "schema": "public",
-      "values": [
-        "reading",
-        "video",
-        "practice",
-        "mixed"
-      ]
-    },
-    "public.progress_status": {
-      "name": "progress_status",
-      "schema": "public",
-      "values": [
-        "not_started",
-        "in_progress",
-        "completed"
-      ]
-    },
-    "public.resource_type": {
-      "name": "resource_type",
-      "schema": "public",
-      "values": [
-        "youtube",
-        "article",
-        "course",
-        "doc",
-        "other"
-      ]
-    },
-    "public.skill_level": {
-      "name": "skill_level",
-      "schema": "public",
-      "values": [
-        "beginner",
-        "intermediate",
-        "advanced"
-      ]
-    }
-  },
+  "enums": {},
   "schemas": {},
   "sequences": {},
   "roles": {},
