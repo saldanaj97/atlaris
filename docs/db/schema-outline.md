@@ -21,13 +21,13 @@ Scope: Core plan creation, modules, tasks, resources, per-user progress, and pla
 - created_at: timestamptz, not null, default now()
 - updated_at: timestamptz, not null, default now()
 
-Constraints/Indexes:
+**Constraints/Indexes:**
 
 - unique(clerk_user_id), unique(email)
   Notes:
 - Keep id as the internal PK (do not use clerk_user_id as PK). Emails can change—ensure app logic updates email on profile changes.
 
-RLS policies :
+**RLS policies:**
 
 - Select: A user may read only their own row (users.id equals the current authenticated user’s id). Admin/service role may read all.
 - Insert: Performed by the signup/system service. When allowed, the row’s id must equal the current user id; clerk_user_id and email must come from a verified identity.
