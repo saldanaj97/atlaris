@@ -27,6 +27,13 @@ Constraints/Indexes:
   Notes:
 - Keep id as the internal PK (do not use clerk_user_id as PK). Emails can change—ensure app logic updates email on profile changes.
 
+RLS policies :
+
+- Select: A user may read only their own row (users.id equals the current authenticated user’s id). Admin/service role may read all.
+- Insert: Performed by the signup/system service. When allowed, the row’s id must equal the current user id; clerk_user_id and email must come from a verified identity.
+- Update: A user may update only their own row. Restrict updates to profile fields (e.g., name); identifiers like email, clerk_user_id, and subscription_tier are system-managed.
+- Delete: System/service role only.
+
 ### 2) learning_plans
 
 - id: uuid, pk, default gen_random_uuid()
@@ -49,6 +56,13 @@ Indexes:
   Notes:
 - start_date and deadline_date enable future pacing/scheduling; they can be null initially.
 
+RLS policies :
+
+- Select: The owner may read their own plans. Any authenticated user may read plans where visibility = 'public'. Admin/service role may read all.
+- Insert: An authenticated user may create a plan only if user_id equals their id.
+- Update: Only the owner may update. Prevent changing user_id; allow toggling visibility and editing plan fields.
+- Delete: Only the owner may delete (cascades to modules/tasks/etc.).
+
 ### 3) modules
 
 - id: uuid, pk, default gen_random_uuid()
@@ -65,6 +79,13 @@ Constraints/Indexes:
 - unique(plan_id, order)
 - idx_modules_plan_id
 - idx_modules_plan_id_order
+
+RLS policies :
+
+- Select: Allowed if the current user can read the parent plan (owner or plan.visibility = 'public').
+- Insert: Only the owner of the parent plan may insert modules.
+- Update: Only the owner of the parent plan may update modules.
+- Delete: Only the owner of the parent plan may delete modules.
 
 ### 4) tasks
 
@@ -84,6 +105,13 @@ Constraints/Indexes:
 - idx_tasks_module_id_order
   Rationale:
 - Daily/session-level tasks with time estimates support plan preview, progress tracking, and future calendar sync.
+
+RLS policies :
+
+- Select: Allowed if the current user can read the parent plan (owner or plan.visibility = 'public').
+- Insert: Only the owner of the parent plan may insert tasks.
+- Update: Only the owner of the parent plan may update tasks.
+- Delete: Only the owner of the parent plan may delete tasks.
 
 ### 5) resources (global catalog)
 
@@ -106,6 +134,11 @@ Constraints/Indexes:
   Notes:
 - A shared catalog prevents duplication across modules/tasks/plans.
 
+RLS policies :
+
+- Select: Readable by all authenticated users (optionally by anonymous users if exposed publicly).
+- Insert/Update/Delete: System/admin only. End-users do not modify the global catalog in MVP.
+
 ### 6) task_resources (join: tasks ↔ resources)
 
 - id: uuid, pk, default gen_random_uuid()
@@ -120,6 +153,11 @@ Constraints/Indexes:
 - unique(task_id, resource_id)
 - idx_task_resources_task_id
 - idx_task_resources_resource_id
+
+RLS policies :
+
+- Select: Allowed if the current user can read the parent task’s plan (owner or plan.visibility = 'public').
+- Insert/Update/Delete: Only the owner of the parent plan may manage task-resource links.
 
 ### 7) task_progress (per-user progress)
 
@@ -139,6 +177,13 @@ Constraints/Indexes:
   Notes:
 - Module/plan completion is derivable by aggregating a user’s task_progress within the module/plan.
 
+RLS policies:
+
+- Select: A user may read only their own progress rows (task_progress.user_id equals the current user’s id).
+- Insert: A user may create progress only for themselves and only for tasks they can read (owner or plan.visibility = 'public').
+- Update: A user may update only their own progress rows; forbid changing task_id or user_id on update.
+- Delete: A user may delete only their own progress rows. Admin/service role may manage all.
+
 ### 8) plan_generations (regeneration traceability)
 
 - id: uuid, pk, default gen_random_uuid()
@@ -154,6 +199,12 @@ Indexes:
 - idx_plan_generations_plan_id
   Notes:
 - Keeps a history of generations for debugging, analytics, and “regenerate” flows.
+
+RLS policies :
+
+- Select: Only the owner of the parent plan may read generation records.
+- Insert: Performed by the app when (re)generating a plan. Allow only the owner (or service role) to insert rows for their plan.
+- Update/Delete: Owner or service role only (generally updates are uncommon; treat records as append-only).
 
 ## ERD (Entity-Relationship Diagram)
 
