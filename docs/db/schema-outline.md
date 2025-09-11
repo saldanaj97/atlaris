@@ -49,14 +49,14 @@ RLS policies :
 - created_at: timestamptz, not null, default now()
 - updated_at: timestamptz, not null, default now()
 
-Indexes:
+**Indexes:**
 
 - idx_learning_plans_user_id
 - (optional) full-text or trigram index on topic for search
   Notes:
 - start_date and deadline_date enable future pacing/scheduling; they can be null initially.
 
-RLS policies :
+**RLS policies:**
 
 - Select: The owner may read their own plans. Any authenticated user may read plans where visibility = 'public'. Admin/service role may read all.
 - Insert: An authenticated user may create a plan only if user_id equals their id.
@@ -74,13 +74,13 @@ RLS policies :
 - created_at: timestamptz, not null, default now()
 - updated_at: timestamptz, not null, default now()
 
-Constraints/Indexes:
+**Constraints/Indexes:**
 
 - unique(plan_id, order)
 - idx_modules_plan_id
 - idx_modules_plan_id_order
 
-RLS policies :
+**RLS policies:**
 
 - Select: Allowed if the current user can read the parent plan (owner or plan.visibility = 'public').
 - Insert: Only the owner of the parent plan may insert modules.
@@ -98,7 +98,7 @@ RLS policies :
 - created_at: timestamptz, not null, default now()
 - updated_at: timestamptz, not null, default now()
 
-Constraints/Indexes:
+**Constraints/Indexes:**
 
 - unique(module_id, order)
 - idx_tasks_module_id
@@ -106,7 +106,7 @@ Constraints/Indexes:
   Rationale:
 - Daily/session-level tasks with time estimates support plan preview, progress tracking, and future calendar sync.
 
-RLS policies :
+**RLS policies:**
 
 - Select: Allowed if the current user can read the parent plan (owner or plan.visibility = 'public').
 - Insert: Only the owner of the parent plan may insert tasks.
@@ -127,14 +127,14 @@ RLS policies :
 - tags: text[] (optional) or model as a separate tagging relation
 - created_at: timestamptz, not null, default now()
 
-Constraints/Indexes:
+**Constraints/Indexes:**
 
 - unique(url)
 - idx_resources_type
   Notes:
 - A shared catalog prevents duplication across modules/tasks/plans.
 
-RLS policies :
+**RLS policies:**
 
 - Select: Readable by all authenticated users (optionally by anonymous users if exposed publicly).
 - Insert/Update/Delete: System/admin only. End-users do not modify the global catalog in MVP.
@@ -148,13 +148,13 @@ RLS policies :
 - notes: text, nullable
 - created_at: timestamptz, not null, default now()
 
-Constraints/Indexes:
+**Constraints/Indexes:**
 
 - unique(task_id, resource_id)
 - idx_task_resources_task_id
 - idx_task_resources_resource_id
 
-RLS policies :
+**RLS policies:**
 
 - Select: Allowed if the current user can read the parent task’s plan (owner or plan.visibility = 'public').
 - Insert/Update/Delete: Only the owner of the parent plan may manage task-resource links.
@@ -169,7 +169,7 @@ RLS policies :
 - updated_at: timestamptz, not null, default now()
 - created_at: timestamptz, not null, default now()
 
-Constraints/Indexes:
+**Constraints/Indexes:**
 
 - unique(task_id, user_id)
 - idx_task_progress_user_id
@@ -177,7 +177,7 @@ Constraints/Indexes:
   Notes:
 - Module/plan completion is derivable by aggregating a user’s task_progress within the module/plan.
 
-RLS policies:
+**RLS policies:**
 
 - Select: A user may read only their own progress rows (task_progress.user_id equals the current user’s id).
 - Insert: A user may create progress only for themselves and only for tasks they can read (owner or plan.visibility = 'public').
@@ -194,13 +194,13 @@ RLS policies:
 - output_summary: jsonb, nullable (high-level summary or counts)
 - created_at: timestamptz, not null, default now()
 
-Indexes:
+**Indexes:**
 
 - idx_plan_generations_plan_id
   Notes:
 - Keeps a history of generations for debugging, analytics, and “regenerate” flows.
 
-RLS policies :
+**RLS policies:**
 
 - Select: Only the owner of the parent plan may read generation records.
 - Insert: Performed by the app when (re)generating a plan. Allow only the owner (or service role) to insert rows for their plan.
