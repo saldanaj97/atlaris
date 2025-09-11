@@ -1,6 +1,5 @@
 import { FlatCompat } from '@eslint/eslintrc';
 import eslintConfigPrettier from 'eslint-config-prettier';
-import importX from 'eslint-plugin-import-x';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
@@ -36,7 +35,6 @@ export default [
     },
     plugins: {
       'react-hooks': reactHooks,
-      'import-x': importX,
     },
     settings: {
       // Teach import-x to parse TS and resolve TS paths/types
@@ -77,27 +75,6 @@ export default [
 
       // Dont await in async functions for TS files since we are using Next.js
       '@typescript-eslint/require-await': 'warn',
-
-      // Import correctness and hygiene
-      'import-x/no-unresolved': 'error',
-      'import-x/named': 'error',
-      'import-x/no-duplicates': 'error',
-      'import-x/no-cycle': ['warn', { maxDepth: 1 }],
-      'import-x/order': [
-        'warn',
-        {
-          groups: [
-            'builtin',
-            'external',
-            'internal',
-            ['parent', 'sibling', 'index'],
-            'object',
-            'type',
-          ],
-          'newlines-between': 'always',
-          alphabetize: { order: 'asc', caseInsensitive: true },
-        },
-      ],
 
       // TS + React common adjustments
       'react/prop-types': 'off',

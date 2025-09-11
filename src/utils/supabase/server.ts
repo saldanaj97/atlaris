@@ -1,5 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { auth } from '@clerk/nextjs/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 export async function createClient() {
   return createSupabaseClient(
