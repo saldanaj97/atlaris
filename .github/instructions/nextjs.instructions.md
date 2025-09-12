@@ -1,6 +1,6 @@
 ---
 description: 'Next.js development standards and instructions'
-applyTo: '**/*.tsx, **/*.ts, **/*.jsx, **/*.js, **/*.css'
+applyTo: 'src/**/*.tsx, src/**/*.ts, src/**/*.jsx, src/**/*.js, src/**/*.css'
 ---
 
 # Next.js Best Practices for LLMs (2025)
