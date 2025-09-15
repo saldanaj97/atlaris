@@ -6,4 +6,5 @@
     "source.fixAll.eslint": "explicit"
   },
   "typescript.tsdk": "node_modules/typescript/lib",
+  "Prettier-SQL.SQLFlavourOverride": "postgresql"
 }

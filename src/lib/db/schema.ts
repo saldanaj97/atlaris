@@ -25,6 +25,9 @@ import {
   skillLevel,
 } from './enums';
 
+// Clerk JWT subject helper (Clerk user ID)
+const clerkSub = sql`(select auth.jwt()->>'sub')`;
+
 // Users table
 export const users = pgTable(
   'users',
@@ -48,7 +51,7 @@ export const users = pgTable(
     pgPolicy('users_select_own', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${table.id} = ${authUid}`,
+      using: sql`${table.clerkUserId} = ${clerkSub}`,
     }),
 
     // Service role can read all users (admin operations)
@@ -62,7 +65,7 @@ export const users = pgTable(
     pgPolicy('users_insert_own', {
       for: 'insert',
       to: authenticatedRole,
-      withCheck: sql`${table.id} = ${authUid}`,
+      withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
     }),
 
     // Service role can insert users (system operations)
@@ -76,8 +79,8 @@ export const users = pgTable(
     pgPolicy('users_update_own_profile', {
       for: 'update',
       to: authenticatedRole,
-      using: sql`${table.id} = ${authUid}`,
-      withCheck: sql`${table.id} = ${authUid}`,
+      using: sql`${table.clerkUserId} = ${clerkSub}`,
+      withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
     }),
 
     // Service role can update any user (admin operations)
@@ -144,7 +147,9 @@ export const learningPlans = pgTable(
     pgPolicy('learning_plans_select_own', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${table.userId} = ${authUid}`,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
     }),
 
     // Service role can read all plans
@@ -158,7 +163,9 @@ export const learningPlans = pgTable(
     pgPolicy('learning_plans_insert_own', {
       for: 'insert',
       to: authenticatedRole,
-      withCheck: sql`${table.userId} = ${authUid}`,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
     }),
 
     // Service role can insert any plan
@@ -172,8 +179,12 @@ export const learningPlans = pgTable(
     pgPolicy('learning_plans_update_own', {
       for: 'update',
       to: authenticatedRole,
-      using: sql`${table.userId} = ${authUid}`,
-      withCheck: sql`${table.userId} = ${authUid}`,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
     }),
 
     // Service role can update any plan
@@ -188,7 +199,9 @@ export const learningPlans = pgTable(
     pgPolicy('learning_plans_delete_own', {
       for: 'delete',
       to: authenticatedRole,
-      using: sql`${table.userId} = ${authUid}`,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
     }),
 
     // Service role can delete any plan
@@ -262,7 +275,10 @@ export const modules = pgTable(
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+
+          )
         )
       `,
     }),
@@ -282,7 +298,9 @@ export const modules = pgTable(
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -302,14 +320,18 @@ export const modules = pgTable(
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
       withCheck: sql`
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -330,7 +352,9 @@ export const modules = pgTable(
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -409,7 +433,10 @@ export const tasks = pgTable(
           SELECT 1 FROM ${modules}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${modules.id} = ${table.moduleId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+
+          )
         )
       `,
     }),
@@ -430,7 +457,9 @@ export const tasks = pgTable(
           SELECT 1 FROM ${modules}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${modules.id} = ${table.moduleId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -451,7 +480,9 @@ export const tasks = pgTable(
           SELECT 1 FROM ${modules}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${modules.id} = ${table.moduleId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
       withCheck: sql`
@@ -459,7 +490,9 @@ export const tasks = pgTable(
           SELECT 1 FROM ${modules}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${modules.id} = ${table.moduleId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -481,7 +514,9 @@ export const tasks = pgTable(
           SELECT 1 FROM ${modules}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${modules.id} = ${table.moduleId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -624,7 +659,10 @@ export const taskResources = pgTable(
           JOIN ${modules} ON ${modules.id} = ${tasks.moduleId}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${tasks.id} = ${table.taskId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+
+          )
         )
       `,
     }),
@@ -646,7 +684,9 @@ export const taskResources = pgTable(
           JOIN ${modules} ON ${modules.id} = ${tasks.moduleId}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${tasks.id} = ${table.taskId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -660,7 +700,9 @@ export const taskResources = pgTable(
           JOIN ${modules} ON ${modules.id} = ${tasks.moduleId}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${tasks.id} = ${table.taskId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
       withCheck: sql`
@@ -669,7 +711,9 @@ export const taskResources = pgTable(
           JOIN ${modules} ON ${modules.id} = ${tasks.moduleId}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${tasks.id} = ${table.taskId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -683,7 +727,9 @@ export const taskResources = pgTable(
           JOIN ${modules} ON ${modules.id} = ${tasks.moduleId}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${tasks.id} = ${table.taskId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -744,7 +790,9 @@ export const taskProgress = pgTable(
     pgPolicy('task_progress_select_own', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${table.userId} = ${authUid}`,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
     }),
 
     // Service role can read all progress
@@ -759,14 +807,18 @@ export const taskProgress = pgTable(
       for: 'insert',
       to: authenticatedRole,
       withCheck: sql`
-        ${table.userId} = ${authUid} AND
+        ${table.userId} IN (
+          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        ) AND
         EXISTS (
           SELECT 1 FROM ${tasks}
           JOIN ${modules} ON ${modules.id} = ${tasks.moduleId}
           JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
           WHERE ${tasks.id} = ${table.taskId}
           AND (
-            ${learningPlans.userId} = ${authUid} OR
+            ${learningPlans.userId} IN (
+              SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+            ) OR
             ${learningPlans.visibility} = 'public'
           )
         )
@@ -784,8 +836,13 @@ export const taskProgress = pgTable(
     pgPolicy('task_progress_update_own', {
       for: 'update',
       to: authenticatedRole,
-      using: sql`${table.userId} = ${authUid}`,
-      withCheck: sql`${table.userId} = ${authUid}`,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+
+      )`,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
     }),
 
     // Service role can update any progress
@@ -800,7 +857,9 @@ export const taskProgress = pgTable(
     pgPolicy('task_progress_delete_own', {
       for: 'delete',
       to: authenticatedRole,
-      using: sql`${table.userId} = ${authUid}`,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
     }),
 
     // Service role can delete any progress
@@ -841,7 +900,10 @@ export const planGenerations = pgTable(
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+
+          )
         )
       `,
     }),
@@ -861,7 +923,9 @@ export const planGenerations = pgTable(
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),
@@ -881,14 +945,18 @@ export const planGenerations = pgTable(
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
       withCheck: sql`
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${authUid}
+          )
         )
       `,
     }),
@@ -909,7 +977,9 @@ export const planGenerations = pgTable(
         EXISTS (
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} = ${authUid}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
         )
       `,
     }),

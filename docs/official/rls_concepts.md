@@ -54,9 +54,20 @@ Supabase is built on PostgreSQL and fully supports RLS. It provides:
 
 ### Built-in Authentication Functions
 
-- `auth.uid()`: Returns the current user's UUID
+- `auth.uid()`: Returns the current user's UUID (or Clerk user ID when using Clerk)
 - `auth.jwt()`: Returns the current JWT token
 - `auth.role()`: Returns the current user's role
+
+### Important Note for Clerk + Supabase Integration
+
+When using **Clerk** as your authentication provider with Supabase:
+
+- `auth.uid()` returns the **Clerk user ID** (text), not a Supabase UUID
+- This affects how you design your RLS policies
+- You need to either:
+  1. Use Clerk IDs directly in your policies
+  2. Map Clerk IDs to internal UUIDs in your policies
+  3. Store Clerk IDs as primary keys in your tables
 
 ### Predefined Roles
 
@@ -173,6 +184,10 @@ pgPolicy('policy_name', {
 
 ### 1. User Owns Resource Pattern
 
+When using **Clerk + Supabase**, there are different approaches depending on your schema design:
+
+#### Pattern A: Clerk ID as Primary Key (Simple)
+
 ```typescript
 import { sql } from 'drizzle-orm';
 import { authenticatedRole, authUid } from 'drizzle-orm/supabase';
@@ -180,8 +195,7 @@ import { authenticatedRole, authUid } from 'drizzle-orm/supabase';
 export const learningPlans = pgTable(
   'learning_plans',
   {
-    id: uuid().primaryKey(),
-    userId: uuid().notNull(),
+    id: text().primaryKey(), // Clerk user ID directly
     title: text().notNull(),
     // ... other fields
   },
@@ -190,11 +204,69 @@ export const learningPlans = pgTable(
     pgPolicy('user_owns_learning_plan', {
       for: 'all',
       to: authenticatedRole,
-      using: sql`${table.userId} = ${authUid}`,
+      using: sql`${table.id} = ${authUid}`,
     }),
   ]
 );
 ```
+
+#### Pattern B: Internal UUID + Clerk ID Mapping (Recommended)
+
+```typescript
+export const users = pgTable('users', {
+  id: uuid().primaryKey().defaultRandom(),
+  clerkUserId: text().notNull().unique(),
+  email: text().notNull(),
+  // ... other fields
+});
+
+export const learningPlans = pgTable(
+  'learning_plans',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id),
+    title: text().notNull(),
+    // ... other fields
+  },
+  (table) => [
+    // Users can only access their own learning plans
+    // Note: auth.uid() returns Clerk user ID, so we need to lookup internal UUID
+    pgPolicy('user_owns_learning_plan', {
+      for: 'all',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${authUid}
+      )`,
+    }),
+  ]
+);
+```
+
+#### Pattern C: Direct Clerk ID Reference (Alternative)
+
+```typescript
+export const learningPlans = pgTable(
+  'learning_plans',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    clerkUserId: text().notNull(), // Direct reference to Clerk ID
+    title: text().notNull(),
+    // ... other fields
+  },
+  (table) => [
+    // Simple direct comparison
+    pgPolicy('user_owns_learning_plan', {
+      for: 'all',
+      to: authenticatedRole,
+      using: sql`${table.clerkUserId} = ${authUid}`,
+    }),
+  ]
+);
+```
+
+````
 
 ### 2. Public Read, Private Write Pattern
 
@@ -230,7 +302,7 @@ export const learningPlans = pgTable(
     }),
   ]
 );
-```
+````
 
 ### 3. Admin Access Pattern
 
@@ -541,6 +613,84 @@ const userDb = createDrizzle(testUserToken, { admin: adminDb, client: userDb });
 
 ## Learning Path App Specific Patterns
 
+### Clerk + Supabase Authentication Integration
+
+Our Learning Path App uses Clerk for authentication with Supabase as the database. This requires specific RLS patterns:
+
+#### User Table Structure
+
+```typescript
+export const users = pgTable(
+  'users',
+  {
+    id: uuid().primaryKey().defaultRandom(), // Internal UUID
+    clerkUserId: text().notNull().unique(), // Clerk's user ID
+    email: text().notNull(),
+    // ... other fields
+  },
+  (table) => [
+    // RLS Policy: Users can only access their own record
+    pgPolicy('users_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.clerkUserId} = ${authUid}`, // Compare with Clerk ID
+    }),
+  ]
+);
+```
+
+#### Related Data Access Pattern
+
+```typescript
+export const learningPlans = pgTable(
+  'learning_plans',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id), // References internal UUID
+    // ... other fields
+  },
+  (table) => [
+    // RLS Policy: Users can access plans they own
+    pgPolicy('learning_plans_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+      SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${authUid}
+    )`, // Lookup internal UUID from Clerk ID
+    }),
+  ]
+);
+```
+
+#### Key Patterns for Clerk Integration
+
+1. **Direct Clerk ID Comparison**: When the table stores `clerk_user_id`
+
+   ```sql
+   ${table.clerkUserId} = ${authUid}
+   ```
+
+2. **Internal UUID Lookup**: When the table references internal UUIDs
+
+   ```sql
+   ${table.userId} IN (
+     SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${authUid}
+   )
+   ```
+
+3. **Complex Relationship Policies**: For related data access
+   ```sql
+   EXISTS (
+     SELECT 1 FROM ${learningPlans}
+     WHERE ${learningPlans.id} = ${table.planId}
+     AND ${learningPlans.userId} IN (
+       SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${authUid}
+     )
+   )
+   ```
+
 ### User Data Isolation
 
 ```typescript
@@ -548,9 +698,15 @@ const userDb = createDrizzle(testUserToken, { admin: adminDb, client: userDb });
 export const userDataPolicy = {
   for: 'all' as const,
   to: authenticatedRole,
-  using: sql`user_id = auth.uid()`,
+  using: sql`${table.clerkUserId} = ${authUid}`, // For tables with clerk_user_id
+  // OR
+  using: sql`${table.userId} IN (
+    SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${authUid}
+  )`, // For tables with internal user_id references
 };
 ```
+
+````
 
 ### Public vs Private Plans
 
@@ -568,7 +724,7 @@ export const planVisibilityPolicies = [
     using: sql`user_id = auth.uid()`,
   }),
 ];
-```
+````
 
 ### Progress Tracking
 
