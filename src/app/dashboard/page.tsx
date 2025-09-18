@@ -19,47 +19,47 @@ interface DashboardProps {
   onViewPlan: (planId: string) => void;
 }
 
-const DashboardPage = ({ onCreateNew, onViewPlan }: DashboardProps) => {
-  // Mock user data - in real app this would come from backend
-  const mockPlans = [
-    {
-      id: '1',
-      title: 'Swift for iOS Development',
-      skillLevel: 'Beginner',
-      progress: 45,
-      totalWeeks: 6,
-      currentWeek: 3,
-      weeklyHours: '6-10 hours per week',
-      createdAt: '2024-01-15',
-      lastAccessed: '2 days ago',
-      status: 'active',
-    },
-    {
-      id: '2',
-      title: 'Advanced Excel & Data Analysis',
-      skillLevel: 'Intermediate',
-      progress: 78,
-      totalWeeks: 4,
-      currentWeek: 4,
-      weeklyHours: '3-5 hours per week',
-      createdAt: '2024-01-01',
-      lastAccessed: '1 week ago',
-      status: 'active',
-    },
-    {
-      id: '3',
-      title: 'Digital Marketing Fundamentals',
-      skillLevel: 'Beginner',
-      progress: 100,
-      totalWeeks: 8,
-      currentWeek: 8,
-      weeklyHours: '5-8 hours per week',
-      createdAt: '2023-12-01',
-      lastAccessed: '2 weeks ago',
-      status: 'completed',
-    },
-  ];
+// Mock user data - in real app this would come from backend
+const mockPlans = [
+  {
+    id: '1',
+    title: 'Swift for iOS Development',
+    skillLevel: 'Beginner',
+    progress: 45,
+    totalWeeks: 6,
+    currentWeek: 3,
+    weeklyHours: '6-10 hours per week',
+    createdAt: '2024-01-15',
+    lastAccessed: '2 days ago',
+    status: 'active',
+  },
+  {
+    id: '2',
+    title: 'Advanced Excel & Data Analysis',
+    skillLevel: 'Intermediate',
+    progress: 78,
+    totalWeeks: 4,
+    currentWeek: 4,
+    weeklyHours: '3-5 hours per week',
+    createdAt: '2024-01-01',
+    lastAccessed: '1 week ago',
+    status: 'active',
+  },
+  {
+    id: '3',
+    title: 'Digital Marketing Fundamentals',
+    skillLevel: 'Beginner',
+    progress: 100,
+    totalWeeks: 8,
+    currentWeek: 8,
+    weeklyHours: '5-8 hours per week',
+    createdAt: '2023-12-01',
+    lastAccessed: '2 weeks ago',
+    status: 'completed',
+  },
+];
 
+const DashboardPage = ({ onCreateNew, onViewPlan }: DashboardProps) => {
   const stats = {
     totalPlans: mockPlans.length,
     activePlans: mockPlans.filter((p) => p.status === 'active').length,
@@ -69,24 +69,7 @@ const DashboardPage = ({ onCreateNew, onViewPlan }: DashboardProps) => {
 
   return (
     <div className="bg-gradient-subtle min-h-screen">
-      {/* Header */}
-      <header className="container mx-auto px-6 py-6">
-        <nav className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="text-primary h-8 w-8" />
-            <span className="text-2xl font-bold">LearnPath</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="outline">Settings</Button>
-            <Button onClick={onCreateNew}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Plan
-            </Button>
-          </div>
-        </nav>
-      </header>
-
-      <div className="container mx-auto max-w-7xl px-6 py-8">
+      <div className="container mx-auto px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">Welcome back!</h1>

@@ -49,186 +49,186 @@ interface Resource {
   duration?: string;
 }
 
+// Mock learning plan data - in real app this would come from backend
+const mockModules: Module[] = [
+  {
+    id: 1,
+    title: 'Swift Fundamentals',
+    description:
+      'Learn basic syntax, variables, constants, and data types in Swift programming language.',
+    estimatedHours: 8,
+    week: 1,
+    completed: false,
+    resources: [
+      {
+        id: 1,
+        title: 'Swift Programming Basics',
+        type: 'video',
+        url: '#',
+        duration: '2h 30m',
+      },
+      { id: 2, title: 'Swift Syntax Guide', type: 'article', url: '#' },
+      {
+        id: 3,
+        title: 'Variables & Constants Practice',
+        type: 'practice',
+        url: '#',
+        duration: '1h',
+      },
+    ],
+  },
+  {
+    id: 2,
+    title: 'Object-Oriented Programming in Swift',
+    description:
+      'Understand classes, structures, protocols, and inheritance in Swift.',
+    estimatedHours: 12,
+    week: 2,
+    completed: false,
+    resources: [
+      {
+        id: 4,
+        title: 'OOP Concepts in Swift',
+        type: 'video',
+        url: '#',
+        duration: '3h 15m',
+      },
+      {
+        id: 5,
+        title: 'Building Your First Class',
+        type: 'practice',
+        url: '#',
+        duration: '2h',
+      },
+      {
+        id: 6,
+        title: 'Protocol-Oriented Programming',
+        type: 'article',
+        url: '#',
+      },
+    ],
+  },
+  {
+    id: 3,
+    title: 'iOS Development Basics',
+    description:
+      'Introduction to Xcode, Interface Builder, and basic app structure.',
+    estimatedHours: 15,
+    week: 3,
+    completed: false,
+    resources: [
+      {
+        id: 7,
+        title: 'Getting Started with Xcode',
+        type: 'video',
+        url: '#',
+        duration: '2h',
+      },
+      {
+        id: 8,
+        title: 'Your First iOS App',
+        type: 'practice',
+        url: '#',
+        duration: '3h',
+      },
+      { id: 9, title: 'iOS App Architecture Guide', type: 'book', url: '#' },
+    ],
+  },
+  {
+    id: 4,
+    title: 'User Interface Development',
+    description:
+      'Learn UIKit, Auto Layout, and creating responsive user interfaces.',
+    estimatedHours: 20,
+    week: 4,
+    completed: false,
+    resources: [
+      {
+        id: 10,
+        title: 'UIKit Fundamentals',
+        type: 'video',
+        url: '#',
+        duration: '4h',
+      },
+      {
+        id: 11,
+        title: 'Auto Layout Mastery',
+        type: 'practice',
+        url: '#',
+        duration: '3h',
+      },
+      {
+        id: 12,
+        title: 'Interface Design Patterns',
+        type: 'article',
+        url: '#',
+      },
+    ],
+  },
+  {
+    id: 5,
+    title: 'Data Management & APIs',
+    description:
+      'Handle data persistence, networking, and API integration in iOS apps.',
+    estimatedHours: 18,
+    week: 5,
+    completed: false,
+    resources: [
+      {
+        id: 13,
+        title: 'Core Data Essentials',
+        type: 'video',
+        url: '#',
+        duration: '3h 30m',
+      },
+      {
+        id: 14,
+        title: 'REST API Integration',
+        type: 'practice',
+        url: '#',
+        duration: '4h',
+      },
+      {
+        id: 15,
+        title: 'Data Management Best Practices',
+        type: 'article',
+        url: '#',
+      },
+    ],
+  },
+  {
+    id: 6,
+    title: 'App Store Deployment',
+    description: 'Prepare, test, and deploy your iOS app to the App Store.',
+    estimatedHours: 10,
+    week: 6,
+    completed: false,
+    resources: [
+      { id: 16, title: 'App Store Guidelines', type: 'article', url: '#' },
+      {
+        id: 17,
+        title: 'Testing & Debugging',
+        type: 'practice',
+        url: '#',
+        duration: '2h',
+      },
+      {
+        id: 18,
+        title: 'Deployment Walkthrough',
+        type: 'video',
+        url: '#',
+        duration: '1h 30m',
+      },
+    ],
+  },
+];
+
 const LearningPlanPage = ({
   formData,
   onBack,
   onExport,
 }: LearningPlanProps) => {
   const [completedModules, setCompletedModules] = useState<number[]>([]);
-
-  // Mock learning plan data - in real app this would come from backend
-  const mockModules: Module[] = [
-    {
-      id: 1,
-      title: 'Swift Fundamentals',
-      description:
-        'Learn basic syntax, variables, constants, and data types in Swift programming language.',
-      estimatedHours: 8,
-      week: 1,
-      completed: false,
-      resources: [
-        {
-          id: 1,
-          title: 'Swift Programming Basics',
-          type: 'video',
-          url: '#',
-          duration: '2h 30m',
-        },
-        { id: 2, title: 'Swift Syntax Guide', type: 'article', url: '#' },
-        {
-          id: 3,
-          title: 'Variables & Constants Practice',
-          type: 'practice',
-          url: '#',
-          duration: '1h',
-        },
-      ],
-    },
-    {
-      id: 2,
-      title: 'Object-Oriented Programming in Swift',
-      description:
-        'Understand classes, structures, protocols, and inheritance in Swift.',
-      estimatedHours: 12,
-      week: 2,
-      completed: false,
-      resources: [
-        {
-          id: 4,
-          title: 'OOP Concepts in Swift',
-          type: 'video',
-          url: '#',
-          duration: '3h 15m',
-        },
-        {
-          id: 5,
-          title: 'Building Your First Class',
-          type: 'practice',
-          url: '#',
-          duration: '2h',
-        },
-        {
-          id: 6,
-          title: 'Protocol-Oriented Programming',
-          type: 'article',
-          url: '#',
-        },
-      ],
-    },
-    {
-      id: 3,
-      title: 'iOS Development Basics',
-      description:
-        'Introduction to Xcode, Interface Builder, and basic app structure.',
-      estimatedHours: 15,
-      week: 3,
-      completed: false,
-      resources: [
-        {
-          id: 7,
-          title: 'Getting Started with Xcode',
-          type: 'video',
-          url: '#',
-          duration: '2h',
-        },
-        {
-          id: 8,
-          title: 'Your First iOS App',
-          type: 'practice',
-          url: '#',
-          duration: '3h',
-        },
-        { id: 9, title: 'iOS App Architecture Guide', type: 'book', url: '#' },
-      ],
-    },
-    {
-      id: 4,
-      title: 'User Interface Development',
-      description:
-        'Learn UIKit, Auto Layout, and creating responsive user interfaces.',
-      estimatedHours: 20,
-      week: 4,
-      completed: false,
-      resources: [
-        {
-          id: 10,
-          title: 'UIKit Fundamentals',
-          type: 'video',
-          url: '#',
-          duration: '4h',
-        },
-        {
-          id: 11,
-          title: 'Auto Layout Mastery',
-          type: 'practice',
-          url: '#',
-          duration: '3h',
-        },
-        {
-          id: 12,
-          title: 'Interface Design Patterns',
-          type: 'article',
-          url: '#',
-        },
-      ],
-    },
-    {
-      id: 5,
-      title: 'Data Management & APIs',
-      description:
-        'Handle data persistence, networking, and API integration in iOS apps.',
-      estimatedHours: 18,
-      week: 5,
-      completed: false,
-      resources: [
-        {
-          id: 13,
-          title: 'Core Data Essentials',
-          type: 'video',
-          url: '#',
-          duration: '3h 30m',
-        },
-        {
-          id: 14,
-          title: 'REST API Integration',
-          type: 'practice',
-          url: '#',
-          duration: '4h',
-        },
-        {
-          id: 15,
-          title: 'Data Management Best Practices',
-          type: 'article',
-          url: '#',
-        },
-      ],
-    },
-    {
-      id: 6,
-      title: 'App Store Deployment',
-      description: 'Prepare, test, and deploy your iOS app to the App Store.',
-      estimatedHours: 10,
-      week: 6,
-      completed: false,
-      resources: [
-        { id: 16, title: 'App Store Guidelines', type: 'article', url: '#' },
-        {
-          id: 17,
-          title: 'Testing & Debugging',
-          type: 'practice',
-          url: '#',
-          duration: '2h',
-        },
-        {
-          id: 18,
-          title: 'Deployment Walkthrough',
-          type: 'video',
-          url: '#',
-          duration: '1h 30m',
-        },
-      ],
-    },
-  ];
 
   const totalHours = mockModules.reduce(
     (sum, module) => sum + module.estimatedHours,
@@ -280,24 +280,7 @@ const LearningPlanPage = ({
 
   return (
     <div className="bg-gradient-subtle min-h-screen">
-      {/* Header */}
-      <header className="container mx-auto px-6 py-6">
-        <nav className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="text-primary h-8 w-8" />
-            <span className="text-2xl font-bold">LearnPath</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" onClick={() => onExport('notion')}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            <Button variant="outline">Share</Button>
-          </div>
-        </nav>
-      </header>
-
-      <div className="container mx-auto max-w-4xl px-6 py-8">
+      <div className="container mx-auto max-w-7xl px-6 py-8">
         {/* Plan Header */}
         <div className="mb-8">
           <Button variant="ghost" onClick={onBack} className="mb-4">

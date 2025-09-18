@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, BookOpen, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -102,10 +102,6 @@ const OnboardingForm = ({ onBack, onComplete }: OnboardingFormProps) => {
       {/* Header */}
       <header className="container mx-auto px-6 py-6">
         <nav className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="text-primary h-8 w-8" />
-            <span className="text-2xl font-bold">LearnPath</span>
-          </div>
           <div className="text-muted-foreground text-sm">
             Step {currentStep} of {totalSteps}
           </div>

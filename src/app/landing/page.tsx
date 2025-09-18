@@ -1,7 +1,7 @@
 import HeroImage from '@/assets/images/hero-learning.jpg';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, BookOpen, Clock, Target, Zap } from 'lucide-react';
+import { ArrowRight, Clock, Target, Zap } from 'lucide-react';
 import Image from 'next/image';
 
 interface LandingPageProps {
@@ -11,20 +11,6 @@ interface LandingPageProps {
 const LandingPage = ({ onGetStarted }: LandingPageProps) => {
   return (
     <div className="bg-gradient-subtle min-h-screen">
-      {/* Header */}
-      <header className="container mx-auto px-6 py-6">
-        <nav className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="text-primary h-8 w-8" />
-            <span className="text-2xl font-bold">LearnPath</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost">Sign In</Button>
-            <Button onClick={onGetStarted}>Get Started</Button>
-          </div>
-        </nav>
-      </header>
-
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-16">
         <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -165,19 +151,6 @@ const LandingPage = ({ onGetStarted }: LandingPageProps) => {
           </Button>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="container mx-auto border-t px-6 py-8">
-        <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="text-primary h-6 w-6" />
-            <span className="font-semibold">LearnPath</span>
-          </div>
-          <div className="text-muted-foreground text-sm">
-            © 2024 LearnPath. All rights reserved.
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
