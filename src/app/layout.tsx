@@ -8,6 +8,7 @@ import {
 } from '@clerk/nextjs';
 import { type Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 
 const geistSans = Geist({
@@ -49,7 +50,8 @@ export default function RootLayout({
               <UserButton />
             </SignedIn>
           </header>
-          {children}
+          <main>{children}</main>
+          <Toaster />
         </body>
       </html>
     </ClerkProvider>
