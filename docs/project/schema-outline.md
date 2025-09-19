@@ -247,6 +247,14 @@ erDiagram
 - Foreign keys should generally use ON DELETE CASCADE to prevent orphaned rows.
 - Define enums in Postgres (or via Drizzle pgEnum) for skill_level, learning_style, resource_type, progress_status.
 
+## Client mapping notes
+
+- UI progress and status badges are derived from `task_progress` aggregates; modules are considered complete when all child tasks are completed.
+- Dashboard `totalWeeks` uses the number of modules ordered by `modules.order`. `currentWeek` advances when a module is fully completed (all tasks completed) and otherwise stays at the next module index.
+- Plan completion percentage is `(completed task count) / (total task count)`; task durations are stored in minutes and converted to hours for display.
+- Weekly availability is captured as an integer `weekly_hours`. UI ranges map to representative integers: `1-2 → 2`, `3-5 → 5`, `6-10 → 10`, `11-15 → 15`, `16-20 → 20`, `20+ → 25`.
+- When onboarding collects optional notes they are currently used for AI prompt context only; persistence will require adding a `notes` column to `learning_plans`.
+
 ## Notes & future-ready considerations
 
 - Exports/integrations (Notion/Google) are intentionally excluded at this stage.

@@ -27,15 +27,15 @@ Outcome: Users can authenticate; sessions persist; database migrations are trust
 
 Outcome: Can create a plan, see it in list, open detail, and (after mock generation) view modules/tasks.
 
-- [ ] Pages: `/plans`, `/plans/new`, `/plans/[id]` (list, create, detail)
-  - [ ] List page: fetch user plans, empty state
-  - [ ] New page: minimal form (topic only for now)
-  - [ ] Detail page: pending vs ready placeholder UI
-- [ ] API: POST plan (status `pending`)
-- [ ] Mock generation script inserts modules + tasks (2–3 modules, ordered tasks) → flips status to `ready`
-- [ ] Ordering: ensure sequential `order` values in modules/tasks
-- [ ] Empty/pending states implemented
-- [ ] Basic navigation links between pages
+- [x] Pages: `/plans`, `/plans/new`, `/plans/[id]` (list, create, detail)
+  - [x] List page: fetch user plans, empty state
+  - [x] New page: minimal form (topic only for now)
+  - [x] Detail page: pending vs ready placeholder UI
+- [x] API: POST plan (status `pending`)
+- [x] Mock generation script inserts modules + tasks (2–3 modules, ordered tasks) → flips status to `ready`
+- [x] Ordering: ensure sequential `order` values in modules/tasks
+- [x] Empty/pending states implemented
+- [x] Basic navigation links between pages
 
 Acceptance: Manual flow works locally without manual SQL edits.
 
