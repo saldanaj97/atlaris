@@ -43,5 +43,8 @@ next-env.d.ts
 # cursor
 .cursor/*
 
+# daily plan files
+docs/plans/*
+
 # warp
 WARP.md
