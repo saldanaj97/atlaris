@@ -1,5 +1,11 @@
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
-import { notImplemented } from '@/lib/api/response';
+import { ValidationError } from '@/lib/api/errors';
+import { json } from '@/lib/api/response';
+import { db } from '@/lib/db/drizzle';
+import { learningPlans } from '@/lib/db/schema';
+import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
+import type { NewLearningPlan } from '@/lib/types';
+import { CreateLearningPlanInput, createLearningPlanSchema } from '@/lib/validation/learningPlans';
 
 /**
  * GET /api/v1/plans
@@ -29,6 +35,52 @@ import { notImplemented } from '@/lib/api/response';
  *  NOTE: This file intentionally contains only placeholders; no business logic should be added yet.
  */
 
-export const GET = withErrorBoundary(withAuth(async () => notImplemented()));
+export const GET = withErrorBoundary(
+  withAuth(async ({ userId }) => {
+    const user = await getUserByClerkId(userId);
+    if (!user) {
+      throw new ValidationError('User record not found.');
+    }
 
-export const POST = withErrorBoundary(withAuth(async () => notImplemented()));
+    const summaries = await getPlanSummariesForUser(user.id);
+    return json(summaries);
+  })
+);
+
+export const POST = withErrorBoundary(
+  withAuth(async ({ req, userId }) => {
+    let body: CreateLearningPlanInput;
+    try {
+      const payload = await req.json();
+      body = createLearningPlanSchema.parse(payload);
+    } catch (error) {
+      throw new ValidationError('Invalid request body.', error);
+    }
+
+    const user = await getUserByClerkId(userId);
+    if (!user) {
+      throw new ValidationError('User record not found. Cannot create plan.');
+    }
+
+    const insertPayload: NewLearningPlan = {
+      userId: user.id,
+      topic: body.topic,
+      skillLevel: body.skillLevel,
+      weeklyHours: body.weeklyHours,
+      learningStyle: body.learningStyle,
+      startDate: body.startDate ?? null,
+      deadlineDate: body.deadlineDate ?? null,
+      visibility: body.visibility,
+      origin: body.origin,
+    };
+
+    const [plan] = await db
+      .insert(learningPlans)
+      .values(insertPayload)
+      .returning();
+
+    // Notes from onboarding are intentionally ignored until the schema introduces a column.
+
+    return json(plan, { status: 201 });
+  })
+);

@@ -1,8 +1,24 @@
 import { auth } from '@clerk/nextjs/server';
 import { AuthError } from './errors';
 
-export async function requireUser() {
+/**
+ * Returns the effective Clerk user id for the current request.
+ * In development, if DEV_CLERK_USER_ID is set, that value is returned
+ * (allowing you to bypass real Clerk provisioning while seeding a deterministic user).
+ */
+export async function getEffectiveClerkUserId(): Promise<string | null> {
+  if (process.env.NODE_ENV !== 'production') {
+    const devId = process.env.DEV_CLERK_USER_ID;
+    if (devId) {
+      return devId;
+    }
+  }
   const { userId } = await auth();
+  return userId ?? null;
+}
+
+export async function requireUser() {
+  const userId = await getEffectiveClerkUserId();
   if (!userId) throw new AuthError();
   return userId;
 }

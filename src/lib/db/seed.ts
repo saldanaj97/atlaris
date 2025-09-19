@@ -1,6 +1,10 @@
+import dotenv from 'dotenv';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { reset, seed } from 'drizzle-seed';
 import * as schema from './schema';
+
+dotenv.config();
 
 // Learning topics for realistic data
 const learningTopics = [
@@ -195,14 +199,50 @@ export async function seedDatabase(
     `📊 Seeding with ${userCount} users, ${planCount} plans, ${resourceCount} resources`
   );
 
+  let adjustedUserCount = userCount;
+  let insertedDevUser = false;
+  const isDevEnv = process.env.NODE_ENV !== 'production';
+
   // Seed the database with all tables and relationships
+  // Optional: deterministic dev user injection (before randomized seeding)
+  // for easier local testing and predictable auth
+  const devClerkUserId = process.env.DEV_CLERK_USER_ID;
+  const devEmail = process.env.DEV_CLERK_USER_EMAIL || 'dev@example.com';
+  const devName = process.env.DEV_CLERK_USER_NAME || 'Dev User';
+
+  if (isDevEnv && devClerkUserId) {
+    try {
+      // Attempt to insert deterministic dev user; ignore conflict if already present
+      await db
+        .insert(schema.users)
+        .values({
+          clerkUserId: devClerkUserId,
+          email: devEmail,
+          name: devName,
+          subscriptionTier: 'free',
+        })
+        .onConflictDoNothing();
+      insertedDevUser = true;
+      console.log(`👤 Ensured deterministic dev user '${devClerkUserId}'`);
+    } catch (e) {
+      console.warn('⚠️  Could not insert deterministic dev user:', e);
+    }
+
+    // If we successfully (or previously) have that user, reduce the random user count by 1
+    if (insertedDevUser) {
+      // We already inserted the deterministic dev user, so seed the remaining random users
+      // (Bug fix: previously this erroneously added +1 resulting in an extra user)
+      adjustedUserCount = Math.max(0, userCount - 1);
+    }
+  }
+
   await seed(db, schema, {
-    count: userCount, // Base count for users
+    count: adjustedUserCount, // Base count for users (plus deterministic dev user if added)
     seed: seedValue,
   }).refine((f) => ({
     // Users table - foundation of the system
     users: {
-      count: userCount,
+      count: adjustedUserCount,
       columns: {
         clerkUserId: f.string({ isUnique: true }), // Clerk user IDs must be unique
         email: f.email(),
@@ -407,7 +447,394 @@ export async function seedDatabase(
     },
   }));
 
-  // After seeding, create task-resource relationships (placeholder)
+  // After randomized seeding, optionally create curated data for the deterministic dev user
+  // so local development always has predictable, rich content to test UI flows.
+  if (isDevEnv && insertedDevUser && devClerkUserId) {
+    try {
+      const devUser = await db
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.clerkUserId, devClerkUserId))
+        .limit(1);
+      if (devUser.length) {
+        const devUserId = devUser[0].id;
+        // Check if the dev user already has curated plans (avoid duplicates on repeated runs)
+        const existingPlans = await db
+          .select({ id: schema.learningPlans.id })
+          .from(schema.learningPlans)
+          .where(eq(schema.learningPlans.userId, devUserId))
+          .limit(1);
+        if (existingPlans.length === 0) {
+          console.log('🛠️  Creating curated dev user learning plans...');
+
+          // Curated plan definitions (concise but representative)
+          const curatedPlans: Array<{
+            topic: string;
+            skillLevel: 'beginner' | 'intermediate' | 'advanced';
+            weeklyHours: number;
+            learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+            visibility: 'private' | 'public';
+            origin: 'ai' | 'template' | 'manual';
+            modules: Array<{
+              title: string;
+              description: string;
+              estimatedMinutes: number;
+              tasks: Array<{
+                title: string;
+                description: string;
+                estimatedMinutes: number;
+              }>;
+            }>;
+          }> = [
+            {
+              topic: 'Full-Stack Web Development (Sample)',
+              skillLevel: 'beginner',
+              weeklyHours: 6,
+              learningStyle: 'mixed',
+              visibility: 'private',
+              origin: 'manual',
+              modules: [
+                {
+                  title: 'Foundations & Tooling',
+                  description:
+                    'Environment setup, Git, and core web platform concepts.',
+                  estimatedMinutes: 240,
+                  tasks: [
+                    {
+                      title: 'Install and configure development environment',
+                      description:
+                        'Install Node.js, pnpm, VS Code extensions, and verify setup.',
+                      estimatedMinutes: 45,
+                    },
+                    {
+                      title: 'Practice HTML & CSS fundamentals',
+                      description:
+                        'Build a simple static page applying semantic structure and responsive layout.',
+                      estimatedMinutes: 60,
+                    },
+                    {
+                      title: 'Initialize Next.js project with Tailwind',
+                      description:
+                        'Create a new Next.js app, add Tailwind CSS, and deploy a starter page.',
+                      estimatedMinutes: 75,
+                    },
+                    {
+                      title: 'Version control workflow basics',
+                      description:
+                        'Branching, commits, pull requests, and code review checklist.',
+                      estimatedMinutes: 60,
+                    },
+                  ],
+                },
+                {
+                  title: 'Frontend Application Layer',
+                  description:
+                    'Core React patterns, state management, and UI composition.',
+                  estimatedMinutes: 300,
+                  tasks: [
+                    {
+                      title: 'Component composition & props',
+                      description:
+                        'Refactor UI into reusable, accessible components.',
+                      estimatedMinutes: 60,
+                    },
+                    {
+                      title: 'State management with hooks',
+                      description:
+                        'Use useState, useEffect, and custom hooks for derived behavior.',
+                      estimatedMinutes: 75,
+                    },
+                    {
+                      title: 'Implement form handling & validation',
+                      description:
+                        'Build a controlled form with client-side validation and error states.',
+                      estimatedMinutes: 90,
+                    },
+                    {
+                      title: 'Accessibility & performance pass',
+                      description:
+                        'Lighthouse / a11y audit and targeted improvements.',
+                      estimatedMinutes: 75,
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              topic: 'Python Data Science Crash Course (Sample)',
+              skillLevel: 'intermediate',
+              weeklyHours: 5,
+              learningStyle: 'reading',
+              visibility: 'public',
+              origin: 'manual',
+              modules: [
+                {
+                  title: 'Data Manipulation & Exploration',
+                  description:
+                    'Pandas, data frames, cleaning, and exploratory analysis.',
+                  estimatedMinutes: 210,
+                  tasks: [
+                    {
+                      title: 'Load and inspect dataset',
+                      description:
+                        'Use pandas to load CSV and explore schema & missing values.',
+                      estimatedMinutes: 45,
+                    },
+                    {
+                      title: 'Data cleaning pipeline',
+                      description:
+                        'Handle nulls, types, normalization, and basic feature extraction.',
+                      estimatedMinutes: 75,
+                    },
+                    {
+                      title: 'Exploratory visualization',
+                      description:
+                        'Generate histograms, correlations, and summary charts.',
+                      estimatedMinutes: 90,
+                    },
+                  ],
+                },
+                {
+                  title: 'Modeling & Evaluation',
+                  description:
+                    'Intro ML workflow: split, train, evaluate, iterate.',
+                  estimatedMinutes: 240,
+                  tasks: [
+                    {
+                      title: 'Train baseline model',
+                      description:
+                        'Train a simple model (e.g. logistic regression) and record metrics.',
+                      estimatedMinutes: 60,
+                    },
+                    {
+                      title: 'Hyperparameter tuning',
+                      description:
+                        'Grid / random search for improved performance.',
+                      estimatedMinutes: 90,
+                    },
+                    {
+                      title: 'Model evaluation & reporting',
+                      description:
+                        'Confusion matrix, ROC curve, and summary narrative.',
+                      estimatedMinutes: 90,
+                    },
+                  ],
+                },
+              ],
+            },
+          ];
+
+          const createdTaskIds: string[] = [];
+
+          for (const planDef of curatedPlans) {
+            const [plan] = await db
+              .insert(schema.learningPlans)
+              .values({
+                userId: devUserId,
+                topic: planDef.topic,
+                skillLevel: planDef.skillLevel,
+                weeklyHours: planDef.weeklyHours,
+                learningStyle: planDef.learningStyle,
+                visibility: planDef.visibility,
+                origin: planDef.origin,
+                // schema.startDate & deadlineDate are 'date' (no timezone) -> supply ISO date string
+                startDate: '2025-01-15',
+                deadlineDate: '2025-12-31',
+              })
+              .returning({ id: schema.learningPlans.id });
+
+            for (let mIdx = 0; mIdx < planDef.modules.length; mIdx++) {
+              const modDef = planDef.modules[mIdx];
+              const [module] = await db
+                .insert(schema.modules)
+                .values({
+                  planId: plan.id,
+                  order: mIdx + 1,
+                  title: modDef.title,
+                  description: modDef.description,
+                  estimatedMinutes: modDef.estimatedMinutes,
+                })
+                .returning({ id: schema.modules.id });
+
+              for (let tIdx = 0; tIdx < modDef.tasks.length; tIdx++) {
+                const taskDef = modDef.tasks[tIdx];
+                const [task] = await db
+                  .insert(schema.tasks)
+                  .values({
+                    moduleId: module.id,
+                    order: tIdx + 1,
+                    title: taskDef.title,
+                    description: taskDef.description,
+                    estimatedMinutes: taskDef.estimatedMinutes,
+                  })
+                  .returning({ id: schema.tasks.id });
+                createdTaskIds.push(task.id);
+              }
+            }
+          }
+
+          // Attach a few existing global resources deterministically (first N) to first few tasks for demo
+          if (createdTaskIds.length) {
+            const resourcesSample = await db
+              .select({ id: schema.resources.id })
+              .from(schema.resources)
+              .limit(6);
+            for (
+              let i = 0;
+              i < Math.min(createdTaskIds.length, resourcesSample.length);
+              i++
+            ) {
+              const taskId = createdTaskIds[i];
+              const resourceId = resourcesSample[i].id;
+              await db
+                .insert(schema.taskResources)
+                .values({
+                  taskId,
+                  resourceId,
+                  order: 1,
+                  notes: 'Sample attached resource for dev sandbox.',
+                })
+                .onConflictDoNothing();
+            }
+          }
+
+          // Mark a subset of curated tasks as completed / in-progress for realism
+          if (createdTaskIds.length) {
+            const completed = createdTaskIds.slice(
+              0,
+              Math.ceil(createdTaskIds.length * 0.25)
+            );
+            const inProgress = createdTaskIds.slice(
+              Math.ceil(createdTaskIds.length * 0.25),
+              Math.ceil(createdTaskIds.length * 0.4)
+            );
+            const rows = [
+              ...completed.map((id) => ({
+                taskId: id,
+                userId: devUserId,
+                status: 'completed' as const,
+                completedAt: new Date('2025-06-01'),
+              })),
+              ...inProgress.map((id) => ({
+                taskId: id,
+                userId: devUserId,
+                status: 'in_progress' as const,
+                completedAt: null,
+              })),
+            ];
+            if (rows.length) {
+              await db
+                .insert(schema.taskProgress)
+                .values(rows)
+                .onConflictDoNothing({
+                  target: [
+                    schema.taskProgress.taskId,
+                    schema.taskProgress.userId,
+                  ],
+                });
+            }
+          }
+
+          console.log('✅ Curated dev user dataset created.');
+        } else {
+          console.log(
+            'ℹ️  Dev user already has plans; skipping curated dataset.'
+          );
+        }
+
+        // Ensure the dev user also has a few random-style plans for realism (lightweight approach)
+        // Threshold can be tuned; we aim for at least 5 total plans (including curated ones)
+        const targetMinPlans = 5;
+        const currentCountResult = await db
+          .select({ id: schema.learningPlans.id })
+          .from(schema.learningPlans)
+          .where(eq(schema.learningPlans.userId, devUserId));
+        const currentCount = currentCountResult.length;
+        if (currentCount < targetMinPlans) {
+          const toCreate = targetMinPlans - currentCount;
+          console.log(
+            `🧪 Adding ${toCreate} random-style plan(s) for dev user to reach baseline.`
+          );
+
+          for (let i = 0; i < toCreate; i++) {
+            // Pseudo-random picks using topic list & weight approximations mirrored from refined seeding
+            const topic =
+              learningTopics[(i * 17 + currentCount) % learningTopics.length];
+            const skillPool: Array<'beginner' | 'intermediate' | 'advanced'> = [
+              'beginner',
+              'beginner',
+              'intermediate',
+              'intermediate',
+              'advanced',
+            ];
+            const skillLevel = skillPool[(i * 7 + 3) % skillPool.length];
+            const stylePool: Array<'reading' | 'video' | 'practice' | 'mixed'> =
+              ['reading', 'video', 'mixed', 'practice', 'mixed'];
+            const learningStyle = stylePool[(i * 11 + 5) % stylePool.length];
+            const weeklyHours = 2 + ((i + currentCount) % 10); // 2-11
+            const visibility: 'private' | 'public' =
+              (i + currentCount) % 4 === 0 ? 'public' : 'private';
+
+            const [randPlan] = await db
+              .insert(schema.learningPlans)
+              .values({
+                userId: devUserId,
+                topic: `${topic} (Dev Rand ${i + 1})`,
+                skillLevel,
+                weeklyHours,
+                learningStyle,
+                visibility,
+                origin: 'ai',
+                startDate: '2025-02-01',
+                deadlineDate: '2025-12-31',
+              })
+              .returning({ id: schema.learningPlans.id });
+
+            // Generate 2-3 modules each with 3-5 tasks (simple deterministic loops)
+            const moduleCount = 2 + ((i + 1) % 2); // 2 or 3
+            for (let m = 0; m < moduleCount; m++) {
+              const modTitleSource = [
+                ...moduleTemplates.programming,
+                ...moduleTemplates.webdev,
+                ...moduleTemplates.data,
+                ...moduleTemplates.general,
+              ];
+              const [randModule] = await db
+                .insert(schema.modules)
+                .values({
+                  planId: randPlan.id,
+                  order: m + 1,
+                  title:
+                    modTitleSource[(m * 13 + i * 5) % modTitleSource.length],
+                  description: 'Auto-generated dev random module.',
+                  estimatedMinutes: 120 + ((m + i) % 4) * 60,
+                })
+                .returning({ id: schema.modules.id });
+
+              const taskCount = 3 + ((m + i) % 3); // 3-5
+              for (let t = 0; t < taskCount; t++) {
+                await db.insert(schema.tasks).values({
+                  moduleId: randModule.id,
+                  order: t + 1,
+                  title:
+                    taskTemplates[
+                      (t * 19 + m * 7 + i * 3) % taskTemplates.length
+                    ],
+                  description: 'Auto-generated task for dev random plan.',
+                  estimatedMinutes: 30 + (t % 4) * 15,
+                });
+              }
+            }
+          }
+          console.log('✅ Added random-style dev user plans.');
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️  Failed creating curated dev dataset:', err);
+    }
+  }
+
+  // After seeding (and curated dev data), create task-resource relationships (placeholder)
   console.log('🔗 Creating task-resource relationships...');
 
   // Generate per-user task progress with unique (task_id, user_id) pairs

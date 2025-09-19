@@ -1,14 +1,12 @@
+import Image from 'next/image';
+import Link from 'next/link';
+
 import HeroImage from '@/assets/images/hero-learning.jpg';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, Clock, Target, Zap } from 'lucide-react';
-import Image from 'next/image';
 
-interface LandingPageProps {
-  onGetStarted: () => void;
-}
-
-const LandingPage = ({ onGetStarted }: LandingPageProps) => {
+const LandingPage = () => {
   return (
     <div className="bg-gradient-subtle min-h-screen">
       {/* Hero Section */}
@@ -30,14 +28,16 @@ const LandingPage = ({ onGetStarted }: LandingPageProps) => {
             <div className="flex flex-col gap-4 sm:flex-row">
               <Button
                 size="lg"
-                onClick={onGetStarted}
                 className="bg-gradient-hero hover:shadow-glow transition-all duration-300"
+                asChild
               >
-                Create Your First Path
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <Link href="/plans/new">
+                  Create Your First Path
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
               </Button>
-              <Button variant="outline" size="lg">
-                View Example
+              <Button variant="outline" size="lg" asChild>
+                <Link href="/plans/new">View Example</Link>
               </Button>
             </div>
 
@@ -143,11 +143,13 @@ const LandingPage = ({ onGetStarted }: LandingPageProps) => {
           <Button
             size="lg"
             variant="secondary"
-            onClick={onGetStarted}
             className="text-primary bg-white hover:bg-white/90"
+            asChild
           >
-            Create Your Learning Path
-            <ArrowRight className="ml-2 h-5 w-5" />
+            <Link href="/plans/new">
+              Create Your Learning Path
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
           </Button>
         </div>
       </section>

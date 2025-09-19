@@ -71,6 +71,9 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
+      zod:
+        specifier: ^4.1.9
+        version: 4.1.9
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.3.1
@@ -2902,6 +2905,9 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
+  zod@4.1.9:
+    resolution: {integrity: sha512-HI32jTq0AUAC125z30E8bQNz0RQ+9Uc+4J7V97gLYjZVKRjeydPgGt6dvQzFrav7MYOUGFqqOGiHpA/fdbd0cQ==}
+
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
@@ -5580,3 +5586,5 @@ snapshots:
   yallist@5.0.0: {}
 
   yocto-queue@0.1.0: {}
+
+  zod@4.1.9: {}
