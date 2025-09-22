@@ -2,7 +2,11 @@ import { clerkMiddleware } from '@clerk/nextjs/server';
 
 import { createRouteMatcher } from '@clerk/nextjs/server';
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/api(.*)']);
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/api(.*)',
+  '/plans(.*)',
+]);
 
 // Use basic auth for protected routes for now and later add paid plan
 // with isAuthenticated and user roles
