@@ -1,9 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import type { ElementType } from 'react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 
 import { updateTaskProgress } from '@/lib/api/plans';
 import type { ProgressStatus, ResourceType } from '@/lib/types';
@@ -142,16 +142,19 @@ function formatLearningStyle(value: string) {
 export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
   const router = useRouter();
   const totalTasks = useMemo(
-    () => plan.modules.reduce((count, module) => count + module.tasks.length, 0),
+    () =>
+      plan.modules.reduce((count, module) => count + module.tasks.length, 0),
     [plan.modules]
   );
 
-  const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(() => {
-    const entries = plan.modules.flatMap((module) =>
-      module.tasks.map((task) => [task.id, task.status] as const)
-    );
-    return Object.fromEntries(entries);
-  });
+  const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
+    () => {
+      const entries = plan.modules.flatMap((module) =>
+        module.tasks.map((task) => [task.id, task.status] as const)
+      );
+      return Object.fromEntries(entries);
+    }
+  );
 
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
@@ -185,7 +188,8 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
 
   const toggleTask = async (task: ClientTask) => {
     const current = statuses[task.id] ?? 'not_started';
-    const next: ProgressStatus = current === 'completed' ? 'not_started' : 'completed';
+    const next: ProgressStatus =
+      current === 'completed' ? 'not_started' : 'completed';
 
     setPendingTaskId(task.id);
     try {
@@ -214,11 +218,7 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
   return (
     <div className="bg-gradient-subtle min-h-screen">
       <div className="container mx-auto max-w-6xl px-6 py-8">
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          className="mb-4"
-        >
+        <Button variant="ghost" onClick={() => router.back()} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -236,11 +236,12 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
               <p className="text-muted-foreground">
                 Tailored for {formatSkillLevel(plan.skillLevel)} learners with a
                 focus on {formatLearningStyle(plan.learningStyle)} activities.
-                Commit {plan.weeklyHours} hour{plan.weeklyHours === 1 ? '' : 's'}
+                Commit {plan.weeklyHours} hour
+                {plan.weeklyHours === 1 ? '' : 's'}
                 per week to stay on track.
               </p>
 
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
                 <span>
                   Visibility: <strong>{plan.visibility}</strong>
                 </span>
@@ -281,16 +282,20 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
                 </div>
                 <div>
                   <div className="text-lg font-semibold">
-                    {estimatedWeeks ? `${estimatedWeeks} week${estimatedWeeks === 1 ? '' : 's'}` : '—'}
+                    {estimatedWeeks
+                      ? `${estimatedWeeks} week${estimatedWeeks === 1 ? '' : 's'}`
+                      : '—'}
                   </div>
-                  <div className="text-muted-foreground">Estimated Duration</div>
+                  <div className="text-muted-foreground">
+                    Estimated Duration
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </Card>
 
-        <div className="mb-8 mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 mb-8 grid gap-4 md:grid-cols-3">
           <Button onClick={() => handleExport('notion')}>
             <Download className="mr-2 h-4 w-4" />
             Export to Notion
@@ -308,7 +313,7 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
         <section className="space-y-6">
           <h2 className="text-2xl font-bold">Learning Modules</h2>
           {plan.modules.length === 0 ? (
-            <Card className="p-6 text-center text-muted-foreground">
+            <Card className="text-muted-foreground p-6 text-center">
               No modules yet. Generation will populate this plan soon.
             </Card>
           ) : (
@@ -316,7 +321,7 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
               <Card key={module.id} className="border-0 p-6 shadow-sm">
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground">
+                    <div className="text-muted-foreground text-sm font-medium">
                       Week {module.order}
                     </div>
                     <h3 className="text-xl font-semibold">{module.title}</h3>
@@ -326,7 +331,9 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
                       </p>
                     ) : null}
                   </div>
-                  <Badge variant="outline">{formatMinutes(module.estimatedMinutes)}</Badge>
+                  <Badge variant="outline">
+                    {formatMinutes(module.estimatedMinutes)}
+                  </Badge>
                 </div>
 
                 <div className="space-y-4">
@@ -338,7 +345,7 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
                     return (
                       <div
                         key={task.id}
-                        className="rounded-lg border p-4 transition-colors hover:border-primary/30"
+                        className="hover:border-primary/30 rounded-lg border p-4 transition-colors"
                       >
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div className="space-y-2">
@@ -348,12 +355,16 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
                               disabled={pending}
                               aria-pressed={isCompleted}
                               className={`flex items-center text-left text-sm font-medium ${
-                                isCompleted ? 'text-green-600' : 'text-muted-foreground'
+                                isCompleted
+                                  ? 'text-green-600'
+                                  : 'text-muted-foreground'
                               }`}
                             >
                               <CheckCircle2
                                 className={`mr-2 h-5 w-5 ${
-                                  isCompleted ? 'fill-current text-green-600' : 'text-muted-foreground'
+                                  isCompleted
+                                    ? 'fill-current text-green-600'
+                                    : 'text-muted-foreground'
                                 } ${pending ? 'animate-pulse' : ''}`}
                               />
                               {task.title}
@@ -363,18 +374,18 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
                                 {task.description}
                               </p>
                             ) : null}
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-muted-foreground text-xs">
                               Effort: {formatMinutes(task.estimatedMinutes)}
                             </div>
                           </div>
-                          <div className="text-xs uppercase text-muted-foreground">
+                          <div className="text-muted-foreground text-xs uppercase">
                             Status: {isCompleted ? 'Completed' : 'Not started'}
                           </div>
                         </div>
 
                         {task.resources.length ? (
                           <div className="mt-4 space-y-2">
-                            <div className="text-xs font-semibold uppercase text-muted-foreground">
+                            <div className="text-muted-foreground text-xs font-semibold uppercase">
                               Recommended Resources
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
@@ -387,7 +398,7 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
                                     href={resource.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="rounded-lg border p-3 transition-colors hover:border-primary/40"
+                                    className="hover:border-primary/40 rounded-lg border p-3 transition-colors"
                                   >
                                     <div className="flex items-start gap-3">
                                       <Badge className={config.badgeClass}>
@@ -399,12 +410,14 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
                                           {resource.title}
                                         </div>
                                         {resource.durationMinutes ? (
-                                          <div className="text-xs text-muted-foreground">
-                                            {formatMinutes(resource.durationMinutes)}
+                                          <div className="text-muted-foreground text-xs">
+                                            {formatMinutes(
+                                              resource.durationMinutes
+                                            )}
                                           </div>
                                         ) : null}
                                       </div>
-                                      <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
+                                      <ExternalLink className="text-muted-foreground ml-auto h-4 w-4" />
                                     </div>
                                   </a>
                                 );
