@@ -40,8 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# cursor
+# ide rules
 .cursor/*
+.windsurf/*
 
 # daily plan files
 docs/plans/*

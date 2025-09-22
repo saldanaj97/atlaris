@@ -10,7 +10,6 @@ Outcome: Foundational project scaffold + database schema established; environmen
 - [x] Add Tailwind + shadcn/ui.
 - [x] Set up Supabase project (Auth + Postgres).
 - [x] Define DB schema (users, plans, milestones/modules, tasks).
-- [ ] Deploy empty skeleton app to Vercel (intentionally deferred until core slice works).
 
 ## Day 2 – Auth & Database (Done)
 

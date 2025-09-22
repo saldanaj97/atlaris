@@ -14,7 +14,7 @@ Repository overview
 
 Assistant/Copilot rules in-repo
 
-- There are rules defined under .cursor/rules. Review them when generating or refactoring code (topics include Next.js, React, and Tailwind). Use them as guidance; do not duplicate them here.
+- There are rules defined under .windsurf/rules. Review them when generating or refactoring code (topics include Next.js, React, and Tailwind). Use them as guidance; do not duplicate them here.
 
 Common commands
 
