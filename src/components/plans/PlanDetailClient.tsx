@@ -218,9 +218,13 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
   return (
     <div className="bg-gradient-subtle min-h-screen">
       <div className="container mx-auto max-w-6xl px-6 py-8">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+        <Button
+          variant="ghost"
+          onClick={() => router.push('/plans')}
+          className="mb-4"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
+          Your Plans
         </Button>
 
         <Card className="bg-gradient-card border-0 p-8 shadow-lg">
