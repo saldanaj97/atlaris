@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import type { ElementType } from 'react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { updateTaskProgress } from '@/lib/api/plans';
@@ -67,45 +67,38 @@ const RESOURCE_CONFIG: Record<
 
 export default function PlanDetails({ plan }: PlanDetailClientProps) {
   const router = useRouter();
-  const totalTasks = useMemo(
-    () =>
-      plan.modules.reduce((count, module) => count + module.tasks.length, 0),
-    [plan.modules]
-  );
-
+  const modules = plan.modules ?? [];
   const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
     () => {
-      const entries = plan.modules.flatMap((module) =>
-        module.tasks.map((task) => [task.id, task.status] as const)
+      const entries = modules.flatMap((module) =>
+        (module.tasks ?? []).map((task) => [task.id, task.status] as const)
       );
       return Object.fromEntries(entries);
     }
   );
-
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
-  const completedTasks = useMemo(
-    () =>
-      Object.values(statuses).filter((status) => status === 'completed').length,
-    [statuses]
+  const totalTasks = modules.reduce(
+    (count, module) => count + (module.tasks?.length ?? 0),
+    0
   );
+
+  const completedTasks = Object.values(statuses).filter(
+    (status) => status === 'completed'
+  ).length;
 
   const completion = totalTasks
     ? Math.round((completedTasks / totalTasks) * 100)
     : 0;
 
-  const totalMinutes = useMemo(
-    () =>
-      plan.modules.reduce(
-        (sum, module) =>
-          sum +
-          module.tasks.reduce(
-            (moduleSum, task) => moduleSum + task.estimatedMinutes,
-            0
-          ),
+  const totalMinutes = modules.reduce(
+    (sum, module) =>
+      sum +
+      (module.tasks ?? []).reduce(
+        (moduleSum, task) => moduleSum + (task.estimatedMinutes ?? 0),
         0
       ),
-    [plan.modules]
+    0
   );
 
   const estimatedWeeks = plan.weeklyHours
@@ -243,125 +236,130 @@ export default function PlanDetails({ plan }: PlanDetailClientProps) {
 
         <section className="space-y-6">
           <h2 className="text-2xl font-bold">Learning Modules</h2>
-          {plan.modules.length === 0 ? (
+          {modules.length === 0 ? (
             <Card className="text-muted-foreground p-6 text-center">
               No modules yet. Generation will populate this plan soon.
             </Card>
           ) : (
-            plan.modules.map((module) => (
-              <Card key={module.id} className="border-0 p-6 shadow-sm">
-                <div className="mb-6 flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-muted-foreground text-sm font-medium">
-                      Week {module.order}
-                    </div>
-                    <h3 className="text-xl font-semibold">{module.title}</h3>
-                    {module.description ? (
-                      <p className="text-muted-foreground mt-2 text-sm">
-                        {module.description}
-                      </p>
-                    ) : null}
-                  </div>
-                  <Badge variant="outline">
-                    {formatMinutes(module.estimatedMinutes)}
-                  </Badge>
-                </div>
-
-                <div className="space-y-4">
-                  {module.tasks.map((task) => {
-                    const status = statuses[task.id] ?? 'not_started';
-                    const isCompleted = status === 'completed';
-                    const pending = pendingTaskId === task.id;
-
-                    return (
-                      <div
-                        key={task.id}
-                        className="hover:border-primary/30 rounded-lg border p-4 transition-colors"
-                      >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="space-y-2">
-                            <button
-                              type="button"
-                              onClick={() => void toggleTask(task)}
-                              disabled={pending}
-                              aria-pressed={isCompleted}
-                              className={`flex items-center text-left text-sm font-medium ${
-                                isCompleted
-                                  ? 'text-green-600'
-                                  : 'text-muted-foreground'
-                              }`}
-                            >
-                              <CheckCircle2
-                                className={`mr-2 h-5 w-5 ${
-                                  isCompleted
-                                    ? 'fill-current text-green-600'
-                                    : 'text-muted-foreground'
-                                } ${pending ? 'animate-pulse' : ''}`}
-                              />
-                              {task.title}
-                            </button>
-                            {task.description ? (
-                              <p className="text-muted-foreground text-sm">
-                                {task.description}
-                              </p>
-                            ) : null}
-                            <div className="text-muted-foreground text-xs">
-                              Effort: {formatMinutes(task.estimatedMinutes)}
-                            </div>
-                          </div>
-                          <div className="text-muted-foreground text-xs uppercase">
-                            Status: {isCompleted ? 'Completed' : 'Not started'}
-                          </div>
-                        </div>
-
-                        {task.resources.length ? (
-                          <div className="mt-4 space-y-2">
-                            <div className="text-muted-foreground text-xs font-semibold uppercase">
-                              Recommended Resources
-                            </div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              {task.resources.map((resource) => {
-                                const config = RESOURCE_CONFIG[resource.type];
-                                const Icon = config.icon;
-                                return (
-                                  <a
-                                    key={resource.id}
-                                    href={resource.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="hover:border-primary/40 rounded-lg border p-3 transition-colors"
-                                  >
-                                    <div className="flex items-start gap-3">
-                                      <Badge className={config.badgeClass}>
-                                        <Icon className="mr-1 h-4 w-4" />
-                                        {config.label}
-                                      </Badge>
-                                      <div className="space-y-1">
-                                        <div className="text-sm font-medium">
-                                          {resource.title}
-                                        </div>
-                                        {resource.durationMinutes ? (
-                                          <div className="text-muted-foreground text-xs">
-                                            {formatMinutes(
-                                              resource.durationMinutes
-                                            )}
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                      <ExternalLink className="text-muted-foreground ml-auto h-4 w-4" />
-                                    </div>
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : null}
+            modules.map((module) => {
+              const tasks = module.tasks ?? [];
+              return (
+                <Card key={module.id} className="border-0 p-6 shadow-sm">
+                  <div className="mb-6 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-muted-foreground text-sm font-medium">
+                        Week {module.order}
                       </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            ))
+                      <h3 className="text-xl font-semibold">{module.title}</h3>
+                      {module.description ? (
+                        <p className="text-muted-foreground mt-2 text-sm">
+                          {module.description}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Badge variant="outline">
+                      {formatMinutes(module.estimatedMinutes)}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-4">
+                    {tasks.map((task) => {
+                      const resources = task.resources ?? [];
+                      const status = statuses[task.id] ?? 'not_started';
+                      const isCompleted = status === 'completed';
+                      const pending = pendingTaskId === task.id;
+
+                      return (
+                        <div
+                          key={task.id}
+                          className="hover:border-primary/30 rounded-lg border p-4 transition-colors"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-2">
+                              <button
+                                type="button"
+                                onClick={() => void toggleTask(task)}
+                                disabled={pending}
+                                aria-pressed={isCompleted}
+                                className={`flex items-center text-left text-sm font-medium ${
+                                  isCompleted
+                                    ? 'text-green-600'
+                                    : 'text-muted-foreground'
+                                }`}
+                              >
+                                <CheckCircle2
+                                  className={`mr-2 h-5 w-5 ${
+                                    isCompleted
+                                      ? 'fill-current text-green-600'
+                                      : 'text-muted-foreground'
+                                  } ${pending ? 'animate-pulse' : ''}`}
+                                />
+                                {task.title}
+                              </button>
+                              {task.description ? (
+                                <p className="text-muted-foreground text-sm">
+                                  {task.description}
+                                </p>
+                              ) : null}
+                              <div className="text-muted-foreground text-xs">
+                                Effort: {formatMinutes(task.estimatedMinutes)}
+                              </div>
+                            </div>
+                            <div className="text-muted-foreground text-xs uppercase">
+                              Status:{' '}
+                              {isCompleted ? 'Completed' : 'Not started'}
+                            </div>
+                          </div>
+
+                          {resources.length ? (
+                            <div className="mt-4 space-y-2">
+                              <div className="text-muted-foreground text-xs font-semibold uppercase">
+                                Recommended Resources
+                              </div>
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                {resources.map((resource) => {
+                                  const config = RESOURCE_CONFIG[resource.type];
+                                  const Icon = config.icon;
+                                  return (
+                                    <a
+                                      key={resource.id}
+                                      href={resource.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="hover:border-primary/40 rounded-lg border p-3 transition-colors"
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <Badge className={config.badgeClass}>
+                                          <Icon className="mr-1 h-4 w-4" />
+                                          {config.label}
+                                        </Badge>
+                                        <div className="space-y-1">
+                                          <div className="text-sm font-medium">
+                                            {resource.title}
+                                          </div>
+                                          {resource.durationMinutes ? (
+                                            <div className="text-muted-foreground text-xs">
+                                              {formatMinutes(
+                                                resource.durationMinutes
+                                              )}
+                                            </div>
+                                          ) : null}
+                                        </div>
+                                        <ExternalLink className="text-muted-foreground ml-auto h-4 w-4" />
+                                      </div>
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              );
+            })
           )}
         </section>
       </div>
