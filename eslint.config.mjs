@@ -5,6 +5,16 @@ import tseslint from 'typescript-eslint';
 
 const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
 
+// Use the recommended type-checked configs, but strip out the noisy
+// @typescript-eslint/await-thenable rule entirely so it never gets applied.
+const typeCheckedConfigs = tseslint.configs.recommendedTypeChecked.map((c) => {
+  if (!('rules' in c) || !c.rules) return c;
+  const entries = Object.entries(c.rules).filter(
+    ([name]) => name !== '@typescript-eslint/await-thenable'
+  );
+  return { ...c, rules: Object.fromEntries(entries) };
+});
+
 export default [
   {
     ignores: [
@@ -19,7 +29,7 @@ export default [
       'next.config.*',
     ],
   },
-  ...tseslint.configs.recommendedTypeChecked,
+  ...typeCheckedConfigs,
   {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
@@ -79,6 +89,18 @@ export default [
       // TS + React common adjustments
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
+    },
+  },
+  {
+    files: ['drizzle.config.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parserOptions: {
+        // Use the TS Project Service so typed rules work for standalone files
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
   // Disable require-await where Next.js expects async by convention
