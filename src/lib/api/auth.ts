@@ -7,7 +7,7 @@ import { AuthError } from './errors';
  * (allowing you to bypass real Clerk provisioning while seeding a deterministic user).
  */
 export async function getEffectiveClerkUserId(): Promise<string | null> {
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && process.env.DEV_CLERK_USER_ID) {
     const devId = process.env.DEV_CLERK_USER_ID;
     if (devId) {
       return devId;
