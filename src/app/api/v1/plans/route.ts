@@ -1,3 +1,5 @@
+import { ZodError } from 'zod';
+
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
@@ -54,9 +56,11 @@ export const POST = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
     let body: CreateLearningPlanInput;
     try {
-      const payload = await req.json();
-      body = createLearningPlanSchema.parse(payload);
+      body = createLearningPlanSchema.parse(await req.json());
     } catch (error) {
+      if (error instanceof ZodError) {
+        throw new ValidationError('Invalid request body.', error.flatten());
+      }
       throw new ValidationError('Invalid request body.', error);
     }
 

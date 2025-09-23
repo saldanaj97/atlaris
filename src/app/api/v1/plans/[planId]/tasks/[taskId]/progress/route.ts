@@ -6,7 +6,7 @@ import { getLearningPlanDetail, getUserByClerkId } from '@/lib/db/queries';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
 import { PROGRESS_STATUSES, type ProgressStatus } from '@/lib/types/db';
 import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { ZodError, z } from 'zod';
 
 const progressStatusEnum = z.enum(
   PROGRESS_STATUSES as [ProgressStatus, ...ProgressStatus[]]
@@ -46,9 +46,11 @@ export const POST = withErrorBoundary(
 
     let status: ProgressStatus;
     try {
-      const payload = await req.json();
-      ({ status } = bodySchema.parse(payload));
+      ({ status } = bodySchema.parse(await req.json()));
     } catch (error) {
+      if (error instanceof ZodError) {
+        throw new ValidationError('Invalid request body.', error.flatten());
+      }
       throw new ValidationError('Invalid request body.', error);
     }
 
