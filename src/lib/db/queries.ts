@@ -1,11 +1,10 @@
+import {
+  mapLearningPlanDetail,
+  mapPlanSummaries,
+} from '@/lib/mappers/planQueries';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
-import {
-  LearningPlanDetail,
-  ModuleWithRelations,
-  PlanSummary,
-  TaskResourceWithResource,
-} from '@/lib/types/db';
+import { LearningPlanDetail, PlanSummary } from '@/lib/types/db';
 
 import { db } from './drizzle';
 import {
@@ -86,6 +85,8 @@ export async function getPlanSummariesForUser(
     .where(eq(learningPlans.userId, userId));
 
   if (!planRows.length) {
+    // TODO - If adding pagination or filtering (e.g., by topic or status) ensure multiple
+    // conditions are combined via a single where(and(...)) call instead of chaining.
     return [];
   }
 
@@ -126,62 +127,11 @@ export async function getPlanSummariesForUser(
         )
     : [];
 
-  const tasksByPlan = taskRows.reduce((acc, task) => {
-    const existing = acc.get(task.planId) ?? [];
-    acc.set(task.planId, [...existing, task]);
-    return acc;
-  }, new Map<string, typeof taskRows>());
-
-  const modulesByPlan = moduleRows.reduce((acc, module) => {
-    const existing = acc.get(module.planId) ?? [];
-    acc.set(module.planId, [...existing, module]);
-    return acc;
-  }, new Map<string, typeof moduleRows>());
-
-  const progressByTask = new Map(progressRows.map((row) => [row.taskId, row]));
-
-  return planRows.map((plan) => {
-    const tasksForPlan = tasksByPlan.get(plan.id) ?? [];
-    const completedTasks = tasksForPlan.filter(
-      (task) => progressByTask.get(task.id)?.status === 'completed'
-    ).length;
-    const totalTasks = tasksForPlan.length;
-    const completion = totalTasks ? completedTasks / totalTasks : 0;
-    const totalMinutes = tasksForPlan.reduce(
-      (sum, task) => sum + (task.estimatedMinutes ?? 0),
-      0
-    );
-    const completedMinutes = tasksForPlan.reduce((sum, task) => {
-      const status = progressByTask.get(task.id)?.status;
-      if (status === 'completed') {
-        return sum + (task.estimatedMinutes ?? 0);
-      }
-      return sum;
-    }, 0);
-
-    const modulesForPlan = modulesByPlan.get(plan.id) ?? [];
-    const completedModules = modulesForPlan.filter((module) => {
-      const moduleTasks = tasksForPlan.filter(
-        (task) => task.moduleId === module.id
-      );
-      return (
-        moduleTasks.length > 0 &&
-        moduleTasks.every(
-          (task) => progressByTask.get(task.id)?.status === 'completed'
-        )
-      );
-    }).length;
-
-    return {
-      plan,
-      completedTasks,
-      totalTasks,
-      completion,
-      modules: modulesForPlan,
-      totalMinutes,
-      completedMinutes,
-      completedModules,
-    } satisfies PlanSummary;
+  return mapPlanSummaries({
+    planRows,
+    moduleRows,
+    taskRows,
+    progressRows,
   });
 }
 
@@ -260,57 +210,19 @@ export async function getLearningPlanDetail(
         .orderBy(asc(taskResources.order))
     : [];
 
-  const progressByTask = new Map(progressRows.map((row) => [row.taskId, row]));
-
-  const resourcesByTask = resourceRows.reduce((acc, row) => {
-    const existing = acc.get(row.taskId) ?? [];
-    const entry: TaskResourceWithResource = {
-      id: row.id,
-      taskId: row.taskId,
-      resourceId: row.resourceId,
-      order: row.order,
-      notes: row.notes,
-      createdAt: row.createdAt,
-      resource: row.resource,
-    };
-    acc.set(row.taskId, [...existing, entry]);
-    return acc;
-  }, new Map<string, TaskResourceWithResource[]>());
-
-  const tasksByModule = taskRows.reduce((acc, task) => {
-    const entry = {
-      ...task,
-      resources: resourcesByTask.get(task.id) ?? [],
-      progress: progressByTask.get(task.id) ?? null,
-    };
-    const existing = acc.get(task.moduleId) ?? [];
-    acc.set(task.moduleId, [...existing, entry]);
-    return acc;
-  }, new Map<string, ModuleWithRelations['tasks']>());
-
-  const moduleData = moduleRows.map<ModuleWithRelations>((module) => ({
-    ...module,
-    tasks: tasksByModule.get(module.id) ?? [],
-  }));
-
-  const totalTasks = moduleData.reduce(
-    (count, module) => count + module.tasks.length,
-    0
-  );
-  const completedTasks = moduleData.reduce((count, module) => {
-    return (
-      count +
-      module.tasks.filter((task) => task.progress?.status === 'completed')
-        .length
-    );
-  }, 0);
-
-  return {
-    plan: {
-      ...plan,
-      modules: moduleData,
-    },
-    totalTasks,
-    completedTasks,
-  };
+  return mapLearningPlanDetail({
+    plan,
+    moduleRows,
+    taskRows,
+    progressRows,
+    resourceRows: resourceRows.map((r) => ({
+      id: r.id,
+      taskId: r.taskId,
+      resourceId: r.resourceId,
+      order: r.order,
+      notes: r.notes,
+      createdAt: r.createdAt,
+      resource: r.resource,
+    })),
+  });
 }
