@@ -58,7 +58,7 @@ function mapDetailToClient(detail: LearningPlanDetail): ClientPlanDetail {
 }
 
 export default async function PlanDetailPage({ params }: PlanPageProps) {
-  const { id } = params;
+  const { id } = await params;
   const userId = await getEffectiveClerkUserId();
   if (!userId) redirect(`/sign-in?redirect_url=/plans/${id}`);
 
