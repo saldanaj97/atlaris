@@ -215,6 +215,7 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
     toast.info(`Export to ${type.toUpperCase()} is coming soon.`);
   };
 
+  // TODO: Add way to regenerate the plan or regenerate a module
   return (
     <div className="bg-gradient-subtle min-h-screen">
       <div className="container mx-auto max-w-6xl px-6 py-8">
