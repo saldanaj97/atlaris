@@ -2,20 +2,11 @@ import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import {
-  BookOpen,
-  Clock,
-  MoreHorizontal,
-  Play,
-  Plus,
-  Target,
-  TrendingUp,
-} from 'lucide-react';
+import { BookOpen, Clock, Plus, Target, TrendingUp } from 'lucide-react';
 
+import PlansList from '@/components/plans/PlansList';
 import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
 
 function formatWeeklyHours(hours: number) {
@@ -23,11 +14,6 @@ function formatWeeklyHours(hours: number) {
     return 'Flexible hours';
   }
   return `${hours} hr${hours === 1 ? '' : 's'} / week`;
-}
-
-function formatDate(value?: Date | null) {
-  if (!value) return '—';
-  return value.toLocaleDateString();
 }
 
 export default async function DashboardPage() {
@@ -126,78 +112,7 @@ export default async function DashboardPage() {
                   started.
                 </Card>
               ) : (
-                summaries.map((summary) => {
-                  const progressPercent = Math.round(summary.completion * 100);
-                  const isCompleted = progressPercent >= 100;
-                  const totalWeeks = summary.modules.length;
-                  const currentWeek = totalWeeks
-                    ? Math.min(totalWeeks, summary.completedModules + 1)
-                    : 0;
-
-                  return (
-                    <Card
-                      key={summary.plan.id}
-                      className="bg-gradient-card border-0 p-6 shadow-sm transition-all hover:shadow-md"
-                    >
-                      <div className="mb-4 flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="mb-2 flex items-center gap-3">
-                            <h3 className="text-xl font-semibold">
-                              {summary.plan.topic}
-                            </h3>
-                            <Badge
-                              variant={isCompleted ? 'default' : 'secondary'}
-                              className="capitalize"
-                            >
-                              {isCompleted ? 'completed' : 'active'}
-                            </Badge>
-                          </div>
-                          <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-sm">
-                            <span className="capitalize">
-                              {summary.plan.skillLevel}
-                            </span>
-                            <span>•</span>
-                            <span>
-                              {formatWeeklyHours(summary.plan.weeklyHours)}
-                            </span>
-                            <span>•</span>
-                            <span>
-                              Created {formatDate(summary.plan.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="sm" disabled>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="text-muted-foreground flex items-center justify-between text-sm">
-                          <span>
-                            Week {currentWeek || 1} of {totalWeeks || 1}
-                          </span>
-                          <span className="text-foreground font-medium">
-                            {progressPercent}%
-                          </span>
-                        </div>
-                        <Progress value={progressPercent} className="h-2" />
-                      </div>
-
-                      <div className="text-muted-foreground mt-4 flex items-center justify-between border-t pt-4 text-sm">
-                        <span>
-                          Completed tasks: {summary.completedTasks} /{' '}
-                          {summary.totalTasks}
-                        </span>
-                        <Button asChild size="sm">
-                          <Link href={`/plans/${summary.plan.id}`}>
-                            <Play className="mr-2 h-4 w-4" />
-                            {isCompleted ? 'Review' : 'Continue'}
-                          </Link>
-                        </Button>
-                      </div>
-                    </Card>
-                  );
-                })
+                <PlansList summaries={summaries} />
               )}
             </div>
           </div>
