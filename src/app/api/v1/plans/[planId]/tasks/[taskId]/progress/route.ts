@@ -2,17 +2,9 @@ import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { db } from '@/lib/db/drizzle';
-import {
-  learningPlans,
-  modules,
-  taskProgress,
-  tasks,
-} from '@/lib/db/schema';
 import { getLearningPlanDetail, getUserByClerkId } from '@/lib/db/queries';
-import {
-  PROGRESS_STATUSES,
-  type ProgressStatus,
-} from '@/lib/types';
+import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
+import { PROGRESS_STATUSES, type ProgressStatus } from '@/lib/types/db';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -47,7 +39,9 @@ export const POST = withErrorBoundary(
     const { planId, taskId } = getParams(req);
 
     if (!planId || !taskId) {
-      throw new ValidationError('Plan id and task id are required in the path.');
+      throw new ValidationError(
+        'Plan id and task id are required in the path.'
+      );
     }
 
     let status: ProgressStatus;

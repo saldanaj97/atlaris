@@ -5,7 +5,7 @@ import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
-import type { PlanSummary } from '@/lib/types';
+import type { PlanSummary } from '@/lib/types/db';
 
 export default async function PlansPage() {
   const userId = await getEffectiveClerkUserId();

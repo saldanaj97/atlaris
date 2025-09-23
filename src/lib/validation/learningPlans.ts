@@ -7,7 +7,7 @@ import {
   type LearningStyle,
   type ResourceType,
   type SkillLevel,
-} from '@/lib/types';
+} from '@/lib/types/db';
 
 const skillLevelEnum = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
 const learningStyleEnum = z.enum(
@@ -62,9 +62,7 @@ export const createLearningPlanSchema = z.object({
       'Deadline date must be a valid ISO date string.'
     )
     .transform((value) => (value ? value : undefined)),
-  visibility: z
-    .enum(['private', 'public'] as const)
-    .default('private'),
+  visibility: z.enum(['private', 'public'] as const).default('private'),
   origin: z.enum(['ai', 'manual', 'template'] as const).default('ai'),
 });
 
@@ -87,15 +85,9 @@ export const onboardingFormSchema = z.object({
     .transform((value) => value.toLowerCase()),
   weeklyHours: z.union([
     weeklyHoursSchema,
-    z
-      .string()
-      .trim()
-      .min(1, 'Please select your weekly availability.'),
+    z.string().trim().min(1, 'Please select your weekly availability.'),
   ]),
-  learningStyle: z
-    .string()
-    .trim()
-    .min(1, 'Please choose a learning style.'),
+  learningStyle: z.string().trim().min(1, 'Please choose a learning style.'),
   notes: createLearningPlanSchema.shape.notes,
 });
 

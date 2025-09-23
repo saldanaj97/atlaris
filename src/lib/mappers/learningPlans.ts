@@ -3,7 +3,7 @@ import {
   SKILL_LEVELS,
   type LearningStyle,
   type SkillLevel,
-} from '@/lib/types';
+} from '@/lib/types/db';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,

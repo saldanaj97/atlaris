@@ -1,20 +1,12 @@
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-
+import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { BookOpen, Clock, Plus, Target, TrendingUp } from 'lucide-react';
-
-import PlansList from '@/components/plans/PlansList';
+import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
-
-function formatWeeklyHours(hours: number) {
-  if (!Number.isFinite(hours) || hours <= 0) {
-    return 'Flexible hours';
-  }
-  return `${hours} hr${hours === 1 ? '' : 's'} / week`;
-}
+import { formatWeeklyHours } from '@/lib/formatters';
+import { BookOpen, Clock, Plus, Target, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 export default async function DashboardPage() {
   const userId = await getEffectiveClerkUserId();

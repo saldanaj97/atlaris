@@ -1,6 +1,12 @@
 import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import {
+  learningStyle,
+  progressStatus,
+  resourceType,
+  skillLevel,
+} from '@/lib/db/enums';
+import {
   learningPlans,
   modules,
   resources,
@@ -8,12 +14,6 @@ import {
   taskResources,
   tasks,
 } from '@/lib/db/schema';
-import {
-  learningStyle,
-  progressStatus,
-  resourceType,
-  skillLevel,
-} from '@/lib/db/enums';
 
 export const SKILL_LEVELS = skillLevel.enumValues;
 export const LEARNING_STYLES = learningStyle.enumValues;

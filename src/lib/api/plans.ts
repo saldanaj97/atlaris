@@ -1,5 +1,5 @@
+import type { LearningPlan, ProgressStatus } from '@/lib/types/db';
 import { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
-import type { LearningPlan, ProgressStatus } from '@/lib/types';
 
 export async function createPlan(
   input: CreateLearningPlanInput
@@ -57,7 +57,10 @@ export async function updateTaskProgress(
   }
 
   const payload = (await response.json()) as {
-    data: { taskProgress: unknown; totals?: { totalTasks: number; completedTasks: number } };
+    data: {
+      taskProgress: unknown;
+      totals?: { totalTasks: number; completedTasks: number };
+    };
   };
 
   return payload.data;

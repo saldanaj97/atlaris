@@ -6,12 +6,18 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { updateTaskProgress } from '@/lib/api/plans';
-import type { ProgressStatus, ResourceType } from '@/lib/types';
+import type { ClientPlanDetail, ClientTask } from '@/lib/types/client';
+import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import {
+  formatLearningStyle,
+  formatMinutes,
+  formatSkillLevel,
+} from '@/lib/formatters';
 import {
   ArrowLeft,
   Calendar,
@@ -23,46 +29,6 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
-
-interface ClientResource {
-  id: string;
-  order: number;
-  type: ResourceType;
-  title: string;
-  url: string;
-  durationMinutes?: number | null;
-}
-
-interface ClientTask {
-  id: string;
-  order: number;
-  title: string;
-  description: string | null;
-  estimatedMinutes: number;
-  status: ProgressStatus;
-  resources: ClientResource[];
-}
-
-interface ClientModule {
-  id: string;
-  order: number;
-  title: string;
-  description: string | null;
-  estimatedMinutes: number;
-  tasks: ClientTask[];
-}
-
-export interface ClientPlanDetail {
-  id: string;
-  topic: string;
-  skillLevel: string;
-  weeklyHours: number;
-  learningStyle: string;
-  visibility: string;
-  origin: string;
-  createdAt?: string;
-  modules: ClientModule[];
-}
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
@@ -99,47 +65,7 @@ const RESOURCE_CONFIG: Record<
   },
 };
 
-function formatMinutes(minutes: number) {
-  if (!minutes) return '—';
-  if (minutes < 60) {
-    return `${minutes} min`;
-  }
-  const hours = minutes / 60;
-  if (Number.isInteger(hours)) {
-    return `${hours} hr${hours === 1 ? '' : 's'}`;
-  }
-  return `${hours.toFixed(1)} hrs`;
-}
-
-function formatSkillLevel(value: string) {
-  switch (value) {
-    case 'beginner':
-      return 'Beginner';
-    case 'intermediate':
-      return 'Intermediate';
-    case 'advanced':
-      return 'Advanced';
-    default:
-      return value;
-  }
-}
-
-function formatLearningStyle(value: string) {
-  switch (value) {
-    case 'reading':
-      return 'Reading';
-    case 'video':
-      return 'Video';
-    case 'practice':
-      return 'Practice';
-    case 'mixed':
-      return 'Mixed';
-    default:
-      return value;
-  }
-}
-
-export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
+export default function PlanDetails({ plan }: PlanDetailClientProps) {
   const router = useRouter();
   const totalTasks = useMemo(
     () =>
@@ -356,7 +282,7 @@ export default function PlanDetailClient({ plan }: PlanDetailClientProps) {
                           <div className="space-y-2">
                             <button
                               type="button"
-                              onClick={() => toggleTask(task)}
+                              onClick={() => void toggleTask(task)}
                               disabled={pending}
                               aria-pressed={isCompleted}
                               className={`flex items-center text-left text-sm font-medium ${

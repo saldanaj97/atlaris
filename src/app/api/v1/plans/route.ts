@@ -2,10 +2,13 @@ import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { db } from '@/lib/db/drizzle';
-import { learningPlans } from '@/lib/db/schema';
 import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
-import type { NewLearningPlan } from '@/lib/types';
-import { CreateLearningPlanInput, createLearningPlanSchema } from '@/lib/validation/learningPlans';
+import { learningPlans } from '@/lib/db/schema';
+import type { NewLearningPlan } from '@/lib/types/db';
+import {
+  CreateLearningPlanInput,
+  createLearningPlanSchema,
+} from '@/lib/validation/learningPlans';
 
 /**
  * GET /api/v1/plans

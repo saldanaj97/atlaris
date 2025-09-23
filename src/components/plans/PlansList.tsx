@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import type { PlanSummary } from '@/lib/types';
+import type { PlanSummary } from '@/lib/types/db';
 import { Play } from 'lucide-react';
 import Link from 'next/link';
 

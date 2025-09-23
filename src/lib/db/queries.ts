@@ -5,7 +5,7 @@ import {
   ModuleWithRelations,
   PlanSummary,
   TaskResourceWithResource,
-} from '@/lib/types';
+} from '@/lib/types/db';
 
 import { db } from './drizzle';
 import {
