@@ -42,11 +42,10 @@ Acceptance: Manual flow works locally without manual SQL edits.
 
 Outcome: Core slice stabilized with logging, safety checks, and clean type/lint baseline.
 
-- [ ] Defensive null/undefined guards in plan detail
-- [ ] Convert any incorrect conditional query logic to proper Drizzle `and(...)` usage
-- [ ] Add lightweight logging around plan creation + generation
+- [x] Defensive null/undefined guards in plan detail
+- [x] Convert any incorrect conditional query logic to proper Drizzle `and(...)` usage
 - [ ] Run `pnpm lint` + type check → zero errors
-- [ ] Add TODO comments for any discovered schema adjustments instead of changing schema mid-sprint
+- [x] Add TODO comments for any discovered schema adjustments instead of changing schema mid-sprint (no new schema gaps identified today)
 
 ## Day 6: Task Progress Foundations
 
