@@ -45,7 +45,8 @@ const skillLevelOptions = [
   {
     value: 'advanced',
     title: 'Advanced',
-    description: 'I want to deepen existing knowledge or learn advanced concepts',
+    description:
+      'I want to deepen existing knowledge or learn advanced concepts',
   },
 ] as const;
 
@@ -231,7 +232,11 @@ export default function OnboardingForm() {
           </div>
         </div>
 
-        <Card className="bg-gradient-card border-0 p-8 shadow-lg" role="form" aria-labelledby="onboarding-form-heading">
+        <Card
+          className="bg-gradient-card border-0 p-8 shadow-lg"
+          role="form"
+          aria-labelledby="onboarding-form-heading"
+        >
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
@@ -239,7 +244,8 @@ export default function OnboardingForm() {
                   What would you like to learn?
                 </h1>
                 <p className="text-muted-foreground">
-                  Tell us the skill or topic you want to master. Be as specific as possible.
+                  Tell us the skill or topic you want to master. Be as specific
+                  as possible.
                 </p>
               </div>
 
@@ -254,10 +260,13 @@ export default function OnboardingForm() {
                   onChange={(event) => updateField('topic', event.target.value)}
                   className="min-h-[120px]"
                   aria-invalid={currentStep === 1 && !!stepError}
-                  aria-describedby={currentStep === 1 && stepError ? 'step-error' : undefined}
+                  aria-describedby={
+                    currentStep === 1 && stepError ? 'step-error' : undefined
+                  }
                 />
                 <p className="text-muted-foreground text-sm">
-                  Examples: "Python for data science", "Japanese conversation", "Guitar fingerpicking"
+                  Examples: "Python for data science", "Japanese conversation",
+                  "Guitar fingerpicking"
                 </p>
               </div>
             </div>
@@ -266,9 +275,12 @@ export default function OnboardingForm() {
           {currentStep === 2 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
-                <h1 className="text-3xl font-bold">What\'s your current skill level?</h1>
+                <h1 className="text-3xl font-bold">
+                  What\'s your current skill level?
+                </h1>
                 <p className="text-muted-foreground">
-                  This helps us tailor the complexity and starting point of your learning path.
+                  This helps us tailor the complexity and starting point of your
+                  learning path.
                 </p>
               </div>
 
@@ -286,10 +298,15 @@ export default function OnboardingForm() {
                   >
                     <RadioGroupItem value={option.value} id={option.value} />
                     <div className="flex-1 space-y-1">
-                      <Label htmlFor={option.value} className="cursor-pointer text-base font-medium">
+                      <Label
+                        htmlFor={option.value}
+                        className="cursor-pointer text-base font-medium"
+                      >
                         {option.title}
                       </Label>
-                      <p className="text-muted-foreground text-sm">{option.description}</p>
+                      <p className="text-muted-foreground text-sm">
+                        {option.description}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -300,7 +317,9 @@ export default function OnboardingForm() {
           {currentStep === 3 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
-                <h1 className="text-3xl font-bold">How much time can you commit?</h1>
+                <h1 className="text-3xl font-bold">
+                  How much time can you commit?
+                </h1>
                 <p className="text-muted-foreground">
                   We\'ll structure your learning plan to fit your schedule.
                 </p>
@@ -313,10 +332,17 @@ export default function OnboardingForm() {
                 <Select
                   value={formState.weeklyHours}
                   onValueChange={(value) =>
-                    updateField('weeklyHours', value as FormState['weeklyHours'])
+                    updateField(
+                      'weeklyHours',
+                      value as FormState['weeklyHours']
+                    )
                   }
                 >
-                  <SelectTrigger id="weeklyHours" className="h-12" aria-invalid={currentStep === 3 && !!stepError}>
+                  <SelectTrigger
+                    id="weeklyHours"
+                    className="h-12"
+                    aria-invalid={currentStep === 3 && !!stepError}
+                  >
                     <SelectValue placeholder="Select your weekly availability" />
                   </SelectTrigger>
                   <SelectContent>
@@ -328,25 +354,33 @@ export default function OnboardingForm() {
                   </SelectContent>
                 </Select>
                 <p className="text-muted-foreground text-sm">
-                  Be realistic about your schedule for the best learning experience.
+                  Be realistic about your schedule for the best learning
+                  experience.
                 </p>
               </div>
             </div>
           )}
 
+          {/* TODO: Allow usesr to multi-select learning styles */}
           {currentStep === 4 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
-                <h1 className="text-3xl font-bold">How do you prefer to learn?</h1>
+                <h1 className="text-3xl font-bold">
+                  How do you prefer to learn?
+                </h1>
                 <p className="text-muted-foreground">
-                  We\'ll prioritize resources that match your learning style.
+                  We&apos;ll prioritize resources that match your learning
+                  style.
                 </p>
               </div>
 
               <RadioGroup
                 value={formState.learningStyle}
                 onValueChange={(value) =>
-                  updateField('learningStyle', value as FormState['learningStyle'])
+                  updateField(
+                    'learningStyle',
+                    value as FormState['learningStyle']
+                  )
                 }
                 className="space-y-4"
               >
@@ -357,10 +391,15 @@ export default function OnboardingForm() {
                   >
                     <RadioGroupItem value={option.value} id={option.value} />
                     <div className="flex-1 space-y-1">
-                      <Label htmlFor={option.value} className="cursor-pointer text-base font-medium">
+                      <Label
+                        htmlFor={option.value}
+                        className="cursor-pointer text-base font-medium"
+                      >
                         {option.title}
                       </Label>
-                      <p className="text-muted-foreground text-sm">{option.description}</p>
+                      <p className="text-muted-foreground text-sm">
+                        {option.description}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -378,26 +417,37 @@ export default function OnboardingForm() {
                   className="min-h-[80px]"
                 />
                 <p className="text-muted-foreground text-xs">
-                  We\'ll add manual notes support once the backend is ready. For now this helps tune your generated path.
+                  We\'ll add manual notes support once the backend is ready. For
+                  now this helps tune your generated path.
                 </p>
               </div>
             </div>
           )}
 
           {stepError && (
-            <p id="step-error" className="text-destructive mt-6 text-sm" role="alert">
+            <p
+              id="step-error"
+              className="text-destructive mt-6 text-sm"
+              role="alert"
+            >
               {stepError}
             </p>
           )}
 
           <div className="flex justify-between border-t pt-8">
-            <Button variant="outline" onClick={goToPreviousStep} disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              onClick={goToPreviousStep}
+              disabled={isSubmitting}
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               {currentStep === 1 ? 'Back' : 'Previous'}
             </Button>
 
             <Button
-              onClick={currentStep === TOTAL_STEPS ? handleSubmit : goToNextStep}
+              onClick={
+                currentStep === TOTAL_STEPS ? handleSubmit : goToNextStep
+              }
               disabled={isSubmitting || !isCurrentStepComplete}
               className="bg-gradient-hero hover:shadow-glow"
             >
