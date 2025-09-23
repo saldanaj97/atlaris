@@ -1,5 +1,5 @@
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 import PlanDetailClient, {
   type ClientPlanDetail,
@@ -64,12 +64,12 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
 
   const user = await getUserByClerkId(userId);
   if (!user) {
-    notFound();
+    redirect(`/sign-in?redirect_url=/plans/${id}`);
   }
 
   const detail = await getLearningPlanDetail(id, user.id);
   if (!detail) {
-    notFound();
+    redirect(`/sign-in?redirect_url=/plans/${id}`);
   }
 
   const plan = mapDetailToClient(detail);
