@@ -17,6 +17,7 @@ import {
   formatLearningStyle,
   formatMinutes,
   formatSkillLevel,
+  formatWeeklyHours,
 } from '@/lib/formatters';
 import {
   ArrowLeft,
@@ -160,9 +161,8 @@ export default function PlanDetails({ plan }: PlanDetailClientProps) {
               <p className="text-muted-foreground">
                 Tailored for {formatSkillLevel(plan.skillLevel)} learners with a
                 focus on {formatLearningStyle(plan.learningStyle)} activities.
-                Commit {plan.weeklyHours} hour
-                {plan.weeklyHours === 1 ? '' : 's'}
-                per week to stay on track.
+                Commit {formatWeeklyHours(plan.weeklyHours)} per week to stay on
+                track.
               </p>
 
               <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
