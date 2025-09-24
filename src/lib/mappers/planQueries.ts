@@ -2,7 +2,7 @@ import {
   LearningPlan,
   LearningPlanDetail,
   Module,
-  ModuleWithRelations,
+  ModuleWithTasks,
   PlanSummary,
   Task,
   TaskProgress,
@@ -112,9 +112,9 @@ export function mapLearningPlanDetail(params: {
     const existing = acc.get(task.moduleId) ?? [];
     acc.set(task.moduleId, [...existing, entry]);
     return acc;
-  }, new Map<string, ModuleWithRelations['tasks']>());
+  }, new Map<string, ModuleWithTasks['tasks']>());
 
-  const moduleData = moduleRows.map<ModuleWithRelations>((module) => ({
+  const moduleData = moduleRows.map<ModuleWithTasks>((module) => ({
     ...module,
     tasks: tasksByModule.get(module.id) ?? [],
   }));

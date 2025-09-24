@@ -3,8 +3,8 @@
 // Keep separate from component files to avoid server<->client circular deps.
 
 import type {
-  LearningPlanWithRelations,
-  ModuleWithRelations,
+  LearningPlanWithModules,
+  ModuleWithTasks,
   ProgressStatus,
   Resource,
   TaskWithRelations,
@@ -26,7 +26,7 @@ export interface ClientTask
 
 export interface ClientModule
   extends Pick<
-    ModuleWithRelations,
+    ModuleWithTasks,
     'id' | 'order' | 'title' | 'description' | 'estimatedMinutes'
   > {
   tasks: ClientTask[];
@@ -34,7 +34,7 @@ export interface ClientModule
 
 export interface ClientPlanDetail
   extends Pick<
-    LearningPlanWithRelations,
+    LearningPlanWithModules,
     | 'id'
     | 'topic'
     | 'skillLevel'
