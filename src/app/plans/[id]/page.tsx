@@ -19,11 +19,11 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
   const user = await getUserByClerkId(userId);
   if (!user) redirect(`/sign-in?redirect_url=/plans/${id}`);
 
-  const planDetails = await getLearningPlanDetail(id, user.id);
-  if (!planDetails) redirect(`/sign-in?redirect_url=/plans/${id}`);
+  const plan = await getLearningPlanDetail(id, user.id);
+  if (!plan) redirect(`/sign-in?redirect_url=/plans/${id}`);
 
-  const plan = mapDetailToClient(planDetails);
-  if (!plan) return <PlanDetailPageError />;
+  const formattedPlanDetails = mapDetailToClient(plan);
+  if (!formattedPlanDetails) return <PlanDetailPageError />;
 
-  return <PlanDetails plan={plan} />;
+  return <PlanDetails plan={formattedPlanDetails} />;
 }
