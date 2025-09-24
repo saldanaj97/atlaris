@@ -12,12 +12,12 @@ export function formatMinutes(minutes: number) {
 
 export function formatWeeklyHours(hours: number) {
   if (!Number.isFinite(hours) || hours <= 0) {
-    return 'Flexible hours';
+    return 'a couple of hours';
   }
-  return `${hours} hr${hours === 1 ? '' : 's'} / week`;
+  return `${hours} hour${hours === 1 ? '' : 's'}`;
 }
 
-export function formatSkillLevel(value: string) {
+export function formatSkillLevel(value: string): string {
   switch (value) {
     case 'beginner':
       return 'Beginner';
