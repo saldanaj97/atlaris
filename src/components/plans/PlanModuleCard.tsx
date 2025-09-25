@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ElementType } from 'react';
+import { useMemo, useState, type ElementType } from 'react';
 
 import { formatMinutes } from '@/lib/formatters';
 
@@ -74,10 +74,57 @@ export const PlanModuleCard = ({
   statuses,
   setStatuses,
 }: PlanModuleCardProps) => {
-  const moduleTasks = module.tasks ?? [];
+  const moduleTasks = useMemo(() => module.tasks ?? [], [module.tasks]);
   const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
 
-  const toggleModuleCompletion = async (task: ClientTask) => {
+  const { totalTasks, completedCount, moduleCompleted } = useMemo(() => {
+    const total = moduleTasks.length;
+    if (total === 0) {
+      return {
+        totalTasks: 0,
+        completedCount: 0,
+        moduleCompleted: false,
+      };
+    }
+
+    const completed = moduleTasks.reduce((count, task) => {
+      return statuses[task.id] === 'completed' ? count + 1 : count;
+    }, 0);
+
+    return {
+      totalTasks: total,
+      completedCount: completed,
+      moduleCompleted: completed === total,
+    };
+  }, [moduleTasks, statuses]);
+
+  const progressBadge = useMemo(() => {
+    if (totalTasks === 0) {
+      return null;
+    }
+
+    if (moduleCompleted) {
+      return (
+        <Badge className="flex items-center gap-1 border border-green-200 bg-green-500/10 px-2.5 py-0.5 text-green-700">
+          <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+          <span>Completed</span>
+          <span className="sr-only">Module completed</span>
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge
+        variant="outline"
+        className="border-muted-foreground/20 text-muted-foreground"
+      >
+        {completedCount}/{totalTasks}
+      </Badge>
+    );
+  }, [completedCount, moduleCompleted, totalTasks]);
+
+  // Add way to track in progress tasks
+  const toggleTaskCompletion = async (task: ClientTask) => {
     const current = statuses[task.id] ?? 'not_started';
     const next: ProgressStatus =
       current === 'completed' ? 'not_started' : 'completed';
@@ -109,11 +156,14 @@ export const PlanModuleCard = ({
   return (
     <Card className="border-0 p-6 shadow-sm">
       <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
+        <div className="space-y-2">
           <div className="text-muted-foreground text-sm font-medium">
             Week {module.order}
           </div>
-          <h3 className="text-xl font-semibold">{module.title}</h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="text-xl font-semibold">{module.title}</h3>
+            {progressBadge}
+          </div>
           {module.description ? (
             <p className="text-muted-foreground mt-2 text-sm">
               {module.description}
@@ -135,7 +185,7 @@ export const PlanModuleCard = ({
           return (
             <div
               key={task.id}
-              className="hover:border-primary/30 rounded-lg border p-4 transition-colors"
+              className={`hover:border-primary/30 rounded-lg border p-4 transition-colors ${isCompleted ? 'border-green-200 bg-green-50/50' : 'bg-white dark:bg-gray-800'} ${pending ? 'opacity-70' : 'opacity-100'}`}
             >
               <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
@@ -211,7 +261,7 @@ export const PlanModuleCard = ({
                     <CardAction>
                       <button
                         type="button"
-                        onClick={() => void toggleModuleCompletion(task)}
+                        onClick={() => void toggleTaskCompletion(task)}
                         disabled={pending}
                         aria-pressed={isCompleted}
                         className={`flex items-center rounded-xl px-4 py-2 text-left text-sm font-medium ${
