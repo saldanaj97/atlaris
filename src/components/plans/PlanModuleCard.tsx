@@ -23,7 +23,7 @@ import {
   Target,
 } from 'lucide-react';
 
-import { updateTaskProgress } from '@/lib/api/plans';
+import { updateTaskProgressAction } from '@/app/plans/[id]/actions';
 import type { ClientModule, ClientTask } from '@/lib/types/client';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 import { toast } from 'sonner';
@@ -84,7 +84,11 @@ export const PlanModuleCard = ({
 
     setPendingTaskId(task.id);
     try {
-      await updateTaskProgress(planId, task.id, next);
+      await updateTaskProgressAction({
+        planId,
+        taskId: task.id,
+        status: next,
+      });
       setStatuses((prev) => ({ ...prev, [task.id]: next }));
       toast.success(
         next === 'completed'
