@@ -101,6 +101,7 @@ export const users = pgTable(
 ).enableRLS();
 
 // Learning plans table
+// TODO: add progress tracking
 export const learningPlans = pgTable(
   'learning_plans',
   {
@@ -214,6 +215,7 @@ export const learningPlans = pgTable(
 ).enableRLS();
 
 // Modules table
+// TODO: add a completed field of some sort for module level progress tracking
 export const modules = pgTable(
   'modules',
   {
