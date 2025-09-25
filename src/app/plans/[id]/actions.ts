@@ -5,13 +5,9 @@ import { revalidatePath } from 'next/cache';
 
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { db } from '@/lib/db/drizzle';
-import {
-  getLearningPlanDetail,
-  getUserByClerkId,
-  setTaskProgress,
-} from '@/lib/db/queries';
+import { getUserByClerkId, setTaskProgress } from '@/lib/db/queries';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import type { ProgressStatus, TaskProgress } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
 
 interface UpdateTaskProgressInput {
@@ -21,8 +17,8 @@ interface UpdateTaskProgressInput {
 }
 
 interface UpdateTaskProgressResult {
-  taskProgress: TaskProgress;
-  totals?: { totalTasks: number; completedTasks: number };
+  taskId: string;
+  status: ProgressStatus;
 }
 
 function assertNonEmpty(value: string | undefined, message: string) {
@@ -78,18 +74,13 @@ export async function updateTaskProgressAction({
   await ensureTaskOwnership(planId, taskId, user.id);
 
   const taskProgress = await setTaskProgress(user.id, taskId, status);
-  const detail = await getLearningPlanDetail(planId, user.id);
 
   revalidatePath(`/plans/${planId}`);
   revalidatePath('/plans');
 
+  // API route removed; surface the minimal payload expected by clients.
   return {
-    taskProgress,
-    totals: detail
-      ? {
-          totalTasks: detail.totalTasks,
-          completedTasks: detail.completedTasks,
-        }
-      : undefined,
+    taskId: taskProgress.taskId,
+    status: taskProgress.status,
   };
 }
