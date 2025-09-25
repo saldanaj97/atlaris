@@ -2,8 +2,13 @@ import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { db } from '@/lib/db/drizzle';
-import { getLearningPlanDetail, getUserByClerkId } from '@/lib/db/queries';
-import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
+import {
+  getLearningPlanDetail,
+  getUserByClerkId,
+  getUserTaskProgress,
+  setTaskProgress,
+} from '@/lib/db/queries';
+import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { PROGRESS_STATUSES, type ProgressStatus } from '@/lib/types/db';
 import { and, eq } from 'drizzle-orm';
 import { ZodError, z } from 'zod';
@@ -33,6 +38,44 @@ function getParams(req: Request) {
         : undefined,
   };
 }
+
+export const GET = withErrorBoundary(
+  withAuth(async ({ req, userId }) => {
+    const { planId, taskId } = getParams(req);
+
+    if (!planId || !taskId) {
+      throw new ValidationError(
+        'Plan id and task id are required in the path.'
+      );
+    }
+
+    const user = await getUserByClerkId(userId);
+    if (!user) {
+      throw new NotFoundError('User not found.');
+    }
+
+    const taskOwnership = await db
+      .select({
+        planId: learningPlans.id,
+        taskId: tasks.id,
+        moduleId: modules.id,
+        planUserId: learningPlans.userId,
+      })
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+      .where(and(eq(tasks.id, taskId), eq(learningPlans.id, planId)))
+      .limit(1);
+
+    if (!taskOwnership.length || taskOwnership[0].planUserId !== user.id) {
+      throw new NotFoundError('Task not found.');
+    }
+
+    const progress = await getUserTaskProgress(user.id, taskId);
+
+    return json({ taskProgress: progress ?? null });
+  })
+);
 
 export const POST = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
@@ -76,21 +119,7 @@ export const POST = withErrorBoundary(
       throw new NotFoundError('Task not found.');
     }
 
-    const completedAt = status === 'completed' ? new Date() : null;
-    const [progress] = await db
-      .insert(taskProgress)
-      .values({
-        taskId,
-        userId: user.id,
-        status,
-        completedAt,
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [taskProgress.taskId, taskProgress.userId],
-        set: { status, completedAt, updatedAt: new Date() },
-      })
-      .returning();
+    const progress = await setTaskProgress(user.id, taskId, status);
 
     const detail = await getLearningPlanDetail(planId, user.id);
 
