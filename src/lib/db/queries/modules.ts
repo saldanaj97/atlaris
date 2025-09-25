@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import { modules, tasks } from '@/lib/db/schema';
-import { Module, Task } from '../types';
+import type { Module, Task } from '@/lib/types/db';
 
 export async function getModuleWithTasks(
   moduleId: string
