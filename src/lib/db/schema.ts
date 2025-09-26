@@ -279,7 +279,6 @@ export const modules = pgTable(
           WHERE ${learningPlans.id} = ${table.planId}
           AND ${learningPlans.userId} IN (
             SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-
           )
         )
       `,
@@ -437,7 +436,6 @@ export const tasks = pgTable(
           WHERE ${modules.id} = ${table.moduleId}
           AND ${learningPlans.userId} IN (
             SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-
           )
         )
       `,
@@ -618,6 +616,7 @@ export const taskResources = pgTable(
     ),
     index('idx_task_resources_task_id').on(table.taskId),
     index('idx_task_resources_resource_id').on(table.resourceId),
+    index('idx_task_resources_task_id_order').on(table.taskId, table.order),
 
     // RLS Policies
 
@@ -663,7 +662,6 @@ export const taskResources = pgTable(
           WHERE ${tasks.id} = ${table.taskId}
           AND ${learningPlans.userId} IN (
             SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-
           )
         )
       `,
@@ -785,6 +783,7 @@ export const taskProgress = pgTable(
     ),
     index('idx_task_progress_user_id').on(table.userId),
     index('idx_task_progress_task_id').on(table.taskId),
+    index('idx_task_progress_user_id_task_id').on(table.userId, table.taskId),
 
     // RLS Policies
 
@@ -840,7 +839,6 @@ export const taskProgress = pgTable(
       to: authenticatedRole,
       using: sql`${table.userId} IN (
         SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-
       )`,
       withCheck: sql`${table.userId} IN (
         SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
@@ -904,7 +902,6 @@ export const planGenerations = pgTable(
           WHERE ${learningPlans.id} = ${table.planId}
           AND ${learningPlans.userId} IN (
             SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-
           )
         )
       `,
@@ -957,7 +954,7 @@ export const planGenerations = pgTable(
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
           AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${authUid}
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
           )
         )
       `,
