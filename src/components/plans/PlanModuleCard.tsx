@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ElementType } from 'react';
+import { useCallback, useMemo, type ElementType } from 'react';
 
 import { formatMinutes } from '@/lib/formatters';
 
@@ -23,10 +23,9 @@ import {
   Target,
 } from 'lucide-react';
 
-import { updateTaskProgressAction } from '@/app/plans/[id]/actions';
-import type { ClientModule, ClientTask } from '@/lib/types/client';
+import type { ClientModule } from '@/lib/types/client';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
-import { toast } from 'sonner';
+import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 interface PlanModuleCardProps {
   planId: string;
@@ -75,7 +74,23 @@ export const PlanModuleCard = ({
   setStatuses,
 }: PlanModuleCardProps) => {
   const moduleTasks = useMemo(() => module.tasks ?? [], [module.tasks]);
-  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null);
+
+  // Memoized callback to handle status changes
+  const handleStatusChange = useCallback(
+    (taskId: string, nextStatus: ProgressStatus) => {
+      setStatuses((prev) => {
+        if (prev[taskId] === nextStatus) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          [taskId]: nextStatus,
+        };
+      });
+    },
+    [setStatuses]
+  );
 
   const { totalTasks, completedCount, moduleCompleted } = useMemo(() => {
     const total = moduleTasks.length;
@@ -123,36 +138,6 @@ export const PlanModuleCard = ({
     );
   }, [completedCount, moduleCompleted, totalTasks]);
 
-  // Add way to track in progress tasks
-  const toggleTaskCompletion = async (task: ClientTask) => {
-    const current = statuses[task.id] ?? 'not_started';
-    const next: ProgressStatus =
-      current === 'completed' ? 'not_started' : 'completed';
-
-    setPendingTaskId(task.id);
-    try {
-      await updateTaskProgressAction({
-        planId,
-        taskId: task.id,
-        status: next,
-      });
-      setStatuses((prev) => ({ ...prev, [task.id]: next }));
-      toast.success(
-        next === 'completed'
-          ? 'Marked task as complete.'
-          : 'Marked task as incomplete.'
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Unable to update task progress. Please try again.';
-      toast.error(message);
-    } finally {
-      setPendingTaskId(null);
-    }
-  };
-
   return (
     <Card className="border-0 p-6 shadow-sm">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -180,12 +165,11 @@ export const PlanModuleCard = ({
           const resources = task.resources ?? [];
           const status = statuses[task.id] ?? 'not_started';
           const isCompleted = status === 'completed';
-          const pending = pendingTaskId === task.id;
 
           return (
             <div
               key={task.id}
-              className={`hover:border-primary/30 rounded-lg border p-4 transition-colors ${isCompleted ? 'border-green-200 bg-green-50/50' : 'bg-white dark:bg-gray-800'} ${pending ? 'opacity-70' : 'opacity-100'}`}
+              className={`hover:border-primary/30 rounded-lg border p-4 transition-colors ${isCompleted ? 'border-green-200 bg-green-50/50' : 'bg-white dark:bg-gray-800'}`}
             >
               <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
@@ -199,7 +183,7 @@ export const PlanModuleCard = ({
                         isCompleted
                           ? 'fill-white text-green-600'
                           : 'text-muted-foreground'
-                      } ${pending ? 'animate-pulse' : ''}`}
+                      } ${isCompleted ? 'animate-pulse' : ''}`}
                     />
                     {task.title}
                   </CardTitle>
@@ -259,26 +243,12 @@ export const PlanModuleCard = ({
                   </div>
                   <div className="flex flex-col justify-end">
                     <CardAction>
-                      <button
-                        type="button"
-                        onClick={() => void toggleTaskCompletion(task)}
-                        disabled={pending}
-                        aria-pressed={isCompleted}
-                        className={`flex items-center rounded-xl px-4 py-2 text-left text-sm font-medium ${
-                          isCompleted
-                            ? 'text-secondary bg-green-500'
-                            : 'text-muted-foreground'
-                        }`}
-                      >
-                        <CheckCircle2
-                          className={`mr-2 h-5 w-5 ${
-                            isCompleted
-                              ? 'fill-secondary text-green-600'
-                              : 'text-muted-foreground'
-                          } ${pending ? 'animate-pulse' : ''}`}
-                        />
-                        <p>{isCompleted ? 'Done' : 'Mark as done'}</p>
-                      </button>
+                      <UpdateTaskStatusButton
+                        planId={planId}
+                        taskId={task.id}
+                        status={status}
+                        onStatusChange={handleStatusChange}
+                      />
                     </CardAction>
                   </div>
                 </CardContent>
