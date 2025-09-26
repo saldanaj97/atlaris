@@ -51,10 +51,10 @@ Outcome: Core slice stabilized with logging, safety checks, and clean type/lint 
 
 Outcome: Users can mark tasks complete; per-plan progress surfaced numerically.
 
-- [ ] `task_progress` read + write helper functions
-- [ ] Mutation endpoint: mark task complete / uncomplete
-- [ ] UI: show per-plan progress fraction (e.g., 3 / 15) on list + detail header
-- [ ] Guard against double insert (use upsert or existence check)
+- [x] `task_progress` read + write helper functions
+- [x] Mutation endpoint: mark task complete / uncomplete
+- [x] UI: show per-plan progress fraction (e.g., 3 / 15) on list + detail header
+- [x] Guard against double insert (use upsert or existence check)
 
 ## Day 7: First Real AI Plan Generation
 
