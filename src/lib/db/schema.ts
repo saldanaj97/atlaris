@@ -994,3 +994,39 @@ export const planGenerations = pgTable(
     }),
   ]
 ).enableRLS();
+
+
+// Generation attempts table (AI generation attempt telemetry)
+export const generationAttempts = pgTable(
+  'generation_attempts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    planId: uuid('plan_id')
+      .notNull()
+      .references(() => learningPlans.id, { onDelete: 'cascade' }),
+    status: text('status').notNull(), // 'success' | 'failure' (validated in app layer)
+    classification: text('classification'), // nullable on success; failure-only classification
+    durationMs: integer('duration_ms').notNull(),
+    modulesCount: integer('modules_count').notNull(),
+    tasksCount: integer('tasks_count').notNull(),
+    truncatedTopic: integer('truncated_topic', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    truncatedNotes: integer('truncated_notes', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    normalizedEffort: integer('normalized_effort', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    promptHash: text('prompt_hash'),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('idx_generation_attempts_plan_id').on(table.planId),
+    index('idx_generation_attempts_created_at').on(table.createdAt),
+    // classification NULL only when status = success (app-enforced; CHECK constraint added in migration)
+  ]
+).enableRLS();

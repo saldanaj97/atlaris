@@ -29,7 +29,7 @@ Ordering Principles Applied:
 
 ## Phase 3.2: Schema & Migration (Blocking for downstream)
 
-- [ ] T005 Create Drizzle table model `generationAttempts` in `src/lib/db/schema.ts` (nullable classification, boolean flags) (M)
+- [X] T005 Create Drizzle table model `generationAttempts` in `src/lib/db/schema.ts` (nullable classification, boolean flags) (M)
 - [ ] T006 Generate SQL migration file in `src/lib/db/migrations/` adding table + indexes + CHECK constraint `classification_null_on_success` (M)
 - [ ] T007 Apply migration (local) and verify via `psql` or Drizzle introspection (M)
 - [ ] T008 Add RLS policies SQL (select own, insert own) under `supabase/tests/database/` new file `015-rls-generation_attempts.sql` (M)
