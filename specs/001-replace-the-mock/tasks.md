@@ -22,7 +22,7 @@ Ordering Principles Applied:
 
 ## Phase 3.1: Setup & Preconditions
 
-- [ ] T001 Verify design artifacts present (plan.md, research.md, data-model.md, quickstart.md, contracts/openapi.yaml, spec.md) (D) in `/Users/juansaldana/Projects/learning-path-app/specs/001-replace-the-mock/`
+- [X] T001 Verify design artifacts present (plan.md, research.md, data-model.md, quickstart.md, contracts/openapi.yaml, spec.md) (D) in `/Users/juansaldana/Projects/learning-path-app/specs/001-replace-the-mock/`
 - [ ] T002 Ensure branch rebased on latest `main` (no conflicts)
 - [X] T003 Configure test runner (Vitest) and add base config `vitest.config.ts` + script in `package.json`
 - [X] T004 [P] Add testing folders: `tests/contract`, `tests/integration`, `tests/unit`
