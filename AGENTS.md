@@ -2,7 +2,7 @@
 
 This file provides guidance when working with code in this repository.
 
-Repository overview
+## Repository overview
 
 - Framework: Next.js 15 (TypeScript, React 19) using Turbopack for dev/build
 - Package manager: pnpm (pnpm-lock.yaml present)
@@ -12,11 +12,18 @@ Repository overview
 - Type checking: tsc --noEmit
 - Notable deps: @clerk/nextjs, @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, postgres, dotenv
 
-Assistant/Copilot rules in-repo
+## Rules
 
-- There are rules defined under .github/instructions. Review them when generating or refactoring code (topics include Next.js, React, and Tailwind). Use them as guidance; do not duplicate them here.
+- Before you begin any coding or implementations, make sure to use the rules I have defined in the .rules/ directory if we are making edits to any of the files or directories matching the patterns below:
+  - src/app/\*\*/\*.tsx
+  - src/app/\*\*/\*.ts
+  - src/components/\*\*/\*.tsx
+  - src/components/\*\*/\*.ts
+  - src/hooks/\*\*/\*.ts
+  - src/hooks/\*\*/\*.tsx
+- AGAIN, MAKE SURE TO ONLY APPLY THAT RULE IF THE FILE MATCHES A PATTERN FROM THE LIST!
 
-Common commands
+## Common commands
 
 - Dev server (do not auto-run; listed for reference)
   - pnpm dev
@@ -38,11 +45,11 @@ Common commands
 - Tests
   - No test runner or test scripts are currently configured in package.json. As of now, there is no single-test command.
 
-Project structure and architecture
+## Project structure and architecture
 
 - Source layout
   - TypeScript path alias @/_-> src/_ (tsconfig.json)
-  - ESLint targets src/**/\* and references Next.js App Router conventions (e.g., src/app/**/route.ts). The intended source root is src/, with Next.js app/ under src/app/.
+  - ESLint targets src/** and references Next.js App Router conventions (e.g., src/app/**/route.ts). The intended source root is src/, with Next.js app/ under src/app/.
   - src/app/ exists (e.g., src/app/page.tsx).
   - Database code: src/lib/db/schema.ts, src/lib/db/drizzle.ts, src/lib/db/queries.ts.
   - Drizzle migrations output directory: src/lib/db/migrations.
@@ -71,7 +78,7 @@ Project structure and architecture
     - Queries: src/lib/db/queries.ts
     - Migrations: managed via drizzle-kit; out dir is src/lib/db/migrations.
 
-Database schema overview (MVP)
+## Database schema overview (MVP)
 
 - Core entities and relationships
   - users 1—\* learning_plans
@@ -108,7 +115,7 @@ Database schema overview (MVP)
   - Topic search indexing can be added later
   - Billing tables arrive with Stripe integration; exports/integrations (Notion/Google) are out of scope for MVP
 
-Notes for future tasks
+## Notes for future tasks
 
 - Prefer pnpm for all commands in this repo.
 - When adding tests, introduce a runner (e.g., Vitest or Jest) and corresponding scripts in package.json (e.g., test, test:watch). Until then, test commands are intentionally omitted.
