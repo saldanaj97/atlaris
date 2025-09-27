@@ -1,0 +1,227 @@
+openapi: 3.1.0
+info:
+  title: Learning Plan Generation API
+  version: 0.1.0
+  description: >-
+    Contracts for AI-backed learning plan generation (initial creation + attempt logs).
+servers:
+  - url: https://example.com/api/v1
+paths:
+  /plans:
+    post:
+      summary: Create a new learning plan (async generation)
+      operationId: createLearningPlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLearningPlanRequest'
+      responses:
+        '201':
+          description: Plan created (pending generation)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningPlan'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+        '429':
+          description: Attempt cap exceeded (capped classification)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /plans/{planId}:
+    get:
+      summary: Get plan detail with modules/tasks (if ready) and latest attempt
+      operationId: getLearningPlan
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Plan found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LearningPlanDetail'
+        '404':
+          description: Plan not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /plans/{planId}/attempts: # Optional (MVP+) endpoint, can be feature-flagged
+    get:
+      summary: List generation attempts for a plan (most recent first)
+      operationId: listGenerationAttempts
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Attempts list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GenerationAttempt'
+        '404':
+          description: Plan not found or not owned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        classification:
+          type: string
+          enum: [validation, provider_error, rate_limit, timeout, capped]
+          description: Failure classification (present when applicable)
+    CreateLearningPlanRequest:
+      type: object
+      required:
+        [topic, skillLevel, weeklyHours, learningStyle, visibility, origin]
+      properties:
+        topic:
+          type: string
+          maxLength: 200
+        skillLevel:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        weeklyHours:
+          type: integer
+          minimum: 0
+          maximum: 80
+        learningStyle:
+          type: string
+          enum: [reading, video, practice, mixed]
+        notes:
+          type: string
+          maxLength: 2000
+        startDate:
+          type: string
+          format: date-time
+        deadlineDate:
+          type: string
+          format: date-time
+        visibility:
+          type: string
+          enum: [private, public]
+        origin:
+          type: string
+          enum: [ai, manual, template]
+    LearningPlan:
+      type: object
+      required:
+        [
+          id,
+          topic,
+          skillLevel,
+          weeklyHours,
+          learningStyle,
+          visibility,
+          origin,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        topic:
+          type: string
+        skillLevel:
+          type: string
+        weeklyHours:
+          type: integer
+        learningStyle:
+          type: string
+        visibility:
+          type: string
+        origin:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    Module:
+      type: object
+      required: [id, title, order, estimatedMinutes]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        order: { type: integer, minimum: 1 }
+        estimatedMinutes: { type: integer, minimum: 0 }
+    Task:
+      type: object
+      required: [id, title, order, estimatedMinutes]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        order: { type: integer, minimum: 1 }
+        estimatedMinutes: { type: integer, minimum: 0 }
+    GenerationAttempt:
+      type: object
+      required: [id, status, durationMs, modulesCount, tasksCount, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [success, failure] }
+        classification:
+          type: string
+          nullable: true
+          enum: [validation, provider_error, rate_limit, timeout, capped]
+          description: Present only for failure attempts (null on success)
+        model: { type: string }
+        durationMs: { type: integer, minimum: 0 }
+        modulesCount: { type: integer, minimum: 0 }
+        tasksCount: { type: integer, minimum: 0 }
+        truncatedTopic: { type: boolean }
+        truncatedNotes: { type: boolean }
+        normalizedEffort: { type: boolean }
+        promptHash: { type: string }
+        metadata: { type: object }
+        createdAt: { type: string, format: date-time }
+    PlanStatus:
+      type: string
+      enum: [pending, ready, failed]
+    LearningPlanDetail:
+      allOf:
+        - $ref: '#/components/schemas/LearningPlan'
+        - type: object
+          properties:
+            status:
+              $ref: '#/components/schemas/PlanStatus'
+            modules:
+              type: array
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/Module'
+                  - type: object
+                    properties:
+                      tasks:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Task'
+            latestAttempt:
+              $ref: '#/components/schemas/GenerationAttempt'
+          required: [status]
