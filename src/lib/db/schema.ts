@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   date,
   index,
@@ -1009,13 +1010,13 @@ export const generationAttempts = pgTable(
     durationMs: integer('duration_ms').notNull(),
     modulesCount: integer('modules_count').notNull(),
     tasksCount: integer('tasks_count').notNull(),
-    truncatedTopic: integer('truncated_topic', { mode: 'boolean' })
+    truncatedTopic: boolean('truncated_topic')
       .notNull()
       .default(false),
-    truncatedNotes: integer('truncated_notes', { mode: 'boolean' })
+    truncatedNotes: boolean('truncated_notes')
       .notNull()
       .default(false),
-    normalizedEffort: integer('normalized_effort', { mode: 'boolean' })
+    normalizedEffort: boolean('normalized_effort')
       .notNull()
       .default(false),
     promptHash: text('prompt_hash'),
@@ -1028,5 +1029,51 @@ export const generationAttempts = pgTable(
     index('idx_generation_attempts_plan_id').on(table.planId),
     index('idx_generation_attempts_created_at').on(table.createdAt),
     // classification NULL only when status = success (app-enforced; CHECK constraint added in migration)
+
+    // RLS Policies
+
+    // Authenticated users can read attempts for plans they own
+    pgPolicy('generation_attempts_select_own_plan', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`
+        EXISTS (
+          SELECT 1 FROM ${learningPlans}
+          WHERE ${learningPlans.id} = ${table.planId}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
+        )
+      `,
+    }),
+
+    // Service role can read all attempts for observability tooling
+    pgPolicy('generation_attempts_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+
+    // Authenticated users can insert attempts only for plans they own
+    pgPolicy('generation_attempts_insert_own_plan', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        EXISTS (
+          SELECT 1 FROM ${learningPlans}
+          WHERE ${learningPlans.id} = ${table.planId}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
+        )
+      `,
+    }),
+
+    // Service role can insert attempts (background jobs)
+    pgPolicy('generation_attempts_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
   ]
 ).enableRLS();

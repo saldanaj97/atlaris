@@ -9,6 +9,24 @@ import {
   type SkillLevel,
 } from '@/lib/types/db';
 
+export const TOPIC_MAX_LENGTH = 200;
+export const NOTES_MAX_LENGTH = 2000;
+
+function enforceMaxLength(
+  value: string,
+  maxLength: number,
+  ctx: z.RefinementCtx,
+  field: 'topic' | 'notes'
+) {
+  if (value.length > maxLength) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `${field} must be ${maxLength} characters or fewer.`,
+      params: { maxLength, actualLength: value.length },
+    });
+  }
+}
+
 const skillLevelEnum = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
 const learningStyleEnum = z.enum(
   LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
@@ -26,19 +44,27 @@ export const weeklyHoursSchema = z
   .min(0, 'Weekly hours cannot be negative.')
   .max(80, 'Weekly hours cannot exceed 80.');
 
+const topicSchema = z
+  .string()
+  .trim()
+  .min(3, 'Topic must be at least 3 characters.')
+  .superRefine((value, ctx) =>
+    enforceMaxLength(value, TOPIC_MAX_LENGTH, ctx, 'topic')
+  );
+
+const notesSchema = z
+  .string()
+  .trim()
+  .superRefine((value, ctx) =>
+    enforceMaxLength(value, NOTES_MAX_LENGTH, ctx, 'notes')
+  );
+
 export const createLearningPlanSchema = z.object({
-  topic: z
-    .string()
-    .trim()
-    .min(3, 'Topic must be at least 3 characters.')
-    .max(200, 'Topic must be 200 characters or fewer.'),
+  topic: topicSchema,
   skillLevel: skillLevelEnum,
   weeklyHours: weeklyHoursSchema,
   learningStyle: learningStyleEnum,
-  notes: z
-    .string()
-    .trim()
-    .max(2000, 'Notes must be 2000 characters or fewer.')
+  notes: notesSchema
     .optional()
     .nullable()
     .transform((value) => (value ? value : undefined)),

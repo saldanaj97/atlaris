@@ -22,68 +22,68 @@ Ordering Principles Applied:
 
 ## Phase 3.1: Setup & Preconditions
 
-- [X] T001 Verify design artifacts present (plan.md, research.md, data-model.md, quickstart.md, contracts/openapi.yaml, spec.md) (D) in `/Users/juansaldana/Projects/learning-path-app/specs/001-replace-the-mock/`
-- [ ] T002 Ensure branch rebased on latest `main` (no conflicts)
-- [X] T003 Configure test runner (Vitest) and add base config `vitest.config.ts` + script in `package.json`
-- [X] T004 [P] Add testing folders: `tests/contract`, `tests/integration`, `tests/unit`
+- [x] T001 Verify design artifacts present (plan.md, research.md, data-model.md, quickstart.md, contracts/openapi.yaml, spec.md) (D) in `/Users/juansaldana/Projects/learning-path-app/specs/001-replace-the-mock/`
+- [x] T002 Ensure branch rebased on latest `main` (no conflicts)
+- [x] T003 Configure test runner (Vitest) and add base config `vitest.config.ts` + script in `package.json`
+- [x] T004 [P] Add testing folders: `tests/contract`, `tests/integration`, `tests/unit`
 
 ## Phase 3.2: Schema & Migration (Blocking for downstream)
 
-- [X] T005 Create Drizzle table model `generationAttempts` in `src/lib/db/schema.ts` (nullable classification, boolean flags) (M)
-- [X] T006 Generate SQL migration file in `src/lib/db/migrations/` adding table + indexes + CHECK constraint `classification_null_on_success` (M)
-- [ ] T007 Apply migration (local) and verify via `psql` or Drizzle introspection (M)
-- [ ] T008 Add RLS policies SQL (select own, insert own) under `supabase/tests/database/` new file `015-rls-generation_attempts.sql` (M)
-- [ ] T009 Update seed script `src/lib/db/seed.ts` to ignore new table or add sample attempt optional
+- [x] T005 Create Drizzle table model `generationAttempts` in `src/lib/db/schema.ts` (nullable classification, boolean flags) (M)
+- [x] T006 Generate SQL migration file in `src/lib/db/migrations/` adding table + indexes + CHECK constraint `classification_null_on_success` (M)
+- [x] T007 Apply migration (local) and verify via `psql` or Drizzle introspection (M)
+- [x] T008 Add RLS policies SQL (select own, insert own) under `supabase/tests/database/` new file `015-rls-generation_attempts.sql` (M)
+- [x] T009 Update seed script `src/lib/db/seed.ts` to ignore new table or add sample attempt optional
 
 ## Phase 3.3: Contract & Integration Tests (Write FIRST – must fail) ⚠️
 
-- [ ] T010 (T) Contract test POST /plans (201, 400 validation, 429 capped) `tests/contract/plans.post.spec.ts`
-- [ ] T011 (T) Contract test GET /plans/{id} (200 detail shape) `tests/contract/plans.get.spec.ts`
-- [ ] T012 (T) Contract test GET /plans/{id}/attempts (200 list, 404 not owned) `tests/contract/plans.attempts.get.spec.ts`
-- [ ] T013 (T) Integration test: successful generation scenario → pending then ready `tests/integration/generation.success.spec.ts`
-- [ ] T014 (T) Integration test: timeout classification path `tests/integration/generation.timeout.spec.ts`
-- [ ] T015 (T) Integration test: validation failure (zero modules) `tests/integration/generation.validation.spec.ts`
-- [ ] T016 (T) Integration test: rate_limit classification (mock provider) `tests/integration/generation.rate_limit.spec.ts`
-- [ ] T017 (T) Integration test: capped after 3 attempts `tests/integration/generation.capped.spec.ts`
+- [x] T010 (T) Contract test POST /plans (201, 400 validation, 429 capped) `tests/contract/plans.post.spec.ts`
+- [x] T011 (T) Contract test GET /plans/{id} (200 detail shape) `tests/contract/plans.get.spec.ts`
+- [x] T012 (T) Contract test GET /plans/{id}/attempts (200 list, 404 not owned) `tests/contract/plans.attempts.get.spec.ts`
+- [x] T013 (T) Integration test: successful generation scenario → pending then ready `tests/integration/generation.success.spec.ts`
+- [x] T014 (T) Integration test: timeout classification path `tests/integration/generation.timeout.spec.ts`
+- [x] T015 (T) Integration test: validation failure (zero modules) `tests/integration/generation.validation.spec.ts`
+- [x] T016 (T) Integration test: rate_limit classification (mock provider) `tests/integration/generation.rate_limit.spec.ts`
+- [x] T017 (T) Integration test: capped after 3 attempts `tests/integration/generation.capped.spec.ts`
 
 ## Phase 3.4: Domain Types & Utilities
 
-- [ ] T018 [P] Define domain enums & types (PlanStatus, FailureClassification, GenerationAttempt) in `src/lib/types/client.ts`
-- [ ] T019 [P] Add Zod schema refinements for truncation bounds (topic ≤200, notes ≤2000) in `src/lib/validation/learningPlans.ts`
-- [ ] T020 [P] Implement truncation util `src/lib/utils/truncation.ts` returning { value, truncated, originalLength }
-- [ ] T021 [P] Implement effort normalization util `src/lib/utils/effort.ts` (clamp + aggregated flags)
-- [ ] T022 (T) Unit tests truncation & normalization `tests/unit/utils.truncation-effort.spec.ts`
+- [x] T018 [P] Define domain enums & types (PlanStatus, FailureClassification, GenerationAttempt) in `src/lib/types/client.ts`
+- [x] T019 [P] Add Zod schema refinements for truncation bounds (topic ≤200, notes ≤2000) in `src/lib/validation/learningPlans.ts`
+- [x] T020 [P] Implement truncation util `src/lib/utils/truncation.ts` returning { value, truncated, originalLength }
+- [x] T021 [P] Implement effort normalization util `src/lib/utils/effort.ts` (clamp + aggregated flags)
+- [x] T022 (T) Unit tests truncation & normalization `tests/unit/utils.truncation-effort.spec.ts`
 
 ## Phase 3.5: AI Provider Abstraction
 
-- [ ] T023 [P] Create provider interface `src/lib/ai/provider.ts` (stream or single JSON)
-- [ ] T024 [P] Implement mock provider `src/lib/ai/mockProvider.ts` deterministic JSON
-- [ ] T025 [P] Skeleton real provider adapter `src/lib/ai/openaiProvider.ts` (no secrets committed)
-- [ ] T026 (T) Unit test mock provider deterministic output `tests/unit/ai.mockProvider.spec.ts`
+- [x] T023 [P] Create provider interface `src/lib/ai/provider.ts` (stream or single JSON)
+- [x] T024 [P] Implement mock provider `src/lib/ai/mockProvider.ts` deterministic JSON
+- [x] T025 [P] Skeleton real provider adapter `src/lib/ai/openaiProvider.ts` (no secrets committed)
+- [x] T026 (T) Unit test mock provider deterministic output `tests/unit/ai.mockProvider.spec.ts`
 
 ## Phase 3.6: Streaming Parser & Adaptive Timeout
 
-- [ ] T027 [P] Implement incremental parser `src/lib/ai/parser.ts` (partial module detection)
-- [ ] T028 [P] Implement adaptive timeout controller `src/lib/ai/timeout.ts` (10s base, extend to 20s if module before 9.5s)
-- [ ] T029 [P] Integrate parser + timeout into orchestrator `src/lib/ai/orchestrator.ts`
-- [ ] T030 (T) Unit test timeout extension trigger logic `tests/unit/ai.timeout.spec.ts`
-- [ ] T031 (T) Unit test invalid JSON / zero modules classification path `tests/unit/ai.parser.validation.spec.ts`
+- [x] T027 [P] Implement incremental parser `src/lib/ai/parser.ts` (partial module detection)
+- [x] T028 [P] Implement adaptive timeout controller `src/lib/ai/timeout.ts` (10s base, extend to 20s if module before 9.5s)
+- [x] T029 [P] Integrate parser + timeout into orchestrator `src/lib/ai/orchestrator.ts`
+- [x] T030 (T) Unit test timeout extension trigger logic `tests/unit/ai.timeout.spec.ts`
+- [x] T031 (T) Unit test invalid JSON / zero modules classification path `tests/unit/ai.parser.validation.spec.ts`
 
 ## Phase 3.7: Classification Module
 
-- [ ] T032 [P] Implement classification mapping `src/lib/ai/classification.ts`
-- [ ] T033 (T) Unit tests each classification branch `tests/unit/ai.classification.spec.ts`
+- [x] T032 [P] Implement classification mapping `src/lib/ai/classification.ts`
+- [x] T033 (T) Unit tests each classification branch `tests/unit/ai.classification.spec.ts`
 
 ## Phase 3.8: Attempt Service & Transaction
 
-- [ ] T034 Implement attempt service `src/lib/db/queries/attempts.ts` (startAttempt, recordSuccess, recordFailure)
-- [ ] T035 Integrate truncation + normalization + prompt hash (sha256 util `src/lib/utils/hash.ts`)
-- [ ] T036 Implement success path transaction (insert modules/tasks + attempt) in `src/lib/db/queries/attempts.ts`
-- [ ] T037 Implement failure path (attempt only) ensuring atomic semantics
-- [ ] T038 (T) Unit test success counts & flags `tests/unit/attempts.success.spec.ts`
-- [ ] T039 (T) Unit test validation failure attempt `tests/unit/attempts.validation.spec.ts`
-- [ ] T040 (T) Unit test timeout failure attempt `tests/unit/attempts.timeout.spec.ts`
-- [ ] T041 (T) Unit test capped attempt (no provider invocation) `tests/unit/attempts.capped.spec.ts`
+- [x] T034 Implement attempt service `src/lib/db/queries/attempts.ts` (startAttempt, recordSuccess, recordFailure)
+- [x] T035 Integrate truncation + normalization + prompt hash (sha256 util `src/lib/utils/hash.ts`)
+- [x] T036 Implement success path transaction (insert modules/tasks + attempt) in `src/lib/db/queries/attempts.ts`
+- [x] T037 Implement failure path (attempt only) ensuring atomic semantics
+- [x] T038 (T) Unit test success counts & flags `tests/unit/attempts.success.spec.ts`
+- [x] T039 (T) Unit test validation failure attempt `tests/unit/attempts.validation.spec.ts`
+- [x] T040 (T) Unit test timeout failure attempt `tests/unit/attempts.timeout.spec.ts`
+- [x] T041 (T) Unit test capped attempt (no provider invocation) `tests/unit/attempts.capped.spec.ts`
 
 ## Phase 3.9: Attempt Cap Enforcement
 
