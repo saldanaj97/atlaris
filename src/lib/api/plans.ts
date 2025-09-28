@@ -1,18 +1,24 @@
-import type { LearningPlan } from '@/lib/types/db';
+import type { PlanStatus } from '@/lib/types/client';
 import { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 
 interface ErrorResponse {
   error?: string | null;
   message?: string | null;
   code?: string | null;
+  classification?: string | null;
 }
 
-interface JsonResponse<TData> {
-  data: TData;
-  meta?: Record<string, unknown> | null;
+export interface CreatePlanSuccessResponse {
+  id: string;
+  topic: string;
+  skillLevel: string;
+  weeklyHours: number;
+  learningStyle: string;
+  visibility: string;
+  origin: string;
+  createdAt?: string;
+  status?: PlanStatus;
 }
-
-type CreatePlanSuccessResponse = JsonResponse<LearningPlan>;
 
 function extractErrorMessage(
   body: Partial<ErrorResponse> | null | undefined,
@@ -29,7 +35,7 @@ function extractErrorMessage(
 
 export async function createPlan(
   input: CreateLearningPlanInput
-): Promise<LearningPlan> {
+): Promise<CreatePlanSuccessResponse> {
   const response = await fetch('/api/v1/plans', {
     method: 'POST',
     headers: {
@@ -51,5 +57,5 @@ export async function createPlan(
   }
 
   const payload = (await response.json()) as CreatePlanSuccessResponse;
-  return payload.data;
+  return payload;
 }

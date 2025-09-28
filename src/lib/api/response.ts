@@ -1,34 +1,49 @@
+import type { FailureClassification } from '@/lib/types/client';
+
 import { AppError } from './errors';
 
-interface JsonOptions<Meta = Record<string, unknown> | undefined> {
+interface JsonOptions {
   status?: number;
   headers?: Record<string, string>;
-  meta?: Meta;
 }
 
-export function json<Data, Meta = Record<string, unknown> | undefined>(
-  data: Data,
-  options: JsonOptions<Meta> = {}
-) {
-  const { status = 200, headers = {}, meta } = options;
-  return Response.json({ data, meta }, { status, headers });
+export function json<Data>(data: Data, options: JsonOptions = {}) {
+  const { status = 200, headers = {} } = options;
+  return Response.json(data, { status, headers });
 }
 
 export function jsonError(
   error: string,
-  code: string,
-  status = 400,
-  details?: unknown
+  options: {
+    status?: number;
+    code?: string;
+    classification?: FailureClassification;
+    details?: unknown;
+    headers?: Record<string, string>;
+  } = {}
 ) {
-  return Response.json({ error, code, details }, { status });
+  const { status = 400, code, classification, details, headers = {} } = options;
+
+  const body: Record<string, unknown> = { error };
+  if (code) body.code = code;
+  if (classification) body.classification = classification;
+  if (details !== undefined) body.details = details;
+
+  return Response.json(body, { status, headers });
 }
 
 export function notImplemented() {
-  return jsonError('Not Implemented', 'NOT_IMPLEMENTED', 501);
+  return jsonError('Not Implemented', {
+    status: 501,
+    code: 'NOT_IMPLEMENTED',
+  });
 }
 
 export function methodNotAllowed() {
-  return jsonError('Method Not Allowed', 'METHOD_NOT_ALLOWED', 405);
+  return jsonError('Method Not Allowed', {
+    status: 405,
+    code: 'METHOD_NOT_ALLOWED',
+  });
 }
 
 export function assert(condition: unknown, err: AppError) {

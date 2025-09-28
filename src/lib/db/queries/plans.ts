@@ -1,7 +1,8 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import {
+  generationAttempts,
   learningPlans,
   modules,
   resources,
@@ -176,6 +177,12 @@ export async function getLearningPlanDetail(
         .orderBy(asc(taskResources.order))
     : [];
 
+  const attempts = await db
+    .select()
+    .from(generationAttempts)
+    .where(eq(generationAttempts.planId, planId))
+    .orderBy(desc(generationAttempts.createdAt));
+
   return mapLearningPlanDetail({
     plan,
     moduleRows,
@@ -190,5 +197,26 @@ export async function getLearningPlanDetail(
       createdAt: r.createdAt,
       resource: r.resource,
     })),
+    attempts,
   });
+}
+
+export async function getPlanAttemptsForUser(planId: string, userId: string) {
+  const planRow = await db
+    .select({ id: learningPlans.id })
+    .from(learningPlans)
+    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
+    .limit(1);
+
+  if (!planRow.length) {
+    return null;
+  }
+
+  const attempts = await db
+    .select()
+    .from(generationAttempts)
+    .where(eq(generationAttempts.planId, planId))
+    .orderBy(desc(generationAttempts.createdAt));
+
+  return { plan: planRow[0], attempts };
 }

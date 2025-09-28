@@ -7,6 +7,7 @@ import {
   skillLevel,
 } from '@/lib/db/enums';
 import {
+  generationAttempts,
   learningPlans,
   modules,
   planGenerations,
@@ -38,6 +39,7 @@ export type NewResource = InferInsertModel<typeof resources>;
 export type NewTaskResource = InferInsertModel<typeof taskResources>;
 export type NewTaskProgress = InferInsertModel<typeof taskProgress>;
 export type NewPlanGeneration = InferInsertModel<typeof planGenerations>;
+export type NewGenerationAttempt = InferInsertModel<typeof generationAttempts>;
 
 // Select types (for reading from database)
 export type User = InferSelectModel<typeof users>;
@@ -48,6 +50,7 @@ export type Resource = InferSelectModel<typeof resources>;
 export type TaskResource = InferSelectModel<typeof taskResources>;
 export type TaskProgress = InferSelectModel<typeof taskProgress>;
 export type PlanGeneration = InferSelectModel<typeof planGenerations>;
+export type GenerationAttempt = InferSelectModel<typeof generationAttempts>;
 
 export interface TaskResourceWithResource extends TaskResource {
   resource: Resource;
@@ -86,6 +89,8 @@ export interface LearningPlanDetail {
   plan: LearningPlanWithModules;
   totalTasks: number;
   completedTasks: number;
+  latestAttempt: GenerationAttempt | null;
+  attemptsCount: number;
 }
 
 // User progress aggregation across tasks/modules

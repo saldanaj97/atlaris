@@ -32,7 +32,8 @@ Response (201) (plan initially pending):
   "learningStyle": "mixed",
   "visibility": "private",
   "origin": "ai",
-  "createdAt": "2025-09-27T12:00:00Z"
+  "createdAt": "2025-09-27T12:00:00Z",
+  "status": "pending"
 }
 ```
 

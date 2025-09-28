@@ -87,17 +87,17 @@ Ordering Principles Applied:
 
 ## Phase 3.9: Attempt Cap Enforcement
 
-- [ ] T042 [P] Add cap check (max 3) in service before provider call `src/lib/db/queries/attempts.ts`
-- [ ] T043 [P] Return standardized 429 error via `src/lib/api/errors.ts`
-- [ ] T044 (T) Unit/integration test cap boundaries `tests/integration/generation.cap-boundary.spec.ts`
+- [x] T042 [P] Add cap check (max 3) in service before provider call `src/lib/db/queries/attempts.ts`
+- [x] T043 [P] Return standardized 429 error via `src/lib/api/errors.ts`
+- [x] T044 (T) Unit/integration test cap boundaries `tests/integration/generation.cap-boundary.spec.ts`
 
 ## Phase 3.10: API Layer Updates
 
-- [ ] T045 Update POST `/api/v1/plans` handler `src/app/api/v1/plans/route.ts` to fire async generation (fire-and-forget)
-- [ ] T046 Add GET plan detail endpoint (if separate) or extend existing `[planId]/route.ts` to include status + latest attempt
-- [ ] T047 Create attempts list endpoint `src/app/api/v1/plans/[planId]/attempts/route.ts`
-- [ ] T048 Standardize error responses (validation, capped, rate_limit) in `src/lib/api/response.ts`
-- [ ] T049 (T) Contract tests updated endpoints pass (re-run T010–T012 now expected to move from failing → passing)
+- [x] T045 Update POST `/api/v1/plans` handler `src/app/api/v1/plans/route.ts` to fire async generation (fire-and-forget)
+- [x] T046 Add GET plan detail endpoint (if separate) or extend existing `[planId]/route.ts` to include status + latest attempt
+- [x] T047 Create attempts list endpoint `src/app/api/v1/plans/[planId]/attempts/route.ts`
+- [x] T048 Standardize error responses (validation, capped, rate_limit) in `src/lib/api/response.ts`
+- [x] T049 (T) Contract tests updated endpoints pass (re-run T010–T012 now expected to move from failing → passing)
 
 ## Phase 3.11: Query & Mapper Extensions
 
