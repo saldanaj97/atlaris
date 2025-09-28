@@ -4,8 +4,10 @@ import { defineConfig } from 'vitest/config';
 
 // Set test database URL if not provided; use project-specific local port 54322.
 if (!process.env.DATABASE_URL) {
+  const dbUser = process.env.TEST_DB_USER || 'test_user';
+  const dbPass = process.env.TEST_DB_PASS || 'test_pass';
   process.env.DATABASE_URL =
-    'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+    `postgresql://${dbUser}:${dbPass}@127.0.0.1:54322/postgres`;
 }
 
 export default defineConfig({
