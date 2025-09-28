@@ -101,10 +101,10 @@ Ordering Principles Applied:
 
 ## Phase 3.11: Query & Mapper Extensions
 
-- [ ] T050 Extend plan detail query `src/lib/db/queries/planQueries.ts` to fetch latest attempt + modules/tasks
-- [ ] T051 Implement attempts listing query `src/lib/db/queries/planQueries.ts` (or new file `generationAttemptsQueries.ts`)
-- [ ] T052 Add mapper for DB → client DTO (null classification on success) `src/lib/mappers/detailToClient.ts`
-- [ ] T053 (T) Unit tests mapper correctness `tests/unit/mappers.detailToClient.spec.ts`
+- [x] T050 Extend plan detail query `src/lib/db/queries/planQueries.ts` to fetch latest attempt + modules/tasks
+- [x] T051 Implement attempts listing query `src/lib/db/queries/planQueries.ts` (or new file `generationAttemptsQueries.ts`)
+- [x] T052 Add mapper for DB → client DTO (null classification on success) `src/lib/mappers/detailToClient.ts`
+- [x] T053 (T) Unit tests mapper correctness `tests/unit/mappers.detailToClient.spec.ts`
 
 ## Phase 3.12: RLS & Security Tests
 
