@@ -191,17 +191,17 @@ Example Task Agent Commands (conceptual):
 
 ## Validation Checklist
 
-- [ ] Every OpenAPI path (POST /plans, GET /plans/{id}, GET /plans/{id}/attempts) has contract test (T010–T012)
-- [ ] Each user story → integration test (success, timeout, validation, rate_limit, capped) (T013–T017)
-- [ ] Data model entity (generation_attempts) has migration & RLS tasks (T005–T009 + early smoke T080)
-- [ ] Tests precede implementation modules
-- [ ] Derived status covered (T079)
-- [ ] Correlation ID logged (T084–T085)
-- [ ] Performance baseline + micro-benchmark captured (T076–T077)
-- [ ] Metadata schema documented (T082) & classification matrix (T083)
-- [ ] Error redaction verified (T081)
-- [ ] Parallelizable tasks do not share files
-- [ ] All tasks reference absolute or project-root-relative paths
+- [x] Every OpenAPI path (POST /plans, GET /plans/{id}, GET /plans/{id}/attempts) has contract test (T010–T012)
+- [x] Each user story → integration test (success, timeout, validation, rate_limit, capped) (T013–T017)
+- [x] Data model entity (generation_attempts) has migration & RLS tasks (T005–T009 + early smoke T080)
+- [x] Tests precede implementation modules
+- [x] Derived status covered (T079)
+- [x] Correlation ID logged (T084–T085)
+- [x] Performance baseline + micro-benchmark captured (T076–T077)
+- [x] Metadata schema documented (T082) & classification matrix (T083)
+- [x] Error redaction verified (T081)
+- [x] Parallelizable tasks do not share files
+- [x] All tasks reference absolute or project-root-relative paths
 
 ## Exit Criteria
 
