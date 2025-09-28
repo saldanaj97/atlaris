@@ -3,6 +3,10 @@ import { count, eq } from 'drizzle-orm';
 
 import type { ParsedModule } from '@/lib/ai/parser';
 import type { ProviderMetadata } from '@/lib/ai/provider';
+import {
+  recordAttemptFailure as trackAttemptFailure,
+  recordAttemptSuccess as trackAttemptSuccess,
+} from '@/lib/metrics/attempts';
 import type { FailureClassification } from '@/lib/types/client';
 import {
   aggregateNormalizationFlags,
@@ -18,7 +22,7 @@ import {
 
 import type { GenerationInput } from '@/lib/ai/provider';
 import { db } from '../drizzle';
-import { generationAttempts, modules, tasks } from '../schema';
+import { generationAttempts, learningPlans, modules, tasks } from '../schema';
 
 const ATTEMPT_CAP = 3;
 
@@ -218,6 +222,16 @@ export async function startAttempt({
   const client = dbClient ?? db;
   const nowFn = now ?? (() => new Date());
 
+  const [planOwner] = await client
+    .select({ userId: learningPlans.userId })
+    .from(learningPlans)
+    .where(eq(learningPlans.id, planId))
+    .limit(1);
+
+  if (!planOwner || planOwner.userId !== userId) {
+    throw new Error('Learning plan not found or inaccessible for user');
+  }
+
   const sanitized = sanitizeInput(input);
   const promptHash = hashSha256(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
@@ -348,6 +362,8 @@ export async function recordSuccess({
     return attempt;
   });
 
+  trackAttemptSuccess(insertedAttempt);
+
   return insertedAttempt;
 }
 
@@ -397,6 +413,8 @@ export async function recordFailure({
   if (!attempt) {
     throw new Error('Failed to record failed generation attempt.');
   }
+
+  trackAttemptFailure(attempt);
 
   return attempt;
 }

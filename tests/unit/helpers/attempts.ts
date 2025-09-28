@@ -1,6 +1,11 @@
 import type { ParsedModule } from '@/lib/ai/parser';
 import type { GenerationInput } from '@/lib/ai/provider';
-import { generationAttempts, modules, tasks } from '@/lib/db/schema';
+import {
+  generationAttempts,
+  learningPlans,
+  modules,
+  tasks,
+} from '@/lib/db/schema';
 
 export type DbInstance = typeof import('@/lib/db/drizzle').db;
 
@@ -10,12 +15,27 @@ export class MockDbClient {
   tasks: Array<Record<string, unknown>> = [];
   attempts: Array<Record<string, unknown>> = [];
   moduleIdCounter = 0;
+  planOwnerUserId = 'user-1';
 
   select() {
     return {
-      from: () => ({
-        where: async () => [{ value: this.existingAttempts }],
-      }),
+      from: (table: unknown) => {
+        if (table === generationAttempts) {
+          return {
+            where: async () => [{ value: this.existingAttempts }],
+          };
+        }
+
+        if (table === learningPlans) {
+          return {
+            where: () => ({
+              limit: async () => [{ userId: this.planOwnerUserId }],
+            }),
+          };
+        }
+
+        throw new Error('Unsupported select table in mock');
+      },
     };
   }
 
