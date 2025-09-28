@@ -138,16 +138,16 @@ Ordering Principles Applied:
 
 ## Phase 3.17: Final Validation
 
-- [ ] T069 (T) Full test suite run (unit + integration + contract) green
-- [ ] T070 (T) Manual quickstart walkthrough (create → poll → attempts list)
-- [ ] T071 (D) Prepare release notes / changelog entry
-- [ ] T072 (D) Post-implementation review of deferred items (retention, redaction)
+- [x] T069 (T) Full test suite run (unit + integration + contract) green
+- [x] T070 (T) Manual quickstart walkthrough (create → poll → attempts list)
+- [x] T071 (D) Prepare release notes / changelog entry
+- [x] T072 (D) Post-implementation review of deferred items (retention, redaction)
 
 ## Phase 3.18: Post-MVP (Not in Scope Implementation)
 
-- [ ] T073 (D) Draft idempotency key proposal `docs/proposals/idempotency.md`
-- [ ] T074 (D) Draft retention policy `docs/proposals/attempt-retention.md`
-- [ ] T075 (D) Provider failover strategy outline `docs/proposals/provider-failover.md`
+- [x] T073 (D) Draft idempotency key proposal `docs/proposals/idempotency.md`
+- [x] T074 (D) Draft retention policy `docs/proposals/attempt-retention.md`
+- [x] T075 (D) Provider failover strategy outline `docs/proposals/provider-failover.md`
 
 ## Phase 3.19: Remediation & Alignment Additions
 
