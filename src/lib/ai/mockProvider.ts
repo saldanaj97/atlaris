@@ -55,7 +55,7 @@ const SUCCESS_PAYLOAD = {
       ],
     },
   ],
-};
+} as const;
 
 const VALIDATION_PAYLOAD = {
   modules: [],

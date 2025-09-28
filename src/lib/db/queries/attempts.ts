@@ -152,8 +152,8 @@ function buildMetadata(params: MetadataParams) {
 
 function sanitizeInput(input: GenerationInput): SanitizedInput {
   const topicResult = truncateToLength(input.topic, TOPIC_MAX_LENGTH);
-  if (typeof topicResult.value !== 'string') {
-    throw new Error('Generation input topic must be a string.');
+  if (topicResult.value === undefined) {
+    throw new Error('Topic is required for generation attempts.');
   }
 
   const topicValue = topicResult.value;
@@ -167,8 +167,7 @@ function sanitizeInput(input: GenerationInput): SanitizedInput {
     topic: {
       value: topicValue,
       truncated: topicResult.truncated,
-      originalLength:
-        topicResult.originalLength ?? topicValue.length ?? input.topic.length,
+      originalLength: topicResult.originalLength ?? topicValue.length,
     },
     notes: {
       value: notesResult.value,
