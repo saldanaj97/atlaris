@@ -15,7 +15,8 @@ CREATE TABLE "generation_attempts" (
   "prompt_hash" text,
   "metadata" jsonb,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
-  CONSTRAINT classification_null_on_success CHECK ((status = 'success' AND classification IS NULL) OR (status = 'failure'))
+  -- classification should only be populated for failure attempts; must be NULL on success
+  CONSTRAINT chk_classification_null_on_success CHECK ((status = 'success' AND classification IS NULL) OR (status = 'failure'))
 );
 
 CREATE INDEX "idx_generation_attempts_plan_id" ON "generation_attempts"("plan_id");

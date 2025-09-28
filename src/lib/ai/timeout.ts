@@ -42,6 +42,9 @@ export function createAdaptiveTimeout(
     if (timer) clearTimeout(timer);
     timer = setTimeout(
       () => {
+        // Node.js executes this callback on the same event loop thread; concurrent
+        // writes would require worker threads which we do not spawn here. Should
+        // that change, this mutation must be revisited to use an atomic primitive.
         timedOut = true;
         controller.abort();
       },
