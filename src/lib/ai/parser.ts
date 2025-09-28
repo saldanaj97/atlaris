@@ -34,10 +34,9 @@ export interface ParserCallbacks {
 }
 
 function hasDetectedModule(buffer: string): boolean {
-  const modulesIndex = buffer.indexOf('"modules"');
-  if (modulesIndex === -1) return false;
-  const after = buffer.slice(modulesIndex);
-  return after.includes('{');
+  // Efficiently check for "modules" as a key in the buffer using regex
+  // This matches "modules": { or "modules": [
+  return /"modules"\s*:\s*[\{\[]/.test(buffer);
 }
 
 function ensureString(value: unknown, path: string): string {
