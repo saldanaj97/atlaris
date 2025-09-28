@@ -1,3 +1,4 @@
+import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 
 /**
@@ -35,7 +36,8 @@ type PlainHandler = (req: Request) => Promise<Response>;
 export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request) => {
     const userId = await requireUser();
-    return handler({ req, userId });
+    const context = createRequestContext(req, userId);
+    return withRequestContext(context, () => handler({ req, userId }));
   };
 }
 

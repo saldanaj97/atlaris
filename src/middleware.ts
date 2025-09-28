@@ -1,6 +1,9 @@
+import { randomUUID } from 'node:crypto';
+
 import { clerkMiddleware } from '@clerk/nextjs/server';
 
 import { createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
@@ -12,6 +15,22 @@ const isProtectedRoute = createRouteMatcher([
 // with isAuthenticated and user roles
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) await auth.protect();
+
+  const headerCorrelationId = req.headers.get('x-correlation-id');
+  const correlationId =
+    headerCorrelationId && headerCorrelationId.length
+      ? headerCorrelationId
+      : randomUUID();
+
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-correlation-id', correlationId);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set('x-correlation-id', correlationId);
+
+  return response;
 });
 
 export const config = {

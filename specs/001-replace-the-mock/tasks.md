@@ -153,17 +153,17 @@ Ordering Principles Applied:
 
 Rationale: Added to address clarified spec items (derived status, correlation ID, performance baseline, metadata schema parity, classification completeness) and constitutional alignment (early RLS, observability lite) after post-spec remediation.
 
-- [ ] T076 (Perf) Capture pre-implementation baseline latency for POST /plans (before heavy logic) store results in temporary `docs/performance/baseline.md`
-- [ ] T077 (Perf) Micro-benchmark truncation & normalization utils (<5ms p95) `tests/perf/utils.truncation-effort.perf.spec.ts`
-- [ ] T078 (T) Precision test attempt duration_ms tolerance (non-zero, within plausible bounds >0 & <25_000) `tests/unit/metrics.duration-precision.spec.ts`
-- [ ] T079 (T) Derived status test matrix (pending→ready, pending→failed, capped still failed after third) `tests/unit/status.derivation.spec.ts`
-- [ ] T080 (T) Early RLS smoke: ensure new generation_attempts table policies deny cross-user select immediately after migration (can run after T008) `tests/integration/rls.attempts-smoke.spec.ts`
-- [ ] T081 (T) Error redaction & standardization test (ensure internal provider errors not leaked) `tests/unit/api.error-redaction.spec.ts`
-- [ ] T082 (D) Document metadata schema parity & flags rationale `docs/metadata/attempt-metadata.md`
-- [ ] T083 (D) Classification matrix (input condition → classification) `docs/classification/matrix.md`
-- [ ] T084 Implement correlation ID propagation (middleware adds id, logged in attempt service) `src/middleware.ts` + `src/lib/api/context.ts`
-- [ ] T085 (T) Correlation ID logging test (inject fake logger, assert id presence) `tests/unit/logging.correlation-id.spec.ts`
-- [ ] T086 (D) Provider cost & fallback considerations doc `docs/providers/cost-and-fallback.md`
+- [x] T076 (Perf) Capture pre-implementation baseline latency for POST /plans (before heavy logic) store results in temporary `docs/performance/baseline.md`
+- [x] T077 (Perf) Micro-benchmark truncation & normalization utils (<5ms p95) `tests/perf/utils.truncation-effort.perf.spec.ts`
+- [x] T078 (T) Precision test attempt duration_ms tolerance (non-zero, within plausible bounds >0 & <25_000) `tests/unit/metrics.duration-precision.spec.ts`
+- [x] T079 (T) Derived status test matrix (pending→ready, pending→failed, capped still failed after third) `tests/unit/status.derivation.spec.ts`
+- [x] T080 (T) Early RLS smoke: ensure new generation_attempts table policies deny cross-user select immediately after migration (can run after T008) `tests/integration/rls.attempts-smoke.spec.ts`
+- [x] T081 (T) Error redaction & standardization test (ensure internal provider errors not leaked) `tests/unit/api.error-redaction.spec.ts`
+- [x] T082 (D) Document metadata schema parity & flags rationale `docs/metadata/attempt-metadata.md`
+- [x] T083 (D) Classification matrix (input condition → classification) `docs/classification/matrix.md`
+- [x] T084 Implement correlation ID propagation (middleware adds id, logged in attempt service) `src/middleware.ts` + `src/lib/api/context.ts`
+- [x] T085 (T) Correlation ID logging test (inject fake logger, assert id presence) `tests/unit/logging.correlation-id.spec.ts`
+- [x] T086 (D) Provider cost & fallback considerations doc `docs/providers/cost-and-fallback.md`
 
 ---
 

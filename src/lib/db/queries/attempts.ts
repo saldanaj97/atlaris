@@ -1,3 +1,4 @@
+import { getCorrelationId } from '@/lib/api/context';
 import type { InferSelectModel } from 'drizzle-orm';
 import { count, eq } from 'drizzle-orm';
 
@@ -80,6 +81,18 @@ export interface RecordFailureParams {
   providerMetadata?: ProviderMetadata;
   dbClient?: typeof db;
   now?: () => Date;
+}
+
+function logAttemptEvent(
+  event: 'success' | 'failure',
+  payload: Record<string, unknown>
+) {
+  const correlationId = getCorrelationId();
+  const enriched = {
+    ...payload,
+    correlationId: correlationId ?? null,
+  } satisfies Record<string, unknown>;
+  console.info(`[attempts] ${event}`, enriched);
 }
 
 interface MetadataParams {
@@ -364,6 +377,14 @@ export async function recordSuccess({
 
   trackAttemptSuccess(insertedAttempt);
 
+  logAttemptEvent('success', {
+    planId,
+    attemptId: insertedAttempt.id,
+    durationMs: insertedAttempt.durationMs,
+    modulesCount,
+    tasksCount,
+  });
+
   return insertedAttempt;
 }
 
@@ -415,6 +436,15 @@ export async function recordFailure({
   }
 
   trackAttemptFailure(attempt);
+
+  logAttemptEvent('failure', {
+    planId,
+    attemptId: attempt.id,
+    classification,
+    durationMs: attempt.durationMs,
+    timedOut,
+    extendedTimeout,
+  });
 
   return attempt;
 }
