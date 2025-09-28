@@ -108,14 +108,14 @@ Ordering Principles Applied:
 
 ## Phase 3.12: RLS & Security Tests
 
-- [ ] T054 (T) Attempt visibility: owner can list attempts; others denied `tests/integration/rls.attempts-visibility.spec.ts`
-- [ ] T055 (T) Ensure attempts insertion blocked when not owner (simulate) `tests/integration/rls.attempts-insert.spec.ts`
+- [x] T054 (T) Attempt visibility: owner can list attempts; others denied `tests/integration/rls.attempts-visibility.spec.ts`
+- [x] T055 (T) Ensure attempts insertion blocked when not owner (simulate) `tests/integration/rls.attempts-insert.spec.ts`
 
 ## Phase 3.13: Concurrency & Integrity
 
-- [ ] T056 (T) Simultaneous plan creations ordering integrity `tests/integration/concurrency.plan-ordering.spec.ts`
-- [ ] T057 (T) Simulated provider stall triggers timeout classification `tests/integration/concurrency.timeout-stall.spec.ts`
-- [ ] T058 (T) Inject DB error → rollback (no partial modules/tasks) `tests/integration/concurrency.rollback.spec.ts`
+- [x] T056 (T) Simultaneous plan creations ordering integrity `tests/integration/concurrency.plan-ordering.spec.ts`
+- [x] T057 (T) Simulated provider stall triggers timeout classification `tests/integration/concurrency.timeout-stall.spec.ts`
+- [x] T058 (T) Inject DB error → rollback (no partial modules/tasks) `tests/integration/concurrency.rollback.spec.ts`
 
 ## Phase 3.14: Observability & Metrics
 
