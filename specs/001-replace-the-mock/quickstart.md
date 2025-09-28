@@ -52,6 +52,12 @@ Pending example (failure attempt recorded, plan still pending because no modules
 {
   "id": "<plan-uuid>",
   "topic": "Foundations of Machine Learning",
+  "skillLevel": "beginner",
+  "weeklyHours": 6,
+  "learningStyle": "mixed",
+  "visibility": "private",
+  "origin": "ai",
+  "createdAt": "2025-09-27T12:00:00Z",
   "status": "pending",
   "modules": [],
   "latestAttempt": {
@@ -61,7 +67,30 @@ Pending example (failure attempt recorded, plan still pending because no modules
     "durationMs": 10000,
     "modulesCount": 0,
     "tasksCount": 0,
-    "createdAt": "2025-09-27T12:00:05Z"
+    "truncatedTopic": false,
+    "truncatedNotes": false,
+    "normalizedEffort": false,
+    "promptHash": "2f7b5d6a5d3c4e019c7f1b2a3d4e5f6a",
+    "metadata": {
+      "input": {
+        "topic": { "truncated": false, "original_length": 34 },
+        "notes": null
+      },
+      "normalization": {
+        "modules_clamped": false,
+        "tasks_clamped": false
+      },
+      "timing": {
+        "started_at": "2025-09-27T12:00:04Z",
+        "finished_at": "2025-09-27T12:00:14Z",
+        "duration_ms": 10000,
+        "extended_timeout": false
+      },
+      "provider": null,
+      "failure": { "classification": "timeout", "timed_out": true }
+    },
+    "model": null,
+    "createdAt": "2025-09-27T12:00:14Z"
   }
 }
 ```
@@ -72,19 +101,29 @@ Success example (classification null on success):
 {
   "id": "<plan-uuid>",
   "topic": "Foundations of Machine Learning",
+  "skillLevel": "beginner",
+  "weeklyHours": 6,
+  "learningStyle": "mixed",
+  "visibility": "private",
+  "origin": "ai",
+  "createdAt": "2025-09-27T12:01:00Z",
   "status": "ready",
   "modules": [
     {
       "id": "<module-uuid>",
       "title": "Intro to Core Concepts",
       "order": 1,
+      "description": "Foundational ideas and terminology",
       "estimatedMinutes": 120,
       "tasks": [
         {
           "id": "<task-uuid>",
           "title": "What is ML?",
           "order": 1,
-          "estimatedMinutes": 30
+          "description": null,
+          "estimatedMinutes": 30,
+          "status": "not_started",
+          "resources": []
         }
       ]
     }
@@ -96,7 +135,33 @@ Success example (classification null on success):
     "durationMs": 4321,
     "modulesCount": 5,
     "tasksCount": 32,
-    "createdAt": "2025-09-27T12:00:07Z"
+    "truncatedTopic": false,
+    "truncatedNotes": false,
+    "normalizedEffort": false,
+    "promptHash": "a8c1e9d77ee5c418a77c51f4d2537a21",
+    "metadata": {
+      "input": {
+        "topic": { "truncated": false, "original_length": 34 },
+        "notes": {
+          "truncated": false,
+          "original_length": 58
+        }
+      },
+      "normalization": {
+        "modules_clamped": false,
+        "tasks_clamped": false
+      },
+      "timing": {
+        "started_at": "2025-09-27T12:00:02Z",
+        "finished_at": "2025-09-27T12:00:06Z",
+        "duration_ms": 4321,
+        "extended_timeout": false
+      },
+      "provider": { "model": "gpt-4.1" },
+      "failure": null
+    },
+    "model": "gpt-4.1",
+    "createdAt": "2025-09-27T12:00:06Z"
   }
 }
 ```
@@ -107,6 +172,12 @@ Failure (validation) example:
 {
   "id": "<plan-uuid>",
   "topic": "Foundations of Machine Learning",
+  "skillLevel": "beginner",
+  "weeklyHours": 6,
+  "learningStyle": "mixed",
+  "visibility": "private",
+  "origin": "ai",
+  "createdAt": "2025-09-27T12:00:00Z",
   "status": "pending",
   "modules": [],
   "latestAttempt": {
@@ -116,6 +187,35 @@ Failure (validation) example:
     "durationMs": 850,
     "modulesCount": 0,
     "tasksCount": 0,
+    "truncatedTopic": false,
+    "truncatedNotes": true,
+    "normalizedEffort": false,
+    "promptHash": "b1ec2aa142b84c108a86dc990f1bb0fb",
+    "metadata": {
+      "input": {
+        "topic": { "truncated": false, "original_length": 34 },
+        "notes": {
+          "truncated": true,
+          "original_length": 2100
+        }
+      },
+      "normalization": {
+        "modules_clamped": false,
+        "tasks_clamped": false
+      },
+      "timing": {
+        "started_at": "2025-09-27T12:00:00Z",
+        "finished_at": "2025-09-27T12:00:01Z",
+        "duration_ms": 850,
+        "extended_timeout": false
+      },
+      "provider": {
+        "model": "gpt-4.1",
+        "error": "STRUCTURE_INVALID"
+      },
+      "failure": { "classification": "validation", "timed_out": false }
+    },
+    "model": "gpt-4.1",
     "createdAt": "2025-09-27T12:00:01Z"
   }
 }
@@ -135,6 +235,118 @@ Failure (capped) response (HTTP 429):
 ```bash
 curl -H 'Authorization: Bearer TOKEN' \
   https://example.com/api/v1/plans/<plan-uuid>/attempts
+```
+
+Response (200):
+
+```json
+[
+  {
+    "id": "<attempt-uuid-3>",
+    "status": "success",
+    "classification": null,
+    "durationMs": 4321,
+    "modulesCount": 5,
+    "tasksCount": 32,
+    "truncatedTopic": false,
+    "truncatedNotes": false,
+    "normalizedEffort": true,
+    "promptHash": "a8c1e9d77ee5c418a77c51f4d2537a21",
+    "metadata": {
+      "input": {
+        "topic": { "truncated": false, "original_length": 34 },
+        "notes": {
+          "truncated": false,
+          "original_length": 58
+        }
+      },
+      "normalization": {
+        "modules_clamped": true,
+        "tasks_clamped": false
+      },
+      "timing": {
+        "started_at": "2025-09-27T12:00:02Z",
+        "finished_at": "2025-09-27T12:00:06Z",
+        "duration_ms": 4321,
+        "extended_timeout": false
+      },
+      "provider": { "model": "gpt-4.1" },
+      "failure": null
+    },
+    "model": "gpt-4.1",
+    "createdAt": "2025-09-27T12:00:06Z"
+  },
+  {
+    "id": "<attempt-uuid-2>",
+    "status": "failure",
+    "classification": "timeout",
+    "durationMs": 10000,
+    "modulesCount": 0,
+    "tasksCount": 0,
+    "truncatedTopic": false,
+    "truncatedNotes": false,
+    "normalizedEffort": false,
+    "promptHash": "2f7b5d6a5d3c4e019c7f1b2a3d4e5f6a",
+    "metadata": {
+      "input": {
+        "topic": { "truncated": false, "original_length": 34 },
+        "notes": null
+      },
+      "normalization": {
+        "modules_clamped": false,
+        "tasks_clamped": false
+      },
+      "timing": {
+        "started_at": "2025-09-27T11:59:45Z",
+        "finished_at": "2025-09-27T11:59:55Z",
+        "duration_ms": 10000,
+        "extended_timeout": false
+      },
+      "provider": null,
+      "failure": { "classification": "timeout", "timed_out": true }
+    },
+    "model": null,
+    "createdAt": "2025-09-27T11:59:55Z"
+  },
+  {
+    "id": "<attempt-uuid-1>",
+    "status": "failure",
+    "classification": "validation",
+    "durationMs": 850,
+    "modulesCount": 0,
+    "tasksCount": 0,
+    "truncatedTopic": false,
+    "truncatedNotes": true,
+    "normalizedEffort": false,
+    "promptHash": "b1ec2aa142b84c108a86dc990f1bb0fb",
+    "metadata": {
+      "input": {
+        "topic": { "truncated": false, "original_length": 34 },
+        "notes": {
+          "truncated": true,
+          "original_length": 2100
+        }
+      },
+      "normalization": {
+        "modules_clamped": false,
+        "tasks_clamped": false
+      },
+      "timing": {
+        "started_at": "2025-09-27T11:59:30Z",
+        "finished_at": "2025-09-27T11:59:31Z",
+        "duration_ms": 850,
+        "extended_timeout": false
+      },
+      "provider": {
+        "model": "gpt-4.1",
+        "error": "STRUCTURE_INVALID"
+      },
+      "failure": { "classification": "validation", "timed_out": false }
+    },
+    "model": "gpt-4.1",
+    "createdAt": "2025-09-27T11:59:31Z"
+  }
+]
 ```
 
 ## 4. Error / Cap Examples

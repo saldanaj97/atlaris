@@ -131,7 +131,7 @@ Ordering Principles Applied:
 
 ## Phase 3.16: Documentation & Polish
 
-- [ ] T065 (D) Update `quickstart.md` with final response payloads (classification null on success)
+- [x] T065 (D) Update `quickstart.md` with final response payloads (classification null on success)
 - [x] T066 (D) README feature summary section update
 - [x] T067 (D) Add performance appendix / results to plan.md deferred section
 - [x] T068 (D) Trace FR/NFR → test cases table `docs/traceability/ai-generation.md`
