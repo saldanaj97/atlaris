@@ -314,26 +314,27 @@ export async function recordSuccess({
       }[];
     }>;
 
-    for (let index = 0; index < normalizedModules.length; index += 1) {
-      const normalizedModule = normalizedModules[index];
-      const [moduleRow] = await tx
-        .insert(modules)
-        .values({
-          planId,
-          order: index + 1,
-          title: normalizedModule.title,
-          description: normalizedModule.description,
-          estimatedMinutes: normalizedModule.estimatedMinutes,
-        })
-        .returning({ id: modules.id });
+    // Bulk insert modules
+    const moduleValues = normalizedModules.map((normalizedModule, index) => ({
+      planId,
+      order: index + 1,
+      title: normalizedModule.title,
+      description: normalizedModule.description,
+      estimatedMinutes: normalizedModule.estimatedMinutes,
+    }));
+    const insertedModuleRows = await tx
+      .insert(modules)
+      .values(moduleValues)
+      .returning({ id: modules.id });
 
-      if (!moduleRow) {
-        throw new Error('Failed to insert module for generation attempt.');
-      }
+    if (insertedModuleRows.length !== normalizedModules.length) {
+      throw new Error('Failed to insert all modules for generation attempt.');
+    }
 
+    for (let i = 0; i < insertedModuleRows.length; i++) {
       insertedModules.push({
-        id: moduleRow.id,
-        tasks: normalizedModule.tasks,
+        id: insertedModuleRows[i].id,
+        tasks: normalizedModules[i].tasks,
       });
     }
 
