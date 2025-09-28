@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import {
@@ -177,11 +177,24 @@ export async function getLearningPlanDetail(
         .orderBy(asc(taskResources.order))
     : [];
 
-  const attempts = await db
-    .select()
+  const [{ attemptCount = 0 } = { attemptCount: 0 }] = await db
+    .select({ attemptCount: count(generationAttempts.id) })
     .from(generationAttempts)
-    .where(eq(generationAttempts.planId, planId))
-    .orderBy(desc(generationAttempts.createdAt));
+    .where(eq(generationAttempts.planId, planId));
+
+  const attemptsCount = Number(attemptCount ?? 0);
+
+  let latestAttempt = null;
+  if (attemptsCount > 0) {
+    const [attempt] = await db
+      .select()
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId))
+      .orderBy(desc(generationAttempts.createdAt))
+      .limit(1);
+
+    latestAttempt = attempt ?? null;
+  }
 
   return mapLearningPlanDetail({
     plan,
@@ -197,7 +210,8 @@ export async function getLearningPlanDetail(
       createdAt: r.createdAt,
       resource: r.resource,
     })),
-    attempts,
+    latestAttempt,
+    attemptsCount,
   });
 }
 
