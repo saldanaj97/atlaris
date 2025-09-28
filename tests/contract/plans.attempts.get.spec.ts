@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { GET } from '@/app/api/v1/plans/[planId]/attempts/route';
 import { db } from '@/lib/db/drizzle';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 import { setTestUser } from '../helpers/auth';
 
 function buildRequest(planId: string) {
@@ -18,8 +18,7 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
 
   it('returns attempt history for owning user', async () => {
     setTestUser(clerkId);
-    await ensureUser({ clerkUserId: clerkId, email });
-    const userId = await getUserIdFor(clerkId);
+    const userId = await ensureUser({ clerkUserId: clerkId, email });
 
     const [plan] = await db
       .insert(learningPlans)

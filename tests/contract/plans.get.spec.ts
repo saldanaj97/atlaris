@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { GET } from '@/app/api/v1/plans/[planId]/route';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 import { setTestUser } from '../helpers/auth';
 
 function buildRequest(planId: string) {
@@ -18,8 +18,10 @@ describe('GET /api/v1/plans/:planId', () => {
 
   it('returns plan detail with ordered modules and tasks for owner', async () => {
     setTestUser(ownerClerkId);
-    await ensureUser({ clerkUserId: ownerClerkId, email: ownerEmail });
-    const ownerId = await getUserIdFor(ownerClerkId);
+    const ownerId = await ensureUser({
+      clerkUserId: ownerClerkId,
+      email: ownerEmail,
+    });
 
     const [plan] = await db
       .insert(learningPlans)

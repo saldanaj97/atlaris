@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans } from '@/lib/db/schema';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 import { setTestUser } from '../helpers/auth';
 
 /**
@@ -13,11 +13,10 @@ import { setTestUser } from '../helpers/auth';
 describe('Concurrency - plan creation ordering', () => {
   it('maintains created_at ordering and uniqueness under concurrency', async () => {
     setTestUser('concurrency_creator');
-    await ensureUser({
+    const userId = await ensureUser({
       clerkUserId: 'concurrency_creator',
       email: 'concurrency_creator@example.com',
     });
-    const userId = await getUserIdFor('concurrency_creator');
 
     const insertCount = 10;
     const results = await Promise.all(

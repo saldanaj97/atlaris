@@ -11,7 +11,7 @@ import {
 } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { setTestUser } from '../helpers/auth';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 
 const clerkUserId = 'clerk_generation_cap_boundary';
 const clerkEmail = 'generation-cap-boundary@example.com';
@@ -40,8 +40,7 @@ describe('generation integration - attempt cap boundary', () => {
   });
 
   it('allows the third attempt and caps the fourth', async () => {
-    await ensureUser({ clerkUserId, email: clerkEmail });
-    const userId = await getUserIdFor(clerkUserId);
+    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
 
     const [plan] = await db
       .insert(learningPlans)

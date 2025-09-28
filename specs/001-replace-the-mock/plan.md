@@ -256,6 +256,63 @@ Additional Notes:
 
 Instrumentation (duration_ms on attempts), plus a benchmark script (Node) measuring baseline vs generation path p95 to ensure <+200ms overhead. Adaptive timeout extension path measured separately. Results will be captured post-implementation in a performance appendix.
 
+## Performance Appendix
+
+### Performance Targets & Measurement Strategy
+
+**Primary Performance Goals:**
+
+- Plan creation API p95 latency impact: <+200ms over baseline
+- Input truncation & normalization overhead: <5ms p95
+- Generation attempt completion (successful): 10-20s adaptive timeout
+- Concurrent creation safety: No performance degradation under load
+
+**Measurement Approach:**
+
+1. **Baseline Capture**: Pre-implementation measurement of POST /plans endpoint (empty generation logic)
+2. **Load Testing**: Minimum 30 runs with 3 warm-up iterations excluded from p95 calculation
+3. **Micro-benchmarks**: Isolated testing of truncation and normalization utilities
+4. **Concurrent Safety**: Multi-user creation scenarios to validate ordering integrity
+
+**Performance Instrumentation:**
+
+- `generation_attempts.duration_ms`: Integer milliseconds from monotonic source (±5ms tolerance)
+- Correlation ID propagation for request tracing
+- Classification timing for timeout scenarios
+- Transaction commit/rollback timing for atomicity validation
+
+**Expected Results (Post-Implementation):**
+
+- Synchronous path overhead: <50ms additional CPU for background trigger
+- Input validation & truncation: <5ms p95 measured over 100 samples
+- Adaptive timeout extension: Triggered only when ≥1 module parsed before 9.5s
+- Atomic transaction overhead: <10ms for attempt + content persistence
+
+**Performance Validation Checklist:**
+
+- [ ] Baseline measurements captured before heavy generation logic implementation
+- [ ] P95 latency delta measured and documented
+- [ ] Micro-benchmark results for truncation/normalization utilities
+- [ ] Concurrent creation performance under load verified
+- [ ] Adaptive timeout behavior validated (10s → 20s extension scenarios)
+- [ ] Transaction atomicity performance impact measured
+
+### Deferred Performance Items
+
+**Future Optimization Opportunities:**
+
+- Denormalized `plan.status` column if derived status computation becomes hot path
+- Connection pooling optimization for high-concurrency scenarios
+- Provider response streaming optimization for faster partial content detection
+- Background job queue migration if in-process async becomes bottleneck
+
+**Monitoring & Alerting (Post-MVP):**
+
+- P95 latency alerting for plan creation endpoint
+- Generation success/failure rate monitoring
+- Attempt duration distribution tracking
+- Provider timeout frequency analysis
+
 ## Reference to tasks.md
 
 Running /tasks will create `tasks.md` enumerating the ordered roadmap (schema migration → parser/timeout → attempt service → API & mappers → classification tests → RLS tests → performance harness → documentation updates).

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { eq } from 'drizzle-orm';
 
 import { createMockProvider } from '@/lib/ai/mockProvider';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 
 /**
  * Injects a DB error during recordSuccess to assert full rollback (no modules / tasks persisted).
@@ -16,8 +17,7 @@ import { ensureUser, getUserIdFor } from '../helpers/db';
 describe('Concurrency - rollback on DB error', () => {
   it('rolls back modules/tasks when an error occurs mid-transaction', async () => {
     setTestUser('rollback_user');
-    await ensureUser({ clerkUserId: 'rollback_user', email: 'rollback_user@example.com' });
-    const userId = await getUserIdFor('rollback_user');
+    const userId = await ensureUser({ clerkUserId: 'rollback_user', email: 'rollback_user@example.com' });
 
     const [plan] = await db
       .insert(learningPlans)
@@ -93,7 +93,10 @@ describe('Concurrency - rollback on DB error', () => {
 
     expect(error).toBeTruthy();
 
-    const moduleRows = await db.select().from(modules).where(modules.planId.eq(plan.id));
+    const moduleRows = await db
+      .select()
+      .from(modules)
+      .where(eq(modules.planId, plan.id));
     const taskRows = await db.select().from(tasks);
     expect(moduleRows.length).toBe(0);
     expect(taskRows.length).toBe(0);

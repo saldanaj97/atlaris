@@ -11,7 +11,7 @@ import {
 } from '@/lib/db/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 import { setTestUser } from '../helpers/auth';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 
 const clerkUserId = 'clerk_generation_success';
 const clerkEmail = 'generation-success@example.com';
@@ -19,8 +19,7 @@ const clerkEmail = 'generation-success@example.com';
 describe('generation integration - success path', () => {
   it('persists modules/tasks and logs a successful attempt', async () => {
     setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
-    const userId = await getUserIdFor(clerkUserId);
+    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
 
     const [plan] = await db
       .insert(learningPlans)

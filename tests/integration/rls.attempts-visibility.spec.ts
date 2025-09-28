@@ -9,7 +9,7 @@ import {
   users,
 } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route';
 
 async function createPlanWithAttempt({
@@ -22,8 +22,7 @@ async function createPlanWithAttempt({
   topic?: string;
 }) {
   setTestUser(clerkUserId);
-  await ensureUser({ clerkUserId, email });
-  const userId = await getUserIdFor(clerkUserId);
+  const userId = await ensureUser({ clerkUserId, email });
   const [plan] = await db
     .insert(learningPlans)
     .values({

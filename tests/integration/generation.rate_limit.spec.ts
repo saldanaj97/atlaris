@@ -6,7 +6,7 @@ import { db } from '@/lib/db/drizzle';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../helpers/auth';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 
 const clerkUserId = 'clerk_generation_rate_limit';
 const clerkEmail = 'generation-rate-limit@example.com';
@@ -14,8 +14,7 @@ const clerkEmail = 'generation-rate-limit@example.com';
 describe('generation integration - rate limit classification', () => {
   it('records rate_limit classification when provider signals throttling', async () => {
     setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
-    const userId = await getUserIdFor(clerkUserId);
+    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
 
     const [plan] = await db
       .insert(learningPlans)

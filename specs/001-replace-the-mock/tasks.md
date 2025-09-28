@@ -119,22 +119,22 @@ Ordering Principles Applied:
 
 ## Phase 3.14: Observability & Metrics
 
-- [ ] T059 [P] Capture duration_ms & counts instrumentation in attempt service (Perf)
-- [ ] T060 [P] Optional in-memory metrics export module `src/lib/metrics/attempts.ts` (Perf)
-- [ ] T061 (T) Test duration_ms > 0 for success attempt `tests/unit/metrics.duration.spec.ts`
+- [x] T059 [P] Capture duration_ms & counts instrumentation in attempt service (Perf)
+- [x] T060 [P] Optional in-memory metrics export module `src/lib/metrics/attempts.ts` (Perf)
+- [x] T061 (T) Test duration_ms > 0 for success attempt `tests/unit/metrics.duration.spec.ts`
 
 ## Phase 3.15: Performance Harness
 
-- [ ] T062 Create performance script `scripts/perf/measure-generation.ts` (baseline vs generation path) (Perf)
-- [ ] T063 Run baseline vs feature p95 (<+200ms) documentation `docs/performance/ai-generation.md` (Perf)
-- [ ] T064 Measure timeout vs extended timeout cases (10s vs ~20s) add to doc (Perf)
+- [x] T062 Create performance script `scripts/perf/measure-generation.ts` (baseline vs generation path) (Perf)
+- [x] T063 Run baseline vs feature p95 (<+200ms) documentation `docs/performance/ai-generation.md` (Perf)
+- [x] T064 Measure timeout vs extended timeout cases (10s vs ~20s) add to doc (Perf)
 
 ## Phase 3.16: Documentation & Polish
 
 - [ ] T065 (D) Update `quickstart.md` with final response payloads (classification null on success)
-- [ ] T066 (D) README feature summary section update
-- [ ] T067 (D) Add performance appendix / results to plan.md deferred section
-- [ ] T068 (D) Trace FR/NFR → test cases table `docs/traceability/ai-generation.md`
+- [x] T066 (D) README feature summary section update
+- [x] T067 (D) Add performance appendix / results to plan.md deferred section
+- [x] T068 (D) Trace FR/NFR → test cases table `docs/traceability/ai-generation.md`
 
 ## Phase 3.17: Final Validation
 

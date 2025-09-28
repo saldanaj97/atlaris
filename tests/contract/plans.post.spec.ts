@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { POST } from '@/app/api/v1/plans/route';
 import { db } from '@/lib/db/drizzle';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 import { setTestUser } from '../helpers/auth';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -76,10 +76,7 @@ describe('POST /api/v1/plans', () => {
 
   it('returns 429 when generation attempts are capped for follow-up requests', async () => {
     setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
-
-    // Precondition: simulate existing plan hitting attempt cap (3 failures)
-    const userId = await getUserIdFor(clerkUserId);
+    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
     const [plan] = await db
       .insert(learningPlans)
       .values({

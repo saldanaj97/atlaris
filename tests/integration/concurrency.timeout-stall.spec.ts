@@ -5,7 +5,7 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
-import { ensureUser, getUserIdFor } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 
 /**
  * Simulates a provider stall by creating a mock provider that never yields a module
@@ -15,8 +15,7 @@ import { ensureUser, getUserIdFor } from '../helpers/db';
 describe('Concurrency - provider stall timeout classification', () => {
   it('classifies stalled provider as timeout', async () => {
     setTestUser('stall_user');
-    await ensureUser({ clerkUserId: 'stall_user', email: 'stall_user@example.com' });
-    const userId = await getUserIdFor('stall_user');
+    const userId = await ensureUser({ clerkUserId: 'stall_user', email: 'stall_user@example.com' });
 
     const [plan] = await db
       .insert(learningPlans)
