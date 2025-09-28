@@ -158,6 +158,10 @@ function sanitizeInput(input: GenerationInput): SanitizedInput {
 
   const topicValue = topicResult.value;
 
+  if (typeof topicValue !== 'string' || topicValue.trim().length === 0) {
+    throw new Error('GenerationInput.topic must be a non-empty string.');
+  }
+
   const notesResult = truncateToLength(
     input.notes ?? undefined,
     NOTES_MAX_LENGTH

@@ -1,9 +1,6 @@
-import type { LearningStyle, SkillLevel } from '@/lib/types/db';
 import type { PlanStatus } from '@/lib/types/client';
+import type { LearningStyle, SkillLevel } from '@/lib/types/db';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
-
-type PlanVisibility = CreateLearningPlanInput['visibility'];
-type PlanOrigin = CreateLearningPlanInput['origin'];
 
 interface ErrorResponse {
   error?: string | null;
@@ -18,8 +15,8 @@ export interface CreatePlanSuccessResponse {
   skillLevel: SkillLevel;
   weeklyHours: number;
   learningStyle: LearningStyle;
-  visibility: PlanVisibility;
-  origin: PlanOrigin;
+  visibility: CreateLearningPlanInput['visibility'];
+  origin: CreateLearningPlanInput['origin'];
   createdAt?: string;
   status?: PlanStatus;
 }

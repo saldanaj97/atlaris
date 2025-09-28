@@ -59,7 +59,7 @@ const SUCCESS_PAYLOAD = {
 
 const VALIDATION_PAYLOAD = {
   modules: [],
-};
+} as const;
 
 function createChunkStream(
   payload: unknown,
