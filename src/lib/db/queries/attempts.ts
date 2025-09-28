@@ -25,7 +25,7 @@ import type { GenerationInput } from '@/lib/ai/provider';
 import { db } from '../drizzle';
 import { generationAttempts, learningPlans, modules, tasks } from '../schema';
 
-const ATTEMPT_CAP = 3;
+const ATTEMPT_CAP = Number(process.env.ATTEMPT_CAP) || 3;
 
 interface SanitizedField {
   value: string | undefined;
