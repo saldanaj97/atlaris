@@ -14,7 +14,7 @@ export function normalizeEffort(
   max: number
 ): NormalizedEffortResult {
   if (!Number.isFinite(minutes)) {
-    throw new Error('Effort value must be a finite number');
+    throw new Error(`Effort value must be a finite number (received: ${typeof minutes})`);
   }
 
   const value = Math.min(Math.max(minutes, min), max);
