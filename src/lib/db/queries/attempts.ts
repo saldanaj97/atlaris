@@ -152,7 +152,7 @@ function buildMetadata(params: MetadataParams) {
 
 function sanitizeInput(input: GenerationInput): SanitizedInput {
   const topicResult = truncateToLength(input.topic, TOPIC_MAX_LENGTH);
-  const topicValue = topicResult.value ?? '';
+  const topicValue = topicResult.value;
 
   const notesResult = truncateToLength(
     input.notes ?? undefined,
