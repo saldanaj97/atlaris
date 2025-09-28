@@ -2,11 +2,9 @@ import path from 'node:path';
 
 import { defineConfig } from 'vitest/config';
 
+// Set test database URL if not provided; use project-specific local port 54322.
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'postgres://stub:stub@127.0.0.1:5432/stub';
-  if (!process.env.SKIP_DB_TEST_SETUP) {
-    process.env.SKIP_DB_TEST_SETUP = 'true';
-  }
+  process.env.DATABASE_URL = 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 }
 
 export default defineConfig({
