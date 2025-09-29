@@ -22,6 +22,20 @@
       "when": 1757614694052,
       "tag": "0002_generation_attempts_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1759179125737,
+      "tag": "0003_past_hammerhead",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1759274400000,
+      "tag": "0004_add_error_tracking_safe",
+      "breakpoints": true
     }
   ]
 }

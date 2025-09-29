@@ -23,3 +23,9 @@ export const progressStatus = pgEnum('progress_status', [
   'in_progress',
   'completed',
 ]);
+export const planStatus = pgEnum('plan_status', [
+  'ready',
+  'pending',
+  'generating',
+  'failed',
+]);

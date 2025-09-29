@@ -12,6 +12,7 @@ import {
   timestamp,
   unique,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import {
   anonRole,
@@ -21,6 +22,7 @@ import {
 } from 'drizzle-orm/supabase';
 import {
   learningStyle,
+  planStatus,
   progressStatus,
   resourceType,
   skillLevel,
@@ -118,6 +120,10 @@ export const learningPlans = pgTable(
     deadlineDate: date('deadline_date'),
     visibility: text('visibility').notNull().default('private'), // private | public
     origin: text('origin').notNull().default('ai'), // ai | template | manual
+    status: planStatus('status').notNull().default('pending'),
+    errorCode: varchar('error_code', { length: 50 }),
+    errorMessage: text('error_message'),
+    errorDetails: jsonb('error_details'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -996,7 +1002,6 @@ export const planGenerations = pgTable(
   ]
 ).enableRLS();
 
-
 // Generation attempts table (AI generation attempt telemetry)
 export const generationAttempts = pgTable(
   'generation_attempts',
@@ -1010,15 +1015,9 @@ export const generationAttempts = pgTable(
     durationMs: integer('duration_ms').notNull(),
     modulesCount: integer('modules_count').notNull(),
     tasksCount: integer('tasks_count').notNull(),
-    truncatedTopic: boolean('truncated_topic')
-      .notNull()
-      .default(false),
-    truncatedNotes: boolean('truncated_notes')
-      .notNull()
-      .default(false),
-    normalizedEffort: boolean('normalized_effort')
-      .notNull()
-      .default(false),
+    truncatedTopic: boolean('truncated_topic').notNull().default(false),
+    truncatedNotes: boolean('truncated_notes').notNull().default(false),
+    normalizedEffort: boolean('normalized_effort').notNull().default(false),
     promptHash: text('prompt_hash'),
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at', { withTimezone: true })

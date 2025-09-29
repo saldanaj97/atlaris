@@ -1,10 +1,10 @@
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { reset, seed } from 'drizzle-seed';
 import * as schema from './schema';
 
-dotenv.config();
+config();
 
 // Learning topics for realistic data
 const learningTopics = [
@@ -195,7 +195,8 @@ export async function seedDatabase(
     console.log('✅ Database reset complete');
   }
 
-  // generation_attempts captures real AI runs; keep empty during synthetic seeding
+  // generation_attempts will be populated for curated dev plans
+  // Keep empty for now, will be populated later for dev user
   await db.delete(schema.generationAttempts);
 
   console.log(
@@ -478,6 +479,10 @@ export async function seedDatabase(
             learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
             visibility: 'private' | 'public';
             origin: 'ai' | 'template' | 'manual';
+            status: 'ready' | 'pending' | 'generating' | 'failed';
+            errorCode?: string;
+            errorMessage?: string;
+            errorDetails?: Record<string, unknown>;
             modules: Array<{
               title: string;
               description: string;
@@ -496,6 +501,7 @@ export async function seedDatabase(
               learningStyle: 'mixed',
               visibility: 'private',
               origin: 'manual',
+              status: 'ready',
               modules: [
                 {
                   title: 'Foundations & Tooling',
@@ -570,6 +576,7 @@ export async function seedDatabase(
               learningStyle: 'reading',
               visibility: 'public',
               origin: 'manual',
+              status: 'ready',
               modules: [
                 {
                   title: 'Data Manipulation & Exploration',
@@ -625,9 +632,91 @@ export async function seedDatabase(
                 },
               ],
             },
+            {
+              topic: 'Advanced TypeScript Patterns (Pending)',
+              skillLevel: 'advanced',
+              weeklyHours: 8,
+              learningStyle: 'mixed',
+              visibility: 'private',
+              origin: 'ai',
+              status: 'pending',
+              modules: [],
+            },
+            {
+              topic: 'Docker & Kubernetes Essentials (Generating)',
+              skillLevel: 'intermediate',
+              weeklyHours: 7,
+              learningStyle: 'video',
+              visibility: 'private',
+              origin: 'ai',
+              status: 'generating',
+              modules: [],
+            },
+            {
+              topic: 'React Native Mobile Development (Failed - Rate Limit)',
+              skillLevel: 'beginner',
+              weeklyHours: 5,
+              learningStyle: 'practice',
+              visibility: 'private',
+              origin: 'ai',
+              status: 'failed',
+              errorCode: 'RATE_LIMIT_EXCEEDED',
+              errorMessage:
+                'API rate limit exceeded. Please try again in a few minutes.',
+              errorDetails: {
+                retryAfter: 300,
+                requestId: 'req_abc123xyz',
+                timestamp: '2025-09-28T14:30:00Z',
+              },
+              modules: [],
+            },
+            {
+              topic: 'GraphQL API Design (Failed - Invalid Topic)',
+              skillLevel: 'intermediate',
+              weeklyHours: 6,
+              learningStyle: 'reading',
+              visibility: 'private',
+              origin: 'ai',
+              status: 'failed',
+              errorCode: 'INVALID_TOPIC',
+              errorMessage:
+                'Unable to generate learning plan: Topic contains restricted content or is too vague.',
+              errorDetails: {
+                suggestedTopics: [
+                  'GraphQL Fundamentals',
+                  'Building GraphQL APIs with Node.js',
+                  'Advanced GraphQL Schema Design',
+                ],
+                requestId: 'req_def456uvw',
+                timestamp: '2025-09-27T10:15:00Z',
+              },
+              modules: [],
+            },
+            {
+              topic:
+                'Machine Learning Fundamentals (Failed - Service Unavailable)',
+              skillLevel: 'beginner',
+              weeklyHours: 10,
+              learningStyle: 'mixed',
+              visibility: 'private',
+              origin: 'ai',
+              status: 'failed',
+              errorCode: 'SERVICE_UNAVAILABLE',
+              errorMessage:
+                'AI service temporarily unavailable. Our team has been notified.',
+              errorDetails: {
+                serviceStatus: 'degraded',
+                estimatedRecoveryTime: '2025-09-29T16:00:00Z',
+                requestId: 'req_ghi789rst',
+                timestamp: '2025-09-29T08:45:00Z',
+              },
+              modules: [],
+            },
           ];
 
           const createdTaskIds: string[] = [];
+
+          const createdPlanIds: Array<{ id: string; status: string }> = [];
 
           for (const planDef of curatedPlans) {
             const [plan] = await db
@@ -640,11 +729,17 @@ export async function seedDatabase(
                 learningStyle: planDef.learningStyle,
                 visibility: planDef.visibility,
                 origin: planDef.origin,
+                status: planDef.status,
+                errorCode: planDef.errorCode ?? null,
+                errorMessage: planDef.errorMessage ?? null,
+                errorDetails: planDef.errorDetails ?? null,
                 // schema.startDate & deadlineDate are 'date' (no timezone) -> supply ISO date string
                 startDate: '2025-01-15',
                 deadlineDate: '2025-12-31',
               })
               .returning({ id: schema.learningPlans.id });
+
+            createdPlanIds.push({ id: plan.id, status: planDef.status });
 
             for (let mIdx = 0; mIdx < planDef.modules.length; mIdx++) {
               const modDef = planDef.modules[mIdx];
@@ -739,6 +834,84 @@ export async function seedDatabase(
           }
 
           console.log('✅ Curated dev user dataset created.');
+
+          // Create generation attempts for plans with 'ready' and 'failed' status
+          console.log('📊 Creating generation attempts for curated plans...');
+          const generationAttemptRows: Array<{
+            planId: string;
+            status: 'success' | 'failure';
+            classification: string | null;
+            durationMs: number;
+            modulesCount: number;
+            tasksCount: number;
+            truncatedTopic: boolean;
+            truncatedNotes: boolean;
+            normalizedEffort: boolean;
+            promptHash: string;
+            metadata: Record<string, unknown>;
+          }> = [];
+
+          for (const planInfo of createdPlanIds) {
+            if (planInfo.status === 'ready') {
+              // Success attempt
+              generationAttemptRows.push({
+                planId: planInfo.id,
+                status: 'success',
+                classification: null,
+                durationMs: Math.floor(Math.random() * 8000) + 2000, // 2-10s
+                modulesCount: 2,
+                tasksCount: 7,
+                truncatedTopic: false,
+                truncatedNotes: false,
+                normalizedEffort: false,
+                promptHash: `hash_${planInfo.id.substring(0, 8)}`,
+                metadata: {
+                  model: 'gpt-4-turbo',
+                  temperature: 0.7,
+                  maxTokens: 4096,
+                },
+              });
+            } else if (planInfo.status === 'failed') {
+              // Failure attempt - get the plan to extract error code for classification
+              const failedPlan = await db
+                .select({ errorCode: schema.learningPlans.errorCode })
+                .from(schema.learningPlans)
+                .where(eq(schema.learningPlans.id, planInfo.id))
+                .limit(1);
+
+              const classification =
+                failedPlan[0]?.errorCode || 'UNKNOWN_ERROR';
+
+              generationAttemptRows.push({
+                planId: planInfo.id,
+                status: 'failure',
+                classification,
+                durationMs: Math.floor(Math.random() * 3000) + 500, // 0.5-3.5s
+                modulesCount: 0,
+                tasksCount: 0,
+                truncatedTopic: false,
+                truncatedNotes: false,
+                normalizedEffort: false,
+                promptHash: `hash_${planInfo.id.substring(0, 8)}`,
+                metadata: {
+                  model: 'gpt-4-turbo',
+                  temperature: 0.7,
+                  maxTokens: 4096,
+                  attemptNumber: 1,
+                },
+              });
+            }
+            // pending and generating plans don't have attempts yet
+          }
+
+          if (generationAttemptRows.length > 0) {
+            await db
+              .insert(schema.generationAttempts)
+              .values(generationAttemptRows);
+            console.log(
+              `✅ Created ${generationAttemptRows.length} generation attempts.`
+            );
+          }
         } else {
           console.log(
             'ℹ️  Dev user already has plans; skipping curated dataset.'
@@ -746,8 +919,8 @@ export async function seedDatabase(
         }
 
         // Ensure the dev user also has a few random-style plans for realism (lightweight approach)
-        // Threshold can be tuned; we aim for at least 5 total plans (including curated ones)
-        const targetMinPlans = 5;
+        // Threshold can be tuned; we aim for at least 10 total plans (including curated ones with all statuses)
+        const targetMinPlans = 10;
         const currentCountResult = await db
           .select({ id: schema.learningPlans.id })
           .from(schema.learningPlans)
