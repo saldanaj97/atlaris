@@ -234,3 +234,182 @@ export async function getPlanAttemptsForUser(planId: string, userId: string) {
 
   return { plan: planRow[0], attempts };
 }
+
+/**
+ * Batch fetch modules with their tasks for multiple plans.
+ * Prevents N+1 queries when displaying multiple plans.
+ * @param planIds - Array of plan IDs to fetch modules and tasks for
+ * @returns Array of modules with their nested tasks
+ */
+export async function getModulesWithTasksByPlanIds(planIds: string[]): Promise<
+  Array<{
+    id: string;
+    planId: string;
+    order: number;
+    title: string;
+    description: string | null;
+    estimatedMinutes: number;
+    createdAt: Date;
+    updatedAt: Date;
+    tasks: Array<{
+      id: string;
+      moduleId: string;
+      order: number;
+      title: string;
+      description: string | null;
+      estimatedMinutes: number;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
+  }>
+> {
+  if (!planIds.length) {
+    return [];
+  }
+
+  // Fetch all modules for all plans in a single query
+  const moduleRows = await db
+    .select()
+    .from(modules)
+    .where(inArray(modules.planId, planIds))
+    .orderBy(asc(modules.order));
+
+  if (!moduleRows.length) {
+    return [];
+  }
+
+  const moduleIds = moduleRows.map((module) => module.id);
+
+  // Fetch all tasks for all modules in a single query
+  const taskRows = await db
+    .select()
+    .from(tasks)
+    .where(inArray(tasks.moduleId, moduleIds))
+    .orderBy(asc(tasks.order));
+
+  // Group tasks by moduleId
+  const tasksByModuleId = taskRows.reduce(
+    (acc, task) => {
+      if (!acc[task.moduleId]) {
+        acc[task.moduleId] = [];
+      }
+      acc[task.moduleId].push(task);
+      return acc;
+    },
+    {} as Record<string, typeof taskRows>
+  );
+
+  // Return modules with nested tasks
+  return moduleRows.map((module) => ({
+    ...module,
+    tasks: tasksByModuleId[module.id] ?? [],
+  }));
+}
+
+/**
+ * Batch fetch progress aggregated by plan ID for multiple plans.
+ * Prevents N+1 queries when displaying plan lists with progress.
+ * @param userId - User ID to fetch progress for
+ * @param planIds - Array of plan IDs to fetch progress for
+ * @returns Object mapping plan ID to progress stats (completed count and total count)
+ */
+export async function getProgressByPlanIds(
+  userId: string,
+  planIds: string[]
+): Promise<Record<string, { completed: number; total: number }>> {
+  if (!planIds.length) {
+    return {};
+  }
+
+  // Fetch all modules for these plans
+  const moduleRows = await db
+    .select({ id: modules.id, planId: modules.planId })
+    .from(modules)
+    .where(inArray(modules.planId, planIds));
+
+  if (!moduleRows.length) {
+    return planIds.reduce(
+      (acc, planId) => {
+        acc[planId] = { completed: 0, total: 0 };
+        return acc;
+      },
+      {} as Record<string, { completed: number; total: number }>
+    );
+  }
+
+  const moduleIds = moduleRows.map((module) => module.id);
+
+  // Fetch all tasks for these modules
+  const taskRows = await db
+    .select({ id: tasks.id, moduleId: tasks.moduleId })
+    .from(tasks)
+    .where(inArray(tasks.moduleId, moduleIds));
+
+  if (!taskRows.length) {
+    return planIds.reduce(
+      (acc, planId) => {
+        acc[planId] = { completed: 0, total: 0 };
+        return acc;
+      },
+      {} as Record<string, { completed: number; total: number }>
+    );
+  }
+
+  const taskIds = taskRows.map((task) => task.id);
+
+  // Fetch all progress records for these tasks and this user
+  const progressRows = await db
+    .select({ taskId: taskProgress.taskId, status: taskProgress.status })
+    .from(taskProgress)
+    .where(
+      and(
+        eq(taskProgress.userId, userId),
+        inArray(taskProgress.taskId, taskIds)
+      )
+    );
+
+  // Build lookup maps: taskId → moduleId → planId
+  const taskToModuleMap = new Map(
+    taskRows.map((task) => [task.id, task.moduleId])
+  );
+  const moduleToPlanMap = new Map(
+    moduleRows.map((module) => [module.id, module.planId])
+  );
+
+  // Initialize progress object with all plan IDs
+  const progressByPlanId: Record<string, { completed: number; total: number }> =
+    {};
+  for (const planId of planIds) {
+    progressByPlanId[planId] = { completed: 0, total: 0 };
+  }
+
+  // Count total tasks per plan
+  for (const task of taskRows) {
+    const moduleId = task.moduleId;
+    const planId = moduleToPlanMap.get(moduleId);
+    if (planId) {
+      const planProgress = progressByPlanId[planId];
+      if (planProgress) {
+        planProgress.total += 1;
+      }
+    }
+  }
+
+  // Count completed tasks per plan
+  for (const progress of progressRows) {
+    if (progress.status === 'completed') {
+      const moduleId = taskToModuleMap.get(progress.taskId);
+      if (moduleId) {
+        const planId = moduleToPlanMap.get(moduleId);
+        if (planId) {
+          const planProgress = progressByPlanId[planId];
+          if (planProgress) {
+            planProgress.completed += 1;
+          }
+        }
+      }
+    }
+  }
+
+  return progressByPlanId;
+}
