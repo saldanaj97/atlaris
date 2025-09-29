@@ -1,13 +1,16 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 
 import PlansList from '@/components/plans/PlansList';
+import { PlanListSkeleton } from '@/components/plans/skeletons/PlanListSkeleton';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
 import type { PlanSummary } from '@/lib/types/db';
 
-export default async function PlansPage() {
+async function PlansPageContent() {
   const userId = await getEffectiveClerkUserId();
   if (!userId) {
     redirect('/sign-in?redirect_url=/plans');
@@ -47,5 +50,15 @@ export default async function PlansPage() {
       </div>
       <PlansList summaries={summaries} />
     </div>
+  );
+}
+
+export default function PlansPage() {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<PlanListSkeleton />}>
+        <PlansPageContent />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
