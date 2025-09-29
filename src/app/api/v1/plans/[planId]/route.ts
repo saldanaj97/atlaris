@@ -2,6 +2,7 @@ import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getLearningPlanDetail, getUserByClerkId } from '@/lib/db/queries';
+import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
 /**
  * GET /api/v1/plans/:planId
@@ -36,7 +37,12 @@ export const GET = withErrorBoundary(
       throw new NotFoundError('Learning plan not found.');
     }
 
-    return json(detail);
+    const clientDetail = mapDetailToClient(detail);
+    if (!clientDetail) {
+      throw new NotFoundError('Learning plan not found.');
+    }
+
+    return json(clientDetail);
   })
 );
 

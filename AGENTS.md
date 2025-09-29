@@ -14,7 +14,7 @@ This file provides guidance when working with code in this repository.
 
 ## Rules
 
-- Before you begin any coding or implementations, make sure to use the rules I have defined in the .rules/ directory if we are making edits to any of the files or directories matching the patterns below:
+- Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:
   - src/app/\*\*/\*.tsx
   - src/app/\*\*/\*.ts
   - src/components/\*\*/\*.tsx

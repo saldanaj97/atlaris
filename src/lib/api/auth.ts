@@ -1,18 +1,22 @@
-import { auth } from '@clerk/nextjs/server';
+import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 
 /**
  * Returns the effective Clerk user id for the current request.
- * In development, if DEV_CLERK_USER_ID is set, that value is returned
+ * In development or test (Vitest), if DEV_CLERK_USER_ID is set, that value is returned
  * (allowing you to bypass real Clerk provisioning while seeding a deterministic user).
+ *
+ * NOTE: We avoid a static import of '@clerk/nextjs/server' so test runs that rely on
+ * DEV_CLERK_USER_ID do not trigger Next.js server-only module guards.
  */
 export async function getEffectiveClerkUserId(): Promise<string | null> {
-  if (process.env.NODE_ENV !== 'production' && process.env.DEV_CLERK_USER_ID) {
-    const devId = process.env.DEV_CLERK_USER_ID;
-    if (devId) {
-      return devId;
-    }
+  if (
+    (process.env.NODE_ENV !== 'production' || process.env.VITEST_WORKER_ID) &&
+    process.env.DEV_CLERK_USER_ID
+  ) {
+    return process.env.DEV_CLERK_USER_ID;
   }
+  const { auth } = await import('@clerk/nextjs/server');
   const { userId } = await auth();
   return userId ?? null;
 }
@@ -32,7 +36,8 @@ type PlainHandler = (req: Request) => Promise<Response>;
 export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request) => {
     const userId = await requireUser();
-    return handler({ req, userId });
+    const context = createRequestContext(req, userId);
+    return withRequestContext(context, () => handler({ req, userId }));
   };
 }
 

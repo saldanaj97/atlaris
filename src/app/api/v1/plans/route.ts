@@ -1,11 +1,15 @@
 import { ZodError } from 'zod';
 
+import { count, eq, inArray } from 'drizzle-orm';
+
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
-import { ValidationError } from '@/lib/api/errors';
+import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { db } from '@/lib/db/drizzle';
 import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
-import { learningPlans } from '@/lib/db/schema';
+import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import type { NewLearningPlan } from '@/lib/types/db';
 import {
   CreateLearningPlanInput,
@@ -52,6 +56,54 @@ export const GET = withErrorBoundary(
   })
 );
 
+async function findCappedPlanWithoutModules(userDbId: string) {
+  const planRows = await db
+    .select({ id: learningPlans.id })
+    .from(learningPlans)
+    .where(eq(learningPlans.userId, userDbId));
+
+  if (!planRows.length) {
+    return null;
+  }
+
+  const planIds = planRows.map((row) => row.id);
+
+  const attemptAggregates = await db
+    .select({
+      planId: generationAttempts.planId,
+      count: count(generationAttempts.id).as('count'),
+    })
+    .from(generationAttempts)
+    .where(inArray(generationAttempts.planId, planIds))
+    .groupBy(generationAttempts.planId);
+
+  if (!attemptAggregates.length) {
+    return null;
+  }
+
+  const cappedPlanIds = attemptAggregates
+    .filter((row) => row.count >= ATTEMPT_CAP)
+    .map((row) => row.planId);
+
+  if (!cappedPlanIds.length) {
+    return null;
+  }
+
+  const plansWithModules = await db
+    .select({ planId: modules.planId })
+    .from(modules)
+    .where(inArray(modules.planId, cappedPlanIds))
+    .groupBy(modules.planId);
+
+  const plansWithModulesSet = new Set(
+    plansWithModules.map((row) => row.planId)
+  );
+
+  return (
+    cappedPlanIds.find((planId) => !plansWithModulesSet.has(planId)) ?? null
+  );
+}
+
 export const POST = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
     let body: CreateLearningPlanInput;
@@ -81,6 +133,13 @@ export const POST = withErrorBoundary(
       origin: body.origin,
     };
 
+    const cappedPlanId = await findCappedPlanWithoutModules(user.id);
+    if (cappedPlanId) {
+      throw new AttemptCapExceededError('attempt cap reached', {
+        planId: cappedPlanId,
+      });
+    }
+
     const [plan] = await db
       .insert(learningPlans)
       .values(insertPayload)
@@ -88,6 +147,65 @@ export const POST = withErrorBoundary(
 
     // Notes from onboarding are intentionally ignored until the schema introduces a column.
 
-    return json(plan, { status: 201 });
+    if (!plan) {
+      throw new ValidationError('Failed to create learning plan.');
+    }
+
+    const schedule =
+      typeof setImmediate === 'function'
+        ? (fn: () => void) => setImmediate(fn)
+        : (fn: () => void) => setTimeout(fn, 0);
+
+    schedule(() => {
+      runGenerationAttempt({
+        planId: plan.id,
+        userId: user.id,
+        input: {
+          topic: body.topic,
+          notes: body.notes ?? null,
+          skillLevel: body.skillLevel,
+          weeklyHours: body.weeklyHours,
+          learningStyle: body.learningStyle,
+        },
+      }).catch((error: unknown) => {
+        const code = (() => {
+          if (typeof error === 'object' && error !== null) {
+            const direct = (error as { code?: string }).code;
+            if (direct) return direct;
+
+            const cause = (error as { cause?: unknown }).cause;
+            if (typeof cause === 'object' && cause !== null) {
+              return (cause as { code?: string }).code;
+            }
+          }
+          return undefined;
+        })();
+
+        if (code === '23503') {
+          // Plan was removed before the async generation attempt could persist.
+          return;
+        }
+
+        console.error('Failed to run background generation attempt', {
+          planId: plan.id,
+          error,
+        });
+      });
+    });
+
+    return json(
+      {
+        id: plan.id,
+        topic: plan.topic,
+        skillLevel: plan.skillLevel,
+        weeklyHours: plan.weeklyHours,
+        learningStyle: plan.learningStyle,
+        visibility: plan.visibility,
+        origin: plan.origin,
+        createdAt: plan.createdAt?.toISOString(),
+        status: 'pending' as const,
+      },
+      { status: 201 }
+    );
   })
 );

@@ -195,6 +195,9 @@ export async function seedDatabase(
     console.log('✅ Database reset complete');
   }
 
+  // generation_attempts captures real AI runs; keep empty during synthetic seeding
+  await db.delete(schema.generationAttempts);
+
   console.log(
     `📊 Seeding with ${userCount} users, ${planCount} plans, ${resourceCount} resources`
   );

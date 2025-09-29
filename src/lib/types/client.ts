@@ -10,6 +10,33 @@ import type {
   TaskWithRelations,
 } from '@/lib/types/db';
 
+export type PlanStatus = 'pending' | 'ready' | 'failed';
+
+export type AttemptStatus = 'success' | 'failure';
+
+export type FailureClassification =
+  | 'validation'
+  | 'provider_error'
+  | 'rate_limit'
+  | 'timeout'
+  | 'capped';
+
+export interface ClientGenerationAttempt {
+  id: string;
+  status: AttemptStatus;
+  classification: FailureClassification | null;
+  durationMs: number;
+  modulesCount: number;
+  tasksCount: number;
+  truncatedTopic: boolean;
+  truncatedNotes: boolean;
+  normalizedEffort: boolean;
+  promptHash: string | null;
+  metadata: Record<string, unknown> | null;
+  model?: string | null;
+  createdAt: string;
+}
+
 export interface ClientResource
   extends Pick<Resource, 'id' | 'type' | 'title' | 'url' | 'durationMinutes'> {
   order: number;
@@ -45,4 +72,6 @@ export interface ClientPlanDetail
   > {
   createdAt?: string; // serialized from Date
   modules: ClientModule[];
+  status?: PlanStatus;
+  latestAttempt?: ClientGenerationAttempt | null;
 }

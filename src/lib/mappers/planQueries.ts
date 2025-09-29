@@ -1,4 +1,5 @@
 import {
+  GenerationAttempt,
   LearningPlan,
   LearningPlanDetail,
   Module,
@@ -92,8 +93,18 @@ export function mapLearningPlanDetail(params: {
   taskRows: Task[];
   progressRows: TaskProgress[];
   resourceRows: TaskResourceWithResource[];
+  latestAttempt: GenerationAttempt | null;
+  attemptsCount: number;
 }): LearningPlanDetail {
-  const { plan, moduleRows, taskRows, progressRows, resourceRows } = params;
+  const {
+    plan,
+    moduleRows,
+    taskRows,
+    progressRows,
+    resourceRows,
+    latestAttempt,
+    attemptsCount,
+  } = params;
 
   const progressByTask = new Map(progressRows.map((row) => [row.taskId, row]));
 
@@ -138,5 +149,7 @@ export function mapLearningPlanDetail(params: {
     },
     totalTasks,
     completedTasks,
+    latestAttempt,
+    attemptsCount,
   } satisfies LearningPlanDetail;
 }

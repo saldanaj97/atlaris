@@ -64,6 +64,20 @@ export const PlanDetailsCard = ({
             <Badge variant="secondary" className="uppercase">
               {formatSkillLevel(plan.skillLevel)}
             </Badge>
+            {plan.status ? (
+              <Badge
+                variant={
+                  plan.status === 'ready'
+                    ? 'default'
+                    : plan.status === 'failed'
+                      ? 'destructive'
+                      : 'outline'
+                }
+                className="uppercase"
+              >
+                {plan.status}
+              </Badge>
+            ) : null}
             <CardTitle className="text-3xl font-bold">{plan.topic}</CardTitle>
           </CardHeader>
 

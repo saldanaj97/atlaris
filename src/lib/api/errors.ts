@@ -1,9 +1,16 @@
 // Centralized error types and helpers for API layer
 
+import type { FailureClassification } from '@/lib/types/client';
+
 export class AppError extends Error {
   constructor(
     message: string,
-    public options: { status?: number; code?: string; details?: unknown } = {}
+    public options: {
+      status?: number;
+      code?: string;
+      details?: unknown;
+      classification?: FailureClassification;
+    } = {}
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -16,6 +23,9 @@ export class AppError extends Error {
   }
   details() {
     return this.options.details;
+  }
+  classification() {
+    return this.options.classification;
   }
 }
 
@@ -39,7 +49,7 @@ export class NotFoundError extends AppError {
 
 export class ValidationError extends AppError {
   constructor(message = 'Validation Failed', details?: unknown) {
-    super(message, { status: 422, code: 'VALIDATION_ERROR', details });
+    super(message, { status: 400, code: 'VALIDATION_ERROR', details });
   }
 }
 
@@ -51,16 +61,47 @@ export class ConflictError extends AppError {
 
 export class RateLimitError extends AppError {
   constructor(message = 'Too Many Requests', details?: unknown) {
-    super(message, { status: 429, code: 'RATE_LIMITED', details });
+    super(message, {
+      status: 429,
+      code: 'RATE_LIMITED',
+      details,
+      classification: 'rate_limit',
+    });
+  }
+}
+
+export class AttemptCapExceededError extends AppError {
+  constructor(
+    message = 'Maximum generation attempts exceeded',
+    details?: unknown
+  ) {
+    super(message, {
+      status: 429,
+      code: 'ATTEMPTS_CAPPED',
+      details,
+      classification: 'capped',
+    });
   }
 }
 
 export function toErrorResponse(err: unknown) {
   if (err instanceof AppError) {
-    return Response.json(
-      { error: err.message, code: err.code(), details: err.details() },
-      { status: err.status() }
-    );
+    const body: Record<string, unknown> = {
+      error: err.message,
+      code: err.code(),
+    };
+
+    const classification = err.classification();
+    if (classification) {
+      body.classification = classification;
+    }
+
+    const details = err.details();
+    if (details !== undefined) {
+      body.details = details;
+    }
+
+    return Response.json(body, { status: err.status() });
   }
   console.error('Unexpected error', err);
   return Response.json(
