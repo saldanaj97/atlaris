@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { clerkMiddleware } from '@clerk/nextjs/server';
 
 import { createRouteMatcher } from '@clerk/nextjs/server';
@@ -20,7 +18,7 @@ export default clerkMiddleware(async (auth, req) => {
   const correlationId =
     headerCorrelationId && headerCorrelationId.length
       ? headerCorrelationId
-      : randomUUID();
+      : crypto.randomUUID();
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-correlation-id', correlationId);
@@ -36,7 +34,7 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   matcher: [
     // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf| woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     // Always run for API routes
     '/(api|trpc)(.*)',
   ],
