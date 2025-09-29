@@ -43,6 +43,7 @@ next-env.d.ts
 # ide rules
 .cursor/*
 .windsurf/*
+CLAUDE.md
 
 # daily plan files
 docs/plans/*
