@@ -60,10 +60,10 @@ Outcome: Users can mark tasks complete; per-plan progress surfaced numerically.
 
 Outcome: Plans can transition from pending to ready via real AI-generated structure with fallback resilience.
 
-- [ ] Replace mock generator path with AI invocation (OpenAI or provider) returning structured modules/tasks
-- [ ] Timeout fallback → leaves plan in `pending` with retry path
-- [ ] Persist `plan_generations` entry (status, prompt, model, token counts placeholder)
-- [ ] Basic error classification (validation vs provider error vs rate limit)
+- [x] Replace mock generator path with AI invocation (OpenAI or provider) returning structured modules/tasks
+- [x] Timeout fallback → leaves plan in `pending` with retry path
+- [x] Persist `plan_generations` entry (status, prompt, model, token counts placeholder)
+- [x] Basic error classification (validation vs provider error vs rate limit)
 
 ## Day 8: Regeneration & History
 
