@@ -65,7 +65,7 @@ Outcome: Plans can transition from pending to ready via real AI-generated struct
 - [x] Persist `plan_generations` entry (status, prompt, model, token counts placeholder)
 - [x] Basic error classification (validation vs provider error vs rate limit)
 
-## Day 8: Regeneration & History
+## Day 8: Regeneration & History (push back and hold off on regeneration for now)
 
 Outcome: Users can regenerate plans; each attempt recorded with visible history and concurrency protection.
 
