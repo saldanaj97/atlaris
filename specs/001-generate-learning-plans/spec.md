@@ -1,6 +1,6 @@
 # Feature Specification: AI‑Backed Learning Plan Generation
 
-**Feature Branch**: `001-replace-the-mock`  
+**Feature Branch**: `001-generate-learning-plans`  
 **Created**: 2025-09-27  
 **Status**: Draft  
 **Input**: Replace mock generation with real AI-backed plan generator producing structured modules/tasks; transactional persistence; timeout fallback; attempt logging; error classification; no user-facing errors in core flow.

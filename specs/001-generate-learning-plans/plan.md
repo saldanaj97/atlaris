@@ -1,7 +1,7 @@
 # Implementation Plan: AI‑Backed Learning Plan Generation (Replace Mock)
 
-**Branch**: `001-replace-the-mock` | **Date**: 2025-09-27 | **Spec**: `specs/001-replace-the-mock/spec.md`
-**Input**: Feature specification from `/specs/001-replace-the-mock/spec.md`
+**Branch**: `001-generate-learning-plans` | **Date**: 2025-09-27 | **Spec**: `specs/001-generate-learning-plans/spec.md`
+**Input**: Feature specification from `/specs/001-generate-learning-plans/spec.md`
 
 ## Execution Flow (/plan command scope)
 

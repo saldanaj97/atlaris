@@ -1,6 +1,6 @@
 # Requirements Traceability Matrix: AI-Backed Learning Plan Generation
 
-**Feature Branch**: `001-replace-the-mock`  
+**Feature Branch**: `001-generate-learning-plans`  
 **Date**: 2025-01-27  
 **Purpose**: Map functional and non-functional requirements to test cases for verification coverage
 
