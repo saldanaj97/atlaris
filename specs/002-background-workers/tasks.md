@@ -6,11 +6,10 @@
 
 Legend:
 
-P = Parallelizable (different files, no direct dependency)
-T = Test task
-M = Migration/schema change
-D = Documentation
-Perf = Performance / observability
+**P** = Parallelizable (different files, no direct dependency) \
+**T** = Test task \
+**M** = Migration/schema change \
+**D** = Documentation \
 
 ---
 
@@ -22,8 +21,8 @@ Perf = Performance / observability
 
 - [x] J001 Create `jobQueue` table in `src/lib/db/schema.ts` with all columns (id, type, planId, userId, status, priority, attempts, maxAttempts, data, result, error, processingStartedAt, completedAt, createdAt, updatedAt) and indexes (M)
 - [x] J002 Generate migration file and apply to local DB via `drizzle-kit generate` and `drizzle-kit push` (M)
-- [ ] J003 [P] Create job queue service `src/lib/jobs/queue.ts` with functions: `enqueueJob()`, `getNextJob()`, `completeJob()`, `failJob()`, `getJobsByPlanId()`, `getUserJobCount()`
-- [ ] J004 [P] Create job types file `src/lib/jobs/types.ts` with JOB_TYPES constant, JobType, JobStatus, PlanGenerationJobData, PlanGenerationJobResult, Job interface
+- [x] J003 [P] Create job queue service `src/lib/jobs/queue.ts` with functions: `enqueueJob()`, `getNextJob()`, `completeJob()`, `failJob()`, `getJobsByPlanId()`, `getUserJobCount()`
+- [x] J004 [P] Create job types file `src/lib/jobs/types.ts` with JOB_TYPES constant, JobType, JobStatus, PlanGenerationJobData, PlanGenerationJobResult, Job interface
 
 ### Phase 1 Test Plan (T-Series Additions)
 
@@ -31,14 +30,14 @@ Purpose: Validate persistence, locking semantics, retry state transitions, and r
 
 Add the following tasks (do not implement until corresponding J-tasks exist):
 
-- [ ] T001 Schema integrity test (after J002): migration creates expected columns & indexes (introspect drizzle metadata / query information_schema). Fails if a required column or index missing.
-- [ ] T002 `enqueueJob()` unit/integration test: inserts row with default values (attempts=0, status=pending, priority=0, maxAttempts=3). Asserts returned ID corresponds to row.
-- [ ] T003 `getNextJob()` locking test: two parallel invocations only return same job to first caller (simulate with Promise.all). Second call gets next job or null if single job. Asserts status transitions to `processing` and `processingStartedAt` not null.
-- [ ] T004 Priority ordering test: enqueue jobs with priorities [5,0,5,10]; successive `getNextJob()` calls return priority 10 first, then 5 (earliest created first among equals), etc.
-- [ ] T005 Retry transition test: call `failJob()` for job attempts < maxAttempts; assert attempts incremented, status reset to `pending`, error stored null (or cleared) strategy defined. On final allowed attempt crossing threshold, status becomes `failed`, `completedAt` set, error message persisted.
-- [ ] T006 `completeJob()` test: sets status `completed`, persists result JSON, sets `completedAt`, does not modify attempts.
-- [ ] T007 Idempotent completion guard (optional): calling `completeJob()` twice should not corrupt state (expect first success, second no-op or error). Implement only if guard logic added.
-- [ ] T008 `getJobsByPlanId()` ordering test: returns jobs newest first by `createdAt`.
+- [x] T001 Schema integrity test (after J002): migration creates expected columns & indexes (introspect drizzle metadata / query information_schema). Fails if a required column or index missing.
+- [x] T002 `enqueueJob()` unit/integration test: inserts row with default values (attempts=0, status=pending, priority=0, maxAttempts=3). Asserts returned ID corresponds to row.
+- [x] T003 `getNextJob()` locking test: two parallel invocations only return same job to first caller (simulate with Promise.all). Second call gets next job or null if single job. Asserts status transitions to `processing` and `processingStartedAt` not null.
+- [x] T004 Priority ordering test: enqueue jobs with priorities [5,0,5,10]; successive `getNextJob()` calls return priority 10 first, then 5 (earliest created first among equals), etc.
+- [x] T005 Retry transition test: call `failJob()` for job attempts < maxAttempts; assert attempts incremented, status reset to `pending`, error stored null (or cleared) strategy defined. On final allowed attempt crossing threshold, status becomes `failed`, `completedAt` set, error message persisted.
+- [x] T006 `completeJob()` test: sets status `completed`, persists result JSON, sets `completedAt`, does not modify attempts.
+- [x] T007 Idempotent completion guard (optional): calling `completeJob()` twice should not corrupt state (expect first success, second no-op or error). Implement only if guard logic added.
+- [x] T008 `getJobsByPlanId()` ordering test: returns jobs newest first by `createdAt`.
 - [ ] T009 `getUserJobCount()` window test: create jobs over differing timestamps; count only those within supplied window.
 - [ ] T010 Negative planId/userId inputs (validation) test if input validation layer added (skip if not implemented to avoid fragile test).
 

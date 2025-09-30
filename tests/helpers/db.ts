@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import {
   generationAttempts,
+  jobQueue,
   learningPlans,
   modules,
   planGenerations,
@@ -21,6 +22,7 @@ export async function truncateAll() {
   await db.execute(sql`
     TRUNCATE TABLE
       ${generationAttempts},
+      ${jobQueue},
       ${taskResources},
       ${taskProgress},
       ${tasks},
