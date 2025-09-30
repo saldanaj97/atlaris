@@ -12,6 +12,13 @@ This file provides guidance when working with code in this repository.
 - Type checking: tsc --noEmit
 - Notable deps: @clerk/nextjs, @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, postgres, dotenv
 
+## New Code
+
+- When generating new code make sure to use TS doc comments to describe new functions and concise comments for the code in the functions.
+- If updating exisiting code, check if comments exist:
+  - If not add concise comments
+  - If they do (such as TS doc function comments) then update them only if necessary
+
 ## Rules
 
 - Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:

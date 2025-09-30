@@ -2,7 +2,7 @@
 
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { startTransition, useEffect, useRef, useState } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -13,8 +13,11 @@ interface PlanPendingStateProps {
   errorCode?: string;
 }
 
+// Polling configuration
+// Poll every 5 seconds, up to 2 times (10 seconds total) for local development
+// In production, this can be adjusted as needed
 const POLL_INTERVAL_MS = 5000; // 5 seconds
-const MAX_POLLS = 60; // 5 minutes total (60 * 5 seconds)
+const MAX_POLLS = 2; // 10 seconds total (2 * 5 seconds)
 
 export function PlanPendingState({
   planId,
@@ -34,21 +37,19 @@ export function PlanPendingState({
 
     // Start polling
     intervalRef.current = setInterval(() => {
+      // Bump poll counter first
       setPollCount((prev) => {
         const next = prev + 1;
-
-        // Stop polling if we've exceeded max polls
-        if (next >= MAX_POLLS) {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-          }
-          return next;
+        if (next >= MAX_POLLS && intervalRef.current) {
+          clearInterval(intervalRef.current);
         }
-
-        // Trigger server component re-fetch
-        router.refresh();
-
         return next;
+      });
+
+      // Trigger server component re-fetch outside of state updater
+      // Use startTransition to avoid blocking and React warning
+      startTransition(() => {
+        router.refresh();
       });
     }, POLL_INTERVAL_MS);
 
@@ -80,7 +81,6 @@ export function PlanPendingState({
                 You can try creating a new plan or contact support if the
                 problem persists.
               </p>
-              {/* TODO: Add retry mechanism in future regeneration work */}
             </div>
           </AlertDescription>
         </Alert>
