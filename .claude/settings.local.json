@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm exec:*)",
+      "Bash(psql:*)",
+      "Bash(jq:*)",
+      "Bash(cat:*)",
+      "Bash(python3:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

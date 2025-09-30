@@ -14,12 +14,14 @@ Perf = Performance / observability
 
 ---
 
+**Make sure to mark tasks as done `[x]` when completed.**
+
 ## Phase 1: Job Queue Schema & Infrastructure
 
 ### Phase 1 Features
 
-- [ ] J001 Create `jobQueue` table in `src/lib/db/schema.ts` with all columns (id, type, planId, userId, status, priority, attempts, maxAttempts, data, result, error, processingStartedAt, completedAt, createdAt, updatedAt) and indexes (M)
-- [ ] J002 Generate migration file and apply to local DB via `drizzle-kit generate` and `drizzle-kit push` (M)
+- [x] J001 Create `jobQueue` table in `src/lib/db/schema.ts` with all columns (id, type, planId, userId, status, priority, attempts, maxAttempts, data, result, error, processingStartedAt, completedAt, createdAt, updatedAt) and indexes (M)
+- [x] J002 Generate migration file and apply to local DB via `drizzle-kit generate` and `drizzle-kit push` (M)
 - [ ] J003 [P] Create job queue service `src/lib/jobs/queue.ts` with functions: `enqueueJob()`, `getNextJob()`, `completeJob()`, `failJob()`, `getJobsByPlanId()`, `getUserJobCount()`
 - [ ] J004 [P] Create job types file `src/lib/jobs/types.ts` with JOB_TYPES constant, JobType, JobStatus, PlanGenerationJobData, PlanGenerationJobResult, Job interface
 

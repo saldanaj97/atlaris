@@ -1,0 +1,2046 @@
+{
+  "id": "8fea8bbf-b160-48c2-bbf5-be5cca086d04",
+  "prevId": "644296c1-10c0-4284-9073-f1b9d178cab0",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.generation_attempts": {
+      "name": "generation_attempts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "classification": {
+          "name": "classification",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modules_count": {
+          "name": "modules_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tasks_count": {
+          "name": "tasks_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "truncated_topic": {
+          "name": "truncated_topic",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "truncated_notes": {
+          "name": "truncated_notes",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "normalized_effort": {
+          "name": "normalized_effort",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "prompt_hash": {
+          "name": "prompt_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_generation_attempts_plan_id": {
+          "name": "idx_generation_attempts_plan_id",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_generation_attempts_created_at": {
+          "name": "idx_generation_attempts_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "generation_attempts_plan_id_learning_plans_id_fk": {
+          "name": "generation_attempts_plan_id_learning_plans_id_fk",
+          "tableFrom": "generation_attempts",
+          "tableTo": "learning_plans",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "generation_attempts_select_own_plan": {
+          "name": "generation_attempts_select_own_plan",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "generation_attempts_select_service": {
+          "name": "generation_attempts_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "generation_attempts_insert_own_plan": {
+          "name": "generation_attempts_insert_own_plan",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "generation_attempts_insert_service": {
+          "name": "generation_attempts_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.job_queue": {
+      "name": "job_queue",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "job_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "job_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "max_attempts": {
+          "name": "max_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_at": {
+          "name": "locked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_by": {
+          "name": "locked_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_for": {
+          "name": "scheduled_for",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_job_queue_status_scheduled_priority": {
+          "name": "idx_job_queue_status_scheduled_priority",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scheduled_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "priority",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_user_id": {
+          "name": "idx_job_queue_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_plan_id": {
+          "name": "idx_job_queue_plan_id",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_created_at": {
+          "name": "idx_job_queue_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "job_queue_plan_id_learning_plans_id_fk": {
+          "name": "job_queue_plan_id_learning_plans_id_fk",
+          "tableFrom": "job_queue",
+          "tableTo": "learning_plans",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_queue_user_id_users_id_fk": {
+          "name": "job_queue_user_id_users_id_fk",
+          "tableFrom": "job_queue",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "job_queue_select_own": {
+          "name": "job_queue_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "job_queue_select_service": {
+          "name": "job_queue_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "job_queue_insert_own": {
+          "name": "job_queue_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "job_queue_insert_service": {
+          "name": "job_queue_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "job_queue_update_service": {
+          "name": "job_queue_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "job_queue_delete_service": {
+          "name": "job_queue_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {
+        "attempts_check": {
+          "name": "attempts_check",
+          "value": "\"job_queue\".\"attempts\" >= 0"
+        },
+        "max_attempts_check": {
+          "name": "max_attempts_check",
+          "value": "\"job_queue\".\"max_attempts\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.learning_plans": {
+      "name": "learning_plans",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "topic": {
+          "name": "topic",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skill_level": {
+          "name": "skill_level",
+          "type": "skill_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weekly_hours": {
+          "name": "weekly_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learning_style": {
+          "name": "learning_style",
+          "type": "learning_style",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deadline_date": {
+          "name": "deadline_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'private'"
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ai'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_learning_plans_user_id": {
+          "name": "idx_learning_plans_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "learning_plans_user_id_users_id_fk": {
+          "name": "learning_plans_user_id_users_id_fk",
+          "tableFrom": "learning_plans",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "learning_plans_select_public_anon": {
+          "name": "learning_plans_select_public_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "\"learning_plans\".\"visibility\" = 'public'"
+        },
+        "learning_plans_select_public_auth": {
+          "name": "learning_plans_select_public_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"learning_plans\".\"visibility\" = 'public'"
+        },
+        "learning_plans_select_own": {
+          "name": "learning_plans_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "learning_plans_select_service": {
+          "name": "learning_plans_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "learning_plans_insert_own": {
+          "name": "learning_plans_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "learning_plans_insert_service": {
+          "name": "learning_plans_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "learning_plans_update_own": {
+          "name": "learning_plans_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )",
+          "withCheck": "\"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "learning_plans_update_service": {
+          "name": "learning_plans_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "learning_plans_delete_own": {
+          "name": "learning_plans_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "learning_plans_delete_service": {
+          "name": "learning_plans_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {
+        "weekly_hours_check": {
+          "name": "weekly_hours_check",
+          "value": "\"learning_plans\".\"weekly_hours\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.modules": {
+      "name": "modules",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimated_minutes": {
+          "name": "estimated_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_modules_plan_id": {
+          "name": "idx_modules_plan_id",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_modules_plan_id_order": {
+          "name": "idx_modules_plan_id_order",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "modules_plan_id_learning_plans_id_fk": {
+          "name": "modules_plan_id_learning_plans_id_fk",
+          "tableFrom": "modules",
+          "tableTo": "learning_plans",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "modules_plan_id_order_unique": {
+          "name": "modules_plan_id_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "plan_id",
+            "order"
+          ]
+        }
+      },
+      "policies": {
+        "modules_select_public_anon": {
+          "name": "modules_select_public_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "modules_select_public_auth": {
+          "name": "modules_select_public_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "modules_select_own_plan": {
+          "name": "modules_select_own_plan",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n\n          )\n        )\n      "
+        },
+        "modules_select_service": {
+          "name": "modules_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "modules_insert_own_plan": {
+          "name": "modules_insert_own_plan",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "modules_insert_service": {
+          "name": "modules_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "modules_update_own_plan": {
+          "name": "modules_update_own_plan",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      ",
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "modules_update_service": {
+          "name": "modules_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "modules_delete_own_plan": {
+          "name": "modules_delete_own_plan",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "modules_delete_service": {
+          "name": "modules_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {
+        "order_check": {
+          "name": "order_check",
+          "value": "\"modules\".\"order\" >= 1"
+        },
+        "estimated_minutes_check": {
+          "name": "estimated_minutes_check",
+          "value": "\"modules\".\"estimated_minutes\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.plan_generations": {
+      "name": "plan_generations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parameters": {
+          "name": "parameters",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "output_summary": {
+          "name": "output_summary",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_plan_generations_plan_id": {
+          "name": "idx_plan_generations_plan_id",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "plan_generations_plan_id_learning_plans_id_fk": {
+          "name": "plan_generations_plan_id_learning_plans_id_fk",
+          "tableFrom": "plan_generations",
+          "tableTo": "learning_plans",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "plan_generations_select_own": {
+          "name": "plan_generations_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n\n          )\n        )\n      "
+        },
+        "plan_generations_select_service": {
+          "name": "plan_generations_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "plan_generations_insert_own": {
+          "name": "plan_generations_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "plan_generations_insert_service": {
+          "name": "plan_generations_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "plan_generations_update_own": {
+          "name": "plan_generations_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      ",
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.uid())\n          )\n        )\n      "
+        },
+        "plan_generations_update_service": {
+          "name": "plan_generations_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "plan_generations_delete_own": {
+          "name": "plan_generations_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "plan_generations_delete_service": {
+          "name": "plan_generations_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.resources": {
+      "name": "resources",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "type": {
+          "name": "type",
+          "type": "resource_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "author": {
+          "name": "author",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cost_cents": {
+          "name": "cost_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_resources_type": {
+          "name": "idx_resources_type",
+          "columns": [
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "resources_url_unique": {
+          "name": "resources_url_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "url"
+          ]
+        }
+      },
+      "policies": {
+        "resources_select_anon": {
+          "name": "resources_select_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "true"
+        },
+        "resources_select_auth": {
+          "name": "resources_select_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "true"
+        },
+        "resources_insert_service": {
+          "name": "resources_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "resources_update_service": {
+          "name": "resources_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "resources_delete_service": {
+          "name": "resources_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {
+        "duration_minutes_check": {
+          "name": "duration_minutes_check",
+          "value": "\"resources\".\"duration_minutes\" >= 0"
+        },
+        "cost_cents_check": {
+          "name": "cost_cents_check",
+          "value": "\"resources\".\"cost_cents\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.task_progress": {
+      "name": "task_progress",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "progress_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'not_started'"
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_task_progress_user_id": {
+          "name": "idx_task_progress_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_task_progress_task_id": {
+          "name": "idx_task_progress_task_id",
+          "columns": [
+            {
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "task_progress_task_id_tasks_id_fk": {
+          "name": "task_progress_task_id_tasks_id_fk",
+          "tableFrom": "task_progress",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_progress_user_id_users_id_fk": {
+          "name": "task_progress_user_id_users_id_fk",
+          "tableFrom": "task_progress",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "task_progress_task_id_user_id_unique": {
+          "name": "task_progress_task_id_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "task_id",
+            "user_id"
+          ]
+        }
+      },
+      "policies": {
+        "task_progress_select_own": {
+          "name": "task_progress_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"task_progress\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "task_progress_select_service": {
+          "name": "task_progress_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "task_progress_insert_own": {
+          "name": "task_progress_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        \"task_progress\".\"user_id\" IN (\n          SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n        ) AND\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n          AND (\n            \"learning_plans\".\"user_id\" IN (\n              SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n            ) OR\n            \"learning_plans\".\"visibility\" = 'public'\n          )\n        )\n      "
+        },
+        "task_progress_insert_service": {
+          "name": "task_progress_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "task_progress_update_own": {
+          "name": "task_progress_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"task_progress\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n\n      )",
+          "withCheck": "\"task_progress\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "task_progress_update_service": {
+          "name": "task_progress_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "task_progress_delete_own": {
+          "name": "task_progress_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"task_progress\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n      )"
+        },
+        "task_progress_delete_service": {
+          "name": "task_progress_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.task_resources": {
+      "name": "task_resources",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resource_id": {
+          "name": "resource_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_task_resources_task_id": {
+          "name": "idx_task_resources_task_id",
+          "columns": [
+            {
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_task_resources_resource_id": {
+          "name": "idx_task_resources_resource_id",
+          "columns": [
+            {
+              "expression": "resource_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "task_resources_task_id_tasks_id_fk": {
+          "name": "task_resources_task_id_tasks_id_fk",
+          "tableFrom": "task_resources",
+          "tableTo": "tasks",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_resources_resource_id_resources_id_fk": {
+          "name": "task_resources_resource_id_resources_id_fk",
+          "tableFrom": "task_resources",
+          "tableTo": "resources",
+          "columnsFrom": [
+            "resource_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "task_resources_task_id_resource_id_unique": {
+          "name": "task_resources_task_id_resource_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "task_id",
+            "resource_id"
+          ]
+        }
+      },
+      "policies": {
+        "task_resources_select_public_anon": {
+          "name": "task_resources_select_public_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "task_resources_select_public_auth": {
+          "name": "task_resources_select_public_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "task_resources_select_own_plan": {
+          "name": "task_resources_select_own_plan",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n\n          )\n        )\n      "
+        },
+        "task_resources_select_service": {
+          "name": "task_resources_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "task_resources_insert_own_plan": {
+          "name": "task_resources_insert_own_plan",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "task_resources_update_own_plan": {
+          "name": "task_resources_update_own_plan",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      ",
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "task_resources_delete_own_plan": {
+          "name": "task_resources_delete_own_plan",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "task_resources_insert_service": {
+          "name": "task_resources_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "task_resources_update_service": {
+          "name": "task_resources_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "task_resources_delete_service": {
+          "name": "task_resources_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {
+        "order_check": {
+          "name": "order_check",
+          "value": "\"task_resources\".\"order\" >= 1"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.tasks": {
+      "name": "tasks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "module_id": {
+          "name": "module_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estimated_minutes": {
+          "name": "estimated_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_tasks_module_id": {
+          "name": "idx_tasks_module_id",
+          "columns": [
+            {
+              "expression": "module_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_tasks_module_id_order": {
+          "name": "idx_tasks_module_id_order",
+          "columns": [
+            {
+              "expression": "module_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "tasks_module_id_modules_id_fk": {
+          "name": "tasks_module_id_modules_id_fk",
+          "tableFrom": "tasks",
+          "tableTo": "modules",
+          "columnsFrom": [
+            "module_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tasks_module_id_order_unique": {
+          "name": "tasks_module_id_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "module_id",
+            "order"
+          ]
+        }
+      },
+      "policies": {
+        "tasks_select_public_anon": {
+          "name": "tasks_select_public_anon",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "anon"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "tasks_select_public_auth": {
+          "name": "tasks_select_public_auth",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+        },
+        "tasks_select_own_plan": {
+          "name": "tasks_select_own_plan",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n\n          )\n        )\n      "
+        },
+        "tasks_select_service": {
+          "name": "tasks_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "tasks_insert_own_plan": {
+          "name": "tasks_insert_own_plan",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "tasks_insert_service": {
+          "name": "tasks_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "tasks_update_own_plan": {
+          "name": "tasks_update_own_plan",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      ",
+          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "tasks_update_service": {
+          "name": "tasks_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "tasks_delete_own_plan": {
+          "name": "tasks_delete_own_plan",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" IN (\n            SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')\n          )\n        )\n      "
+        },
+        "tasks_delete_service": {
+          "name": "tasks_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {
+        "order_check": {
+          "name": "order_check",
+          "value": "\"tasks\".\"order\" >= 1"
+        },
+        "estimated_minutes_check": {
+          "name": "estimated_minutes_check",
+          "value": "\"tasks\".\"estimated_minutes\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "clerk_user_id": {
+          "name": "clerk_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscription_tier": {
+          "name": "subscription_tier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_clerk_user_id_unique": {
+          "name": "users_clerk_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "clerk_user_id"
+          ]
+        },
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {
+        "users_select_own": {
+          "name": "users_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')"
+        },
+        "users_select_service": {
+          "name": "users_select_service",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        },
+        "users_insert_own": {
+          "name": "users_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')"
+        },
+        "users_insert_service": {
+          "name": "users_insert_service",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "service_role"
+          ],
+          "withCheck": "true"
+        },
+        "users_update_own_profile": {
+          "name": "users_update_own_profile",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')",
+          "withCheck": "\"users\".\"clerk_user_id\" = (select auth.jwt()->>'sub')"
+        },
+        "users_update_service": {
+          "name": "users_update_service",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true",
+          "withCheck": "true"
+        },
+        "users_delete_service": {
+          "name": "users_delete_service",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": [
+            "service_role"
+          ],
+          "using": "true"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

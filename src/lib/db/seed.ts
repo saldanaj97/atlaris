@@ -198,6 +198,9 @@ export async function seedDatabase(
   // generation_attempts captures real AI runs; keep empty during synthetic seeding
   await db.delete(schema.generationAttempts);
 
+  // job_queue will be seeded manually after the main seed; clear any auto-generated data
+  await db.delete(schema.jobQueue);
+
   console.log(
     `📊 Seeding with ${userCount} users, ${planCount} plans, ${resourceCount} resources`
   );
@@ -447,6 +450,11 @@ export async function seedDatabase(
         parameters: f.json(), // Temperature, max tokens, etc.
         outputSummary: f.json(), // High-level summary of what was generated
       },
+    },
+
+    // Job Queue - skip auto-generation; will be manually seeded after
+    jobQueue: {
+      count: 0,
     },
   }));
 
@@ -940,6 +948,192 @@ export async function seedDatabase(
     `✅ Inserted ~${progressRows.length} task_progress rows (deduplicated).`
   );
 
+  // Generate job queue entries
+  console.log('📋 Generating job queue entries...');
+  const plans = await db
+    .select({
+      id: schema.learningPlans.id,
+      userId: schema.learningPlans.userId,
+    })
+    .from(schema.learningPlans);
+
+  const jobRows: {
+    planId: string | null;
+    userId: string;
+    jobType: 'plan_generation';
+    status: 'pending' | 'processing' | 'completed' | 'failed';
+    priority: number;
+    attempts: number;
+    maxAttempts: number;
+    payload: unknown;
+    result: unknown;
+    error: string | null;
+    lockedAt: Date | null;
+    lockedBy: string | null;
+    scheduledFor: Date;
+    startedAt: Date | null;
+    completedAt: Date | null;
+  }[] = [];
+
+  // Create jobs for ~40% of plans with various statuses
+  const jobCount = Math.floor(planCount * 0.4);
+  const planIndices = pickRandomIndices(
+    plans.length,
+    Math.min(jobCount, plans.length),
+    (options?.seed ?? 12345) + 999
+  );
+
+  planIndices.forEach((pIdx, idx) => {
+    const plan = plans[pIdx];
+    const r = seededRandom(idx + (options?.seed ?? 12345) + 7777);
+
+    // Distribute status: 15% pending, 10% processing, 60% completed, 15% failed
+    let status: 'pending' | 'processing' | 'completed' | 'failed';
+    let attempts: number;
+    let startedAt: Date | null = null;
+    let completedAt: Date | null = null;
+    let lockedAt: Date | null = null;
+    let lockedBy: string | null = null;
+    let result: unknown = null;
+    let error: string | null = null;
+
+    if (r < 0.15) {
+      // Pending
+      status = 'pending';
+      attempts = 0;
+    } else if (r < 0.25) {
+      // Processing
+      status = 'processing';
+      attempts = Math.floor(seededRandom(idx * 31 + 1) * 2) + 1; // 1-2 attempts
+      startedAt = new Date('2025-09-29T10:00:00Z');
+      lockedAt = new Date('2025-09-29T10:00:00Z');
+      lockedBy = `worker-${Math.floor(seededRandom(idx * 17) * 5) + 1}`;
+    } else if (r < 0.85) {
+      // Completed
+      status = 'completed';
+      attempts = Math.floor(seededRandom(idx * 23 + 2) * 2) + 1; // 1-2 attempts
+      startedAt = new Date('2025-09-28T10:00:00Z');
+      completedAt = new Date('2025-09-28T10:15:00Z');
+      result = {
+        planId: plan.id,
+        modulesCount: 4 + Math.floor(seededRandom(idx * 13) * 3),
+        tasksCount: 18 + Math.floor(seededRandom(idx * 19) * 12),
+        durationMs: 12000 + Math.floor(seededRandom(idx * 29) * 8000),
+      };
+    } else {
+      // Failed
+      status = 'failed';
+      attempts = 3; // maxed out
+      startedAt = new Date('2025-09-29T08:00:00Z');
+      completedAt = new Date('2025-09-29T08:05:00Z');
+      const errorTypes = [
+        'AI provider timeout',
+        'Invalid response format',
+        'Rate limit exceeded',
+        'Validation error: topic too vague',
+        'Network error: connection refused',
+      ];
+      error =
+        errorTypes[Math.floor(seededRandom(idx * 37) * errorTypes.length)];
+    }
+
+    // Priority based on age (older jobs have higher priority in pending queue)
+    const priority =
+      status === 'pending'
+        ? Math.floor(seededRandom(idx * 41 + 3) * 10) // 0-9
+        : 0;
+
+    // Schedule time varies by status
+    let scheduledFor: Date;
+    if (status === 'pending') {
+      // Recent pending jobs
+      const hoursAgo = Math.floor(seededRandom(idx * 43) * 48); // 0-48 hours ago
+      scheduledFor = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+    } else {
+      // Older jobs
+      const daysAgo = 1 + Math.floor(seededRandom(idx * 47) * 14); // 1-14 days ago
+      scheduledFor = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+    }
+
+    jobRows.push({
+      planId: plan.id,
+      userId: plan.userId,
+      jobType: 'plan_generation',
+      status,
+      priority,
+      attempts,
+      maxAttempts: 3,
+      payload: {
+        topic: 'Learn Advanced TypeScript',
+        skillLevel: ['beginner', 'intermediate', 'advanced'][
+          Math.floor(seededRandom(idx * 53) * 3)
+        ],
+        weeklyHours: 3 + Math.floor(seededRandom(idx * 59) * 10),
+        learningStyle: ['reading', 'video', 'practice', 'mixed'][
+          Math.floor(seededRandom(idx * 61) * 4)
+        ],
+        requestId: `req_${Date.now()}_${idx}`,
+      },
+      result,
+      error,
+      lockedAt,
+      lockedBy,
+      scheduledFor,
+      startedAt,
+      completedAt,
+    });
+  });
+
+  // Also add some pending jobs without planId (jobs that haven't created plans yet)
+  const orphanJobCount = Math.floor(jobCount * 0.2);
+  for (let i = 0; i < orphanJobCount; i++) {
+    const userIdx = Math.floor(
+      seededRandom(i * 67 + (options?.seed ?? 12345)) * users.length
+    );
+    const hoursAgo = Math.floor(seededRandom(i * 71) * 24); // 0-24 hours ago
+    const scheduledFor = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+
+    jobRows.push({
+      planId: null,
+      userId: users[userIdx].id,
+      jobType: 'plan_generation',
+      status: 'pending',
+      priority: Math.floor(seededRandom(i * 73 + 5) * 10),
+      attempts: 0,
+      maxAttempts: 3,
+      payload: {
+        topic:
+          learningTopics[
+            Math.floor(seededRandom(i * 79) * learningTopics.length)
+          ],
+        skillLevel: ['beginner', 'intermediate', 'advanced'][
+          Math.floor(seededRandom(i * 83) * 3)
+        ],
+        weeklyHours: 3 + Math.floor(seededRandom(i * 89) * 10),
+        learningStyle: ['reading', 'video', 'practice', 'mixed'][
+          Math.floor(seededRandom(i * 97) * 4)
+        ],
+        requestId: `req_${Date.now()}_orphan_${i}`,
+      },
+      result: null,
+      error: null,
+      lockedAt: null,
+      lockedBy: null,
+      scheduledFor,
+      startedAt: null,
+      completedAt: null,
+    });
+  }
+
+  // Insert job queue entries in chunks
+  for (let i = 0; i < jobRows.length; i += chunkSize) {
+    const chunk = jobRows.slice(i, i + chunkSize);
+    if (chunk.length === 0) continue;
+    await db.insert(schema.jobQueue).values(chunk);
+  }
+
+  console.log(`✅ Inserted ${jobRows.length} job_queue entries.`);
+
   console.log('✅ Database seeding completed successfully!');
   console.log(`📈 Generated approximately:`);
   console.log(`   - ${userCount} users`);
@@ -949,6 +1143,7 @@ export async function seedDatabase(
   console.log(`   - ${resourceCount} resources`);
   console.log(`   - ~${progressRows.length} task progress records`);
   console.log(`   - ${Math.floor(planCount * 0.3)} plan generation records`);
+  console.log(`   - ${jobRows.length} job queue entries`);
 }
 
 /**

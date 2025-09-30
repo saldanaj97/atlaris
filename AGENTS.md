@@ -119,3 +119,7 @@ This file provides guidance when working with code in this repository.
 
 - Prefer pnpm for all commands in this repo.
 - When adding tests, introduce a runner (e.g., Vitest or Jest) and corresponding scripts in package.json (e.g., test, test:watch). Until then, test commands are intentionally omitted.
+
+## Other notes
+
+- If using a plans.md file for planning feature development phases, ensure to mark tasks as done `[x]` when completed.
