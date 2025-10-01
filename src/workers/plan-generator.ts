@@ -10,7 +10,11 @@ import {
   type ProcessPlanGenerationJobFailure,
   type ProcessPlanGenerationJobResult,
 } from '@/lib/jobs/worker-service';
-import { JOB_TYPES, type Job, type PlanGenerationJobResult } from '@/lib/jobs/types';
+import {
+  JOB_TYPES,
+  type Job,
+  type PlanGenerationJobResult,
+} from '@/lib/jobs/types';
 
 const DEFAULT_POLL_INTERVAL_MS = 2000;
 const DEFAULT_CONCURRENCY = 1;
@@ -74,7 +78,10 @@ export class PlanGenerationWorker {
   };
 
   constructor(options: PlanGenerationWorkerOptions = {}) {
-    this.pollIntervalMs = Math.max(options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS, 10);
+    this.pollIntervalMs = Math.max(
+      options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS,
+      10
+    );
     this.concurrency = Math.max(options.concurrency ?? DEFAULT_CONCURRENCY, 1);
     this.gracefulShutdownTimeoutMs = Math.max(
       options.gracefulShutdownTimeoutMs ?? DEFAULT_SHUTDOWN_TIMEOUT_MS,
@@ -320,6 +327,7 @@ export class PlanGenerationWorker {
       source: 'plan-generation-worker',
       level,
       event,
+      timestamp: new Date().toISOString(),
       ...payload,
     } satisfies Record<string, unknown>;
 
