@@ -2,14 +2,16 @@ import { ZodError } from 'zod';
 
 import { count, eq, inArray } from 'drizzle-orm';
 
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
+import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { json } from '@/lib/api/response';
 import { db } from '@/lib/db/drizzle';
 import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
+import { enqueueJob } from '@/lib/jobs/queue';
+import { JOB_TYPES, type PlanGenerationJobData } from '@/lib/jobs/types';
 import type { NewLearningPlan } from '@/lib/types/db';
 import {
   CreateLearningPlanInput,
@@ -121,6 +123,9 @@ export const POST = withErrorBoundary(
       throw new ValidationError('User record not found. Cannot create plan.');
     }
 
+    // Check rate limit before creating plan
+    await checkPlanGenerationRateLimit(user.id);
+
     const insertPayload: NewLearningPlan = {
       userId: user.id,
       topic: body.topic,
@@ -151,47 +156,15 @@ export const POST = withErrorBoundary(
       throw new ValidationError('Failed to create learning plan.');
     }
 
-    const schedule =
-      typeof setImmediate === 'function'
-        ? (fn: () => void) => setImmediate(fn)
-        : (fn: () => void) => setTimeout(fn, 0);
+    const jobData: PlanGenerationJobData = {
+      topic: body.topic,
+      notes: body.notes ?? null,
+      skillLevel: body.skillLevel,
+      weeklyHours: body.weeklyHours,
+      learningStyle: body.learningStyle,
+    };
 
-    schedule(() => {
-      runGenerationAttempt({
-        planId: plan.id,
-        userId: user.id,
-        input: {
-          topic: body.topic,
-          notes: body.notes ?? null,
-          skillLevel: body.skillLevel,
-          weeklyHours: body.weeklyHours,
-          learningStyle: body.learningStyle,
-        },
-      }).catch((error: unknown) => {
-        const code = (() => {
-          if (typeof error === 'object' && error !== null) {
-            const direct = (error as { code?: string }).code;
-            if (direct) return direct;
-
-            const cause = (error as { cause?: unknown }).cause;
-            if (typeof cause === 'object' && cause !== null) {
-              return (cause as { code?: string }).code;
-            }
-          }
-          return undefined;
-        })();
-
-        if (code === '23503') {
-          // Plan was removed before the async generation attempt could persist.
-          return;
-        }
-
-        console.error('Failed to run background generation attempt', {
-          planId: plan.id,
-          error,
-        });
-      });
-    });
+    await enqueueJob(JOB_TYPES.PLAN_GENERATION, plan.id, user.id, jobData);
 
     return json(
       {

@@ -239,18 +239,18 @@ const provider = options.provider ?? getGenerationProvider();
 
 ### Phase 3 Features
 
-- [ ] J009 [P] Create worker script `src/workers/plan-generator.ts` with `PlanGenerationWorker` class (constructor, start(), processJob(), stop() methods, polling loop, graceful shutdown)
-- [ ] J010 [P] Create worker entry point `src/workers/index.ts` (instantiate worker, start, handle SIGTERM/SIGINT)
-- [ ] J011 Add worker npm scripts to `package.json`: `dev:worker`, `worker:start`, `dev:all`
-- [ ] J012 Install dependencies: `pnpm add -D tsx concurrently`
-- [ ] J013 [P] Create worker service module `src/lib/jobs/worker-service.ts` with `processPlanGenerationJob()` function (validate job data, call orchestrator, persist modules/tasks, update plan status, handle errors)
+- [x] J009 [P] Create worker script `src/workers/plan-generator.ts` with `PlanGenerationWorker` class (constructor, start(), processJob(), stop() methods, polling loop, graceful shutdown)
+- [x] J010 [P] Create worker entry point `src/workers/index.ts` (instantiate worker, start, handle SIGTERM/SIGINT)
+- [x] J011 Add worker npm scripts to `package.json`: `dev:worker`, `worker:start`, `dev:all`
+- [x] J012 Install dependencies: `pnpm add -D tsx concurrently`
+- [x] J013 [P] Create worker service module `src/lib/jobs/worker-service.ts` with `processPlanGenerationJob()` function (validate job data, call orchestrator, persist modules/tasks, update plan status, handle errors)
 
 ### Phase 3 Test Plan
 
 Goal: Ensure worker poll loop correctness, single-flight processing, retry/backoff semantics, and graceful shutdown safety.
 
-- [ ] T030 Poll loop no-job idle test: with empty queue, worker cycles without throwing (spy on log or internal counter) for N iterations then stop.
-- [ ] T031 Single job success flow: enqueue generation job; worker processes → assertions: job status `completed`, plan status `ready`, modules/tasks persisted, job.result contains counts & duration.
+- [x] T030 Poll loop no-job idle test: with empty queue, worker cycles without throwing (spy on log or internal counter) for N iterations then stop.
+- [x] T031 Single job success flow: enqueue generation job; worker processes → assertions: job status `completed`, plan status `ready`, modules/tasks persisted, job.result contains counts & duration.
 - [ ] T032 Failure then retry: force mock provider failure once (e.g., injected provider variant) then success; expect attempts incremented, intermediate pending requeue, final completion.
 - [ ] T033 Max attempts exhausted: force repeated failure until attempts==maxAttempts; job status `failed`, plan status `failed`, no persisted modules/tasks.
 - [ ] T034 Concurrency=1 guarantee: enqueue 2 jobs; assert second does not enter `processing` until first completes (timestamps ordering).
@@ -344,19 +344,19 @@ process.on('SIGINT', () => worker.stop());
 
 ### Phase 4 Features
 
-- [ ] J014 Update POST `/api/v1/plans` route handler in `src/app/api/v1/plans/route.ts` to enqueue job instead of inline generation (remove schedule() and runGenerationAttempt() calls, add enqueueJob() call)
-- [ ] J015 [P] Create status endpoint `src/app/api/v1/plans/[id]/status/route.ts` (GET handler, fetch plan+job status, return formatted response with attempts progress)
-- [ ] J016 [P] Create rate limiting middleware `src/lib/api/rate-limit.ts` with `checkPlanGenerationRateLimit()` function (query job count, throw error if exceeded)
-- [ ] J017 Add `RateLimitError` class to `src/lib/api/errors.ts` (extends ApiError with 429 status and retryAfter field)
+- [x] J014 Update POST `/api/v1/plans` route handler in `src/app/api/v1/plans/route.ts` to enqueue job instead of inline generation (remove schedule() and runGenerationAttempt() calls, add enqueueJob() call)
+- [x] J015 [P] Create status endpoint `src/app/api/v1/plans/[id]/status/route.ts` (GET handler, fetch plan+job status, return formatted response with attempts progress)
+- [x] J016 [P] Create rate limiting middleware `src/lib/api/rate-limit.ts` with `checkPlanGenerationRateLimit()` function (query job count, throw error if exceeded)
+- [x] J017 Add `RateLimitError` class to `src/lib/api/errors.ts` (extends ApiError with 429 status and retryAfter field)
 
 ### Phase 4 Test Plan
 
 Scope: API-level contract changes from synchronous to async job initiation; status endpoint correctness; rate limiter enforcement.
 
-- [ ] T040 Plan creation enqueues job test: POST /api/v1/plans returns 201 with status 'pending' and a job row exists with matching planId.
-- [ ] T041 Status endpoint pending -> processing -> ready: simulate worker processing (or manually update job statuses) and poll endpoint; ensure mapping logic correct (processing when job status=processing, ready when plan updated + job completed); failed maps appropriately.
-- [ ] T042 Rate limit exceeded test: create N jobs >= limit within window; expect 429 with retryAfter field and no extra job inserted beyond limit.
-- [ ] T043 Malformed plan creation input test: invalid skillLevel or missing topic returns validation error without inserting job.
+- [x] T040 Plan creation enqueues job test: POST /api/v1/plans returns 201 with status 'pending' and a job row exists with matching planId.
+- [x] T041 Status endpoint pending -> processing -> ready: simulate worker processing (or manually update job statuses) and poll endpoint; ensure mapping logic correct (processing when job status=processing, ready when plan updated + job completed); failed maps appropriately.
+- [x] T042 Rate limit exceeded test: create N jobs >= limit within window; expect 429 with retryAfter field and no extra job inserted beyond limit.
+- [x] T043 Malformed plan creation input test: invalid skillLevel or missing topic returns validation error without inserting job.
 - [ ] T044 Security / ownership test (if auth context present): user A cannot fetch status of user B's plan/job (403/404); skip if auth not yet implemented.
 - [ ] T045 Idempotency (optional): rapid duplicate POST (same payload) either creates distinct jobs (documented) or prevented if dedupe introduced later; only test if dedupe logic implemented.
 

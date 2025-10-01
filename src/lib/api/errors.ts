@@ -60,13 +60,19 @@ export class ConflictError extends AppError {
 }
 
 export class RateLimitError extends AppError {
-  constructor(message = 'Too Many Requests', details?: unknown) {
+  public retryAfter?: number;
+
+  constructor(
+    message = 'Too Many Requests',
+    details?: unknown & { retryAfter?: number }
+  ) {
     super(message, {
       status: 429,
       code: 'RATE_LIMITED',
       details,
       classification: 'rate_limit',
     });
+    this.retryAfter = details?.retryAfter;
   }
 }
 
@@ -99,6 +105,11 @@ export function toErrorResponse(err: unknown) {
     const details = err.details();
     if (details !== undefined) {
       body.details = details;
+    }
+
+    // Add retryAfter for RateLimitError
+    if (err instanceof RateLimitError && err.retryAfter !== undefined) {
+      body.retryAfter = err.retryAfter;
     }
 
     return Response.json(body, { status: err.status() });
