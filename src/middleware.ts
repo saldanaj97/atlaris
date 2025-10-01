@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { clerkMiddleware } from '@clerk/nextjs/server';
 
 import { createRouteMatcher } from '@clerk/nextjs/server';
@@ -20,7 +18,7 @@ export default clerkMiddleware(async (auth, req) => {
   const correlationId =
     headerCorrelationId && headerCorrelationId.length
       ? headerCorrelationId
-      : randomUUID();
+      : crypto.randomUUID();
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-correlation-id', correlationId);
