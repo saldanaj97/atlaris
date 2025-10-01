@@ -12,7 +12,13 @@ import { setTestUser } from '../helpers/auth';
 describe('Batch Query Optimization', () => {
   describe('getModulesWithTasksByPlanIds', () => {
     it('returns empty array when given no plan IDs', async () => {
-      const result = await getModulesWithTasksByPlanIds('any-user-id', []);
+      setTestUser('batch_empty_plan_user');
+      const userId = await ensureUser({
+        clerkUserId: 'batch_empty_plan_user',
+        email: 'batch_empty_plan@example.com',
+      });
+
+      const result = await getModulesWithTasksByPlanIds(userId, []);
       expect(result).toEqual([]);
     });
 
@@ -445,7 +451,13 @@ describe('Batch Query Optimization', () => {
 
   describe('getProgressByPlanIds', () => {
     it('returns empty object when given no plan IDs', async () => {
-      const result = await getProgressByPlanIds('any-user-id', []);
+      setTestUser('progress_empty_plan_user');
+      const userId = await ensureUser({
+        clerkUserId: 'progress_empty_plan_user',
+        email: 'progress_empty_plan@example.com',
+      });
+
+      const result = await getProgressByPlanIds(userId, []);
       expect(result).toEqual({});
     });
 
