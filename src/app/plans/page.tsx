@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import { getPlanSummariesForUser, getUserByClerkId } from '@/lib/db/queries';
+import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
+import { getUserByClerkId } from '@/lib/db/queries/users';
 import type { PlanSummary } from '@/lib/types/db';
 
 export default async function PlansPage() {
