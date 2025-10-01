@@ -27,6 +27,51 @@ import { generationAttempts, learningPlans, modules, tasks } from '../schema';
 
 const ATTEMPT_CAP = Number(process.env.ATTEMPT_CAP) || 3;
 
+interface PlanErrorInfo {
+  code: string;
+  message: string;
+}
+
+/**
+ * Map a failure classification to user-facing plan error metadata.
+ */
+function mapFailureToPlanError(
+  classification: FailureClassification
+): PlanErrorInfo {
+  switch (classification) {
+    case 'rate_limit':
+      return {
+        code: 'RATE_LIMIT_EXCEEDED',
+        message:
+          'The AI service is rate limited right now. Please wait a moment and try again.',
+      } satisfies PlanErrorInfo;
+    case 'timeout':
+      return {
+        code: 'GENERATION_TIMEOUT',
+        message:
+          'The AI took too long to respond. Refresh the page or try again shortly.',
+      } satisfies PlanErrorInfo;
+    case 'validation':
+      return {
+        code: 'INVALID_GENERATION_INPUT',
+        message:
+          'We could not generate a plan with the provided details. Please review your topic and try again.',
+      } satisfies PlanErrorInfo;
+    case 'capped':
+      return {
+        code: 'ATTEMPT_LIMIT_REACHED',
+        message:
+          'This plan has reached the retry limit. Try again later or create a new plan.',
+      } satisfies PlanErrorInfo;
+    default:
+      return {
+        code: 'GENERATION_FAILED',
+        message:
+          'Something went wrong while generating your plan. Please try again.',
+      } satisfies PlanErrorInfo;
+  }
+}
+
 interface SanitizedField {
   value: string | undefined;
   truncated: boolean;
@@ -263,13 +308,32 @@ export async function startAttempt({
     .where(eq(generationAttempts.planId, planId));
 
   const capped = existingAttempts >= ATTEMPT_CAP;
+  const startedAt = nowFn();
+
+  if (!capped) {
+    const [updatedPlan] = await client
+      .update(learningPlans)
+      .set({
+        status: 'generating',
+        errorCode: null,
+        errorMessage: null,
+        errorDetails: null,
+        updatedAt: startedAt,
+      })
+      .where(eq(learningPlans.id, planId))
+      .returning({ id: learningPlans.id });
+
+    if (!updatedPlan) {
+      throw new Error('Failed to mark learning plan as generating.');
+    }
+  }
 
   return {
     planId,
     userId,
     attemptNumber: existingAttempts + 1,
     capped,
-    startedAt: nowFn(),
+    startedAt,
     sanitized,
     promptHash,
   };
@@ -380,6 +444,22 @@ export async function recordSuccess({
       throw new Error('Failed to record generation attempt.');
     }
 
+    const [updatedPlan] = await tx
+      .update(learningPlans)
+      .set({
+        status: 'ready',
+        errorCode: null,
+        errorMessage: null,
+        errorDetails: null,
+        updatedAt: finishedAt,
+      })
+      .where(eq(learningPlans.id, planId))
+      .returning({ id: learningPlans.id });
+
+    if (!updatedPlan) {
+      throw new Error('Failed to mark learning plan as ready.');
+    }
+
     return attempt;
   });
 
@@ -422,26 +502,52 @@ export async function recordFailure({
     failure: { classification, timedOut },
   });
 
-  const [attempt] = await client
-    .insert(generationAttempts)
-    .values({
-      planId,
-      status: 'failure',
-      classification,
-      durationMs: Math.max(0, Math.round(durationMs)),
-      modulesCount: 0,
-      tasksCount: 0,
-      truncatedTopic: preparation.sanitized.topic.truncated,
-      truncatedNotes: preparation.sanitized.notes.truncated ?? false,
-      normalizedEffort: false,
-      promptHash: preparation.promptHash,
-      metadata,
-    })
-    .returning();
+  const planError = mapFailureToPlanError(classification);
 
-  if (!attempt) {
-    throw new Error('Failed to record failed generation attempt.');
-  }
+  const attempt = await client.transaction(async (tx) => {
+    const [attemptRow] = await tx
+      .insert(generationAttempts)
+      .values({
+        planId,
+        status: 'failure',
+        classification,
+        durationMs: Math.max(0, Math.round(durationMs)),
+        modulesCount: 0,
+        tasksCount: 0,
+        truncatedTopic: preparation.sanitized.topic.truncated,
+        truncatedNotes: preparation.sanitized.notes.truncated ?? false,
+        normalizedEffort: false,
+        promptHash: preparation.promptHash,
+        metadata,
+      })
+      .returning();
+
+    if (!attemptRow) {
+      throw new Error('Failed to record failed generation attempt.');
+    }
+
+    const [updatedPlan] = await tx
+      .update(learningPlans)
+      .set({
+        status: 'failed',
+        errorCode: planError.code,
+        errorMessage: planError.message,
+        errorDetails: {
+          classification,
+          timedOut: Boolean(timedOut),
+          attemptNumber: preparation.attemptNumber,
+        },
+        updatedAt: finishedAt,
+      })
+      .where(eq(learningPlans.id, planId))
+      .returning({ id: learningPlans.id });
+
+    if (!updatedPlan) {
+      throw new Error('Failed to mark learning plan as failed.');
+    }
+
+    return attemptRow;
+  });
 
   trackAttemptFailure(attempt);
 
