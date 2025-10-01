@@ -78,10 +78,10 @@ Outcome: Users can regenerate plans; each attempt recorded with visible history 
 
 Outcome: User flow feels reliable with consistent states, reduced errors, and basic performance safeguards.
 
-- [ ] Consistent loading + retry states (plan pending, generation error)
-- [ ] Structured error responses (code + message) surfaced in UI
-- [ ] Minimal analytics/log hooks (console or simple table) for: plan created, generation started, generation completed/failed
-- [ ] Performance sanity: avoid N+1 queries (batch fetch modules/tasks)
+- [x] Consistent loading + retry states (plan pending, generation error)
+- [x] Structured error responses (code + message) surfaced in UI
+- [x] Minimal analytics/log hooks (console or simple table) for: plan created, generation started, generation completed/failed
+- [x] Performance sanity: avoid N+1 queries (batch fetch modules/tasks)
 
 ## Day 10: Notion Export (One-Way)
 

@@ -12,7 +12,7 @@ This file provides guidance when working with code in this repository.
 - Type checking: tsc --noEmit
 - Notable deps: @clerk/nextjs, @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, postgres, dotenv
 
-## Rules
+## Rules/References
 
 - Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:
   - src/app/\*\*/\*.tsx
@@ -22,6 +22,32 @@ This file provides guidance when working with code in this repository.
   - src/hooks/\*\*/\*.ts
   - src/hooks/\*\*/\*.tsx
 - AGAIN, MAKE SURE TO ONLY APPLY THAT RULE IF THE FILE MATCHES A PATTERN FROM THE LIST!
+
+- When writing commit messages, follow the structure and guidelines outline in the .github/instructions/commit-message.instructions.md file. Below is a summary of the structure but make sure to read the full instructions in that file.
+
+### Commit Message Format
+
+Follow this structured format for all commit messages:
+
+```
+<type>: <short summary (50 chars max)>
+<blank line>
+<detailed description explaining the what and why>
+<continuation of description if needed>
+<blank line>
+Changes:
+- <bullet point of changes>
+- <bullet point of changes>
+- <bullet point of changes>
+<blank line>
+New files:
+- <path to new file>
+- <path to new file>
+<blank line>
+Tests cover:
+- <test description with test ID if applicable>
+- <test description with test ID if applicable>
+```
 
 ## Common commands
 
@@ -43,7 +69,8 @@ This file provides guidance when working with code in this repository.
   - Generate migrations from schema: pnpm exec drizzle-kit generate
   - Apply migrations: pnpm exec drizzle-kit push
 - Tests
-  - No test runner or test scripts are currently configured in package.json. As of now, there is no single-test command.
+  - pnpm test
+  - pnpm test:watch
 
 ## Project structure and architecture
 
@@ -123,3 +150,7 @@ This file provides guidance when working with code in this repository.
 ## Other notes
 
 - If using a plans.md file for planning feature development phases, ensure to mark tasks as done `[x]` when completed.
+
+```
+
+```

@@ -444,18 +444,23 @@ export class RateLimitError extends ApiError {
 
 ### Phase 5 Features
 
-- [ ] J018 [P] Create status polling hook `src/hooks/usePlanStatus.ts` (polls status endpoint every 3s, updates state, stops polling when complete/failed)
-- [ ] J019 [P] Update plan details page `src/app/plans/[id]/page.tsx` to enable polling for pending/processing plans (add shouldPoll flag, pass to PlanDetails component)
-- [ ] J020 [P] Enhance pending state component `src/components/plans/PlanPendingState.tsx` with usePlanStatus hook (show processing vs pending, display attempt progress, auto-refresh on ready, show error on failed)
-- [ ] J021 [P] Update onboarding form `src/components/plans/OnboardingForm.tsx` success toast message to "Generating your learning plan..." (line 196)
+- [x] J018 [P] Create status polling hook `src/hooks/usePlanStatus.ts` (polls status endpoint every 3s, updates state, stops polling when complete/failed)
+- [x] J019 [P] Update plan details page `src/app/plans/[id]/page.tsx` to enable polling for pending/processing plans (add shouldPoll flag, pass to PlanDetails component)
+- [x] J020 [P] Enhance pending state component `src/components/plans/PlanPendingState.tsx` with usePlanStatus hook (show processing vs pending, display attempt progress, auto-refresh on ready, show error on failed)
+- [x] J021 [P] Update onboarding form `src/components/plans/OnboardingForm.tsx` success toast message to "Generating your learning plan..." (line 196)
 
 ### Phase 5 Test Plan (Non-UI Programmatic Only)
 
 Per request, defer UI/Playwright; limit to hook logic in isolation.
 
-- [ ] T050 `usePlanStatus` hook polling logic unit test (React Testing Library or lightweight mock): given mock fetch sequence pending→processing→ready, ensures state transitions and polling stops after terminal state.
-- [ ] T051 Error propagation test: mock fetch returns failed status with error string; hook sets error and stops polling.
-- [ ] T052 No polling for initial ready/failed: initialStatus ready triggers no network calls (spy on fetch). Pending triggers calls.
+- [x] T050 `usePlanStatus` hook polling logic unit test (React Testing Library or lightweight mock): given mock fetch sequence pending→processing→ready, ensures state transitions and polling stops after terminal state.
+- [x] T051 Error propagation test: mock fetch returns failed status with error string; hook sets error and stops polling.
+- [x] T052 No polling for initial ready/failed: initialStatus ready triggers no network calls (spy on fetch). Pending triggers calls.
+
+Implementation notes:
+
+- Tests live in `tests/unit/usePlanStatus.test.tsx` and use Vitest fake timers to drive 3s polling ticks deterministically.
+- Updated Vitest include pattern to discover `.tsx` tests: `vitest.config.ts:23`.
 
 Exit Gate: T050 mandatory to ensure no runaway polling; T051–T052 recommended.
 
@@ -527,21 +532,21 @@ After plan creation (line 195-197):
 
 ### Phase 6 Features
 
-- [ ] J022 [P] Add monitoring queries to `src/lib/db/queries.ts`: `getFailedJobs()`, `getJobStats()`, `cleanupOldJobs()` (Perf)
-- [ ] J023 Add structured logging to worker `src/workers/plan-generator.ts` (log startup/shutdown, job started/completed/failed, polling cycles, errors) (Perf)
-- [ ] J024 [P] Create health check endpoint `src/app/api/health/worker/route.ts` (GET handler, check stuck jobs, check backlog, return 200 or 503) (Perf)
+- [x] J022 [P] Add monitoring queries to `src/lib/db/queries.ts`: `getFailedJobs()`, `getJobStats()`, `cleanupOldJobs()` (Perf)
+- [x] J023 Add structured logging to worker `src/workers/plan-generator.ts` (log startup/shutdown, job started/completed/failed, polling cycles, errors) (Perf)
+- [x] J024 [P] Create health check endpoint `src/app/api/health/worker/route.ts` (GET handler, check stuck jobs, check backlog, return 200 or 503) (Perf)
 
 ### Phase 6 Test Plan
 
 Target: Reliability & monitoring functionality correctness without external observability platform.
 
-- [ ] T060 Monitoring queries test: create synthetic jobs (mix of statuses, varied durations). Assert `getJobStats()` returns correct counts, average processing time within tolerance, failure rate accurate.
-- [ ] T061 Failed jobs retrieval test: `getFailedJobs(limit)` returns most recent failures limited to requested count and includes error messages.
-- [ ] T062 Cleanup test: mark several old completed/failed jobs older than threshold; run `cleanupOldJobs()`; assert those rows removed while newer remain.
-- [ ] T063 Logging shape test: capture console output during one job lifecycle; parse JSON lines ensure required keys (event, jobId, planId, attempt) present; skip content assertions too brittle.
-- [ ] T064 Health endpoint healthy: with queue under thresholds, returns 200 and expected stats fields.
-- [ ] T065 Health endpoint unhealthy (stuck job): create job with status processing and processingStartedAt older than threshold; endpoint returns 503 with reason code.
-- [ ] T066 Health endpoint backlog: enqueue > threshold pending jobs; returns 503 backlog condition.
+- [x] T060 Monitoring queries test: create synthetic jobs (mix of statuses, varied durations). Assert `getJobStats()` returns correct counts, average processing time within tolerance, failure rate accurate.
+- [x] T061 Failed jobs retrieval test: `getFailedJobs(limit)` returns most recent failures limited to requested count and includes error messages.
+- [x] T062 Cleanup test: mark several old completed/failed jobs older than threshold; run `cleanupOldJobs()`; assert those rows removed while newer remain.
+- [x] T063 Logging shape test: capture console output during one job lifecycle; parse JSON lines ensure required keys (event, jobId, planId, attempt) present; skip content assertions too brittle.
+- [x] T064 Health endpoint healthy: with queue under thresholds, returns 200 and expected stats fields.
+- [x] T065 Health endpoint unhealthy (stuck job): create job with status processing and processingStartedAt older than threshold; endpoint returns 503 with reason code.
+- [x] T066 Health endpoint backlog: enqueue > threshold pending jobs; returns 503 backlog condition.
 
 Exit Gate: T060–T062, T064–T066 core; logging test T063 optional (depending on log format stability).
 
