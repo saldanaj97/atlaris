@@ -12,7 +12,7 @@ This file provides guidance when working with code in this repository.
 - Type checking: tsc --noEmit
 - Notable deps: @clerk/nextjs, @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, postgres, dotenv
 
-## Rules/References
+## Important Rules/References(read before coding or committing)
 
 - Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:
   - src/app/\*\*/\*.tsx
@@ -24,6 +24,7 @@ This file provides guidance when working with code in this repository.
 - AGAIN, MAKE SURE TO ONLY APPLY THAT RULE IF THE FILE MATCHES A PATTERN FROM THE LIST!
 
 - When writing commit messages, follow the structure and guidelines outline in the .github/instructions/commit-message.instructions.md file. Below is a summary of the structure but make sure to read the full instructions in that file.
+- When commiting, make sure to only stage and commit files that were discussed and modified as part of the task at hand. Do not include unrelated files or changes in the commit.
 
 ### Commit Message Format
 

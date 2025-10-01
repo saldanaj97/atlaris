@@ -1,5 +1,11 @@
 # Commit Message Instructions
 
+## Purpose
+Clear, consistent commit messages improve project maintainability and collaboration. This guide outlines a structured format to ensure all commits are informative and standardized.
+
+# Rules
+Make sure unless specified otherwise, to only stage and commit files that were discussed and modified as part of the task at hand. Do not include unrelated files or changes in the commit.
+
 ## Format
 
 Follow this structured format for all commit messages:
