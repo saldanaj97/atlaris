@@ -251,10 +251,10 @@ Goal: Ensure worker poll loop correctness, single-flight processing, retry/backo
 
 - [x] T030 Poll loop no-job idle test: with empty queue, worker cycles without throwing (spy on log or internal counter) for N iterations then stop.
 - [x] T031 Single job success flow: enqueue generation job; worker processes → assertions: job status `completed`, plan status `ready`, modules/tasks persisted, job.result contains counts & duration.
-- [ ] T032 Failure then retry: force mock provider failure once (e.g., injected provider variant) then success; expect attempts incremented, intermediate pending requeue, final completion.
-- [ ] T033 Max attempts exhausted: force repeated failure until attempts==maxAttempts; job status `failed`, plan status `failed`, no persisted modules/tasks.
-- [ ] T034 Concurrency=1 guarantee: enqueue 2 jobs; assert second does not enter `processing` until first completes (timestamps ordering).
-- [ ] T035 Graceful shutdown in-flight: start processing long-running job, call `stop()`; ensure worker waits (or abort policy defined) and job ends in consistent terminal state (completed or failed) with no status left `processing`.
+- [x] T032 Failure then retry: force mock provider failure once (e.g., injected provider variant) then success; expect attempts incremented, intermediate pending requeue, final completion.
+- [x] T033 Max attempts exhausted: force repeated failure until attempts==maxAttempts; job status `failed`, plan status `failed`, no persisted modules/tasks.
+- [x] T034 Concurrency=1 guarantee: enqueue 2 jobs; assert second does not enter `processing` until first completes (timestamps ordering).
+- [x] T035 Graceful shutdown in-flight: start processing long-running job, call `stop()`; ensure worker waits (or abort policy defined) and job ends in consistent terminal state (completed or failed) with no status left `processing`.
 - [ ] T036 Data validation failure path: supply malformed job.data; expect immediate fail handling without crash; plan marked failed.
 - [ ] T037 Idempotent pickup guard (race simulation): manually set same job to pending and concurrently call internal fetch twice (simulate via direct function) — only one transition to `processing` (reuse Phase 1 locking logic; skip if already proven and would duplicate logic).
 

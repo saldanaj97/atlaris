@@ -135,9 +135,14 @@ export async function completeJob(
   });
 }
 
+export interface FailJobOptions {
+  retryable?: boolean;
+}
+
 export async function failJob(
   jobId: string,
-  error: string
+  error: string,
+  options: FailJobOptions = {}
 ): Promise<Job | null> {
   return db.transaction(async (tx) => {
     const current = await tx.query.jobQueue.findFirst({
@@ -154,18 +159,32 @@ export async function failJob(
 
     const nextAttempts = current.attempts + 1;
     const now = new Date();
-    const isTerminal = nextAttempts >= current.maxAttempts;
+    const reachedMaxAttempts = nextAttempts >= current.maxAttempts;
+    const shouldRetry = options.retryable ?? !reachedMaxAttempts;
+
+    const updatePayload = shouldRetry
+      ? {
+          attempts: nextAttempts,
+          status: 'pending' as const,
+          error: null,
+          result: null,
+          completedAt: null,
+          startedAt: null,
+          updatedAt: now,
+        }
+      : {
+          attempts: nextAttempts,
+          status: 'failed' as const,
+          error,
+          result: null,
+          completedAt: now,
+          startedAt: null,
+          updatedAt: now,
+        };
 
     const [updated] = await tx
       .update(jobQueue)
-      .set({
-        attempts: nextAttempts,
-        status: isTerminal ? 'failed' : 'pending',
-        error: isTerminal ? error : null,
-        completedAt: isTerminal ? now : null,
-        startedAt: null,
-        updatedAt: now,
-      })
+      .set(updatePayload)
       .where(eq(jobQueue.id, jobId))
       .returning();
 

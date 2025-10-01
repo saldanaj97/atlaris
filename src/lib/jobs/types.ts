@@ -1,3 +1,5 @@
+import type { ProviderMetadata } from '@/lib/ai/provider';
+
 export const JOB_TYPES = {
   PLAN_GENERATION: 'plan_generation',
 } as const;
@@ -18,6 +20,10 @@ export interface PlanGenerationJobResult {
   modulesCount: number;
   tasksCount: number;
   durationMs: number;
+  metadata?: {
+    provider: ProviderMetadata | null;
+    attemptId: string;
+  };
 }
 
 export interface Job {
