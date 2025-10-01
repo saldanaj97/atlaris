@@ -12,7 +12,7 @@ import { setTestUser } from '../helpers/auth';
 describe('Batch Query Optimization', () => {
   describe('getModulesWithTasksByPlanIds', () => {
     it('returns empty array when given no plan IDs', async () => {
-      const result = await getModulesWithTasksByPlanIds([]);
+      const result = await getModulesWithTasksByPlanIds('any-user-id', []);
       expect(result).toEqual([]);
     });
 
@@ -80,7 +80,7 @@ describe('Batch Query Optimization', () => {
         },
       ]);
 
-      const result = await getModulesWithTasksByPlanIds([plan.id]);
+      const result = await getModulesWithTasksByPlanIds(userId, [plan.id]);
 
       expect(result).toHaveLength(2);
       expect(result[0].title).toBe('Module 1');
@@ -172,7 +172,7 @@ describe('Batch Query Optimization', () => {
       ]);
 
       const planIds = plans.map((p) => p.id);
-      const result = await getModulesWithTasksByPlanIds(planIds);
+      const result = await getModulesWithTasksByPlanIds(userId, planIds);
 
       expect(result).toHaveLength(3);
 
@@ -250,7 +250,7 @@ describe('Batch Query Optimization', () => {
         },
       ]);
 
-      const result = await getModulesWithTasksByPlanIds([plan.id]);
+      const result = await getModulesWithTasksByPlanIds(userId, [plan.id]);
 
       expect(result).toHaveLength(3);
       expect(result[0].order).toBe(1);
@@ -282,7 +282,7 @@ describe('Batch Query Optimization', () => {
         })
         .returning();
 
-      const result = await getModulesWithTasksByPlanIds([plan.id]);
+      const result = await getModulesWithTasksByPlanIds(userId, [plan.id]);
       expect(result).toEqual([]);
     });
 
@@ -314,7 +314,7 @@ describe('Batch Query Optimization', () => {
         estimatedMinutes: 60,
       });
 
-      const result = await getModulesWithTasksByPlanIds([plan.id]);
+      const result = await getModulesWithTasksByPlanIds(userId, [plan.id]);
 
       expect(result).toHaveLength(1);
       expect(result[0].tasks).toEqual([]);
@@ -384,7 +384,7 @@ describe('Batch Query Optimization', () => {
         },
       ]);
 
-      const result = await getModulesWithTasksByPlanIds([plan.id]);
+      const result = await getModulesWithTasksByPlanIds(userId, [plan.id]);
 
       expect(result).toHaveLength(2);
 
@@ -399,6 +399,47 @@ describe('Batch Query Optimization', () => {
         'Task A2',
       ]);
       expect(moduleB?.tasks.map((t) => t.title)).toEqual(['Task B1']);
+    });
+
+    it('does not return modules for plans owned by another user', async () => {
+      setTestUser('batch_requesting_user');
+      const requestingUserId = await ensureUser({
+        clerkUserId: 'batch_requesting_user',
+        email: 'batch_requesting@example.com',
+      });
+
+      setTestUser('batch_other_owner');
+      const otherUserId = await ensureUser({
+        clerkUserId: 'batch_other_owner',
+        email: 'batch_other_owner@example.com',
+      });
+
+      const [otherPlan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: otherUserId,
+          topic: 'Private Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 4,
+          learningStyle: 'reading',
+          visibility: 'private',
+          origin: 'ai',
+        })
+        .returning();
+
+      await db.insert(modules).values({
+        planId: otherPlan.id,
+        order: 1,
+        title: 'Hidden Module',
+        description: 'Should not be visible',
+        estimatedMinutes: 30,
+      });
+
+      const result = await getModulesWithTasksByPlanIds(requestingUserId, [
+        otherPlan.id,
+      ]);
+
+      expect(result).toEqual([]);
     });
   });
 
@@ -753,6 +794,65 @@ describe('Batch Query Optimization', () => {
       const result = await getProgressByPlanIds(userId, [plan.id]);
 
       expect(result[plan.id]).toEqual({ completed: 0, total: 0 });
+    });
+
+    it('does not include progress for plans owned by another user', async () => {
+      setTestUser('progress_requesting_user');
+      const requestingUserId = await ensureUser({
+        clerkUserId: 'progress_requesting_user',
+        email: 'progress_requesting@example.com',
+      });
+
+      setTestUser('progress_other_owner');
+      const otherUserId = await ensureUser({
+        clerkUserId: 'progress_other_owner',
+        email: 'progress_other_owner@example.com',
+      });
+
+      const [otherPlan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: otherUserId,
+          topic: 'Hidden Progress Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'reading',
+          visibility: 'private',
+          origin: 'ai',
+        })
+        .returning();
+
+      const [module] = await db
+        .insert(modules)
+        .values({
+          planId: otherPlan.id,
+          order: 1,
+          title: 'Hidden Module',
+          description: 'Should not be visible',
+          estimatedMinutes: 30,
+        })
+        .returning();
+
+      const [task] = await db
+        .insert(tasks)
+        .values({
+          moduleId: module.id,
+          order: 1,
+          title: 'Hidden Task',
+          description: 'Should not be visible',
+          estimatedMinutes: 15,
+        })
+        .returning();
+
+      await db.insert(taskProgress).values({
+        userId: otherUserId,
+        taskId: task.id,
+        status: 'completed',
+      });
+
+      const result = await getProgressByPlanIds(requestingUserId, [otherPlan.id]);
+
+      expect(result).toEqual({});
     });
 
     it('isolates progress calculation per user', async () => {
