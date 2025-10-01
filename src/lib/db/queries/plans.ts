@@ -238,10 +238,14 @@ export async function getPlanAttemptsForUser(planId: string, userId: string) {
 /**
  * Batch fetch modules with their tasks for multiple plans.
  * Prevents N+1 queries when displaying multiple plans.
+ * @param userId - User ID requesting the data, used to enforce plan ownership
  * @param planIds - Array of plan IDs to fetch modules and tasks for
  * @returns Array of modules with their nested tasks
  */
-export async function getModulesWithTasksByPlanIds(planIds: string[]): Promise<
+export async function getModulesWithTasksByPlanIds(
+  userId: string,
+  planIds: string[]
+): Promise<
   Array<{
     id: string;
     planId: string;
@@ -267,11 +271,27 @@ export async function getModulesWithTasksByPlanIds(planIds: string[]): Promise<
     return [];
   }
 
+  const accessiblePlans = await db
+    .select({ id: learningPlans.id })
+    .from(learningPlans)
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        inArray(learningPlans.id, planIds)
+      )
+    );
+
+  if (!accessiblePlans.length) {
+    return [];
+  }
+
+  const accessiblePlanIds = accessiblePlans.map((plan) => plan.id);
+
   // Fetch all modules for all plans in a single query
   const moduleRows = await db
     .select()
     .from(modules)
-    .where(inArray(modules.planId, planIds))
+    .where(inArray(modules.planId, accessiblePlanIds))
     .orderBy(asc(modules.order));
 
   if (!moduleRows.length) {
@@ -309,7 +329,7 @@ export async function getModulesWithTasksByPlanIds(planIds: string[]): Promise<
 /**
  * Batch fetch progress aggregated by plan ID for multiple plans.
  * Prevents N+1 queries when displaying plan lists with progress.
- * @param userId - User ID to fetch progress for
+ * @param userId - User ID to fetch progress for (only their plans are returned)
  * @param planIds - Array of plan IDs to fetch progress for
  * @returns Object mapping plan ID to progress stats (completed count and total count)
  */
@@ -321,14 +341,30 @@ export async function getProgressByPlanIds(
     return {};
   }
 
+  const accessiblePlans = await db
+    .select({ id: learningPlans.id })
+    .from(learningPlans)
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        inArray(learningPlans.id, planIds)
+      )
+    );
+
+  const accessiblePlanIds = accessiblePlans.map((plan) => plan.id);
+
+  if (!accessiblePlanIds.length) {
+    return {};
+  }
+
   // Fetch all modules for these plans
   const moduleRows = await db
     .select({ id: modules.id, planId: modules.planId })
     .from(modules)
-    .where(inArray(modules.planId, planIds));
+    .where(inArray(modules.planId, accessiblePlanIds));
 
   if (!moduleRows.length) {
-    return planIds.reduce(
+    return accessiblePlanIds.reduce(
       (acc, planId) => {
         acc[planId] = { completed: 0, total: 0 };
         return acc;
@@ -346,7 +382,7 @@ export async function getProgressByPlanIds(
     .where(inArray(tasks.moduleId, moduleIds));
 
   if (!taskRows.length) {
-    return planIds.reduce(
+    return accessiblePlanIds.reduce(
       (acc, planId) => {
         acc[planId] = { completed: 0, total: 0 };
         return acc;
@@ -379,7 +415,7 @@ export async function getProgressByPlanIds(
   // Initialize progress object with all plan IDs
   const progressByPlanId: Record<string, { completed: number; total: number }> =
     {};
-  for (const planId of planIds) {
+  for (const planId of accessiblePlanIds) {
     progressByPlanId[planId] = { completed: 0, total: 0 };
   }
 
