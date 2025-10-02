@@ -62,6 +62,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    environment: test
     timeout-minutes: 15
 
     steps:
@@ -93,10 +94,28 @@ jobs:
       - name: Apply migrations and seed test data
         run: supabase db reset
 
+      - name: Create .env.test from GitHub environment
+        run: |
+          cat > .env.test << EOF
+          NODE_ENV=${{ vars.NODE_ENV }}
+          DATABASE_URL=${{ vars.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_JWT_SECRET=${{ vars.TEST_JWT_SECRET }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_ISSUER=${{ secrets.CLERK_ISSUER }}
+          DEV_CLERK_USER_ID=${{ vars.DEV_CLERK_USER_ID }}
+          DEV_CLERK_USER_EMAIL=${{ vars.DEV_CLERK_USER_EMAIL }}
+          DEV_CLERK_USER_NAME=${{ vars.DEV_CLERK_USER_NAME }}
+          AI_PROVIDER=${{ vars.AI_PROVIDER }}
+          MOCK_GENERATION_DELAY_MS=${{ vars.MOCK_GENERATION_DELAY_MS }}
+          MOCK_GENERATION_FAILURE_RATE=${{ vars.MOCK_GENERATION_FAILURE_RATE }}
+          EOF
+
       - name: Run test suite
         run: pnpm test
-        env:
-          NODE_ENV: test
 
       - name: Stop Supabase
         if: always()
@@ -113,6 +132,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    environment: test
     timeout-minutes: 10
 
     steps:
@@ -136,13 +156,11 @@ jobs:
       - name: Build Next.js app
         run: pnpm build
         env:
-          # These are required for the build to succeed
-          # Use dummy values for CI (not used at build time)
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_dummy
-          CLERK_SECRET_KEY: sk_test_dummy
-          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: dummy-key
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
 
   all-checks:
     name: All Checks Passed
