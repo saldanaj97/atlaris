@@ -143,15 +143,21 @@ Tests cover:
   - Topic search indexing can be added later
   - Billing tables arrive with Stripe integration; exports/integrations (Notion/Google) are out of scope for MVP
 
+## Testing
+
+- Detailed information in the docs/testing/testing.md file. Use this as your main reference for testing-related tasks.
+- Always update the docs/testing/testing.md file with any new information or changes related to testing.
+- Framework: Vitest with @testing-library/react and @testing-library/jest-dom
+- Test files: _.spec.ts, _.spec.tsx under src/ and tests/ directories
+- Test commands:
+  - pnpm test (full test suite)
+  - pnpm test:vitest (all Vitest tests)
+  - pnpm test:watch (watch mode)
+
 ## Notes for future tasks
 
 - Prefer pnpm for all commands in this repo.
-- When adding tests, introduce a runner (e.g., Vitest or Jest) and corresponding scripts in package.json (e.g., test, test:watch). Until then, test commands are intentionally omitted.
 
 ## Other notes
 
 - If using a plans.md file for planning feature development phases, ensure to mark tasks as done `[x]` when completed.
-
-```
-
-```

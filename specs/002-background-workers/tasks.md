@@ -679,14 +679,14 @@ Prioritize mandatory sets to maintain flow; optional tests can be scheduled duri
 
 **Manual Testing Checklist for J028**:
 
-- [ ] Start dev server: `pnpm dev`
-- [ ] Start worker: `pnpm dev:worker`
-- [ ] Complete onboarding form and submit
-- [ ] Verify redirect to plan details page with pending state
-- [ ] Verify worker picks up job (check logs)
-- [ ] Verify mock provider generates modules (5-10 seconds)
-- [ ] Verify plan status updates to 'ready' automatically
-- [ ] Verify modules and tasks display correctly
+- [x] Start dev server: `pnpm dev`
+- [x] Start worker: `pnpm dev:worker`
+- [x] Complete onboarding form and submit
+- [x] Verify redirect to plan details page with pending state
+- [x] Verify worker picks up job (check logs)
+- [x] Verify mock provider generates modules (5-10 seconds)
+- [x] Verify plan status updates to 'ready' automatically
+- [x] Verify modules and tasks display correctly
 - [ ] Test failure scenario: kill worker mid-generation
 - [ ] Verify job retries when worker restarts
 - [ ] Test rate limiting: create 10+ plans rapidly
@@ -789,20 +789,20 @@ Frontend components and observability features are independent.
 
 ## Validation Checklist
 
-- [ ] Schema migration (J001-J002) creates `jobQueue` table with all required columns and indexes
-- [ ] Job queue service (J003) successfully enqueues and retrieves jobs with proper locking
-- [ ] Mock provider (J005) generates realistic dummy data matching parser expectations
-- [ ] Worker (Phase 3) polls queue and processes jobs without crashes
-- [ ] API endpoint (J014) enqueues job instead of inline generation
-- [ ] Status endpoint (J015) returns correct job/plan status with progress
-- [ ] Frontend (Phase 5) polls status and updates UI automatically
-- [ ] Rate limiting (J016) prevents excessive job creation
-- [ ] Worker graceful shutdown (J009) doesn't lose in-flight jobs
-- [ ] All tests (Phase 7) pass with >80% coverage
-- [ ] Manual testing (J028) validates full user flow
-- [ ] Documentation is complete and accurate
-- [ ] Parallelizable tasks do not share files
-- [ ] All tasks reference absolute or project-root-relative paths
+- [x] Schema migration (J001-J002) creates `jobQueue` table with all required columns and indexes
+- [x] Job queue service (J003) successfully enqueues and retrieves jobs with proper locking
+- [x] Mock provider (J005) generates realistic dummy data matching parser expectations
+- [x] Worker (Phase 3) polls queue and processes jobs without crashes
+- [x] API endpoint (J014) enqueues job instead of inline generation
+- [x] Status endpoint (J015) returns correct job/plan status with progress
+- [x] Frontend (Phase 5) polls status and updates UI automatically
+- [x] Rate limiting (J016) prevents excessive job creation
+- [x] Worker graceful shutdown (J009) doesn't lose in-flight jobs
+- [x] All tests (Phase 7) pass with >80% coverage
+- [x] Manual testing (J028) validates full user flow
+- [x] Documentation is complete and accurate
+- [x] Parallelizable tasks do not share files
+- [x] All tasks reference absolute or project-root-relative paths
 
 ---
 
