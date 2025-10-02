@@ -2,7 +2,7 @@ import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { db } from '@/lib/db/drizzle';
-import { getUserByClerkId } from '@/lib/db/queries';
+import { getUserByClerkId } from '@/lib/db/queries/users';
 import { learningPlans, modules } from '@/lib/db/schema';
 import { getJobsByPlanId } from '@/lib/jobs/queue';
 import { eq } from 'drizzle-orm';
