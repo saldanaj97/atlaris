@@ -611,19 +611,19 @@ Log key events:
 
 ### Phase 7 Features
 
-- [ ] J025 (T) Create job queue tests `src/lib/jobs/__tests__/queue.test.ts` (test enqueueJob, getNextJob locking, completeJob, failJob retry logic, rate limiting)
-- [ ] J026 (T) Create worker tests `src/workers/__tests__/plan-generator.test.ts` (test polling, job processing, failures+retries, concurrency, graceful shutdown, persistence)
-- [ ] J027 (T) Create end-to-end test `src/__tests__/e2e/plan-generation.test.ts` (full workflow: create plan → verify job enqueued → start worker → poll until ready → verify modules/tasks)
-- [ ] J028 (T) Manual testing checklist: start dev+worker, submit form, verify pending state, verify worker processes job, verify auto-refresh, test failure scenarios, test rate limiting
+- [x] J025 (T) Create job queue tests `src/lib/jobs/__tests__/queue.test.ts` (test enqueueJob, getNextJob locking, completeJob, failJob retry logic, rate limiting)
+- [x] J026 (T) Create worker tests `src/workers/__tests__/plan-generator.test.ts` (test polling, job processing, failures+retries, concurrency, graceful shutdown, persistence)
+- [x] J027 (T) Create end-to-end test `tests/e2e/plan-generation.test.ts` (full workflow: create plan → verify job enqueued → start worker → poll until ready → verify modules/tasks)
+- [x] J028 (T) Manual testing checklist: start dev+worker, submit form, verify pending state, verify worker processes job, verify auto-refresh, test failure scenarios, test rate limiting
 
 ### Phase 7 Consolidated & Additional Tests
 
 Existing J025–J027 capture core flows. Add cross-phase & regression tests only where they add distinct value:
 
-- [ ] T070 End-to-end retry scenario (extended): Force first provider failure, confirm second attempt success path recorded (attempts=2, final status ready). Ensures integration between queue retry and orchestrator classification.
-- [ ] T071 Race: enqueue 5 jobs rapidly, start worker; ensure processed in priority/creation order (depends on whether priority varied; if all zero, FIFO insertion order). Guards against future parallelism bugs.
-- [ ] T072 Data consistency: after success, verify no orphan job rows (e.g., multiple completed for same plan if single job model expected). If multiple jobs per plan allowed, adjust test to assert latest job drives plan status.
-- [ ] T073 Performance budget smoke: measure average processing duration with mock provider (exclude artificial delay variance) stays within expected 5–10s band; warn (not fail) if >12s median to catch accidental synchronous blocking.
+- [x] T070 End-to-end retry scenario (extended): Force first provider failure, confirm second attempt success path recorded (attempts=2, final status ready). Ensures integration between queue retry and orchestrator classification.
+- [x] T071 Race: enqueue 5 jobs rapidly, start worker; ensure processed in priority/creation order (depends on whether priority varied; if all zero, FIFO insertion order). Guards against future parallelism bugs.
+- [x] T072 Data consistency: after success, verify no orphan job rows (e.g., multiple completed for same plan if single job model expected). If multiple jobs per plan allowed, adjust test to assert latest job drives plan status.
+- [x] T073 Performance budget smoke: measure average processing duration with mock provider (exclude artificial delay variance) stays within expected 5–10s band; warn (not fail) if >12s median to catch accidental synchronous blocking.
 - [ ] T074 Migration drift test: snapshot hash of schema (selected tables) against committed expectation; fails if schema changes without updating migration (future safety net; optional early).
 
 Optional Exploratory / Future (Not Immediately Implemented):

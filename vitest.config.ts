@@ -1,12 +1,16 @@
 import path from 'node:path';
 
+import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
-// Set test database URL if not provided; use project-specific local port 54322.
+// Load .env.test for all test runs
+config({ path: '.env.test' });
+
 if (!process.env.DATABASE_URL) {
-  const dbUser = process.env.TEST_DB_USER || 'test_user';
-  const dbPass = process.env.TEST_DB_PASS || 'test_pass';
-  process.env.DATABASE_URL = `postgresql://${dbUser}:${dbPass}@127.0.0.1:54322/postgres`;
+  console.error(
+    'Error: DATABASE_URL is not set. Please set a proper DATABASE_URL for testing.'
+  );
+  process.exit(1);
 }
 
 export default defineConfig({
@@ -19,8 +23,12 @@ export default defineConfig({
     globals: true,
     // Use jsdom so we can test React hooks/components
     environment: 'jsdom',
+    testTimeout: 20_000,
     // Include TS and TSX tests
-    include: ['tests/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'tests/**/*.{test,spec}.{ts,tsx}',
+      'src/**/*.{test,spec}.{ts,tsx}',
+    ],
     // Integration tests share a single Postgres instance; limit concurrency to avoid cross-test truncation.
     maxConcurrency: 1,
     setupFiles: ['tests/setup.ts'],
