@@ -61,6 +61,11 @@ for (const spec of integrationSpecs) {
   runCommand(['vitest', 'run', spec], `Running ${spec}`);
 }
 
+const securitySpecs = await collectSpecs('tests/security');
+for (const spec of securitySpecs) {
+  runCommand(['vitest', 'run', spec], `Running ${spec}`);
+}
+
 const srcSpecs = (await collectSpecs('src')).filter((spec) =>
   spec.includes(`${sep}__tests__${sep}`)
 );

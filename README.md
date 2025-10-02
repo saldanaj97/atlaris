@@ -116,6 +116,102 @@ src/
 - `pnpm db:migrate` - Apply migrations
 - `pnpm db:seed` - Seed development data
 
+## Testing
+
+### Prerequisites
+
+The test suite requires **Docker** and **Supabase CLI** to run a local Supabase instance for testing.
+
+1. **Install Docker**: [Get Docker](https://docs.docker.com/get-docker/)
+2. **Install Supabase CLI**:
+   ```bash
+   brew install supabase/tap/supabase
+   ```
+
+### Running Tests Locally
+
+1. **Start the test database** (first time or after Docker restart):
+   ```bash
+   pnpm test:db:start
+   ```
+   This starts a local Supabase Docker stack including:
+   - Postgres database (localhost:54322)
+   - Supabase Auth service (for JWT validation)
+   - Supabase API (localhost:54321)
+
+2. **Check database status** (optional):
+   ```bash
+   pnpm test:db:status
+   ```
+
+3. **Run the test suite**:
+   ```bash
+   pnpm test
+   ```
+
+4. **Watch mode** (auto-rerun on file changes):
+   ```bash
+   pnpm test:watch
+   ```
+
+5. **Stop the test database** (when done):
+   ```bash
+   pnpm test:db:stop
+   ```
+
+### Test Types
+
+The test suite includes four categories, run in this order:
+
+1. **Unit Tests** (`tests/unit/`) - Isolated logic testing (no database)
+2. **Contract Tests** (`tests/contract/`) - API contract validation
+3. **Integration Tests** (`tests/integration/`) - Multi-component workflows
+4. **Security Tests** (`tests/security/`) - Row Level Security (RLS) policy verification
+
+### Test Database Architecture
+
+- **Business Logic Tests** use direct Postgres connection (bypasses RLS for speed and determinism)
+- **Security Tests** use Supabase client with JWT authentication (enforces RLS policies)
+
+This hybrid approach ensures:
+- ✅ Fast, reliable business logic tests
+- ✅ Comprehensive RLS security coverage
+- ✅ Realistic authentication with Clerk JWT structure
+
+### Continuous Integration
+
+GitHub Actions automatically runs the full test suite on:
+- Push to `main`, `develop`, or `feature/**` branches
+- Pull requests to `main` or `develop`
+
+The CI workflow:
+1. Starts local Supabase via CLI (same as local dev)
+2. Applies migrations
+3. Runs lint, type-check, tests, and build
+4. Reports results on PR
+
+See `.github/workflows/ci.yml` for details.
+
+### Troubleshooting
+
+**"DATABASE_URL not set" error:**
+- Ensure `.env.test` exists with `DATABASE_URL` configured
+- Run `pnpm test:db:status` to verify Supabase is running
+
+**"Connection refused" or "ECONNREFUSED":**
+- Supabase Docker containers may not be running
+- Run `pnpm test:db:start` to start them
+
+**Tests fail with "RLS policy" errors:**
+- Check that `supabase/config.toml` has Clerk integration enabled
+- Verify `CLERK_ISSUER` in `.env.test` matches config.toml domain
+
+**Reset test database:**
+```bash
+pnpm test:db:reset
+```
+This drops all data and re-applies migrations from scratch.
+
 ## Learn More
 
 To learn more about the technologies used:
