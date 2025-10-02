@@ -8,6 +8,7 @@ function createPlanDetail(options: {
   modules?: LearningPlanDetail['plan']['modules'];
   attemptsCount?: number;
   latestAttempt?: GenerationAttempt | null;
+  latestJobStatus?: LearningPlanDetail['latestJobStatus'];
 }): LearningPlanDetail {
   return {
     plan: {
@@ -29,6 +30,8 @@ function createPlanDetail(options: {
     completedTasks: 0,
     latestAttempt: options.latestAttempt ?? null,
     attemptsCount: options.attemptsCount ?? 0,
+    latestJobStatus: options.latestJobStatus ?? null,
+    latestJobError: null,
   };
 }
 
@@ -98,6 +101,7 @@ describe('derived plan status mapping', () => {
         classification: 'capped',
         status: 'failure',
       }),
+      latestJobStatus: 'failed',
     });
     const client = mapDetailToClient(detail);
     expect(client?.status).toBe('failed');
@@ -112,6 +116,7 @@ describe('derived plan status mapping', () => {
         classification: 'capped',
         status: 'failure',
       }),
+      latestJobStatus: 'failed',
     });
     const client = mapDetailToClient(detail);
     expect(client?.status).toBe('failed');
