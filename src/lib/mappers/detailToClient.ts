@@ -49,6 +49,19 @@ function derivePlanStatus(detail: LearningPlanDetail): PlanStatus | undefined {
     return 'ready';
   }
 
+  if (detail.latestJobStatus === 'failed') {
+    return 'failed';
+  }
+
+  const latestAttempt = detail.latestAttempt;
+  if (
+    latestAttempt?.status === 'failure' &&
+    (latestAttempt.classification === 'validation' ||
+      latestAttempt.classification === 'capped')
+  ) {
+    return 'failed';
+  }
+
   if (detail.attemptsCount >= ATTEMPT_CAP) {
     return 'failed';
   }
