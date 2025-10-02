@@ -11,6 +11,8 @@ export const learningStyle = pgEnum('learning_style', [
   'practice',
   'mixed',
 ]);
+
+// TODO: Change back to video instead of youtube
 export const resourceType = pgEnum('resource_type', [
   'youtube',
   'article',

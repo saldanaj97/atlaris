@@ -476,13 +476,12 @@ describe('RLS Policy Verification', () => {
         .eq('id', plan.id);
 
       // Should be blocked or affect 0 rows (no error thrown)
-      // Verify plan still exists
-      const { data } = await db
-        .select()
-        .from(learningPlans)
-        .where((fields, ops) => ops.eq(fields.id, plan.id));
+      // Verify plan still exists using direct DB (bypasses RLS)
+      const verification = await db.query.learningPlans.findFirst({
+        where: (fields, ops) => ops.eq(fields.id, plan.id),
+      });
 
-      expect(data).toHaveLength(1);
+      expect(verification).toBeDefined();
     });
   });
 
@@ -693,7 +692,7 @@ describe('RLS Policy Verification', () => {
       await db.insert(resources).values({
         type: 'article',
         title: 'Test Article',
-        url: 'https://example.com/article',
+        url: `https://example.com/article-${Date.now()}`,
       });
 
       // Anonymous user should see it
@@ -739,9 +738,9 @@ describe('RLS Policy Verification', () => {
 
       // Try to insert a resource (should fail)
       const { error: insertError } = await authClient.from('resources').insert({
-        type: 'video',
+        type: 'youtube',
         title: 'Unauthorized Resource',
-        url: 'https://example.com/video',
+        url: `https://example.com/video-${Date.now()}`,
       });
 
       expect(insertError).not.toBeNull();
@@ -755,7 +754,7 @@ describe('RLS Policy Verification', () => {
         .insert({
           type: 'course',
           title: 'Authorized Resource',
-          url: 'https://example.com/course',
+          url: `https://example.com/course-${Date.now()}`,
         })
         .select();
 

@@ -94,14 +94,41 @@ export function generateTestClerkJwt(
 ): string {
   const secret = getTestJwtSecret();
 
+  // Validate required environment variables
+  const clerkIssuer = process.env.CLERK_ISSUER;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  if (!clerkIssuer) {
+    throw new Error(
+      'CLERK_ISSUER not set in .env.test. ' +
+        'This must match the issuer configured in Supabase dashboard. ' +
+        'Example: CLERK_ISSUER=https://kind-wahoo-35.clerk.accounts.dev'
+    );
+  }
+
+  if (!supabaseUrl) {
+    throw new Error(
+      'NEXT_PUBLIC_SUPABASE_URL not set in .env.test. ' +
+        'This is required for JWT audience (aud) and authorized party (azp) claims.'
+    );
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const oneHourFromNow = now + 3600;
 
   const payload: TestClerkJwtPayload = {
     sub: clerkUserId,
-    iss: 'https://clerk.test',
+    iss: clerkIssuer, // Must match Supabase JWT provider config
+    aud: supabaseUrl, // Supabase project URL
+    azp: supabaseUrl, // Authorized party
+    role: 'authenticated', // Required by Supabase for third-party auth
     iat: now,
     exp: oneHourFromNow,
+    // Clerk-specific claims for realism
+    sid: `sess_test_${Date.now()}`, // Session ID
+    org_id: null, // Organization (if applicable)
+    org_role: null,
+    org_slug: null,
     ...additionalClaims,
   };
 

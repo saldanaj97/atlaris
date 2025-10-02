@@ -7,6 +7,7 @@ import {
   learningPlans,
   modules,
   planGenerations,
+  resources,
   taskProgress,
   taskResources,
   tasks,
@@ -29,7 +30,8 @@ export async function truncateAll() {
       ${modules},
       ${planGenerations},
       ${learningPlans},
-      ${users}
+      ${users},
+      ${resources}
     RESTART IDENTITY CASCADE
   `);
   userIdCache.clear();
