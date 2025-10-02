@@ -91,8 +91,8 @@ jobs:
       - name: Start Supabase (Docker)
         run: supabase start
 
-      - name: Apply migrations and seed test data
-        run: supabase db reset
+      - name: Apply migrations with Drizzle
+        run: pnpm db:push
 
       - name: Create .env.test from GitHub environment
         run: |
