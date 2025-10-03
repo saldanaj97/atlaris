@@ -40,10 +40,6 @@ jobs:
 
       - name: Create .env.test from GitHub environment
         run: |
-          echo "::add-mask::${{ vars.DEV_CLERK_USER_ID }}"
-          echo "::add-mask::${{ vars.DEV_CLERK_USER_EMAIL }}"
-          echo "::add-mask::${{ vars.DEV_CLERK_USER_NAME }}"
-
           # Extract JWT secret from running Supabase instance
           JWT_SECRET=$(supabase status | grep -oP 'JWT secret: \K.*')
           echo "::add-mask::$JWT_SECRET"
