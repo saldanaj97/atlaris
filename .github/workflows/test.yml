@@ -38,13 +38,14 @@ jobs:
       - name: Start Supabase (Docker)
         run: supabase start
 
-      - name: Apply migrations with Drizzle
-        run: pnpm db:push
-
       - name: Create .env.test from GitHub environment
         run: |
+          echo "::add-mask::${{ vars.DEV_CLERK_USER_ID }}"
+          echo "::add-mask::${{ vars.DEV_CLERK_USER_EMAIL }}"
+          echo "::add-mask::${{ vars.DEV_CLERK_USER_NAME }}"
+
           cat > .env.test << EOF
-          NODE_ENV=${{ vars.NODE_ENV }}
+          NODE_ENV=test
           DATABASE_URL=${{ vars.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
@@ -53,16 +54,26 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
           CLERK_ISSUER=${{ secrets.CLERK_ISSUER }}
-          DEV_CLERK_USER_ID=${{ vars.DEV_CLERK_USER_ID }}
-          DEV_CLERK_USER_EMAIL=${{ vars.DEV_CLERK_USER_EMAIL }}
-          DEV_CLERK_USER_NAME=${{ vars.DEV_CLERK_USER_NAME }}
+          DEV_CLERK_USER_ID=${{ secrets.DEV_CLERK_USER_ID }}
+          DEV_CLERK_USER_EMAIL=${{ secrets.DEV_CLERK_USER_EMAIL }}
+          DEV_CLERK_USER_NAME=${{ secrets.DEV_CLERK_USER_NAME }}
           AI_PROVIDER=${{ vars.AI_PROVIDER }}
           MOCK_GENERATION_DELAY_MS=${{ vars.MOCK_GENERATION_DELAY_MS }}
           MOCK_GENERATION_FAILURE_RATE=${{ vars.MOCK_GENERATION_FAILURE_RATE }}
           EOF
 
+      - name: Apply migrations with Drizzle
+        env:
+          DATABASE_URL: ${{ vars.DATABASE_URL }}
+        run: pnpm db:push
+
       - name: Run test suite
         run: pnpm test
+
+      - name: Cleanup test env file
+        if: always()
+        run: |
+          shred -u .env.test 2>/dev/null || rm -f .env.test || true
 
       - name: Stop Supabase
         if: always()

@@ -11,9 +11,7 @@ const projectRoot = resolve(new URL('..', import.meta.url).pathname);
 config({ path: join(projectRoot, '.env.test') });
 
 if (!process.env.DATABASE_URL) {
-  console.error(
-    'DATABASE_URL must be set (via .env.test) before running tests.'
-  );
+  console.error('Missing DATABASE_URL (expected from .env.test or CI env)');
   process.exit(1);
 }
 
