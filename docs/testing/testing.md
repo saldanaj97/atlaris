@@ -9,6 +9,94 @@ We use a **two-tier testing strategy** that separates business logic testing fro
 1. **Business Logic Tests** - Test application functionality (Unit, Integration, E2E)
 2. **Security Tests** - Verify Row Level Security (RLS) policies work correctly
 
+## Test Suite Summary
+
+Quick reference of all tests in the suite, organized by category:
+
+### Contract Tests (API Endpoints)
+
+- `plans.attempts.get.spec.ts` - GET endpoint for fetching generation attempts
+- `plans.get.spec.ts` - GET endpoint for retrieving learning plans
+- `plans.post.spec.ts` - POST endpoint for creating learning plans
+- `plans.api-integration.spec.ts` - Full API integration flows
+
+### Integration Tests (Multi-Component)
+
+**Concurrency & Race Conditions:**
+
+- `concurrency.plan-ordering.spec.ts` - Concurrent operations maintain correct ordering
+- `concurrency.rollback.spec.ts` - Transaction rollbacks under concurrent access
+- `concurrency.timeout-stall.spec.ts` - Timeout behavior with concurrent workers
+
+**Plan Generation:**
+
+- `generation.success.spec.ts` - Successful plan generation end-to-end
+- `generation.timeout.spec.ts` - Timeout handling during generation
+- `generation.validation.spec.ts` - Input validation for generation requests
+- `generation.capped.spec.ts` - Max attempts limit enforcement
+- `generation.cap-boundary.spec.ts` - Edge cases around attempt caps
+- `generation.rate_limit.spec.ts` - Rate limiting for generation requests
+
+**Background Workers:**
+
+- `plan-generation-worker.spec.ts` - Worker job processing, retries, concurrency, graceful shutdown
+- `jobs.queue.schema.spec.ts` - Job queue schema validation
+
+**RLS & Security (Integration Level):**
+
+- `rls.attempts-insert.spec.ts` - RLS blocks non-owner attempt insertion via orchestrator
+- `rls.attempts-visibility.spec.ts` - RLS enforces visibility rules for attempts
+
+### Unit Tests (Isolated Components)
+
+**AI/Provider Layer:**
+
+- `ai.classification.spec.ts` - Error classification logic
+- `ai.mockProvider.spec.ts` - Mock provider behavior
+- `ai.providers.mock.spec.ts` - Mock provider implementation
+- `ai.parser.validation.spec.ts` - AI response parsing validation
+- `ai.timeout.spec.ts` - AI provider timeout handling
+
+**Attempt Tracking:**
+
+- `attempts.success.spec.ts` - Success tracking and metrics
+- `attempts.timeout.spec.ts` - Timeout attempt recording
+- `attempts.validation.spec.ts` - Attempt validation logic
+- `attempts.capped.spec.ts` - Max attempts enforcement
+
+**Utilities & Helpers:**
+
+- `utils.truncation-effort.spec.ts` - Text truncation with effort normalization
+- `metrics.duration.spec.ts` - Duration calculation accuracy
+- `metrics.duration-precision.spec.ts` - Duration precision edge cases
+- `logging.correlation-id.spec.ts` - Request correlation ID propagation
+
+**API & Mapping:**
+
+- `api.error-redaction.spec.ts` - Sensitive data redaction in errors
+- `mappers.detailToClient.spec.ts` - Database to client DTO mapping
+- `status.derivation.spec.ts` - Plan status derivation logic
+
+### Performance Tests
+
+- `utils.truncation-effort.perf.spec.ts` - Performance benchmarks for truncation logic
+
+### Security Tests
+
+- `rls.policies.spec.ts` - Comprehensive RLS policy verification (anonymous, authenticated, service role access across all tables)
+
+### Coverage Summary
+
+- ✅ API endpoints and request/response contracts
+- ✅ Concurrency and race conditions
+- ✅ Background job processing and workers
+- ✅ AI generation (success, failures, timeouts, validation)
+- ✅ Attempt tracking and limits
+- ✅ RLS and data isolation
+- ✅ Error handling and classification
+- ✅ Performance benchmarks
+- ✅ Utility functions and edge cases
+
 ## Test Categories
 
 ### 1. Unit Tests (`tests/unit/**`)
@@ -349,6 +437,42 @@ const userClient = createAuthenticatedClient('user_123');
 export DATABASE_URL="<url-from-.env.test>"
 pnpm exec drizzle-kit push
 ```
+
+### RLS Security Test Coverage & Seeding
+
+RLS coverage for sensitive tables lives under `tests/security/**` and uses authenticated Supabase clients instead of direct superuser connections. Current focused coverage includes:
+
+| Table                 | Read Policies         | Write Policies                                                              | Security Tests                                                                 |
+| --------------------- | --------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `generation_attempts` | Owner or service role | Insert: owner or service, no update/delete                                  | `generation_attempts.rls.spec.ts`, `generation_attempts.rls.mutations.spec.ts` |
+| `job_queue`           | Owner or service role | Insert: owner or service; Update/Delete: service role (enforced implicitly) | `job_queue.rls.spec.ts`                                                        |
+
+#### Shared Seeding Helper
+
+To avoid duplication each security test uses the helper functions in `tests/security/helpers/seed.ts`:
+
+- `cleanCoreTables()` – wipes core domain tables (`users`, `learning_plans`, `modules`, `plan_generations`, `generation_attempts`) using the service role client.
+- `seedGenerationAttempts({ withAttempts, ownerId, otherId, ... })` – inserts two users, two plans, and optionally one attempt per plan.
+- `seedJobQueue(baseSeed)` – inserts paired jobs (one per user/plan) for `job_queue` RLS validation.
+
+These helpers ensure:
+
+1. Deterministic isolation between tests
+2. Minimal boilerplate in each spec
+3. Consistent referential integrity when adding new RLS tables
+
+If you add RLS tests for another table, prefer extending the existing helper or adding a focused helper in the same directory instead of inlining seeding logic.
+
+#### Adding a New RLS Test
+
+1. Call `cleanCoreTables()` in a `beforeAll`.
+2. Seed base data (e.g. `const base = await seedGenerationAttempts({ withAttempts: false })`).
+3. Insert table‑specific rows with the service role client or extend the helper.
+4. Assert behavior for: anonymous, owner user, other user, service role.
+
+#### Why Not Use Basejump Test Helpers?
+
+The original integration smoke test referenced a `tests` schema from Basejump helpers not applied in CI. Rather than executing custom SQL outside Drizzle migrations, we validate RLS purely through real client interactions which more closely mirrors production behavior and avoids schema drift.
 
 ### Tests using wrong DATABASE_URL
 
