@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { MockGenerationProvider } from '@/lib/ai/providers/mock';
-import { getGenerationProvider, type GenerationInput } from '@/lib/ai/provider';
 import { parseGenerationStream } from '@/lib/ai/parser';
+import { getGenerationProvider, type GenerationInput } from '@/lib/ai/provider';
+import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 
 const SAMPLE_INPUT: GenerationInput = {
   topic: 'Machine Learning',
@@ -40,7 +40,8 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('returns MockGenerationProvider in development when AI_PROVIDER not set', () => {
-      process.env.NODE_ENV = 'development';
+      // Cast to any to allow setting NODE_ENV in test environment; TS types mark it as readonly
+      (process.env as any).NODE_ENV = 'development';
       delete process.env.AI_PROVIDER;
 
       const provider = getGenerationProvider();
@@ -67,7 +68,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
 
   describe('T021: Mock generate baseline test', () => {
     it('generates parsable JSON with 3-5 modules and 3-5 tasks per module', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       const rawText = await collectStream(result.stream);
@@ -88,7 +92,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('generates valid structure compatible with parser', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       // Parser should not throw
@@ -100,7 +107,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('generates content based on input topic and skill level', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       const rawText = await collectStream(result.stream);
@@ -112,7 +122,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('streams content in chunks', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       const chunks: string[] = [];
@@ -161,7 +174,11 @@ describe('Phase 2: Mock AI Provider Tests', () => {
 
     it('uses default delay when env var not set', async () => {
       delete process.env.MOCK_GENERATION_DELAY_MS;
-      const provider = new MockGenerationProvider();
+      // Explicitly force failureRate=0 to avoid random flakes from env defaults
+      // The previous implementation relied on process.env which may introduce
+      // probabilistic failures (observed in CI). Passing failureRate:0 makes
+      // this timing test deterministic.
+      const provider = new MockGenerationProvider({ failureRate: 0 });
 
       const startTime = Date.now();
       const result = await provider.generate(SAMPLE_INPUT);
@@ -223,7 +240,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
 
   describe('T024: Metadata reasonableness test (optional)', () => {
     it('generates modules with estimated_minutes between 120-450', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       const rawText = await collectStream(result.stream);
@@ -236,7 +256,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('generates tasks with estimated_minutes between 30-90', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       const rawText = await collectStream(result.stream);
@@ -251,7 +274,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('module estimated_minutes approximates sum of task minutes', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       const rawText = await collectStream(result.stream);
@@ -272,7 +298,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('returns proper metadata with usage information', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       expect(result.metadata).toMatchObject({
@@ -289,7 +318,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
 
   describe('T025: Streaming order test (optional)', () => {
     it('streams complete JSON structure without interleaving', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       let buffer = '';
@@ -314,7 +346,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('maintains consistent module-task hierarchy in stream', async () => {
-      const provider = new MockGenerationProvider({ delayMs: 100, failureRate: 0 });
+      const provider = new MockGenerationProvider({
+        delayMs: 100,
+        failureRate: 0,
+      });
       const result = await provider.generate(SAMPLE_INPUT);
 
       const rawText = await collectStream(result.stream);
