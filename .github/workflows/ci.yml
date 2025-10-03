@@ -83,28 +83,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Start Supabase (Docker)
-        run: supabase start
-
       - name: Create .env.test from GitHub environment
         run: |
-          # Mask potentially sensitive dev clerk identifiers (optional but defensive)
-          echo "::add-mask::${{ vars.DEV_CLERK_USER_ID }}"
-          echo "::add-mask::${{ vars.DEV_CLERK_USER_EMAIL }}"
-          echo "::add-mask::${{ vars.DEV_CLERK_USER_NAME }}"
-
           cat > .env.test << EOF
           NODE_ENV=test
-          DATABASE_URL=${{ vars.DATABASE_URL }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          TEST_JWT_SECRET=${{ vars.TEST_JWT_SECRET }}
+          TEST_JWT_SECRET=${{ secrets.TEST_JWT_SECRET }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
           CLERK_ISSUER=${{ secrets.CLERK_ISSUER }}
@@ -118,7 +105,7 @@ jobs:
 
       - name: Apply migrations with Drizzle
         env:
-          DATABASE_URL: ${{ vars.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm db:push
 
       - name: Run test suite
@@ -128,10 +115,6 @@ jobs:
         if: always()
         run: |
           shred -u .env.test 2>/dev/null || rm -f .env.test || true
-
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop --no-backup
 
       - name: Upload coverage
         if: success()
@@ -168,7 +151,7 @@ jobs:
       - name: Build Next.js app
         run: pnpm build
         env:
-          DATABASE_URL: ${{ vars.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}

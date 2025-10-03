@@ -30,26 +30,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Start Supabase (Docker)
-        run: supabase start
-
       - name: Create .env.test from GitHub environment
         run: |
-          JWT_SECRET=$(supabase status | grep -oP 'JWT secret: \K.*' || echo "super-secret-jwt-token-with-at-least-32-characters-long")
-          echo "::add-mask::$JWT_SECRET"
-
           cat > .env.test << EOF
           NODE_ENV=test
-          DATABASE_URL=${{ vars.DATABASE_URL }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          TEST_JWT_SECRET=${JWT_SECRET}
+          TEST_JWT_SECRET=${{ secrets.TEST_JWT_SECRET }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
           CLERK_ISSUER=${{ secrets.CLERK_ISSUER }}
@@ -63,7 +52,7 @@ jobs:
 
       - name: Apply migrations with Drizzle
         env:
-          DATABASE_URL: ${{ vars.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm db:push
 
       - name: Run test suite
@@ -73,10 +62,6 @@ jobs:
         if: always()
         run: |
           shred -u .env.test 2>/dev/null || rm -f .env.test || true
-
-      - name: Stop Supabase
-        if: always()
-        run: supabase stop --no-backup
 
       - name: Upload test results
         if: failure()

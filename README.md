@@ -120,48 +120,32 @@ src/
 
 ### Prerequisites
 
-The test suite requires **Docker** and **Supabase CLI** to run a local Supabase instance for testing.
+The test suite uses a **hosted Supabase test database** - no local Docker setup required.
 
-1. **Install Docker**: [Get Docker](https://docs.docker.com/get-docker/)
-2. **Install Supabase CLI**:
-   ```bash
-   brew install supabase/tap/supabase
-   ```
+1. **Environment Configuration**: Ensure `.env.test` is configured with hosted Supabase credentials
+   - `DATABASE_URL` - Hosted Supabase connection string
+   - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY` - Service role key for admin operations
+   - `TEST_JWT_SECRET` - JWT secret for RLS testing
 
 ### Running Tests Locally
 
-1. **Start the test database** (first time or after Docker restart):
-
-   ```bash
-   pnpm test:db:start
-   ```
-
-   This starts a local Supabase Docker stack including:
-   - Postgres database (localhost:54322)
-   - Supabase Auth service (for JWT validation)
-   - Supabase API (localhost:54321)
-
-2. **Check database status** (optional):
-
-   ```bash
-   pnpm test:db:status
-   ```
-
-3. **Run the test suite**:
+1. **Run the test suite**:
 
    ```bash
    pnpm test
    ```
 
-4. **Watch mode** (auto-rerun on file changes):
+2. **Watch mode** (auto-rerun on file changes):
 
    ```bash
    pnpm test:watch
    ```
 
-5. **Stop the test database** (when done):
+3. **Run specific test files**:
+
    ```bash
-   pnpm test:db:stop
+   pnpm exec vitest run tests/unit/status.derivation.spec.ts
    ```
 
 ### Test Types
@@ -193,8 +177,8 @@ GitHub Actions automatically runs the full test suite on:
 
 The CI workflow:
 
-1. Starts local Supabase via CLI (provides PostgreSQL container)
-2. Applies migrations using Drizzle (`pnpm db:push`)
+1. Creates `.env.test` from GitHub secrets and variables
+2. Applies migrations to hosted test database using Drizzle (`pnpm db:push`)
 3. Runs lint, type-check, tests, and build
 4. Reports results on PR
 
@@ -205,17 +189,17 @@ See `.github/workflows/ci.yml` and `.github/workflows/test.yml` for details.
 **"DATABASE_URL not set" error:**
 
 - Ensure `.env.test` exists with `DATABASE_URL` configured
-- Run `pnpm test:db:status` to verify Supabase is running
+- Verify the connection string includes `?sslmode=require`
 
 **"Connection refused" or "ECONNREFUSED":**
 
-- Supabase Docker containers may not be running
-- Run `pnpm test:db:start` to start them
+- Check network connectivity to hosted Supabase instance
+- Verify DATABASE_URL is correct in `.env.test`
 
 **Tests fail with "RLS policy" errors:**
 
-- Check that `supabase/config.toml` has Clerk integration enabled
-- Verify `CLERK_ISSUER` in `.env.test` matches config.toml domain
+- Verify `TEST_JWT_SECRET` in `.env.test` matches your Supabase project's JWT secret
+- Check that `CLERK_ISSUER` in `.env.test` matches Clerk provider configuration in Supabase
 
 **Reset test database:**
 
