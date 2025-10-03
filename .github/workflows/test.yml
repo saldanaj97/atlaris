@@ -40,8 +40,7 @@ jobs:
 
       - name: Create .env.test from GitHub environment
         run: |
-          # Extract JWT secret from running Supabase instance
-          JWT_SECRET=$(supabase status | grep -oP 'JWT secret: \K.*')
+          JWT_SECRET=$(supabase status | grep -oP 'JWT secret: \K.*' || echo "super-secret-jwt-token-with-at-least-32-characters-long")
           echo "::add-mask::$JWT_SECRET"
 
           cat > .env.test << EOF
