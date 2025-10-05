@@ -14,6 +14,8 @@ This file provides guidance when working with code in this repository.
 
 ## Important Rules/References(read before coding or committing)
 
+- Make sure to ALWAYS use the context7 MCP for grabbing the most up to date documentation about a specific topic before starting any task. This will ensure you have the most up to date information and avoid any mistakes.
+
 - Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:
   - src/app/\*\*/\*.tsx
   - src/app/\*\*/\*.ts
