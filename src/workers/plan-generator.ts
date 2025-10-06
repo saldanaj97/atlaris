@@ -35,6 +35,7 @@ export interface PlanGenerationWorkerStats {
   jobsStarted: number;
   jobsCompleted: number;
   jobsFailed: number;
+  [key: string]: unknown;
 }
 
 function sleep(ms: number): Promise<void> {

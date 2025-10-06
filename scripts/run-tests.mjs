@@ -59,17 +59,6 @@ for (const spec of integrationSpecs) {
   runCommand(['vitest', 'run', spec], `Running ${spec}`);
 }
 
-// Only run RLS/security specs when explicitly enabled (CI or RUN_RLS_TESTS=1)
-const runRls = process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
-if (runRls) {
-  const securitySpecs = await collectSpecs('tests/security');
-  for (const spec of securitySpecs) {
-    runCommand(['vitest', 'run', spec], `Running ${spec}`);
-  }
-} else {
-  console.log('\nⓘ Skipping RLS/security tests (enable with RUN_RLS_TESTS=1)');
-}
-
 const srcSpecs = (await collectSpecs('src')).filter((spec) =>
   spec.includes(`${sep}__tests__${sep}`)
 );

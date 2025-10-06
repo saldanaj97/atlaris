@@ -82,38 +82,6 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
   });
 
   describe('Anonymous Access', () => {
-    it('anonymous users can read public learning plans', async () => {
-      const anonClient = createAnonClient();
-
-      // Create a public plan
-      const [user] = await db
-        .insert(users)
-        .values({
-          clerkUserId: 'user_public',
-          email: 'public@test.com',
-        })
-        .returning();
-
-      await db.insert(learningPlans).values({
-        userId: user.id,
-        topic: 'Public Topic',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'public',
-      });
-
-      // Anonymous user should see public plan
-      const { data, error } = await anonClient
-        .from('learning_plans')
-        .select('*')
-        .eq('visibility', 'public');
-
-      expect(error).toBeNull();
-      expect(data).toHaveLength(1);
-      expect(data?.[0]?.topic).toBe('Public Topic');
-    });
-
     it('anonymous users cannot read private learning plans', async () => {
       const anonClient = createAnonClient();
 

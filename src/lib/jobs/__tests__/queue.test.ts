@@ -51,7 +51,7 @@ async function createPlanFixture(key: string): Promise<PlanFixture> {
 }
 
 describe('Job queue service', () => {
-  it('enqueues a job with expected defaults (J025-T002)', async () => {
+  it('enqueues a job with expected defaults', async () => {
     const { plan, userId } = await createPlanFixture('defaults');
     const payload = {
       topic: plan.topic,
@@ -78,7 +78,7 @@ describe('Job queue service', () => {
     expect(record?.scheduledFor).toBeInstanceOf(Date);
   });
 
-  it('locks a single pending job per worker request (J025-T003)', async () => {
+  it('locks a single pending job per worker request', async () => {
     const { plan, userId } = await createPlanFixture('lock');
 
     const jobIds = await Promise.all([
@@ -110,7 +110,7 @@ describe('Job queue service', () => {
     expect(secondRow?.startedAt).toBeInstanceOf(Date);
   });
 
-  it('respects priority then FIFO ordering for getNextJob (J025-T004)', async () => {
+  it('respects priority then FIFO ordering for getNextJob', async () => {
     const { plan, userId } = await createPlanFixture('priority');
 
     const low = await enqueueJob(
@@ -160,7 +160,7 @@ describe('Job queue service', () => {
     expect(midOrder).toEqual([midA, midB]);
   });
 
-  it('handles retry transitions and terminal failure (J025-T005)', async () => {
+  it('handles retry transitions and terminal failure', async () => {
     const { plan, userId } = await createPlanFixture('retry');
     const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, { retry: true });
 
@@ -184,7 +184,7 @@ describe('Job queue service', () => {
     expect(terminal?.completedAt).toBeInstanceOf(Date);
   });
 
-  it('completes jobs and preserves attempt counter (J025-T006)', async () => {
+  it('completes jobs and preserves attempt counter', async () => {
     const { plan, userId } = await createPlanFixture('complete');
     const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, { done: true });
 
@@ -202,7 +202,7 @@ describe('Job queue service', () => {
     expect(duplicate?.result).toEqual(payload);
   });
 
-  it('returns jobs by plan newest first (J025-T008)', async () => {
+  it('returns jobs by plan newest first', async () => {
     const { plan, userId } = await createPlanFixture('plan-jobs');
     const other = await createPlanFixture('plan-other');
 
@@ -229,7 +229,7 @@ describe('Job queue service', () => {
     expect(jobs.map((job) => job.id)).toEqual([jobC, jobB, jobA]);
   });
 
-  it('counts user jobs within the provided window (J025-T009)', async () => {
+  it('counts user jobs within the provided window', async () => {
     const { plan, userId } = await createPlanFixture('rate');
 
     const jobRecent = await enqueueJob(JOB_TYPE, plan.id, userId, {
