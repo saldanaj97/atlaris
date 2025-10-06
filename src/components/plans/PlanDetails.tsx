@@ -12,6 +12,7 @@ import { Card } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import { ExportButtons } from './ExportButtons';
 import { PlanDetailsCard } from './PlanDetailsCard';
+import { PlanPendingState } from './PlanPendingState';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
@@ -29,6 +30,9 @@ export default function PlanDetails({ plan }: PlanDetailClientProps) {
     }
   );
 
+  const isPendingOrProcessing =
+    plan.status === 'pending' || plan.status === 'processing';
+
   // TODO: Add way to regenerate the plan or regenerate a module
   return (
     <div className="bg-gradient-subtle min-h-screen">
@@ -42,28 +46,38 @@ export default function PlanDetails({ plan }: PlanDetailClientProps) {
           <p>Your Plans</p>
         </Button>
 
-        <PlanDetailsCard plan={plan} modules={modules} statuses={statuses} />
+        {isPendingOrProcessing ? (
+          <PlanPendingState plan={plan} />
+        ) : (
+          <>
+            <PlanDetailsCard
+              plan={plan}
+              modules={modules}
+              statuses={statuses}
+            />
 
-        <ExportButtons />
+            <ExportButtons />
 
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold">Learning Modules</h2>
-          {modules.length === 0 ? (
-            <Card className="text-muted-foreground p-6 text-center">
-              No modules yet. Generation will populate this plan soon.
-            </Card>
-          ) : (
-            modules.map((module) => (
-              <PlanModuleCard
-                key={module.id}
-                planId={plan.id}
-                module={module}
-                statuses={statuses}
-                setStatuses={setStatuses}
-              />
-            ))
-          )}
-        </section>
+            <section className="space-y-6">
+              <h2 className="text-2xl font-bold">Learning Modules</h2>
+              {modules.length === 0 ? (
+                <Card className="text-muted-foreground p-6 text-center">
+                  No modules yet. Generation will populate this plan soon.
+                </Card>
+              ) : (
+                modules.map((module) => (
+                  <PlanModuleCard
+                    key={module.id}
+                    planId={plan.id}
+                    module={module}
+                    statuses={statuses}
+                    setStatuses={setStatuses}
+                  />
+                ))
+              )}
+            </section>
+          </>
+        )}
       </div>
     </div>
   );

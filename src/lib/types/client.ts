@@ -10,7 +10,7 @@ import type {
   TaskWithRelations,
 } from '@/lib/types/db';
 
-export type PlanStatus = 'pending' | 'ready' | 'failed';
+export type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
 export type AttemptStatus = 'success' | 'failure';
 

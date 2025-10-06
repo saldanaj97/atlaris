@@ -91,6 +91,8 @@ export interface LearningPlanDetail {
   completedTasks: number;
   latestAttempt: GenerationAttempt | null;
   attemptsCount: number;
+  latestJobStatus: 'pending' | 'processing' | 'completed' | 'failed' | null;
+  latestJobError: string | null;
 }
 
 // User progress aggregation across tasks/modules

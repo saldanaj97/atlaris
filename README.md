@@ -116,6 +116,99 @@ src/
 - `pnpm db:migrate` - Apply migrations
 - `pnpm db:seed` - Seed development data
 
+## Testing
+
+### Prerequisites
+
+The test suite uses a **hosted Supabase test database** - no local Docker setup required.
+
+1. **Environment Configuration**: Ensure `.env.test` is configured with hosted Supabase credentials
+   - `DATABASE_URL` - Hosted Supabase connection string
+   - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY` - Service role key for admin operations
+   - `TEST_JWT_SECRET` - JWT secret for RLS testing
+
+### Running Tests Locally
+
+1. **Run the test suite**:
+
+   ```bash
+   pnpm test
+   ```
+
+2. **Watch mode** (auto-rerun on file changes):
+
+   ```bash
+   pnpm test:watch
+   ```
+
+3. **Run specific test files**:
+
+   ```bash
+   pnpm exec vitest run tests/unit/status.derivation.spec.ts
+   ```
+
+### Test Types
+
+The test suite includes four categories, run in this order:
+
+1. **Unit Tests** (`tests/unit/`) - Isolated logic testing (no database)
+2. **Contract Tests** (`tests/contract/`) - API contract validation
+3. **Integration Tests** (`tests/integration/`) - Multi-component workflows
+4. **Security Tests** (`tests/security/`) - Row Level Security (RLS) policy verification
+
+### Test Database Architecture
+
+- **Business Logic Tests** use direct Postgres connection (bypasses RLS for speed and determinism)
+- **Security Tests** use Supabase client with JWT authentication (enforces RLS policies)
+
+This hybrid approach ensures:
+
+- ✅ Fast, reliable business logic tests
+- ✅ Comprehensive RLS security coverage
+- ✅ Realistic authentication with Clerk JWT structure
+
+### Continuous Integration
+
+GitHub Actions automatically runs the full test suite on:
+
+- Push to `main`, `develop`, or `feature/**` branches
+- Pull requests to `main` or `develop`
+
+The CI workflow:
+
+1. Creates `.env.test` from GitHub secrets and variables
+2. Applies migrations to hosted test database using Drizzle (`pnpm db:push`)
+3. Runs lint, type-check, tests, and build
+4. Reports results on PR
+
+See `.github/workflows/ci.yml` and `.github/workflows/test.yml` for details.
+
+### Troubleshooting
+
+**"DATABASE_URL not set" error:**
+
+- Ensure `.env.test` exists with `DATABASE_URL` configured
+- Verify the connection string includes `?sslmode=require`
+
+**"Connection refused" or "ECONNREFUSED":**
+
+- Check network connectivity to hosted Supabase instance
+- Verify DATABASE_URL is correct in `.env.test`
+
+**Tests fail with "RLS policy" errors:**
+
+- Verify `TEST_JWT_SECRET` in `.env.test` matches your Supabase project's JWT secret
+- Check that `CLERK_ISSUER` in `.env.test` matches Clerk provider configuration in Supabase
+
+**Reset test database:**
+
+```bash
+pnpm test:db:reset
+```
+
+This drops all data and re-applies migrations from scratch.
+
 ## Learn More
 
 To learn more about the technologies used:

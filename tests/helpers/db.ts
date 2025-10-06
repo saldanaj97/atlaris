@@ -3,9 +3,11 @@ import { sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import {
   generationAttempts,
+  jobQueue,
   learningPlans,
   modules,
   planGenerations,
+  resources,
   taskProgress,
   taskResources,
   tasks,
@@ -21,13 +23,15 @@ export async function truncateAll() {
   await db.execute(sql`
     TRUNCATE TABLE
       ${generationAttempts},
+      ${jobQueue},
       ${taskResources},
       ${taskProgress},
       ${tasks},
       ${modules},
       ${planGenerations},
       ${learningPlans},
-      ${users}
+      ${users},
+      ${resources}
     RESTART IDENTITY CASCADE
   `);
   userIdCache.clear();
@@ -42,9 +46,20 @@ export async function ensureUser({
   email: string;
   name?: string;
 }): Promise<string> {
-  const cached = userIdCache.get(clerkUserId);
-  if (cached) return cached;
+  //  Don't use cache - always check database
+  // The cache is cleared by truncateAll but we want to ensure we always have fresh data
 
+  // Try to find existing user first
+  const existing = await db.query.users.findFirst({
+    where: (fields, operators) => operators.eq(fields.clerkUserId, clerkUserId),
+  });
+
+  if (existing) {
+    userIdCache.set(clerkUserId, existing.id);
+    return existing.id;
+  }
+
+  // User doesn't exist, create it
   const [inserted] = await db
     .insert(users)
     .values({
@@ -52,20 +67,12 @@ export async function ensureUser({
       email,
       name: name ?? email,
     })
-    .onConflictDoNothing()
     .returning({ id: users.id });
 
-  if (inserted?.id) {
-    userIdCache.set(clerkUserId, inserted.id);
-    return inserted.id;
+  if (!inserted?.id) {
+    throw new Error(`Failed to create user for ${clerkUserId}`);
   }
 
-  const record = await db.query.users.findFirst({
-    where: (fields, operators) =>
-      operators.eq(fields.clerkUserId, clerkUserId),
-  });
-  if (!record) throw new Error(`Missing user for ${clerkUserId}`);
-
-  userIdCache.set(clerkUserId, record.id);
-  return record.id;
+  userIdCache.set(clerkUserId, inserted.id);
+  return inserted.id;
 }

@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache';
 
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { db } from '@/lib/db/drizzle';
-import { getUserByClerkId, setTaskProgress } from '@/lib/db/queries';
+import { setTaskProgress } from '@/lib/db/queries/tasks';
+import { getUserByClerkId } from '@/lib/db/queries/users';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';

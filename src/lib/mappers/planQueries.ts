@@ -95,6 +95,8 @@ export function mapLearningPlanDetail(params: {
   resourceRows: TaskResourceWithResource[];
   latestAttempt: GenerationAttempt | null;
   attemptsCount: number;
+  latestJobStatus: 'pending' | 'processing' | 'completed' | 'failed' | null;
+  latestJobError: string | null;
 }): LearningPlanDetail {
   const {
     plan,
@@ -104,6 +106,8 @@ export function mapLearningPlanDetail(params: {
     resourceRows,
     latestAttempt,
     attemptsCount,
+    latestJobStatus,
+    latestJobError,
   } = params;
 
   const progressByTask = new Map(progressRows.map((row) => [row.taskId, row]));
@@ -151,5 +155,7 @@ export function mapLearningPlanDetail(params: {
     completedTasks,
     latestAttempt,
     attemptsCount,
+    latestJobStatus,
+    latestJobError,
   } satisfies LearningPlanDetail;
 }

@@ -1,7 +1,8 @@
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
-import { getLearningPlanDetail, getUserByClerkId } from '@/lib/db/queries';
+import { getLearningPlanDetail } from '@/lib/db/queries/plans';
+import { getUserByClerkId } from '@/lib/db/queries/users';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
 /**

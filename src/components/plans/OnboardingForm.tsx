@@ -193,7 +193,7 @@ export default function OnboardingForm() {
     setIsSubmitting(true);
     try {
       const plan = await createPlan(payload);
-      toast.success('Learning path created!');
+      toast.success('Generating your learning plan...');
       router.push(`/plans/${plan.id}`);
     } catch (error) {
       const message =

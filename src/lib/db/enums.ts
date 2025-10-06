@@ -11,6 +11,8 @@ export const learningStyle = pgEnum('learning_style', [
   'practice',
   'mixed',
 ]);
+
+// TODO: Change back to video instead of youtube
 export const resourceType = pgEnum('resource_type', [
   'youtube',
   'article',
@@ -23,3 +25,12 @@ export const progressStatus = pgEnum('progress_status', [
   'in_progress',
   'completed',
 ]);
+
+export const jobStatus = pgEnum('job_status', [
+  'pending',
+  'processing',
+  'completed',
+  'failed',
+]);
+
+export const jobType = pgEnum('job_type', ['plan_generation']);

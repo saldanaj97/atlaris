@@ -79,3 +79,6 @@ export class ProviderInvalidResponseError extends ProviderError {
     this.name = 'ProviderInvalidResponseError';
   }
 }
+
+// Re-export factory function from provider-factory module
+export { getGenerationProvider } from './provider-factory';

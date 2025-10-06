@@ -7,7 +7,6 @@ import {
 import type { FailureClassification } from '@/lib/types/client';
 
 import { classifyFailure } from './classification';
-import { OpenAIGenerationProvider } from './openaiProvider';
 import {
   parseGenerationStream,
   type ParsedGeneration,
@@ -19,6 +18,7 @@ import {
   type AiPlanGenerationProvider,
   type GenerationInput,
 } from './provider';
+import { getGenerationProvider } from './provider-factory';
 import { createAdaptiveTimeout, type AdaptiveTimeoutConfig } from './timeout';
 
 export interface GenerationAttemptContext {
@@ -68,7 +68,7 @@ const DEFAULT_CLOCK = () => Date.now();
 function getProvider(
   provider?: AiPlanGenerationProvider
 ): AiPlanGenerationProvider {
-  return provider ?? new OpenAIGenerationProvider();
+  return provider ?? getGenerationProvider();
 }
 
 export async function runGenerationAttempt(

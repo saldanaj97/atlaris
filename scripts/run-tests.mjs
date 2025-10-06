@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 
-import { readdir } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { config } from 'dotenv';
 import { spawnSync } from 'node:child_process';
+import { readdir } from 'node:fs/promises';
+import { join, resolve, sep } from 'node:path';
 
 const projectRoot = resolve(new URL('..', import.meta.url).pathname);
+
+// Load .env.test before checking DATABASE_URL
+config({ path: join(projectRoot, '.env.test') });
+
+if (!process.env.DATABASE_URL) {
+  console.error('Missing DATABASE_URL (expected from .env.test or CI env)');
+  process.exit(1);
+}
 
 async function collectSpecs(relativeDir) {
   const results = [];
@@ -29,7 +38,10 @@ async function collectSpecs(relativeDir) {
 
 function runCommand(args, label) {
   console.log(`\n▶ ${label}`);
-  const result = spawnSync('pnpm', args, { cwd: projectRoot, stdio: 'inherit' });
+  const result = spawnSync('pnpm', args, {
+    cwd: projectRoot,
+    stdio: 'inherit',
+  });
   if (typeof result.status === 'number' && result.status !== 0) {
     process.exit(result.status === null ? 1 : result.status);
   }
@@ -44,6 +56,13 @@ for (const spec of contractSpecs) {
 
 const integrationSpecs = await collectSpecs('tests/integration');
 for (const spec of integrationSpecs) {
+  runCommand(['vitest', 'run', spec], `Running ${spec}`);
+}
+
+const srcSpecs = (await collectSpecs('src')).filter((spec) =>
+  spec.includes(`${sep}__tests__${sep}`)
+);
+for (const spec of srcSpecs) {
   runCommand(['vitest', 'run', spec], `Running ${spec}`);
 }
 

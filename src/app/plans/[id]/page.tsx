@@ -1,7 +1,8 @@
 import PlanDetailPageError from '@/components/plans/Error';
 import PlanDetails from '@/components/plans/PlanDetails';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import { getLearningPlanDetail, getUserByClerkId } from '@/lib/db/queries';
+import { getLearningPlanDetail } from '@/lib/db/queries/plans';
+import { getUserByClerkId } from '@/lib/db/queries/users';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 import { redirect } from 'next/navigation';
 

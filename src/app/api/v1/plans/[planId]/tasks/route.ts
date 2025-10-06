@@ -1,6 +1,7 @@
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';
-import { getAllTasksInPlan, getUserByClerkId } from '@/lib/db/queries';
+import { getAllTasksInPlan } from '@/lib/db/queries/tasks';
+import { getUserByClerkId } from '@/lib/db/queries/users';
 
 function getParams(req: Request) {
   const url = new URL(req.url);

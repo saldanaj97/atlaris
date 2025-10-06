@@ -12,7 +12,9 @@ This file provides guidance when working with code in this repository.
 - Type checking: tsc --noEmit
 - Notable deps: @clerk/nextjs, @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, postgres, dotenv
 
-## Rules
+## Important Rules/References(read before coding or committing)
+
+- Make sure to ALWAYS use the context7 MCP for grabbing the most up to date documentation about a specific topic before starting any task. This will ensure you have the most up to date information and avoid any mistakes.
 
 - Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:
   - src/app/\*\*/\*.tsx
@@ -22,6 +24,33 @@ This file provides guidance when working with code in this repository.
   - src/hooks/\*\*/\*.ts
   - src/hooks/\*\*/\*.tsx
 - AGAIN, MAKE SURE TO ONLY APPLY THAT RULE IF THE FILE MATCHES A PATTERN FROM THE LIST!
+
+- When writing commit messages, follow the structure and guidelines outline in the .github/instructions/commit-message.instructions.md file. Below is a summary of the structure but make sure to read the full instructions in that file.
+- When commiting, make sure to only stage and commit files that were discussed and modified as part of the task at hand. Do not include unrelated files or changes in the commit.
+
+### Commit Message Format
+
+Follow this structured format for all commit messages:
+
+```
+<type>: <short summary (50 chars max)>
+<blank line>
+<detailed description explaining the what and why>
+<continuation of description if needed>
+<blank line>
+Changes:
+- <bullet point of changes>
+- <bullet point of changes>
+- <bullet point of changes>
+<blank line>
+New files:
+- <path to new file>
+- <path to new file>
+<blank line>
+Tests cover:
+- <test description with test ID if applicable>
+- <test description with test ID if applicable>
+```
 
 ## Common commands
 
@@ -43,7 +72,8 @@ This file provides guidance when working with code in this repository.
   - Generate migrations from schema: pnpm exec drizzle-kit generate
   - Apply migrations: pnpm exec drizzle-kit push
 - Tests
-  - No test runner or test scripts are currently configured in package.json. As of now, there is no single-test command.
+  - pnpm test
+  - pnpm test:watch
 
 ## Project structure and architecture
 
@@ -115,7 +145,21 @@ This file provides guidance when working with code in this repository.
   - Topic search indexing can be added later
   - Billing tables arrive with Stripe integration; exports/integrations (Notion/Google) are out of scope for MVP
 
+## Testing
+
+- Detailed information in the docs/testing/testing.md file. Use this as your main reference for testing-related tasks.
+- Always update the docs/testing/testing.md file with any new information or changes related to testing.
+- Framework: Vitest with @testing-library/react and @testing-library/jest-dom
+- Test files: _.spec.ts, _.spec.tsx under src/ and tests/ directories
+- Test commands:
+  - pnpm test (full test suite)
+  - pnpm test:vitest (all Vitest tests)
+  - pnpm test:watch (watch mode)
+
 ## Notes for future tasks
 
 - Prefer pnpm for all commands in this repo.
-- When adding tests, introduce a runner (e.g., Vitest or Jest) and corresponding scripts in package.json (e.g., test, test:watch). Until then, test commands are intentionally omitted.
+
+## Other notes
+
+- If using a plans.md file for planning feature development phases, ensure to mark tasks as done `[x]` when completed.

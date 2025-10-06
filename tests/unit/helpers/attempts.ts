@@ -115,8 +115,8 @@ export class MockDbClient {
   }
 }
 
-export function asDbClient(mock: MockDbClient): DbInstance {
-  return mock as unknown as DbInstance;
+export function asDbClient(mock: MockDbClient): typeof DbInstance {
+  return mock as unknown as typeof DbInstance;
 }
 
 export function createInput(
