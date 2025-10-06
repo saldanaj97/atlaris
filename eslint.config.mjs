@@ -93,7 +93,7 @@ export default [
     },
   },
   {
-    files: ['drizzle.config.ts'],
+    files: ['drizzle.config.ts', 'vitest.config.ts'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -119,6 +119,35 @@ export default [
   },
   // Next.js recommended + Core Web Vitals via compat until flat config is fully supported upstream
   ...compat.extends('plugin:@next/next/core-web-vitals'),
+  // Relax rules for test files (must come after Next.js config)
+  {
+    files: ['tests/**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parserOptions: {
+        project: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@next/next/no-assign-module-variable': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
   // Turn off formatting-related rules to defer to Prettier
   eslintConfigPrettier,
 ];

@@ -36,7 +36,7 @@ export interface Job {
   attempts: number;
   maxAttempts: number;
   data: unknown;
-  result: unknown | null;
+  result: unknown;
   error: string | null;
   processingStartedAt: Date | null;
   completedAt: Date | null;

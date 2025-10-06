@@ -70,7 +70,9 @@ export type ProcessPlanGenerationJobResult =
 
 function buildValidationErrorMessage(error: ZodError): string {
   const details = error.issues.map((issue) => issue.message).join('; ');
-  return details.length ? `Invalid job data: ${details}` : 'Invalid job data payload.';
+  return details.length
+    ? `Invalid job data: ${details}`
+    : 'Invalid job data payload.';
 }
 
 function toPlanGenerationJobData(data: unknown): PlanGenerationJobData {
@@ -98,7 +100,10 @@ function buildJobResult(
   providerMetadata: ProviderMetadata | undefined
 ): PlanGenerationJobResult {
   const modulesCount = modules.length;
-  const tasksCount = modules.reduce((sum, module) => sum + module.tasks.length, 0);
+  const tasksCount = modules.reduce(
+    (sum, module) => sum + module.tasks.length,
+    0
+  );
 
   return {
     modulesCount,
@@ -117,7 +122,7 @@ export async function processPlanGenerationJob(
   if (job.type !== JOB_TYPES.PLAN_GENERATION) {
     return {
       status: 'failure',
-      error: `Unsupported job type: ${job.type}`,
+      error: `Unsupported job type: ${String(job.type)}`,
       classification: 'unknown',
       retryable: false,
     } satisfies ProcessPlanGenerationJobFailure;
@@ -179,7 +184,8 @@ export async function processPlanGenerationJob(
     }
 
     const classification = result.classification ?? 'unknown';
-    const retryable = classification !== 'validation' && classification !== 'capped';
+    const retryable =
+      classification !== 'validation' && classification !== 'capped';
     const message =
       result.error instanceof Error
         ? result.error.message

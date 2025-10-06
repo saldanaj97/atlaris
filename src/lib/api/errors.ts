@@ -64,7 +64,7 @@ export class RateLimitError extends AppError {
 
   constructor(
     message = 'Too Many Requests',
-    details?: unknown & { retryAfter?: number }
+    details?: { retryAfter?: number }
   ) {
     super(message, {
       status: 429,

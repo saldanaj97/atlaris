@@ -200,7 +200,7 @@ export class PlanGenerationWorker {
     });
 
     this.activeJobs.add(jobPromise);
-    jobPromise.finally(() => {
+    void jobPromise.finally(() => {
       this.activeJobs.delete(jobPromise);
     });
   }

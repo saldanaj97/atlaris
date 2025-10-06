@@ -14,7 +14,7 @@ interface JobRow {
   attempts: number;
   maxAttempts: number;
   payload: unknown;
-  result: unknown | null;
+  result: unknown;
   error: string | null;
   lockedAt: Date | null;
   lockedBy: string | null;

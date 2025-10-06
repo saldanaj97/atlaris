@@ -61,8 +61,8 @@ export const GET = withErrorBoundary(
 
     // Determine status based on jobs and modules
     let status: PlanStatus = 'pending';
-    let latestJob = jobs[0] ?? null;
-    let attempts = jobs.length;
+    const latestJob = jobs[0] ?? null;
+    const attempts = jobs.length;
 
     if (jobs.some((job) => job.status === 'processing')) {
       status = 'processing';
