@@ -2,10 +2,21 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, 'feature/*', 'fix/*', 'hotfix/*']
+    branches: [main, development]
+    paths-ignore:
+      - '**.md'
+      - .claude/**
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/**'  # Still run if workflows change
   pull_request:
-    branches: [main, develop]
-
+    branches: [main, development]
+    paths-ignore:
+      - '**.md'
+      - .claude/**
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/**'  # Still run if workflows change
 jobs:
   lint:
     name: Lint
