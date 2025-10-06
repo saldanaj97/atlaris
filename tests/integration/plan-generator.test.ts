@@ -124,7 +124,7 @@ async function fetchJob(jobId: string) {
   });
 }
 
-describe('PlanGenerationWorker (Phase 7)', () => {
+describe('PlanGenerationWorker', () => {
   it('processes a plan generation job end-to-end (J026 success + T072 + T073)', async () => {
     const worker = new PlanGenerationWorker({
       pollIntervalMs: 40,

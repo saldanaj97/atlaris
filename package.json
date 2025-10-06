@@ -19,6 +19,8 @@
     "seed:refresh": "pnpm seed:reset && pnpm seed",
     "seed:reset": "tsx src/lib/db/seed-cli.ts reset",
     "test": "node scripts/run-tests.mjs",
+    "test:unit": "node scripts/run-tests.mjs",
+    "test:rls": "vitest run tests/security",
     "test:vitest": "vitest run",
     "test:watch": "vitest",
     "start": "next start",

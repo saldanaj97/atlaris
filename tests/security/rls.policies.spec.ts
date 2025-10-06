@@ -42,11 +42,10 @@ import {
   createServiceRoleClient,
 } from '../helpers/rls';
 
-// Skip RLS tests in CI (GitHub Actions) - they work locally but fail in CI
-// due to Clerk/Supabase authentication integration issues
-const isCI = process.env.CI === 'true';
+// Run RLS tests only when explicitly enabled (CI or RUN_RLS_TESTS=1)
+const runRls = process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
 
-describe.skipIf(isCI)('RLS Policy Verification', () => {
+describe.skipIf(!runRls)('RLS Policy Verification', () => {
   beforeEach(async () => {
     await truncateAll();
   });

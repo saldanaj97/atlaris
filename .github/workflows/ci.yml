@@ -59,8 +59,8 @@ jobs:
       - name: Run TypeScript type check
         run: pnpm type-check
 
-  test:
-    name: Test
+  unit-tests:
+    name: Unit & Integration Tests
     runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 15
@@ -108,8 +108,10 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm db:push
 
-      - name: Run test suite
-        run: pnpm test
+      - name: Run unit/integration tests
+        env:
+          ALLOW_DB_TRUNCATE: 'true'
+        run: pnpm test:unit
 
       - name: Cleanup test env file
         if: always()
@@ -123,6 +125,66 @@ jobs:
           name: coverage
           path: coverage/
           retention-days: 7
+
+  rls-tests:
+    name: RLS Tests
+    runs-on: ubuntu-latest
+    environment: test
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create .env.test from GitHub environment
+        run: |
+          cat > .env.test << EOF
+          NODE_ENV=test
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_JWT_SECRET=${{ secrets.TEST_JWT_SECRET }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_ISSUER=${{ secrets.CLERK_ISSUER }}
+          DEV_CLERK_USER_ID=${{ secrets.DEV_CLERK_USER_ID }}
+          DEV_CLERK_USER_EMAIL=${{ secrets.DEV_CLERK_USER_EMAIL }}
+          DEV_CLERK_USER_NAME=${{ secrets.DEV_CLERK_USER_NAME }}
+          AI_PROVIDER=${{ vars.AI_PROVIDER }}
+          MOCK_GENERATION_DELAY_MS=${{ vars.MOCK_GENERATION_DELAY_MS }}
+          MOCK_GENERATION_FAILURE_RATE=${{ vars.MOCK_GENERATION_FAILURE_RATE }}
+          EOF
+
+      - name: Apply migrations with Drizzle
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm db:push
+
+      - name: Run RLS tests (PostgREST + JWT)
+        env:
+          RUN_RLS_TESTS: '1'
+          ALLOW_DB_TRUNCATE: 'true'
+        run: pnpm test:rls
+
+      - name: Cleanup test env file
+        if: always()
+        run: |
+          shred -u .env.test 2>/dev/null || rm -f .env.test || true
 
   build:
     name: Build
@@ -159,7 +221,7 @@ jobs:
 
   all-checks:
     name: All Checks Passed
-    needs: [lint, type-check, test, build]
+    needs: [lint, type-check, unit-tests, rls-tests, build]
     runs-on: ubuntu-latest
     if: always()
 

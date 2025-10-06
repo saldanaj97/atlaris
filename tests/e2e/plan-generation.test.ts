@@ -114,14 +114,19 @@ async function waitForStatus(
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
 
-  throw new Error(`Timed out waiting for plan ${planId} to reach expected status`);
+  throw new Error(
+    `Timed out waiting for plan ${planId} to reach expected status`
+  );
 }
 
-describe('Plan generation end-to-end (Phase 7)', () => {
+describe('Plan generation end-to-end', () => {
   it('creates a plan, processes background job, and exposes ready status (J027)', async () => {
     const clerkUserId = 'e2e-success-user';
     setTestUser(clerkUserId);
-    const userId = await ensureUser({ clerkUserId, email: `${clerkUserId}@example.com` });
+    const userId = await ensureUser({
+      clerkUserId,
+      email: `${clerkUserId}@example.com`,
+    });
 
     const requestPayload = {
       topic: 'Distributed Systems Fundamentals',
@@ -177,7 +182,12 @@ describe('Plan generation end-to-end (Phase 7)', () => {
       ? await db
           .select()
           .from(tasks)
-          .where(inArray(tasks.moduleId, moduleRows.map((module) => module.id)))
+          .where(
+            inArray(
+              tasks.moduleId,
+              moduleRows.map((module) => module.id)
+            )
+          )
       : [];
     expect(taskRows.length).toBeGreaterThan(0);
 
@@ -188,7 +198,8 @@ describe('Plan generation end-to-end (Phase 7)', () => {
     expect(planDetail.id).toBe(planId);
     expect(planDetail.modules.length).toBeGreaterThan(0);
     const moduleWithTasks = planDetail.modules.filter(
-      (module: { tasks: unknown[] }) => Array.isArray(module.tasks) && module.tasks.length > 0
+      (module: { tasks: unknown[] }) =>
+        Array.isArray(module.tasks) && module.tasks.length > 0
     );
     expect(moduleWithTasks.length).toBeGreaterThan(0);
     expect(planDetail.status).toBe('ready');
@@ -197,7 +208,10 @@ describe('Plan generation end-to-end (Phase 7)', () => {
   it('records retry attempts then surfaces ready status after recovery (T070 e2e)', async () => {
     const clerkUserId = 'e2e-retry-user';
     setTestUser(clerkUserId);
-    const userId = await ensureUser({ clerkUserId, email: `${clerkUserId}@example.com` });
+    const userId = await ensureUser({
+      clerkUserId,
+      email: `${clerkUserId}@example.com`,
+    });
 
     const request = createPlanRequest({
       topic: 'Resilient Background Processing',
@@ -220,7 +234,8 @@ describe('Plan generation end-to-end (Phase 7)', () => {
       retryable: true,
     };
 
-    const originalProcessPlanGenerationJob = workerService.processPlanGenerationJob;
+    const originalProcessPlanGenerationJob =
+      workerService.processPlanGenerationJob;
     const processSpy = vi
       .spyOn(workerService, 'processPlanGenerationJob')
       .mockImplementationOnce(async () => failure)

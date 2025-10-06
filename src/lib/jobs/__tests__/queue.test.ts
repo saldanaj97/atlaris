@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { and, eq, lt } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
 import { db } from '@/lib/db/drizzle';
 import { jobQueue, learningPlans } from '@/lib/db/schema';
@@ -50,7 +50,7 @@ async function createPlanFixture(key: string): Promise<PlanFixture> {
   return { plan, userId, clerkUserId };
 }
 
-describe('Job queue service (Phase 7)', () => {
+describe('Job queue service', () => {
   it('enqueues a job with expected defaults (J025-T002)', async () => {
     const { plan, userId } = await createPlanFixture('defaults');
     const payload = {
@@ -113,10 +113,34 @@ describe('Job queue service (Phase 7)', () => {
   it('respects priority then FIFO ordering for getNextJob (J025-T004)', async () => {
     const { plan, userId } = await createPlanFixture('priority');
 
-    const low = await enqueueJob(JOB_TYPE, plan.id, userId, { order: 'low' }, 0);
-    const midA = await enqueueJob(JOB_TYPE, plan.id, userId, { order: 'midA' }, 5);
-    const midB = await enqueueJob(JOB_TYPE, plan.id, userId, { order: 'midB' }, 5);
-    const high = await enqueueJob(JOB_TYPE, plan.id, userId, { order: 'high' }, 10);
+    const low = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      { order: 'low' },
+      0
+    );
+    const midA = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      { order: 'midA' },
+      5
+    );
+    const midB = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      { order: 'midB' },
+      5
+    );
+    const high = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      { order: 'high' },
+      10
+    );
 
     const processed: string[] = [];
     const priorities: number[] = [];
@@ -208,9 +232,13 @@ describe('Job queue service (Phase 7)', () => {
   it('counts user jobs within the provided window (J025-T009)', async () => {
     const { plan, userId } = await createPlanFixture('rate');
 
-    const jobRecent = await enqueueJob(JOB_TYPE, plan.id, userId, { window: 1 });
+    const jobRecent = await enqueueJob(JOB_TYPE, plan.id, userId, {
+      window: 1,
+    });
     const jobOlder = await enqueueJob(JOB_TYPE, plan.id, userId, { window: 2 });
-    const jobOldest = await enqueueJob(JOB_TYPE, plan.id, userId, { window: 3 });
+    const jobOldest = await enqueueJob(JOB_TYPE, plan.id, userId, {
+      window: 3,
+    });
 
     const now = new Date();
 
@@ -251,7 +279,12 @@ describe('Job queue service (Phase 7)', () => {
     const otherRows = await db
       .select({ id: jobQueue.id })
       .from(jobQueue)
-      .where(and(eq(jobQueue.userId, userId), lt(jobQueue.createdAt, threeMinutesAgo)));
+      .where(
+        and(
+          eq(jobQueue.userId, userId),
+          lt(jobQueue.createdAt, threeMinutesAgo)
+        )
+      );
     expect(otherRows.map((row) => row.id)).toContain(jobOldest);
   });
 });
