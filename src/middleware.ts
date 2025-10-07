@@ -12,6 +12,10 @@ const isProtectedRoute = createRouteMatcher([
 // Use basic auth for protected routes for now and later add paid plan
 // with isAuthenticated and user roles
 export default clerkMiddleware(async (auth, req) => {
+  if (req.nextUrl.pathname === '/api/v1/stripe/webhook') {
+    return NextResponse.next();
+  }
+
   if (isProtectedRoute(req)) await auth.protect();
 
   const headerCorrelationId = req.headers.get('x-correlation-id');
