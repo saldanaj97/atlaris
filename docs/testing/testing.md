@@ -97,6 +97,20 @@ Quick reference of all tests in the suite, organized by category:
 - ✅ Performance benchmarks
 - ✅ Utility functions and edge cases
 
+## Test Isolation & Concurrency
+
+To prevent cross-file contamination (shared mocks, AsyncLocalStorage context, and env state), Vitest is configured to run in a single thread with per-file isolation:
+
+- `isolate: true` ensures each test file gets a fresh module graph and mock state.
+- `sequence.concurrent: false` disables concurrent execution across files.
+- `pool: 'threads'` with `poolOptions.threads.singleThread: true` forces a single worker.
+- `maxConcurrency: 1` keeps file-level concurrency at one to avoid DB truncation races.
+
+Notes:
+- Global setup (`tests/setup.ts`) truncates the database before each test. Avoid redundant truncation in individual tests unless necessary.
+- For request-auth dependent tests, use `setTestUser('<clerk_user_id>')` to set `DEV_CLERK_USER_ID` for that test. The isolation settings above prevent env and mock leakage between files.
+- If you add new suites that mock the Stripe client or other globals, keep mocks file-local and reset them in `beforeEach` with `vi.clearAllMocks()`.
+
 ## Test Categories
 
 ### 1. Unit Tests (`tests/unit/**`)
