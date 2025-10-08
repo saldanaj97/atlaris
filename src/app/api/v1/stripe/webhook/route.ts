@@ -52,7 +52,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
     return new Response('server misconfigured', { status: 500 });
   }
 
-  /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+   
   // Stripe SDK types are not fully recognized by ESLint's type checker
   const stripe = new Stripe(secretKey, {
     apiVersion: '2025-09-30.clover',
@@ -80,7 +80,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
     default:
       break;
   }
-  /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+   
 
   return new Response('ok');
 });

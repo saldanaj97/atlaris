@@ -41,7 +41,7 @@ function assertSafeToTruncate() {
           'Use a dedicated test DB (e.g., "postgres_test") or set ALLOW_DB_TRUNCATE=true.'
       );
     }
-  } catch (err) {
+  } catch {
     // If URL parsing fails, be safe and refuse truncation
     throw new Error(
       'Refusing to truncate database: invalid DATABASE_URL for safety. ' +

@@ -55,7 +55,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const serviceClient = createServiceRoleClient();
 
       // Create test data
-      const user1 = await db
+      const _user1 = await db
         .insert(users)
         .values({
           clerkUserId: 'user_1',
@@ -63,7 +63,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         })
         .returning();
 
-      const user2 = await db
+      const _user2 = await db
         .insert(users)
         .values({
           clerkUserId: 'user_2',
@@ -254,7 +254,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
 
     it('authenticated users cannot insert plans for other users', async () => {
       // Create two users
-      const [user1] = await db
+      const [_user1] = await db
         .insert(users)
         .values({
           clerkUserId: 'user_cant_insert_1',
@@ -334,7 +334,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         })
         .returning();
 
-      const [user2] = await db
+      const [_user2] = await db
         .insert(users)
         .values({
           clerkUserId: 'user_no_update_2',
@@ -359,7 +359,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const user2Client = createAuthenticatedClient('user_no_update_2');
 
       // User2 tries to update user1's plan
-      const { data, error } = await user2Client
+      const { data, error: _error } = await user2Client
         .from('learning_plans')
         .update({ topic: 'Hacked!' })
         .eq('id', plan.id)
@@ -416,7 +416,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         })
         .returning();
 
-      const [user2] = await db
+      const [_user2] = await db
         .insert(users)
         .values({
           clerkUserId: 'user_no_delete_2',
@@ -441,7 +441,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const user2Client = createAuthenticatedClient('user_no_delete_2');
 
       // User2 tries to delete user1's plan
-      const { error } = await user2Client
+      const { error: _error } = await user2Client
         .from('learning_plans')
         .delete()
         .eq('id', plan.id);
@@ -677,7 +677,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       expect(anonData?.[0]?.title).toBe('Test Article');
 
       // Authenticated user should also see it
-      const [user] = await db
+      const [_user] = await db
         .insert(users)
         .values({
           clerkUserId: 'user_resources',
@@ -697,7 +697,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
 
     it('only service role can manage resources', async () => {
       // Create user
-      const [user] = await db
+      const [_user] = await db
         .insert(users)
         .values({
           clerkUserId: 'user_no_resources',
