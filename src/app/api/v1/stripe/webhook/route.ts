@@ -52,7 +52,6 @@ export const POST = withErrorBoundary(async (req: Request) => {
     return new Response('server misconfigured', { status: 500 });
   }
 
-   
   // Stripe SDK types are not fully recognized by ESLint's type checker
   const stripe = new Stripe(secretKey, {
     apiVersion: '2025-09-30.clover',
@@ -72,15 +71,81 @@ export const POST = withErrorBoundary(async (req: Request) => {
   }
 
   switch (event.type) {
-    case 'checkout.session.completed':
-    case 'invoice.payment_succeeded':
+    case 'checkout.session.completed': {
+      const session = event.data.object;
+      // Subscription is automatically handled by subscription.created event
+      console.log('Checkout session completed:', session.id);
+      break;
+    }
+
     case 'customer.subscription.created':
-    case 'customer.subscription.updated':
-    case 'customer.subscription.deleted':
+    case 'customer.subscription.updated': {
+      const subscription = event.data.object;
+      const { syncSubscriptionToDb } = await import(
+        '@/lib/stripe/subscriptions'
+      );
+      await syncSubscriptionToDb(subscription);
+      console.log('Subscription synced:', subscription.id);
+      break;
+    }
+
+    case 'customer.subscription.deleted': {
+      const subscription = event.data.object;
+      const customerId =
+        typeof subscription.customer === 'string'
+          ? subscription.customer
+          : subscription.customer.id;
+
+      // Downgrade user to free tier
+      const { eq } = await import('drizzle-orm');
+      const { db } = await import('@/lib/db/drizzle');
+      const { users } = await import('@/lib/db/schema');
+
+      await db
+        .update(users)
+        .set({
+          subscriptionTier: 'free',
+          subscriptionStatus: 'canceled',
+          stripeSubscriptionId: null,
+          subscriptionPeriodEnd: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.stripeCustomerId, customerId));
+
+      console.log('Subscription deleted, user downgraded:', customerId);
+      break;
+    }
+
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object;
+      const customerId =
+        typeof invoice.customer === 'string'
+          ? invoice.customer
+          : invoice.customer?.id;
+
+      if (customerId) {
+        // Mark subscription as past_due
+        const { eq } = await import('drizzle-orm');
+        const { db } = await import('@/lib/db/drizzle');
+        const { users } = await import('@/lib/db/schema');
+
+        await db
+          .update(users)
+          .set({
+            subscriptionStatus: 'past_due',
+            updatedAt: new Date(),
+          })
+          .where(eq(users.stripeCustomerId, customerId));
+
+        console.log('Payment failed, marked as past_due:', customerId);
+      }
+      break;
+    }
+
     default:
+      console.log('Unhandled event type:', event.type);
       break;
   }
-   
 
   return new Response('ok');
 });

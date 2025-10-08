@@ -31,7 +31,7 @@ type HandlerCtx = { req: Request; userId: string };
 
 type Handler = (ctx: HandlerCtx) => Promise<Response>;
 
-type PlainHandler = (req: Request) => Promise<Response>;
+export type PlainHandler = (req: Request) => Promise<Response>;
 
 export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request) => {
