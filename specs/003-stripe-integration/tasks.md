@@ -203,11 +203,11 @@ pnpm add stripe
 
 ## Implementation Order
 
-1. **Setup** (30 min): Install stripe package, add env vars, configure Dashboard
-2. **Database** (45 min): Update schema, create migration, apply changes
-3. **Core Services** (2 hrs): Stripe client, usage tracking, subscription service
-4. **API Routes** (2 hrs): Implement checkout, webhook, portal, subscription endpoints
-5. **Gating Logic** (1 hr): Add middleware to enforce limits
-6. **Testing** (1 hr): Manual testing with test cards and webhooks
+1. [x] **Setup** (30 min): Install stripe package, add env vars, configure Dashboard
+2. [x] **Database** (45 min): Update schema, create migration, apply changes
+3. [ ] **Core Services** (2 hrs): Stripe client, usage tracking, subscription service
+4. [ ] **API Routes** (2 hrs): Implement checkout, webhook, portal, subscription endpoints
+5. [ ] **Gating Logic** (1 hr): Add middleware to enforce limits
+6. [ ] **Testing** (1 hr): Manual testing with test cards and webhooks
 
 **Total Estimate**: ~7 hours
