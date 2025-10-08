@@ -26,6 +26,8 @@ import {
   progressStatus,
   resourceType,
   skillLevel,
+  subscriptionStatus,
+  subscriptionTier,
 } from './enums';
 
 // Clerk JWT subject helper (Clerk user ID)
@@ -39,7 +41,15 @@ export const users = pgTable(
     clerkUserId: text('clerk_user_id').notNull().unique(),
     email: text('email').notNull().unique(),
     name: text('name'),
-    subscriptionTier: text('subscription_tier'), // e.g., free, pro
+    subscriptionTier: subscriptionTier('subscription_tier')
+      .notNull()
+      .default('free'),
+    stripeCustomerId: text('stripe_customer_id').unique(),
+    stripeSubscriptionId: text('stripe_subscription_id').unique(),
+    subscriptionStatus: subscriptionStatus('subscription_status'),
+    subscriptionPeriodEnd: timestamp('subscription_period_end', {
+      withTimezone: true,
+    }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -79,6 +89,8 @@ export const users = pgTable(
     }),
 
     // Users can update only their own profile fields (not identifiers)
+    // Note: Column-level privileges limit authenticated role to UPDATE only (name).
+    // Stripe/subscription columns are restricted to service_role via GRANTs in migrations.
     pgPolicy('users_update_own_profile', {
       for: 'update',
       to: authenticatedRole,
@@ -99,6 +111,117 @@ export const users = pgTable(
       for: 'delete',
       to: serviceRole,
       using: sql`true`,
+    }),
+  ]
+).enableRLS();
+
+// Usage metrics table
+export const usageMetrics = pgTable(
+  'usage_metrics',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    month: text('month').notNull(), // YYYY-MM
+    plansGenerated: integer('plans_generated').notNull().default(0),
+    regenerationsUsed: integer('regenerations_used').notNull().default(0),
+    exportsUsed: integer('exports_used').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('usage_metrics_user_id_month_unique').on(table.userId, table.month),
+    index('idx_usage_metrics_user_id').on(table.userId),
+    index('idx_usage_metrics_month').on(table.month),
+    check('plans_generated_nonneg', sql`${table.plansGenerated} >= 0`),
+    check('regenerations_used_nonneg', sql`${table.regenerationsUsed} >= 0`),
+    check('exports_used_nonneg', sql`${table.exportsUsed} >= 0`),
+
+    // RLS policies
+    pgPolicy('usage_metrics_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('usage_metrics_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+    pgPolicy('usage_metrics_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('usage_metrics_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
+    pgPolicy('usage_metrics_update_own', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('usage_metrics_update_service', {
+      for: 'update',
+      to: serviceRole,
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
+    pgPolicy('usage_metrics_delete_own', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('usage_metrics_delete_service', {
+      for: 'delete',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+  ]
+).enableRLS();
+
+// Stripe webhook idempotency table
+export const stripeWebhookEvents = pgTable(
+  'stripe_webhook_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventId: text('event_id').notNull(),
+    livemode: boolean('livemode').notNull(),
+    type: text('type').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('stripe_webhook_events_event_id_unique').on(table.eventId),
+    index('idx_stripe_webhook_events_created_at').on(table.createdAt),
+    pgPolicy('stripe_webhook_events_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+    pgPolicy('stripe_webhook_events_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
     }),
   ]
 ).enableRLS();

@@ -23,13 +23,20 @@ export default defineConfig({
     globals: true,
     // Use jsdom so we can test React hooks/components
     environment: 'jsdom',
+    // Ensure each test file runs in isolated VM to prevent mock/env bleed
+    isolate: true,
+    // Run tests strictly sequentially across files
+    sequence: { concurrent: false },
+    // Use a single worker to avoid cross-file env/mocks conflicts
+    pool: 'threads',
+    poolOptions: { threads: { singleThread: true } },
     testTimeout: 20_000,
     // Include TS and TSX tests
     include: [
       'tests/**/*.{test,spec}.{ts,tsx}',
       'src/**/*.{test,spec}.{ts,tsx}',
     ],
-    // Integration tests share a single Postgres instance; limit concurrency to avoid cross-test truncation.
+    // Integration tests share a single Postgres instance; keep file-level concurrency at 1.
     maxConcurrency: 1,
     setupFiles: ['tests/setup.ts'],
     coverage: {

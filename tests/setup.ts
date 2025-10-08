@@ -6,7 +6,8 @@ if (!process.env.NODE_ENV) {
 import { afterAll, afterEach, beforeEach } from 'vitest';
 
 import { client } from '@/lib/db/drizzle';
-import { truncateAll } from './helpers/db';
+import { Mutex } from 'async-mutex';
+import { ensureStripeWebhookEventsTable, truncateAll } from './helpers/db';
 
 if (!process.env.DEV_CLERK_USER_ID) {
   Object.assign(process.env, { DEV_CLERK_USER_ID: 'test-user-id' });
@@ -41,7 +42,7 @@ function assertSafeToTruncate() {
           'Use a dedicated test DB (e.g., "postgres_test") or set ALLOW_DB_TRUNCATE=true.'
       );
     }
-  } catch (err) {
+  } catch {
     // If URL parsing fails, be safe and refuse truncation
     throw new Error(
       'Refusing to truncate database: invalid DATABASE_URL for safety. ' +
@@ -50,8 +51,6 @@ function assertSafeToTruncate() {
   }
 }
 
-import { Mutex } from 'async-mutex';
-
 const dbLock = new Mutex();
 let releaseDbLock: (() => void) | null = null;
 
@@ -59,6 +58,7 @@ if (!skipDbSetup) {
   beforeEach(async () => {
     assertSafeToTruncate();
     releaseDbLock = await dbLock.acquire();
+    await ensureStripeWebhookEventsTable();
     await truncateAll();
   });
 

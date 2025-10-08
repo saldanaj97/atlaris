@@ -103,7 +103,7 @@ describe('Worker Logging', () => {
   });
 
   it('should log job lifecycle events with job metadata', async () => {
-    const userId = await ensureUser({
+    const _userId = await ensureUser({
       clerkUserId: 'test-clerk-id-lifecycle',
       email: 'lifecycle@example.com',
     });
