@@ -4,9 +4,9 @@ import { db } from '@/lib/db/drizzle';
 import {
   generationAttempts,
   learningPlans,
-  modules,
-  tasks,
-  users,
+  modules as _modules,
+  tasks as _tasks,
+  users as _users,
 } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';

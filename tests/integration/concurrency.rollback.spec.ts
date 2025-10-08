@@ -17,7 +17,10 @@ import { ensureUser } from '../helpers/db';
 describe('Concurrency - rollback on DB error', () => {
   it('rolls back modules/tasks when an error occurs mid-transaction', async () => {
     setTestUser('rollback_user');
-    const userId = await ensureUser({ clerkUserId: 'rollback_user', email: 'rollback_user@example.com' });
+    const userId = await ensureUser({
+      clerkUserId: 'rollback_user',
+      email: 'rollback_user@example.com',
+    });
 
     const [plan] = await db
       .insert(learningPlans)
@@ -55,7 +58,7 @@ describe('Concurrency - rollback on DB error', () => {
             const originalReturning = builder.returning.bind(builder);
             builder.returning = (...rArgs: any[]) => {
               const retBuilder = originalReturning(...rArgs);
-              const originalExecute = retBuilder.then.bind(retBuilder);
+              const _originalExecute = retBuilder.then.bind(retBuilder);
               return retBuilder;
             };
             return builder;

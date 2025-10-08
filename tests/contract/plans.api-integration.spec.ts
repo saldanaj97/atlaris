@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 
-import { GET as GET_PLAN } from '@/app/api/v1/plans/[planId]/route';
+import { GET as _GET_PLAN } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { POST } from '@/app/api/v1/plans/route';
 import { db } from '@/lib/db/drizzle';

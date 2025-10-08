@@ -97,6 +97,20 @@ Quick reference of all tests in the suite, organized by category:
 - ✅ Performance benchmarks
 - ✅ Utility functions and edge cases
 
+## Test Isolation & Concurrency
+
+To prevent cross-file contamination (shared mocks, AsyncLocalStorage context, and env state), Vitest is configured to run in a single thread with per-file isolation:
+
+- `isolate: true` ensures each test file gets a fresh module graph and mock state.
+- `sequence.concurrent: false` disables concurrent execution across files.
+- `pool: 'threads'` with `poolOptions.threads.singleThread: true` forces a single worker.
+- `maxConcurrency: 1` keeps file-level concurrency at one to avoid DB truncation races.
+
+Notes:
+- Global setup (`tests/setup.ts`) truncates the database before each test. Avoid redundant truncation in individual tests unless necessary.
+- For request-auth dependent tests, use `setTestUser('<clerk_user_id>')` to set `DEV_CLERK_USER_ID` for that test. The isolation settings above prevent env and mock leakage between files.
+- If you add new suites that mock the Stripe client or other globals, keep mocks file-local and reset them in `beforeEach` with `vi.clearAllMocks()`.
+
 ## Test Categories
 
 ### 1. Unit Tests (`tests/unit/**`)
@@ -406,6 +420,49 @@ const adminClient = createServiceRoleClient();
 // Authenticated client (TODO: requires service_role key)
 const userClient = createAuthenticatedClient('user_123');
 ```
+
+## Database Schema Tests
+
+### Location
+
+Schema validation tests are located in `tests/db/` and verify database constraints, indexes, and schema-level validation.
+
+### Purpose
+
+- Test DB-level constraints (unique, foreign keys, check constraints)
+- Verify indexes exist and are properly configured
+- Test enum enforcement and default values
+- Validate cascade behaviors
+
+### Example: Stripe Schema Tests
+
+The file `tests/db/stripe.schema.spec.ts` validates:
+
+- Subscription tier enum defaults and enforcement
+- Stripe field uniqueness constraints (`stripeCustomerId`, `stripeSubscriptionId`)
+- Usage metrics table constraints (unique user/month, non-negative counters)
+- Foreign key cascades
+- Index presence
+
+### Running Schema Tests
+
+```bash
+# Run all DB schema tests
+pnpm exec vitest run tests/db
+
+# Run specific schema test
+pnpm exec vitest run tests/db/stripe.schema.spec.ts
+```
+
+### Important Notes
+
+- Schema tests use direct Postgres connection (RLS bypassed by design)
+- Always run migrations on test database before running schema tests:
+  ```bash
+  export DATABASE_URL="<test-database-url-from-.env.test>"
+  pnpm exec drizzle-kit push
+  ```
+- These tests verify database-level constraints, not application logic
 
 ## Best Practices
 

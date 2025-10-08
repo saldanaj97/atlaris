@@ -208,7 +208,7 @@ describe('Plan generation end-to-end', () => {
   it('records retry attempts then surfaces ready status after recovery (T070 e2e)', async () => {
     const clerkUserId = 'e2e-retry-user';
     setTestUser(clerkUserId);
-    const userId = await ensureUser({
+    const _userId = await ensureUser({
       clerkUserId,
       email: `${clerkUserId}@example.com`,
     });

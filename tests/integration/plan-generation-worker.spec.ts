@@ -1,11 +1,19 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { eq, inArray } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import {
   generationAttempts,
-  jobQueue,
+  jobQueue as _jobQueue,
   learningPlans,
   modules,
   tasks,
@@ -226,7 +234,12 @@ describe('PlanGenerationWorker', () => {
       ? await db
           .select()
           .from(tasks)
-          .where(inArray(tasks.moduleId, moduleRows.map((module) => module.id)))
+          .where(
+            inArray(
+              tasks.moduleId,
+              moduleRows.map((module) => module.id)
+            )
+          )
       : [];
     expect(taskRows.length).toBeGreaterThan(0);
     expect(jobResult?.modulesCount).toBe(moduleRows.length);
@@ -302,7 +315,7 @@ describe('PlanGenerationWorker', () => {
 
     const [firstCall, secondCall] = processSpy.mock.calls as [
       [Parameters<typeof workerService.processPlanGenerationJob>[0]],
-      [Parameters<typeof workerService.processPlanGenerationJob>[0]]
+      [Parameters<typeof workerService.processPlanGenerationJob>[0]],
     ];
 
     expect(firstCall?.[0].attempts).toBe(0);
@@ -371,7 +384,9 @@ describe('PlanGenerationWorker', () => {
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, plan.id));
     expect(attempts).toHaveLength(finalJob?.attempts ?? 0);
-    expect(attempts.every((attempt) => attempt.status === 'failure')).toBe(true);
+    expect(attempts.every((attempt) => attempt.status === 'failure')).toBe(
+      true
+    );
 
     const moduleRows = await db
       .select()
@@ -485,7 +500,9 @@ describe('PlanGenerationWorker', () => {
       await waitFor(async () => {
         const firstJob = await fetchJob(jobA);
         const secondJob = await fetchJob(jobB);
-        return firstJob?.status === 'completed' && secondJob?.status === 'completed';
+        return (
+          firstJob?.status === 'completed' && secondJob?.status === 'completed'
+        );
       });
     } finally {
       if (!firstReleased) {
@@ -540,10 +557,12 @@ describe('PlanGenerationWorker', () => {
       },
     };
 
-    vi.spyOn(workerService, 'processPlanGenerationJob').mockImplementation(async () => {
-      await sleep(250);
-      return longRunningSuccess;
-    });
+    vi.spyOn(workerService, 'processPlanGenerationJob').mockImplementation(
+      async () => {
+        await sleep(250);
+        return longRunningSuccess;
+      }
+    );
 
     worker.start();
 
