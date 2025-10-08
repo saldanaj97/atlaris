@@ -407,6 +407,49 @@ const adminClient = createServiceRoleClient();
 const userClient = createAuthenticatedClient('user_123');
 ```
 
+## Database Schema Tests
+
+### Location
+
+Schema validation tests are located in `tests/db/` and verify database constraints, indexes, and schema-level validation.
+
+### Purpose
+
+- Test DB-level constraints (unique, foreign keys, check constraints)
+- Verify indexes exist and are properly configured
+- Test enum enforcement and default values
+- Validate cascade behaviors
+
+### Example: Stripe Schema Tests
+
+The file `tests/db/stripe.schema.spec.ts` validates:
+
+- Subscription tier enum defaults and enforcement
+- Stripe field uniqueness constraints (`stripeCustomerId`, `stripeSubscriptionId`)
+- Usage metrics table constraints (unique user/month, non-negative counters)
+- Foreign key cascades
+- Index presence
+
+### Running Schema Tests
+
+```bash
+# Run all DB schema tests
+pnpm exec vitest run tests/db
+
+# Run specific schema test
+pnpm exec vitest run tests/db/stripe.schema.spec.ts
+```
+
+### Important Notes
+
+- Schema tests use direct Postgres connection (RLS bypassed by design)
+- Always run migrations on test database before running schema tests:
+  ```bash
+  export DATABASE_URL="<test-database-url-from-.env.test>"
+  pnpm exec drizzle-kit push
+  ```
+- These tests verify database-level constraints, not application logic
+
 ## Best Practices
 
 ### ✅ DO

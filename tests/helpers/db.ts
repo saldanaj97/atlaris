@@ -11,6 +11,7 @@ import {
   taskProgress,
   taskResources,
   tasks,
+  usageMetrics,
   users,
 } from '@/lib/db/schema';
 
@@ -30,6 +31,7 @@ export async function truncateAll() {
       ${modules},
       ${planGenerations},
       ${learningPlans},
+      ${usageMetrics},
       ${users},
       ${resources}
     RESTART IDENTITY CASCADE

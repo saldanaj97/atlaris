@@ -29,6 +29,13 @@
       "when": 1759264863240,
       "tag": "0003_heavy_kabuki",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1759871278608,
+      "tag": "0004_glorious_bishop",
+      "breakpoints": true
     }
   ]
 }

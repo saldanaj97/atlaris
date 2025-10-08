@@ -8,9 +8,20 @@ export const POST = withErrorBoundary(async (req: Request) => {
   const rawBody = await req.text();
   const signature = req.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const isProd = process.env.NODE_ENV === 'production';
 
-  // If not configured yet, accept payloads to unblock local dev
+  // Basic body size guard (avoid excessive payloads)
+  const MAX_BYTES = 512 * 1024; // 512KB
+  if (Buffer.byteLength(rawBody, 'utf8') > MAX_BYTES) {
+    return new Response('payload too large', { status: 413 });
+  }
+
+  // In production, a webhook secret must be configured.
   if (!webhookSecret) {
+    if (isProd) {
+      return new Response('webhook misconfigured', { status: 500 });
+    }
+    // In non-production, accept payloads to unblock local dev
     try {
       const parsed = JSON.parse(rawBody) as unknown;
       const type =
@@ -36,13 +47,28 @@ export const POST = withErrorBoundary(async (req: Request) => {
     return new Response('missing signature', { status: 400 });
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    return new Response('server misconfigured', { status: 500 });
+  }
+
+  /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+  // Stripe SDK types are not fully recognized by ESLint's type checker
+  const stripe = new Stripe(secretKey, {
+    apiVersion: '2025-09-30.clover',
+  });
 
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch {
     return new Response('signature verification failed', { status: 400 });
+  }
+
+  // Ignore mode-mismatched events (e.g., test events hitting prod)
+  const expectLive = isProd;
+  if (event.livemode !== expectLive) {
+    return new Response('ok');
   }
 
   switch (event.type) {
@@ -54,6 +80,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
     default:
       break;
   }
+  /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
   return new Response('ok');
 });

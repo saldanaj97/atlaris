@@ -12,7 +12,7 @@ const isProtectedRoute = createRouteMatcher([
 // Use basic auth for protected routes for now and later add paid plan
 // with isAuthenticated and user roles
 export default clerkMiddleware(async (auth, req) => {
-  if (req.nextUrl.pathname === '/api/v1/stripe/webhook') {
+  if (req.nextUrl.pathname.startsWith('/api/v1/stripe/webhook')) {
     return NextResponse.next();
   }
 

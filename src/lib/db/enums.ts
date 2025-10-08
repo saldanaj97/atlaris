@@ -34,3 +34,16 @@ export const jobStatus = pgEnum('job_status', [
 ]);
 
 export const jobType = pgEnum('job_type', ['plan_generation']);
+
+export const subscriptionTier = pgEnum('subscription_tier', [
+  'free',
+  'starter',
+  'pro',
+]);
+
+export const subscriptionStatus = pgEnum('subscription_status', [
+  'active',
+  'canceled',
+  'past_due',
+  'trialing',
+]);
