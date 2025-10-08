@@ -13,7 +13,7 @@ export function json<Data>(data: Data, options: JsonOptions = {}) {
 }
 
 export function jsonError(
-  error: string,
+  message: string,
   options: {
     status?: number;
     code?: string;
@@ -24,12 +24,22 @@ export function jsonError(
 ) {
   const { status = 400, code, classification, details, headers = {} } = options;
 
-  const body: Record<string, unknown> = { error };
-  if (code) body.code = code;
-  if (classification) body.classification = classification;
-  if (details !== undefined) body.details = details;
+  // Backwards-compatible shape: if no structured fields provided, return a simple string
+  if (!code && !classification && details === undefined) {
+    return Response.json({ error: message }, { status, headers });
+  }
 
-  return Response.json(body, { status, headers });
+  return Response.json(
+    {
+      error: {
+        message,
+        ...(code ? { code } : {}),
+        ...(classification ? { classification } : {}),
+        ...(details !== undefined ? { details } : {}),
+      },
+    },
+    { status, headers }
+  );
 }
 
 export function notImplemented() {

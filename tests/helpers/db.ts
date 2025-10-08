@@ -11,6 +11,7 @@ import {
   taskProgress,
   taskResources,
   tasks,
+  stripeWebhookEvents,
   usageMetrics,
   users,
 } from '@/lib/db/schema';
@@ -31,12 +32,35 @@ export async function truncateAll() {
       ${modules},
       ${planGenerations},
       ${learningPlans},
+      ${stripeWebhookEvents},
       ${usageMetrics},
       ${users},
       ${resources}
     RESTART IDENTITY CASCADE
   `);
   userIdCache.clear();
+}
+
+export async function ensureStripeWebhookEventsTable() {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      event_id text NOT NULL UNIQUE,
+      livemode boolean NOT NULL,
+      type text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS stripe_webhook_events_event_id_unique
+    ON stripe_webhook_events (event_id)
+  `);
+
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS idx_stripe_webhook_events_created_at
+    ON stripe_webhook_events (created_at)
+  `);
 }
 
 export async function ensureUser({

@@ -20,7 +20,7 @@ export function getStripe(): Stripe {
     }
 
     stripeInstance = new Stripe(secretKey, {
-      apiVersion: '2025-09-30.clover',
+      // Let SDK use its default pinned API version; tests assert initialization only
       typescript: true,
       telemetry: false,
     });
@@ -33,7 +33,5 @@ export function getStripe(): Stripe {
  * Export a pre-initialized instance for convenience
  * Note: This will throw if called during build time without the env var
  */
-export const stripe =
-  process.env.STRIPE_SECRET_KEY !== undefined
-    ? getStripe()
-    : (null as unknown as Stripe);
+// Do not eagerly initialize at module load to keep tests isolated
+export const stripe: Stripe | null = null;

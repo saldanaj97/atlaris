@@ -9,59 +9,54 @@ export const POST = withErrorBoundary(async (req: Request) => {
   const signature = req.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const isProd = process.env.NODE_ENV === 'production';
+  const allowDevPayloads =
+    !isProd && process.env.STRIPE_WEBHOOK_DEV_MODE === '1';
 
   // Basic body size guard (avoid excessive payloads)
-  const MAX_BYTES = 512 * 1024; // 512KB
+  const MAX_BYTES = 256 * 1024; // 256KB
   if (Buffer.byteLength(rawBody, 'utf8') > MAX_BYTES) {
     return new Response('payload too large', { status: 413 });
   }
 
-  // In production, a webhook secret must be configured.
-  if (!webhookSecret) {
-    if (isProd) {
+  // If a webhook secret is configured, verify the signature using our Stripe client
+  let event: Stripe.Event;
+  if (webhookSecret) {
+    if (!signature) {
+      return new Response('missing signature', { status: 400 });
+    }
+
+    try {
+      event = Stripe.webhooks.constructEvent(
+        rawBody,
+        signature,
+        webhookSecret,
+        300
+      );
+    } catch (error) {
+      console.error('Stripe webhook signature verification failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return new Response('signature verification failed', { status: 400 });
+    }
+  } else {
+    // In non-production without secret, accept JSON payloads (dev convenience)
+    if (!allowDevPayloads) {
       return new Response('webhook misconfigured', { status: 500 });
     }
-    // In non-production, accept payloads to unblock local dev
     try {
-      const parsed = JSON.parse(rawBody) as unknown;
-      const type =
-        parsed && typeof parsed === 'object' && 'type' in parsed
-          ? (parsed as { type?: string }).type
-          : undefined;
-      switch (type) {
-        case 'checkout.session.completed':
-        case 'invoice.payment_succeeded':
-        case 'customer.subscription.created':
-        case 'customer.subscription.updated':
-        case 'customer.subscription.deleted':
-        default:
-          break;
-      }
-      return new Response('ok');
+      event = JSON.parse(rawBody) as Stripe.Event;
     } catch {
       return new Response('bad request', { status: 400 });
     }
-  }
 
-  if (!signature) {
-    return new Response('missing signature', { status: 400 });
-  }
-
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    return new Response('server misconfigured', { status: 500 });
-  }
-
-  // Stripe SDK types are not fully recognized by ESLint's type checker
-  const stripe = new Stripe(secretKey, {
-    apiVersion: '2025-09-30.clover',
-  });
-
-  let event: Stripe.Event;
-  try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-  } catch {
-    return new Response('signature verification failed', { status: 400 });
+    const eventType =
+      event && typeof event === 'object' && 'type' in event
+        ? ((event as { type?: string }).type ?? 'unknown')
+        : 'unknown';
+    console.log('Stripe webhook dev mode event received (noop)', {
+      type: eventType,
+    });
+    return new Response('ok');
   }
 
   // Ignore mode-mismatched events (e.g., test events hitting prod)
@@ -70,11 +65,29 @@ export const POST = withErrorBoundary(async (req: Request) => {
     return new Response('ok');
   }
 
+  const { db } = await import('@/lib/db/drizzle');
+  const { stripeWebhookEvents, users } = await import('@/lib/db/schema');
+  const { eq } = await import('drizzle-orm');
+
+  const inserted = await db
+    .insert(stripeWebhookEvents)
+    .values({
+      eventId: event.id,
+      livemode: event.livemode,
+      type: event.type,
+    })
+    .onConflictDoNothing({ target: stripeWebhookEvents.eventId })
+    .returning({ eventId: stripeWebhookEvents.eventId });
+
+  if (inserted.length === 0) {
+    console.log('Duplicate Stripe webhook event skipped', { type: event.type });
+    return new Response('ok');
+  }
+
   switch (event.type) {
     case 'checkout.session.completed': {
-      const session = event.data.object;
       // Subscription is automatically handled by subscription.created event
-      console.log('Checkout session completed:', session.id);
+      console.log('Stripe checkout.session.completed webhook processed');
       break;
     }
 
@@ -85,7 +98,9 @@ export const POST = withErrorBoundary(async (req: Request) => {
         '@/lib/stripe/subscriptions'
       );
       await syncSubscriptionToDb(subscription);
-      console.log('Subscription synced:', subscription.id);
+      console.log('Stripe subscription sync webhook processed', {
+        type: event.type,
+      });
       break;
     }
 
@@ -97,10 +112,6 @@ export const POST = withErrorBoundary(async (req: Request) => {
           : subscription.customer.id;
 
       // Downgrade user to free tier
-      const { eq } = await import('drizzle-orm');
-      const { db } = await import('@/lib/db/drizzle');
-      const { users } = await import('@/lib/db/schema');
-
       await db
         .update(users)
         .set({
@@ -112,7 +123,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
         })
         .where(eq(users.stripeCustomerId, customerId));
 
-      console.log('Subscription deleted, user downgraded:', customerId);
+      console.log('Stripe subscription deletion webhook processed');
       break;
     }
 
@@ -125,10 +136,6 @@ export const POST = withErrorBoundary(async (req: Request) => {
 
       if (customerId) {
         // Mark subscription as past_due
-        const { eq } = await import('drizzle-orm');
-        const { db } = await import('@/lib/db/drizzle');
-        const { users } = await import('@/lib/db/schema');
-
         await db
           .update(users)
           .set({
@@ -137,13 +144,13 @@ export const POST = withErrorBoundary(async (req: Request) => {
           })
           .where(eq(users.stripeCustomerId, customerId));
 
-        console.log('Payment failed, marked as past_due:', customerId);
+        console.log('Stripe invoice.payment_failed webhook processed');
       }
       break;
     }
 
     default:
-      console.log('Unhandled event type:', event.type);
+      console.log('Unhandled Stripe webhook event', { type: event.type });
       break;
   }
 

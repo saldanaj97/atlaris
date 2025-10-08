@@ -153,19 +153,19 @@ export async function incrementUsage(
   // Ensure metrics exist for this month
   await getOrCreateUsageMetrics(userId, month);
 
-  // Determine which counter to increment
-  const updateField =
+  // Increment the appropriate counter based on type
+  const updateObj =
     type === 'plan'
-      ? usageMetrics.plansGenerated
+      ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
       : type === 'regeneration'
-        ? usageMetrics.regenerationsUsed
-        : usageMetrics.exportsUsed;
+        ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
+        : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
 
   // Increment the counter
   await db
     .update(usageMetrics)
     .set({
-      [updateField.name]: sql`${updateField} + 1`,
+      ...updateObj,
       updatedAt: new Date(),
     })
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));

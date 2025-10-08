@@ -27,8 +27,15 @@ export function requireSubscription(minTier: SubscriptionTier) {
     return async (req: Request) => {
       // Get user from request context (assumes withAuth middleware is applied)
       const { getRequestContext } = await import('./context');
+      const { getEffectiveClerkUserId } = await import('./auth');
       const context = getRequestContext();
-      const clerkUserId = context?.userId;
+      let clerkUserId: string | undefined = context?.userId;
+
+      // Fallback to effective Clerk user id in tests or when middleware wasn't applied
+      if (!clerkUserId) {
+        const maybeId = await getEffectiveClerkUserId();
+        clerkUserId = maybeId ?? undefined;
+      }
 
       if (!clerkUserId) {
         return jsonError('Unauthorized', { status: 401 });
@@ -77,8 +84,15 @@ export function checkFeatureLimit(feature: FeatureType) {
     return async (req: Request) => {
       // Get user from request context
       const { getRequestContext } = await import('./context');
+      const { getEffectiveClerkUserId } = await import('./auth');
       const context = getRequestContext();
-      const clerkUserId = context?.userId;
+      let clerkUserId: string | undefined = context?.userId;
+
+      // Fallback to effective Clerk user id in tests or when middleware wasn't applied
+      if (!clerkUserId) {
+        const maybeId = await getEffectiveClerkUserId();
+        clerkUserId = maybeId ?? undefined;
+      }
 
       if (!clerkUserId) {
         return jsonError('Unauthorized', { status: 401 });

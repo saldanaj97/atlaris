@@ -198,6 +198,34 @@ export const usageMetrics = pgTable(
   ]
 ).enableRLS();
 
+// Stripe webhook idempotency table
+export const stripeWebhookEvents = pgTable(
+  'stripe_webhook_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventId: text('event_id').notNull(),
+    livemode: boolean('livemode').notNull(),
+    type: text('type').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('stripe_webhook_events_event_id_unique').on(table.eventId),
+    index('idx_stripe_webhook_events_created_at').on(table.createdAt),
+    pgPolicy('stripe_webhook_events_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+    pgPolicy('stripe_webhook_events_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
+  ]
+).enableRLS();
+
 // Learning plans table
 // TODO: add progress tracking
 export const learningPlans = pgTable(

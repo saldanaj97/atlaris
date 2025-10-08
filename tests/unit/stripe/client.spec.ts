@@ -79,16 +79,13 @@ describe('Stripe Client', () => {
       expect(stripe).toBeNull();
     });
 
-    it('returns Stripe instance when STRIPE_SECRET_KEY is set at module load', async () => {
+    it('remains null even when STRIPE_SECRET_KEY is set at module load', async () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_export';
 
-      const { stripe } = await import('@/lib/stripe/client');
+      const module = await import('@/lib/stripe/client');
 
-      // Should not throw during import
-      expect(stripe).toBeDefined();
-      if (stripe) {
-        expect(stripe.customers).toBeDefined();
-      }
+      expect(module.stripe).toBeNull();
+      expect(() => module.getStripe()).not.toThrow();
     });
   });
 

@@ -36,6 +36,13 @@
       "when": 1759871278608,
       "tag": "0004_glorious_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1759951752000,
+      "tag": "0005_stripe_webhook_events",
+      "breakpoints": true
     }
   ]
 }

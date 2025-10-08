@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
-import type Stripe from 'stripe';
+import Stripe from 'stripe';
 import { ensureUser, truncateAll } from '@/../tests/helpers/db';
 import { setTestUser } from '@/../tests/helpers/auth';
 import { db } from '@/lib/db/drizzle';
@@ -15,6 +15,10 @@ vi.mock('@/lib/stripe/client', () => ({
 }));
 
 describe('Stripe API Routes', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(async () => {
     await truncateAll();
     vi.clearAllMocks();
@@ -107,7 +111,7 @@ describe('Stripe API Routes', () => {
             customer: 'cus_test123',
           },
         },
-      };
+      } as unknown as Stripe.Event;
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -117,14 +121,9 @@ describe('Stripe API Routes', () => {
         body: JSON.stringify(event),
       });
 
-      // Mock stripe webhook verification
-      const mockStripe = {
-        webhooks: {
-          constructEvent: vi.fn().mockReturnValue(event),
-        },
-      } as unknown as Stripe;
-
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
+      const constructEventSpy = vi
+        .spyOn(Stripe.webhooks, 'constructEvent')
+        .mockReturnValue(event);
 
       // Set webhook secret
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
@@ -132,10 +131,11 @@ describe('Stripe API Routes', () => {
       const response = await webhookPOST(request);
 
       expect(response.status).toBe(200);
-      expect(mockStripe.webhooks.constructEvent).toHaveBeenCalled();
+      expect(constructEventSpy).toHaveBeenCalled();
 
       // Cleanup
       delete process.env.STRIPE_WEBHOOK_SECRET;
+      constructEventSpy.mockRestore();
     });
 
     it('handles subscription.created event and syncs to DB', async () => {
@@ -168,12 +168,9 @@ describe('Stripe API Routes', () => {
             current_period_end: 1735689600,
           },
         },
-      };
+      } as unknown as Stripe.Event;
 
       const mockStripe = {
-        webhooks: {
-          constructEvent: vi.fn().mockReturnValue(event),
-        },
         prices: {
           retrieve: vi.fn().mockResolvedValue({
             id: 'price_starter',
@@ -187,6 +184,10 @@ describe('Stripe API Routes', () => {
       vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
 
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
+
+      const constructEventSpy = vi
+        .spyOn(Stripe.webhooks, 'constructEvent')
+        .mockReturnValue(event);
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -209,6 +210,7 @@ describe('Stripe API Routes', () => {
       expect(user?.subscriptionStatus).toBe('active');
 
       delete process.env.STRIPE_WEBHOOK_SECRET;
+      constructEventSpy.mockRestore();
     });
 
     it('handles subscription.deleted event and downgrades to free', async () => {
@@ -236,17 +238,13 @@ describe('Stripe API Routes', () => {
             customer: 'cus_sub_deleted',
           },
         },
-      };
-
-      const mockStripe = {
-        webhooks: {
-          constructEvent: vi.fn().mockReturnValue(event),
-        },
-      } as unknown as Stripe;
-
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
+      } as unknown as Stripe.Event;
 
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
+
+      const constructEventSpy = vi
+        .spyOn(Stripe.webhooks, 'constructEvent')
+        .mockReturnValue(event);
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -270,6 +268,7 @@ describe('Stripe API Routes', () => {
       expect(user?.stripeSubscriptionId).toBeNull();
 
       delete process.env.STRIPE_WEBHOOK_SECRET;
+      constructEventSpy.mockRestore();
     });
 
     it('returns 400 when signature missing', async () => {
