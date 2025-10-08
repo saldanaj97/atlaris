@@ -1,6 +1,6 @@
-import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
+import { and, eq, sql } from 'drizzle-orm';
 
 /**
  * Subscription tier limits
@@ -37,16 +37,6 @@ function getCurrentMonth(): string {
  * Get or create usage metrics for current month
  */
 async function getOrCreateUsageMetrics(userId: string, month: string) {
-  const existing = await db
-    .select()
-    .from(usageMetrics)
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
-    .limit(1);
-
-  if (existing.length > 0) {
-    return existing[0];
-  }
-
   const [created] = await db
     .insert(usageMetrics)
     .values({
@@ -56,9 +46,26 @@ async function getOrCreateUsageMetrics(userId: string, month: string) {
       regenerationsUsed: 0,
       exportsUsed: 0,
     })
+    .onConflictDoNothing({
+      target: [usageMetrics.userId, usageMetrics.month],
+    })
     .returning();
 
-  return created;
+  if (created) {
+    return created;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(usageMetrics)
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .limit(1);
+
+  if (!existing) {
+    throw new Error('Failed to load usage metrics');
+  }
+
+  return existing;
 }
 
 /**

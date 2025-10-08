@@ -69,17 +69,13 @@ export const POST = withErrorBoundary(async (req: Request) => {
   const { stripeWebhookEvents, users } = await import('@/lib/db/schema');
   const { eq } = await import('drizzle-orm');
 
-  const inserted = await db
-    .insert(stripeWebhookEvents)
-    .values({
-      eventId: event.id,
-      livemode: event.livemode,
-      type: event.type,
-    })
-    .onConflictDoNothing({ target: stripeWebhookEvents.eventId })
-    .returning({ eventId: stripeWebhookEvents.eventId });
+  const alreadyProcessed = await db
+    .select({ eventId: stripeWebhookEvents.eventId })
+    .from(stripeWebhookEvents)
+    .where(eq(stripeWebhookEvents.eventId, event.id))
+    .limit(1);
 
-  if (inserted.length === 0) {
+  if (alreadyProcessed.length > 0) {
     console.log('Duplicate Stripe webhook event skipped', { type: event.type });
     return new Response('ok');
   }
@@ -153,6 +149,15 @@ export const POST = withErrorBoundary(async (req: Request) => {
       console.log('Unhandled Stripe webhook event', { type: event.type });
       break;
   }
+
+  await db
+    .insert(stripeWebhookEvents)
+    .values({
+      eventId: event.id,
+      livemode: event.livemode,
+      type: event.type,
+    })
+    .onConflictDoNothing({ target: stripeWebhookEvents.eventId });
 
   return new Response('ok');
 });

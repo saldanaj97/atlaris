@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
-import type Stripe from 'stripe';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import type Stripe from 'stripe';
 import { getStripe } from './client';
 
 /**
@@ -42,7 +42,10 @@ export async function syncSubscriptionToDb(
 
   // Find user by Stripe customer ID
   const [user] = await db
-    .select({ id: users.id })
+    .select({
+      id: users.id,
+      subscriptionTier: users.subscriptionTier,
+    })
     .from(users)
     .where(eq(users.stripeCustomerId, customerId))
     .limit(1);
@@ -60,7 +63,12 @@ export async function syncSubscriptionToDb(
       ? subscription.items.data[0].price
       : subscription.items.data[0]?.price.id;
 
-  let tier: 'free' | 'starter' | 'pro' = 'free';
+  const existingTier =
+    user.subscriptionTier === 'starter' || user.subscriptionTier === 'pro'
+      ? user.subscriptionTier
+      : 'free';
+
+  let tier: 'free' | 'starter' | 'pro' = existingTier;
 
   if (priceId) {
     try {
