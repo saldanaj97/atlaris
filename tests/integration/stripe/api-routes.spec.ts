@@ -75,7 +75,7 @@ describe('Stripe API Routes', () => {
     });
 
     it('returns 400 when no Stripe customer exists', async () => {
-      const userId = await ensureUser({
+      await ensureUser({
         clerkUserId: 'user_no_customer',
         email: 'no.customer@example.com',
       });

@@ -32,11 +32,11 @@ export default async function PricingPage() {
   let proName = 'Pro';
   let proMonthlyAmount = '$—';
 
-  if (!missingPrices) {
+  if (starterMonthly && starterYearly && proMonthly && proYearly) {
     const stripe = getStripe();
     const [starterMonthlyPrice, proMonthlyPrice] = await Promise.all([
-      stripe.prices.retrieve(starterMonthly!),
-      stripe.prices.retrieve(proMonthly!),
+      stripe.prices.retrieve(starterMonthly),
+      stripe.prices.retrieve(proMonthly),
     ]);
 
     // Expand products individually to safely access product names across API versions

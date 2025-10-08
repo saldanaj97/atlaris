@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getStripe } from '@/lib/stripe/client';
 
 describe('Stripe Client', () => {
   const originalEnv = process.env.STRIPE_SECRET_KEY;

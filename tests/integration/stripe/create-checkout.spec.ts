@@ -26,18 +26,21 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 
     setTestUser('user_new_checkout');
 
+    const createCustomer = vi.fn().mockResolvedValue({
+      id: 'cus_new123',
+    });
+    const createCheckoutSession = vi.fn().mockResolvedValue({
+      id: 'cs_test123',
+      url: 'https://checkout.stripe.com/pay/cs_test123',
+    });
+
     const mockStripe = {
       customers: {
-        create: vi.fn().mockResolvedValue({
-          id: 'cus_new123',
-        }),
+        create: createCustomer,
       },
       checkout: {
         sessions: {
-          create: vi.fn().mockResolvedValue({
-            id: 'cs_test123',
-            url: 'https://checkout.stripe.com/pay/cs_test123',
-          }),
+          create: createCheckoutSession,
         },
       },
     } as unknown as Stripe;
@@ -68,13 +71,13 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(body.sessionUrl).toBe('https://checkout.stripe.com/pay/cs_test123');
 
     // Verify customer was created
-    expect(mockStripe.customers.create).toHaveBeenCalledWith({
+    expect(createCustomer).toHaveBeenCalledWith({
       email: 'new.checkout@example.com',
       metadata: { userId },
     });
 
     // Verify checkout session was created
-    expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith({
+    expect(createCheckoutSession).toHaveBeenCalledWith({
       customer: 'cus_new123',
       line_items: [{ price: 'price_starter123', quantity: 1 }],
       mode: 'subscription',
@@ -104,16 +107,19 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 
     setTestUser('user_existing_checkout');
 
+    const createCustomer = vi.fn(); // Should not be called
+    const createCheckoutSession = vi.fn().mockResolvedValue({
+      id: 'cs_test456',
+      url: 'https://checkout.stripe.com/pay/cs_test456',
+    });
+
     const mockStripe = {
       customers: {
-        create: vi.fn(), // Should not be called
+        create: createCustomer,
       },
       checkout: {
         sessions: {
-          create: vi.fn().mockResolvedValue({
-            id: 'cs_test456',
-            url: 'https://checkout.stripe.com/pay/cs_test456',
-          }),
+          create: createCheckoutSession,
         },
       },
     } as unknown as Stripe;
@@ -142,10 +148,10 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(body.sessionUrl).toBe('https://checkout.stripe.com/pay/cs_test456');
 
     // Verify customer was NOT created
-    expect(mockStripe.customers.create).not.toHaveBeenCalled();
+    expect(createCustomer).not.toHaveBeenCalled();
 
     // Verify existing customer was used
-    expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
+    expect(createCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({
         customer: 'cus_existing456',
       })
@@ -153,25 +159,28 @@ describe('POST /api/v1/stripe/create-checkout', () => {
   });
 
   it('uses default URLs when not provided', async () => {
-    const userId = await ensureUser({
+    await ensureUser({
       clerkUserId: 'user_default_urls',
       email: 'default.urls@example.com',
     });
 
     setTestUser('user_default_urls');
 
+    const createCustomer = vi.fn().mockResolvedValue({
+      id: 'cus_default123',
+    });
+    const createCheckoutSession = vi.fn().mockResolvedValue({
+      id: 'cs_default123',
+      url: 'https://checkout.stripe.com/pay/cs_default123',
+    });
+
     const mockStripe = {
       customers: {
-        create: vi.fn().mockResolvedValue({
-          id: 'cus_default123',
-        }),
+        create: createCustomer,
       },
       checkout: {
         sessions: {
-          create: vi.fn().mockResolvedValue({
-            id: 'cs_default123',
-            url: 'https://checkout.stripe.com/pay/cs_default123',
-          }),
+          create: createCheckoutSession,
         },
       },
     } as unknown as Stripe;
@@ -197,7 +206,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(response.status).toBe(200);
 
     // Verify default URLs were used
-    expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
+    expect(createCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({
         success_url:
           'http://localhost/settings/billing?session_id={CHECKOUT_SESSION_ID}',
@@ -207,7 +216,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
   });
 
   it('returns 400 when priceId is missing', async () => {
-    const userId = await ensureUser({
+    await ensureUser({
       clerkUserId: 'user_missing_price',
       email: 'missing.price@example.com',
     });
@@ -276,18 +285,20 @@ describe('POST /api/v1/stripe/create-checkout', () => {
   });
 
   it('handles Stripe API errors gracefully', async () => {
-    const userId = await ensureUser({
+    await ensureUser({
       clerkUserId: 'user_stripe_error',
       email: 'stripe.error@example.com',
     });
 
     setTestUser('user_stripe_error');
 
+    const createCustomer = vi
+      .fn()
+      .mockRejectedValue(new Error('Stripe API error: Invalid request'));
+
     const mockStripe = {
       customers: {
-        create: vi
-          .fn()
-          .mockRejectedValue(new Error('Stripe API error: Invalid request')),
+        create: createCustomer,
       },
     } as unknown as Stripe;
 

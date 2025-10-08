@@ -43,7 +43,7 @@ describe('Gating Middleware', () => {
     });
 
     it('blocks access for user with insufficient tier', async () => {
-      const userId = await ensureUser({
+      await ensureUser({
         clerkUserId: 'user_only_free',
         email: 'only.free@example.com',
       });
@@ -349,7 +349,7 @@ describe('Gating Middleware', () => {
     });
 
     it('returns false for lower tier', async () => {
-      const userId = await ensureUser({
+      await ensureUser({
         clerkUserId: 'user_lower_tier',
         email: 'lower@example.com',
       });

@@ -21,7 +21,7 @@ export default function SubscribeButton({
 }: SubscribeButtonProps) {
   const [loading, setLoading] = useState(false);
 
-  async function onClick() {
+  async function handleClick() {
     try {
       setLoading(true);
       const res = await fetch('/api/v1/stripe/create-checkout', {
@@ -50,9 +50,8 @@ export default function SubscribeButton({
   }
 
   return (
-    <Button className={className} disabled={loading} onClick={onClick}>
+    <Button className={className} disabled={loading} onClick={() => { void handleClick(); }}>
       {loading ? 'Redirecting…' : label}
     </Button>
   );
 }
-

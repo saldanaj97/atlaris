@@ -31,11 +31,13 @@ describe('Subscription Management', () => {
         email: 'create.customer@example.com',
       });
 
+      const createStripeCustomer = vi.fn().mockResolvedValue({
+        id: 'cus_test123',
+      });
+
       const mockStripe = {
         customers: {
-          create: vi.fn().mockResolvedValue({
-            id: 'cus_test123',
-          }),
+          create: createStripeCustomer,
         },
       } as unknown as Stripe;
 
@@ -47,7 +49,7 @@ describe('Subscription Management', () => {
       );
 
       expect(customerId).toBe('cus_test123');
-      expect(mockStripe.customers.create).toHaveBeenCalledWith({
+      expect(createStripeCustomer).toHaveBeenCalledWith({
         email: 'create.customer@example.com',
         metadata: { userId },
       });
@@ -72,9 +74,11 @@ describe('Subscription Management', () => {
         .set({ stripeCustomerId: 'cus_existing456' })
         .where(sql`id = ${userId}`);
 
+      const createStripeCustomer = vi.fn(); // Should not be called
+
       const mockStripe = {
         customers: {
-          create: vi.fn(), // Should not be called
+          create: createStripeCustomer,
         },
       } as unknown as Stripe;
 
@@ -86,7 +90,7 @@ describe('Subscription Management', () => {
       );
 
       expect(customerId).toBe('cus_existing456');
-      expect(mockStripe.customers.create).not.toHaveBeenCalled();
+      expect(createStripeCustomer).not.toHaveBeenCalled();
     });
   });
 
@@ -399,12 +403,14 @@ describe('Subscription Management', () => {
         .set({ stripeSubscriptionId: 'sub_to_cancel' })
         .where(sql`id = ${userId}`);
 
+      const updateSubscription = vi.fn().mockResolvedValue({
+        id: 'sub_to_cancel',
+        cancel_at_period_end: true,
+      });
+
       const mockStripe = {
         subscriptions: {
-          update: vi.fn().mockResolvedValue({
-            id: 'sub_to_cancel',
-            cancel_at_period_end: true,
-          }),
+          update: updateSubscription,
         },
       } as unknown as Stripe;
 
@@ -412,7 +418,7 @@ describe('Subscription Management', () => {
 
       await cancelSubscription(userId);
 
-      expect(mockStripe.subscriptions.update).toHaveBeenCalledWith(
+      expect(updateSubscription).toHaveBeenCalledWith(
         'sub_to_cancel',
         {
           cancel_at_period_end: true,
@@ -434,12 +440,14 @@ describe('Subscription Management', () => {
 
   describe('getCustomerPortalUrl', () => {
     it('creates portal session and returns URL', async () => {
+      const createPortalSession = vi.fn().mockResolvedValue({
+        url: 'https://billing.stripe.com/session_abc123',
+      });
+
       const mockStripe = {
         billingPortal: {
           sessions: {
-            create: vi.fn().mockResolvedValue({
-              url: 'https://billing.stripe.com/session_abc123',
-            }),
+            create: createPortalSession,
           },
         },
       } as unknown as Stripe;
@@ -452,7 +460,7 @@ describe('Subscription Management', () => {
       );
 
       expect(url).toBe('https://billing.stripe.com/session_abc123');
-      expect(mockStripe.billingPortal.sessions.create).toHaveBeenCalledWith({
+      expect(createPortalSession).toHaveBeenCalledWith({
         customer: 'cus_123',
         return_url: 'https://example.com/settings',
       });
