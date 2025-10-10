@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { createMockProvider } from '@/lib/ai/mockProvider';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import {
@@ -12,6 +11,7 @@ import {
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
+import { createMockProvider } from '../helpers/mockProvider';
 
 const clerkUserId = 'clerk_generation_validation';
 const clerkEmail = 'generation-validation@example.com';

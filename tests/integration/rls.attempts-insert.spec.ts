@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { createMockProvider } from '@/lib/ai/mockProvider';
+import { createMockProvider } from '../helpers/mockProvider';
 
 /**
  * This test uses application path to insert an attempt via orchestrator
@@ -49,7 +49,7 @@ describe('RLS attempt insertion', () => {
       await runGenerationAttempt(
         {
           planId: plan.id,
-            // attacker userId (does not own plan)
+          // attacker userId (does not own plan)
           userId: attackerId,
           input: {
             topic: 'Insert Protection Plan',

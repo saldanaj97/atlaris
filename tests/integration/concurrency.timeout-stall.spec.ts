@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { createMockProvider } from '@/lib/ai/mockProvider';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
+import { createMockProvider } from '../helpers/mockProvider';
 
 /**
  * Simulates a provider stall by creating a mock provider that never yields a module
@@ -15,7 +15,10 @@ import { ensureUser } from '../helpers/db';
 describe('Concurrency - provider stall timeout classification', () => {
   it('classifies stalled provider as timeout', async () => {
     setTestUser('stall_user');
-    const userId = await ensureUser({ clerkUserId: 'stall_user', email: 'stall_user@example.com' });
+    const userId = await ensureUser({
+      clerkUserId: 'stall_user',
+      email: 'stall_user@example.com',
+    });
 
     const [plan] = await db
       .insert(learningPlans)
