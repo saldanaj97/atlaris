@@ -3,8 +3,8 @@ import type {
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
-} from './provider';
-import { ProviderNotImplementedError } from './provider';
+} from '../provider';
+import { ProviderNotImplementedError } from '../provider';
 
 export interface OpenAIProviderConfig {
   apiKey?: string;
