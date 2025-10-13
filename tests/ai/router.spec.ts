@@ -1,6 +1,7 @@
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('AI Router (mock in tests)', () => {
@@ -24,7 +25,7 @@ describe('AI Router (mock in tests)', () => {
         await db
           .select({ id: users.id })
           .from(users)
-          .where(users.clerkUserId.eq(clerkUserId))
+          .where(eq(users.clerkUserId, clerkUserId))
           .limit(1)
       )[0].id;
 

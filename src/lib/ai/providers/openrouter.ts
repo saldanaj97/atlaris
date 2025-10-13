@@ -1,7 +1,11 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 
-import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  type PromptParams,
+} from '@/lib/ai/prompts';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -72,11 +76,11 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       system: buildSystemPrompt(),
       prompt: buildUserPrompt({
         topic: input.topic,
-        skillLevel: input.skillLevel as any,
-        learningStyle: input.learningStyle as any,
+        skillLevel: input.skillLevel as PromptParams['skillLevel'],
+        learningStyle: input.learningStyle as PromptParams['learningStyle'],
         weeklyHours: input.weeklyHours,
       }),
-      maxTokens: this.maxOutputTokens,
+      maxOutputTokens: this.maxOutputTokens,
       temperature: this.temperature,
     });
 
@@ -86,8 +90,8 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         provider: 'openrouter',
         model: this.model,
         usage: {
-          promptTokens: usage?.promptTokens,
-          completionTokens: usage?.completionTokens,
+          promptTokens: usage?.inputTokens,
+          completionTokens: usage?.outputTokens,
           totalTokens: usage?.totalTokens,
         },
       },

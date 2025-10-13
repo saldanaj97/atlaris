@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
 import { db } from '@/lib/db/drizzle';
 import { aiUsageEvents, users } from '@/lib/db/schema';
+import { recordUsage } from '@/lib/db/usage';
+import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';
 import { eq } from 'drizzle-orm';
-import { ensureWithinBudget, recordUsage } from '@/lib/db/usage';
+import { describe, expect, it } from 'vitest';
 
 async function ensureUser(): Promise<string> {
   const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
@@ -18,13 +19,25 @@ async function ensureUser(): Promise<string> {
     .from(users)
     .where(eq(users.clerkUserId, clerkUserId))
     .limit(1);
-  return existing!.id;
+  return existing.id;
 }
 
 describe('AI usage logging', () => {
-  it('ensures budget and records usage event', async () => {
+  it('atomically checks plan limit, creates plan, and records usage event', async () => {
     const userId = await ensureUser();
-    await ensureWithinBudget(userId, { type: 'plan' });
+
+    // Check the limit and create the plan in a single atomic transaction
+    const plan = await atomicCheckAndInsertPlan(userId, {
+      topic: 'Test Topic',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      visibility: 'private',
+      origin: 'ai',
+    });
+
+    expect(plan.id).toBeDefined();
+
     await recordUsage({
       userId,
       provider: 'mock',

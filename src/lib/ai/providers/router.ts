@@ -95,8 +95,7 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       } catch (err) {
         lastError = err;
         if (process.env.NODE_ENV !== 'production') {
-          const message =
-            err instanceof Error ? err.message : String(err ?? 'unknown error');
+          const message = err instanceof Error ? err.message : 'unknown error';
           console.warn(
             JSON.stringify({
               source: 'ai-router',
@@ -111,6 +110,10 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       }
     }
 
-    throw lastError ?? new Error('All AI providers failed');
+    // Ensure we throw an Error object
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
+    throw new Error('All AI providers failed');
   }
 }

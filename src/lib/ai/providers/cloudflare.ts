@@ -1,7 +1,11 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 
-import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  type PromptParams,
+} from '@/lib/ai/prompts';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -51,7 +55,11 @@ export class CloudflareAiProvider implements AiPlanGenerationProvider {
     let normalizedBase =
       rawFromEnv ??
       'https://api.cloudflare.com/client/v4/accounts/undefined/ai/v1';
-    if (/gateway\.ai\.cloudflare\.com\/v1\/[^/]+\/[^/]+\/workers-ai\/?$/.test(normalizedBase)) {
+    if (
+      /gateway\.ai\.cloudflare\.com\/v1\/[^/]+\/[^/]+\/workers-ai\/?$/.test(
+        normalizedBase
+      )
+    ) {
       normalizedBase = normalizedBase.replace(/\/workers-ai\/?$/, '/openai');
     }
     this.baseURL = normalizedBase;
@@ -114,11 +122,11 @@ export class CloudflareAiProvider implements AiPlanGenerationProvider {
       system: buildSystemPrompt(),
       prompt: buildUserPrompt({
         topic: input.topic,
-        skillLevel: input.skillLevel as any,
-        learningStyle: input.learningStyle as any,
+        skillLevel: input.skillLevel as PromptParams['skillLevel'],
+        learningStyle: input.learningStyle as PromptParams['learningStyle'],
         weeklyHours: input.weeklyHours,
       }),
-      maxTokens: this.maxOutputTokens,
+      maxOutputTokens: this.maxOutputTokens,
       temperature: this.temperature,
     });
 
@@ -128,8 +136,8 @@ export class CloudflareAiProvider implements AiPlanGenerationProvider {
         provider: 'cloudflare',
         model: this.model,
         usage: {
-          promptTokens: usage?.promptTokens,
-          completionTokens: usage?.completionTokens,
+          promptTokens: usage?.inputTokens,
+          completionTokens: usage?.outputTokens,
           totalTokens: usage?.totalTokens,
         },
       },

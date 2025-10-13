@@ -1,7 +1,11 @@
 import { google, createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 
-import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
+import {
+  buildSystemPrompt,
+  buildUserPrompt,
+  type PromptParams,
+} from '@/lib/ai/prompts';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -57,11 +61,11 @@ export class GoogleAiProvider implements AiPlanGenerationProvider {
       system: buildSystemPrompt(),
       prompt: buildUserPrompt({
         topic: input.topic,
-        skillLevel: input.skillLevel as any,
-        learningStyle: input.learningStyle as any,
+        skillLevel: input.skillLevel as PromptParams['skillLevel'],
+        learningStyle: input.learningStyle as PromptParams['learningStyle'],
         weeklyHours: input.weeklyHours,
       }),
-      maxTokens: this.maxOutputTokens,
+      maxOutputTokens: this.maxOutputTokens,
       temperature: this.temperature,
     });
 
@@ -71,8 +75,8 @@ export class GoogleAiProvider implements AiPlanGenerationProvider {
         provider: 'google',
         model: this.model,
         usage: {
-          promptTokens: usage?.promptTokens,
-          completionTokens: usage?.completionTokens,
+          promptTokens: usage?.inputTokens,
+          completionTokens: usage?.outputTokens,
           totalTokens: usage?.totalTokens,
         },
       },
