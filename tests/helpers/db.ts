@@ -18,26 +18,39 @@ import {
 
 /**
  * Truncate core tables between tests to guarantee isolation.
+ * Tables are truncated in dependency order to avoid deadlocks.
  */
 const userIdCache = new Map<string, string>();
 
 export async function truncateAll() {
-  await db.execute(sql`
-    TRUNCATE TABLE
-      ${generationAttempts},
-      ${jobQueue},
-      ${taskResources},
-      ${taskProgress},
-      ${tasks},
-      ${modules},
-      ${planGenerations},
-      ${learningPlans},
-      ${stripeWebhookEvents},
-      ${usageMetrics},
-      ${users},
-      ${resources}
-    RESTART IDENTITY CASCADE
-  `);
+  // Truncate tables individually in dependency order (children before parents)
+  // This avoids deadlocks that can occur when truncating multiple tables at once
+  await db.execute(
+    sql`TRUNCATE TABLE ${generationAttempts} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(sql`TRUNCATE TABLE ${jobQueue} RESTART IDENTITY CASCADE`);
+  await db.execute(
+    sql`TRUNCATE TABLE ${taskResources} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(
+    sql`TRUNCATE TABLE ${taskProgress} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(sql`TRUNCATE TABLE ${tasks} RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE ${modules} RESTART IDENTITY CASCADE`);
+  await db.execute(
+    sql`TRUNCATE TABLE ${planGenerations} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(
+    sql`TRUNCATE TABLE ${learningPlans} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(
+    sql`TRUNCATE TABLE ${stripeWebhookEvents} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(
+    sql`TRUNCATE TABLE ${usageMetrics} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(sql`TRUNCATE TABLE ${users} RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE ${resources} RESTART IDENTITY CASCADE`);
   userIdCache.clear();
 }
 

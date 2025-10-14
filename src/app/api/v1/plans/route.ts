@@ -18,6 +18,7 @@ import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
 } from '@/lib/validation/learningPlans';
+import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';
 
 /**
  * GET /api/v1/plans
@@ -146,10 +147,27 @@ export const POST = withErrorBoundary(
       });
     }
 
+    // Enforce subscription plan limits and in-flight generation cap atomically.
+    // This prevents users from spamming concurrent POSTs and bypassing plan caps
+    // while newly inserted rows are still non-eligible.
+    const created = await atomicCheckAndInsertPlan(user.id, {
+      topic: insertPayload.topic,
+      skillLevel: insertPayload.skillLevel,
+      weeklyHours: insertPayload.weeklyHours,
+      learningStyle: insertPayload.learningStyle,
+      visibility: (insertPayload.visibility ?? 'private') as
+        | 'private'
+        | 'public',
+      // This endpoint triggers AI generation, so origin is always 'ai'.
+      origin: 'ai',
+    });
+
+    // Fetch created row to include timestamps in response (back-compat shape)
     const [plan] = await db
-      .insert(learningPlans)
-      .values(insertPayload)
-      .returning();
+      .select()
+      .from(learningPlans)
+      .where(eq(learningPlans.id, created.id))
+      .limit(1);
 
     // Notes from onboarding are intentionally ignored until the schema introduces a column.
 
