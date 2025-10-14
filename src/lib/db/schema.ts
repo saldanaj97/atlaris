@@ -23,6 +23,7 @@ import {
   jobStatus,
   jobType,
   learningStyle,
+  generationStatus,
   progressStatus,
   resourceType,
   skillLevel,
@@ -243,6 +244,11 @@ export const learningPlans = pgTable(
     deadlineDate: date('deadline_date'),
     visibility: text('visibility').notNull().default('private'), // private | public
     origin: text('origin').notNull().default('ai'), // ai | template | manual
+    generationStatus: generationStatus('generation_status')
+      .notNull()
+      .default('generating'),
+    isQuotaEligible: boolean('is_quota_eligible').notNull().default(false),
+    finalizedAt: timestamp('finalized_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -253,6 +259,14 @@ export const learningPlans = pgTable(
   (table) => [
     check('weekly_hours_check', sql`${table.weeklyHours} >= 0`),
     index('idx_learning_plans_user_id').on(table.userId),
+    index('idx_learning_plans_user_quota').on(
+      table.userId,
+      table.isQuotaEligible
+    ),
+    index('idx_learning_plans_user_generation_status').on(
+      table.userId,
+      table.generationStatus
+    ),
 
     // RLS Policies
 

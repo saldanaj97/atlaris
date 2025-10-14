@@ -27,6 +27,7 @@ describe('Usage Tracking', () => {
       expect(await checkPlanLimit(userId)).toBe(true);
 
       // Create 3 plans
+      const finalizedAt = new Date();
       await db.insert(learningPlans).values([
         {
           userId,
@@ -34,6 +35,9 @@ describe('Usage Tracking', () => {
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
         },
         {
           userId,
@@ -41,6 +45,9 @@ describe('Usage Tracking', () => {
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
         },
         {
           userId,
@@ -48,6 +55,9 @@ describe('Usage Tracking', () => {
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
         },
       ]);
 
@@ -68,12 +78,16 @@ describe('Usage Tracking', () => {
         .where(sql`id = ${userId}`);
 
       // Create 10 plans
+      const finalizedAt = new Date();
       const plans = Array.from({ length: 10 }, (_, i) => ({
         userId,
         topic: `Topic ${i + 1}`,
         skillLevel: 'beginner' as const,
         weeklyHours: 5,
         learningStyle: 'mixed' as const,
+        generationStatus: 'ready' as const,
+        isQuotaEligible: true,
+        finalizedAt,
       }));
       await db.insert(learningPlans).values(plans);
 
@@ -105,17 +119,77 @@ describe('Usage Tracking', () => {
         .where(sql`id = ${userId}`);
 
       // Create 100 plans (way more than starter)
+      const finalizedAt = new Date();
       const plans = Array.from({ length: 100 }, (_, i) => ({
         userId,
         topic: `Topic ${i + 1}`,
         skillLevel: 'beginner' as const,
         weeklyHours: 5,
         learningStyle: 'mixed' as const,
+        generationStatus: 'ready' as const,
+        isQuotaEligible: true,
+        finalizedAt,
       }));
       await db.insert(learningPlans).values(plans);
 
       // Still allowed
       expect(await checkPlanLimit(userId)).toBe(true);
+    });
+
+    it('ignores non-eligible plans when enforcing limits', async () => {
+      const userId = await ensureUser({
+        clerkUserId: 'user_plan_limit_non_eligible',
+        email: 'non.eligible@example.com',
+      });
+
+      const finalizedAt = new Date();
+      await db.insert(learningPlans).values([
+        {
+          userId,
+          topic: 'Eligible 1',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
+        },
+        {
+          userId,
+          topic: 'Eligible 2',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
+        },
+        {
+          userId,
+          topic: 'Failed Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          generationStatus: 'failed',
+          isQuotaEligible: false,
+          finalizedAt: null,
+        },
+      ]);
+
+      expect(await checkPlanLimit(userId)).toBe(true);
+
+      await db.insert(learningPlans).values({
+        userId,
+        topic: 'Eligible 3',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+        finalizedAt,
+      });
+
+      expect(await checkPlanLimit(userId)).toBe(false);
     });
   });
 
@@ -398,6 +472,7 @@ describe('Usage Tracking', () => {
       });
 
       // Create 2 plans
+      const finalizedAt = new Date();
       await db.insert(learningPlans).values([
         {
           userId,
@@ -405,6 +480,9 @@ describe('Usage Tracking', () => {
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
         },
         {
           userId,
@@ -412,6 +490,9 @@ describe('Usage Tracking', () => {
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
         },
       ]);
 
@@ -456,12 +537,16 @@ describe('Usage Tracking', () => {
         .where(sql`id = ${userId}`);
 
       // Create 50 plans
+      const finalizedAt = new Date();
       const plans = Array.from({ length: 50 }, (_, i) => ({
         userId,
         topic: `Topic ${i + 1}`,
         skillLevel: 'beginner' as const,
         weeklyHours: 5,
         learningStyle: 'mixed' as const,
+        generationStatus: 'ready' as const,
+        isQuotaEligible: true,
+        finalizedAt,
       }));
       await db.insert(learningPlans).values(plans);
 

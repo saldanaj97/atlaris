@@ -25,6 +25,8 @@ const TIER_LIMITS = {
 
 type SubscriptionTier = keyof typeof TIER_LIMITS;
 
+const MAX_GENERATING_PLANS_PER_USER = 1;
+
 /**
  * Get current month in YYYY-MM format
  */
@@ -97,11 +99,16 @@ export async function checkPlanLimit(userId: string): Promise<boolean> {
     return true;
   }
 
-  // Count active plans (non-deleted plans)
+  // Count quota-eligible plans (ready / manually created)
   const [result] = await db
     .select({ count: sql`count(*)::int` })
     .from(learningPlans)
-    .where(eq(learningPlans.userId, userId));
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        eq(learningPlans.isQuotaEligible, true)
+      )
+    );
 
   const currentCount = (result?.count as number) ?? 0;
   return currentCount < limit;
@@ -202,7 +209,12 @@ export async function getUsageSummary(userId: string) {
   const [planCount] = await db
     .select({ count: sql`count(*)::int` })
     .from(learningPlans)
-    .where(eq(learningPlans.userId, userId));
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        eq(learningPlans.isQuotaEligible, true)
+      )
+    );
 
   return {
     tier,
@@ -260,11 +272,16 @@ export async function atomicCheckAndInsertPlan(
 
     // If limit is Infinity (pro tier), skip the check
     if (limit !== Infinity) {
-      // Count existing plans (the user row is already locked, preventing races)
+      // Count existing quota-eligible plans (user row locked prevents races)
       const [result] = await tx
         .select({ count: sql`count(*)::int` })
         .from(learningPlans)
-        .where(eq(learningPlans.userId, userId));
+        .where(
+          and(
+            eq(learningPlans.userId, userId),
+            eq(learningPlans.isQuotaEligible, true)
+          )
+        );
 
       const currentCount = (result?.count as number) ?? 0;
 
@@ -273,12 +290,30 @@ export async function atomicCheckAndInsertPlan(
       }
     }
 
-    // Insert the plan within the same transaction (atomic with the check)
+    // Guard against multiple in-flight generations which could exceed quota
+    const [inFlightResult] = await tx
+      .select({ count: sql`count(*)::int` })
+      .from(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.userId, userId),
+          eq(learningPlans.generationStatus, 'generating')
+        )
+      );
+
+    const inFlightCount = (inFlightResult?.count as number) ?? 0;
+    if (inFlightCount >= MAX_GENERATING_PLANS_PER_USER) {
+      throw new Error('A plan is already generating. Please wait before creating another.');
+    }
+
+    // Insert the plan within the same transaction (atomic with the checks)
     const [plan] = await tx
       .insert(learningPlans)
       .values({
         userId,
         ...planData,
+        generationStatus: 'generating',
+        isQuotaEligible: false,
       })
       .returning({ id: learningPlans.id });
 
@@ -288,4 +323,37 @@ export async function atomicCheckAndInsertPlan(
 
     return plan;
   });
+}
+
+export async function markPlanGenerationSuccess(
+  planId: string,
+  now: () => Date = () => new Date()
+): Promise<void> {
+  const timestamp = now();
+
+  await db
+    .update(learningPlans)
+    .set({
+      generationStatus: 'ready',
+      isQuotaEligible: true,
+      finalizedAt: timestamp,
+      updatedAt: timestamp,
+    })
+    .where(eq(learningPlans.id, planId));
+}
+
+export async function markPlanGenerationFailure(
+  planId: string,
+  now: () => Date = () => new Date()
+): Promise<void> {
+  const timestamp = now();
+
+  await db
+    .update(learningPlans)
+    .set({
+      generationStatus: 'failed',
+      isQuotaEligible: false,
+      updatedAt: timestamp,
+    })
+    .where(eq(learningPlans.id, planId));
 }

@@ -4,7 +4,11 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { recordUsage } from '@/lib/db/usage';
-import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';
+import {
+  atomicCheckAndInsertPlan,
+  markPlanGenerationFailure,
+  markPlanGenerationSuccess,
+} from '@/lib/stripe/usage';
 
 export interface GenerateLearningPlanParams {
   topic: string;
@@ -66,6 +70,8 @@ export async function generateLearningPlan(
   });
 
   if (result.status === 'success') {
+    await markPlanGenerationSuccess(plan.id);
+
     const usage = result.metadata?.usage;
     await recordUsage({
       userId: user.id,
@@ -85,15 +91,7 @@ export async function generateLearningPlan(
     };
   }
 
-  await recordUsage({
-    userId: user.id,
-    provider: result.metadata?.provider ?? 'unknown',
-    model: result.metadata?.model ?? 'unknown',
-    inputTokens: result.metadata?.usage?.promptTokens ?? undefined,
-    outputTokens: result.metadata?.usage?.completionTokens ?? undefined,
-    costCents: 0,
-    kind: 'plan',
-  });
+  await markPlanGenerationFailure(plan.id);
 
   const message =
     typeof result.error === 'string'
