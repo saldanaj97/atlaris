@@ -9,6 +9,9 @@ function createPlanDetail(options: {
   attemptsCount?: number;
   latestAttempt?: GenerationAttempt | null;
   latestJobStatus?: LearningPlanDetail['latestJobStatus'];
+  generationStatus?: LearningPlanDetail['plan']['generationStatus'];
+  isQuotaEligible?: LearningPlanDetail['plan']['isQuotaEligible'];
+  finalizedAt?: LearningPlanDetail['plan']['finalizedAt'];
 }): LearningPlanDetail {
   return {
     plan: {
@@ -24,6 +27,9 @@ function createPlanDetail(options: {
       userId: 'user-1',
       startDate: null,
       deadlineDate: null,
+      generationStatus: options.generationStatus ?? 'generating',
+      isQuotaEligible: options.isQuotaEligible ?? false,
+      finalizedAt: options.finalizedAt ?? null,
       modules: options.modules ?? [],
     },
     totalTasks: 0,
@@ -86,6 +92,9 @@ describe('derived plan status mapping', () => {
         modulesCount: 1,
         tasksCount: 3,
       }),
+      generationStatus: 'ready',
+      isQuotaEligible: true,
+      finalizedAt: new Date('2024-01-01T00:00:00.000Z'),
     });
     const client = mapDetailToClient(detail);
     expect(client?.status).toBe('ready');
@@ -102,6 +111,7 @@ describe('derived plan status mapping', () => {
         status: 'failure',
       }),
       latestJobStatus: 'failed',
+      generationStatus: 'failed',
     });
     const client = mapDetailToClient(detail);
     expect(client?.status).toBe('failed');
@@ -117,6 +127,7 @@ describe('derived plan status mapping', () => {
         status: 'failure',
       }),
       latestJobStatus: 'failed',
+      generationStatus: 'failed',
     });
     const client = mapDetailToClient(detail);
     expect(client?.status).toBe('failed');
