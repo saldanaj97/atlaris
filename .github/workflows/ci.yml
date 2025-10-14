@@ -271,3 +271,68 @@ jobs:
           else
             echo "✅ All checks passed"
           fi
+
+  auto-merge:
+    name: Enable auto-merge on PR
+    needs: all-checks
+    runs-on: ubuntu-latest
+    # Only run for pull requests targeting main when all checks succeeded
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && needs.all-checks.result == 'success'
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Enable auto-merge (squash) via GraphQL
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            if (!context.payload.pull_request) {
+              console.log('No PR context; skipping auto-merge enablement.')
+              return
+            }
+
+            const prNumber = context.payload.pull_request.number
+
+            const query = `query($owner:String!, $name:String!, $number:Int!) {
+              repository(owner:$owner, name:$name) {
+                pullRequest(number:$number) {
+                  id
+                  mergeStateStatus
+                  autoMergeRequest { enabledAt }
+                }
+              }
+            }`
+
+            const vars = { owner: context.repo.owner, name: context.repo.repo, number: prNumber }
+            const prInfo = await github.graphql(query, vars)
+
+            const pr = prInfo.repository.pullRequest
+            if (!pr) {
+              console.log('Pull request not found; skipping.')
+              return
+            }
+
+            if (pr.autoMergeRequest) {
+              console.log('Auto-merge already enabled; nothing to do.')
+              return
+            }
+
+            console.log('mergeStateStatus:', pr.mergeStateStatus)
+
+            const mutation = `mutation($prId:ID!) {
+              enablePullRequestAutoMerge(input: {
+                pullRequestId: $prId,
+                mergeMethod: SQUASH
+              }) {
+                pullRequest { number autoMergeRequest { enabledAt } }
+              }
+            }`
+
+            try {
+              const res = await github.graphql(mutation, { prId: pr.id })
+              console.log('Auto-merge enabled:', JSON.stringify(res))
+            } catch (e) {
+              console.warn('Failed to enable auto-merge. Ensure repo setting "Allow auto-merge" is enabled and branch protection allows it. Error:', e.message)
+            }
