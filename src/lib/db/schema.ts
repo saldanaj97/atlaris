@@ -1292,3 +1292,53 @@ export const jobQueue = pgTable(
     }),
   ]
 ).enableRLS();
+
+// AI usage events (per-request logging)
+export const aiUsageEvents = pgTable(
+  'ai_usage_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    costCents: integer('cost_cents').notNull().default(0),
+    requestId: text('request_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('idx_ai_usage_user_id').on(table.userId),
+    index('idx_ai_usage_created_at').on(table.createdAt),
+
+    // RLS policies
+    pgPolicy('ai_usage_events_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('ai_usage_events_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+    pgPolicy('ai_usage_events_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('ai_usage_events_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
+  ]
+).enableRLS();

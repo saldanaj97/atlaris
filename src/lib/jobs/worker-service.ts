@@ -2,10 +2,12 @@ import { eq } from 'drizzle-orm';
 import { ZodError, z } from 'zod';
 
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
+import { RouterGenerationProvider } from '@/lib/ai/providers/router';
 import type { ProviderMetadata } from '@/lib/ai/provider';
 import type { FailureClassification } from '@/lib/types/client';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans } from '@/lib/db/schema';
+import { recordUsage } from '@/lib/db/usage';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
@@ -155,17 +157,27 @@ export async function processPlanGenerationJob(
   }
 
   try {
-    const result = await runGenerationAttempt({
-      planId: job.planId,
-      userId: job.userId,
-      input: {
-        topic: payload.topic,
-        notes: payload.notes,
-        skillLevel: payload.skillLevel,
-        weeklyHours: payload.weeklyHours,
-        learningStyle: payload.learningStyle,
+    // Note: Budget enforcement happens atomically when the plan is created
+    // in generateLearningPlan action (via atomicCheckAndInsertPlan).
+    // No need to check again here as the plan already exists.
+
+    // Use router-based provider with failover (mock in tests if configured)
+    const provider = new RouterGenerationProvider();
+
+    const result = await runGenerationAttempt(
+      {
+        planId: job.planId,
+        userId: job.userId,
+        input: {
+          topic: payload.topic,
+          notes: payload.notes,
+          skillLevel: payload.skillLevel,
+          weeklyHours: payload.weeklyHours,
+          learningStyle: payload.learningStyle,
+        },
       },
-    });
+      { provider }
+    );
 
     if (result.status === 'success') {
       const jobResult = buildJobResult(
@@ -174,6 +186,18 @@ export async function processPlanGenerationJob(
         result.attempt.id,
         result.metadata
       );
+
+      // Record usage on success
+      const usage = result.metadata?.usage;
+      await recordUsage({
+        userId: job.userId,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: result.metadata?.model ?? 'unknown',
+        inputTokens: usage?.promptTokens ?? undefined,
+        outputTokens: usage?.completionTokens ?? undefined,
+        costCents: 0,
+        kind: 'plan',
+      });
 
       await touchPlanUpdatedAt(job.planId);
 
@@ -196,6 +220,17 @@ export async function processPlanGenerationJob(
     if (!retryable) {
       await touchPlanUpdatedAt(job.planId);
     }
+
+    // Record usage on failure (tokens may be partial)
+    await recordUsage({
+      userId: job.userId,
+      provider: result.metadata?.provider ?? 'unknown',
+      model: result.metadata?.model ?? 'unknown',
+      inputTokens: result.metadata?.usage?.promptTokens ?? undefined,
+      outputTokens: result.metadata?.usage?.completionTokens ?? undefined,
+      costCents: 0,
+      kind: 'plan',
+    });
 
     return {
       status: 'failure',

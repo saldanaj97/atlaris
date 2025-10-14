@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { createMockProvider } from '@/lib/ai/mockProvider';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import {
@@ -12,6 +11,7 @@ import {
 import { desc, eq } from 'drizzle-orm';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
+import { createMockProvider } from '../helpers/mockProvider';
 
 const clerkUserId = 'clerk_generation_capped';
 const clerkEmail = 'generation-capped@example.com';

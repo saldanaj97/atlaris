@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
-import { createMockProvider } from '@/lib/ai/mockProvider';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
+import { createMockProvider } from '../helpers/mockProvider';
 
 /**
  * Injects a DB error during recordSuccess to assert full rollback (no modules / tasks persisted).

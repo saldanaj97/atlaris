@@ -8,7 +8,7 @@ import {
   type GenerationInput,
   type GenerationOptions,
   type ProviderGenerateResult,
-} from './provider';
+} from '../../src/lib/ai/provider';
 
 export type MockProviderScenario =
   | 'success'

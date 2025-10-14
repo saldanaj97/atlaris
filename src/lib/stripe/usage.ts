@@ -220,3 +220,72 @@ export async function getUsageSummary(userId: string) {
     },
   };
 }
+
+/**
+ * Atomically check plan limit and insert a new plan to prevent race conditions.
+ * This uses a database transaction with row-level locking (SELECT FOR UPDATE)
+ * to ensure that concurrent requests cannot exceed the user's plan limit.
+ *
+ * @param userId - The user's UUID
+ * @param planData - The plan data to insert (partial learning plan record)
+ * @returns The inserted plan's ID
+ * @throws Error if the user has reached their plan limit
+ */
+export async function atomicCheckAndInsertPlan(
+  userId: string,
+  planData: {
+    topic: string;
+    skillLevel: 'beginner' | 'intermediate' | 'advanced';
+    weeklyHours: number;
+    learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+    visibility: 'private' | 'public';
+    origin: 'ai' | 'manual';
+  }
+): Promise<{ id: string }> {
+  return db.transaction(async (tx) => {
+    // Lock the user row for update to prevent concurrent limit checks
+    // This ensures that only one transaction at a time can check/insert plans for this user
+    const [user] = await tx
+      .select({ subscriptionTier: users.subscriptionTier })
+      .from(users)
+      .where(eq(users.id, userId))
+      .for('update');
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const tier = user.subscriptionTier;
+    const limit = TIER_LIMITS[tier].maxActivePlans;
+
+    // If limit is Infinity (pro tier), skip the check
+    if (limit !== Infinity) {
+      // Count existing plans (the user row is already locked, preventing races)
+      const [result] = await tx
+        .select({ count: sql`count(*)::int` })
+        .from(learningPlans)
+        .where(eq(learningPlans.userId, userId));
+
+      const currentCount = (result?.count as number) ?? 0;
+
+      if (currentCount >= limit) {
+        throw new Error('Plan limit reached for current subscription tier.');
+      }
+    }
+
+    // Insert the plan within the same transaction (atomic with the check)
+    const [plan] = await tx
+      .insert(learningPlans)
+      .values({
+        userId,
+        ...planData,
+      })
+      .returning({ id: learningPlans.id });
+
+    if (!plan) {
+      throw new Error('Failed to create plan.');
+    }
+
+    return plan;
+  });
+}

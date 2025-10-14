@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { createMockProvider } from '@/lib/ai/mockProvider';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
+import { createMockProvider } from '../helpers/mockProvider';
 
 const clerkUserId = 'clerk_generation_rate_limit';
 const clerkEmail = 'generation-rate-limit@example.com';
