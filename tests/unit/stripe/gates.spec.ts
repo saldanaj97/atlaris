@@ -133,6 +133,7 @@ describe('Gating Middleware', () => {
             skillLevel: 'beginner',
             weeklyHours: 5,
             learningStyle: 'mixed',
+            isQuotaEligible: true,
           },
           {
             userId,
@@ -140,6 +141,7 @@ describe('Gating Middleware', () => {
             skillLevel: 'beginner',
             weeklyHours: 5,
             learningStyle: 'mixed',
+            isQuotaEligible: true,
           },
         ]);
 
@@ -169,6 +171,7 @@ describe('Gating Middleware', () => {
             skillLevel: 'beginner',
             weeklyHours: 5,
             learningStyle: 'mixed',
+            isQuotaEligible: true,
           },
           {
             userId,
@@ -176,6 +179,7 @@ describe('Gating Middleware', () => {
             skillLevel: 'beginner',
             weeklyHours: 5,
             learningStyle: 'mixed',
+            isQuotaEligible: true,
           },
           {
             userId,
@@ -183,6 +187,7 @@ describe('Gating Middleware', () => {
             skillLevel: 'beginner',
             weeklyHours: 5,
             learningStyle: 'mixed',
+            isQuotaEligible: true,
           },
         ]);
 
@@ -391,6 +396,7 @@ describe('Gating Middleware', () => {
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
+          isQuotaEligible: true,
         },
         {
           userId,
@@ -398,6 +404,7 @@ describe('Gating Middleware', () => {
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
+          isQuotaEligible: true,
         },
         {
           userId,
@@ -405,6 +412,7 @@ describe('Gating Middleware', () => {
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
+          isQuotaEligible: true,
         },
       ]);
 
