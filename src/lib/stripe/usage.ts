@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 
 /**
  * Subscription tier limits
@@ -24,8 +24,6 @@ const TIER_LIMITS = {
 } as const;
 
 type SubscriptionTier = keyof typeof TIER_LIMITS;
-
-const MAX_GENERATING_PLANS_PER_USER = 1;
 
 /**
  * Get current month in YYYY-MM format
@@ -272,14 +270,20 @@ export async function atomicCheckAndInsertPlan(
 
     // If limit is Infinity (pro tier), skip the check
     if (limit !== Infinity) {
-      // Count existing quota-eligible plans (user row locked prevents races)
+      // Count existing plans that count toward quota:
+      // - Plans with isQuotaEligible=true (completed/ready plans)
+      // - Plans with generationStatus='generating' (in-flight generations)
+      // This prevents race conditions where concurrent requests create too many plans
       const [result] = await tx
         .select({ count: sql`count(*)::int` })
         .from(learningPlans)
         .where(
           and(
             eq(learningPlans.userId, userId),
-            eq(learningPlans.isQuotaEligible, true)
+            or(
+              eq(learningPlans.isQuotaEligible, true),
+              eq(learningPlans.generationStatus, 'generating')
+            )
           )
         );
 
@@ -288,22 +292,6 @@ export async function atomicCheckAndInsertPlan(
       if (currentCount >= limit) {
         throw new Error('Plan limit reached for current subscription tier.');
       }
-    }
-
-    // Guard against multiple in-flight generations which could exceed quota
-    const [inFlightResult] = await tx
-      .select({ count: sql`count(*)::int` })
-      .from(learningPlans)
-      .where(
-        and(
-          eq(learningPlans.userId, userId),
-          eq(learningPlans.generationStatus, 'generating')
-        )
-      );
-
-    const inFlightCount = (inFlightResult?.count as number) ?? 0;
-    if (inFlightCount >= MAX_GENERATING_PLANS_PER_USER) {
-      throw new Error('A plan is already generating. Please wait before creating another.');
     }
 
     // Insert the plan within the same transaction (atomic with the checks)
