@@ -1,6 +1,5 @@
 import type { AiPlanGenerationProvider } from './provider';
 import { MockGenerationProvider } from './providers/mock';
-import { OpenAIGenerationProvider } from './providers/openai';
 import { RouterGenerationProvider } from './providers/router';
 
 /**
@@ -18,9 +17,6 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
   ) {
     // Use mock provider in development or when explicitly configured
     return new MockGenerationProvider();
-  }
-  if (providerType === 'openai') {
-    return new OpenAIGenerationProvider();
   }
   // Default to router for real usage with failover
   return new RouterGenerationProvider();
