@@ -36,6 +36,7 @@ Quick reference of all tests in the suite, organized by category:
 - `generation.capped.spec.ts` - Max attempts limit enforcement
 - `generation.cap-boundary.spec.ts` - Edge cases around attempt caps
 - `generation.rate_limit.spec.ts` - Rate limiting for generation requests
+- `actions/generate-learning-plan.spec.ts` - Server action flow (success/failure state, quota updates, usage logging)
 
 **Background Workers:**
 
@@ -195,6 +196,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://{project}.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
+
+When schema changes introduce new columns or enum types, run `pnpm exec drizzle-kit push` with the test `DATABASE_URL` exported so the Supabase-hosted database matches the local Drizzle schema (for example, the `generation_status` and `is_quota_eligible` columns added for plan generation lifecycle testing).
+
+To force AI failures in tests, temporarily set `MOCK_GENERATION_FAILURE_RATE=1` (either via environment or inside the test) and reset it to `0` afterwards so other suites continue to exercise the happy path.
 
 ### Why RLS is Bypassed in Business Logic Tests
 

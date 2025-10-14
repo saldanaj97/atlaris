@@ -1,13 +1,14 @@
-import { eq } from 'drizzle-orm';
 import { ZodError, z } from 'zod';
 
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
 import { RouterGenerationProvider } from '@/lib/ai/providers/router';
 import type { ProviderMetadata } from '@/lib/ai/provider';
 import type { FailureClassification } from '@/lib/types/client';
-import { db } from '@/lib/db/drizzle';
-import { learningPlans } from '@/lib/db/schema';
 import { recordUsage } from '@/lib/db/usage';
+import {
+  markPlanGenerationFailure,
+  markPlanGenerationSuccess,
+} from '@/lib/stripe/usage';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
@@ -86,13 +87,6 @@ function toPlanGenerationJobData(data: unknown): PlanGenerationJobData {
     weeklyHours: parsed.weeklyHours,
     learningStyle: parsed.learningStyle,
   } satisfies PlanGenerationJobData;
-}
-
-async function touchPlanUpdatedAt(planId: string) {
-  await db
-    .update(learningPlans)
-    .set({ updatedAt: new Date() })
-    .where(eq(learningPlans.id, planId));
 }
 
 function buildJobResult(
@@ -187,6 +181,8 @@ export async function processPlanGenerationJob(
         result.metadata
       );
 
+      await markPlanGenerationSuccess(job.planId);
+
       // Record usage on success
       const usage = result.metadata?.usage;
       await recordUsage({
@@ -198,8 +194,6 @@ export async function processPlanGenerationJob(
         costCents: 0,
         kind: 'plan',
       });
-
-      await touchPlanUpdatedAt(job.planId);
 
       return {
         status: 'success',
@@ -218,19 +212,8 @@ export async function processPlanGenerationJob(
           : 'Plan generation failed.';
 
     if (!retryable) {
-      await touchPlanUpdatedAt(job.planId);
+      await markPlanGenerationFailure(job.planId);
     }
-
-    // Record usage on failure (tokens may be partial)
-    await recordUsage({
-      userId: job.userId,
-      provider: result.metadata?.provider ?? 'unknown',
-      model: result.metadata?.model ?? 'unknown',
-      inputTokens: result.metadata?.usage?.promptTokens ?? undefined,
-      outputTokens: result.metadata?.usage?.completionTokens ?? undefined,
-      costCents: 0,
-      kind: 'plan',
-    });
 
     return {
       status: 'failure',

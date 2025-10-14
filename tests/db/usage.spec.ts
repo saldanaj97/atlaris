@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/drizzle';
-import { aiUsageEvents, users } from '@/lib/db/schema';
+import { aiUsageEvents, learningPlans, users } from '@/lib/db/schema';
 import { recordUsage } from '@/lib/db/usage';
 import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';
 import { eq } from 'drizzle-orm';
@@ -38,6 +38,15 @@ describe('AI usage logging', () => {
 
     expect(plan.id).toBeDefined();
 
+    const [planRow] = await db
+      .select()
+      .from(learningPlans)
+      .where(eq(learningPlans.id, plan.id));
+
+    expect(planRow?.generationStatus).toBe('generating');
+    expect(planRow?.isQuotaEligible).toBe(false);
+    expect(planRow?.finalizedAt).toBeNull();
+
     await recordUsage({
       userId,
       provider: 'mock',
@@ -54,5 +63,31 @@ describe('AI usage logging', () => {
       .where(eq(aiUsageEvents.userId, userId));
     expect(rows.length).toBe(1);
     expect(rows[0]?.provider).toBe('mock');
+  });
+
+  it('prevents multiple in-flight plan generations per user', async () => {
+    const userId = await ensureUser();
+
+    const firstPlan = await atomicCheckAndInsertPlan(userId, {
+      topic: 'Pending Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      visibility: 'private',
+      origin: 'ai',
+    });
+
+    expect(firstPlan.id).toBeDefined();
+
+    await expect(
+      atomicCheckAndInsertPlan(userId, {
+        topic: 'Second Plan',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+      })
+    ).rejects.toThrow('A plan is already generating');
   });
 });

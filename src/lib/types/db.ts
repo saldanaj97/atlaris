@@ -1,6 +1,7 @@
 import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import {
+  generationStatus,
   learningStyle,
   progressStatus,
   resourceType,
@@ -23,12 +24,14 @@ export const SKILL_LEVELS = skillLevel.enumValues;
 export const LEARNING_STYLES = learningStyle.enumValues;
 export const RESOURCE_TYPES = resourceType.enumValues;
 export const PROGRESS_STATUSES = progressStatus.enumValues;
+export const GENERATION_STATUSES = generationStatus.enumValues;
 
 // Enum types
 export type SkillLevel = (typeof SKILL_LEVELS)[number];
 export type LearningStyle = (typeof LEARNING_STYLES)[number];
 export type ResourceType = (typeof RESOURCE_TYPES)[number];
 export type ProgressStatus = (typeof PROGRESS_STATUSES)[number];
+export type GenerationStatus = (typeof GENERATION_STATUSES)[number];
 
 // Insert types (for creating new records)
 export type NewUser = InferInsertModel<typeof users>;
