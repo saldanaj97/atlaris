@@ -1,14 +1,14 @@
 import { ZodError, z } from 'zod';
 
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
-import { RouterGenerationProvider } from '@/lib/ai/providers/router';
 import type { ProviderMetadata } from '@/lib/ai/provider';
-import type { FailureClassification } from '@/lib/types/client';
+import { RouterGenerationProvider } from '@/lib/ai/providers/router';
 import { recordUsage } from '@/lib/db/usage';
 import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/lib/stripe/usage';
+import type { FailureClassification } from '@/lib/types/client';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
@@ -222,6 +222,7 @@ export async function processPlanGenerationJob(
       retryable,
     } satisfies ProcessPlanGenerationJobFailure;
   } catch (error) {
+    await markPlanGenerationFailure(job.planId);
     const message =
       error instanceof Error
         ? error.message || 'Unexpected error processing plan generation job.'
