@@ -265,6 +265,8 @@ export async function atomicCheckAndInsertPlan(
     learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
     visibility: 'private' | 'public';
     origin: 'ai' | 'manual';
+    startDate?: string | null;
+    deadlineDate?: string | null;
   }
 ): Promise<{ id: string }> {
   return db.transaction(async (tx) => {

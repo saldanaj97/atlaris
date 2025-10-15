@@ -132,6 +132,8 @@ export const POST = withErrorBoundary(
         | 'public',
       // This endpoint triggers AI generation, so origin is always 'ai'.
       origin: 'ai',
+      startDate: insertPayload.startDate,
+      deadlineDate: insertPayload.deadlineDate,
     });
 
     // Fetch created row to include timestamps in response (back-compat shape)
