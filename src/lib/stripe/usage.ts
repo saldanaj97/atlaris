@@ -25,9 +25,6 @@ const TIER_LIMITS = {
 
 type SubscriptionTier = keyof typeof TIER_LIMITS;
 
-// Hard cap on simultaneous in-flight generations per user
-const MAX_GENERATING_PLANS_PER_USER = 1;
-
 /**
  * Get current month in YYYY-MM format
  */
@@ -295,20 +292,6 @@ export async function atomicCheckAndInsertPlan(
       if (currentCount >= limit) {
         throw new Error('Plan limit reached for current subscription tier.');
       }
-    }
-
-    // Additionally, independently cap the number of simultaneous generations
-    // to avoid multiple expensive in-flight jobs per user.
-    const [{ count: genCount }] = await tx.execute(
-      sql`select count(*)::int as count from ${learningPlans}
-          where ${learningPlans.userId} = ${userId}
-          and ${learningPlans.generationStatus} = 'generating'`
-    );
-    const inFlight = Number(genCount ?? 0);
-    if (inFlight >= MAX_GENERATING_PLANS_PER_USER) {
-      throw new Error(
-        'A plan is already generating. Please wait before creating another.'
-      );
     }
 
     // Insert the plan within the same transaction (atomic with the checks)
