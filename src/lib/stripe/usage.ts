@@ -97,14 +97,20 @@ export async function checkPlanLimit(userId: string): Promise<boolean> {
     return true;
   }
 
-  // Count quota-eligible plans (ready / manually created)
+  // Count plans that should apply toward the cap right now:
+  //  - Quota-eligible plans (ready / manually created)
+  //  - In-flight generations (generationStatus = 'generating') to prevent
+  //    concurrent POSTs from bypassing the cap while rows are non-eligible
   const [result] = await db
     .select({ count: sql`count(*)::int` })
     .from(learningPlans)
     .where(
       and(
         eq(learningPlans.userId, userId),
-        eq(learningPlans.isQuotaEligible, true)
+        or(
+          eq(learningPlans.isQuotaEligible, true),
+          eq(learningPlans.generationStatus, 'generating')
+        )
       )
     );
 
