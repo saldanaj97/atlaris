@@ -101,20 +101,29 @@ export async function checkPlanLimit(userId: string): Promise<boolean> {
   //  - Quota-eligible plans (ready / manually created)
   //  - In-flight generations (generationStatus = 'generating') to prevent
   //    concurrent POSTs from bypassing the cap while rows are non-eligible
-  const [result] = await db
-    .select({ count: sql`count(*)::int` })
-    .from(learningPlans)
-    .where(
-      and(
-        eq(learningPlans.userId, userId),
-        or(
-          eq(learningPlans.isQuotaEligible, true),
+  const [[eligible], [generating]] = await Promise.all([
+    db
+      .select({ count: sql`count(*)::int` })
+      .from(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.userId, userId),
+          eq(learningPlans.isQuotaEligible, true)
+        )
+      ),
+    db
+      .select({ count: sql`count(*)::int` })
+      .from(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.userId, userId),
           eq(learningPlans.generationStatus, 'generating')
         )
-      )
-    );
+      ),
+  ]);
 
-  const currentCount = (result?.count as number) ?? 0;
+  const currentCount =
+    ((eligible?.count as number) ?? 0) + ((generating?.count as number) ?? 0);
   return currentCount < limit;
 }
 
