@@ -222,7 +222,6 @@ export async function processPlanGenerationJob(
       retryable,
     } satisfies ProcessPlanGenerationJobFailure;
   } catch (error) {
-    await markPlanGenerationFailure(job.planId);
     const message =
       error instanceof Error
         ? error.message || 'Unexpected error processing plan generation job.'
