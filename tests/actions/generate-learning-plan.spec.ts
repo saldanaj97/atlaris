@@ -1,6 +1,12 @@
 import { generateLearningPlan } from '@/app/plans/actions';
 import { db } from '@/lib/db/drizzle';
-import { aiUsageEvents, modules, tasks, usageMetrics, users } from '@/lib/db/schema';
+import {
+  aiUsageEvents,
+  modules,
+  tasks,
+  usageMetrics,
+  users,
+} from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -11,7 +17,6 @@ async function ensureUser(): Promise<void> {
     .insert(users)
     .values({ clerkUserId, email, name: 'Test' })
     .onConflictDoNothing();
-  process.env.DEV_CLERK_USER_ID = clerkUserId;
 }
 
 describe('Server Action: generateLearningPlan', () => {
@@ -36,7 +41,10 @@ describe('Server Action: generateLearningPlan', () => {
 
     const planRow = await db.query.learningPlans.findFirst({
       where: (fields, operators) =>
-        operators.eq(fields.id, res.planId ?? '00000000-0000-0000-0000-000000000000'),
+        operators.eq(
+          fields.id,
+          res.planId ?? '00000000-0000-0000-0000-000000000000'
+        ),
     });
 
     expect(planRow?.generationStatus).toBe('ready');
