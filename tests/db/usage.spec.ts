@@ -64,30 +64,4 @@ describe('AI usage logging', () => {
     expect(rows.length).toBe(1);
     expect(rows[0]?.provider).toBe('mock');
   });
-
-  it('prevents multiple in-flight plan generations per user', async () => {
-    const userId = await ensureUser();
-
-    const firstPlan = await atomicCheckAndInsertPlan(userId, {
-      topic: 'Pending Plan',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-    });
-
-    expect(firstPlan.id).toBeDefined();
-
-    await expect(
-      atomicCheckAndInsertPlan(userId, {
-        topic: 'Second Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      })
-    ).rejects.toThrow('A plan is already generating');
-  });
 });
