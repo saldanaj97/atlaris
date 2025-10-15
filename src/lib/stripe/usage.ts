@@ -1,6 +1,6 @@
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
-import { and, eq, or, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 /**
  * Subscription tier limits
@@ -289,20 +289,30 @@ export async function atomicCheckAndInsertPlan(
       // - Plans with isQuotaEligible=true (completed/ready plans)
       // - Plans with generationStatus='generating' (in-flight generations)
       // This prevents race conditions where concurrent requests create too many plans
-      const [result] = await tx
-        .select({ count: sql`count(*)::int` })
-        .from(learningPlans)
-        .where(
-          and(
-            eq(learningPlans.userId, userId),
-            or(
-              eq(learningPlans.isQuotaEligible, true),
+      const [[eligible], [generating]] = await Promise.all([
+        tx
+          .select({ count: sql`count(*)::int` })
+          .from(learningPlans)
+          .where(
+            and(
+              eq(learningPlans.userId, userId),
+              eq(learningPlans.isQuotaEligible, true)
+            )
+          ),
+        tx
+          .select({ count: sql`count(*)::int` })
+          .from(learningPlans)
+          .where(
+            and(
+              eq(learningPlans.userId, userId),
               eq(learningPlans.generationStatus, 'generating')
             )
-          )
-        );
+          ),
+      ]);
 
-      const currentCount = (result?.count as number) ?? 0;
+      const currentCount =
+        ((eligible?.count as number) ?? 0) +
+        ((generating?.count as number) ?? 0);
 
       if (currentCount >= limit) {
         throw new Error('Plan limit reached for current subscription tier.');
