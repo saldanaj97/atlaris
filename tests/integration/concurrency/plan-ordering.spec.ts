@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans } from '@/lib/db/schema';
-import { ensureUser } from '../helpers/db';
-import { setTestUser } from '../helpers/auth';
+import { describe, expect, it } from 'vitest';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
 
 /**
  * Validates that simultaneous plan creations preserve an incrementing created_at ordering
@@ -32,7 +32,10 @@ describe('Concurrency - plan creation ordering', () => {
             visibility: 'private',
             origin: 'ai',
           })
-          .returning({ id: learningPlans.id, createdAt: learningPlans.createdAt })
+          .returning({
+            id: learningPlans.id,
+            createdAt: learningPlans.createdAt,
+          })
       )
     );
 
@@ -45,8 +48,8 @@ describe('Concurrency - plan creation ordering', () => {
     );
     // At least not reverse-sorted (in pathological cases timestamps could be equal) so we just
     // assert the final element timestamp is >= first.
-    expect(sorted[sorted.length - 1].createdAt.getTime()).toBeGreaterThanOrEqual(
-      sorted[0].createdAt.getTime()
-    );
+    expect(
+      sorted[sorted.length - 1].createdAt.getTime()
+    ).toBeGreaterThanOrEqual(sorted[0].createdAt.getTime());
   });
 });

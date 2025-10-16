@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans } from '@/lib/db/schema';
-import { setTestUser } from '../helpers/auth';
-import { ensureUser } from '../helpers/db';
-import { createMockProvider } from '../helpers/mockProvider';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
+import { createMockProvider } from '../../helpers/mockProvider';
 
 /**
  * Simulates a provider stall by creating a mock provider that never yields a module

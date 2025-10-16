@@ -4,7 +4,7 @@ import { db } from '@/lib/db/drizzle';
 import { jobQueue } from '@/lib/db/schema';
 import { JOB_TYPES } from '@/lib/jobs/types';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
-import { ensureUser } from '../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 describe('Worker Logging', () => {
   let consoleInfoSpy: ReturnType<typeof vi.spyOn>;

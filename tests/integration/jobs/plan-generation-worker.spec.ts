@@ -26,7 +26,7 @@ import * as workerService from '@/lib/jobs/worker-service';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
-import { ensureUser } from '../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 const originalEnv = {
   AI_PROVIDER: process.env.AI_PROVIDER,

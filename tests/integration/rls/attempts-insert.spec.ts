@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/drizzle';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { setTestUser } from '../helpers/auth';
-import { ensureUser } from '../helpers/db';
-import { createMockProvider } from '../helpers/mockProvider';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
+import { createMockProvider } from '../../helpers/mockProvider';
 
 /**
  * This test uses application path to insert an attempt via orchestrator

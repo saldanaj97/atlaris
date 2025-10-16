@@ -4,7 +4,7 @@ import { db } from '@/lib/db/drizzle';
 import { jobQueue } from '@/lib/db/schema';
 import { JOB_TYPES } from '@/lib/jobs/types';
 import { GET } from '@/app/api/health/worker/route';
-import { ensureUser } from '../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 describe('Health Endpoint', () => {
   describe('Healthy State', () => {
