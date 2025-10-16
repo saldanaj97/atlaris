@@ -5,6 +5,7 @@ import {
   getNextJob,
   type FailJobOptions,
 } from '@/lib/jobs/queue';
+import { markPlanGenerationFailure } from '@/lib/stripe/usage';
 import {
   processPlanGenerationJob,
   type ProcessPlanGenerationJobFailure,
@@ -289,7 +290,20 @@ export class PlanGenerationWorker {
       : { retryable: false };
 
     try {
-      await failJob(job.id, result.error, failOptions);
+      const updated = await failJob(job.id, result.error, failOptions);
+      // If we've exhausted retries and the job is now failed, mark plan as failed
+      if (updated?.status === 'failed' && job.planId) {
+        try {
+          await markPlanGenerationFailure(job.planId);
+        } catch (planErr) {
+          const details = normalizeError(planErr);
+          this.log('error', 'plan_mark_failed_error', {
+            jobId: job.id,
+            planId: job.planId,
+            message: details.message,
+          });
+        }
+      }
       this.stats.jobsFailed += 1;
       this.log(result.retryable ? 'warn' : 'error', 'job_failed', {
         jobId: job.id,
