@@ -267,7 +267,7 @@ jobs:
           if [ "${{ needs.changes.outputs.code }}" != "true" ]; then
             echo "⏭️  Skipped unit and integration tests (no code changes)"
             # Check only lint, type-check, and build
-            if [ "${{ contains(fromJSON('["lint", "type-check", "build-test"]'), 'failure') }}" == "true" ]; then
+            if [ "${{ needs.lint.result == 'failure' || needs.type-check.result == 'failure' || needs.build-test.result == 'failure' }}" == "true" ]; then
               echo "❌ One or more checks failed"
               exit 1
             fi
