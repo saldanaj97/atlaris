@@ -72,7 +72,8 @@ jobs:
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           STRIPE_STARTER_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_MONTHLY_PRICE_ID }}
           STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
-          AI_USE_MOCK: ${{ secrets.AI_USE_MOCK }}
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+          AI_USE_MOCK: ${{ vars.AI_USE_MOCK }}
           AI_MAX_OUTPUT_TOKENS: ${{ vars.AI_MAX_OUTPUT_TOKENS }}
           AI_PRIMARY: ${{ vars.AI_PRIMARY }}
           AI_FALLBACK: ${{ vars.AI_FALLBACK }}
@@ -91,7 +92,6 @@ jobs:
           DEV_CLERK_USER_ID: ${{ secrets.DEV_CLERK_USER_ID }}
           DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
           DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
-          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
         run: pnpm test:e2e
 
   build-staging:
