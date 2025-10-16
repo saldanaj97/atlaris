@@ -75,7 +75,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 20
-    if: github.event_name == 'push'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -96,7 +95,7 @@ jobs:
 
       - name: Run unit tests
         env:
-          ALLOW_DB_TRUNCATE: 'true'
+          ALLOW_DB_TRUNCATE: ${{ vars.ALLOW_DB_TRUNCATE }}
           NODE_ENV: 'test'
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
@@ -138,7 +137,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 25
-    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -232,11 +230,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
 
-  all-checks-dev-push:
-    name: All Checks Passed (dev - push)
-    needs: [lint, type-check, unit-tests, build-test]
+  all-checks-dev:
+    name: All Checks Passed (dev)
+    needs: [lint, type-check, unit-tests, integration-tests, build-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
     steps:
       - name: Check all jobs
         run: |
@@ -247,24 +244,5 @@ jobs:
             echo "❌ One or more checks were cancelled"
             exit 1
           else
-            echo "✅ All checks passed (dev - push)"
-          fi
-
-
-  all-checks-dev-pr:
-    name: All Checks Passed (dev - PR)
-    needs: [lint, type-check, integration-tests, build-test]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Check all jobs
-        run: |
-          if [ "${{ contains(needs.*.result, 'failure') }}" == "true" ]; then
-            echo "❌ One or more checks failed"
-            exit 1
-          elif [ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]; then
-            echo "❌ One or more checks were cancelled"
-            exit 1
-          else
-            echo "✅ All checks passed (dev - PR)"
+            echo "✅ All checks passed (dev)"
           fi
