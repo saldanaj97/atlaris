@@ -7,7 +7,6 @@ on:
       - '**.md'
       - '.github/**'
       - '!.github/workflows/**'
-
   pull_request:
     branches: [development]
     paths-ignore:
@@ -72,20 +71,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
       - name: Setup Node.js
         uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'pnpm'
-
+        with:
+          node-version: '20'
+          cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Run TypeScript type check
         run: pnpm type-check
 
@@ -99,21 +95,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Run unit tests
         env:
           ALLOW_DB_TRUNCATE: ${{ vars.ALLOW_DB_TRUNCATE }}
@@ -163,26 +155,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Apply migrations with Drizzle
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm db:push
-
       - name: Run integration tests
         env:
           NODE_ENV: 'test'
@@ -230,10 +217,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-
         with:
           version: 9
       - name: Setup Node.js
@@ -241,10 +226,8 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
       - name: Build Next.js app
         run: pnpm build
         env:
