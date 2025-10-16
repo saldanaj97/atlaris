@@ -465,6 +465,62 @@ describe('Usage Tracking', () => {
   });
 
   describe('getUsageSummary', () => {
+    it('excludes non-eligible plans and counts only eligible ones', async () => {
+      const userId = await ensureUser({
+        clerkUserId: 'user_summary_eligibility_filter',
+        email: 'summary.eligibility@example.com',
+      });
+
+      const finalizedAt = new Date();
+      // Insert a mix of plans: two eligible (ready+eligible), and two non-eligible
+      await db.insert(learningPlans).values([
+        {
+          userId,
+          topic: 'Eligible 1',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
+        },
+        {
+          userId,
+          topic: 'Eligible 2',
+          skillLevel: 'intermediate',
+          weeklyHours: 6,
+          learningStyle: 'reading',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+          finalizedAt,
+        },
+        {
+          userId,
+          topic: 'In-flight Generating',
+          skillLevel: 'beginner',
+          weeklyHours: 4,
+          learningStyle: 'video',
+          generationStatus: 'generating',
+          isQuotaEligible: false,
+          finalizedAt: null,
+        },
+        {
+          userId,
+          topic: 'Failed Plan',
+          skillLevel: 'advanced',
+          weeklyHours: 8,
+          learningStyle: 'practice',
+          generationStatus: 'failed',
+          isQuotaEligible: false,
+          finalizedAt: null,
+        },
+      ]);
+
+      const summary = await getUsageSummary(userId);
+
+      // Only the two eligible plans should be counted
+      expect(summary.activePlans.current).toBe(2);
+    });
     it('returns complete usage summary for free tier', async () => {
       const userId = await ensureUser({
         clerkUserId: 'user_summary_free',
