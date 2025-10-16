@@ -97,33 +97,7 @@ export async function checkPlanLimit(userId: string): Promise<boolean> {
     return true;
   }
 
-  // Count plans that should apply toward the cap right now:
-  //  - Quota-eligible plans (ready / manually created)
-  //  - In-flight generations (generationStatus = 'generating') to prevent
-  //    concurrent POSTs from bypassing the cap while rows are non-eligible
-  const [[eligible], [generating]] = await Promise.all([
-    db
-      .select({ count: sql`count(*)::int` })
-      .from(learningPlans)
-      .where(
-        and(
-          eq(learningPlans.userId, userId),
-          eq(learningPlans.isQuotaEligible, true)
-        )
-      ),
-    db
-      .select({ count: sql`count(*)::int` })
-      .from(learningPlans)
-      .where(
-        and(
-          eq(learningPlans.userId, userId),
-          eq(learningPlans.generationStatus, 'generating')
-        )
-      ),
-  ]);
-
-  const currentCount =
-    ((eligible?.count as number) ?? 0) + ((generating?.count as number) ?? 0);
+  const currentCount = await countPlansContributingToCap(db, userId);
   return currentCount < limit;
 }
 
@@ -247,6 +221,44 @@ export async function getUsageSummary(userId: string) {
 }
 
 /**
+ * Count plans that contribute toward the user's current active plan cap.
+ * Includes:
+ *  - Quota-eligible plans (ready / manually created)
+ *  - In-flight generations (generationStatus = 'generating') to prevent
+ *    concurrent POSTs from bypassing the cap while rows are non-eligible
+ * Accepts either a database handle or a transaction object.
+ */
+async function countPlansContributingToCap(
+  dbOrTx: Pick<typeof db, 'select'>,
+  userId: string
+): Promise<number> {
+  const [[eligible], [generating]] = await Promise.all([
+    dbOrTx
+      .select({ count: sql`count(*)::int` })
+      .from(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.userId, userId),
+          eq(learningPlans.isQuotaEligible, true)
+        )
+      ),
+    dbOrTx
+      .select({ count: sql`count(*)::int` })
+      .from(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.userId, userId),
+          eq(learningPlans.generationStatus, 'generating')
+        )
+      ),
+  ]);
+
+  return (
+    ((eligible?.count as number) ?? 0) + ((generating?.count as number) ?? 0)
+  );
+}
+
+/**
  * Atomically check plan limit and insert a new plan to prevent race conditions.
  * This uses a database transaction with row-level locking (SELECT FOR UPDATE)
  * to ensure that concurrent requests cannot exceed the user's plan limit.
@@ -287,34 +299,8 @@ export async function atomicCheckAndInsertPlan(
 
     // If limit is Infinity (pro tier), skip the check
     if (limit !== Infinity) {
-      // Count existing plans that count toward quota:
-      // - Plans with isQuotaEligible=true (completed/ready plans)
-      // - Plans with generationStatus='generating' (in-flight generations)
-      // This prevents race conditions where concurrent requests create too many plans
-      const [[eligible], [generating]] = await Promise.all([
-        tx
-          .select({ count: sql`count(*)::int` })
-          .from(learningPlans)
-          .where(
-            and(
-              eq(learningPlans.userId, userId),
-              eq(learningPlans.isQuotaEligible, true)
-            )
-          ),
-        tx
-          .select({ count: sql`count(*)::int` })
-          .from(learningPlans)
-          .where(
-            and(
-              eq(learningPlans.userId, userId),
-              eq(learningPlans.generationStatus, 'generating')
-            )
-          ),
-      ]);
-
-      const currentCount =
-        ((eligible?.count as number) ?? 0) +
-        ((generating?.count as number) ?? 0);
+      // Count existing plans that count toward quota using shared helper
+      const currentCount = await countPlansContributingToCap(tx, userId);
 
       if (currentCount >= limit) {
         throw new Error('Plan limit reached for current subscription tier.');
