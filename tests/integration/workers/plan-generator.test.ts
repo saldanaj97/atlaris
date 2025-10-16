@@ -23,7 +23,7 @@ import type { ProcessPlanGenerationJobResult } from '@/lib/jobs/worker-service';
 import * as workerService from '@/lib/jobs/worker-service';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
 
-import { ensureUser } from '../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,

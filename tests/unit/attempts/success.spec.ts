@@ -9,7 +9,7 @@ import {
   createInput,
   createModules,
   createSequentialNow,
-} from '../helpers/attempts';
+} from '../../helpers/attempts';
 
 describe('attempt service – success path', () => {
   it('stores normalized modules, tasks, and attempt metadata', async () => {

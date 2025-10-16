@@ -5,7 +5,7 @@ import {
   ProviderRateLimitError,
   type GenerationInput,
 } from '@/lib/ai/provider';
-import { createMockProvider } from '../helpers/mockProvider';
+import { createMockProvider } from '../../helpers/mockProvider';
 
 const SAMPLE_INPUT: GenerationInput = {
   topic: 'Sample Topic',

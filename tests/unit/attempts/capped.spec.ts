@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ATTEMPT_CAP, startAttempt } from '@/lib/db/queries/attempts';
 
-import { MockDbClient, asDbClient, createInput } from '../helpers/attempts';
+import { MockDbClient, asDbClient, createInput } from '../../helpers/attempts';
 
 describe('attempt service – capped attempts', () => {
   it('flags preparation as capped when limit reached', async () => {

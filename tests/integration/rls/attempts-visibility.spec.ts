@@ -8,8 +8,8 @@ import {
   tasks as _tasks,
   users as _users,
 } from '@/lib/db/schema';
-import { setTestUser } from '../helpers/auth';
-import { ensureUser } from '../helpers/db';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
 import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route';
 
 async function createPlanWithAttempt({

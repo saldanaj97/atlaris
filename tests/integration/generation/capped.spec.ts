@@ -9,9 +9,9 @@ import {
   tasks,
 } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
-import { setTestUser } from '../helpers/auth';
-import { ensureUser } from '../helpers/db';
-import { createMockProvider } from '../helpers/mockProvider';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
+import { createMockProvider } from '../../helpers/mockProvider';
 
 const clerkUserId = 'clerk_generation_capped';
 const clerkEmail = 'generation-capped@example.com';
