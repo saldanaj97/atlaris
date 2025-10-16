@@ -23,6 +23,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'tests/**'
+              - 'vitest.config.ts'
+              - 'tsconfig.json'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'drizzle.config.ts'
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -73,6 +94,8 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     environment: test
     timeout-minutes: 20
     steps:
@@ -135,6 +158,8 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     environment: test
     timeout-minutes: 25
     steps:
@@ -232,17 +257,28 @@ jobs:
 
   all-checks-dev:
     name: All Checks Passed (dev)
-    needs: [lint, type-check, unit-tests, integration-tests, build-test]
+    needs: [changes, lint, type-check, unit-tests, integration-tests, build-test]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs
         run: |
-          if [ "${{ contains(needs.*.result, 'failure') }}" == "true" ]; then
-            echo "❌ One or more checks failed"
-            exit 1
-          elif [ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]; then
-            echo "❌ One or more checks were cancelled"
-            exit 1
+          # Skip test jobs if no code changes
+          if [ "${{ needs.changes.outputs.code }}" != "true" ]; then
+            echo "⏭️  Skipped unit and integration tests (no code changes)"
+            # Check only lint, type-check, and build
+            if [ "${{ contains(fromJSON('["lint", "type-check", "build-test"]'), 'failure') }}" == "true" ]; then
+              echo "❌ One or more checks failed"
+              exit 1
+            fi
           else
-            echo "✅ All checks passed (dev)"
+            # Check all jobs when code changed
+            if [ "${{ contains(needs.*.result, 'failure') }}" == "true" ]; then
+              echo "❌ One or more checks failed"
+              exit 1
+            elif [ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]; then
+              echo "❌ One or more checks were cancelled"
+              exit 1
+            fi
           fi
+          echo "✅ All checks passed (dev)"

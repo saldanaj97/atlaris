@@ -2,6 +2,7 @@ import { ZodError, z } from 'zod';
 
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
 import type { ProviderMetadata } from '@/lib/ai/provider';
+import { RouterGenerationProvider } from '@/lib/ai/providers/router';
 import { recordUsage } from '@/lib/db/usage';
 import {
   markPlanGenerationFailure,
@@ -154,18 +155,23 @@ export async function processPlanGenerationJob(
     // in generateLearningPlan action (via atomicCheckAndInsertPlan).
     // No need to check again here as the plan already exists.
 
-    // Use default provider selection which honors AI_PROVIDER and test env
-    const result = await runGenerationAttempt({
-      planId: job.planId,
-      userId: job.userId,
-      input: {
-        topic: payload.topic,
-        notes: payload.notes,
-        skillLevel: payload.skillLevel,
-        weeklyHours: payload.weeklyHours,
-        learningStyle: payload.learningStyle,
+    // Use router-based provider with failover (mock in tests if configured)
+    const provider = new RouterGenerationProvider();
+
+    const result = await runGenerationAttempt(
+      {
+        planId: job.planId,
+        userId: job.userId,
+        input: {
+          topic: payload.topic,
+          notes: payload.notes,
+          skillLevel: payload.skillLevel,
+          weeklyHours: payload.weeklyHours,
+          learningStyle: payload.learningStyle,
+        },
       },
-    });
+      { provider }
+    );
 
     if (result.status === 'success') {
       const jobResult = buildJobResult(
@@ -207,6 +213,17 @@ export async function processPlanGenerationJob(
 
     if (!retryable) {
       await markPlanGenerationFailure(job.planId);
+
+      // Record AI usage even on failure when provider reports token usage
+      const failedUsage = result.metadata?.usage;
+      await recordUsage({
+        userId: job.userId,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: result.metadata?.model ?? 'unknown',
+        inputTokens: failedUsage?.promptTokens ?? undefined,
+        outputTokens: failedUsage?.completionTokens ?? undefined,
+        costCents: 0,
+      });
     }
 
     return {
