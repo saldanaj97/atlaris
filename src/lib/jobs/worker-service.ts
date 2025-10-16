@@ -213,6 +213,17 @@ export async function processPlanGenerationJob(
 
     if (!retryable) {
       await markPlanGenerationFailure(job.planId);
+
+      // Record AI usage even on failure when provider reports token usage
+      const failedUsage = result.metadata?.usage;
+      await recordUsage({
+        userId: job.userId,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: result.metadata?.model ?? 'unknown',
+        inputTokens: failedUsage?.promptTokens ?? undefined,
+        outputTokens: failedUsage?.completionTokens ?? undefined,
+        costCents: 0,
+      });
     }
 
     return {
