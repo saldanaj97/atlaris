@@ -93,17 +93,6 @@ export async function generateLearningPlan(
 
   await markPlanGenerationFailure(plan.id);
 
-  // Record AI usage even on failure when provider reports token usage
-  const failedUsage = result.metadata?.usage;
-  await recordUsage({
-    userId: user.id,
-    provider: result.metadata?.provider ?? 'unknown',
-    model: result.metadata?.model ?? 'unknown',
-    inputTokens: failedUsage?.promptTokens ?? undefined,
-    outputTokens: failedUsage?.completionTokens ?? undefined,
-    costCents: 0,
-  });
-
   const message =
     typeof result.error === 'string'
       ? result.error
