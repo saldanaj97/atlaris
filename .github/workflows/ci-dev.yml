@@ -5,8 +5,6 @@ on:
     branches: [development]
     paths-ignore:
       - '**.md'
-      - .claude/**
-      - 'docs/**'
       - '.github/**'
       - '!.github/workflows/**'
 
@@ -14,8 +12,6 @@ on:
     branches: [development]
     paths-ignore:
       - '**.md'
-      - .claude/**
-      - 'docs/**'
       - '.github/**'
       - '!.github/workflows/**'
 

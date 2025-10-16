@@ -5,8 +5,6 @@ on:
     branches: [main]
     paths-ignore:
       - '**.md'
-      - .claude/**
-      - 'docs/**'
       - '.github/**'
       - '!.github/workflows/**'
 
@@ -14,8 +12,6 @@ on:
     branches: [main]
     paths-ignore:
       - '**.md'
-      - .claude/**
-      - 'docs/**'
       - '.github/**'
       - '!.github/workflows/**'
 
@@ -151,7 +147,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Enable auto-merge (squash) via GraphQL
+      - name: Enable auto-merge via GraphQL
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -173,7 +169,7 @@ jobs:
               console.log('Auto-merge already enabled; nothing to do.')
               return
             }
-            const mutation = `mutation($prId:ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: SQUASH }) { pullRequest { number autoMergeRequest { enabledAt } } } }`
+            const mutation = `mutation($prId:ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: MERGE }) { pullRequest { number autoMergeRequest { enabledAt } } } }`
             try {
               const res = await github.graphql(mutation, { prId: pr.id })
               console.log('Auto-merge enabled:', JSON.stringify(res))
