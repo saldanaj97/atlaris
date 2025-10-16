@@ -25,6 +25,9 @@ const TIER_LIMITS = {
 
 type SubscriptionTier = keyof typeof TIER_LIMITS;
 
+// Usage type for incrementing counters
+export type UsageType = 'plan' | 'regeneration' | 'export';
+
 /**
  * Get current month in YYYY-MM format
  */
@@ -138,11 +141,6 @@ export async function checkExportLimit(userId: string): Promise<boolean> {
 }
 
 /**
- * Usage type for incrementing counters
- */
-export type UsageType = 'plan' | 'regeneration' | 'export';
-
-/**
  * Increment usage counter for the current month
  */
 export async function incrementUsage(
@@ -232,27 +230,30 @@ async function countPlansContributingToCap(
   dbOrTx: Pick<typeof db, 'select'>,
   userId: string
 ): Promise<number> {
-  const [[eligible], [generating]] = await Promise.all([
-    dbOrTx
-      .select({ count: sql`count(*)::int` })
-      .from(learningPlans)
-      .where(
-        and(
-          eq(learningPlans.userId, userId),
-          eq(learningPlans.isQuotaEligible, true)
-        )
-      ),
-    dbOrTx
-      .select({ count: sql`count(*)::int` })
-      .from(learningPlans)
-      .where(
-        and(
-          eq(learningPlans.userId, userId),
-          eq(learningPlans.generationStatus, 'generating')
-        )
-      ),
-  ]);
+  // Count quota-eligible plans
+  const [eligible] = await dbOrTx
+    .select({ count: sql`count(*)::int` })
+    .from(learningPlans)
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        eq(learningPlans.isQuotaEligible, true)
+      )
+    );
 
+  // Count in-flight generations
+  const [generating] = await dbOrTx
+    .select({ count: sql`count(*)::int` })
+    .from(learningPlans)
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        eq(learningPlans.generationStatus, 'generating')
+      )
+    );
+
+  // Return the sum of quota-eligible and in-flight generations
+  // This ensures that concurrent requests cannot exceed the user's plan limit
   return (
     ((eligible?.count as number) ?? 0) + ((generating?.count as number) ?? 0)
   );
