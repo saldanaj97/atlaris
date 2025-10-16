@@ -219,12 +219,20 @@ export async function getUsageSummary(userId: string) {
 }
 
 /**
- * Count plans that contribute toward the user's current active plan cap.
- * Includes:
- *  - Quota-eligible plans (ready / manually created)
- *  - In-flight generations (generationStatus = 'generating') to prevent
- *    concurrent POSTs from bypassing the cap while rows are non-eligible
- * Accepts either a database handle or a transaction object.
+ * Count the number of plans that currently consume the user's plan quota.
+ *
+ * We intentionally combine two disjoint buckets to prevent over- or under-counting:
+ *  - Quota-eligible plans: persisted plans that should count toward the cap
+ *    (e.g. finalized/ready or manually created). These have `isQuotaEligible = true`.
+ *  - In-flight generations: plans that are currently being generated so that
+ *    concurrent POSTs cannot exceed the cap while the row is not yet eligible.
+ *    We scope this to rows with `generationStatus = 'generating'` AND
+ *    `isQuotaEligible = false` to avoid double-counting any plan that might
+ *    still have a transient 'generating' status after becoming quota-eligible.
+ *
+ * This helper accepts a DB handle or a transaction so that callers like
+ * `atomicCheckAndInsertPlan` can perform an atomic check-and-insert under a
+ * single transaction/lock, ensuring correctness under concurrency.
  */
 async function countPlansContributingToCap(
   dbOrTx: Pick<typeof db, 'select'>,
@@ -248,7 +256,8 @@ async function countPlansContributingToCap(
     .where(
       and(
         eq(learningPlans.userId, userId),
-        eq(learningPlans.generationStatus, 'generating')
+        eq(learningPlans.generationStatus, 'generating'),
+        eq(learningPlans.isQuotaEligible, false) // Generating rows are not yet quota-eligible, so they don't count toward the cap
       )
     );
 
