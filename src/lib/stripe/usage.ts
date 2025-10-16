@@ -257,7 +257,7 @@ async function countPlansContributingToCap(
       and(
         eq(learningPlans.userId, userId),
         eq(learningPlans.generationStatus, 'generating'),
-        eq(learningPlans.isQuotaEligible, false) // Generating rows are not yet quota-eligible, so they don't count toward the cap
+        eq(learningPlans.isQuotaEligible, false) // Intentionally include in-flight 'generating' rows to enforce the cap and prevent concurrent requests from exceeding the limit before quota eligibility
       )
     );
 
