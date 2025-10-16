@@ -164,8 +164,8 @@ jobs:
 
       - name: Run integration tests
         env:
-          ALLOW_DB_TRUNCATE: 'true'
           NODE_ENV: 'test'
+          ALLOW_DB_TRUNCATE: ${{ vars.ALLOW_DB_TRUNCATE }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
