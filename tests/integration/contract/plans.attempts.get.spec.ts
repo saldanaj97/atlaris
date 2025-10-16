@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { GET } from '@/app/api/v1/plans/[planId]/attempts/route';
 import { db } from '@/lib/db/drizzle';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { ensureUser } from '../helpers/db';
-import { setTestUser } from '../helpers/auth';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
 
 function buildRequest(planId: string) {
   return new Request(`http://localhost/api/v1/plans/${planId}/attempts`, {
@@ -58,7 +58,9 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
         truncatedNotes: false,
         normalizedEffort: true,
         promptHash: 'hash',
-        metadata: { input: { topic: { truncated: false, original_length: 20 } } } as any,
+        metadata: {
+          input: { topic: { truncated: false, original_length: 20 } },
+        } as any,
       },
     ]);
 
@@ -74,7 +76,10 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
 
   it('returns 404 when plan is not owned', async () => {
     setTestUser('other-owner');
-    await ensureUser({ clerkUserId: 'other-owner', email: 'other@example.com' });
+    await ensureUser({
+      clerkUserId: 'other-owner',
+      email: 'other@example.com',
+    });
 
     const response = await GET(
       buildRequest('00000000-0000-0000-0000-000000000000')

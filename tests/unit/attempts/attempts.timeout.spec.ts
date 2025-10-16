@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { recordFailure } from '@/lib/db/queries/attempts';
 
-import { MockDbClient, asDbClient } from './helpers/attempts';
+import { MockDbClient, asDbClient } from '../helpers/attempts';
 
 describe('attempt service – timeout failure', () => {
   it('persists timeout classification and metadata flags', async () => {

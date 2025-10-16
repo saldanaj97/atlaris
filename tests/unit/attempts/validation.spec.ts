@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { recordFailure, startAttempt } from '@/lib/db/queries/attempts';
 
-import { MockDbClient, asDbClient, createInput } from './helpers/attempts';
+import { MockDbClient, asDbClient, createInput } from '../helpers/attempts';
 
 describe('attempt service – validation failure', () => {
   it('records failure classification without truncating stored modules', async () => {

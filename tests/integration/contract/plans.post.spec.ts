@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { POST } from '@/app/api/v1/plans/route';
 import { db } from '@/lib/db/drizzle';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { ensureUser } from '../helpers/db';
-import { setTestUser } from '../helpers/auth';
+import { ensureUser } from '../../helpers/db';
+import { setTestUser } from '../../helpers/auth';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 

@@ -16,7 +16,7 @@ import {
   createInput,
   createModules,
   createSequentialNow,
-} from './helpers/attempts';
+} from '../helpers/attempts';
 
 describe('attempt metrics – duration precision', () => {
   beforeEach(() => {

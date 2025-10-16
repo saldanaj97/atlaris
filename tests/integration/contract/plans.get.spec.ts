@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { GET } from '@/app/api/v1/plans/[planId]/route';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { ensureUser } from '../helpers/db';
-import { setTestUser } from '../helpers/auth';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
 
 function buildRequest(planId: string) {
   return new Request(`http://localhost/api/v1/plans/${planId}`, {
@@ -100,7 +100,9 @@ describe('GET /api/v1/plans/:planId', () => {
       email: 'non-owner@example.com',
     });
 
-    const response = await GET(buildRequest('00000000-0000-0000-0000-000000000000'));
+    const response = await GET(
+      buildRequest('00000000-0000-0000-0000-000000000000')
+    );
     expect(response.status).toBe(404);
   });
 });
