@@ -1,0 +1,182 @@
+name: CI - Staging (staging env)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - .claude/**
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/**'
+
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - .claude/**
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-tests:
+    name: E2E / Smoke Tests
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations with Drizzle (staging)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm db:push
+
+      - name: Run E2E tests (Vitest)
+        env:
+          ALLOW_DB_TRUNCATE: 'true'
+          NODE_ENV: 'test'
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_STARTER_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_MONTHLY_PRICE_ID }}
+          STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
+          AI_USE_MOCK: ${{ secrets.AI_USE_MOCK }}
+          AI_MAX_OUTPUT_TOKENS: ${{ vars.AI_MAX_OUTPUT_TOKENS }}
+          AI_PRIMARY: ${{ vars.AI_PRIMARY }}
+          AI_FALLBACK: ${{ vars.AI_FALLBACK }}
+          AI_ENABLE_OPENROUTER: ${{ vars.AI_ENABLE_OPENROUTER }}
+          MOCK_GENERATION_DELAY_MS: ${{ vars.MOCK_GENERATION_DELAY_MS }}
+          MOCK_GENERATION_FAILURE_RATE: ${{ vars.MOCK_GENERATION_FAILURE_RATE }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_AI_GATEWAY: ${{ secrets.CF_AI_GATEWAY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_SITE_URL: ${{ secrets.OPENROUTER_SITE_URL }}
+          OPENROUTER_APP_NAME: ${{ secrets.OPENROUTER_APP_NAME }}
+          STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_PRO_MONTHLY_PRICE_ID }}
+          STRIPE_PRO_YEARLY_PRICE_ID: ${{ secrets.STRIPE_PRO_YEARLY_PRICE_ID }}
+          DEV_CLERK_USER_ID: ${{ secrets.DEV_CLERK_USER_ID }}
+          DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
+          DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+        run: pnpm test:e2e
+
+  build-staging:
+    name: Build
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js app
+        run: pnpm build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+
+  all-checks-staging:
+    name: All Checks Passed (staging)
+    needs: [e2e-tests, build-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check all jobs
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') }}" == "true" ]; then
+            echo "❌ One or more checks failed"
+            exit 1
+          elif [ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]; then
+            echo "❌ One or more checks were cancelled"
+            exit 1
+          else
+            echo "✅ All checks passed (staging)"
+          fi
+
+  auto-merge:
+    name: Enable auto-merge on PR
+    needs: all-checks-staging
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'development' && needs.all-checks-staging.result == 'success'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Enable auto-merge (squash) via GraphQL
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            if (!context.payload.pull_request) {
+              console.log('No PR context; skipping auto-merge enablement.')
+              return
+            }
+            const prNumber = context.payload.pull_request.number
+            const query = `query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { id mergeStateStatus autoMergeRequest { enabledAt } } } }`
+            const vars = { owner: context.repo.owner, name: context.repo.repo, number: prNumber }
+            const prInfo = await github.graphql(query, vars)
+            const pr = prInfo.repository.pullRequest
+            if (!pr) {
+              console.log('Pull request not found; skipping.')
+              return
+            }
+            if (pr.autoMergeRequest) {
+              console.log('Auto-merge already enabled; nothing to do.')
+              return
+            }
+            const mutation = `mutation($prId:ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: SQUASH }) { pullRequest { number autoMergeRequest { enabledAt } } } }`
+            try {
+              const res = await github.graphql(mutation, { prId: pr.id })
+              console.log('Auto-merge enabled:', JSON.stringify(res))
+            } catch (e) {
+              console.warn('Failed to enable auto-merge. Ensure repo setting "Allow auto-merge" is enabled and branch protection allows it. Error:', e.message)
+            }
