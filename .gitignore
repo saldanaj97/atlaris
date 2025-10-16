@@ -42,9 +42,8 @@ next-env.d.ts
 
 # ide rules
 .cursor/*
-.windsurf/*
+.claude/*
 CLAUDE.md
-.claude/settings.local.json
 
 # daily plan files
 docs/plans/*
