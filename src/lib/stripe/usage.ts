@@ -238,34 +238,25 @@ async function countPlansContributingToCap(
   dbOrTx: Pick<typeof db, 'select'>,
   userId: string
 ): Promise<number> {
-  // Count quota-eligible plans
-  const [eligible] = await dbOrTx
-    .select({ count: sql`count(*)::int` })
+  // Use a single query with filtered aggregates to count both buckets
+  const [result] = await dbOrTx
+    .select({
+      count: sql`
+        (
+          count(*) FILTER (WHERE ${learningPlans.isQuotaEligible} = true)
+          +
+          count(*) FILTER (
+            WHERE ${learningPlans.generationStatus} = 'generating'
+              AND ${learningPlans.isQuotaEligible} = false
+          )
+        )::int
+      `
+    })
     .from(learningPlans)
-    .where(
-      and(
-        eq(learningPlans.userId, userId),
-        eq(learningPlans.isQuotaEligible, true)
-      )
-    );
+    .where(eq(learningPlans.userId, userId));
 
-  // Count in-flight generations
-  const [generating] = await dbOrTx
-    .select({ count: sql`count(*)::int` })
-    .from(learningPlans)
-    .where(
-      and(
-        eq(learningPlans.userId, userId),
-        eq(learningPlans.generationStatus, 'generating'),
-        eq(learningPlans.isQuotaEligible, false) // Intentionally include in-flight 'generating' rows to enforce the cap and prevent concurrent requests from exceeding the limit before quota eligibility
-      )
-    );
-
-  // Return the sum of quota-eligible and in-flight generations
-  // This ensures that concurrent requests cannot exceed the user's plan limit
-  return (
-    ((eligible?.count as number) ?? 0) + ((generating?.count as number) ?? 0)
-  );
+  // Return the summed count
+  return (result?.count as number) ?? 0;
 }
 
 /**
