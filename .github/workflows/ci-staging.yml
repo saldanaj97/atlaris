@@ -22,7 +22,6 @@ permissions:
   contents: read
   pull-requests: write
 
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -61,7 +60,7 @@ jobs:
               - 'drizzle.config.ts'
   e2e-tests:
     name: E2E / Smoke Tests
-    if: (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') && (needs.changes.outputs.e2e == 'true' || github.event_name == 'workflow_dispatch')
+    if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [build-staging, changes]
@@ -188,7 +187,7 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    if: (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') && (needs.changes.outputs.integration == 'true' || github.event_name == 'workflow_dispatch')
+    if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.integration == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: [build-staging, changes]
