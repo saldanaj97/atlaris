@@ -96,7 +96,7 @@ jobs:
       - name: Run E2E tests (Vitest)
         env:
           NODE_ENV: 'test'
-          ALLOW_DB_TRUNCATE: ${{ vars.ALLOW_DB_TRUNCATE }}
+          ALLOW_DB_TRUNCATE: 'true'
           DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}

@@ -154,7 +154,7 @@ jobs:
         run: pnpm db:push
       - name: Run unit tests
         env:
-          ALLOW_DB_TRUNCATE: ${{ vars.ALLOW_DB_TRUNCATE }}
+          ALLOW_DB_TRUNCATE: 'true'
           NODE_ENV: 'test'
           DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
@@ -266,7 +266,7 @@ jobs:
       - name: Run integration tests
         env:
           NODE_ENV: 'test'
-          ALLOW_DB_TRUNCATE: ${{ vars.ALLOW_DB_TRUNCATE }}
+          ALLOW_DB_TRUNCATE: 'true'
           DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
