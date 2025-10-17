@@ -93,7 +93,7 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: pnpm db:push
-      - name: Run E2E tests (Vitest)
+      - name: Run E2E tests (Vitest shard ${{ matrix.shard }}/${{ matrix.total }})
         env:
           NODE_ENV: 'test'
           ALLOW_DB_TRUNCATE: 'true'
@@ -130,7 +130,23 @@ jobs:
           DEV_CLERK_USER_ID: ${{ secrets.DEV_CLERK_USER_ID }}
           DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
           DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
-        run: pnpm vitest run tests/e2e --shard ${{ matrix.shard }}/${{ matrix.total }}
+        run: |
+          set -e
+          FILES=$(find tests/e2e -type f \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \) | wc -l || echo 0)
+          if [ "$FILES" -eq 0 ]; then
+            echo "No E2E test files found; skipping."
+            exit 0
+          fi
+          TOTAL=${{ matrix.total }}
+          SHARD=${{ matrix.shard }}
+          if [ "$FILES" -lt "$TOTAL" ]; then
+            if [ "$SHARD" -gt "$FILES" ]; then
+              echo "Shard $SHARD > file count $FILES; skipping shard."
+              exit 0
+            fi
+            TOTAL="$FILES"
+          fi
+          pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL"
   build-staging:
     name: Build
     runs-on: ubuntu-latest
