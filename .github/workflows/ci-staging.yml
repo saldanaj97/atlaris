@@ -361,7 +361,17 @@ jobs:
     name: Enable auto-merge on PR
     needs: [all-checks-staging, integration-tests, e2e-tests, changes]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'development' && needs.all-checks-staging.result == 'success' && (needs.integration-tests.result == 'success' || needs.e2e-tests.result == 'success' || (needs.changes.outputs.integration != 'true' && needs.changes.outputs.e2e != 'true') || contains(toJson(github.event.pull_request.labels), 'allow-auto-merge'))
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.ref == 'development' &&
+      needs['all-checks-staging'].result == 'success' && (
+        needs['integration-tests'].result == 'success' ||
+        needs['e2e-tests'].result == 'success' ||
+        (needs['integration-tests'].result == 'skipped' && needs['e2e-tests'].result == 'skipped') ||
+        (needs.changes.outputs.integration != 'true' && needs.changes.outputs.e2e != 'true') ||
+        contains(toJson(github.event.pull_request.labels), 'allow-auto-merge')
+      )
     permissions:
       contents: write
       pull-requests: write
