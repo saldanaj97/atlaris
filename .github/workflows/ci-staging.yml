@@ -35,14 +35,15 @@ jobs:
         total: [4]
     services:
       postgres:
-        image: ghcr.io/supabase/nix-postgres-15:latest
+        image: postgres:15
         ports:
           - '5432:5432'
         env:
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
         options: >-
-          --user postgres
-          --health-cmd="pg_isready -U postgres -d postgres"
+          --health-cmd="pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
@@ -64,20 +65,20 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Prepare ephemeral database
         env:
-          PGPASSWORD: postgres
+          PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
         run: |
           # Wait for database readiness
           for i in {1..30}; do
-            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
+            if pg_isready -h localhost -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB}; then break; fi
             sleep 1
           done
 
           DB_NAME="ci_${GITHUB_RUN_ID}_e2e_${{ matrix.shard }}_${GITHUB_JOB}"
           echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
-          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
+          psql -h localhost -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB} -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
 
           # Defensive bootstrap (idempotent)
-          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
+          psql -h localhost -p 5432 -U ${POSTGRES_USER} -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
           DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -88,7 +89,7 @@ jobs:
           AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
           SQL
 
-          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:${PGPASSWORD}@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle (staging)
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
