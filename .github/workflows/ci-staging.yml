@@ -18,8 +18,6 @@ on:
   merge_group:
     branches: [main]
 
-  workflow_dispatch:
-
 permissions:
   contents: read
   pull-requests: write
@@ -31,9 +29,10 @@ concurrency:
 
 jobs:
   changes:
-    name: Detect E2E-Relevant Changes
+    name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
+      integration: ${{ steps.filter.outputs.integration }}
       e2e: ${{ steps.filter.outputs.e2e }}
     steps:
       - name: Checkout code
@@ -42,6 +41,14 @@ jobs:
         id: filter
         with:
           filters: |
+            integration:
+              - 'src/**'
+              - 'tests/integration/**'
+              - 'vitest.config.ts'
+              - 'tsconfig.json'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'drizzle.config.ts'
             e2e:
               - 'src/**'
               - 'public/**'
@@ -178,6 +185,134 @@ jobs:
             TOTAL="$FILES"
           fi
           pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL"
+
+  integration-tests:
+    name: Integration Tests
+    if: (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch') && (needs.changes.outputs.integration == 'true' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [build-staging, changes]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - '5432:5432'
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd="pg_isready -U postgres -d postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Prepare ephemeral database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # Wait for database readiness
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
+            sleep 1
+          done
+
+          DB_NAME="ci_${GITHUB_RUN_ID}_integration_${{ matrix.shard }}_${GITHUB_JOB}"
+          echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
+          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
+
+          # Defensive bootstrap (idempotent)
+          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE service_role NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
+          LANGUAGE sql
+          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
+          SQL
+
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+      - name: Apply schema with Drizzle
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pnpm db:push
+      - name: Run integration tests (shard ${{ matrix.shard }}/${{ matrix.total }})
+        env:
+          NODE_ENV: 'test'
+          ALLOW_DB_TRUNCATE: 'true'
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_STARTER_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_MONTHLY_PRICE_ID }}
+          STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+          AI_USE_MOCK: ${{ vars.AI_USE_MOCK }}
+          AI_MAX_OUTPUT_TOKENS: ${{ vars.AI_MAX_OUTPUT_TOKENS }}
+          AI_PRIMARY: ${{ vars.AI_PRIMARY }}
+          AI_FALLBACK: ${{ vars.AI_FALLBACK }}
+          AI_ENABLE_OPENROUTER: ${{ vars.AI_ENABLE_OPENROUTER }}
+          MOCK_GENERATION_DELAY_MS: ${{ vars.MOCK_GENERATION_DELAY_MS }}
+          MOCK_GENERATION_FAILURE_RATE: ${{ vars.MOCK_GENERATION_FAILURE_RATE }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_AI_GATEWAY: ${{ secrets.CF_AI_GATEWAY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_SITE_URL: ${{ secrets.OPENROUTER_SITE_URL }}
+          OPENROUTER_APP_NAME: ${{ secrets.OPENROUTER_APP_NAME }}
+          STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_PRO_MONTHLY_PRICE_ID }}
+          STRIPE_PRO_YEARLY_PRICE_ID: ${{ secrets.STRIPE_PRO_YEARLY_PRICE_ID }}
+          DEV_CLERK_USER_ID: ${{ secrets.DEV_CLERK_USER_ID }}
+          DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
+          DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
+        run: |
+          set -e
+          FILES=$(find tests/integration -type f \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \) | wc -l || echo 0)
+          if [ "$FILES" -eq 0 ]; then
+            echo "No integration test files found; skipping."
+            exit 0
+          fi
+          TOTAL=${{ matrix.total }}
+          SHARD=${{ matrix.shard }}
+          if [ "$FILES" -lt "$TOTAL" ]; then
+            if [ "$SHARD" -gt "$FILES" ]; then
+              echo "Shard $SHARD > file count $FILES; skipping shard."
+              exit 0
+            fi
+            TOTAL="$FILES"
+          fi
+          pnpm vitest run tests/integration --shard "$SHARD/$TOTAL"
+
   build-staging:
     name: Build
     runs-on: ubuntu-latest
@@ -207,8 +342,8 @@ jobs:
 
   all-checks-staging:
     name: All Checks Passed (staging)
-    needs: [e2e-tests, build-staging]
-    if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch')
+    needs: [integration-tests, e2e-tests, build-staging]
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs
