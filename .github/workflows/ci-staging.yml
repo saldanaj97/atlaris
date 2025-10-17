@@ -28,6 +28,23 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
+    services:
+      postgres:
+        image: ghcr.io/supabase/nix-postgres-15:latest
+        ports:
+          - '5432:5432'
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd="pg_isready -U postgres -d postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,15 +59,44 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Apply migrations with Drizzle (staging)
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Prepare ephemeral database
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PGPASSWORD: postgres
+        run: |
+          # Wait for database readiness
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
+            sleep 1
+          done
+
+          DB_NAME="ci_${GITHUB_RUN_ID}_e2e_${{ matrix.shard }}_${GITHUB_JOB}"
+          echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
+          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
+
+          # Defensive bootstrap (idempotent)
+          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE service_role NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
+          LANGUAGE sql
+          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
+          SQL
+
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+      - name: Apply schema with Drizzle (staging)
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         run: pnpm db:push
       - name: Run E2E tests (Vitest)
         env:
           NODE_ENV: 'test'
           ALLOW_DB_TRUNCATE: ${{ vars.ALLOW_DB_TRUNCATE }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -83,7 +129,7 @@ jobs:
           DEV_CLERK_USER_ID: ${{ secrets.DEV_CLERK_USER_ID }}
           DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
           DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
-        run: pnpm test:e2e
+        run: pnpm vitest run tests/e2e --shard ${{ matrix.shard }}/${{ matrix.total }}
   build-staging:
     name: Build
     runs-on: ubuntu-latest
