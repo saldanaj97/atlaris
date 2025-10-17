@@ -124,7 +124,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Prepare ephemeral database
         env:
-          PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          PGPASSWORD: postgres
         run: |
           # Wait for database readiness
           for i in {1..30}; do
@@ -210,9 +210,9 @@ jobs:
         ports:
           - '5432:5432'
         env:
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         options: >-
           --health-cmd="pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
           --health-interval=5s

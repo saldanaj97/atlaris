@@ -39,9 +39,9 @@ jobs:
         ports:
           - '5432:5432'
         env:
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         options: >-
           --health-cmd="pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
           --health-interval=5s
@@ -65,7 +65,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Prepare ephemeral database
         env:
-          PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          PGPASSWORD: postgres
         run: |
           # Wait for database readiness
           for i in {1..30}; do
@@ -89,7 +89,7 @@ jobs:
           AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
           SQL
 
-          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:${PGPASSWORD}@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle (staging)
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
