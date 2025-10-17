@@ -90,7 +90,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    environment: test
     timeout-minutes: 20
     services:
       postgres:
@@ -148,7 +147,7 @@ jobs:
           AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
           SQL
 
-          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
@@ -197,7 +196,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    environment: test
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -260,7 +258,7 @@ jobs:
           AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
           SQL
 
-          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
