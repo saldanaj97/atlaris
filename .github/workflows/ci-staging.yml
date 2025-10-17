@@ -63,7 +63,7 @@ jobs:
     if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [build-staging, changes]
+    needs: [build-staging-env, changes]
     strategy:
       fail-fast: false
       matrix:
@@ -190,7 +190,7 @@ jobs:
     if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.integration == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [build-staging, changes]
+    needs: [build-staging-env, changes]
     strategy:
       fail-fast: false
       matrix:
@@ -312,7 +312,7 @@ jobs:
           fi
           pnpm vitest run tests/integration --shard "$SHARD/$TOTAL"
 
-  build-staging:
+  build-staging-env:
     name: Build
     runs-on: ubuntu-latest
     environment: staging
@@ -341,7 +341,7 @@ jobs:
 
   all-checks-staging:
     name: All Checks Passed (staging)
-    needs: [integration-tests, e2e-tests, build-staging]
+    needs: [integration-tests, e2e-tests, build-staging-env]
     if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     steps:
@@ -359,9 +359,9 @@ jobs:
 
   auto-merge:
     name: Enable auto-merge on PR
-    needs: all-checks-staging
+    needs: [all-checks-staging, integration-tests, e2e-tests, changes]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'development' && needs.all-checks-staging.result == 'success'
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'development' && needs.all-checks-staging.result == 'success' && (needs.integration-tests.result == 'success' || needs.e2e-tests.result == 'success' || (needs.changes.outputs.integration != 'true' && needs.changes.outputs.e2e != 'true') || contains(toJson(github.event.pull_request.labels), 'allow-auto-merge'))
     permissions:
       contents: write
       pull-requests: write

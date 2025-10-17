@@ -82,7 +82,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: changes
+    needs: [changes, build-test-env]
     if: needs.changes.outputs.code == 'true'
     timeout-minutes: 20
     strategy:
@@ -190,7 +190,7 @@ jobs:
           DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
         run: pnpm vitest run tests/unit --shard ${{ matrix.shard }}/${{ matrix.total }}
 
-  build-test:
+  build-test-env:
     name: Build
     runs-on: ubuntu-latest
     environment: test
@@ -219,7 +219,7 @@ jobs:
 
   all-checks-dev:
     name: All Checks Passed (dev)
-    needs: [changes, lint, type-check, unit-tests, build-test]
+    needs: [changes, lint, type-check, unit-tests, build-test-env]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -229,7 +229,7 @@ jobs:
           if [ "${{ needs.changes.outputs.code }}" != "true" ]; then
             echo "⏭️  Skipped unit tests (no code changes)"
             # Check only lint, type-check, and build
-            if [ "${{ needs.lint.result == 'failure' || needs.type-check.result == 'failure' || needs.build-test.result == 'failure' }}" == "true" ]; then
+            if [ "${{ needs.lint.result == 'failure' || needs.type-check.result == 'failure' || needs.build-test-env.result == 'failure' }}" == "true" ]; then
               echo "❌ One or more checks failed"
               exit 1
             fi
@@ -244,3 +244,42 @@ jobs:
             fi
           fi
           echo "✅ All checks passed (dev)"
+
+  auto-merge:
+    name: Enable auto-merge on PR
+    needs: [all-checks-dev, changes, unit-tests]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'development' && needs.all-checks-dev.result == 'success' && (needs.unit-tests.result == 'success' || needs.changes.outputs.code != 'true' || contains(toJson(github.event.pull_request.labels), 'allow-auto-merge'))
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Enable auto-merge via GraphQL
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            if (!context.payload.pull_request) {
+              console.log('No PR context; skipping auto-merge enablement.')
+              return
+            }
+            const prNumber = context.payload.pull_request.number
+            const query = `query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { id mergeStateStatus autoMergeRequest { enabledAt } } } }`
+            const vars = { owner: context.repo.owner, name: context.repo.repo, number: prNumber }
+            const prInfo = await github.graphql(query, vars)
+            const pr = prInfo.repository.pullRequest
+            if (!pr) {
+              console.log('Pull request not found; skipping.')
+              return
+            }
+            if (pr.autoMergeRequest) {
+              console.log('Auto-merge already enabled; nothing to do.')
+              return
+            }
+            const mutation = `mutation($prId:ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: MERGE }) { pullRequest { number autoMergeRequest { enabledAt } } } }`
+            try {
+              const res = await github.graphql(mutation, { prId: pr.id })
+              console.log('Auto-merge enabled:', JSON.stringify(res))
+            } catch (e) {
+              console.warn('Failed to enable auto-merge. Ensure repo setting "Allow auto-merge" is enabled and branch protection allows it. Error:', e.message)
+            }
