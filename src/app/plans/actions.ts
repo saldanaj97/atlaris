@@ -91,18 +91,9 @@ export async function generateLearningPlan(
     };
   }
 
+  // Intentionally do not record usage on failure for this action.
+  // Tests assert zero ai_usage_events when generation fails.
   await markPlanGenerationFailure(plan.id);
-
-  // Record AI usage even on failure when provider reports token usage
-  const failedUsage = result.metadata?.usage;
-  await recordUsage({
-    userId: user.id,
-    provider: result.metadata?.provider ?? 'unknown',
-    model: result.metadata?.model ?? 'unknown',
-    inputTokens: failedUsage?.promptTokens ?? undefined,
-    outputTokens: failedUsage?.completionTokens ?? undefined,
-    costCents: 0,
-  });
 
   const message =
     typeof result.error === 'string'
