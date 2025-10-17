@@ -91,6 +91,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+        total: [2]
     services:
       postgres:
         image: postgres:15
@@ -131,7 +136,7 @@ jobs:
             sleep 1
           done
 
-          DB_NAME="ci_${GITHUB_RUN_ID}_unit_${GITHUB_JOB}"
+          DB_NAME="ci_${GITHUB_RUN_ID}_unit_${{ matrix.shard }}_${GITHUB_JOB}"
           echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
           psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
 
@@ -152,7 +157,7 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: pnpm db:push
-      - name: Run unit tests
+      - name: Run unit tests (shard ${{ matrix.shard }}/${{ matrix.total }})
         env:
           ALLOW_DB_TRUNCATE: 'true'
           NODE_ENV: 'test'
@@ -189,7 +194,7 @@ jobs:
           DEV_CLERK_USER_ID: ${{ secrets.DEV_CLERK_USER_ID }}
           DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
           DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
-        run: pnpm test:unit
+        run: pnpm vitest run tests/unit --shard ${{ matrix.shard }}/${{ matrix.total }}
 
   integration-tests:
     name: Integration Tests
