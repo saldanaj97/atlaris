@@ -249,7 +249,15 @@ jobs:
     name: Enable auto-merge on PR
     needs: [all-checks-dev, changes, unit-tests]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'development' && needs.all-checks-dev.result == 'success' && (needs.unit-tests.result == 'success' || needs.changes.outputs.code != 'true' || contains(toJson(github.event.pull_request.labels), 'allow-auto-merge'))
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.base.ref == 'development' &&
+      needs['all-checks-dev'].result == 'success' && (
+        needs['unit-tests'].result == 'success' ||
+        needs['unit-tests'].result == 'skipped' ||
+        needs.changes.outputs.code != 'true' ||
+        contains(toJson(github.event.pull_request.labels), 'allow-auto-merge')
+      )
     permissions:
       contents: write
       pull-requests: write
