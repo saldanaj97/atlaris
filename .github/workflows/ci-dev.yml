@@ -127,16 +127,16 @@ jobs:
         run: |
           # Wait for database readiness
           for i in {1..30}; do
-            if pg_isready -h localhost -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB}; then break; fi
+            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
             sleep 1
           done
 
           DB_NAME="ci_${GITHUB_RUN_ID}_unit_${GITHUB_JOB}"
           echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
-          psql -h localhost -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB} -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
+          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
 
           # Defensive bootstrap (idempotent)
-          psql -h localhost -p 5432 -U ${POSTGRES_USER} -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
+          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
           DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -147,7 +147,7 @@ jobs:
           AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
           SQL
 
-          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
@@ -238,16 +238,16 @@ jobs:
         run: |
           # Wait for database readiness
           for i in {1..30}; do
-            if pg_isready -h localhost -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB}; then break; fi
+            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
             sleep 1
           done
 
           DB_NAME="ci_${GITHUB_RUN_ID}_integration_${{ matrix.shard }}_${GITHUB_JOB}"
           echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
-          psql -h localhost -p 5432 -U ${POSTGRES_USER} -d ${POSTGRES_DB} -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
+          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
 
           # Defensive bootstrap (idempotent)
-          psql -h localhost -p 5432 -U ${POSTGRES_USER} -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
+          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
           DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -258,7 +258,7 @@ jobs:
           AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
           SQL
 
-          echo "DATABASE_URL=postgresql://${POSTGRES_USER}:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
