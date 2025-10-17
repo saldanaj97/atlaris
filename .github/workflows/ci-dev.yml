@@ -100,6 +100,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
         options: >-
+          --user postgres
           --health-cmd="pg_isready -U postgres -d postgres"
           --health-interval=5s
           --health-timeout=5s
