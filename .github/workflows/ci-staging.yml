@@ -1,13 +1,6 @@
 name: CI - Staging (staging env)
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-      - '!.github/workflows/**'
-
   pull_request:
     branches: [main]
     paths-ignore:
