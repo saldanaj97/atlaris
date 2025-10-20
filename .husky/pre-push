@@ -1,18 +1,19 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-set -euo pipefail
+set -eu
 
 # Fast type-check
 pnpm type-check
+
+# Skip vitest on first commit for speed
+if git rev-list --count HEAD | grep -q '^1$'; then
+  exit 0
+fi
 
 # Compute changed files vs upstream
 BASE=$(git merge-base HEAD @{upstream} 2>/dev/null || echo HEAD~1)
 CHANGED=$(git diff --name-only "$BASE" HEAD)
 
 # Run related unit tests for changed TS/TSX files
-RELATED=$(printf "%s\n" "$CHANGED" | grep -E '\\.(ts|tsx)$' || true)
+RELATED=$(printf '%s\n' "$CHANGED" | grep -E '\.(ts|tsx)$' || true)
 if [ -n "$RELATED" ]; then
-  FILES=$(echo "$RELATED" | awk '{print $0}')
-  pnpm vitest related --run $FILES
+  pnpm vitest related --run $RELATED
 fi

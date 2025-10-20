@@ -3,10 +3,6 @@ name: CI - Prod (production env)
 on:
   push:
     branches: [prod]
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-      - '!.github/workflows/**'
 
 permissions:
   contents: read
