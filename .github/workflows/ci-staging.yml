@@ -3,10 +3,6 @@ name: CI - Staging (staging env)
 on:
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-      - '!.github/workflows/**'
 
   merge_group:
     branches: [main]
@@ -41,6 +37,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
+              - '.github/workflows/**'
             e2e:
               - 'src/**'
               - 'public/**'
@@ -51,6 +48,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
+              - '.github/workflows/**'
   e2e-tests:
     name: E2E / Smoke Tests
     if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.e2e == 'true'
@@ -310,6 +308,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 10
+    needs: [changes]
+    if: needs.changes.outputs.integration == 'true' || needs.changes.outputs.e2e == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
