@@ -3,6 +3,14 @@ name: CI - Dev (test env)
 on:
   pull_request:
     branches: [development]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '**/*.txt'
+      - '**/*.csv'
+      - '**/*.log'
+      - '**/*.lock'
 
 permissions:
   contents: read
@@ -32,7 +40,6 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
-              - '.github/workflows/**'
 
   lint:
     name: Lint
@@ -50,6 +57,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run ESLint
@@ -71,6 +79,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run TypeScript type check
@@ -79,7 +88,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: [changes, build-test-env]
+    needs: [changes]
     if: needs.changes.outputs.code == 'true'
     timeout-minutes: 20
     strategy:
@@ -113,6 +122,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install PostgreSQL client
@@ -148,6 +158,16 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: pnpm db:push
+      - name: Restore Vitest cache
+        uses: actions/cache/restore@v4
+        id: restore-vitest-cache
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run unit tests (shard ${{ matrix.shard }}/${{ matrix.total }})
         env:
           ALLOW_DB_TRUNCATE: 'true'
@@ -186,79 +206,44 @@ jobs:
           DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
           DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
         run: pnpm vitest run tests/unit --shard ${{ matrix.shard }}/${{ matrix.total }}
-
-  build-test-env:
-    name: Build
-    runs-on: ubuntu-latest
-    environment: test
-    timeout-minutes: 10
-    needs: [changes]
-    if: needs.changes.outputs.code == 'true'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - name: Save Vitest cache
+        if: always()
+        uses: actions/cache/save@v4
         with:
-          version: 9
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build Next.js app
-        run: pnpm build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   all-checks-dev:
     name: All Checks Passed (dev)
-    needs: [changes, lint, type-check, unit-tests, build-test-env]
+    needs: [changes, lint, type-check, unit-tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Check all jobs
+      - name: Check all required jobs succeeded
         run: |
-          # Skip test jobs if no code changes
-          if [ "${{ needs.changes.outputs.code }}" != "true" ]; then
-            echo "⏭️  Skipped unit tests (no code changes)"
-            # Check only lint, type-check, and build
-            if [ "${{ needs.lint.result == 'failure' || needs.type-check.result == 'failure' || needs.build-test-env.result == 'failure' }}" == "true" ]; then
-              echo "❌ One or more checks failed"
+          for job in changes lint type-check unit-tests; do
+            result="${{ needs[job].result }}"
+            if [ "$result" != "success" ]; then
+              echo "❌ Job '$job' did not succeed (result: $result)"
               exit 1
             fi
-          else
-            # Check all jobs when code changed
-            if [ "${{ contains(needs.*.result, 'failure') }}" == "true" ]; then
-              echo "❌ One or more checks failed"
-              exit 1
-            elif [ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]; then
-              echo "❌ One or more checks were cancelled"
-              exit 1
-            fi
-          fi
-          echo "✅ All checks passed (dev)"
+          done
+      - name: All checks passed (dev)
+        run: echo "✅ All checks passed (dev)"
 
   auto-merge:
     name: Enable auto-merge on PR
-    needs: [all-checks-dev, changes, unit-tests]
+    needs: [all-checks-dev]
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.base.ref == 'development' &&
-      needs['all-checks-dev'].result == 'success' && (
-        needs['unit-tests'].result == 'success' ||
-        needs['unit-tests'].result == 'skipped' ||
-        needs.changes.outputs.code != 'true' ||
-        contains(toJson(github.event.pull_request.labels), 'allow-auto-merge')
-      )
+    # Only on PRs into development, from same repo (not forks), after all checks passed
+    if: ${{ github.event_name == 'pull_request'
+          && github.event.pull_request.base.ref == 'development'
+          && github.event.pull_request.head.repo.full_name == github.repository
+          && needs['all-checks-dev'].result == 'success'
+          && contains(github.event.pull_request.labels.*.name, 'auto-merge') }}
     permissions:
-      contents: write
       pull-requests: write
     steps:
       - name: Enable auto-merge via GraphQL
@@ -266,27 +251,31 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            if (!context.payload.pull_request) {
-              console.log('No PR context; skipping auto-merge enablement.')
+            const pr = context.payload.pull_request
+            const vars = { o: context.repo.owner, n: context.repo.repo, num: pr.number }
+            const q = `query($o:String!,$n:String!,$num:Int!){
+              repository(owner:$o,name:$n){
+                pullRequest(number:$num){ id autoMergeRequest { enabledAt } }
+              }
+            }`
+            const { repository } = await github.graphql(q, vars)
+            const node = repository?.pullRequest
+            if (!node) {
+              core.warning('PR not found; skipping.')
               return
             }
-            const prNumber = context.payload.pull_request.number
-            const query = `query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { id mergeStateStatus autoMergeRequest { enabledAt } } } }`
-            const vars = { owner: context.repo.owner, name: context.repo.repo, number: prNumber }
-            const prInfo = await github.graphql(query, vars)
-            const pr = prInfo.repository.pullRequest
-            if (!pr) {
-              console.log('Pull request not found; skipping.')
+            if (node.autoMergeRequest) {
+              core.info('Auto-merge already enabled.')
               return
             }
-            if (pr.autoMergeRequest) {
-              console.log('Auto-merge already enabled; nothing to do.')
-              return
-            }
-            const mutation = `mutation($prId:ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: MERGE }) { pullRequest { number autoMergeRequest { enabledAt } } } }`
+            const m = `mutation($id:ID!){
+              enablePullRequestAutoMerge(input:{pullRequestId:$id, mergeMethod:MERGE}){
+                pullRequest{ number autoMergeRequest{ enabledAt } }
+              }
+            }`
             try {
-              const res = await github.graphql(mutation, { prId: pr.id })
-              console.log('Auto-merge enabled:', JSON.stringify(res))
+              const res = await github.graphql(m, { id: node.id })
+              core.info(`Auto-merge enabled: ${JSON.stringify(res)}`)
             } catch (e) {
-              console.warn('Failed to enable auto-merge. Ensure repo setting "Allow auto-merge" is enabled and branch protection allows it. Error:', e.message)
+              core.warning('Enable "Allow auto-merge" in repo settings and ensure branch protection permits it. ' + e.message)
             }

@@ -3,6 +3,14 @@ name: CI - Staging (staging env)
 on:
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '**/*.txt'
+      - '**/*.csv'
+      - '**/*.log'
+      - '**/*.lock'
 
   merge_group:
     branches: [main]
@@ -37,7 +45,6 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
-              - '.github/workflows/**'
             e2e:
               - 'src/**'
               - 'public/**'
@@ -48,7 +55,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
-              - '.github/workflows/**'
+
   e2e-tests:
     name: E2E / Smoke Tests
     if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.e2e == 'true'
@@ -86,6 +93,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install PostgreSQL client
@@ -121,6 +129,16 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: pnpm db:push
+      - name: Restore Vitest cache
+        uses: actions/cache/restore@v4
+        id: restore-vitest-cache
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run E2E tests (Vitest shard ${{ matrix.shard }}/${{ matrix.total }})
         env:
           NODE_ENV: 'test'
@@ -175,6 +193,14 @@ jobs:
             TOTAL="$FILES"
           fi
           pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL"
+      - name: Save Vitest cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   integration-tests:
     name: Integration Tests
@@ -213,6 +239,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install PostgreSQL client
@@ -248,6 +275,16 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: pnpm db:push
+      - name: Restore Vitest cache
+        uses: actions/cache/restore@v4
+        id: restore-vitest-cache
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run integration tests (shard ${{ matrix.shard }}/${{ matrix.total }})
         env:
           NODE_ENV: 'test'
@@ -302,6 +339,14 @@ jobs:
             TOTAL="$FILES"
           fi
           pnpm vitest run tests/integration --shard "$SHARD/$TOTAL"
+      - name: Save Vitest cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   build-staging-env:
     name: Build
@@ -322,8 +367,16 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Restore Next.js cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build Next.js app
         run: pnpm build
         env:
@@ -331,6 +384,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      - name: Save Next.js cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
 
   all-checks-staging:
     name: All Checks Passed (staging)
