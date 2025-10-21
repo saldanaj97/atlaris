@@ -3,6 +3,14 @@ name: CI - Dev (test env)
 on:
   pull_request:
     branches: [development]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - '**/*.txt'
+      - '**/*.csv'
+      - '**/*.log'
+      - '**/*.lock'
 
 permissions:
   contents: read
@@ -32,7 +40,6 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
-              - '.github/workflows/**'
 
   lint:
     name: Lint
