@@ -226,19 +226,14 @@ jobs:
 
   auto-merge:
     name: Enable auto-merge on PR
-    needs: [all-checks-dev, changes, unit-tests]
+    needs: [all-checks-dev]
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.base.ref == 'development' &&
-      needs['all-checks-dev'].result == 'success' && (
-        needs['unit-tests'].result == 'success' ||
-        needs['unit-tests'].result == 'skipped' ||
-        needs.changes.outputs.code != 'true' ||
-        contains(toJson(github.event.pull_request.labels), 'allow-auto-merge')
-      )
+    # Only on PRs into development, from same repo (not forks), after all checks passed
+    if: ${{ github.event_name == 'pull_request'
+          && github.event.pull_request.base.ref == 'development'
+          && github.event.pull_request.head.repo.full_name == github.repository
+          && needs['all-checks-dev'].result == 'success' }}
     permissions:
-      contents: write
       pull-requests: write
     steps:
       - name: Enable auto-merge via GraphQL
@@ -246,27 +241,31 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            if (!context.payload.pull_request) {
-              console.log('No PR context; skipping auto-merge enablement.')
+            const pr = context.payload.pull_request
+            const vars = { o: context.repo.owner, n: context.repo.repo, num: pr.number }
+            const q = `query($o:String!,$n:String!,$num:Int!){
+              repository(owner:$o,name:$n){
+                pullRequest(number:$num){ id autoMergeRequest { enabledAt } }
+              }
+            }`
+            const { repository } = await github.graphql(q, vars)
+            const node = repository?.pullRequest
+            if (!node) {
+              core.warning('PR not found; skipping.')
               return
             }
-            const prNumber = context.payload.pull_request.number
-            const query = `query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { id mergeStateStatus autoMergeRequest { enabledAt } } } }`
-            const vars = { owner: context.repo.owner, name: context.repo.repo, number: prNumber }
-            const prInfo = await github.graphql(query, vars)
-            const pr = prInfo.repository.pullRequest
-            if (!pr) {
-              console.log('Pull request not found; skipping.')
+            if (node.autoMergeRequest) {
+              core.info('Auto-merge already enabled.')
               return
             }
-            if (pr.autoMergeRequest) {
-              console.log('Auto-merge already enabled; nothing to do.')
-              return
-            }
-            const mutation = `mutation($prId:ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: MERGE }) { pullRequest { number autoMergeRequest { enabledAt } } } }`
+            const m = `mutation($id:ID!){
+              enablePullRequestAutoMerge(input:{pullRequestId:$id, mergeMethod:MERGE}){
+                pullRequest{ number autoMergeRequest{ enabledAt } }
+              }
+            }`
             try {
-              const res = await github.graphql(mutation, { prId: pr.id })
-              console.log('Auto-merge enabled:', JSON.stringify(res))
+              const res = await github.graphql(m, { id: node.id })
+              core.info(`Auto-merge enabled: ${JSON.stringify(res)}`)
             } catch (e) {
-              console.warn('Failed to enable auto-merge. Ensure repo setting "Allow auto-merge" is enabled and branch protection allows it. Error:', e.message)
+              core.warning('Enable "Allow auto-merge" in repo settings and ensure branch protection permits it. ' + e.message)
             }
