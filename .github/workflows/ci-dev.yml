@@ -218,9 +218,18 @@ jobs:
   all-checks-dev:
     name: All Checks Passed (dev)
     needs: [changes, lint, type-check, unit-tests]
-    if: ${{ success() }}
+    if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Check all required jobs succeeded
+        run: |
+          for job in changes lint type-check unit-tests; do
+            result="${{ needs[ job ].result }}"
+            if [ "$result" != "success" ]; then
+              echo "❌ Job '$job' did not succeed (result: $result)"
+              exit 1
+            fi
+          done
       - name: All checks passed (dev)
         run: echo "✅ All checks passed (dev)"
 
