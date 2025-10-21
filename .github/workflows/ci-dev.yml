@@ -224,7 +224,7 @@ jobs:
       - name: Check all required jobs succeeded
         run: |
           for job in changes lint type-check unit-tests; do
-            result="${{ needs[ job ].result }}"
+            result="${{ needs[job].result }}"
             if [ "$result" != "success" ]; then
               echo "❌ Job '$job' did not succeed (result: $result)"
               exit 1
