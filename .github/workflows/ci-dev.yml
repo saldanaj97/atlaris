@@ -57,6 +57,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run ESLint
@@ -78,6 +79,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run TypeScript type check
@@ -120,6 +122,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install PostgreSQL client
@@ -155,6 +158,16 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
         run: pnpm db:push
+      - name: Restore Vitest cache
+        uses: actions/cache/restore@v4
+        id: restore-vitest-cache
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run unit tests (shard ${{ matrix.shard }}/${{ matrix.total }})
         env:
           ALLOW_DB_TRUNCATE: 'true'
@@ -193,34 +206,23 @@ jobs:
           DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
           DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
         run: pnpm vitest run tests/unit --shard ${{ matrix.shard }}/${{ matrix.total }}
+      - name: Save Vitest cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   all-checks-dev:
     name: All Checks Passed (dev)
     needs: [changes, lint, type-check, unit-tests]
-    if: always()
+    if: ${{ success() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Check all jobs
-        run: |
-          # Skip test jobs if no code changes
-          if [ "${{ needs.changes.outputs.code }}" != "true" ]; then
-            echo "⏭️  Skipped unit tests (no code changes)"
-            # Check only lint, type-check
-            if [ "${{ needs.lint.result == 'failure' || needs.type-check.result == 'failure' }}" == "true" ]; then
-              echo "❌ One or more checks failed"
-              exit 1
-            fi
-          else
-            # Check all jobs when code changed
-            if [ "${{ contains(needs.*.result, 'failure') }}" == "true" ]; then
-              echo "❌ One or more checks failed"
-              exit 1
-            elif [ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]; then
-              echo "❌ One or more checks were cancelled"
-              exit 1
-            fi
-          fi
-          echo "✅ All checks passed (dev)"
+      - name: All checks passed (dev)
+        run: echo "✅ All checks passed (dev)"
 
   auto-merge:
     name: Enable auto-merge on PR
