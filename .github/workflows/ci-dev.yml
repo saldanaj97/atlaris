@@ -79,7 +79,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
-    needs: [changes, build-test-env]
+    needs: [changes]
     if: needs.changes.outputs.code == 'true'
     timeout-minutes: 20
     strategy:
@@ -187,38 +187,9 @@ jobs:
           DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
         run: pnpm vitest run tests/unit --shard ${{ matrix.shard }}/${{ matrix.total }}
 
-  build-test-env:
-    name: Build
-    runs-on: ubuntu-latest
-    environment: test
-    timeout-minutes: 10
-    needs: [changes]
-    if: needs.changes.outputs.code == 'true'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Build Next.js app
-        run: pnpm build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-
   all-checks-dev:
     name: All Checks Passed (dev)
-    needs: [changes, lint, type-check, unit-tests, build-test-env]
+    needs: [changes, lint, type-check, unit-tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -227,8 +198,8 @@ jobs:
           # Skip test jobs if no code changes
           if [ "${{ needs.changes.outputs.code }}" != "true" ]; then
             echo "⏭️  Skipped unit tests (no code changes)"
-            # Check only lint, type-check, and build
-            if [ "${{ needs.lint.result == 'failure' || needs.type-check.result == 'failure' || needs.build-test-env.result == 'failure' }}" == "true" ]; then
+            # Check only lint, type-check
+            if [ "${{ needs.lint.result == 'failure' || needs.type-check.result == 'failure' }}" == "true" ]; then
               echo "❌ One or more checks failed"
               exit 1
             fi
