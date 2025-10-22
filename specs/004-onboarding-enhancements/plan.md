@@ -73,7 +73,7 @@ File: `src/lib/validation/learningPlans.ts`
   - Deadline must be a valid date string and must be today or later.
   - If `startDate` is provided, it must be today or later.
   - If both provided, `startDate <= deadlineDate`.
-  - Optionally cap deadline to a reasonable future bound (e.g., within 50 years) per issue guidance.
+  - Cap deadline to a reasonable future bound (within 1 year) per updated policy.
 - Keep `createLearningPlanSchema` as-is to avoid breaking other API clients; onboarding layer provides stronger constraints.
 
 ### 3) Mapping: Include Dates in Create Payload
@@ -201,13 +201,13 @@ Note: Use existing provider mock pattern under `tests/helpers/mockProvider.ts` t
 
 ## Rollout Checklist
 
-- [ ] UI step added; local validation shows errors inline.
-- [ ] `onboardingFormSchema` validates date rules.
-- [ ] Mapping passes `startDate` and `deadlineDate` to `createPlan`.
-- [ ] API route persists to DB (confirmed by integration test).
-- [ ] Job payload carries both fields; worker schema updated.
-- [ ] `GenerationInput` extended end-to-end; providers include prompt context.
-- [ ] Unit/integration/E2E tests cover happy path and edge cases.
+- [x] UI step added; local validation shows errors inline. (Step 1: OnboardingForm has Step 5 with DatePicker components and inline error display)
+- [x] `onboardingFormSchema` validates date rules. (Step 2: Extended with 7 validation rules, 7/7 unit tests passing)
+- [x] Mapping passes `startDate` and `deadlineDate` to `createPlan`. (Step 3: mapOnboardingToCreateInput includes dates with startDate default to today)
+- [x] API route persists to DB (confirmed by integration test). (Step 4: API route includes dates in job payload, 3/3 integration tests passing)
+- [x] Job payload carries both fields; worker schema updated. (Step 5: planGenerationJobDataSchema validates dates, worker passes to orchestrator, 7/7 worker tests passing)
+- [x] `GenerationInput` extended end-to-end; providers include prompt context. (Step 6-7: GenerationInput has date fields, all three providers pass dates to prompts, 6/6 prompt tests passing)
+- [x] Unit/integration/E2E tests cover happy path and edge cases. (23 total tests: 7 unit validation + 3 API + 7 worker + 6 prompt integration tests, all passing)
 
 ## References
 

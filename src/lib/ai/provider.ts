@@ -4,6 +4,8 @@ export interface GenerationInput {
   skillLevel: string;
   weeklyHours: number;
   learningStyle: string;
+  startDate?: string | null;
+  deadlineDate?: string | null;
 }
 
 export interface ProviderUsage {

@@ -166,16 +166,14 @@ export const onboardingFormSchema = z
         });
       }
 
-      // Optional cap: deadline within 50 years of today
-      const fiftyYearsFromToday = new Date(todayUTC);
-      fiftyYearsFromToday.setUTCFullYear(
-        fiftyYearsFromToday.getUTCFullYear() + 50
-      );
-      if (deadline > fiftyYearsFromToday) {
+      // Cap: deadline within 1 year of today
+      const oneYearFromToday = new Date(todayUTC);
+      oneYearFromToday.setUTCFullYear(oneYearFromToday.getUTCFullYear() + 1);
+      if (deadline > oneYearFromToday) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['deadlineDate'],
-          message: 'Deadline date must be within 50 years of today.',
+          message: 'Deadline date must be within 1 year of today.',
         });
       }
     }

@@ -99,9 +99,9 @@ describe('onboardingFormSchema date validations', () => {
     }
   });
 
-  it('caps deadlines to within 50 years', () => {
+  it('caps deadlines to within 1 year', () => {
     const farFuture = new Date();
-    farFuture.setUTCFullYear(farFuture.getUTCFullYear() + 51);
+    farFuture.setUTCFullYear(farFuture.getUTCFullYear() + 2);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(farFuture),
@@ -110,7 +110,7 @@ describe('onboardingFormSchema date validations', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       const errors = result.error.flatten().fieldErrors.deadlineDate || [];
-      expect(errors.some((m) => m?.includes('50 years'))).toBe(true);
+      expect(errors.some((m) => m?.includes('1 year'))).toBe(true);
     }
   });
 });

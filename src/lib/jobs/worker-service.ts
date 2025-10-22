@@ -52,6 +52,26 @@ const planGenerationJobDataSchema = z
     skillLevel: z.enum(['beginner', 'intermediate', 'advanced'] as const),
     weeklyHours: weeklyHoursSchema,
     learningStyle: z.enum(['reading', 'video', 'practice', 'mixed'] as const),
+    startDate: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine(
+        (value) => !value || !Number.isNaN(Date.parse(value)),
+        'Start date must be a valid ISO date string.'
+      )
+      .transform((value) => (value ? value : null)),
+    deadlineDate: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine(
+        (value) => !value || !Number.isNaN(Date.parse(value)),
+        'Deadline date must be a valid ISO date string.'
+      )
+      .transform((value) => (value ? value : null)),
   })
   .strict();
 
@@ -86,6 +106,8 @@ function toPlanGenerationJobData(data: unknown): PlanGenerationJobData {
     skillLevel: parsed.skillLevel,
     weeklyHours: parsed.weeklyHours,
     learningStyle: parsed.learningStyle,
+    startDate: parsed.startDate ?? null,
+    deadlineDate: parsed.deadlineDate ?? null,
   } satisfies PlanGenerationJobData;
 }
 
@@ -168,6 +190,8 @@ export async function processPlanGenerationJob(
           skillLevel: payload.skillLevel,
           weeklyHours: payload.weeklyHours,
           learningStyle: payload.learningStyle,
+          startDate: payload.startDate,
+          deadlineDate: payload.deadlineDate,
         },
       },
       { provider }
