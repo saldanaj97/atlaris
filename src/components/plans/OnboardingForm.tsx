@@ -97,9 +97,10 @@ const initialState: FormState = {
 const TOTAL_STEPS = 5;
 
 // Define once to avoid re-creating on every render
-const today = new Date();
+
 
 export default function OnboardingForm() {
+  const today = new Date();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
