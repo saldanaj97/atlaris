@@ -233,7 +233,7 @@ describe('Onboarding date picker flow (E2E UI subset)', () => {
     const todayStr = fmt(new Date());
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + 45);
-    const deadlineStr = `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')}`;
+    const deadlineStr = fmt(deadline);
 
     fireEvent.change(screen.getByTestId('deadlineDate'), {
       target: { value: deadlineStr },
