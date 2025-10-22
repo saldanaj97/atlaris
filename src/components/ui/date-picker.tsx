@@ -46,17 +46,6 @@ export function DatePicker({ id, placeholder = "Pick a date", value, onChange, r
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          className={cn("h-10 w-full justify-start text-left font-normal", !date && "text-muted-foreground", className)}
-          disabled={disabled}
-          data-slot="date-picker-trigger"
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? isoFromDate(date) : <span>{placeholder}</span>}
-        </Button>
       <PopoverTrigger asChild>
         <Button
           id={id}
