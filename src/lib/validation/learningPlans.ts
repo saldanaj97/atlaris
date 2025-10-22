@@ -151,17 +151,43 @@ export const onboardingFormSchema = z
       : false;
     const deadlineIsValid = !Number.isNaN(Date.parse(deadlineDate));
 
+    // Normalize "today" to UTC date-only to avoid TZ edge cases.
+    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD in UTC
+    const todayUTC = new Date(todayStr);
+
     // Validate: deadlineDate must not be in the past (date-only comparison)
     if (deadlineIsValid) {
-      // Normalize today and deadline to UTC date-only to avoid TZ edge cases.
-      const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD in UTC
-      const todayUTC = new Date(todayStr);
       const deadline = new Date(deadlineDate);
       if (deadline < todayUTC) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['deadlineDate'],
           message: 'Deadline date must not be in the past.',
+        });
+      }
+
+      // Optional cap: deadline within 50 years of today
+      const fiftyYearsFromToday = new Date(todayUTC);
+      fiftyYearsFromToday.setUTCFullYear(
+        fiftyYearsFromToday.getUTCFullYear() + 50
+      );
+      if (deadline > fiftyYearsFromToday) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['deadlineDate'],
+          message: 'Deadline date must be within 50 years of today.',
+        });
+      }
+    }
+
+    // Validate: if startDate provided, it must be today or later
+    if (startIsProvided && startIsValid) {
+      const start = new Date(startDate as string);
+      if (start < todayUTC) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['startDate'],
+          message: 'Start date must not be in the past.',
         });
       }
     }
