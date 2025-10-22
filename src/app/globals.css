@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -41,6 +41,14 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-learning-primary: var(--learning-primary);
+  --color-learning-accent: var(--learning-accent);
+  --color-learning-secondary: var(--learning-secondary);
+  --color-learning-success: var(--learning-success);
+  --gradient-surface: var(--gradient-surface);
+  --gradient-hero: var(--gradient-hero);
+  --gradient-card: var(--gradient-card);
+  --shadow-glow: var(--shadow-glow);
 }
 
 :root {
@@ -76,6 +84,26 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --learning-primary: oklch(0.55 0.2 264);
+  --learning-accent: oklch(0.65 0.15 45);
+  --learning-secondary: oklch(0.58 0.18 290);
+  --learning-success: oklch(0.68 0.15 142);
+  --gradient-surface: linear-gradient(
+    135deg,
+    oklch(0.98 0.01 264) 0%,
+    oklch(0.96 0.01 264) 100%
+  );
+  --gradient-hero: linear-gradient(
+    135deg,
+    oklch(0.55 0.2 264) 0%,
+    oklch(0.65 0.15 45) 100%
+  );
+  --gradient-card: linear-gradient(
+    135deg,
+    oklch(0.98 0.02 270) 0%,
+    oklch(0.96 0.01 264) 100%
+  );
+  --shadow-glow: 0 0 24px oklch(0.55 0.2 264 / 0.2);
 }
 
 .dark {
@@ -110,6 +138,26 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --learning-primary: oklch(0.72 0.18 264);
+  --learning-accent: oklch(0.75 0.14 45);
+  --learning-secondary: oklch(0.75 0.16 290);
+  --learning-success: oklch(0.8 0.12 142);
+  --gradient-surface: linear-gradient(
+    135deg,
+    oklch(0.2 0.01 264) 0%,
+    oklch(0.18 0.01 264) 100%
+  );
+  --gradient-hero: linear-gradient(
+    135deg,
+    oklch(0.72 0.18 264) 0%,
+    oklch(0.75 0.14 45) 100%
+  );
+  --gradient-card: linear-gradient(
+    135deg,
+    oklch(0.22 0.02 270) 0%,
+    oklch(0.2 0.01 264) 100%
+  );
+  --shadow-glow: 0 0 24px oklch(0.72 0.18 264 / 0.15);
 }
 
 @layer base {
@@ -118,5 +166,32 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-subtle {
+    background-image: var(--gradient-surface);
+  }
+  .dark .bg-gradient-subtle {
+    background-image: var(--gradient-surface);
+  }
+  .bg-gradient-hero {
+    background-image: var(--gradient-hero);
+  }
+  .dark .bg-gradient-hero {
+    background-image: var(--gradient-hero);
+  }
+  .bg-gradient-card {
+    background-image: var(--gradient-card);
+  }
+  .dark .bg-gradient-card {
+    background-image: var(--gradient-card);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .dark .shadow-glow {
+    box-shadow: var(--shadow-glow);
   }
 }
