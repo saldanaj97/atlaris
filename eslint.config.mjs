@@ -30,7 +30,12 @@ export default [
       'next.config.*',
     ],
   },
-  ...typeCheckedConfigs,
+  // Apply type-checked configs only to TS files to avoid
+  // requiring type information for JS config files (e.g. lint-staged.config.js)
+  ...typeCheckedConfigs.map((c) => ({
+    ...c,
+    files: ['**/*.{ts,tsx}'],
+  })),
   {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
