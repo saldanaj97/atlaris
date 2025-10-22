@@ -151,9 +151,8 @@ export const onboardingFormSchema = z
       : false;
     const deadlineIsValid = !Number.isNaN(Date.parse(deadlineDate));
 
-    // Normalize "today" to UTC date-only to avoid TZ edge cases.
-    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD in UTC
-    const todayUTC = new Date(todayStr);
+    // Normalize "today" to UTC date-only (midnight UTC) to avoid TZ edge cases.
+    const todayUTC = new Date(new Date().toISOString().slice(0, 10));
 
     // Validate: deadlineDate must not be in the past (date-only comparison)
     if (deadlineIsValid) {
