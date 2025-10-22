@@ -21,7 +21,11 @@ This file provides guidance when working with code in this repository.
 
 ## Important Rules/References(read before coding or committing)
 
-- Make sure to ALWAYS use the context7 MCP for grabbing the most up to date documentation about a specific topic before starting any task. This will ensure you have the most up to date information and avoid any mistakes.
+### General rules
+
+- Ignore any assumptions you may have about how this project works based on your prior experience. This project has its own specific architecture, structure, and conventions that must be followed. Reason from facts only.
+
+- Make sure to ALWAYS use the context7 MCP for grabbing the most up to date documentation about a specific topic before starting any coding task or when I ask you a clarifying question. This will ensure you have the most up to date information and avoid any mistakes.
 
 - Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:
   - src/app/\*\*/\*.tsx
@@ -32,10 +36,21 @@ This file provides guidance when working with code in this repository.
   - src/hooks/\*\*/\*.tsx
 - AGAIN, MAKE SURE TO ONLY APPLY THAT RULE IF THE FILE MATCHES A PATTERN FROM THE LIST!
 
+### Dealing with specific github issues or tasks
+
+- When working on a specific github issue or task, make sure to ALWAYS refer to the specific instructions, requirements, and testing needs defined in the issue or task description. Do not make any assumptions or add any extra features that are not explicitly requested.
+- If the issue or task references any specific files, make sure to read those files carefully and understand their purpose before making any changes.
+- If the issue or task has any dependencies on other issues or tasks, make sure to address those dependencies first before proceeding with the current task.
+- If the issue or task references any documentation, designs, or other resources, make sure to review those materials thoroughly to ensure your implementation aligns with the intended goals.
+- If the issue has subtasks or related issues, make sure to consider their requirements and testing needs as well.
+- When you are done with the implementation, make sure to go back over the issue, task, and any related subtasks to ensure that all requirements have been met and all tests have been covered. When they have been met, make sure to mark the issue, subissue, or task as complete.
+
+### Commit guidelines
+
 - When writing commit messages, follow the structure and guidelines outline in the .github/instructions/commit-message.instructions.md file. Below is a summary of the structure but make sure to read the full instructions in that file.
 - When commiting, make sure to only stage and commit files that were discussed and modified as part of the task at hand. Do not include unrelated files or changes in the commit.
 
-### Commit Message Format
+**Commit message format**
 
 Follow this structured format for all commit messages:
 
