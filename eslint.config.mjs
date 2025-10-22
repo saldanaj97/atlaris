@@ -28,6 +28,7 @@ export default [
       'postcss.config.*',
       'tailwind.config.*',
       'next.config.*',
+      'src/components/ui/**',
     ],
   },
   ...typeCheckedConfigs,

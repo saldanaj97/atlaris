@@ -74,6 +74,8 @@ export function mapOnboardingToCreateInput(
   const normalized = normalizeOnboardingValues(values);
   return createLearningPlanSchema.parse({
     ...normalized,
+    startDate: values.startDate,
+    deadlineDate: values.deadlineDate,
     visibility: 'private',
     origin: 'ai',
   });
