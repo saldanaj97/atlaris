@@ -93,6 +93,14 @@ async function renderOnboardingForm() {
   return render(<OnboardingForm />);
 }
 
+// Shared date formatter (YYYY-MM-DD)
+const fmt = (dt: Date) => {
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const d = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 describe('Onboarding date picker flow (E2E UI subset)', () => {
   beforeEach(() => {
     pushMock.mockReset();
@@ -174,13 +182,6 @@ describe('Onboarding date picker flow (E2E UI subset)', () => {
     start.setDate(today.getDate() + 1);
     const deadline = new Date(today);
     deadline.setDate(today.getDate() + 30);
-
-    const fmt = (dt: Date) => {
-      const y = dt.getFullYear();
-      const m = String(dt.getMonth() + 1).padStart(2, '0');
-      const d = String(dt.getDate()).padStart(2, '0');
-      return `${y}-${m}-${d}`;
-    };
 
     fireEvent.change(screen.getByTestId('startDate'), {
       target: { value: fmt(start) },
