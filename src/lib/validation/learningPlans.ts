@@ -102,19 +102,105 @@ export const learningPlanResourceSchema = z.object({
   durationMinutes: z.number().int().nonnegative().optional(),
 });
 
-export const onboardingFormSchema = z.object({
-  topic: createLearningPlanSchema.shape.topic,
-  skillLevel: z
-    .string()
-    .trim()
-    .min(1, 'Please choose a skill level.')
-    .transform((value) => value.toLowerCase()),
-  weeklyHours: z.union([
-    weeklyHoursSchema,
-    z.string().trim().min(1, 'Please select your weekly availability.'),
-  ]),
-  learningStyle: z.string().trim().min(1, 'Please choose a learning style.'),
-  notes: createLearningPlanSchema.shape.notes,
-});
+export const onboardingFormSchema = z
+  .object({
+    topic: createLearningPlanSchema.shape.topic,
+    skillLevel: z
+      .string()
+      .trim()
+      .min(1, 'Please choose a skill level.')
+      .transform((value) => value.toLowerCase()),
+    weeklyHours: z.union([
+      weeklyHoursSchema,
+      z.string().trim().min(1, 'Please select your weekly availability.'),
+    ]),
+    learningStyle: z.string().trim().min(1, 'Please choose a learning style.'),
+    notes: createLearningPlanSchema.shape.notes,
+    startDate: z
+      .string()
+      .trim()
+      .optional()
+      .refine(
+        (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
+        'Start date must be in YYYY-MM-DD format.'
+      )
+      .refine(
+        (value) => !value || !Number.isNaN(Date.parse(value)),
+        'Start date must be a valid date.'
+      ),
+    deadlineDate: z
+      .string()
+      .trim()
+      .min(1, 'Please select a deadline date.')
+      .refine(
+        (value) => /^\d{4}-\d{2}-\d{2}$/.test(value),
+        'Deadline date must be in YYYY-MM-DD format.'
+      )
+      .refine(
+        (value) => !Number.isNaN(Date.parse(value)),
+        'Deadline date must be a valid date.'
+      ),
+  })
+  .superRefine((data, ctx) => {
+    const { startDate, deadlineDate } = data;
+
+    // Only run cross-field validation if individual field validity checks would pass.
+    const startIsProvided = Boolean(startDate);
+    const startIsValid = startIsProvided
+      ? !Number.isNaN(Date.parse(startDate as string))
+      : false;
+    const deadlineIsValid = !Number.isNaN(Date.parse(deadlineDate));
+
+    // Normalize "today" to UTC date-only (midnight UTC) to avoid TZ edge cases.
+    const todayUTC = new Date(new Date().toISOString().slice(0, 10));
+
+    // Validate: deadlineDate must not be in the past (date-only comparison)
+    if (deadlineIsValid) {
+      const deadline = new Date(deadlineDate);
+      if (deadline < todayUTC) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['deadlineDate'],
+          message: 'Deadline date must not be in the past.',
+        });
+      }
+
+      // Cap: deadline within 1 year of today
+      const oneYearFromToday = new Date(todayUTC);
+      oneYearFromToday.setUTCFullYear(oneYearFromToday.getUTCFullYear() + 1);
+      if (deadline > oneYearFromToday) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['deadlineDate'],
+          message: 'Deadline date must be within 1 year of today.',
+        });
+      }
+    }
+
+    // Validate: if startDate provided, it must be today or later
+    if (startIsProvided && startIsValid) {
+      const start = new Date(startDate as string);
+      if (start < todayUTC) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['startDate'],
+          message: 'Start date must not be in the past.',
+        });
+      }
+    }
+
+    // Validate: if startDate provided, it must be on or before deadlineDate
+    if (startIsProvided && startIsValid && deadlineIsValid) {
+      const start = new Date(startDate as string);
+      const deadline = new Date(deadlineDate);
+      if (start > deadline) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['startDate'],
+          message: 'Start date must be on or before the deadline date.',
+        });
+      }
+    }
+  });
 
 export type OnboardingFormValues = z.infer<typeof onboardingFormSchema>;

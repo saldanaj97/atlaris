@@ -1,3 +1,8 @@
+---
+description: 'Next.js development standards and instructions'
+applyTo: '.github/**/*'
+---
+
 # Commit Message Instructions
 
 ## Purpose

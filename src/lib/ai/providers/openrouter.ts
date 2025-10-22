@@ -17,8 +17,15 @@ import { PlanSchema } from '@/lib/ai/schema';
 function toStream(obj: unknown): AsyncIterable<string> {
   const data = JSON.stringify(obj);
   return {
-    async *[Symbol.asyncIterator]() {
-      yield data;
+    [Symbol.asyncIterator](): AsyncIterator<string> {
+      let done = false;
+      return {
+        next(): Promise<IteratorResult<string>> {
+          if (done) return Promise.resolve({ done: true, value: undefined });
+          done = true;
+          return Promise.resolve({ done: false, value: data });
+        },
+      };
     },
   } as AsyncIterable<string>;
 }
@@ -79,6 +86,8 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         skillLevel: input.skillLevel as PromptParams['skillLevel'],
         learningStyle: input.learningStyle as PromptParams['learningStyle'],
         weeklyHours: input.weeklyHours,
+        startDate: input.startDate,
+        deadlineDate: input.deadlineDate,
       }),
       maxOutputTokens: this.maxOutputTokens,
       temperature: this.temperature,

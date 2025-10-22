@@ -10,6 +10,7 @@ import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
@@ -79,6 +80,8 @@ type FormState = {
   weeklyHours: (typeof weeklyHourOptions)[number]['value'] | '';
   learningStyle: (typeof learningStyleOptions)[number]['value'] | '';
   notes: string;
+  startDate?: string;
+  deadlineDate: string;
 };
 
 const initialState: FormState = {
@@ -87,11 +90,17 @@ const initialState: FormState = {
   weeklyHours: '',
   learningStyle: '',
   notes: '',
+  startDate: undefined,
+  deadlineDate: '',
 };
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
+
+// Define once to avoid re-creating on every render
+
 
 export default function OnboardingForm() {
+  const today = new Date();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,6 +127,8 @@ export default function OnboardingForm() {
         return Boolean(formState.weeklyHours);
       case 4:
         return Boolean(formState.learningStyle);
+      case 5:
+        return Boolean(formState.deadlineDate);
       default:
         return true;
     }
@@ -140,6 +151,9 @@ export default function OnboardingForm() {
         break;
       case 4:
         setStepError('Pick the learning style that fits you best.');
+        break;
+      case 5:
+        setStepError('Please select a deadline date.');
         break;
       default:
         setStepError(null);
@@ -179,6 +193,8 @@ export default function OnboardingForm() {
       weeklyHours: formState.weeklyHours,
       learningStyle: formState.learningStyle,
       notes: formState.notes.trim() || undefined,
+      startDate: formState.startDate || undefined,
+      deadlineDate: formState.deadlineDate,
     };
 
     let payload;
@@ -420,6 +436,66 @@ export default function OnboardingForm() {
                   We\'ll add manual notes support once the backend is ready. For
                   now this helps tune your generated path.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 5 && (
+            <div className="space-y-6">
+              <div className="space-y-2 text-center">
+                <h1 className="text-3xl font-bold">
+                  When do you want to complete this?
+                </h1>
+                <p className="text-muted-foreground">
+                  Set your timeline so we can pace your learning plan
+                  accordingly.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <Label htmlFor="startDate" className="text-base font-medium">
+                    Start Date (Optional)
+                  </Label>
+                  <DatePicker
+                    id="startDate"
+                    value={formState.startDate || undefined}
+                    onChange={(val) =>
+                      updateField('startDate', val || undefined)
+                    }
+                    placeholder="Pick a start date"
+                    minDate={today}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Leave empty to start today
+                  </p>
+                </div>
+
+                <div className="flex flex-col space-y-4">
+                  <Label
+                    htmlFor="deadlineDate"
+                    className="text-base font-medium"
+                  >
+                    Deadline Date *
+                  </Label>
+                  <DatePicker
+                    id="deadlineDate"
+                    value={formState.deadlineDate || undefined}
+                    onChange={(val) => updateField('deadlineDate', val ?? '')}
+                    placeholder="Pick a deadline"
+                    required
+                    minDate={today}
+                    className={
+                      currentStep === 5 && !!stepError
+                        ? 'border-destructive'
+                        : undefined
+                    }
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Your learning plan will be structured to help you meet this
+                    goal.
+                  </p>
+                </div>
               </div>
             </div>
           )}

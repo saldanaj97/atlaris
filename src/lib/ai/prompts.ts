@@ -3,6 +3,8 @@ export interface PromptParams {
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
   learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
   weeklyHours: number;
+  startDate?: string | null;
+  deadlineDate?: string | null;
 }
 
 export function buildSystemPrompt(): string {
@@ -16,17 +18,30 @@ export function buildSystemPrompt(): string {
     '- Each module must include 3-6 tasks.',
     '- Use concise, action-oriented titles.',
     '- estimated_minutes must be integers and non-negative.',
+    '- If start and deadline dates are provided, distribute learning to fit within the timeline.',
     'Do NOT include markdown, code fences, or commentary. JSON only.',
   ].join('\n');
 }
 
 export function buildUserPrompt(p: PromptParams): string {
-  return [
+  const lines = [
     `Topic: ${p.topic}`,
     `Skill level: ${p.skillLevel}`,
     `Learning style: ${p.learningStyle}`,
     `Weekly hours: ${p.weeklyHours}`,
-    'Generate a learning plan as JSON that adheres to the schema and constraints.',
-  ].join('\n');
-}
+  ];
 
+  if (p.startDate) {
+    lines.push(`Start date: ${p.startDate}`);
+  }
+
+  if (p.deadlineDate) {
+    lines.push(`Deadline: ${p.deadlineDate}`);
+  }
+
+  lines.push(
+    'Generate a learning plan as JSON that adheres to the schema and constraints.'
+  );
+
+  return lines.join('\n');
+}
