@@ -73,9 +73,9 @@ export default async function PricingPage() {
   const missingPrices =
     !starterMonthly || !starterYearly || !proMonthly || !proYearly;
 
-  let starterName = PRICING_TIERS.starter.name;
+  let starterName: string = PRICING_TIERS.starter.name;
   let starterMonthlyAmount = '$—';
-  let proName = PRICING_TIERS.pro.name;
+  let proName: string = PRICING_TIERS.pro.name;
   let proMonthlyAmount = '$—';
 
   if (starterMonthly && starterYearly && proMonthly && proYearly) {
