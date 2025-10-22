@@ -229,7 +229,7 @@ describe('Onboarding date picker flow (E2E UI subset)', () => {
     await goToNext();
 
     // Step 5: omit start date; set a valid deadline only
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = fmt(new Date());
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + 45);
     const deadlineStr = `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')}`;
