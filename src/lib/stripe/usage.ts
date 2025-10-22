@@ -5,7 +5,7 @@ import { and, eq, sql } from 'drizzle-orm';
 /**
  * Subscription tier limits
  */
-const TIER_LIMITS = {
+export const TIER_LIMITS = {
   free: {
     maxActivePlans: 3,
     monthlyRegenerations: 5,
@@ -250,7 +250,7 @@ async function countPlansContributingToCap(
               AND ${learningPlans.isQuotaEligible} = false
           )
         )::int
-      `
+      `,
     })
     .from(learningPlans)
     .where(eq(learningPlans.userId, userId));

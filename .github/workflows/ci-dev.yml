@@ -223,13 +223,28 @@ jobs:
     steps:
       - name: Check all required jobs succeeded
         run: |
+          # Populate results using GitHub Actions expressions at render time
+          declare -A results=(
+            [changes]="${{ needs.changes.result }}"
+            [lint]="${{ needs.lint.result }}"
+            [type-check]="${{ needs['type-check'].result }}"
+            [unit-tests]="${{ needs['unit-tests'].result }}"
+          )
+
+          failed=0
           for job in changes lint type-check unit-tests; do
-            result="${{ needs[job].result }}"
-            if [ "$result" != "success" ]; then
+            result="${results[$job]}"
+            echo "${job} -> ${result}"
+            # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
               echo "❌ Job '$job' did not succeed (result: $result)"
-              exit 1
+              failed=1
             fi
           done
+
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
       - name: All checks passed (dev)
         run: echo "✅ All checks passed (dev)"
 
