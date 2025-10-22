@@ -72,10 +72,13 @@ export function mapOnboardingToCreateInput(
   values: OnboardingFormValues
 ): CreateLearningPlanInput {
   const normalized = normalizeOnboardingValues(values);
+  // Default optional startDate to today (YYYY-MM-DD) if the user omitted it.
+  const todayStr = new Date().toISOString().slice(0, 10);
   return createLearningPlanSchema.parse({
     ...normalized,
-    startDate: values.startDate,
-    deadlineDate: values.deadlineDate,
+    startDate: normalized.startDate ?? todayStr,
+    // deadlineDate is required by onboarding flow; prefer the normalized value.
+    deadlineDate: normalized.deadlineDate,
     visibility: 'private',
     origin: 'ai',
   });
