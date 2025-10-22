@@ -155,6 +155,8 @@ export const POST = withErrorBoundary(
       skillLevel: body.skillLevel,
       weeklyHours: body.weeklyHours,
       learningStyle: body.learningStyle,
+      startDate: body.startDate ?? null,
+      deadlineDate: body.deadlineDate ?? null,
     };
 
     await enqueueJob(JOB_TYPES.PLAN_GENERATION, plan.id, user.id, jobData);
