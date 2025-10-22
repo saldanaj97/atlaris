@@ -15,6 +15,8 @@ export interface GenerateLearningPlanParams {
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
   learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
   weeklyHours: number;
+  startDate?: string | null;
+  deadlineDate?: string | null;
   notes?: string | null;
 }
 
@@ -48,6 +50,8 @@ export async function generateLearningPlan(
       skillLevel: params.skillLevel,
       weeklyHours: params.weeklyHours,
       learningStyle: params.learningStyle,
+      startDate: params.startDate ?? null,
+      deadlineDate: params.deadlineDate ?? null,
       visibility: 'private',
       origin: 'ai',
     });
@@ -66,6 +70,8 @@ export async function generateLearningPlan(
       skillLevel: params.skillLevel,
       weeklyHours: params.weeklyHours,
       learningStyle: params.learningStyle,
+      startDate: params.startDate ?? null,
+      deadlineDate: params.deadlineDate ?? null,
     },
   });
 

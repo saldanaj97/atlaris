@@ -20,6 +20,8 @@ export default [
     ignores: [
       'node_modules/**',
       '.next/**',
+      '**/.next/**',
+      '.worktrees/**',
       'out/**',
       'build/**',
       'scripts/**',
@@ -28,6 +30,7 @@ export default [
       'postcss.config.*',
       'tailwind.config.*',
       'next.config.*',
+      'src/components/ui/**',
     ],
   },
   // Apply type-checked configs only to TS files to avoid

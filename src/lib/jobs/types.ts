@@ -14,6 +14,8 @@ export interface PlanGenerationJobData {
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
   weeklyHours: number;
   learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+  startDate: string | null;
+  deadlineDate: string | null;
 }
 
 export interface PlanGenerationJobResult {
