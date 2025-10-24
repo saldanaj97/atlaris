@@ -25,6 +25,8 @@ This file provides guidance when working with code in this repository.
 
 - Ignore any assumptions you may have about how this project works based on your prior experience. This project has its own specific architecture, structure, and conventions that must be followed. Reason from facts only.
 
+- NEVER run the full test suite. Only run the tests that are relevant to the task at hand, have been explicitly requested, or are newly added. When running tests, use the 'vitest' command with the appropriate flags. NOT the 'pnpm test' command.
+
 - Make sure to ALWAYS use the context7 MCP for grabbing the most up to date documentation about a specific topic before starting any coding task or when I ask you a clarifying question. This will ensure you have the most up to date information and avoid any mistakes.
 
 - Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:
