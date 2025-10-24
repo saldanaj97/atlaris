@@ -101,10 +101,10 @@
 
 ## Recommended Integration Path
 
-- [ ] Phase 1 (blocking foundations)
-  - [ ] Step 1: Prep and configuration
-  - [ ] Step 2: Database migration: cache table
-  - [ ] Step 3: Types and shared interfaces
+- [x] Phase 1 (blocking foundations)
+  - [x] Step 1: Prep and configuration
+  - [x] Step 2: Database migration: cache table
+  - [x] Step 3: Types and shared interfaces
 - [ ] Phase 2 (blocking curation core)
   - [ ] Step 4: Cache module (LRU, TTLs, negative cache, getOrSetWithLock)
   - [ ] Step 5: Validation module (HEAD checks, YouTube status)
@@ -136,8 +136,8 @@
 
 ## To-dos
 
-- [ ] Add resource_search_cache table via drizzle migration
-- [ ] Create curation types under src/lib/curation/types.ts
+- [x] Add resource_search_cache table via drizzle migration
+- [x] Create curation types under src/lib/curation/types.ts
 - [ ] Implement YouTube search+stats adapter with scoring and validation
 - [ ] Implement docs adapter: CSE (env-gated) with heuristics fallback + HEAD validation
 - [ ] Implement cache get/set for curation results with stage‑specific TTLs, negative caching, in‑process LRU, `cache_version`, and `getOrSetWithLock`
