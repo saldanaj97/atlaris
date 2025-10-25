@@ -318,10 +318,18 @@ async function maybeCurateAndAttachResources(
 
   // Process tasks with simple batching to enforce concurrency without extra deps
   for (let i = 0; i < taskRows.length; i += CURATION_CONCURRENCY) {
+    // Check time budget before starting a new batch
+    if (Date.now() - startTime > TIME_BUDGET_MS) {
+      console.log(
+        `[Curation] Time budget exceeded before starting batch at index ${i}, stopping curation.`
+      );
+      break;
+    }
+
     const batch = taskRows.slice(i, i + CURATION_CONCURRENCY);
     await Promise.all(
       batch.map(async ({ task }) => {
-        // Check time budget
+        // Check time budget before processing individual task
         if (Date.now() - startTime > TIME_BUDGET_MS) {
           console.log(
             `[Curation] Time budget exceeded, skipping task ${task.id}`
@@ -349,6 +357,14 @@ async function maybeCurateAndAttachResources(
         }
       })
     );
+
+    // Check time budget after batch completion (though the pre-batch check will catch for next)
+    if (Date.now() - startTime > TIME_BUDGET_MS) {
+      console.log(
+        `[Curation] Time budget exceeded after batch at index ${i}, stopping curation.`
+      );
+      break;
+    }
   }
 
   const elapsed = Date.now() - startTime;

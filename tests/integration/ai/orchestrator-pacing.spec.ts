@@ -111,6 +111,41 @@ describe('orchestrator pacing integration', () => {
     });
 
     it('handles low capacity by trimming appropriately', async () => {
+      // Mock with more tasks to demonstrate trimming
+      vi.mocked(parserModule.parseGenerationStream).mockResolvedValue({
+        ...mockParsed,
+        modules: [
+          {
+            title: 'Module 1',
+            description: 'Desc 1',
+            estimatedMinutes: 180,
+            tasks: [
+              {
+                title: 'Task 1',
+                description: 'Task desc',
+                estimatedMinutes: 45,
+              },
+              {
+                title: 'Task 2',
+                description: 'Task desc',
+                estimatedMinutes: 45,
+              },
+              {
+                title: 'Task 3',
+                description: 'Task desc',
+                estimatedMinutes: 45,
+              },
+              {
+                title: 'Task 4',
+                description: 'Task desc',
+                estimatedMinutes: 45,
+              },
+            ],
+          },
+        ],
+        rawText: 'raw plan text',
+      });
+
       const lowInputContext = {
         ...mockContext,
         input: {
@@ -126,7 +161,9 @@ describe('orchestrator pacing integration', () => {
         (sum: number, m) => sum + m.tasks.length,
         0
       );
-      expect(totalTasks).toBeLessThanOrEqual(2); // Low capacity: ~2-3 tasks max, but with 2 tasks original, likely trimmed if calc low
+      // 1 week, 1 hour/week, 45 min/task → ~1 task capacity
+      expect(totalTasks).toBeLessThanOrEqual(2);
+      expect(totalTasks).toBeLessThan(4); // Verify trimming occurred
     });
   });
 

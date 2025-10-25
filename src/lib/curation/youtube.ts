@@ -77,8 +77,19 @@ export async function searchYouTube(
     const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
 
     if (!response.ok) {
-      // Empty results on API failure (negative cache)
-      return [];
+      // Surface error so callers/caching treat it as transient, not negative cache
+      let body = '';
+      try {
+        const text = await response.text();
+        body = text;
+      } catch {
+        body = '<no body>';
+      }
+      const err = new Error(
+        `YouTube search API error: ${response.status} ${response.statusText} — ${body}`
+      );
+      // Throw so getOrSetWithLock does not cache this failure
+      throw err;
     }
 
     const data = (await response.json()) as {
@@ -134,7 +145,16 @@ export async function getVideoStats(
   const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
 
   if (!response.ok) {
-    return [];
+    let body = '';
+    try {
+      const text = await response.text();
+      body = text;
+    } catch {
+      body = '<no body>';
+    }
+    throw new Error(
+      `YouTube videos API error: ${response.status} ${response.statusText} — ${body}`
+    );
   }
 
   const data = (await response.json()) as {
@@ -200,6 +220,7 @@ function parseDurationToMinutes(duration: string): number {
 export async function curateYouTube(
   params: CurationParams
 ): Promise<ResourceCandidate[]> {
+  const batchTimestamp = new Date().toISOString();
   // Search for videos
   const searchResults = await searchYouTube(params.query, params);
 
@@ -236,7 +257,7 @@ export async function curateYouTube(
       score: {
         blended: 0, // Will be computed by scoring
         components: {},
-        scoredAt: new Date().toISOString(),
+        scoredAt: batchTimestamp,
       },
       metadata: {
         videoId: searchResult.id,

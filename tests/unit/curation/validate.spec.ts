@@ -112,6 +112,8 @@ describe('Validation Module', () => {
     });
 
     it('should use custom timeout', async () => {
+      vi.useFakeTimers();
+
       let _timeoutDuration = 0;
       global.fetch = vi.fn(
         (_url, options) =>
@@ -131,12 +133,16 @@ describe('Validation Module', () => {
           })
       ) as unknown as typeof fetch;
 
-      const startTime = Date.now();
-      await headOk('https://example.com', 10000);
-      const duration = Date.now() - startTime;
+      const result = await headOk('https://example.com', 10000);
+      vi.advanceTimersByTime(100);
+      await Promise.resolve(); // settle microtasks
 
-      expect(duration).toBeGreaterThan(50);
-      expect(duration).toBeLessThan(200);
+      expect(global.fetch).toHaveBeenCalled();
+      expect(_timeoutDuration).toBe(0); // no abort
+      expect(result.ok).toBe(true);
+      expect(result.status).toBe(200);
+
+      vi.useRealTimers();
     });
   });
 

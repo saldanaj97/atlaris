@@ -102,7 +102,7 @@ async function searchDocsCSE(
     const baseUrl = 'https://www.googleapis.com/customsearch/v1';
 
     // Build site restrict parameter from allowlist
-    const siteRestrict = DOMAIN_ALLOWLIST.join(' OR site:');
+    const siteRestrict = DOMAIN_ALLOWLIST.map((d) => `site:${d}`).join(' OR ');
 
     const searchParams = new URLSearchParams({
       q: query,
@@ -238,6 +238,8 @@ export async function curateDocs(
   // Map to ResourceCandidate and validate
   const candidates: ResourceCandidate[] = [];
 
+  const nowIso = new Date().toISOString();
+
   for (const result of searchResults) {
     // Canonicalize URL
     const canonicalUrl = canonicalizeUrl(result.url);
@@ -270,7 +272,7 @@ export async function curateDocs(
       score: {
         blended: 0, // Will be computed by scoring
         components: {},
-        scoredAt: new Date().toISOString(),
+        scoredAt: nowIso,
       },
       metadata: {
         query: params.query,

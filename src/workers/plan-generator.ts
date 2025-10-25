@@ -171,8 +171,8 @@ export class PlanGenerationWorker {
   }
 
   private startCacheCleanup(): void {
-    // Run cleanup immediately on start
-    void this.runCacheCleanup();
+    // Defer initial cleanup to avoid blocking startup
+    setTimeout(() => void this.runCacheCleanup(), 0);
 
     // Schedule periodic cleanup
     this.cacheCleanupInterval = setInterval(() => {

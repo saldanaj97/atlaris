@@ -315,7 +315,17 @@ export async function getOrSetWithLock<T>(
     const lockResult = await db.execute(
       sql`SELECT pg_try_advisory_lock(${part1}, ${part2}) as locked`
     );
-    const locked = (lockResult[0] as { locked: boolean }).locked;
+    let locked = false;
+    if (
+      Array.isArray(lockResult) &&
+      lockResult.length > 0 &&
+      lockResult[0] != null &&
+      typeof lockResult[0] === 'object' &&
+      'locked' in lockResult[0] &&
+      typeof (lockResult[0] as { locked?: boolean })['locked'] === 'boolean'
+    ) {
+      locked = (lockResult[0] as { locked?: boolean }).locked ?? false;
+    }
 
     if (!locked) {
       // Another process is fetching; wait for it to complete

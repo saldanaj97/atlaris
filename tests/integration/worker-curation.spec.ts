@@ -283,6 +283,7 @@ describe('Worker curation integration', () => {
 
   describe('Time budget and concurrency', () => {
     it('skips tasks when time budget exceeded', async () => {
+      vi.useFakeTimers();
       mockGetTasks.mockResolvedValue([
         {
           task: makeTask({ id: 'task1', title: 'First Task' }),
@@ -295,7 +296,7 @@ describe('Worker curation integration', () => {
       ]);
       mockCurateYouTube.mockImplementation(async () => {
         // Simulate long-running task
-        await new Promise((resolve) => setTimeout(resolve, 35_000)); // Exceed budget
+        vi.advanceTimersByTime(35_000);
         return [];
       });
 
@@ -303,6 +304,8 @@ describe('Worker curation integration', () => {
 
       expect(result.status).toBe('success'); // Job succeeds despite budget overrun
       expect(mockCurateYouTube).toHaveBeenCalledTimes(1); // Only first task attempts
+
+      vi.useRealTimers();
     });
   });
 

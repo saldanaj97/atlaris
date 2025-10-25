@@ -27,6 +27,7 @@ describe('Cache Module', () => {
     // Clean up after each test
     await db.delete(resourceSearchCache);
     vi.restoreAllMocks();
+    vi.resetModules();
   });
 
   describe('buildCacheKey', () => {

@@ -3,8 +3,8 @@
  * Preserves module/task order and ensures at least one task per module
  */
 
-import type { ParsedModule, ParsedTask } from './parser';
-import type { GenerationInput } from './provider';
+import type { ParsedModule, ParsedTask } from '@/lib/ai/parser';
+import type { GenerationInput } from '@/lib/ai/provider';
 
 /**
  * Pacing parameters for capacity calculation

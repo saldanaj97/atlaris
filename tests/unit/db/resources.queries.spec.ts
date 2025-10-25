@@ -3,7 +3,7 @@
  * Tests: upsert by URL, type mapping, attachment order/idempotency
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@/lib/db/drizzle';
 import {
   resources,
@@ -76,16 +76,6 @@ describe('DB Resources Queries', () => {
       })
       .returning();
     testTaskId = task.id;
-  });
-
-  afterEach(async () => {
-    // Clean up test data
-    await db.delete(taskResources);
-    await db.delete(resources);
-    await db.delete(tasks);
-    await db.delete(modules);
-    await db.delete(learningPlans);
-    await db.delete(users);
   });
 
   describe('upsertResource', () => {
