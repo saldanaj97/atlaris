@@ -318,13 +318,18 @@ export async function getOrSetWithLock<T>(
     const locked = (lockResult[0] as { locked: boolean }).locked;
 
     if (!locked) {
-      // Another process is fetching; wait briefly and check cache again
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      const rechecked = await getCachedResults<T>(key);
-      if (rechecked) {
-        return rechecked.results;
+      // Another process is fetching; wait for it to complete
+      // Retry checking cache until it's populated or timeout
+      const maxRetries = 20; // ~2 seconds total wait time
+      for (let i = 0; i < maxRetries; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const rechecked = await getCachedResults<T>(key);
+        if (rechecked) {
+          return rechecked.results;
+        }
       }
-      // Fall through to fetch if still not available
+      // If still not available after retries, fall through to fetch
+      // This handles edge cases where the lock holder failed
     }
 
     // Double-check cache after acquiring lock
