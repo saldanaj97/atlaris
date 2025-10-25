@@ -223,10 +223,10 @@ Note: Resource scores are computed at runtime and may be cached in `results` JSO
   - [ ] Step 1: Prep and configuration
   - [ ] Step 2: Database migration: cache table
   - [ ] Step 3: Types and shared interfaces
-- [ ] Phase 2 (blocking curation core)
-  - [ ] Step 4: Cache module (LRU, TTLs, negative cache, getOrSetWithLock)
-  - [ ] Step 5: Validation module (HEAD checks, YouTube status)
-  - [ ] Step 6: Ranking module (scoring, cutoff, diversity, early-stop)
+- [x] Phase 2 (blocking curation core)
+  - [x] Step 4: Cache module (LRU, TTLs, negative cache, getOrSetWithLock)
+  - [x] Step 5: Validation module (HEAD checks, YouTube status)
+  - [x] Step 6: Ranking module (scoring, cutoff, diversity, early-stop)
 - [ ] Phase 3 (blocking sources + persistence)
   - [ ] Step 7: YouTube adapter
   - [ ] Step 8: Docs adapter
@@ -258,15 +258,16 @@ Note: Resource scores are computed at runtime and may be cached in `results` JSO
 - [ ] Create curation types under src/lib/curation/types.ts
 - [ ] Implement YouTube search+stats adapter with scoring and validation
 - [ ] Implement docs adapter: CSE (env-gated) with heuristics fallback + HEAD validation
-- [ ] Implement cache get/set for curation results with stage‑specific TTLs, negative caching, in‑process LRU, `cache_version`, and `getOrSetWithLock`
+- [x] Implement cache get/set for curation results with stage‑specific TTLs, negative caching, in‑process LRU, `cache_version`, and `getOrSetWithLock`
 - [ ] Add queries to upsert resources and attach to tasks
-- [ ] Blend and rank candidates across sources with `minScore` cutoff, source diversity preference, and early‑stop fill
+- [x] Blend and rank candidates across sources with `minScore` cutoff, source diversity preference, and early‑stop fill
 - [ ] Add pacing calculator and task trimming helpers
 - [ ] Update prompts to request micro‑explanations/exercises
 - [ ] Integrate pacing into orchestrator before persisting
 - [ ] Run curation+attachments (1–3 per task) and micro‑explanations in job service; apply concurrency dedupe and in‑job LRU
 - [ ] Add periodic cleanup for expired cache rows
-- [ ] Add unit tests for pacing, ranking, cache, adapters, cutoff enforcement, and link validation
-- [ ] Add unit tests for cache TTLs, negative cache, early‑stop fill, cache versioning, and dedupe locking
+- [x] Add unit tests for ranking, cache, and validation modules (Phase 2)
+- [ ] Add unit tests for pacing, adapters, cutoff enforcement, and link validation
+- [x] Add unit tests for cache TTLs, negative cache, cache versioning, and dedupe locking (Phase 2)
 - [ ] Add integration tests for worker curation+attachments with diversity preference and cutoff, reduced external calls via cache, and dedupe under contention
 - [ ] Update E2E to assert resources (1–3), explanations, no broken links, and cutoff respected

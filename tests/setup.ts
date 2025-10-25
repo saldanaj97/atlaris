@@ -7,7 +7,11 @@ import { afterAll, afterEach, beforeEach } from 'vitest';
 
 import { client } from '@/lib/db/drizzle';
 import { Mutex } from 'async-mutex';
-import { ensureStripeWebhookEventsTable, truncateAll } from './helpers/db';
+import {
+  ensureResourceSearchCacheTable,
+  ensureStripeWebhookEventsTable,
+  truncateAll,
+} from './helpers/db';
 
 if (!process.env.DEV_CLERK_USER_ID) {
   Object.assign(process.env, { DEV_CLERK_USER_ID: 'test-user-id' });
@@ -59,6 +63,7 @@ if (!skipDbSetup) {
     assertSafeToTruncate();
     releaseDbLock = await dbLock.acquire();
     await ensureStripeWebhookEventsTable();
+    await ensureResourceSearchCacheTable();
     await truncateAll();
   });
 
