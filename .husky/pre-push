@@ -12,14 +12,36 @@ fi
 BASE=$(git merge-base HEAD @{upstream} 2>/dev/null || echo HEAD~1)
 CHANGED=$(git diff --name-only "$BASE" HEAD)
 
-# Filter for source files (TS/TSX)
-SOURCE_FILES=$(printf '%s\n' "$CHANGED" | grep -E 'src/.*\.(ts|tsx)$' || true)
+# Filter for source and unit test files
+SOURCE_FILES=$(printf '%s\n' "$CHANGED" | grep -E '^(src/.*\.(ts|tsx)$|tests/unit/.*\.spec\.(ts|tsx)$)' || true)
 
 if [ -z "$SOURCE_FILES" ]; then
-  echo "No source files changed, skipping tests"
+  echo "No source or unit test files changed, skipping tests"
   exit 0
 fi
 
-# Run related unit tests
-echo "Running tests for changed files..."
-bash scripts/test-with-db.sh tests/unit -- --related $SOURCE_FILES
+# Check for integration triggers
+INTEGRATION_PATTERNS="^(tests/integration/|supabase/|src/lib/db/|drizzle.config.ts)"
+if printf '%s\n' "$CHANGED" | grep -E "$INTEGRATION_PATTERNS" > /dev/null; then
+  INTEGRATION_TRIGGERED=1
+  echo "Integration tests triggered by changes in DB/integration files"
+else
+  INTEGRATION_TRIGGERED=
+fi
+
+echo "Running related unit tests for changed files..."
+UNIT_CMD="pnpm run test:unit:related -- $SOURCE_FILES"
+
+if [ -n "$INTEGRATION_TRIGGERED" ]; then
+  echo "Running related integration tests..."
+  INTEG_CMD="pnpm run test:integration:related -- $CHANGED"
+  bash -c "$UNIT_CMD" & U_PID=$!
+  bash -c "$INTEG_CMD" & I_PID=$!
+  wait $U_PID; U_EXIT=$?
+  wait $I_PID; I_EXIT=$?
+  if [ $U_EXIT -ne 0 ] || [ $I_EXIT -ne 0 ]; then
+    exit 1
+  fi
+else
+  eval "$UNIT_CMD"
+fi
