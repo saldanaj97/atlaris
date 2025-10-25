@@ -105,14 +105,14 @@
   - [x] Step 1: Prep and configuration
   - [x] Step 2: Database migration: cache table
   - [x] Step 3: Types and shared interfaces
-- [ ] Phase 2 (blocking curation core)
-  - [ ] Step 4: Cache module (LRU, TTLs, negative cache, getOrSetWithLock)
-  - [ ] Step 5: Validation module (HEAD checks, YouTube status)
-  - [ ] Step 6: Ranking module (scoring, cutoff, diversity, early-stop)
-- [ ] Phase 3 (blocking sources + persistence)
-  - [ ] Step 7: YouTube adapter
-  - [ ] Step 8: Docs adapter
-  - [ ] Step 9: DB queries for resource upsert/attachments
+- [x] Phase 2 (blocking curation core)
+  - [x] Step 4: Cache module (LRU, TTLs, negative cache, getOrSetWithLock)
+  - [x] Step 5: Validation module (HEAD checks, YouTube status)
+  - [x] Step 6: Ranking module (scoring, cutoff, diversity, early-stop)
+- [x] Phase 3 (blocking sources + persistence)
+  - [x] Step 7: YouTube adapter
+  - [x] Step 8: Docs adapter
+  - [x] Step 9: DB queries for resource upsert/attachments
 - [ ] Phase 4 (blocking pacing + orchestration)
   - [ ] Step 10: Pacing module
   - [ ] Step 11: Orchestrator integration
@@ -138,11 +138,11 @@
 
 - [x] Add resource_search_cache table via drizzle migration
 - [x] Create curation types under src/lib/curation/types.ts
-- [ ] Implement YouTube search+stats adapter with scoring and validation
-- [ ] Implement docs adapter: CSE (env-gated) with heuristics fallback + HEAD validation
-- [ ] Implement cache get/set for curation results with stage‑specific TTLs, negative caching, in‑process LRU, `cache_version`, and `getOrSetWithLock`
-- [ ] Add queries to upsert resources and attach to tasks
-- [ ] Blend and rank candidates across sources with `minScore` cutoff, source diversity preference, and early‑stop fill
+- [x] Implement YouTube search+stats adapter with scoring and validation
+- [x] Implement docs adapter: CSE (env-gated) with heuristics fallback + HEAD validation
+- [x] Implement cache get/set for curation results with stage‑specific TTLs, negative caching, in‑process LRU, `cache_version`, and `getOrSetWithLock`
+- [x] Add queries to upsert resources and attach to tasks
+- [x] Blend and rank candidates across sources with `minScore` cutoff, source diversity preference, and early‑stop fill
 - [ ] Add pacing calculator and task trimming helpers
 - [ ] Update prompts to request micro‑explanations/exercises
 - [ ] Integrate pacing into orchestrator before persisting
