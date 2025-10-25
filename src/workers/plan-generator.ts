@@ -15,10 +15,12 @@ import {
   type Job,
   type PlanGenerationJobResult,
 } from '@/lib/jobs/types';
+import { cleanupExpiredCache } from '@/lib/curation/cache';
 
 const DEFAULT_POLL_INTERVAL_MS = 2000;
 const DEFAULT_CONCURRENCY = 1;
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 30_000;
+const CACHE_CLEANUP_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
 
 const ACTIVE_JOB_TYPES = [JOB_TYPES.PLAN_GENERATION] as const;
 
@@ -68,6 +70,7 @@ export class PlanGenerationWorker {
   private stopRequested = false;
   private loopPromise: Promise<void> | null = null;
   private shuttingDown = false;
+  private cacheCleanupInterval: NodeJS.Timeout | null = null;
 
   private readonly activeJobs = new Set<Promise<void>>();
   private readonly stats: PlanGenerationWorkerStats = {
@@ -111,9 +114,14 @@ export class PlanGenerationWorker {
 
     this.isRunning = true;
     this.stopRequested = false;
+
+    // Start cache cleanup interval
+    this.startCacheCleanup();
+
     this.loopPromise = this.runLoop().finally(() => {
       this.isRunning = false;
       this.loopPromise = null;
+      this.stopCacheCleanup();
       this.log('info', 'worker_stopped', this.getStats());
     });
   }
@@ -160,6 +168,35 @@ export class PlanGenerationWorker {
       await this.closeDatabaseConnection();
     }
     this.shuttingDown = false;
+  }
+
+  private startCacheCleanup(): void {
+    // Run cleanup immediately on start
+    void this.runCacheCleanup();
+
+    // Schedule periodic cleanup
+    this.cacheCleanupInterval = setInterval(() => {
+      void this.runCacheCleanup();
+    }, CACHE_CLEANUP_INTERVAL_MS);
+  }
+
+  private stopCacheCleanup(): void {
+    if (this.cacheCleanupInterval) {
+      clearInterval(this.cacheCleanupInterval);
+      this.cacheCleanupInterval = null;
+    }
+  }
+
+  private async runCacheCleanup(): Promise<void> {
+    try {
+      const deleted = await cleanupExpiredCache();
+      if (deleted > 0) {
+        this.log('info', 'cache_cleanup', { deleted });
+      }
+    } catch (error) {
+      const details = normalizeError(error);
+      this.log('warn', 'cache_cleanup_error', details);
+    }
   }
 
   private async runLoop(): Promise<void> {

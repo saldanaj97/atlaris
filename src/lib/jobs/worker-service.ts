@@ -3,6 +3,13 @@ import { ZodError, z } from 'zod';
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
 import type { ProviderMetadata } from '@/lib/ai/provider';
 import { RouterGenerationProvider } from '@/lib/ai/providers/router';
+import { curateDocs } from '@/lib/curation/docs';
+import { curationConfig } from '@/lib/curation/config';
+import { selectTop, type Scored } from '@/lib/curation/ranking';
+// Note: ResourceCandidate not used directly here
+import { curateYouTube } from '@/lib/curation/youtube';
+import { upsertAndAttach } from '@/lib/db/queries/resources';
+import { getTasksByPlanId } from '@/lib/db/queries/tasks';
 import { recordUsage } from '@/lib/db/usage';
 import {
   markPlanGenerationFailure,
@@ -205,6 +212,16 @@ export async function processPlanGenerationJob(
         result.metadata
       );
 
+      // Curation and micro-explanations (if enabled)
+      if (curationConfig.enableCuration) {
+        try {
+          await maybeCurateAndAttachResources(job.planId, payload, job.userId);
+        } catch (curationError) {
+          // Log but don't fail the job
+          console.error('Curation failed:', curationError);
+        }
+      }
+
       await markPlanGenerationSuccess(job.planId);
 
       // Record usage on success
@@ -269,4 +286,124 @@ export async function processPlanGenerationJob(
       retryable: true,
     } satisfies ProcessPlanGenerationJobFailure;
   }
+}
+
+/**
+ * Curation and micro-explanations integration
+ * Curates resources for each task and optionally generates micro-explanations
+ */
+async function maybeCurateAndAttachResources(
+  planId: string,
+  params: PlanGenerationJobData,
+  _userId: string
+): Promise<void> {
+  const CURATION_CONCURRENCY = 3;
+  const TIME_BUDGET_MS = 30_000; // 30 seconds
+  const startTime = Date.now();
+
+  // Get all tasks for the plan
+  const taskRows = await getTasksByPlanId(planId);
+
+  console.log(
+    `[Curation] Starting curation for ${taskRows.length} tasks in plan ${planId}`
+  );
+
+  // Prepare curation params
+  const curationParams = {
+    query: params.topic,
+    minScore: curationConfig.minResourceScore,
+    maxResults: 3,
+    cacheVersion: curationConfig.cacheVersion,
+  };
+
+  // Process tasks with simple batching to enforce concurrency without extra deps
+  for (let i = 0; i < taskRows.length; i += CURATION_CONCURRENCY) {
+    const batch = taskRows.slice(i, i + CURATION_CONCURRENCY);
+    await Promise.all(
+      batch.map(async ({ task }) => {
+        // Check time budget
+        if (Date.now() - startTime > TIME_BUDGET_MS) {
+          console.log(
+            `[Curation] Time budget exceeded, skipping task ${task.id}`
+          );
+          return;
+        }
+
+        try {
+          // Curate resources
+          const candidates = await curateTaskResources(
+            task.title,
+            curationParams,
+            params.skillLevel
+          );
+
+          if (candidates.length > 0) {
+            await upsertAndAttach(task.id, candidates);
+            console.log(
+              `[Curation] Attached ${candidates.length} resources to task ${task.id}`
+            );
+          }
+        } catch (error) {
+          console.error(`[Curation] Failed to curate task ${task.id}:`, error);
+          // Continue with other tasks
+        }
+      })
+    );
+  }
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[Curation] Completed in ${elapsed}ms`);
+}
+
+/**
+ * Curate resources for a single task
+ * Blends YouTube and docs results with diversity preference
+ */
+async function curateTaskResources(
+  taskTitle: string,
+  params: {
+    query: string;
+    minScore: number;
+    maxResults: number;
+    cacheVersion: string;
+  },
+  _skillLevel: 'beginner' | 'intermediate' | 'advanced'
+): Promise<Scored[]> {
+  const candidates: Scored[] = [];
+
+  // Search YouTube
+  try {
+    const ytResults = await curateYouTube({
+      ...params,
+      query: `${params.query} ${taskTitle}`,
+    });
+    // curateYouTube returns Scored[] (via selectTop), cast for type safety
+    candidates.push(...(ytResults as Scored[]));
+  } catch (error) {
+    console.error('[Curation] YouTube search failed:', error);
+  }
+
+  // Search docs if needed
+  if (candidates.length < params.maxResults) {
+    try {
+      const docResults = await curateDocs({
+        ...params,
+        query: `${params.query} ${taskTitle}`,
+      });
+      // curateDocs returns Scored[] (via selectTop), cast for type safety
+      candidates.push(...(docResults as Scored[]));
+    } catch (error) {
+      console.error('[Curation] Docs search failed:', error);
+    }
+  }
+
+  // Blend and select top candidates with diversity preference
+  const top = selectTop(candidates, {
+    minScore: params.minScore,
+    maxItems: params.maxResults,
+    preferDiversity: true,
+    earlyStopEnabled: true,
+  });
+
+  return top;
 }

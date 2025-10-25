@@ -116,9 +116,9 @@
 - [x] Phase 4 (blocking pacing + orchestration)
   - [x] Step 10: Pacing module
   - [x] Step 11: Orchestrator integration
-- [ ] Phase 5 (worker + prompts)
-  - [ ] Step 12: Worker integration (curation attach, time budget, cleanup)
-  - [ ] Step 13: Prompts for micro‑explanations/exercises
+- [x] Phase 5 (worker + prompts)
+  - [x] Step 12: Worker integration (curation attach, time budget, cleanup)
+  - [x] Step 13: Prompts for micro‑explanations/exercises
 - [ ] Phase 6 (tests)
   - [ ] Step 14: Unit, integration, and E2E tests
 - [ ] Phase 7 (rollout)
@@ -144,10 +144,10 @@
 - [x] Add queries to upsert resources and attach to tasks
 - [x] Blend and rank candidates across sources with `minScore` cutoff, source diversity preference, and early‑stop fill
 - [x] Add pacing calculator and task trimming helpers
-- [ ] Update prompts to request micro‑explanations/exercises
+- [x] Update prompts to request micro‑explanations/exercises
 - [x] Integrate pacing into orchestrator before persisting
-- [ ] Run curation+attachments (1–3 per task) and micro‑explanations in job service; apply concurrency dedupe and in‑job LRU
-- [ ] Add periodic cleanup for expired cache rows
+- [x] Run curation+attachments (1–3 per task) and micro‑explanations in job service; apply concurrency dedupe and in‑job LRU
+- [x] Add periodic cleanup for expired cache rows
 - [ ] Add unit tests for pacing, ranking, cache, adapters, cutoff enforcement, and link validation
 - [ ] Add unit tests for cache TTLs, negative cache, early‑stop fill, cache versioning, and dedupe locking
 - [ ] Add integration tests for worker curation+attachments with diversity preference and cutoff, reduced external calls via cache, and dedupe under contention
