@@ -7,6 +7,7 @@ import {
 import type { FailureClassification } from '@/lib/types/client';
 
 import { classifyFailure } from './classification';
+import { pacePlan } from './pacing';
 import {
   parseGenerationStream,
   type ParsedGeneration,
@@ -138,13 +139,16 @@ export async function runGenerationAttempt(
 
     rawText = parsed.rawText;
 
+    // Apply pacing to trim modules to fit user's time capacity
+    const pacedModules = pacePlan(parsed.modules, context.input);
+
     const durationMs = clock() - startedAt;
     timeout.cancel();
 
     const attempt = await recordSuccess({
       planId: context.planId,
       preparation,
-      modules: parsed.modules,
+      modules: pacedModules,
       providerMetadata: providerMetadata ?? {},
       durationMs,
       extendedTimeout: timeout.didExtend,
@@ -155,7 +159,7 @@ export async function runGenerationAttempt(
     return {
       status: 'success',
       classification: null,
-      modules: parsed.modules,
+      modules: pacedModules,
       rawText,
       metadata: providerMetadata ?? {},
       durationMs,

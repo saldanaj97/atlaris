@@ -113,9 +113,9 @@
   - [x] Step 7: YouTube adapter
   - [x] Step 8: Docs adapter
   - [x] Step 9: DB queries for resource upsert/attachments
-- [ ] Phase 4 (blocking pacing + orchestration)
-  - [ ] Step 10: Pacing module
-  - [ ] Step 11: Orchestrator integration
+- [x] Phase 4 (blocking pacing + orchestration)
+  - [x] Step 10: Pacing module
+  - [x] Step 11: Orchestrator integration
 - [ ] Phase 5 (worker + prompts)
   - [ ] Step 12: Worker integration (curation attach, time budget, cleanup)
   - [ ] Step 13: Prompts for micro‑explanations/exercises
@@ -143,9 +143,9 @@
 - [x] Implement cache get/set for curation results with stage‑specific TTLs, negative caching, in‑process LRU, `cache_version`, and `getOrSetWithLock`
 - [x] Add queries to upsert resources and attach to tasks
 - [x] Blend and rank candidates across sources with `minScore` cutoff, source diversity preference, and early‑stop fill
-- [ ] Add pacing calculator and task trimming helpers
+- [x] Add pacing calculator and task trimming helpers
 - [ ] Update prompts to request micro‑explanations/exercises
-- [ ] Integrate pacing into orchestrator before persisting
+- [x] Integrate pacing into orchestrator before persisting
 - [ ] Run curation+attachments (1–3 per task) and micro‑explanations in job service; apply concurrency dedupe and in‑job LRU
 - [ ] Add periodic cleanup for expired cache rows
 - [ ] Add unit tests for pacing, ranking, cache, adapters, cutoff enforcement, and link validation
