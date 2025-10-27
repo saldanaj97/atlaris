@@ -219,26 +219,26 @@ Note: Resource scores are computed at runtime and may be cached in `results` JSO
 
 ### Recommended Integration Path
 
-- [ ] Phase 1 (blocking foundations)
-  - [ ] Step 1: Prep and configuration
-  - [ ] Step 2: Database migration: cache table
-  - [ ] Step 3: Types and shared interfaces
+- [x] Phase 1 (blocking foundations)
+  - [x] Step 1: Prep and configuration
+  - [x] Step 2: Database migration: cache table
+  - [x] Step 3: Types and shared interfaces
 - [x] Phase 2 (blocking curation core)
   - [x] Step 4: Cache module (LRU, TTLs, negative cache, getOrSetWithLock)
   - [x] Step 5: Validation module (HEAD checks, YouTube status)
   - [x] Step 6: Ranking module (scoring, cutoff, diversity, early-stop)
-- [ ] Phase 3 (blocking sources + persistence)
-  - [ ] Step 7: YouTube adapter
-  - [ ] Step 8: Docs adapter
-  - [ ] Step 9: DB queries for resource upsert/attachments
-- [ ] Phase 4 (blocking pacing + orchestration)
-  - [ ] Step 10: Pacing module
-  - [ ] Step 11: Orchestrator integration
-- [ ] Phase 5 (worker + prompts)
-  - [ ] Step 12: Worker integration (curation attach, time budget, cleanup)
-  - [ ] Step 13: Prompts for micro‑explanations/exercises
-- [ ] Phase 6 (tests)
-  - [ ] Step 14: Unit, integration, and E2E tests
+- [x] Phase 3 (blocking sources + persistence)
+  - [x] Step 7: YouTube adapter
+  - [x] Step 8: Docs adapter
+  - [x] Step 9: DB queries for resource upsert/attachments
+- [x] Phase 4 (blocking pacing + orchestration)
+  - [x] Step 10: Pacing module
+  - [x] Step 11: Orchestrator integration
+- [x] Phase 5 (worker + prompts)
+  - [x] Step 12: Worker integration (curation attach, time budget, cleanup)
+  - [x] Step 13: Prompts for micro‑explanations/exercises
+- [x] Phase 6 (tests)
+  - [x] Step 14: Unit, integration, and E2E tests (all test files created)
 - [ ] Phase 7 (rollout)
   - [ ] Step 15: Rollout and ops
 
@@ -254,20 +254,20 @@ Note: Resource scores are computed at runtime and may be cached in `results` JSO
 
 ### To-dos
 
-- [ ] Add resource_search_cache table via drizzle migration
-- [ ] Create curation types under src/lib/curation/types.ts
-- [ ] Implement YouTube search+stats adapter with scoring and validation
-- [ ] Implement docs adapter: CSE (env-gated) with heuristics fallback + HEAD validation
+- [x] Add resource_search_cache table via drizzle migration
+- [x] Create curation types under src/lib/curation/types.ts
+- [x] Implement YouTube search+stats adapter with scoring and validation
+- [x] Implement docs adapter: CSE (env-gated) with heuristics fallback + HEAD validation
 - [x] Implement cache get/set for curation results with stage‑specific TTLs, negative caching, in‑process LRU, `cache_version`, and `getOrSetWithLock`
-- [ ] Add queries to upsert resources and attach to tasks
+- [x] Add queries to upsert resources and attach to tasks
 - [x] Blend and rank candidates across sources with `minScore` cutoff, source diversity preference, and early‑stop fill
-- [ ] Add pacing calculator and task trimming helpers
-- [ ] Update prompts to request micro‑explanations/exercises
-- [ ] Integrate pacing into orchestrator before persisting
-- [ ] Run curation+attachments (1–3 per task) and micro‑explanations in job service; apply concurrency dedupe and in‑job LRU
-- [ ] Add periodic cleanup for expired cache rows
+- [x] Add pacing calculator and task trimming helpers
+- [x] Update prompts to request micro‑explanations/exercises
+- [x] Integrate pacing into orchestrator before persisting
+- [x] Run curation+attachments (1–3 per task) and micro‑explanations in job service; apply concurrency dedupe and in‑job LRU
+- [x] Add periodic cleanup for expired cache rows
 - [x] Add unit tests for ranking, cache, and validation modules (Phase 2)
-- [ ] Add unit tests for pacing, adapters, cutoff enforcement, and link validation
+- [x] Add unit tests for pacing, adapters, cutoff enforcement, and link validation
 - [x] Add unit tests for cache TTLs, negative cache, cache versioning, and dedupe locking (Phase 2)
-- [ ] Add integration tests for worker curation+attachments with diversity preference and cutoff, reduced external calls via cache, and dedupe under contention
-- [ ] Update E2E to assert resources (1–3), explanations, no broken links, and cutoff respected
+- [x] Add integration tests for worker curation+attachments with diversity preference and cutoff, reduced external calls via cache, and dedupe under contention
+- [x] Update E2E to assert resources (1–3), explanations, no broken links, and cutoff respected

@@ -379,6 +379,19 @@ pnpm exec vitest watch tests/unit
 
 ### Run Security Tests (when implemented)
 
+### Fast Unit Tests (skip DB setup)
+
+To speed up unit tests and avoid DB truncation overhead, use the fast unit script which sets `SKIP_DB_TEST_SETUP=true`:
+
+```bash
+pnpm test:unit:fast
+```
+
+Notes:
+
+- This flag only skips DB truncation/setup hooks in `tests/setup.ts`. A valid `DATABASE_URL` is still required because the DB client is imported by the setup file.
+- Do not use this flag for integration, e2e, or RLS suites.
+
 ```bash
 pnpm exec vitest run tests/security
 ```

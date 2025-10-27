@@ -119,8 +119,8 @@
 - [x] Phase 5 (worker + prompts)
   - [x] Step 12: Worker integration (curation attach, time budget, cleanup)
   - [x] Step 13: Prompts for micro‑explanations/exercises
-- [ ] Phase 6 (tests)
-  - [ ] Step 14: Unit, integration, and E2E tests
+- [x] Phase 6 (tests)
+  - [x] Step 14: Unit, integration, and E2E tests (all test files created)
 - [ ] Phase 7 (rollout)
   - [ ] Step 15: Rollout and ops
 
@@ -148,7 +148,7 @@
 - [x] Integrate pacing into orchestrator before persisting
 - [x] Run curation+attachments (1–3 per task) and micro‑explanations in job service; apply concurrency dedupe and in‑job LRU
 - [x] Add periodic cleanup for expired cache rows
-- [ ] Add unit tests for pacing, ranking, cache, adapters, cutoff enforcement, and link validation
-- [ ] Add unit tests for cache TTLs, negative cache, early‑stop fill, cache versioning, and dedupe locking
-- [ ] Add integration tests for worker curation+attachments with diversity preference and cutoff, reduced external calls via cache, and dedupe under contention
-- [ ] Update E2E to assert resources (1–3), explanations, no broken links, and cutoff respected
+- [x] Add unit tests for pacing, ranking, cache, adapters, cutoff enforcement, and link validation
+- [x] Add unit tests for cache TTLs, negative cache, early‑stop fill, cache versioning, and dedupe locking
+- [x] Add integration tests for worker curation+attachments with diversity preference and cutoff, reduced external calls via cache, and dedupe under contention
+- [x] Update E2E to assert resources (1–3), explanations, no broken links, and cutoff respected
