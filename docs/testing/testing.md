@@ -42,6 +42,8 @@ Quick reference of all tests in the suite, organized by category:
 
 - `plan-generation-worker.spec.ts` - Worker job processing, retries, concurrency, graceful shutdown
 - `jobs.queue.schema.spec.ts` - Job queue schema validation
+- `worker-curation.spec.ts` - Curation integration in worker, attachments, diversity, early-stop
+- `curation.persistence.spec.ts` - Resource upsert and task attachments
 
 **RLS & Security (Integration Level):**
 
@@ -57,6 +59,15 @@ Quick reference of all tests in the suite, organized by category:
 - `ai.providers.mock.spec.ts` - Mock provider implementation
 - `ai.parser.validation.spec.ts` - AI response parsing validation
 - `ai.timeout.spec.ts` - AI provider timeout handling
+- `ai.pacing.spec.ts` - Pacing calculator and task trimming logic
+
+**Curation Engine:**
+
+- `curation.cache.spec.ts` - Cache get/set, TTLs, negative cache, LRU, dedupe
+- `curation.ranking.spec.ts` - Scoring, cutoff, diversity, early-stop fill
+- `curation.validate.spec.ts` - HEAD checks, YouTube status, URL canonicalization
+- `curation.youtube.adapter.spec.ts` - YouTube search, stats, param shaping
+- `curation.docs.adapter.spec.ts` - Docs search, CSE/heuristics, validation
 
 **Attempt Tracking:**
 
@@ -176,11 +187,17 @@ it('anonymous users cannot read private learning plans', async () => {
 });
 ```
 
-### 4. E2E Tests (`tests/e2e/**`) - Future
+### 4. E2E Tests (`tests/e2e/**`)
 
-**Purpose:** Test complete user flows in a real browser.
+**Purpose:** Test complete user flows including API routes and background workers.
 
-**Status:** Not yet implemented.
+**Coverage:**
+
+- `plan-generation.test.ts` - Plan creation, worker processing, ready status
+- `plan-generation-curation.e2e.ts` - Curation with resources, explanations, cutoff
+- `plan-generation-cache.e2e.ts` - Cache behavior and reduced external calls
+- `plan-generation-dates.e2e.test.ts` - Date handling in generation
+- `onboarding-dates-ui.spec.tsx` - UI date picker integration
 
 ## Database Setup
 
@@ -427,6 +444,70 @@ const adminClient = createServiceRoleClient();
 const userClient = createAuthenticatedClient('user_123');
 ```
 
+### HTTP Mock Helpers (`tests/helpers/http.ts`)
+
+**Purpose:** Mock external HTTP requests for tests.
+
+```typescript
+import { createMockFetch, createMockHeadOk } from '../helpers/http';
+
+// Mock fetch responses
+const mockFetch = createMockFetch([
+  {
+    url: 'https://api.example.com/data',
+    status: 200,
+    ok: true,
+    body: { result: 'success' },
+  },
+]);
+
+global.fetch = mockFetch;
+
+// Mock HEAD requests for docs validation
+const mockHeadOk = createMockHeadOk({
+  'https://example.com/doc': 200,
+  'https://example.com/broken': 404,
+});
+```
+
+### Lock Helpers (`tests/helpers/locks.ts`)
+
+**Purpose:** Simulate advisory locks for testing concurrency dedupe.
+
+```typescript
+import { InMemoryLockManager, CallCounter } from '../helpers/locks';
+
+const lockManager = new InMemoryLockManager();
+const counter = new CallCounter();
+
+// Simulate lock acquisition
+const lock = lockManager.acquire('key');
+if (lock) {
+  counter.increment('fetches');
+  // ... perform work ...
+  lock.release();
+}
+```
+
+### Fixtures (`tests/fixtures/curation/`)
+
+Static JSON data for mocking external API responses:
+
+- `youtube-search.json` - YouTube search API responses
+- `youtube-videos.json` - YouTube video stats/metadata
+- `cse-search.json` - Google CSE search results
+- `docs-heads.json` - HTTP HEAD validation responses
+
+**Usage:**
+
+```typescript
+import youtubeSearchFixture from '../fixtures/curation/youtube-search.json';
+
+vi.mock('@/lib/curation/youtube', () => ({
+  searchYouTube: vi.fn().mockResolvedValue(youtubeSearchFixture.items),
+}));
+```
+
 ## Database Schema Tests
 
 ### Location
@@ -554,6 +635,68 @@ The original integration smoke test referenced a `tests` schema from Basejump he
 ```env
 SUPABASE_SERVICE_ROLE_KEY=eyJ... # Get from Supabase dashboard
 ```
+
+## Curation Engine Testing
+
+### Overview
+
+The curation engine tests cover the complete resource attachment pipeline: search, ranking, validation, caching, and persistence.
+
+### Test Policy: No Live Network Calls
+
+**All external API calls are fully mocked:**
+
+- YouTube API: Mocked requests return fixture data
+- Google CSE: Mocked responses from `tests/fixtures/curation/cse-search.json`
+- HTTP HEAD: Mocked with `createMockHeadOk` helper
+- No sleep/wait calls: Use fake timers for TTL/expiry testing
+
+### Key Test Patterns
+
+**Deterministic Cache Testing:**
+
+```typescript
+vi.useFakeTimers();
+const key = buildCacheKey({ query: 'test', source: 'youtube', ... });
+await setCachedResults(key, 'search', payload);
+vi.advanceTimersByTime(expiryDuration);
+const result = await getCachedResults(key);
+expect(result).toBeNull(); // Expired
+vi.useRealTimers();
+```
+
+**Concurrency Dedupe:**
+
+```typescript
+const counter = new CallCounter();
+const fetcher = async () => {
+  counter.increment('upstream');
+  return results;
+};
+
+await Promise.all([
+  getOrSetWithLock(key, 'search', fetcher),
+  getOrSetWithLock(key, 'search', fetcher),
+]);
+
+expect(counter.getCount('upstream')).toBeLessThanOrEqual(2);
+```
+
+**Mock Policy:**
+
+- Unit tests: Mock adapter boundaries (`curateYouTube`, `curateDocs`)
+- Integration tests: Mock only external HTTP; allow real DB
+- E2E tests: Mock external APIs; real worker + DB
+
+### Coverage Summary
+
+✅ Cache TTLs, negative cache, LRU eviction, versioning  
+✅ Scoring components, cutoff enforcement, diversity selection  
+✅ Early-stop fill when quota satisfied  
+✅ Link validation (HEAD 200/3xx/4xx), YouTube embeddable status  
+✅ Resource upsert/attachments with stable ordering  
+✅ Worker curation integration with time budget  
+✅ E2E plan generation with curation active
 
 ## Future Enhancements
 

@@ -3,6 +3,11 @@
  * Tests: upsert by URL, type mapping, attachment order/idempotency
  */
 
+/**
+ * Unit tests for DB resources queries
+ * Tests: upsert by URL, type mapping, attachment order/idempotency
+ */
+
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@/lib/db/drizzle';
 import {

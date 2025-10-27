@@ -133,9 +133,9 @@ describe('Validation Module', () => {
           })
       ) as unknown as typeof fetch;
 
-      const result = await headOk('https://example.com', 10000);
-      vi.advanceTimersByTime(100);
-      await Promise.resolve(); // settle microtasks
+      const resultPromise = headOk('https://example.com', 10000);
+      await vi.advanceTimersByTimeAsync(100);
+      const result = await resultPromise;
 
       expect(global.fetch).toHaveBeenCalled();
       expect(_timeoutDuration).toBe(0); // no abort
