@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
@@ -11,35 +9,52 @@ if (!process.env.CI) {
 }
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
   test: {
-    globals: true,
-    // Use jsdom so we can test React hooks/components
-    environment: 'jsdom',
-    // Ensure each test file runs in isolated VM to prevent mock/env bleed
-    isolate: true,
-    // Run tests strictly sequentially across files
-    sequence: { concurrent: false },
-    // Use a single worker to avoid cross-file env/mocks conflicts
-    pool: 'threads',
-    poolOptions: { threads: { singleThread: true } },
-    testTimeout: 20_000,
-    // Include TS and TSX tests
-    include: [
-      'tests/**/*.{test,spec}.{ts,tsx}',
-      'src/**/*.{test,spec}.{ts,tsx}',
-    ],
-    // Integration tests share a single Postgres instance; keep file-level concurrency at 1.
-    maxConcurrency: 1,
-    setupFiles: ['tests/setup.ts'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
       reporter: ['text', 'html'],
     },
+    projects: [
+      {
+        test: {
+          name: 'integration',
+          globals: true,
+          environment: 'jsdom',
+          isolate: true,
+          sequence: { concurrent: false },
+          pool: 'threads',
+          poolOptions: { threads: { singleThread: true } },
+          testTimeout: 20_000,
+          include: [
+            'tests/{integration,e2e,security}/**/*.{test,spec}.{ts,tsx}',
+            'src/**/*.{test,spec}.{ts,tsx}',
+          ],
+          setupFiles: ['tests/setup.ts'],
+          maxConcurrency: 1,
+          alias: {
+            '@/': new URL('./src/', import.meta.url).pathname,
+            '@': new URL('./src/', import.meta.url).pathname,
+          },
+        },
+      },
+      {
+        test: {
+          name: 'unit',
+          globals: true,
+          environment: 'jsdom',
+          isolate: true,
+          sequence: { concurrent: true },
+          pool: 'threads',
+          testTimeout: 20_000,
+          include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
+          setupFiles: ['tests/unit/setup.ts'],
+          alias: {
+            '@/': new URL('./src/', import.meta.url).pathname,
+            '@': new URL('./src/', import.meta.url).pathname,
+          },
+        },
+      },
+    ],
   },
 });

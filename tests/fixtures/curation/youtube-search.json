@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "id": { "videoId": "dQw4w9WgXcQ" },
+      "snippet": {
+        "title": "React Hooks Tutorial - Complete Guide",
+        "channelTitle": "Traversy Media",
+        "publishedAt": "2023-01-15T10:00:00Z"
+      }
+    },
+    {
+      "id": { "videoId": "abc123xyz" },
+      "snippet": {
+        "title": "Learn React Hooks in 30 Minutes",
+        "channelTitle": "Programming with Mosh",
+        "publishedAt": "2023-06-20T14:30:00Z"
+      }
+    },
+    {
+      "id": { "videoId": "def456uvw" },
+      "snippet": {
+        "title": "Advanced React Patterns with Hooks",
+        "channelTitle": "The Net Ninja",
+        "publishedAt": "2022-11-10T09:15:00Z"
+      }
+    }
+  ]
+}

@@ -28,6 +28,29 @@ export async function getAllTasksInPlan(
 }
 
 /**
+ * Retrieves all tasks in a specific learning plan by planId
+ * @param planId - The ID of the learning plan
+ * @returns A promise that resolves to an array of tasks with module info
+ */
+export async function getTasksByPlanId(planId: string): Promise<
+  Array<{
+    task: DbTask;
+    moduleTitle: string;
+  }>
+> {
+  const rows = await db
+    .select({
+      task: tasks,
+      moduleTitle: modules.title,
+    })
+    .from(tasks)
+    .innerJoin(modules, eq(tasks.moduleId, modules.id))
+    .where(eq(modules.planId, planId))
+    .orderBy(tasks.order);
+  return rows;
+}
+
+/**
  * Retrieves the task progress for a specific user and task.
  * @param userId - The ID of the user.
  * @param taskId - The ID of the task.
@@ -102,4 +125,39 @@ export async function setTaskProgress(
     .returning();
 
   return progress;
+}
+
+/**
+ * Update task description by appending new content
+ * @param taskId - The ID of the task
+ * @param additionalDescription - Additional description text to append
+ * @returns Promise that resolves when update completes
+ */
+export async function appendTaskDescription(
+  taskId: string,
+  additionalDescription: string
+): Promise<void> {
+  // Get current task
+  const [currentTask] = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.id, taskId))
+    .limit(1);
+
+  if (!currentTask) {
+    throw new Error(`Task not found: ${taskId}`);
+  }
+
+  // Append to existing description (or create new if none exists)
+  const newDescription = currentTask.description
+    ? `${currentTask.description}\n\n${additionalDescription}`
+    : additionalDescription;
+
+  await db
+    .update(tasks)
+    .set({
+      description: newDescription,
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
 }

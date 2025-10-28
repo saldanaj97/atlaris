@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
-import { mapAttemptsToClient, mapDetailToClient } from '@/lib/mappers/detailToClient';
+import {
+  mapAttemptsToClient,
+  mapDetailToClient,
+} from '@/lib/mappers/detailToClient';
 import type {
   GenerationAttempt,
   LearningPlanDetail,
@@ -13,7 +16,9 @@ import type {
 
 const BASE_DATE = new Date('2025-01-01T00:00:00.000Z');
 
-function buildAttempt(overrides: Partial<GenerationAttempt> = {}): GenerationAttempt {
+function buildAttempt(
+  overrides: Partial<GenerationAttempt> = {}
+): GenerationAttempt {
   return {
     id: 'attempt-1',
     planId: 'plan-1',
@@ -63,7 +68,9 @@ function buildResource(
   } satisfies TaskResourceWithResource;
 }
 
-function buildTask(overrides: Partial<TaskWithRelations> = {}): TaskWithRelations {
+function buildTask(
+  overrides: Partial<TaskWithRelations> = {}
+): TaskWithRelations {
   return {
     id: 'task-1',
     moduleId: 'module-1',
@@ -79,7 +86,9 @@ function buildTask(overrides: Partial<TaskWithRelations> = {}): TaskWithRelation
   } satisfies TaskWithRelations;
 }
 
-function buildModule(overrides: Partial<ModuleWithTasks> = {}): ModuleWithTasks {
+function buildModule(
+  overrides: Partial<ModuleWithTasks> = {}
+): ModuleWithTasks {
   return {
     id: 'module-1',
     planId: 'plan-1',
@@ -118,15 +127,17 @@ function buildPlan(
   } satisfies LearningPlanWithModules;
 }
 
-function buildDetail(overrides: Partial<LearningPlanDetail> = {}): LearningPlanDetail {
+function buildDetail(
+  overrides: Partial<LearningPlanDetail> = {}
+): LearningPlanDetail {
   return {
     plan: buildPlan(),
     totalTasks: 0,
     completedTasks: 0,
     latestAttempt: null,
     attemptsCount: 0,
-     latestJobStatus: null,
-     latestJobError: null,
+    latestJobStatus: null,
+    latestJobError: null,
     ...overrides,
   } satisfies LearningPlanDetail;
 }

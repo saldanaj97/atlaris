@@ -101,7 +101,12 @@ export default [
     },
   },
   {
-    files: ['drizzle.config.ts', 'vitest.config.ts'],
+    files: [
+      'drizzle.config.ts',
+      'vitest.config.ts',
+      'vitest.integration.config.ts',
+      'vitest.unit.config.ts',
+    ],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
