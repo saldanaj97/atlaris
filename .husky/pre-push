@@ -20,6 +20,9 @@ if [ -z "$SOURCE_FILES" ]; then
   exit 0
 fi
 
-echo "Running related unit tests for changed files..."
-UNIT_CMD="pnpm run test:unit:related -- $SOURCE_FILES"
+echo "Running fast unit tests for changed files..."
+UNIT_CMD="SKIP_DB_TEST_SETUP=true pnpm run test:unit:related -- $SOURCE_FILES"
 eval "$UNIT_CMD"
+
+echo "Running integration tests (full)"
+pnpm test:integration:full

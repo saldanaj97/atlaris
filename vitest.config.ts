@@ -17,10 +17,15 @@ export default defineConfig({
     },
   },
   test: {
+    coverage: {
+      provider: 'v8',
+      reportsDirectory: 'coverage',
+      reporter: ['text', 'html'],
+    },
     projects: [
       {
-        name: 'integration',
         test: {
+          name: 'integration',
           globals: true,
           environment: 'jsdom',
           isolate: true,
@@ -34,30 +39,19 @@ export default defineConfig({
           ],
           setupFiles: ['tests/setup.ts'],
           maxConcurrency: 1,
-          coverage: {
-            provider: 'v8',
-            reportsDirectory: 'coverage/integration',
-            reporter: ['text', 'html'],
-          },
         },
       },
       {
-        name: 'unit',
         test: {
+          name: 'unit',
           globals: true,
           environment: 'jsdom',
           isolate: true,
           sequence: { concurrent: true },
-          pool: 'forks',
-          workers: 4,
+          pool: 'threads',
           testTimeout: 20_000,
           include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
           setupFiles: ['tests/unit/setup.ts'],
-          coverage: {
-            provider: 'v8',
-            reportsDirectory: 'coverage/unit',
-            reporter: ['text', 'html'],
-          },
         },
       },
     ],

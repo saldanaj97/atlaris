@@ -170,6 +170,7 @@ jobs:
             ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run unit tests (shard ${{ matrix.shard }}/${{ matrix.total }})
         env:
+          SKIP_DB_TEST_SETUP: 'true'
           ALLOW_DB_TRUNCATE: 'true'
           NODE_ENV: 'test'
           DATABASE_URL: ${{ env.DATABASE_URL }}
