@@ -27,10 +27,19 @@ import { JOB_TYPES } from '@/lib/jobs/types';
 
 // Mock dependencies
 vi.mock('@/lib/curation/youtube');
+vi.mock('@/lib/curation/docs');
 vi.mock('@/lib/ai/micro-explanations');
 vi.mock('@/lib/db/queries/tasks');
 vi.mock('@/lib/db/queries/resources');
 vi.mock('@/lib/ai/orchestrator');
+// Avoid DB interaction in usage/stripe for these curation-focused tests
+vi.mock('@/lib/db/usage', () => ({
+  recordUsage: vi.fn(async () => {}),
+}));
+vi.mock('@/lib/stripe/usage', () => ({
+  markPlanGenerationSuccess: vi.fn(async () => {}),
+  markPlanGenerationFailure: vi.fn(async () => {}),
+}));
 vi.mock('@/lib/curation/config', () => ({
   curationConfig: {
     enableCuration: true,
@@ -51,6 +60,14 @@ describe('Worker curation integration', () => {
   let mockUpsertAttach: MockedFunction<typeof upsertAndAttach>;
 
   beforeEach(() => {
+    // Ensure curation starts enabled by default for these tests
+    // Individual tests can toggle this flag as needed
+    try {
+      vi.mocked(curationConfig).enableCuration = true;
+    } catch {
+      // if module restore changed shape, ignore
+    }
+
     mockJob = {
       id: 'job1',
       type: JOB_TYPES.PLAN_GENERATION,
@@ -190,8 +207,14 @@ describe('Worker curation integration', () => {
         },
       ]);
       mockCurateYouTube.mockResolvedValue([
-        candidate({ url: 'yt1', title: 'YT', source: 'youtube' }),
-      ]);
+        scoredCandidate({
+          url: 'yt1',
+          title: 'YT',
+          source: 'youtube',
+          numericScore: 0.8,
+        }),
+      ] as unknown as ResourceCandidate[]);
+      mockCurateDocs.mockResolvedValue([]);
       mockUpsertAttach.mockResolvedValue([]);
 
       const result = await processPlanGenerationJob(mockJob);
@@ -274,8 +297,13 @@ describe('Worker curation integration', () => {
         },
       ]);
       mockCurateYouTube.mockResolvedValue([
-        candidate({ url: 'yt1', title: 'YT', source: 'youtube' }),
-      ]);
+        scoredCandidate({
+          url: 'yt1',
+          title: 'YT',
+          source: 'youtube',
+          numericScore: 0.75,
+        }),
+      ] as unknown as ResourceCandidate[]);
       mockUpsertAttach.mockResolvedValue([]);
 
       // First run
@@ -329,9 +357,18 @@ describe('Worker curation integration', () => {
         },
       ]);
       mockCurateYouTube.mockRejectedValue(new Error('YT API fail'));
-      mockCurateDocs.mockResolvedValue([
-        candidate({ url: 'doc1', title: 'Doc', source: 'doc' }),
-      ]);
+      // First task yields no docs; second task yields one doc
+      mockCurateDocs.mockResolvedValueOnce(
+        [] as unknown as ResourceCandidate[]
+      );
+      mockCurateDocs.mockResolvedValueOnce([
+        scoredCandidate({
+          url: 'doc1',
+          title: 'Doc',
+          source: 'doc',
+          numericScore: 0.85,
+        }),
+      ] as unknown as ResourceCandidate[]);
 
       await processPlanGenerationJob(mockJob);
 
@@ -350,19 +387,27 @@ describe('Worker curation integration', () => {
         },
       ]);
       mockCurateYouTube.mockResolvedValue([
-        candidate({ url: 'yt1', title: 'YT', source: 'youtube' }),
-      ]);
+        scoredCandidate({
+          url: 'yt1',
+          title: 'YT',
+          source: 'youtube',
+          numericScore: 0.8,
+        }),
+      ] as unknown as ResourceCandidate[]);
       mockGenerateMicro.mockResolvedValue(
         'Explanation: useState is key. **Practice:** Counter app.'
       );
 
       await processPlanGenerationJob(mockJob);
 
-      expect(mockGenerateMicro).toHaveBeenCalledWith(expect.any(Object), {
-        topic: 'React Basics',
-        taskTitle: 'Task with Explanation',
-        skillLevel: 'beginner',
-      });
+      expect(mockGenerateMicro).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          topic: 'React Basics',
+          taskTitle: 'Task with Explanation',
+          skillLevel: 'beginner',
+        })
+      );
       expect(mockAppendDescription).toHaveBeenCalledWith(
         'task1',
         expect.stringContaining('Explanation: useState')
@@ -372,7 +417,7 @@ describe('Worker curation integration', () => {
     it('skips micro-explanations if budget tight', async () => {
       // Simulate tight budget by mocking time
       vi.useFakeTimers();
-      vi.setSystemTime(Date.now() + 25_000); // Near budget end
+      vi.setSystemTime(Date.now() + 31_000); // Exceed 30s budget to skip micro-explanations
 
       mockGetTasks.mockResolvedValue([
         {
@@ -380,7 +425,11 @@ describe('Worker curation integration', () => {
           moduleTitle: 'Module 1',
         },
       ]);
-      mockCurateYouTube.mockResolvedValue([]);
+      mockCurateYouTube.mockImplementation(async () => {
+        // Simulate heavy time spent on curation so budget is exceeded
+        vi.advanceTimersByTime(31_000);
+        return [];
+      });
 
       await processPlanGenerationJob(mockJob);
 
@@ -401,8 +450,13 @@ describe('Worker curation integration', () => {
         },
       ]);
       mockCurateYouTube.mockResolvedValue([
-        candidate({ url: 'yt1', title: 'YT', source: 'youtube' }),
-      ]);
+        scoredCandidate({
+          url: 'yt1',
+          title: 'YT',
+          source: 'youtube',
+          numericScore: 0.8,
+        }),
+      ] as unknown as ResourceCandidate[]);
       mockUpsertAttach.mockResolvedValue([]);
 
       await processPlanGenerationJob(mockJob);

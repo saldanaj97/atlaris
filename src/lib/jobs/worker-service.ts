@@ -359,6 +359,13 @@ async function maybeCurateAndAttachResources(
 
           // Generate and append micro-explanation
           try {
+            // Skip micro-explanations if time budget is already exhausted
+            if (Date.now() - startTime > TIME_BUDGET_MS) {
+              console.log(
+                `[Curation] Time budget exceeded before micro-explanation for task ${task.id}`
+              );
+              return;
+            }
             const provider = new RouterGenerationProvider();
             const microExplanation = await generateMicroExplanation(provider, {
               topic: params.topic,
