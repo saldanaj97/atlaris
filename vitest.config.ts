@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
@@ -11,11 +9,6 @@ if (!process.env.CI) {
 }
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
   test: {
     coverage: {
       provider: 'v8',
@@ -39,6 +32,10 @@ export default defineConfig({
           ],
           setupFiles: ['tests/setup.ts'],
           maxConcurrency: 1,
+          alias: {
+            '@/': new URL('./src/', import.meta.url).pathname,
+            '@': new URL('./src/', import.meta.url).pathname,
+          },
         },
       },
       {
@@ -52,6 +49,10 @@ export default defineConfig({
           testTimeout: 20_000,
           include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
           setupFiles: ['tests/unit/setup.ts'],
+          alias: {
+            '@/': new URL('./src/', import.meta.url).pathname,
+            '@': new URL('./src/', import.meta.url).pathname,
+          },
         },
       },
     ],
