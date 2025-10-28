@@ -165,6 +165,7 @@ jobs:
           MOCK_GENERATION_DELAY_MS: ${{ vars.MOCK_GENERATION_DELAY_MS }}
           MOCK_GENERATION_FAILURE_RATE: ${{ vars.MOCK_GENERATION_FAILURE_RATE }}
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CF_AI_GATEWAY: ${{ secrets.CF_AI_GATEWAY }}
