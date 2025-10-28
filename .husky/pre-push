@@ -24,4 +24,10 @@ echo "Running fast unit tests for changed files..."
 SKIP_DB_TEST_SETUP=true pnpm run test:unit:related -- $SOURCE_FILES
 
 echo "Running integration tests (full)"
+# Allow skipping integration tests locally when DB isn't available
+if [ "${SKIP_DB_TEST_SETUP:-}" = "true" ]; then
+  echo "SKIP_DB_TEST_SETUP=true detected; skipping integration tests."
+  exit 0
+fi
+
 pnpm test:integration:full
