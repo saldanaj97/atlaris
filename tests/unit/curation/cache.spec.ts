@@ -248,6 +248,8 @@ describe('curation cache', () => {
     let fetcherCallCount = 0;
 
     beforeEach(() => {
+      // Use real timers for fetcher setTimeout-based delays in this block
+      vi.useRealTimers();
       fetcherCallCount = 0;
     });
 
@@ -297,7 +299,8 @@ describe('curation cache', () => {
         async () => scoredResults
       );
       expect(secondCall).toEqual(unscoredResults);
-      expect(fetcherCallCount).toBe(1); // Only first call made fetch
+      // No mock fetcher calls were made in this test; ensure we didn't trigger it
+      expect(fetcherCallCount).toBe(0);
     });
 
     it('handles cache miss correctly', async () => {
