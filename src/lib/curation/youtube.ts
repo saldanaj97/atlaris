@@ -142,55 +142,50 @@ export async function getVideoStats(
       'items(id,statistics/viewCount,snippet/publishedAt,contentDetails/duration,status/privacyStatus,status/embeddable)',
   });
 
-  const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+  try {
+    const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
 
-  if (!response.ok) {
-    let body = '';
-    try {
-      const text = await response.text();
-      body = text;
-    } catch {
-      body = '<no body>';
+    if (!response.ok) {
+      return [];
     }
-    throw new Error(
-      `YouTube videos API error: ${response.status} ${response.statusText} — ${body}`
-    );
-  }
 
-  const data = (await response.json()) as {
-    items?: Array<{
-      id?: string;
-      statistics?: { viewCount?: string };
-      snippet?: { publishedAt?: string };
-      contentDetails?: { duration?: string };
-      status?: { privacyStatus?: string; embeddable?: boolean };
-    }>;
-  };
+    const data = (await response.json()) as {
+      items?: Array<{
+        id?: string;
+        statistics?: { viewCount?: string };
+        snippet?: { publishedAt?: string };
+        contentDetails?: { duration?: string };
+        status?: { privacyStatus?: string; embeddable?: boolean };
+      }>;
+    };
 
-  const results: YouTubeVideoStats[] = [];
+    const results: YouTubeVideoStats[] = [];
 
-  for (const item of data.items || []) {
-    const videoId = item.id;
-    const viewCount = item.statistics?.viewCount;
-    const publishedAt = item.snippet?.publishedAt;
-    const duration = item.contentDetails?.duration;
-    const status = item.status;
+    for (const item of data.items || []) {
+      const videoId = item.id;
+      const viewCount = item.statistics?.viewCount;
+      const publishedAt = item.snippet?.publishedAt;
+      const duration = item.contentDetails?.duration;
+      const status = item.status;
 
-    if (videoId && viewCount && publishedAt && duration && status) {
-      results.push({
-        id: videoId,
-        viewCount: Number.parseInt(viewCount, 10),
-        publishedAt,
-        duration,
-        status: {
-          privacyStatus: status.privacyStatus,
-          embeddable: status.embeddable,
-        },
-      });
+      if (videoId && viewCount && publishedAt && duration && status) {
+        results.push({
+          id: videoId,
+          viewCount: Number.parseInt(viewCount, 10),
+          publishedAt,
+          duration,
+          status: {
+            privacyStatus: status.privacyStatus,
+            embeddable: status.embeddable,
+          },
+        });
+      }
     }
-  }
 
-  return results;
+    return results;
+  } catch {
+    return [];
+  }
 }
 
 /**

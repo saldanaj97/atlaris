@@ -16,6 +16,19 @@ if (!process.env.MOCK_GENERATION_FAILURE_RATE) {
   Object.assign(process.env, { MOCK_GENERATION_FAILURE_RATE: '0' });
 }
 
+// Provide required curation envs for unit tests
+if (!process.env.YOUTUBE_API_KEY) {
+  Object.assign(process.env, { YOUTUBE_API_KEY: 'test-yt-api-key' });
+}
+
+// Provide optional Google CSE credentials to exercise CSE code path when mocked
+if (!process.env.GOOGLE_CSE_ID) {
+  Object.assign(process.env, { GOOGLE_CSE_ID: 'cse-id' });
+}
+if (!process.env.GOOGLE_CSE_KEY) {
+  Object.assign(process.env, { GOOGLE_CSE_KEY: 'cse-key' });
+}
+
 // Extend expect with jest-dom matchers
 import '@testing-library/jest-dom';
 
