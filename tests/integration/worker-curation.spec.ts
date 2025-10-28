@@ -81,6 +81,9 @@ describe('Worker curation integration', () => {
     mockAppendDescription = vi.mocked(appendTaskDescription);
     mockUpsertAttach = vi.mocked(upsertAndAttach);
 
+    // Mock micro-explanations generation
+    mockGenerateMicro.mockResolvedValue('Mock micro-explanation');
+
     // Mock successful plan generation
     mockRunGeneration.mockResolvedValue({
       status: 'success',
@@ -95,6 +98,8 @@ describe('Worker curation integration', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    // Reset curation config mock
+    vi.restoreAllMocks();
   });
 
   // Helpers to satisfy strict types
@@ -165,9 +170,11 @@ describe('Worker curation integration', () => {
 
   describe('Curation gating', () => {
     it('skips curation when ENABLE_CURATION=false', async () => {
-      vi.doMock('@/lib/curation/config', () => ({
-        curationConfig: { ...curationConfig, enableCuration: false },
-      }));
+      // Mock the curation config to disable curation
+      vi.mocked(curationConfig).enableCuration = false;
+
+      // Mock getTasks to return empty array (shouldn't be called but just in case)
+      mockGetTasks.mockResolvedValue([]);
 
       const result = await processPlanGenerationJob(mockJob);
       expect(result.status).toBe('success');

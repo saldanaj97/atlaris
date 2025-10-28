@@ -3,13 +3,17 @@ import { ZodError, z } from 'zod';
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
 import type { ProviderMetadata } from '@/lib/ai/provider';
 import { RouterGenerationProvider } from '@/lib/ai/providers/router';
+import { generateMicroExplanation } from '@/lib/ai/micro-explanations';
 import { curateDocs } from '@/lib/curation/docs';
 import { curationConfig } from '@/lib/curation/config';
 import { selectTop, type Scored } from '@/lib/curation/ranking';
 // Note: ResourceCandidate not used directly here
 import { curateYouTube } from '@/lib/curation/youtube';
 import { upsertAndAttach } from '@/lib/db/queries/resources';
-import { getTasksByPlanId } from '@/lib/db/queries/tasks';
+import {
+  appendTaskDescription,
+  getTasksByPlanId,
+} from '@/lib/db/queries/tasks';
 import { recordUsage } from '@/lib/db/usage';
 import {
   markPlanGenerationFailure,
@@ -305,7 +309,7 @@ async function maybeCurateAndAttachResources(
   const taskRows = await getTasksByPlanId(planId);
 
   console.log(
-    `[Curation] Starting curation for ${taskRows.length} tasks in plan ${planId}`
+    `[Curation] Starting curation for ${taskRows?.length ?? 0} tasks in plan ${planId}`
   );
 
   // Prepare curation params
@@ -317,7 +321,7 @@ async function maybeCurateAndAttachResources(
   };
 
   // Process tasks with simple batching to enforce concurrency without extra deps
-  for (let i = 0; i < taskRows.length; i += CURATION_CONCURRENCY) {
+  for (let i = 0; i < (taskRows?.length ?? 0); i += CURATION_CONCURRENCY) {
     // Check time budget before starting a new batch
     if (Date.now() - startTime > TIME_BUDGET_MS) {
       console.log(
@@ -328,7 +332,8 @@ async function maybeCurateAndAttachResources(
 
     const batch = taskRows.slice(i, i + CURATION_CONCURRENCY);
     await Promise.all(
-      batch.map(async ({ task }) => {
+      batch.map(async (taskRow) => {
+        const { task, moduleTitle } = taskRow;
         // Check time budget before processing individual task
         if (Date.now() - startTime > TIME_BUDGET_MS) {
           console.log(
@@ -350,6 +355,28 @@ async function maybeCurateAndAttachResources(
             console.log(
               `[Curation] Attached ${candidates.length} resources to task ${task.id}`
             );
+          }
+
+          // Generate and append micro-explanation
+          try {
+            const provider = new RouterGenerationProvider();
+            const microExplanation = await generateMicroExplanation(provider, {
+              topic: params.topic,
+              moduleTitle,
+              taskTitle: task.title,
+              skillLevel: params.skillLevel,
+            });
+
+            await appendTaskDescription(task.id, microExplanation);
+            console.log(
+              `[Curation] Added micro-explanation to task ${task.id}`
+            );
+          } catch (explanationError) {
+            console.error(
+              `[Curation] Failed to generate micro-explanation for task ${task.id}:`,
+              explanationError
+            );
+            // Continue with other tasks - don't fail curation for micro-explanation errors
           }
         } catch (error) {
           console.error(`[Curation] Failed to curate task ${task.id}:`, error);

@@ -56,7 +56,7 @@ export async function searchYouTube(
   });
 
   return getOrSetWithLock(cacheKey, 'search', async () => {
-    const apiKey = curationConfig.youtubeApiKey;
+    const apiKey = curationConfig.youtubeApiKey!;
     const baseUrl = 'https://www.googleapis.com/youtube/v3/search';
 
     const searchParams = new URLSearchParams({
@@ -131,7 +131,7 @@ export async function getVideoStats(
     return [];
   }
 
-  const apiKey = curationConfig.youtubeApiKey;
+  const apiKey = curationConfig.youtubeApiKey!;
   const baseUrl = 'https://www.googleapis.com/youtube/v3/videos';
 
   const searchParams = new URLSearchParams({
@@ -215,6 +215,11 @@ function parseDurationToMinutes(duration: string): number {
 export async function curateYouTube(
   params: CurationParams
 ): Promise<ResourceCandidate[]> {
+  // Skip YouTube curation if API key is not available
+  if (!curationConfig.youtubeApiKey) {
+    return [];
+  }
+
   const batchTimestamp = new Date().toISOString();
   // Search for videos
   const searchResults = await searchYouTube(params.query, params);

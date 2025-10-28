@@ -3,7 +3,7 @@ import { z } from 'zod';
 // Environment variable schema for curation features
 // Use Zod coercion for numeric values to avoid NaN and enforce bounds/defaults.
 const curationEnvSchema = z.object({
-  YOUTUBE_API_KEY: z.string().min(1),
+  YOUTUBE_API_KEY: z.string().optional(),
   GOOGLE_CSE_ID: z.string().optional(),
   GOOGLE_CSE_KEY: z.string().optional(),
   ENABLE_CURATION: z.string().optional(),
@@ -35,18 +35,26 @@ export const curationConfig = (() => {
   const env = curationEnvSchema.parse(process.env);
   const devOrTest = isDevOrTest();
 
+  // Feature flag: enabled by default in dev/test, explicit in production
+  const enableCuration = env.ENABLE_CURATION
+    ? env.ENABLE_CURATION === 'true'
+    : devOrTest;
+
+  // Validate YouTube API key only when curation is enabled
+  if (enableCuration && !env.YOUTUBE_API_KEY) {
+    throw new Error('YOUTUBE_API_KEY is required when curation is enabled');
+  }
+
   return {
-    // Required YouTube API key
+    // YouTube API key (required only when curation is enabled)
     youtubeApiKey: env.YOUTUBE_API_KEY,
 
     // Optional Google Custom Search Engine credentials
     cseId: env.GOOGLE_CSE_ID,
     cseKey: env.GOOGLE_CSE_KEY,
 
-    // Feature flag: enabled by default in dev/test, explicit in production
-    enableCuration: env.ENABLE_CURATION
-      ? env.ENABLE_CURATION === 'true'
-      : devOrTest,
+    // Feature flag
+    enableCuration,
 
     // Minimum quality score threshold for resources (0-1 scale)
     // Coerced and validated by Zod with default fallback
