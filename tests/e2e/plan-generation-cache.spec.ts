@@ -36,6 +36,7 @@ const ORIGINAL_ENV = {
   MIN_RESOURCE_SCORE: process.env.MIN_RESOURCE_SCORE,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
+  MOCK_GENERATION_SEED: process.env.MOCK_GENERATION_SEED,
 };
 
 beforeAll(() => {
@@ -45,6 +46,7 @@ beforeAll(() => {
   process.env.MIN_RESOURCE_SCORE = '0.6';
   process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   process.env.MOCK_GENERATION_DELAY_MS = '300';
+  process.env.MOCK_GENERATION_SEED = '42'; // Deterministic generation
 });
 
 afterAll(() => {

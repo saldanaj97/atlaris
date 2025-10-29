@@ -2,7 +2,7 @@ import { ZodError, z } from 'zod';
 
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
 import type { ProviderMetadata } from '@/lib/ai/provider';
-import { RouterGenerationProvider } from '@/lib/ai/providers/router';
+import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { generateMicroExplanation } from '@/lib/ai/micro-explanations';
 import { curateDocs } from '@/lib/curation/docs';
 import { curationConfig } from '@/lib/curation/config';
@@ -187,8 +187,8 @@ export async function processPlanGenerationJob(
     // in generateLearningPlan action (via atomicCheckAndInsertPlan).
     // No need to check again here as the plan already exists.
 
-    // Use router-based provider with failover (mock in tests if configured)
-    const provider = new RouterGenerationProvider();
+    // Use configured provider (mock in tests, router with failover in production)
+    const provider = getGenerationProvider();
 
     const result = await runGenerationAttempt(
       {
@@ -216,16 +216,22 @@ export async function processPlanGenerationJob(
       );
 
       // Curation and micro-explanations (if enabled)
-      // Do not block job completion on curation; run in background.
+      // In production we run this fire-and-forget to avoid blocking the job.
+      // In tests, await for determinism so integration tests can assert effects.
       if (curationConfig.enableCuration) {
-        void maybeCurateAndAttachResources(
-          job.planId,
-          payload,
-          job.userId
-        ).catch((curationError) => {
-          // Log but don't fail the job
-          console.error('Curation failed:', curationError);
-        });
+        const runCuration = () =>
+          maybeCurateAndAttachResources(job.planId, payload, job.userId).catch(
+            (curationError) => {
+              // Log but don't fail the job
+              console.error('Curation failed:', curationError);
+            }
+          );
+
+        if (process.env.NODE_ENV === 'test') {
+          await runCuration();
+        } else {
+          void runCuration();
+        }
       }
 
       await markPlanGenerationSuccess(job.planId);
@@ -368,7 +374,7 @@ async function maybeCurateAndAttachResources(
               );
               return;
             }
-            const provider = new RouterGenerationProvider();
+            const provider = getGenerationProvider();
             const microExplanation = await generateMicroExplanation(provider, {
               topic: params.topic,
               moduleTitle,

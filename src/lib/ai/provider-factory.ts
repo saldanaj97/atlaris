@@ -16,7 +16,15 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
     (!providerType && process.env.NODE_ENV === 'development')
   ) {
     // Use mock provider in development or when explicitly configured
-    return new MockGenerationProvider();
+    const deterministicSeed = process.env.MOCK_GENERATION_SEED
+      ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
+      : undefined;
+    return new MockGenerationProvider({
+      deterministicSeed:
+        deterministicSeed !== undefined && !isNaN(deterministicSeed)
+          ? deterministicSeed
+          : undefined,
+    });
   }
   // Default to router for real usage with failover
   return new RouterGenerationProvider();
