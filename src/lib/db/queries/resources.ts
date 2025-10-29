@@ -119,15 +119,10 @@ export async function upsertAndAttach(
     return [];
   }
 
-  // Upsert all resources sequentially
-  // Note: Currently sequential. For MVP with small batches (1-3 items), this is acceptable.
-  // Batch optimization would require raw SQL with EXCLUDED values or handling conflicts differently.
-  const resourceIds: string[] = [];
-
-  for (const candidate of candidates) {
-    const resourceId = await upsertResource(candidate);
-    resourceIds.push(resourceId);
-  }
+  // Upsert resources concurrently while preserving input order
+  const resourceIds = await Promise.all(
+    candidates.map((candidate) => upsertResource(candidate))
+  );
 
   // Attach to task with ordering
   await attachTaskResources(taskId, resourceIds);

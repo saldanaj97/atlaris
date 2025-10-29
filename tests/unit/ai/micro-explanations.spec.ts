@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mocked } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   generateMicroExplanation,
   formatMicroExplanation,
@@ -8,11 +8,32 @@ import {
   buildMicroExplanationUserPrompt,
 } from '@/lib/ai/prompts';
 import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
+import { generateObject } from 'ai';
 
-// Mock the AI provider
-vi.mock('@/lib/ai/provider', () => ({
-  AiPlanGenerationProvider: vi.fn(),
-}));
+// Mock the AI SDK
+vi.mock('ai', async () => {
+  const actual = await vi.importActual<typeof import('ai')>('ai');
+  return {
+    ...actual,
+    generateObject: vi.fn(),
+  };
+});
+
+// Mock provider factories
+vi.mock('@ai-sdk/google', () => {
+  const mockModel = vi.fn();
+  return {
+    createGoogleGenerativeAI: vi.fn(() => mockModel),
+    google: mockModel,
+  };
+});
+
+vi.mock('@ai-sdk/openai', () => {
+  const mockModel = vi.fn();
+  return {
+    createOpenAI: vi.fn(() => mockModel),
+  };
+});
 
 describe('Micro-explanations', () => {
   describe('Prompt builders', () => {
@@ -50,32 +71,37 @@ describe('Micro-explanations', () => {
   });
 
   describe('generateMicroExplanation', () => {
-    let mockProvider: Mocked<AiPlanGenerationProvider>;
-    let mockGenerate: ReturnType<typeof vi.fn>;
+    let mockProvider: AiPlanGenerationProvider;
 
     beforeEach(() => {
-      mockGenerate = vi.fn();
+      vi.clearAllMocks();
       mockProvider = {
-        generate: mockGenerate,
+        generate: vi.fn(),
       } as any;
+
+      // Set up environment variables for provider selection
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'test-key';
+      process.env.AI_PRIMARY = 'gemini-1.5-flash';
+      // Set Cloudflare env vars to prevent errors when Cloudflare is attempted as fallback
+      process.env.CF_API_TOKEN = 'test-cf-token';
+      process.env.CF_ACCOUNT_ID = 'test-account';
+      process.env.AI_FALLBACK = '@cf/meta/llama-3.1-8b-instruct';
     });
 
-    it('parses valid JSON stream and returns formatted markdown', async () => {
-      // Mock stream chunks that form valid JSON
-      const chunks = [
-        '{',
-        '"explanation": "useState manages local state in functional components. It returns an array with the current state and a setter function. Always call the setter with a new value to trigger re-renders.",',
-        '"practice": "Try creating a counter component that increments a number using useState."',
-        '}',
-      ];
-      mockGenerate.mockResolvedValue({
-        stream: (async function* () {
-          for (const chunk of chunks) {
-            yield chunk;
-          }
-        })(),
-        metadata: {},
-      });
+    it('returns formatted markdown from structured response', async () => {
+      vi.mocked(generateObject).mockResolvedValue({
+        object: {
+          explanation:
+            'useState manages local state in functional components. It returns an array with the current state and a setter function. Always call the setter with a new value to trigger re-renders.',
+          practice:
+            'Try creating a counter component that increments a number using useState.',
+        },
+        usage: {
+          inputTokens: 50,
+          outputTokens: 30,
+          totalTokens: 80,
+        },
+      } as Awaited<ReturnType<typeof generateObject>>);
 
       const result = await generateMicroExplanation(mockProvider, {
         topic: 'React Hooks',
@@ -83,20 +109,24 @@ describe('Micro-explanations', () => {
         skillLevel: 'beginner',
       });
 
-      expect(mockGenerate).toHaveBeenCalled();
+      expect(generateObject).toHaveBeenCalled();
       expect(result).toContain('useState manages local state');
       expect(result).toContain(
         '**Practice:** Try creating a counter component'
       );
     });
 
-    it('falls back to raw text when JSON parsing fails', async () => {
-      mockGenerate.mockResolvedValue({
-        stream: (async function* () {
-          yield 'This is a simple explanation without JSON structure.';
-        })(),
-        metadata: {},
-      });
+    it('handles response without practice exercise', async () => {
+      vi.mocked(generateObject).mockResolvedValue({
+        object: {
+          explanation: 'useState is a React hook for managing component state.',
+        },
+        usage: {
+          inputTokens: 50,
+          outputTokens: 20,
+          totalTokens: 70,
+        },
+      } as Awaited<ReturnType<typeof generateObject>>);
 
       const result = await generateMicroExplanation(mockProvider, {
         topic: 'React Hooks',
@@ -105,8 +135,35 @@ describe('Micro-explanations', () => {
       });
 
       expect(result).toBe(
-        'This is a simple explanation without JSON structure.'
+        'useState is a React hook for managing component state.'
       );
+      expect(result).not.toContain('**Practice:**');
+    });
+
+    it('falls back to Cloudflare provider when Google fails', async () => {
+      // Cloudflare env vars are already set in beforeEach
+      // First on Google (fails)
+      vi.mocked(generateObject)
+        .mockRejectedValueOnce(new Error('Google provider failed'))
+        .mockResolvedValueOnce({
+          object: {
+            explanation: 'Fallback explanation from Cloudflare.',
+          },
+          usage: {
+            inputTokens: 50,
+            outputTokens: 20,
+            totalTokens: 70,
+          },
+        } as Awaited<ReturnType<typeof generateObject>>);
+
+      const result = await generateMicroExplanation(mockProvider, {
+        topic: 'React Hooks',
+        taskTitle: 'Use useState',
+        skillLevel: 'beginner',
+      });
+
+      expect(generateObject).toHaveBeenCalledTimes(2);
+      expect(result).toContain('Fallback explanation from Cloudflare.');
     });
 
     it('formats micro-explanation with practice exercise', () => {

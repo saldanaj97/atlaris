@@ -48,10 +48,12 @@ export async function searchYouTube(
   query: string,
   params: CurationParams & { duration?: DurationFilter }
 ): Promise<YouTubeSearchResult[]> {
+  const paramsVersion =
+    params.duration != null ? `search-v1-${params.duration}` : 'search-v1';
   const cacheKey = buildCacheKey({
     query,
     source: 'youtube',
-    paramsVersion: 'search-v1',
+    paramsVersion,
     cacheVersion: params.cacheVersion,
   });
 
@@ -152,7 +154,19 @@ export async function getVideoStats(
     return await getOrSetWithLock(key, 'yt-stats', async () => {
       const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
 
-      if (!response.ok) return [];
+      if (!response.ok) {
+        let body = '';
+        try {
+          body = await response.text();
+        } catch {
+          body = '<no body>';
+        }
+        console.error(
+          `YouTube stats API error: ${response.status} ${response.statusText}`,
+          { body }
+        );
+        throw new Error(`YouTube stats API error: ${response.status}`);
+      }
 
       const data = (await response.json()) as {
         items?: Array<{

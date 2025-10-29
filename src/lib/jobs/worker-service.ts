@@ -301,27 +301,27 @@ async function maybeCurateAndAttachResources(
   params: PlanGenerationJobData,
   _userId: string
 ): Promise<void> {
-  const CURATION_CONCURRENCY = 3;
-  const TIME_BUDGET_MS = 30_000; // 30 seconds
+  const CURATION_CONCURRENCY = curationConfig.concurrency;
+  const TIME_BUDGET_MS = curationConfig.timeBudgetMs;
   const startTime = Date.now();
 
   // Get all tasks for the plan
   const taskRows = await getTasksByPlanId(planId);
 
   console.log(
-    `[Curation] Starting curation for ${taskRows?.length ?? 0} tasks in plan ${planId}`
+    `[Curation] Starting curation for ${taskRows.length} tasks in plan ${planId}`
   );
 
   // Prepare curation params
   const curationParams = {
     query: params.topic,
     minScore: curationConfig.minResourceScore,
-    maxResults: 3,
+    maxResults: curationConfig.maxResults,
     cacheVersion: curationConfig.cacheVersion,
   };
 
   // Process tasks with simple batching to enforce concurrency without extra deps
-  for (let i = 0; i < (taskRows?.length ?? 0); i += CURATION_CONCURRENCY) {
+  for (let i = 0; i < taskRows.length; i += CURATION_CONCURRENCY) {
     // Check time budget before starting a new batch
     if (Date.now() - startTime > TIME_BUDGET_MS) {
       console.log(

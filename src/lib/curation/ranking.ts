@@ -70,7 +70,7 @@ function getDocsWeights(): WeightConfig {
 function computePopularityScore(viewCount: number): number {
   if (viewCount <= 0) return 0;
   // log10(views + 1) normalized to [0, 1] with realistic cap.
-  // Use 10^10 (~10B views) as the upper bound so extremely popular videos stay within range.
+  // Use 10^10 (exactly 10 billion views) as the upper bound so extremely popular videos stay within range.
   //  log10(10^10) = 10 → divide by 10 to map to [0,1].
   const logViews = Math.log10(viewCount + 1);
   const normalized = logViews / 10;
@@ -113,7 +113,8 @@ function computeRelevanceScore(
   let matches = 0;
   const total = queryWords.length;
 
-  // Pre-compile regexes for all query words
+  // Pre-compile regexes for all query words outside the loop for efficiency
+  // Word boundaries (\b) ensure whole-word matching (e.g., 'java' doesn't match 'javascript')
   const wordRegexes = queryWords.map((word) => {
     const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`\\b${escaped}\\b`);
@@ -226,19 +227,23 @@ export function scoreYouTube(
 /**
  * Score a documentation candidate
  */
-export function scoreDoc(c: ResourceCandidate): Scored {
+export function scoreDoc(c: ResourceCandidate, now: Date = new Date()): Scored {
   const metadata = c.metadata;
   const title = c.title;
+  // Safely coerce metadata.query to string or ''
   const query = (metadata.query as string) || '';
-  const publishedAt = metadata.publishedAt
-    ? new Date(metadata.publishedAt as string)
-    : undefined;
+  // Only treat metadata.publishedAt as a date string if typeof === 'string' before new Date
+  // If missing/invalid, fall back to undefined and the recency default of 0.5
+  const publishedAt =
+    metadata.publishedAt && typeof metadata.publishedAt === 'string'
+      ? new Date(metadata.publishedAt)
+      : undefined;
 
   // Compute components
   const components: ScoreComponents = {
     authority: computeAuthorityScore(c.url),
     relevance: computeRelevanceScore(query, title),
-    recency: publishedAt ? computeRecencyScore(publishedAt) : 0.5,
+    recency: publishedAt ? computeRecencyScore(publishedAt, now) : 0.5,
     popularity: 0,
   };
 

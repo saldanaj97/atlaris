@@ -16,6 +16,9 @@ const curationEnvSchema = z.object({
   CURATION_CACHE_TTL_YT_STATS_DAYS: z.coerce.number().int().min(0).default(2),
   CURATION_CACHE_TTL_DOCS_HEAD_DAYS: z.coerce.number().int().min(0).default(5),
   CURATION_NEGATIVE_CACHE_TTL_HOURS: z.coerce.number().int().min(0).default(4),
+  CURATION_CONCURRENCY: z.coerce.number().int().min(1).default(3),
+  CURATION_TIME_BUDGET_MS: z.coerce.number().int().min(1000).default(30_000),
+  CURATION_MAX_RESULTS: z.coerce.number().int().min(1).max(10).default(3),
 });
 
 /**
@@ -29,9 +32,31 @@ function isDevOrTest(): boolean {
 }
 
 /**
+ * Curation configuration type
+ */
+export type CurationConfig = {
+  readonly youtubeApiKey: string | undefined;
+  readonly cseId: string | undefined;
+  readonly cseKey: string | undefined;
+  readonly enableCuration: boolean;
+  readonly minResourceScore: number;
+  readonly cacheVersion: string;
+  readonly lruSize: number;
+  readonly ttl: {
+    readonly searchDays: number;
+    readonly ytStatsDays: number;
+    readonly docsHeadDays: number;
+    readonly negativeHours: number;
+  };
+  readonly concurrency: number;
+  readonly timeBudgetMs: number;
+  readonly maxResults: number;
+};
+
+/**
  * Centralized curation configuration with type-safe env reads and sane defaults
  */
-export const curationConfig = (() => {
+export const curationConfig: CurationConfig = (() => {
   const env = curationEnvSchema.parse(process.env);
   const devOrTest = isDevOrTest();
 
@@ -46,6 +71,11 @@ export const curationConfig = (() => {
       '[Curation] ENABLE_CURATION is on but YOUTUBE_API_KEY is missing; YouTube adapter will be skipped.'
     );
   }
+
+  // Extract numeric values to ensure proper type inference
+  const concurrency: number = env.CURATION_CONCURRENCY;
+  const timeBudgetMs: number = env.CURATION_TIME_BUDGET_MS;
+  const maxResults: number = env.CURATION_MAX_RESULTS;
 
   return {
     // YouTube API key (required only when curation is enabled)
@@ -72,16 +102,26 @@ export const curationConfig = (() => {
     // Time-to-live settings for different cache stages
     ttl: {
       // YouTube search results cache duration (days) - validated defaults
-      searchDays: env.CURATION_CACHE_TTL_SEARCH_DAYS ?? 7,
+      searchDays: env.CURATION_CACHE_TTL_SEARCH_DAYS,
 
       // YouTube video statistics cache duration (days) - validated defaults
-      ytStatsDays: env.CURATION_CACHE_TTL_YT_STATS_DAYS ?? 2,
+      ytStatsDays: env.CURATION_CACHE_TTL_YT_STATS_DAYS,
 
       // Documentation HEAD validation cache duration (days) - validated defaults
-      docsHeadDays: env.CURATION_CACHE_TTL_DOCS_HEAD_DAYS ?? 5,
+      docsHeadDays: env.CURATION_CACHE_TTL_DOCS_HEAD_DAYS,
 
       // Negative cache (empty/failed searches) duration (hours) - validated defaults
-      negativeHours: env.CURATION_NEGATIVE_CACHE_TTL_HOURS ?? 4,
+      negativeHours: env.CURATION_NEGATIVE_CACHE_TTL_HOURS,
     },
+
+    // Worker processing settings
+    // Concurrency limit for batch processing tasks
+    concurrency,
+
+    // Time budget for curation in milliseconds (default 30 seconds)
+    timeBudgetMs,
+
+    // Maximum number of resources to return per task
+    maxResults,
   } as const;
 })();

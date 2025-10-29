@@ -8,6 +8,12 @@ if (!process.env.CI) {
   else if (process.env.NODE_ENV === 'development') config({ path: '.env' });
 }
 
+// Shared alias configuration for test projects
+const testAliases = {
+  '@/': new URL('./src/', import.meta.url).pathname,
+  '@': new URL('./src/', import.meta.url).pathname,
+};
+
 export default defineConfig({
   test: {
     coverage: {
@@ -32,10 +38,7 @@ export default defineConfig({
           ],
           setupFiles: ['tests/setup.ts'],
           maxConcurrency: 1,
-          alias: {
-            '@/': new URL('./src/', import.meta.url).pathname,
-            '@': new URL('./src/', import.meta.url).pathname,
-          },
+          alias: testAliases,
         },
       },
       {
@@ -49,10 +52,7 @@ export default defineConfig({
           testTimeout: 20_000,
           include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
           setupFiles: ['tests/unit/setup.ts'],
-          alias: {
-            '@/': new URL('./src/', import.meta.url).pathname,
-            '@': new URL('./src/', import.meta.url).pathname,
-          },
+          alias: testAliases,
         },
       },
     ],
