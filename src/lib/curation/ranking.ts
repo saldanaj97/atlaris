@@ -113,10 +113,15 @@ function computeRelevanceScore(
   let matches = 0;
   const total = queryWords.length;
 
-  for (const word of queryWords) {
-    // Escape special regex characters and use word boundary for precise matching
+  // Pre-compile regexes for all query words
+  const wordRegexes = queryWords.map((word) => {
     const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const wordRegex = new RegExp(`\\b${escaped}\\b`);
+    return new RegExp(`\\b${escaped}\\b`);
+  });
+
+  for (let i = 0; i < queryWords.length; i++) {
+    const word = queryWords[i];
+    const wordRegex = wordRegexes[i];
     if (wordRegex.test(titleLower) || keywordSet.has(word)) {
       matches++;
     }
