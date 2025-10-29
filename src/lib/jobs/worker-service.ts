@@ -216,13 +216,16 @@ export async function processPlanGenerationJob(
       );
 
       // Curation and micro-explanations (if enabled)
+      // Do not block job completion on curation; run in background.
       if (curationConfig.enableCuration) {
-        try {
-          await maybeCurateAndAttachResources(job.planId, payload, job.userId);
-        } catch (curationError) {
+        void maybeCurateAndAttachResources(
+          job.planId,
+          payload,
+          job.userId
+        ).catch((curationError) => {
           // Log but don't fail the job
           console.error('Curation failed:', curationError);
-        }
+        });
       }
 
       await markPlanGenerationSuccess(job.planId);
