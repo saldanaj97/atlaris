@@ -12,8 +12,8 @@ import { z } from 'zod';
 import {
   buildMicroExplanationSystemPrompt,
   buildMicroExplanationUserPrompt,
-} from './prompts';
-import type { AiPlanGenerationProvider } from './provider';
+} from '@/lib/ai/prompts';
+import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
 
 /**
  * Schema for micro-explanation response

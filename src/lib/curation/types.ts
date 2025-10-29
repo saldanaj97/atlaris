@@ -1,12 +1,14 @@
+import { resourceType } from '@/lib/db/enums';
+
 /**
  * Curation source types
  */
 export type CurationSource = 'youtube' | 'doc';
 
 /**
- * Database resource type enum values
+ * Database resource type enum values (alias of canonical ResourceType from enums)
  */
-export type DbResourceType = 'youtube' | 'article' | 'course' | 'doc' | 'other';
+export type DbResourceType = (typeof resourceType.enumValues)[number];
 
 /**
  * Score components for multi-factor ranking

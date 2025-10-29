@@ -3,7 +3,7 @@
  * Tests: param shaping, batching, cutoff, early-stop, cache hits
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getVideoStats,
   searchYouTube,
@@ -13,8 +13,17 @@ import * as cacheModule from '@/lib/curation/cache';
 import * as validateModule from '@/lib/curation/validate';
 import * as rankingModule from '@/lib/curation/ranking';
 
+// Capture original fetch before any tests run
+const originalFetch = global.fetch;
+
 describe('YouTube Adapter', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    // Restore original fetch even if tests throw
+    global.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
@@ -96,10 +105,11 @@ describe('YouTube Adapter', () => {
         ],
       };
 
-      global.fetch = vi.fn(async () => ({
+      const mockFetch = vi.fn(async () => ({
         ok: true,
         json: async () => mockResponse,
-      })) as unknown as typeof fetch;
+      }));
+      global.fetch = mockFetch as unknown as typeof fetch;
 
       const stats = await getVideoStats(['video1']);
 
@@ -122,9 +132,10 @@ describe('YouTube Adapter', () => {
     });
 
     it('should handle API failures', async () => {
-      global.fetch = vi.fn(async () => ({
+      const mockFetch = vi.fn(async () => ({
         ok: false,
-      })) as unknown as typeof fetch;
+      }));
+      global.fetch = mockFetch as unknown as typeof fetch;
 
       // Mock getOrSetWithLock to call the fetcher directly, bypassing cache
       vi.spyOn(cacheModule, 'getOrSetWithLock').mockImplementation(

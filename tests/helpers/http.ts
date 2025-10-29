@@ -46,12 +46,15 @@ export function createMockFetch(configs: MockFetchConfig[]): typeof fetch {
     } else {
       throw new Error('Unsupported RequestInfo type for mock fetch');
     }
-    const method = init?.method || 'GET';
-
+    const inferredMethod =
+      init?.method ??
+      (typeof input === 'object' && input !== null && 'method' in (input as any)
+        ? ((input as any).method as string | undefined)
+        : undefined);
+    const method = inferredMethod ?? 'GET';
     const config = configs.find(
       (c) => c.url === url && (c.method === undefined || c.method === method)
     );
-
     if (!config) {
       throw new Error(`No mock config found for ${method} ${url}`);
     }

@@ -44,6 +44,7 @@ const DOMAIN_ALLOWLIST = [
   'go.dev',
   'rust-lang.org',
   'docs.microsoft.com',
+  'learn.microsoft.com',
   'cloud.google.com',
   'docs.aws.amazon.com',
   'tailwindcss.com',

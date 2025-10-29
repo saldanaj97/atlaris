@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { LRUCache } from 'lru-cache';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { resourceSearchCache } from '@/lib/db/schema';
@@ -34,63 +35,6 @@ const SKIP_DB = process.env.SKIP_DB_TEST_SETUP === 'true';
 const inFlight = new Map<string, Promise<unknown>>();
 
 /**
- * In-memory LRU cache for same-run lookups
- */
-class LRUCache<K extends string | { queryKey: string }, V> {
-  private cache: Map<string, V>;
-  private readonly capacity: number;
-
-  constructor(capacity: number) {
-    this.cache = new Map();
-    this.capacity = capacity;
-  }
-
-  private toKeyString(key: K): string {
-    return typeof key === 'string' ? key : key.queryKey;
-  }
-
-  get(key: K): V | undefined {
-    const k = this.toKeyString(key);
-    if (!this.cache.has(k)) {
-      return undefined;
-    }
-    const value = this.cache.get(k)!;
-    this.cache.delete(k);
-    this.cache.set(k, value);
-    return value;
-  }
-
-  set(key: K, value: V): void {
-    const k = this.toKeyString(key);
-    if (this.cache.has(k)) {
-      this.cache.delete(k);
-    }
-    if (this.cache.size >= this.capacity) {
-      const iter = this.cache.keys();
-      const first = iter.next();
-      if (!first.done) {
-        this.cache.delete(first.value);
-      }
-    }
-    this.cache.set(k, value);
-  }
-
-  has(key: K): boolean {
-    const k = this.toKeyString(key);
-    return this.cache.has(k);
-  }
-
-  delete(key: K): boolean {
-    const k = this.toKeyString(key);
-    return this.cache.delete(k);
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-}
-
-/**
  * Get LRU cache size from environment or use default
  */
 function getLRUSize(): number {
@@ -106,16 +50,16 @@ function getLRUSize(): number {
 
 /**
  * In-process LRU cache instance
+ * Uses string keys (queryKey) for cache lookups
  */
-export const lruCache = new LRUCache<
-  string | CurationCacheKey,
-  CachedPayload<unknown>
->(getLRUSize());
+export const lruCache = new LRUCache<string, CachedPayload<unknown>>({
+  max: getLRUSize(),
+});
 
 /**
  * Get TTL in milliseconds for a specific cache stage
  */
-function getStageTTL(stage: CacheStage): number {
+export function getStageTTL(stage: CacheStage): number {
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
   const MS_PER_HOUR = 60 * 60 * 1000;
 

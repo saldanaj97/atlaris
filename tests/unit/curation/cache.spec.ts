@@ -8,6 +8,7 @@ import {
   beforeAll,
   afterAll,
 } from 'vitest';
+import { LRUCache } from 'lru-cache';
 import {
   buildCacheKey,
   getCachedResults,
@@ -332,7 +333,7 @@ describe('curation cache', () => {
 
   describe('LRU cache', () => {
     it('maintains capacity and evicts least recently used', () => {
-      const smallLRU = new (lruCache.constructor as any)(3);
+      const smallLRU = new LRUCache<string, string>({ max: 3 });
 
       // Fill to capacity
       smallLRU.set('key1', 'value1');
@@ -352,7 +353,7 @@ describe('curation cache', () => {
     });
 
     it('moves accessed items to most recent position', () => {
-      const smallLRU = new (lruCache.constructor as any)(3);
+      const smallLRU = new LRUCache<string, string>({ max: 3 });
 
       smallLRU.set('key1', 'value1');
       smallLRU.set('key2', 'value2');

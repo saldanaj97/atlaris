@@ -73,8 +73,9 @@ export function mapOnboardingToCreateInput(
 ): CreateLearningPlanInput {
   const normalized = normalizeOnboardingValues(values);
   // Default optional startDate to today (YYYY-MM-DD) if the user omitted it.
-  // Converts current moment to UTC format for consistency across timezones.
-  // Note: The date may differ from local "today" when converted to UTC.
+  // Uses UTC date: toISOString() always returns UTC, and slice(0, 10) extracts
+  // the UTC date portion. This may differ from the user's local "today" depending
+  // on their timezone (e.g., 11 PM PST on Jan 1 becomes Jan 2 in UTC).
   const todayStr = new Date().toISOString().slice(0, 10);
   return createLearningPlanSchema.parse({
     ...normalized,

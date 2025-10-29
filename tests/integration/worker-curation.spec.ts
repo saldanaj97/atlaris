@@ -1,3 +1,13 @@
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockedFunction,
+} from 'vitest';
+
 // Mock dependencies BEFORE imports to prevent real module evaluation
 // Create a mutable config object that can be updated per test
 const mockCurationConfig = {
@@ -47,16 +57,6 @@ vi.mock('@/lib/stripe/usage', () => ({
   markPlanGenerationFailure: vi.fn(async () => {}),
 }));
 
-// Then import modules under test
-import {
-  describe,
-  it,
-  expect,
-  vi,
-  beforeEach,
-  afterEach,
-  type MockedFunction,
-} from 'vitest';
 import { processPlanGenerationJob } from '@/lib/jobs/worker-service';
 import { curateDocs } from '@/lib/curation/docs';
 import { curateYouTube } from '@/lib/curation/youtube';

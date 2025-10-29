@@ -209,6 +209,16 @@ export function pacePlan(
   modules: ParsedModule[],
   input: GenerationInput
 ): ParsedModule[] {
+  // If no deadline provided, do not trim the plan.
+  // Treat as unbounded capacity to preserve original modules (excluding empties).
+  const noDeadlineProvided =
+    input.deadlineDate == null ||
+    (typeof input.deadlineDate === 'string' &&
+      input.deadlineDate.trim() === '');
+  if (noDeadlineProvided) {
+    return trimModulesToCapacity(modules, Number.POSITIVE_INFINITY);
+  }
+
   const params: PacingParams = {
     weeklyHours: input.weeklyHours,
     skillLevel: input.skillLevel,

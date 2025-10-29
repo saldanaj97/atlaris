@@ -106,29 +106,56 @@ function computeRelevanceScore(
   title: string,
   keywords?: string[]
 ): number {
-  const queryWords = query.toLowerCase().split(/\s+/);
+  // Normalize, split, filter empty tokens, and trim
+  const queryTokens = query
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
   const titleLower = title.toLowerCase();
   const keywordSet = new Set(keywords?.map((k) => k.toLowerCase()) || []);
 
   let matches = 0;
-  const total = queryWords.length;
+  const total = queryTokens.length;
 
-  // Pre-compile regexes for all query words outside the loop for efficiency
+  if (total === 0) {
+    return 0;
+  }
+
+  // Pre-compile regexes for pure-word tokens outside the loop for efficiency
   // Word boundaries (\b) ensure whole-word matching (e.g., 'java' doesn't match 'javascript')
-  const wordRegexes = queryWords.map((word) => {
-    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`\\b${escaped}\\b`);
-  });
+  const wordRegexes = new Map<string, RegExp>();
 
-  for (let i = 0; i < queryWords.length; i++) {
-    const word = queryWords[i];
-    const wordRegex = wordRegexes[i];
-    if (wordRegex.test(titleLower) || keywordSet.has(word)) {
+  for (const token of queryTokens) {
+    // If token contains non-word characters, skip regex compilation
+    // We'll use substring matching for these
+    if (!/\W/.test(token)) {
+      const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      wordRegexes.set(token, new RegExp(`\\b${escaped}\\b`));
+    }
+  }
+
+  for (const token of queryTokens) {
+    let matched = false;
+
+    if (/\W/.test(token)) {
+      // Token has punctuation (e.g., "c#", "c++", "node.js")
+      // Use case-insensitive substring check (no word boundary)
+      matched = titleLower.includes(token) || keywordSet.has(token);
+    } else {
+      // Pure word characters - use word boundary regex for whole-word matching
+      const wordRegex = wordRegexes.get(token);
+      if (wordRegex) {
+        matched = wordRegex.test(titleLower) || keywordSet.has(token);
+      }
+    }
+
+    if (matched) {
       matches++;
     }
   }
 
-  return total > 0 ? matches / total : 0;
+  return matches / total;
 }
 
 /**

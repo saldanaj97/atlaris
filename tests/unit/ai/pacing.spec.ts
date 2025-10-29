@@ -288,5 +288,37 @@ describe('pacing module', () => {
       const result = pacePlan(modules, mockInput);
       expect(result).toHaveLength(0); // Omitted as empty
     });
+
+    it('returns full plan unmodified when no deadline is provided', () => {
+      const mockTaskBase: ParsedTask = {
+        title: 'Task',
+        description: '',
+        estimatedMinutes: 45,
+      };
+      const modules: ParsedModule[] = [
+        {
+          title: 'Mod 1',
+          description: '',
+          estimatedMinutes: 90,
+          tasks: Array(3)
+            .fill(mockTaskBase)
+            .map((t) => ({ ...t })),
+        },
+        {
+          title: 'Mod 2',
+          description: '',
+          estimatedMinutes: 90,
+          tasks: Array(3)
+            .fill(mockTaskBase)
+            .map((t) => ({ ...t })),
+        },
+      ];
+      const noDeadlineInput: GenerationInput = {
+        ...mockInput,
+        deadlineDate: undefined, // Simulate no deadline selected in onboarding
+      };
+      const result = pacePlan(modules, noDeadlineInput);
+      expect(result).toEqual(modules);
+    });
   });
 });

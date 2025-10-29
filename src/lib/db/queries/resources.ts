@@ -81,6 +81,7 @@ export async function attachTaskResources(
   // Perform query and insert within a transaction to avoid race conditions
   await db.transaction(async (tx) => {
     // Query current maximum order for the given taskId (or 0 if none)
+    // Use FOR UPDATE to lock rows and serialize concurrent access to maxOrder computation
     const result = await tx
       .select({
         maxOrder: sql<number>`COALESCE(MAX(${taskResources.order}), 0)`.as(
@@ -88,7 +89,8 @@ export async function attachTaskResources(
         ),
       })
       .from(taskResources)
-      .where(eq(taskResources.taskId, taskId));
+      .where(eq(taskResources.taskId, taskId))
+      .for('update');
 
     const currentMax = result[0]?.maxOrder ?? 0;
 

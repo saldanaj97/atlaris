@@ -230,10 +230,10 @@ describe('orchestrator pacing integration', () => {
       const result = await runGenerationAttempt(nullDateContext, mockOptions);
 
       expect(result.status).toBe('success');
-      // Pacing should fallback gracefully (capacity 0 → minimal modules)
-      expect(
-        (result as GenerationSuccessResult).modules.length
-      ).toBeGreaterThanOrEqual(1); // Assuming original has modules
+      // With no deadline, pacing should not trim the plan
+      expect((result as GenerationSuccessResult).modules).toEqual(
+        mockParsed.modules
+      );
     });
 
     it('preserves rawText and metadata through pacing', async () => {
