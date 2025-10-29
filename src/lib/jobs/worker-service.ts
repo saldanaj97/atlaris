@@ -7,7 +7,6 @@ import { generateMicroExplanation } from '@/lib/ai/micro-explanations';
 import { curateDocs } from '@/lib/curation/docs';
 import { curationConfig } from '@/lib/curation/config';
 import { selectTop, type Scored } from '@/lib/curation/ranking';
-// Note: ResourceCandidate not used directly here
 import { curateYouTube } from '@/lib/curation/youtube';
 import { upsertAndAttach } from '@/lib/db/queries/resources';
 import {
