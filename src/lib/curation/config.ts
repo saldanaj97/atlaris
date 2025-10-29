@@ -67,7 +67,7 @@ export const curationConfig = (() => {
 
     // In-memory LRU cache size (number of keys)
     // Coerced and validated by Zod with default fallback
-    lruSize: env.CURATION_LRU_SIZE ?? 500,
+    lruSize: env.CURATION_LRU_SIZE,
 
     // Time-to-live settings for different cache stages
     ttl: {
