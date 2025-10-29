@@ -7,7 +7,7 @@ import type { ResourceCandidate, CurationParams } from '@/lib/curation/types';
 import { buildCacheKey, getOrSetWithLock } from '@/lib/curation/cache';
 import { curationConfig } from '@/lib/curation/config';
 import { headOk, canonicalizeUrl } from '@/lib/curation/validate';
-import { scoreDoc, selectTop } from '@/lib/curation/ranking';
+import { scoreDoc, selectTop, type Scored } from '@/lib/curation/ranking';
 
 /**
  * CSE search result
@@ -101,9 +101,6 @@ async function searchDocsCSE(
   return getOrSetWithLock(cacheKey, 'search', async () => {
     const baseUrl = 'https://www.googleapis.com/customsearch/v1';
 
-    // Build site restrict parameter from allowlist
-    const siteRestrict = DOMAIN_ALLOWLIST.map((d) => `site:${d}`).join(' OR ');
-
     const searchParams = new URLSearchParams({
       q: query,
       cx: cseId,
@@ -112,35 +109,24 @@ async function searchDocsCSE(
       fields: 'items(link,title,snippet)',
     });
 
-    searchParams.append('siteSearch', siteRestrict);
+    // Restrict search to allowlisted domains via query operators
+    const siteRestrict = DOMAIN_ALLOWLIST.map((d) => `site:${d}`).join(' OR ');
+    searchParams.set('q', `${query} (${siteRestrict})`);
 
     const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
 
     if (!response.ok) {
+      let body = '';
       try {
-        const status = response.status;
-        const statusText = response.statusText;
-        const requestUrl = `${baseUrl}?${searchParams.toString()}`;
-        let body = '';
-        try {
-          const text = await response.text();
-          try {
-            const parsedBody: unknown = JSON.parse(text);
-            body = JSON.stringify(parsedBody, null, 2);
-          } catch {
-            body = text;
-          }
-        } catch {
-          body = 'Failed to read response body';
-        }
-        console.error(
-          `CSE API error: ${status} ${statusText} for request: ${requestUrl}`,
-          { body }
-        );
-      } catch (logError) {
-        console.error('Failed to log CSE API error:', logError);
+        body = await response.text();
+      } catch {
+        body = '<no body>';
       }
-      return [];
+      console.error(
+        `CSE API error: ${response.status} ${response.statusText}`,
+        { body }
+      );
+      throw new Error(`CSE API error: ${response.status}`);
     }
 
     const data = (await response.json()) as CSESearchResponse;
@@ -208,8 +194,13 @@ export async function searchDocs(
   query: string,
   params: CurationParams
 ): Promise<DocsSearchResult[]> {
-  // Try CSE first
-  const cseResults = await searchDocsCSE(query, params);
+  // Try CSE first (treat errors as transient and fallback)
+  let cseResults: DocsSearchResult[] = [];
+  try {
+    cseResults = await searchDocsCSE(query, params);
+  } catch {
+    // swallow and fallback
+  }
 
   if (cseResults.length > 0) {
     return cseResults;
@@ -223,11 +214,9 @@ export async function searchDocs(
  * Curate documentation resources
  * Searches, validates, scores, filters, and returns top candidates
  * @param params Curation parameters
- * @returns Array of curated resource candidates
+ * @returns Array of scored resource candidates (Scored[])
  */
-export async function curateDocs(
-  params: CurationParams
-): Promise<ResourceCandidate[]> {
+export async function curateDocs(params: CurationParams): Promise<Scored[]> {
   // Search for docs
   const searchResults = await searchDocs(params.query, params);
 

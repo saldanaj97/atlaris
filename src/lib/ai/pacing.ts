@@ -135,12 +135,15 @@ export function trimModulesToCapacity(
 
   // If we've already hit capacity with preselections, stop here
   if (preselectedTasks.length >= capacity) {
-    return modules
-      .filter((m) => m.tasks.length > 0)
-      .map((currentModule) => ({
-        ...currentModule,
-        tasks: currentModule.tasks.slice(0, 1),
-      }));
+    let remaining = capacity;
+    const limited: ParsedModule[] = [];
+    for (const m of modules) {
+      if (m.tasks.length === 0) continue;
+      if (remaining <= 0) break;
+      limited.push({ ...m, tasks: m.tasks.slice(0, 1) });
+      remaining -= 1;
+    }
+    return limited;
   }
 
   // Build ordered queue of remaining tasks

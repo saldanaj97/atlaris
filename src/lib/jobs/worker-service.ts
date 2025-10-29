@@ -427,8 +427,7 @@ async function curateTaskResources(
       ...params,
       query: `${params.query} ${taskTitle}`,
     });
-    // curateYouTube returns Scored[] (via selectTop), cast for type safety
-    candidates.push(...(ytResults as Scored[]));
+    candidates.push(...ytResults);
   } catch (error) {
     console.error('[Curation] YouTube search failed:', error);
   }
@@ -440,8 +439,7 @@ async function curateTaskResources(
         ...params,
         query: `${params.query} ${taskTitle}`,
       });
-      // curateDocs returns Scored[] (via selectTop), cast for type safety
-      candidates.push(...(docResults as Scored[]));
+      candidates.push(...docResults);
     } catch (error) {
       console.error('[Curation] Docs search failed:', error);
     }

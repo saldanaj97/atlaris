@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
@@ -9,6 +10,9 @@ if (!process.env.CI) {
   if (process.env.NODE_ENV === 'test') config({ path: '.env.test' });
   else if (process.env.NODE_ENV === 'development') config({ path: '.env' });
 }
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   resolve: {

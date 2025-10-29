@@ -116,6 +116,33 @@ describe('pacing module', () => {
       expect(result[1].tasks).toEqual([mockTaskT2]);
     });
 
+    it('limits to first capacity modules when non-empty modules > capacity', () => {
+      const module1 = {
+        ...mockModule,
+        title: 'Mod 1',
+        tasks: [{ ...mockTask, id: 't1' }],
+      };
+      const module2 = {
+        ...mockModule,
+        title: 'Mod 2',
+        tasks: [{ ...mockTask, id: 't2' }],
+      };
+      const module3 = {
+        ...mockModule,
+        title: 'Mod 3',
+        tasks: [{ ...mockTask, id: 't3' }],
+      };
+      const modules = [module1, module2, module3];
+      const result = trimModulesToCapacity(modules, 2);
+      expect(result).toHaveLength(2);
+      expect(result[0].title).toBe('Mod 1');
+      expect(result[1].title).toBe('Mod 2');
+      expect(result[0].tasks.length).toBe(1);
+      expect(result[1].tasks.length).toBe(1);
+      const totalTasks = result.reduce((sum, m) => sum + m.tasks.length, 0);
+      expect(totalTasks).toBe(2); // equals capacity
+    });
+
     it('ensures at least one task per module', () => {
       const mockTaskT1 = { ...mockTask, id: 't1' };
       const mockTaskT2 = { ...mockTask, id: 't2' };
@@ -218,9 +245,11 @@ describe('pacing module', () => {
         deadlineDate: '2024-01-08',
       };
       const lowResult = pacePlan(modules, lowInput);
-      // Capacity floor(1*1*60/45)=1, effective=1 <20, preselect 2 >1, so trim to first task each module, total 2
+      // Capacity floor(1*1*60/45)=1, effective=1 <20, preselect 2 >1, so trim to first module with 1 task, total 1
       const totalTasks = lowResult.reduce((sum, m) => sum + m.tasks.length, 0);
-      expect(totalTasks).toBe(2);
+      expect(totalTasks).toBe(1);
+      expect(lowResult).toHaveLength(1);
+      expect(lowResult[0].tasks.length).toBe(1);
     });
 
     it('uses effectiveCapacity fallback for low/zero capacity', () => {

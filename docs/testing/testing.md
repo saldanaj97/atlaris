@@ -194,8 +194,8 @@ it('anonymous users cannot read private learning plans', async () => {
 **Coverage:**
 
 - `plan-generation.test.ts` - Plan creation, worker processing, ready status
-- `plan-generation-curation.e2e.ts` - Curation with resources, explanations, cutoff
-- `plan-generation-cache.e2e.ts` - Cache behavior and reduced external calls
+- `plan-generation-curation.spec.ts` - Curation with resources, explanations, cutoff
+- `plan-generation-cache.spec.ts` - Cache behavior and reduced external calls
 - `plan-generation-dates.e2e.test.ts` - Date handling in generation
 - `onboarding-dates-ui.spec.tsx` - UI date picker integration
 

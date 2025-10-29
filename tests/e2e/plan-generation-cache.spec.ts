@@ -132,7 +132,7 @@ describe('Plan generation cache behavior E2E', () => {
       .where(eq(resourceSearchCache.source, 'youtube'));
 
     // Cache should have entries from first run
-    expect(cacheEntries.length).toBeGreaterThanOrEqual(0);
+    expect(cacheEntries.length).toBeGreaterThan(0);
 
     // Second generation with similar topic
     const requestPayload2 = {
@@ -228,7 +228,7 @@ describe('Plan generation cache behavior E2E', () => {
     // After generation, cache should have entries
     const cacheEntriesAfter = await db.select().from(resourceSearchCache);
 
-    // Cache should exist (may be empty if curation skipped, but no errors)
-    expect(Array.isArray(cacheEntriesAfter)).toBe(true);
+    // Cache entries should exist after generation
+    expect(cacheEntriesAfter.length).toBeGreaterThan(0);
   });
 });

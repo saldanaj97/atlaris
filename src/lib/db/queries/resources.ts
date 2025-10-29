@@ -3,6 +3,8 @@
  * Handles upserting resources and attaching them to tasks
  */
 
+import { eq, sql } from 'drizzle-orm';
+
 import { db } from '@/lib/db/drizzle';
 import { resources, taskResources } from '@/lib/db/schema';
 import type { ResourceCandidate } from '@/lib/curation/types';
@@ -31,9 +33,11 @@ export async function upsertResource(
 ): Promise<string> {
   const dbType = mapSourceToDbResourceType(candidate.source);
   const domain = extractDomain(candidate.url);
-  const durationMinutes = candidate.metadata.durationMinutes as
-    | number
-    | undefined;
+  const rawDuration = candidate.metadata?.['durationMinutes'];
+  const durationMinutes =
+    typeof rawDuration === 'number' && Number.isFinite(rawDuration)
+      ? Math.max(0, Math.round(rawDuration))
+      : undefined;
 
   const [result] = await db
     .insert(resources)
@@ -60,8 +64,9 @@ export async function upsertResource(
 
 /**
  * Attach resources to a task with stable ordering
- * Creates task_resource entries with order starting at 1
- * Idempotent: avoids duplicates using unique constraint
+ * Appends resources with order values starting after the current maximum
+ * Idempotent: avoids duplicates using unique constraint on (taskId, resourceId)
+ * Performs query and insert within a transaction to prevent race conditions
  * @param taskId Task ID
  * @param resourceIds Array of resource IDs in desired order
  */
@@ -73,14 +78,30 @@ export async function attachTaskResources(
     return;
   }
 
-  // Insert task resources with order
-  const values = resourceIds.map((resourceId, index) => ({
-    taskId,
-    resourceId,
-    order: index + 1,
-  }));
+  // Perform query and insert within a transaction to avoid race conditions
+  await db.transaction(async (tx) => {
+    // Query current maximum order for the given taskId (or 0 if none)
+    const result = await tx
+      .select({
+        maxOrder: sql<number>`COALESCE(MAX(${taskResources.order}), 0)`.as(
+          'maxOrder'
+        ),
+      })
+      .from(taskResources)
+      .where(eq(taskResources.taskId, taskId));
 
-  await db.insert(taskResources).values(values).onConflictDoNothing();
+    const currentMax = result[0]?.maxOrder ?? 0;
+
+    // Map resourceIds to values using order: currentMax + index + 1
+    const values = resourceIds.map((resourceId, index) => ({
+      taskId,
+      resourceId,
+      order: currentMax + index + 1,
+    }));
+
+    // Insert within the same transaction
+    await tx.insert(taskResources).values(values).onConflictDoNothing();
+  });
 }
 
 /**

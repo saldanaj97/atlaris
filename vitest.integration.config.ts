@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
@@ -9,6 +10,9 @@ if (!process.env.CI) {
   if (process.env.NODE_ENV === 'test') config({ path: '.env.test' });
   else if (process.env.NODE_ENV === 'development') config({ path: '.env' });
 }
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   resolve: {
@@ -25,7 +29,7 @@ export default defineConfig({
     poolOptions: { threads: { singleThread: true } },
     testTimeout: 20_000,
     include: [
-      'tests/{integration,e2e,security}/**/*.{test,spec}.{ts,tsx}',
+      'tests/{integration,e2e,security}/**/*.{test,spec,e2e}.{ts,tsx}',
       'src/**/*.{test,spec}.{ts,tsx}',
     ],
     setupFiles: ['tests/setup.ts'],

@@ -3,11 +3,6 @@
  * Tests: LRU capacity/eviction, TTL resolution, negative cache, get/set, dedupe, cleanup
  */
 
-/**
- * Unit tests for cache module
- * Tests: LRU capacity/eviction, TTL resolution, negative cache, get/set, dedupe, cleanup
- */
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/lib/db/drizzle';
 import { resourceSearchCache } from '@/lib/db/schema';

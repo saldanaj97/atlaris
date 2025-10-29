@@ -126,6 +126,13 @@ describe('YouTube Adapter', () => {
         ok: false,
       })) as unknown as typeof fetch;
 
+      // Mock getOrSetWithLock to call the fetcher directly, bypassing cache
+      vi.spyOn(cacheModule, 'getOrSetWithLock').mockImplementation(
+        async (_, __, fetcher) => {
+          return await fetcher();
+        }
+      );
+
       const stats = await getVideoStats(['video1']);
       expect(stats).toEqual([]);
     });

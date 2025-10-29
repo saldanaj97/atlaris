@@ -7,7 +7,7 @@ import type { ResourceCandidate, CurationParams } from '@/lib/curation/types';
 import { buildCacheKey, getOrSetWithLock } from '@/lib/curation/cache';
 import { curationConfig } from '@/lib/curation/config';
 import { isYouTubeEmbeddable } from '@/lib/curation/validate';
-import { scoreYouTube, selectTop } from '@/lib/curation/ranking';
+import { scoreYouTube, selectTop, type Scored } from '@/lib/curation/ranking';
 
 /**
  * YouTube API search result from search.list
@@ -133,6 +133,12 @@ export async function getVideoStats(
 
   const apiKey = curationConfig.youtubeApiKey!;
   const baseUrl = 'https://www.googleapis.com/youtube/v3/videos';
+  const key = buildCacheKey({
+    query: ids.slice().sort().join(','),
+    source: 'youtube',
+    paramsVersion: 'yt-stats-v1',
+    cacheVersion: curationConfig.cacheVersion,
+  });
 
   const searchParams = new URLSearchParams({
     part: 'statistics,snippet,contentDetails,status',
@@ -143,46 +149,46 @@ export async function getVideoStats(
   });
 
   try {
-    const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+    return await getOrSetWithLock(key, 'yt-stats', async () => {
+      const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
 
-    if (!response.ok) {
-      return [];
-    }
+      if (!response.ok) return [];
 
-    const data = (await response.json()) as {
-      items?: Array<{
-        id?: string;
-        statistics?: { viewCount?: string };
-        snippet?: { publishedAt?: string };
-        contentDetails?: { duration?: string };
-        status?: { privacyStatus?: string; embeddable?: boolean };
-      }>;
-    };
+      const data = (await response.json()) as {
+        items?: Array<{
+          id?: string;
+          statistics?: { viewCount?: string };
+          snippet?: { publishedAt?: string };
+          contentDetails?: { duration?: string };
+          status?: { privacyStatus?: string; embeddable?: boolean };
+        }>;
+      };
 
-    const results: YouTubeVideoStats[] = [];
+      const results: YouTubeVideoStats[] = [];
 
-    for (const item of data.items || []) {
-      const videoId = item.id;
-      const viewCount = item.statistics?.viewCount;
-      const publishedAt = item.snippet?.publishedAt;
-      const duration = item.contentDetails?.duration;
-      const status = item.status;
+      for (const item of data.items || []) {
+        const videoId = item.id;
+        const viewCount = item.statistics?.viewCount;
+        const publishedAt = item.snippet?.publishedAt;
+        const duration = item.contentDetails?.duration;
+        const status = item.status;
 
-      if (videoId && viewCount && publishedAt && duration && status) {
-        results.push({
-          id: videoId,
-          viewCount: Number.parseInt(viewCount, 10),
-          publishedAt,
-          duration,
-          status: {
-            privacyStatus: status.privacyStatus,
-            embeddable: status.embeddable,
-          },
-        });
+        if (videoId && viewCount && publishedAt && duration && status) {
+          results.push({
+            id: videoId,
+            viewCount: Number.parseInt(viewCount, 10),
+            publishedAt,
+            duration,
+            status: {
+              privacyStatus: status.privacyStatus,
+              embeddable: status.embeddable,
+            },
+          });
+        }
       }
-    }
 
-    return results;
+      return results;
+    });
   } catch {
     return [];
   }
@@ -210,11 +216,9 @@ function parseDurationToMinutes(duration: string): number {
  * Curate YouTube resources for a given query
  * Searches, fetches stats, scores, filters, and returns top candidates
  * @param params Curation parameters
- * @returns Array of curated resource candidates
+ * @returns Array of scored resource candidates (Scored[])
  */
-export async function curateYouTube(
-  params: CurationParams
-): Promise<ResourceCandidate[]> {
+export async function curateYouTube(params: CurationParams): Promise<Scored[]> {
   // Skip YouTube curation if API key is not available
   if (!curationConfig.youtubeApiKey) {
     return [];

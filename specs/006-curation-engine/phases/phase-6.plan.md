@@ -78,13 +78,13 @@
 
 ## E2E tests (extend under `tests/e2e/`)
 
-1. `tests/e2e/plan-generation-curation.e2e.ts`
+1. `tests/e2e/plan-generation-curation.spec.ts`
 
 - 5h/week with 4-week deadline generates scoped plan
 - Each task shows ≥1 resource; none below cutoff; micro-explanations appended
-- Links “valid” at app layer (based on validate module), not live network
+- Links "valid" at app layer (based on validate module), not live network
 
-2. `tests/e2e/plan-generation-cache.e2e.ts`
+2. `tests/e2e/plan-generation-cache.spec.ts`
 
 - Re-run scenario shows reduced external call counters and preserved attachments
 

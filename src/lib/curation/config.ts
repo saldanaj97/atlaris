@@ -42,7 +42,9 @@ export const curationConfig = (() => {
 
   // Validate YouTube API key only when curation is enabled
   if (enableCuration && !env.YOUTUBE_API_KEY) {
-    throw new Error('YOUTUBE_API_KEY is required when curation is enabled');
+    console.warn(
+      '[Curation] ENABLE_CURATION is on but YOUTUBE_API_KEY is missing; YouTube adapter will be skipped.'
+    );
   }
 
   return {

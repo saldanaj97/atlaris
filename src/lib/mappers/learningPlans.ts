@@ -73,11 +73,8 @@ export function mapOnboardingToCreateInput(
 ): CreateLearningPlanInput {
   const normalized = normalizeOnboardingValues(values);
   // Default optional startDate to today (YYYY-MM-DD) if the user omitted it.
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const todayStr = `${year}-${month}-${day}`;
+  // Use UTC-based date calculation for consistency across timezones.
+  const todayStr = new Date().toISOString().slice(0, 10);
   return createLearningPlanSchema.parse({
     ...normalized,
     startDate: normalized.startDate ?? todayStr,

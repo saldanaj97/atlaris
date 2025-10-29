@@ -1,3 +1,53 @@
+// Mock dependencies BEFORE imports to prevent real module evaluation
+// Create a mutable config object that can be updated per test
+const mockCurationConfig = {
+  enableCuration: true,
+  minResourceScore: 0.6,
+  cacheVersion: '1',
+  youtubeApiKey: undefined,
+  cseId: undefined,
+  cseKey: undefined,
+  lruSize: 500,
+  ttl: {
+    searchDays: 7,
+    ytStatsDays: 2,
+    docsHeadDays: 5,
+    negativeHours: 4,
+  },
+};
+
+vi.mock('@/lib/curation/config', () => ({
+  curationConfig: mockCurationConfig,
+}));
+vi.mock('@/lib/curation/youtube', () => ({
+  curateYouTube: vi.fn(),
+}));
+vi.mock('@/lib/curation/docs', () => ({
+  curateDocs: vi.fn(),
+}));
+vi.mock('@/lib/ai/micro-explanations', () => ({
+  generateMicroExplanation: vi.fn(),
+}));
+vi.mock('@/lib/db/queries/tasks', () => ({
+  getTasksByPlanId: vi.fn(),
+  appendTaskDescription: vi.fn(),
+}));
+vi.mock('@/lib/db/queries/resources', () => ({
+  upsertAndAttach: vi.fn(),
+}));
+vi.mock('@/lib/ai/orchestrator', () => ({
+  runGenerationAttempt: vi.fn(),
+}));
+// Avoid DB interaction in usage/stripe for these curation-focused tests
+vi.mock('@/lib/db/usage', () => ({
+  recordUsage: vi.fn(async () => {}),
+}));
+vi.mock('@/lib/stripe/usage', () => ({
+  markPlanGenerationSuccess: vi.fn(async () => {}),
+  markPlanGenerationFailure: vi.fn(async () => {}),
+}));
+
+// Then import modules under test
 import {
   describe,
   it,
@@ -8,7 +58,6 @@ import {
   type MockedFunction,
 } from 'vitest';
 import { processPlanGenerationJob } from '@/lib/jobs/worker-service';
-import { curationConfig } from '@/lib/curation/config';
 import { curateDocs } from '@/lib/curation/docs';
 import { curateYouTube } from '@/lib/curation/youtube';
 import { generateMicroExplanation } from '@/lib/ai/micro-explanations';
@@ -25,29 +74,6 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import type { Job, PlanGenerationJobData } from '@/lib/jobs/types';
 import { JOB_TYPES } from '@/lib/jobs/types';
 
-// Mock dependencies
-vi.mock('@/lib/curation/youtube');
-vi.mock('@/lib/curation/docs');
-vi.mock('@/lib/ai/micro-explanations');
-vi.mock('@/lib/db/queries/tasks');
-vi.mock('@/lib/db/queries/resources');
-vi.mock('@/lib/ai/orchestrator');
-// Avoid DB interaction in usage/stripe for these curation-focused tests
-vi.mock('@/lib/db/usage', () => ({
-  recordUsage: vi.fn(async () => {}),
-}));
-vi.mock('@/lib/stripe/usage', () => ({
-  markPlanGenerationSuccess: vi.fn(async () => {}),
-  markPlanGenerationFailure: vi.fn(async () => {}),
-}));
-vi.mock('@/lib/curation/config', () => ({
-  curationConfig: {
-    enableCuration: true,
-    minResourceScore: 0.6,
-    cacheVersion: '1',
-  },
-}));
-
 describe('Worker curation integration', () => {
   let mockJob: Job;
   let mockPayload: PlanGenerationJobData;
@@ -62,11 +88,7 @@ describe('Worker curation integration', () => {
   beforeEach(() => {
     // Ensure curation starts enabled by default for these tests
     // Individual tests can toggle this flag as needed
-    try {
-      vi.mocked(curationConfig).enableCuration = true;
-    } catch {
-      // if module restore changed shape, ignore
-    }
+    mockCurationConfig.enableCuration = true;
 
     mockJob = {
       id: 'job1',
@@ -187,8 +209,8 @@ describe('Worker curation integration', () => {
 
   describe('Curation gating', () => {
     it('skips curation when ENABLE_CURATION=false', async () => {
-      // Mock the curation config to disable curation
-      vi.mocked(curationConfig).enableCuration = false;
+      // Override the curation config to disable curation for this test
+      mockCurationConfig.enableCuration = false;
 
       // Mock getTasks to return empty array (shouldn't be called but just in case)
       mockGetTasks.mockResolvedValue([]);
@@ -213,7 +235,7 @@ describe('Worker curation integration', () => {
           source: 'youtube',
           numericScore: 0.8,
         }),
-      ] as unknown as ResourceCandidate[]);
+      ]);
       mockCurateDocs.mockResolvedValue([]);
       mockUpsertAttach.mockResolvedValue([]);
 
@@ -246,7 +268,7 @@ describe('Worker curation integration', () => {
           source: 'youtube',
           numericScore: 0.7,
         }),
-      ] as unknown as ResourceCandidate[]);
+      ]);
       mockCurateDocs.mockResolvedValue([]);
 
       await processPlanGenerationJob(mockJob);
@@ -280,7 +302,7 @@ describe('Worker curation integration', () => {
           source: 'youtube',
           numericScore: 0.65,
         }),
-      ] as unknown as ResourceCandidate[]);
+      ]);
 
       await processPlanGenerationJob(mockJob);
 
@@ -303,7 +325,7 @@ describe('Worker curation integration', () => {
           source: 'youtube',
           numericScore: 0.75,
         }),
-      ] as unknown as ResourceCandidate[]);
+      ]);
       mockUpsertAttach.mockResolvedValue([]);
 
       // First run
@@ -358,9 +380,7 @@ describe('Worker curation integration', () => {
       ]);
       mockCurateYouTube.mockRejectedValue(new Error('YT API fail'));
       // First task yields no docs; second task yields one doc
-      mockCurateDocs.mockResolvedValueOnce(
-        [] as unknown as ResourceCandidate[]
-      );
+      mockCurateDocs.mockResolvedValueOnce([]);
       mockCurateDocs.mockResolvedValueOnce([
         scoredCandidate({
           url: 'doc1',
@@ -368,7 +388,7 @@ describe('Worker curation integration', () => {
           source: 'doc',
           numericScore: 0.85,
         }),
-      ] as unknown as ResourceCandidate[]);
+      ]);
 
       await processPlanGenerationJob(mockJob);
 
@@ -393,7 +413,7 @@ describe('Worker curation integration', () => {
           source: 'youtube',
           numericScore: 0.8,
         }),
-      ] as unknown as ResourceCandidate[]);
+      ]);
       mockGenerateMicro.mockResolvedValue(
         'Explanation: useState is key. **Practice:** Counter app.'
       );
@@ -456,7 +476,7 @@ describe('Worker curation integration', () => {
           source: 'youtube',
           numericScore: 0.8,
         }),
-      ] as unknown as ResourceCandidate[]);
+      ]);
       mockUpsertAttach.mockResolvedValue([]);
 
       await processPlanGenerationJob(mockJob);

@@ -4,11 +4,11 @@
  */
 
 import { z } from 'zod';
-import type { AiPlanGenerationProvider } from './provider';
 import {
   buildMicroExplanationSystemPrompt,
   buildMicroExplanationUserPrompt,
 } from './prompts';
+import type { AiPlanGenerationProvider } from './provider';
 
 /**
  * Schema for micro-explanation response

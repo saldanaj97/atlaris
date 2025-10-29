@@ -84,13 +84,17 @@ function computeRecencyScore(
   publishedDate: Date,
   now: Date = new Date()
 ): number {
-  const ageDays =
-    (now.getTime() - publishedDate.getTime()) / (1000 * 60 * 60 * 24);
+  const msPerDay = 1000 * 60 * 60 * 24;
+  // Clamp negative ages to 0 (when publishedDate is after now)
+  const ageDays = Math.max(
+    0,
+    (now.getTime() - publishedDate.getTime()) / msPerDay
+  );
   const decayHalfLife = parseFloat(
     process.env.CURATION_RECENCY_DECAY_DAYS || '365'
   );
-  // Exponential decay: e^(-ageDays / halfLife)
-  return Math.exp(-ageDays / decayHalfLife);
+  // Exponential decay: e^(-ageDays / halfLife), clamped to [0, 1]
+  return Math.min(1, Math.exp(-ageDays / decayHalfLife));
 }
 
 /**
@@ -185,7 +189,7 @@ export function scoreYouTube(
   const viewCount = (metadata.viewCount as number) || 0;
   const publishedAt = metadata.publishedAt
     ? new Date(metadata.publishedAt as string)
-    : new Date();
+    : now;
   const durationMinutes = (metadata.durationMinutes as number) || 0;
   const title = c.title;
   const query = (metadata.query as string) || '';
