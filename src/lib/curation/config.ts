@@ -60,7 +60,7 @@ export const curationConfig = (() => {
 
     // Minimum quality score threshold for resources (0-1 scale)
     // Coerced and validated by Zod with default fallback
-    minResourceScore: env.MIN_RESOURCE_SCORE ?? 0.6,
+    minResourceScore: env.MIN_RESOURCE_SCORE,
 
     // Cache version for invalidation when scoring/filters change
     cacheVersion: env.CURATION_CACHE_VERSION ?? '1',
