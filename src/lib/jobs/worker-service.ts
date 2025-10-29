@@ -372,16 +372,18 @@ async function maybeCurateAndAttachResources(
               taskTitle: task.title,
               skillLevel: params.skillLevel,
             });
-            if (task.description?.includes(microExplanation)) {
+            const marker = `<!-- micro-explanation-${task.id} -->`;
+            if (task.description?.includes(marker)) {
               console.log(
                 `[Curation] Skipping micro-explanation for task ${task.id}; already present`
               );
               return;
             }
-            await appendTaskDescription(task.id, microExplanation);
+            const markedExplanation = `${marker}\n${microExplanation}`;
+            await appendTaskDescription(task.id, markedExplanation);
             task.description = task.description
-              ? `${task.description}\n\n${microExplanation}`
-              : microExplanation;
+              ? `${task.description}\n\n${markedExplanation}`
+              : markedExplanation;
             console.log(
               `[Curation] Added micro-explanation to task ${task.id}`
             );

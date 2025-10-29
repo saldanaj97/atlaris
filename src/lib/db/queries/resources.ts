@@ -3,7 +3,7 @@
  * Handles upserting resources and attaching them to tasks
  */
 
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import { resources, taskResources } from '@/lib/db/schema';
@@ -81,18 +81,21 @@ export async function attachTaskResources(
   // Perform query and insert within a transaction to avoid race conditions
   await db.transaction(async (tx) => {
     // Query current maximum order for the given taskId (or 0 if none)
-    // Use FOR UPDATE to lock rows and serialize concurrent access to maxOrder computation
-    const result = await tx
-      .select({
-        maxOrder: sql<number>`COALESCE(MAX(${taskResources.order}), 0)`.as(
-          'maxOrder'
-        ),
-      })
-      .from(taskResources)
-      .where(eq(taskResources.taskId, taskId))
-      .for('update');
+    // Lock the row with highest order to prevent concurrent modifications
+    // We use raw SQL because Drizzle's query builder doesn't properly support
+    // FOR UPDATE with ORDER BY and LIMIT in all cases
+    const rows = (await tx.execute(
+      sql`
+        SELECT "order"
+        FROM task_resources
+        WHERE task_id = ${taskId}
+        ORDER BY "order" DESC
+        LIMIT 1
+        FOR UPDATE
+      `
+    )) as Array<{ order: number }>;
 
-    const currentMax = result[0]?.maxOrder ?? 0;
+    const currentMax = rows[0]?.order ?? 0;
 
     // Map resourceIds to values using order: currentMax + index + 1
     const values = resourceIds.map((resourceId, index) => ({

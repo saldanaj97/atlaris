@@ -7,6 +7,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -33,6 +34,8 @@ const ORIGINAL_ENV = {
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
 };
 
+const originalFetch = global.fetch;
+
 beforeAll(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.ENABLE_CURATION = 'true';
@@ -50,10 +53,90 @@ afterAll(() => {
       process.env[key] = value;
     }
   });
+  global.fetch = originalFetch;
+});
+
+beforeEach(() => {
+  // Mock fetch for YouTube API calls to prevent real API failures
+  global.fetch = vi.fn(async (input: any, init?: any) => {
+    const method =
+      init?.method ?? (input instanceof Request ? input.method : 'GET');
+    const url =
+      typeof input === 'string' ? input : (input?.url ?? String(input));
+
+    if (
+      typeof url === 'string' &&
+      url.includes('www.googleapis.com/youtube/v3/search')
+    ) {
+      const body = {
+        items: [
+          {
+            id: { videoId: 'test-video-1' },
+            snippet: {
+              title: 'React Hooks Tutorial',
+              channelTitle: 'React Channel',
+            },
+          },
+          {
+            id: { videoId: 'test-video-2' },
+            snippet: {
+              title: 'useState and useEffect Guide',
+              channelTitle: 'React Channel',
+            },
+          },
+        ],
+      };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }
+
+    if (
+      typeof url === 'string' &&
+      url.includes('www.googleapis.com/youtube/v3/videos')
+    ) {
+      const params = new URL(url).searchParams;
+      const ids = (params.get('id') ?? '').split(',');
+      const body = {
+        items: ids.filter(Boolean).map((id) => ({
+          id,
+          statistics: { viewCount: '10000' },
+          snippet: { publishedAt: new Date().toISOString() },
+          contentDetails: { duration: 'PT10M' },
+          status: { privacyStatus: 'public', embeddable: true },
+        })),
+      };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }
+
+    // Mock Google CSE or docs search if needed
+    if (
+      typeof url === 'string' &&
+      url.includes('www.googleapis.com/customsearch/v1')
+    ) {
+      const body = {
+        items: [
+          {
+            title: 'React Hooks Documentation',
+            link: 'https://react.dev/reference/react',
+            snippet: 'Official React Hooks documentation',
+          },
+        ],
+      };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }
+
+    // Default: return 200 OK for HEAD requests (docs validation)
+    if (method === 'HEAD') {
+      return new Response(null, { status: 200 });
+    }
+
+    // Fallback to original fetch for other requests
+    return originalFetch(input as RequestInfo, init);
+  }) as typeof fetch;
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  global.fetch = originalFetch;
 });
 
 async function waitForStatus(
@@ -212,11 +295,11 @@ describe('Plan generation with curation E2E', () => {
     const originalMinScore = process.env.MIN_RESOURCE_SCORE;
 
     try {
+      // Set very high min score to filter out most resources
+      process.env.MIN_RESOURCE_SCORE = '0.95';
+
       // Reset modules to reload config with new env var value
       vi.resetModules();
-
-      // Set very high min score BEFORE re-importing modules
-      process.env.MIN_RESOURCE_SCORE = '0.95';
 
       // Dynamically re-import worker and related modules to pick up new config
       const { PlanGenerationWorker: FreshWorker } = await import(
@@ -243,9 +326,11 @@ describe('Plan generation with curation E2E', () => {
       worker.start();
 
       try {
+        // Increase timeout for this test since it may take longer with high cutoff
         const statusPayload = await waitForStatus(
           planId,
-          (payload) => payload.status === 'ready'
+          (payload) => payload.status === 'ready',
+          { timeoutMs: 60_000, intervalMs: 200 }
         );
         expect(statusPayload.status).toBe('ready');
       } finally {
@@ -273,11 +358,10 @@ describe('Plan generation with curation E2E', () => {
           .select()
           .from(taskResources)
           .where(eq(taskResources.taskId, firstTaskId));
-
         // With high cutoff (0.95), resources may be filtered out
         // but plan generation should still succeed
         // This verifies the cutoff is actually being applied
-        expect(attachedResources.length).toBeGreaterThanOrEqual(0);
+        expect(attachedResources).toHaveLength(0);
       }
     } finally {
       // Restore original env
@@ -289,5 +373,5 @@ describe('Plan generation with curation E2E', () => {
       // Reset modules again to restore original state
       vi.resetModules();
     }
-  }, 60_000);
+  }, 90_000);
 });

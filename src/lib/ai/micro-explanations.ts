@@ -73,19 +73,15 @@ async function tryGenerateWithProvider(
     if (!apiToken) {
       throw new Error('CF_API_TOKEN is not set');
     }
-
     const accountId = process.env.CF_ACCOUNT_ID;
     const gatewayUrl = process.env.CF_AI_GATEWAY;
-    const rawBaseURL =
-      gatewayUrl ||
-      (accountId
-        ? `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/openai`
-        : undefined);
 
+    if (!gatewayUrl && !accountId) {
+      throw new Error('Either CF_AI_GATEWAY or CF_ACCOUNT_ID must be set');
+    }
     let baseURL =
-      rawBaseURL ??
-      'https://api.cloudflare.com/client/v4/accounts/undefined/ai/v1/openai';
-
+      gatewayUrl ??
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/openai`;
     // Normalize Workers AI gateway URLs to OpenAI-compatible endpoint
     if (
       /gateway\.ai\.cloudflare\.com\/v1\/[^/]+\/[^/]+\/workers-ai\/?$/.test(
@@ -94,12 +90,10 @@ async function tryGenerateWithProvider(
     ) {
       baseURL = baseURL.replace(/\/workers-ai\/?$/, '/openai');
     }
-
     // Normalize model id for OpenAI-compatible endpoints
     const model = baseURL.includes('/openai')
       ? config.model.replace(/^@cf\//, '')
       : config.model;
-
     const openai = createOpenAI({
       apiKey: apiToken,
       baseURL,

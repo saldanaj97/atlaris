@@ -34,6 +34,7 @@ export default defineConfig({
           testTimeout: 20_000,
           include: [
             'tests/{integration,e2e,security}/**/*.{test,spec}.{ts,tsx}',
+            'tests/{integration,e2e,security}/**/*.*.test.{ts,tsx}',
             'src/**/*.{test,spec}.{ts,tsx}',
           ],
           setupFiles: ['tests/setup.ts'],

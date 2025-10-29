@@ -216,20 +216,47 @@ describe('YouTube Adapter', () => {
         paramsHash: 'v1',
       });
 
-      vi.spyOn(cacheModule, 'getOrSetWithLock').mockResolvedValueOnce([]);
-
+      vi.spyOn(cacheModule, 'getOrSetWithLock')
+        .mockResolvedValueOnce([
+          {
+            id: 'video1',
+            title: 'First',
+            channelTitle: 'Channel A',
+          },
+          {
+            id: 'video2',
+            title: 'Second',
+            channelTitle: 'Channel B',
+          },
+          {
+            id: 'video3',
+            title: 'Third',
+            channelTitle: 'Channel C',
+          },
+        ])
+        .mockResolvedValueOnce(
+          ['video1', 'video2', 'video3'].map((id) => ({
+            id,
+            viewCount: 1000,
+            publishedAt: '2024-01-01T00:00:00Z',
+            duration: 'PT10M',
+            status: { privacyStatus: 'public', embeddable: true },
+          }))
+        );
       vi.spyOn(rankingModule, 'selectTop').mockImplementation(
         (candidates, opts) => candidates.slice(0, opts.maxItems)
       );
-
       const results = await curateYouTube({
         query: 'test',
         minScore: 0.6,
         maxResults: 2,
         cacheVersion: '1',
       });
-
-      expect(results.length).toBeLessThanOrEqual(2);
+      expect(results).toHaveLength(2);
+      expect(rankingModule.selectTop).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ maxItems: 2 })
+      );
     });
   });
 });

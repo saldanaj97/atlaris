@@ -64,32 +64,31 @@ export function createMockGetOrSetWithLock<T>(
   const inFlightPromises: Map<string, Promise<T>> = new Map();
 
   return async (key: string, fetcher: () => Promise<T>): Promise<T> => {
-    const lock = lockManager.acquire(key);
-
-    if (!lock) {
-      // Lock already held, wait briefly for other caller to finish
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      // Wait for in-flight promise to exist, then return it
-      while (!inFlightPromises.has(key)) {
-        await new Promise((resolve) => setTimeout(resolve, 5));
+    while (true) {
+      const existing = inFlightPromises.get(key);
+      if (existing) {
+        return existing;
       }
-      return inFlightPromises.get(key)!;
-    }
 
-    try {
-      const count = callCounts.get(key) || 0;
-      callCounts.set(key, count + 1);
-      // Create fetcher promise and store it in the map
-      const fetcherPromise = fetcher();
-      inFlightPromises.set(key, fetcherPromise);
-      // Await the promise
-      const result = await fetcherPromise;
-      return result;
-    } finally {
-      // Clean up promise from map and release lock
-      // (callers with a reference can still await the promise)
-      inFlightPromises.delete(key);
-      lock.release();
+      const lock = lockManager.acquire(key);
+      if (!lock) {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        continue;
+      }
+
+      const promise = (async () => {
+        try {
+          const count = callCounts.get(key) || 0;
+          callCounts.set(key, count + 1);
+          return await fetcher();
+        } finally {
+          lock.release();
+          inFlightPromises.delete(key);
+        }
+      })();
+
+      inFlightPromises.set(key, promise);
+      return promise;
     }
   };
 }
