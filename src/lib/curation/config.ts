@@ -10,15 +10,87 @@ const curationEnvSchema = z.object({
   CURATION_CACHE_VERSION: z.string().optional(),
 
   // Numbers with coercion, validation and defaults
-  MIN_RESOURCE_SCORE: z.coerce.number().min(0).max(1).default(0.6),
-  CURATION_LRU_SIZE: z.coerce.number().int().min(1).default(500),
-  CURATION_CACHE_TTL_SEARCH_DAYS: z.coerce.number().int().min(0).default(7),
-  CURATION_CACHE_TTL_YT_STATS_DAYS: z.coerce.number().int().min(0).default(2),
-  CURATION_CACHE_TTL_DOCS_HEAD_DAYS: z.coerce.number().int().min(0).default(5),
-  CURATION_NEGATIVE_CACHE_TTL_HOURS: z.coerce.number().int().min(0).default(4),
-  CURATION_CONCURRENCY: z.coerce.number().int().min(1).default(3),
-  CURATION_TIME_BUDGET_MS: z.coerce.number().int().min(1000).default(30_000),
-  CURATION_MAX_RESULTS: z.coerce.number().int().min(1).max(10).default(3),
+  MIN_RESOURCE_SCORE: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("MIN_RESOURCE_SCORE must be a number between 0 and 1");
+    },
+    z.number().min(0).max(1).default(0.6)
+  ),
+  CURATION_LRU_SIZE: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("CURATION_LRU_SIZE must be an integer >= 1");
+    },
+    z.number().int().min(1).default(500)
+  ),
+  CURATION_CACHE_TTL_SEARCH_DAYS: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("CURATION_CACHE_TTL_SEARCH_DAYS must be an integer >= 0");
+    },
+    z.number().int().min(0).default(7)
+  ),
+  CURATION_CACHE_TTL_YT_STATS_DAYS: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("CURATION_CACHE_TTL_YT_STATS_DAYS must be an integer >= 0");
+    },
+    z.number().int().min(0).default(2)
+  ),
+  CURATION_CACHE_TTL_DOCS_HEAD_DAYS: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("CURATION_CACHE_TTL_DOCS_HEAD_DAYS must be an integer >= 0");
+    },
+    z.number().int().min(0).default(5)
+  ),
+  CURATION_NEGATIVE_CACHE_TTL_HOURS: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("CURATION_NEGATIVE_CACHE_TTL_HOURS must be an integer >= 0");
+    },
+    z.number().int().min(0).default(4)
+  ),
+  CURATION_CONCURRENCY: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("CURATION_CONCURRENCY must be an integer >= 1");
+    },
+    z.number().int().min(1).default(3)
+  ),
+  CURATION_TIME_BUDGET_MS: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("CURATION_TIME_BUDGET_MS must be an integer >= 1000");
+    },
+    z.number().int().min(1000).default(30_000)
+  ),
+  CURATION_MAX_RESULTS: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null || val === "") return undefined;
+      if (typeof val === "number") return val;
+      if (typeof val === "string" && !isNaN(Number(val))) return Number(val);
+      throw new Error("CURATION_MAX_RESULTS must be an integer between 1 and 10");
+    },
+    z.number().int().min(1).max(10).default(3)
+  ),
 });
 
 /**
