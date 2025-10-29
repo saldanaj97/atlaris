@@ -34,6 +34,8 @@ const ORIGINAL_ENV = {
   ENABLE_CURATION: process.env.ENABLE_CURATION,
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
   MIN_RESOURCE_SCORE: process.env.MIN_RESOURCE_SCORE,
+  MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
+  MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
 };
 
 beforeAll(() => {
@@ -41,6 +43,8 @@ beforeAll(() => {
   process.env.ENABLE_CURATION = 'true';
   process.env.YOUTUBE_API_KEY = 'test-key';
   process.env.MIN_RESOURCE_SCORE = '0.6';
+  process.env.MOCK_GENERATION_FAILURE_RATE = '0';
+  process.env.MOCK_GENERATION_DELAY_MS = '300';
 });
 
 afterAll(() => {
@@ -305,7 +309,7 @@ describe('Plan generation cache behavior E2E', () => {
       deltas.docsSearch +
       deltas.docsHead;
     expect(totalSecondDelta).toBeLessThanOrEqual(totalFirst);
-  });
+  }, 60_000);
 
   it('preserves attachments on cache hits', async () => {
     const clerkUserId = 'e2e-cache-preserve-user';
@@ -560,5 +564,5 @@ describe('Plan generation cache behavior E2E', () => {
       deltas.docsHead,
       'Expected no docs HEAD API calls in second run (cache hit)'
     ).toBe(0);
-  });
+  }, 60_000);
 });

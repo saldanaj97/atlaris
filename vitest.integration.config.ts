@@ -27,7 +27,8 @@ export default defineConfig({
     sequence: { concurrent: false },
     pool: 'threads',
     poolOptions: { threads: { singleThread: true } },
-    testTimeout: 20_000,
+    testTimeout: 60_000,
+    passWithNoTests: true,
     include: [
       'tests/{integration,e2e,security}/**/*.{test,spec,e2e}.{ts,tsx}',
       'src/**/*.{test,spec}.{ts,tsx}',

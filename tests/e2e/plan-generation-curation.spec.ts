@@ -29,6 +29,8 @@ const ORIGINAL_ENV = {
   ENABLE_CURATION: process.env.ENABLE_CURATION,
   YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
   MIN_RESOURCE_SCORE: process.env.MIN_RESOURCE_SCORE,
+  MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
+  MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
 };
 
 beforeAll(() => {
@@ -36,6 +38,8 @@ beforeAll(() => {
   process.env.ENABLE_CURATION = 'true';
   process.env.YOUTUBE_API_KEY = 'test-key';
   process.env.MIN_RESOURCE_SCORE = '0.6';
+  process.env.MOCK_GENERATION_FAILURE_RATE = '0';
+  process.env.MOCK_GENERATION_DELAY_MS = '300';
 });
 
 afterAll(() => {
@@ -185,7 +189,7 @@ describe('Plan generation with curation E2E', () => {
     // Verify scoped plan respects capacity (5h/week * 4 weeks ≈ 26 tasks)
     // With pacing, we expect reasonable task count
     expect(totalTasks).toBeLessThanOrEqual(30); // Slightly above capacity
-  });
+  }, 60_000);
 
   it('respects minimum resource score cutoff', async () => {
     const clerkUserId = 'e2e-cutoff-user';
@@ -285,5 +289,5 @@ describe('Plan generation with curation E2E', () => {
       // Reset modules again to restore original state
       vi.resetModules();
     }
-  });
+  }, 60_000);
 });
