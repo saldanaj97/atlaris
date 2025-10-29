@@ -184,13 +184,13 @@ jobs:
             echo "No E2E test files found; skipping."
             exit 0
           fi
-          TOTAL=${{ matrix.total }}
           SHARD=${{ matrix.shard }}
+          TOTAL=${{ matrix.total }}
+          if [ "$SHARD" -gt "$FILES" ]; then
+            echo "Shard $SHARD exceeds file count $FILES; skipping this shard."
+            exit 0
+          fi
           if [ "$FILES" -lt "$TOTAL" ]; then
-            if [ "$SHARD" -gt "$FILES" ]; then
-              echo "Shard $SHARD > file count $FILES; skipping shard."
-              exit 0
-            fi
             TOTAL="$FILES"
           fi
           pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL"
@@ -330,13 +330,13 @@ jobs:
             echo "No integration test files found; skipping."
             exit 0
           fi
-          TOTAL=${{ matrix.total }}
           SHARD=${{ matrix.shard }}
+          TOTAL=${{ matrix.total }}
+          if [ "$SHARD" -gt "$FILES" ]; then
+            echo "Shard $SHARD exceeds file count $FILES; skipping this shard."
+            exit 0
+          fi
           if [ "$FILES" -lt "$TOTAL" ]; then
-            if [ "$SHARD" -gt "$FILES" ]; then
-              echo "Shard $SHARD > file count $FILES; skipping shard."
-              exit 0
-            fi
             TOTAL="$FILES"
           fi
           pnpm vitest run tests/integration --shard "$SHARD/$TOTAL"
