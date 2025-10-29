@@ -19,10 +19,10 @@ function numericEnvVar(
     min,
     max,
     integer = false,
-    errorSuffix,
+    errorSuffix: _errorSuffix,
   } = options;
 
-  // Build error message from constraints
+  // Build error message parts from constraints for warnings
   const errorParts: string[] = [];
   if (integer) errorParts.push('an integer');
   else errorParts.push('a number');
@@ -35,16 +35,50 @@ function numericEnvVar(
     errorParts.push(`<= ${max}`);
   }
 
-  const errorMessage = errorSuffix
-    ? `${varName} must be ${errorParts.join(' ')}: ${errorSuffix}`
-    : `${varName} must be ${errorParts.join(' ')}`;
-
   return z.preprocess(
     (val) => {
       if (val === undefined || val === null || val === '') return undefined;
-      if (typeof val === 'number') return val;
-      if (typeof val === 'string' && !isNaN(Number(val))) return Number(val);
-      throw new Error(errorMessage);
+
+      // Handle numeric values
+      let numVal: number;
+      if (typeof val === 'number') {
+        if (!Number.isFinite(val)) return undefined; // NaN, Infinity -> default
+        numVal = val;
+      } else if (typeof val === 'string') {
+        const parsed = Number(val);
+        if (isNaN(parsed) || !Number.isFinite(parsed)) return undefined; // Invalid string -> default
+        numVal = parsed;
+      } else {
+        // Non-numeric type -> default
+        return undefined;
+      }
+
+      // Validate integer requirement
+      if (integer && !Number.isInteger(numVal)) {
+        // Log warning in non-test environments, but fall back to default
+        if (process.env.NODE_ENV !== 'test') {
+          console.warn(
+            `${varName} must be ${errorParts.join(' ')}, got "${val}". Using default: ${defaultValue}`
+          );
+        }
+        return undefined;
+      }
+
+      // Validate bounds
+      if (
+        (min !== undefined && numVal < min) ||
+        (max !== undefined && numVal > max)
+      ) {
+        // Log warning in non-test environments, but fall back to default
+        if (process.env.NODE_ENV !== 'test') {
+          console.warn(
+            `${varName} must be ${errorParts.join(' ')}, got "${val}". Using default: ${defaultValue}`
+          );
+        }
+        return undefined;
+      }
+
+      return numVal;
     },
     (() => {
       let schema: z.ZodNumber = z.number();

@@ -10,21 +10,27 @@ import {
 
 // Mock dependencies BEFORE imports to prevent real module evaluation
 // Create a mutable config object that can be updated per test
-const mockCurationConfig = {
-  enableCuration: true,
-  minResourceScore: 0.6,
-  cacheVersion: '1',
-  youtubeApiKey: undefined,
-  cseId: undefined,
-  cseKey: undefined,
-  lruSize: 500,
-  ttl: {
-    searchDays: 7,
-    ytStatsDays: 2,
-    docsHeadDays: 5,
-    negativeHours: 4,
+// Use vi.hoisted to ensure the mock is initialized before vi.mock factory executes
+const { mockCurationConfig } = vi.hoisted(() => ({
+  mockCurationConfig: {
+    enableCuration: true,
+    minResourceScore: 0.6,
+    cacheVersion: '1',
+    youtubeApiKey: undefined,
+    cseId: undefined,
+    cseKey: undefined,
+    lruSize: 500,
+    concurrency: 3,
+    timeBudgetMs: 30_000,
+    maxResults: 3,
+    ttl: {
+      searchDays: 7,
+      ytStatsDays: 2,
+      docsHeadDays: 5,
+      negativeHours: 4,
+    },
   },
-};
+}));
 
 vi.mock('@/lib/curation/config', () => ({
   curationConfig: mockCurationConfig,
