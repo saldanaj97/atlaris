@@ -114,7 +114,8 @@ import { processPlanGenerationJob } from '@/lib/jobs/worker-service';
 describe('Worker-path prompt propagation with dates', () => {
   beforeEach(async () => {
     await truncateAll();
-    // Ensure router does NOT switch to MockGenerationProvider
+    // Ensure router is used by deleting AI_PROVIDER and setting AI_USE_MOCK
+    delete process.env.AI_PROVIDER;
     process.env.AI_USE_MOCK = 'false';
   });
 

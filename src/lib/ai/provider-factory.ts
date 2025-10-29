@@ -10,6 +10,13 @@ import { RouterGenerationProvider } from './providers/router';
  */
 export function getGenerationProvider(): AiPlanGenerationProvider {
   const providerType = process.env.AI_PROVIDER?.toLowerCase();
+  const isTest =
+    process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID;
+
+  // In test mode, honor AI_USE_MOCK to allow tests to force router path
+  if (isTest && process.env.AI_USE_MOCK === 'false') {
+    return new RouterGenerationProvider();
+  }
 
   if (
     providerType === 'mock' ||

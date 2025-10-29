@@ -71,6 +71,7 @@ export class PlanGenerationWorker {
   private loopPromise: Promise<void> | null = null;
   private shuttingDown = false;
   private cacheCleanupInterval: NodeJS.Timeout | null = null;
+  private shutdownController: AbortController | null = null;
 
   private readonly activeJobs = new Set<Promise<void>>();
   private readonly stats: PlanGenerationWorkerStats = {
@@ -87,8 +88,11 @@ export class PlanGenerationWorker {
       10
     );
     this.concurrency = Math.max(options.concurrency ?? DEFAULT_CONCURRENCY, 1);
+    const isTest =
+      process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID;
     this.gracefulShutdownTimeoutMs = Math.max(
-      options.gracefulShutdownTimeoutMs ?? DEFAULT_SHUTDOWN_TIMEOUT_MS,
+      options.gracefulShutdownTimeoutMs ??
+        (isTest ? 60_000 : DEFAULT_SHUTDOWN_TIMEOUT_MS),
       1000
     );
     this.closeDbOnStop = options.closeDbOnStop ?? true;
@@ -114,6 +118,7 @@ export class PlanGenerationWorker {
 
     this.isRunning = true;
     this.stopRequested = false;
+    this.shutdownController = new AbortController();
 
     // Start cache cleanup interval
     this.startCacheCleanup();
@@ -134,6 +139,9 @@ export class PlanGenerationWorker {
     this.shuttingDown = true;
     this.stopRequested = true;
     this.log('info', 'worker_stop_requested', {});
+
+    // Abort in-flight work to prevent hanging
+    this.shutdownController?.abort();
 
     const loop = this.loopPromise;
     if (!loop) {
@@ -156,7 +164,10 @@ export class PlanGenerationWorker {
       await Promise.race([loop, timeoutPromise]);
     } catch (error) {
       const details = normalizeError(error);
-      this.log('error', 'worker_stop_timeout', details);
+      this.log('error', 'worker_stop_timeout', {
+        ...details,
+        activeJobsCount: this.activeJobs.size,
+      });
       throw error;
     } finally {
       if (timeoutId) {
@@ -252,7 +263,8 @@ export class PlanGenerationWorker {
     });
 
     try {
-      const result = await processPlanGenerationJob(job);
+      const signal = this.shutdownController?.signal;
+      const result = await processPlanGenerationJob(job, { signal });
       await this.finalizeJob(job, result, Date.now() - startedAt);
     } catch (error) {
       const normalized = normalizeError(error);

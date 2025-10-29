@@ -34,6 +34,7 @@ export interface RunGenerationOptions {
   clock?: () => number;
   dbClient?: Parameters<typeof startAttempt>[0]['dbClient'];
   now?: () => Date;
+  signal?: AbortSignal;
 }
 
 export interface GenerationSuccessResult {
@@ -122,12 +123,21 @@ export async function runGenerationAttempt(
   });
   const startedAt = attemptClockStart;
 
+  // Combine timeout signal with external shutdown signal if provided
+  const externalSignal = options.signal;
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  timeout.signal.addEventListener('abort', onAbort);
+  if (externalSignal) {
+    externalSignal.addEventListener('abort', onAbort);
+  }
+
   let providerMetadata: ProviderMetadata | undefined;
   let rawText: string | undefined;
 
   try {
     const providerResult = await provider.generate(context.input, {
-      signal: timeout.signal,
+      signal: controller.signal,
       timeoutMs: options.timeoutConfig?.baseMs,
     });
 
@@ -144,6 +154,10 @@ export async function runGenerationAttempt(
 
     const durationMs = clock() - startedAt;
     timeout.cancel();
+    timeout.signal.removeEventListener('abort', onAbort);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onAbort);
+    }
 
     const attempt = await recordSuccess({
       planId: context.planId,
@@ -169,6 +183,10 @@ export async function runGenerationAttempt(
     };
   } catch (error) {
     timeout.cancel();
+    timeout.signal.removeEventListener('abort', onAbort);
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onAbort);
+    }
     const durationMs = clock() - startedAt;
     const timedOut = timeout.timedOut || error instanceof ProviderTimeoutError;
 

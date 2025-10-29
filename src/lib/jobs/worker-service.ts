@@ -145,7 +145,8 @@ function buildJobResult(
 }
 
 export async function processPlanGenerationJob(
-  job: Job
+  job: Job,
+  opts?: { signal?: AbortSignal }
 ): Promise<ProcessPlanGenerationJobResult> {
   if (job.type !== JOB_TYPES.PLAN_GENERATION) {
     return {
@@ -204,7 +205,7 @@ export async function processPlanGenerationJob(
           deadlineDate: payload.deadlineDate,
         },
       },
-      { provider }
+      { provider, signal: opts?.signal }
     );
 
     if (result.status === 'success') {
