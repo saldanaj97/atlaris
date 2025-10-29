@@ -472,6 +472,14 @@ describe('Plan generation cache behavior E2E', () => {
 
     const firstAttachments = await getPlanTaskAttachments(planId);
 
+    // Capture counter values after first run, before second run
+    const countersBeforeSecondRun = {
+      youtubeSearch: fetchCounters.youtubeSearch,
+      youtubeStats: fetchCounters.youtubeStats,
+      docsSearch: fetchCounters.docsSearch,
+      docsHead: fetchCounters.docsHead,
+    };
+
     // Trigger a second identical plan generation to ensure cache hit
     const request2 = new Request(BASE_URL, {
       method: 'POST',
@@ -525,11 +533,32 @@ describe('Plan generation cache behavior E2E', () => {
       }
     }
 
+    // Calculate deltas: counters after second run - counters before second run
+    const deltas = {
+      youtubeSearch:
+        fetchCounters.youtubeSearch - countersBeforeSecondRun.youtubeSearch,
+      youtubeStats:
+        fetchCounters.youtubeStats - countersBeforeSecondRun.youtubeStats,
+      docsSearch: fetchCounters.docsSearch - countersBeforeSecondRun.docsSearch,
+      docsHead: fetchCounters.docsHead - countersBeforeSecondRun.docsHead,
+    };
+
     // Assert second run made zero new upstream calls due to cache hits
-    // First run already populated caches; second identical run should not increase totals (i.e., still minimal)
-    // Since we only installed the mock before first run in this test, assert that second run did not perform additional calls
-    // by capturing counters before second run and re-checking after; simpler: ensure counters are small and not exploding
-    expect(fetchCounters.youtubeStats).toBeLessThanOrEqual(1);
-    expect(fetchCounters.docsHead).toBeLessThanOrEqual(2);
+    expect(
+      deltas.youtubeSearch,
+      'Expected no YouTube search API calls in second run (cache hit)'
+    ).toBe(0);
+    expect(
+      deltas.youtubeStats,
+      'Expected no YouTube stats API calls in second run (cache hit)'
+    ).toBe(0);
+    expect(
+      deltas.docsSearch,
+      'Expected no docs search API calls in second run (cache hit)'
+    ).toBe(0);
+    expect(
+      deltas.docsHead,
+      'Expected no docs HEAD API calls in second run (cache hit)'
+    ).toBe(0);
   });
 });
