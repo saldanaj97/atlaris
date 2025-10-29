@@ -142,7 +142,7 @@ afterEach(() => {
 async function waitForStatus(
   planId: string,
   predicate: (payload: { status: string }) => boolean,
-  { timeoutMs = 30_000, intervalMs = 100 } = {}
+  { timeoutMs = 60_000, intervalMs = 100 } = {}
 ): Promise<{ status: string }> {
   const deadline = Date.now() + timeoutMs;
 

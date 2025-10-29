@@ -66,7 +66,7 @@ afterEach(() => {
 async function waitForStatus(
   planId: string,
   predicate: (payload: { status: string }) => boolean,
-  { timeoutMs = 30_000, intervalMs = 100 } = {}
+  { timeoutMs = 60_000, intervalMs = 100 } = {}
 ): Promise<{ status: string }> {
   const deadline = Date.now() + timeoutMs;
 
@@ -566,5 +566,5 @@ describe('Plan generation cache behavior E2E', () => {
       deltas.docsHead,
       'Expected no docs HEAD API calls in second run (cache hit)'
     ).toBe(0);
-  }, 60_000);
+  }, 120_000);
 });

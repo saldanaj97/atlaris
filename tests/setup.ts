@@ -25,11 +25,6 @@ if (!process.env.MOCK_GENERATION_FAILURE_RATE) {
   Object.assign(process.env, { MOCK_GENERATION_FAILURE_RATE: '0' });
 }
 
-// Disable curation by default in tests unless explicitly enabled
-if (!process.env.ENABLE_CURATION) {
-  Object.assign(process.env, { ENABLE_CURATION: 'false' });
-}
-
 const skipDbSetup = process.env.SKIP_DB_TEST_SETUP === 'true';
 
 function assertSafeToTruncate() {

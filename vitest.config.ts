@@ -1,4 +1,6 @@
 import { config } from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 // In CI, rely on env vars injected by the workflow.
@@ -9,10 +11,11 @@ if (!process.env.CI) {
 }
 
 // Shared alias configuration for test projects
+const srcRoot = fileURLToPath(new URL('./src', import.meta.url));
 const testAliases = {
-  '@/': new URL('./src/', import.meta.url).pathname,
-  '@': new URL('./src/', import.meta.url).pathname,
-};
+  '@': srcRoot,
+  '@/': path.join(srcRoot, path.sep),
+} as const;
 
 export default defineConfig({
   test: {
