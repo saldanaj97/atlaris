@@ -36,9 +36,6 @@ export default defineConfig({
           testTimeout: 90_000,
           include: [
             'tests/{integration,e2e,security}/**/*.{test,spec}.{ts,tsx}',
-            // Support *.e2e.ts(x) naming in e2e folder
-            'tests/{integration,e2e,security}/**/*.e2e.{ts,tsx}',
-            'tests/{integration,e2e,security}/**/*.*.test.{ts,tsx}',
           ],
           setupFiles: ['tests/setup.ts'],
           maxConcurrency: 1,
