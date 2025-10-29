@@ -208,6 +208,7 @@ export async function processPlanGenerationJob(
     );
 
     if (result.status === 'success') {
+      const planId = job.planId;
       const jobResult = buildJobResult(
         result.modules,
         result.durationMs,
@@ -220,7 +221,7 @@ export async function processPlanGenerationJob(
       // In tests, await for determinism so integration tests can assert effects.
       if (curationConfig.enableCuration) {
         const runCuration = () =>
-          maybeCurateAndAttachResources(job.planId, payload, job.userId).catch(
+          maybeCurateAndAttachResources(planId, payload, job.userId).catch(
             (curationError) => {
               // Log but don't fail the job
               console.error('Curation failed:', curationError);
@@ -234,7 +235,7 @@ export async function processPlanGenerationJob(
         }
       }
 
-      await markPlanGenerationSuccess(job.planId);
+      await markPlanGenerationSuccess(planId);
 
       // Record usage on success
       const usage = result.metadata?.usage;
@@ -265,7 +266,8 @@ export async function processPlanGenerationJob(
           : 'Plan generation failed.';
 
     if (!retryable) {
-      await markPlanGenerationFailure(job.planId);
+      const planId = job.planId;
+      await markPlanGenerationFailure(planId);
 
       // Record AI usage even on failure when provider reports token usage
       const failedUsage = result.metadata?.usage;
