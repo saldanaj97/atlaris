@@ -269,29 +269,28 @@ describe('Plan generation cache behavior E2E', () => {
 
     // Assert reduced upstream calls on rerun (cache effectiveness)
     const secondRunCounters = { ...fetchCounters };
-    const deltas = {
-      youtubeSearch:
-        secondRunCounters.youtubeSearch - firstRunCounters.youtubeSearch,
-      youtubeStats:
-        secondRunCounters.youtubeStats - firstRunCounters.youtubeStats,
-      docsSearch: secondRunCounters.docsSearch - firstRunCounters.docsSearch,
-      docsHead: secondRunCounters.docsHead - firstRunCounters.docsHead,
-    };
+
+    // Compute totals for comparison
+    const totalFirst =
+      firstRunCounters.youtubeSearch +
+      firstRunCounters.youtubeStats +
+      firstRunCounters.docsSearch +
+      firstRunCounters.docsHead;
+    const totalSecond =
+      secondRunCounters.youtubeSearch +
+      secondRunCounters.youtubeStats +
+      secondRunCounters.docsSearch +
+      secondRunCounters.docsHead;
 
     // Total external calls in second run should be strictly less than first run
-    const totalSecondDelta =
-      deltas.youtubeSearch +
-      deltas.youtubeStats +
-      deltas.docsSearch +
-      deltas.docsHead;
-    // Require strict reduction in total calls
-    expect(totalSecondDelta).toBeLessThanOrEqual(0);
+    expect(totalSecond).toBeLessThanOrEqual(totalFirst);
+
     // Ensure at least one individual counter decreased to verify cache is working
     expect(
-      deltas.youtubeSearch < 0 ||
-        deltas.youtubeStats < 0 ||
-        deltas.docsSearch < 0 ||
-        deltas.docsHead < 0,
+      secondRunCounters.youtubeSearch < firstRunCounters.youtubeSearch ||
+        secondRunCounters.youtubeStats < firstRunCounters.youtubeStats ||
+        secondRunCounters.docsSearch < firstRunCounters.docsSearch ||
+        secondRunCounters.docsHead < firstRunCounters.docsHead,
       'Expected at least one counter to decrease due to caching'
     ).toBe(true);
   }, 60_000);
