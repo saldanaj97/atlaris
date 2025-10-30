@@ -19,7 +19,7 @@ import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { db } from '@/lib/db/drizzle';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
 import { eq, inArray } from 'drizzle-orm';
-import { resources, taskResources, tasks } from '@/lib/db/schema';
+import { modules, resources, taskResources, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 
@@ -228,32 +228,55 @@ describe('Plan generation with curation E2E', () => {
     );
     expect(totalTasks).toBeGreaterThan(0);
 
-    // Check that resources were attached (if ENABLE_CURATION is true)
+    // Check that resources were attached at the plan level (if ENABLE_CURATION is true)
+    // Get all module IDs for this plan
+    const moduleRows = await db
+      .select()
+      .from(modules)
+      .where(eq(modules.planId, planId));
+
+    expect(moduleRows.length).toBeGreaterThan(0);
+    const moduleIds = moduleRows.map((m) => m.id);
+
+    // Get all task IDs for the plan's modules
     const taskRows = await db
       .select()
       .from(tasks)
-      .where(eq(tasks.moduleId, planDetail.modules[0]?.id || ''));
+      .where(inArray(tasks.moduleId, moduleIds));
 
     expect(taskRows.length).toBeGreaterThan(0);
-    const firstTaskId = taskRows[0].id;
+    const taskIds = taskRows.map((t) => t.id);
 
-    // Check for attached resources - must have at least one resource attached
-    const attachedResources = await db
-      .select()
-      .from(taskResources)
-      .where(eq(taskResources.taskId, firstTaskId));
+    // Get all taskResources for any task in the plan's modules
+    const attachedResources =
+      taskIds.length > 0
+        ? await db
+            .select()
+            .from(taskResources)
+            .where(inArray(taskResources.taskId, taskIds))
+        : [];
 
-    // Verify resources were actually attached
+    // Verify resources were actually attached at the plan level
     expect(attachedResources.length).toBeGreaterThan(0);
 
     // Verify resources have valid metadata
-    const resourceIds = attachedResources.map((ar) => ar.resourceId);
+    // Deduplicate resourceIds before selecting from resources
+    const uniqueResourceIds = Array.from(
+      new Set(attachedResources.map((ar) => ar.resourceId))
+    );
     const resourceRows = await db
       .select()
       .from(resources)
-      .where(inArray(resources.id, resourceIds));
+      .where(inArray(resources.id, uniqueResourceIds));
 
-    expect(resourceRows.length).toBe(attachedResources.length);
+    // Assert that fetched resource rows match unique resourceIds
+    expect(resourceRows.length).toBe(uniqueResourceIds.length);
+    const fetchedResourceIds = new Set(resourceRows.map((r) => r.id));
+    for (const resourceId of uniqueResourceIds) {
+      expect(fetchedResourceIds.has(resourceId)).toBe(true);
+    }
+
+    // Verify url/title/type are present for each fetched resource
     for (const resource of resourceRows) {
       expect(resource.url).toBeTruthy();
       expect(resource.title).toBeTruthy();
@@ -261,10 +284,13 @@ describe('Plan generation with curation E2E', () => {
     }
 
     // Verify micro-explanations were appended to task descriptions
-    const taskWithDescription = taskRows[0];
-    expect(taskWithDescription.description).toBeTruthy();
-    expect(taskWithDescription.description?.length).toBeGreaterThan(0);
+    // Check that at least one task in the plan's tasks has a non-empty description
+    const tasksWithDescriptions = taskRows.filter(
+      (task) => task.description && task.description.length > 0
+    );
+    expect(tasksWithDescriptions.length).toBeGreaterThan(0);
     // Micro-explanations should contain markdown formatting or key terms
+    const taskWithDescription = tasksWithDescriptions[0];
     expect(taskWithDescription.description).toMatch(
       /explanation|practice|key|use/i
     );
@@ -347,22 +373,38 @@ describe('Plan generation with curation E2E', () => {
       const planDetail = await planResponse.json();
       expect(planDetail.modules.length).toBeGreaterThan(0);
 
+      // Get all module IDs for this plan
+      const moduleRows = await db
+        .select()
+        .from(modules)
+        .where(eq(modules.planId, planId));
+
+      const moduleIds = moduleRows.map((m) => m.id);
+
+      // Get all task IDs for the plan's modules
       const taskRows = await db
         .select()
         .from(tasks)
-        .where(eq(tasks.moduleId, planDetail.modules[0]?.id || ''));
+        .where(inArray(tasks.moduleId, moduleIds));
 
-      if (taskRows.length > 0) {
-        const firstTaskId = taskRows[0].id;
-        const attachedResources = await db
-          .select()
-          .from(taskResources)
-          .where(eq(taskResources.taskId, firstTaskId));
-        // With high cutoff (0.95), resources may be filtered out
-        // but plan generation should still succeed
-        // This verifies the cutoff is actually being applied
-        expect(attachedResources).toHaveLength(0);
-      }
+      // Get all taskResources for any task in the plan's modules
+      const attachedResources =
+        taskRows.length > 0
+          ? await db
+              .select()
+              .from(taskResources)
+              .where(
+                inArray(
+                  taskResources.taskId,
+                  taskRows.map((t) => t.id)
+                )
+              )
+          : [];
+
+      // With high cutoff (0.95), resources should be filtered out
+      // but plan generation should still succeed
+      // This verifies the cutoff is actually being applied at the plan level
+      expect(attachedResources).toHaveLength(0);
     } finally {
       // Restore original env
       if (originalMinScore === undefined) {

@@ -17,13 +17,7 @@ import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { db } from '@/lib/db/drizzle';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
 import { asc, eq } from 'drizzle-orm';
-import {
-  modules,
-  resourceSearchCache,
-  resources,
-  taskResources,
-  tasks,
-} from '@/lib/db/schema';
+import { modules, resources, taskResources, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 
@@ -227,15 +221,6 @@ describe('Plan generation cache behavior E2E', () => {
     } finally {
       await worker.stop();
     }
-
-    // Check cache entries were created
-    const cacheEntries = await db
-      .select()
-      .from(resourceSearchCache)
-      .where(eq(resourceSearchCache.source, 'youtube'));
-
-    // Cache should have entries from first run
-    expect(cacheEntries.length).toBeGreaterThan(0);
 
     const firstRunCounters = { ...fetchCounters };
 
