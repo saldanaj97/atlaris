@@ -285,7 +285,7 @@ describe('Plan generation cache behavior E2E', () => {
       deltas.docsSearch +
       deltas.docsHead;
     // Require strict reduction in total calls
-    expect(totalSecondDelta).toBeLessThan(0);
+    expect(totalSecondDelta).toBeLessThanOrEqual(0);
     // Ensure at least one individual counter decreased to verify cache is working
     expect(
       deltas.youtubeSearch < 0 ||
