@@ -19,7 +19,7 @@ import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { db } from '@/lib/db/drizzle';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
 import { eq, inArray } from 'drizzle-orm';
-import { modules, resources, taskResources, tasks } from '@/lib/db/schema';
+import { modules, taskResources, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 
@@ -228,69 +228,38 @@ describe('Plan generation with curation E2E', () => {
     );
     expect(totalTasks).toBeGreaterThan(0);
 
-    // Check that resources were attached at the plan level (if ENABLE_CURATION is true)
-    // Get all module IDs for this plan
-    const moduleRows = await db
-      .select()
-      .from(modules)
-      .where(eq(modules.planId, planId));
-
-    expect(moduleRows.length).toBeGreaterThan(0);
-    const moduleIds = moduleRows.map((m) => m.id);
-
-    // Get all task IDs for the plan's modules
-    const taskRows = await db
-      .select()
-      .from(tasks)
-      .where(inArray(tasks.moduleId, moduleIds));
-
-    expect(taskRows.length).toBeGreaterThan(0);
-    const taskIds = taskRows.map((t) => t.id);
-
-    // Get all taskResources for any task in the plan's modules
-    const attachedResources =
-      taskIds.length > 0
-        ? await db
-            .select()
-            .from(taskResources)
-            .where(inArray(taskResources.taskId, taskIds))
-        : [];
-
-    // Verify resources were actually attached at the plan level
-    expect(attachedResources.length).toBeGreaterThan(0);
-
-    // Verify resources have valid metadata
-    // Deduplicate resourceIds before selecting from resources
-    const uniqueResourceIds = Array.from(
-      new Set(attachedResources.map((ar) => ar.resourceId))
+    // Check that resources were attached at the plan level via API response
+    const allTasks = planDetail.modules.flatMap(
+      (m: { tasks: Array<{ resources?: unknown[] }> }) => m.tasks
     );
-    const resourceRows = await db
-      .select()
-      .from(resources)
-      .where(inArray(resources.id, uniqueResourceIds));
+    const totalAttachedResourcesFromClient = allTasks.reduce(
+      (sum: number, t: { resources?: unknown[] }) =>
+        sum + (t.resources?.length ?? 0),
+      0
+    );
+    expect(totalAttachedResourcesFromClient).toBeGreaterThan(0);
 
-    // Assert that fetched resource rows match unique resourceIds
-    expect(resourceRows.length).toBe(uniqueResourceIds.length);
-    const fetchedResourceIds = new Set(resourceRows.map((r) => r.id));
-    for (const resourceId of uniqueResourceIds) {
-      expect(fetchedResourceIds.has(resourceId)).toBe(true);
+    // Verify url/title/type are present for each resource in client payload
+    for (const module of planDetail.modules) {
+      for (const task of module.tasks) {
+        for (const resource of task.resources) {
+          expect(resource.url).toBeTruthy();
+          expect(resource.title).toBeTruthy();
+          expect(resource.type).toBeTruthy();
+        }
+      }
     }
 
-    // Verify url/title/type are present for each fetched resource
-    for (const resource of resourceRows) {
-      expect(resource.url).toBeTruthy();
-      expect(resource.title).toBeTruthy();
-      expect(resource.type).toBeTruthy();
-    }
-
-    // Verify micro-explanations were appended to task descriptions
-    // Check that at least one task in the plan's tasks has a non-empty description
-    const tasksWithDescriptions = taskRows.filter(
-      (task) => task.description && task.description.length > 0
+    // Verify micro-explanations were appended to task descriptions using client payload
+    const tasksWithDescriptions = allTasks.filter(
+      (task: { description?: string | null }) =>
+        !!task.description && task.description.length > 0
     );
     expect(tasksWithDescriptions.length).toBeGreaterThan(0);
     // Micro-explanations should contain markdown formatting or key terms
-    const taskWithDescription = tasksWithDescriptions[0];
+    const taskWithDescription = tasksWithDescriptions[0] as {
+      description: string;
+    };
     expect(taskWithDescription.description).toMatch(
       /explanation|practice|key|use/i
     );
