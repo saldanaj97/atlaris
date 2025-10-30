@@ -17,7 +17,6 @@ import { POST as POST_PLAN } from '@/app/api/v1/plans/route';
 import { GET as GET_PLAN } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { db } from '@/lib/db/drizzle';
-import { PlanGenerationWorker } from '@/workers/plan-generator';
 import { eq, inArray } from 'drizzle-orm';
 import { modules, taskResources, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';
@@ -195,6 +194,8 @@ describe('Plan generation with curation E2E', () => {
     const planPayload = await response.json();
     const planId: string = planPayload.id;
 
+    // Import worker after env is set so curationConfig picks up keys
+    const { PlanGenerationWorker } = await import('@/workers/plan-generator');
     const worker = new PlanGenerationWorker({
       pollIntervalMs: 50,
       concurrency: 1,

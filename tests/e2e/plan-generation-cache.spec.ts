@@ -277,25 +277,23 @@ describe('Plan generation cache behavior E2E', () => {
       docsSearch: secondRunCounters.docsSearch - firstRunCounters.docsSearch,
       docsHead: secondRunCounters.docsHead - firstRunCounters.docsHead,
     };
-    const firstRunTotals = {
-      youtubeSearch: firstRunCounters.youtubeSearch,
-      youtubeStats: firstRunCounters.youtubeStats,
-      docsSearch: firstRunCounters.docsSearch,
-      docsHead: firstRunCounters.docsHead,
-    };
 
-    // Total external calls in second run should be <= first run (ideally fewer)
-    const totalFirst =
-      firstRunTotals.youtubeSearch +
-      firstRunTotals.youtubeStats +
-      firstRunTotals.docsSearch +
-      firstRunTotals.docsHead;
+    // Total external calls in second run should be strictly less than first run
     const totalSecondDelta =
       deltas.youtubeSearch +
       deltas.youtubeStats +
       deltas.docsSearch +
       deltas.docsHead;
-    expect(totalSecondDelta).toBeLessThanOrEqual(totalFirst);
+    // Require strict reduction in total calls
+    expect(totalSecondDelta).toBeLessThan(0);
+    // Ensure at least one individual counter decreased to verify cache is working
+    expect(
+      deltas.youtubeSearch < 0 ||
+        deltas.youtubeStats < 0 ||
+        deltas.docsSearch < 0 ||
+        deltas.docsHead < 0,
+      'Expected at least one counter to decrease due to caching'
+    ).toBe(true);
   }, 60_000);
 
   it('preserves attachments on cache hits', async () => {
