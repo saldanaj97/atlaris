@@ -1356,3 +1356,5 @@ export const aiUsageEvents = pgTable(
     }),
   ]
 ).enableRLS();
+
+// resource_search_cache table removed (curation caching eliminated)

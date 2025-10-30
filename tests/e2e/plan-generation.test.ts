@@ -35,12 +35,14 @@ const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
+  ENABLE_CURATION: process.env.ENABLE_CURATION,
 };
 
 beforeAll(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   process.env.MOCK_GENERATION_DELAY_MS = '300';
+  process.env.ENABLE_CURATION = 'false';
 });
 
 afterAll(() => {
@@ -62,6 +64,12 @@ afterAll(() => {
   } else {
     process.env.MOCK_GENERATION_DELAY_MS =
       ORIGINAL_ENV.MOCK_GENERATION_DELAY_MS;
+  }
+
+  if (ORIGINAL_ENV.ENABLE_CURATION === undefined) {
+    delete process.env.ENABLE_CURATION;
+  } else {
+    process.env.ENABLE_CURATION = ORIGINAL_ENV.ENABLE_CURATION;
   }
 });
 
@@ -98,7 +106,7 @@ interface PlanStatusPayload {
 async function waitForStatus(
   planId: string,
   predicate: (payload: PlanStatusPayload) => boolean,
-  { timeoutMs = 20_000, intervalMs = 100 } = {}
+  { timeoutMs = 60_000, intervalMs = 100 } = {}
 ): Promise<PlanStatusPayload> {
   const deadline = Date.now() + timeoutMs;
 

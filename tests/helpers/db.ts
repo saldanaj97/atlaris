@@ -76,6 +76,8 @@ export async function ensureStripeWebhookEventsTable() {
   `);
 }
 
+// Cache table removed – no-op helper deleted
+
 export async function ensureUser({
   clerkUserId,
   email,

@@ -2,7 +2,17 @@ import { ZodError, z } from 'zod';
 
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
 import type { ProviderMetadata } from '@/lib/ai/provider';
-import { RouterGenerationProvider } from '@/lib/ai/providers/router';
+import { getGenerationProvider } from '@/lib/ai/provider-factory';
+import { generateMicroExplanation } from '@/lib/ai/micro-explanations';
+import { curateDocs } from '@/lib/curation/docs';
+import { curationConfig } from '@/lib/curation/config';
+import { selectTop, type Scored } from '@/lib/curation/ranking';
+import { curateYouTube } from '@/lib/curation/youtube';
+import { upsertAndAttach } from '@/lib/db/queries/resources';
+import {
+  appendTaskDescription,
+  getTasksByPlanId,
+} from '@/lib/db/queries/tasks';
 import { recordUsage } from '@/lib/db/usage';
 import {
   markPlanGenerationFailure,
@@ -135,7 +145,8 @@ function buildJobResult(
 }
 
 export async function processPlanGenerationJob(
-  job: Job
+  job: Job,
+  opts?: { signal?: AbortSignal }
 ): Promise<ProcessPlanGenerationJobResult> {
   if (job.type !== JOB_TYPES.PLAN_GENERATION) {
     return {
@@ -177,8 +188,8 @@ export async function processPlanGenerationJob(
     // in generateLearningPlan action (via atomicCheckAndInsertPlan).
     // No need to check again here as the plan already exists.
 
-    // Use router-based provider with failover (mock in tests if configured)
-    const provider = new RouterGenerationProvider();
+    // Use configured provider (mock in tests, router with failover in production)
+    const provider = getGenerationProvider();
 
     const result = await runGenerationAttempt(
       {
@@ -194,10 +205,11 @@ export async function processPlanGenerationJob(
           deadlineDate: payload.deadlineDate,
         },
       },
-      { provider }
+      { provider, signal: opts?.signal }
     );
 
     if (result.status === 'success') {
+      const planId = job.planId;
       const jobResult = buildJobResult(
         result.modules,
         result.durationMs,
@@ -205,7 +217,26 @@ export async function processPlanGenerationJob(
         result.metadata
       );
 
-      await markPlanGenerationSuccess(job.planId);
+      // Curation and micro-explanations (if enabled)
+      // In production we run this fire-and-forget to avoid blocking the job.
+      // In tests, await for determinism so integration tests can assert effects.
+      if (curationConfig.enableCuration) {
+        const runCuration = () =>
+          maybeCurateAndAttachResources(planId, payload, job.userId).catch(
+            (curationError) => {
+              // Log but don't fail the job
+              console.error('Curation failed:', curationError);
+            }
+          );
+
+        if (process.env.NODE_ENV === 'test') {
+          await runCuration();
+        } else {
+          void runCuration();
+        }
+      }
+
+      await markPlanGenerationSuccess(planId);
 
       // Record usage on success
       const usage = result.metadata?.usage;
@@ -236,7 +267,8 @@ export async function processPlanGenerationJob(
           : 'Plan generation failed.';
 
     if (!retryable) {
-      await markPlanGenerationFailure(job.planId);
+      const planId = job.planId;
+      await markPlanGenerationFailure(planId);
 
       // Record AI usage even on failure when provider reports token usage
       const failedUsage = result.metadata?.usage;
@@ -269,4 +301,176 @@ export async function processPlanGenerationJob(
       retryable: true,
     } satisfies ProcessPlanGenerationJobFailure;
   }
+}
+
+/**
+ * Curation and micro-explanations integration
+ * Curates resources for each task and optionally generates micro-explanations
+ */
+async function maybeCurateAndAttachResources(
+  planId: string,
+  params: PlanGenerationJobData,
+  _userId: string
+): Promise<void> {
+  const CURATION_CONCURRENCY = curationConfig.concurrency;
+  const TIME_BUDGET_MS = curationConfig.timeBudgetMs;
+  const startTime = Date.now();
+
+  // Get all tasks for the plan
+  const taskRows = await getTasksByPlanId(planId);
+
+  console.log(
+    `[Curation] Starting curation for ${taskRows.length} tasks in plan ${planId}`
+  );
+
+  // Prepare curation params
+  const curationParams = {
+    query: params.topic,
+    minScore: curationConfig.minResourceScore,
+    maxResults: curationConfig.maxResults,
+  };
+
+  // Process tasks with simple batching to enforce concurrency without extra deps
+  for (let i = 0; i < taskRows.length; i += CURATION_CONCURRENCY) {
+    // Check time budget before starting a new batch
+    if (Date.now() - startTime > TIME_BUDGET_MS) {
+      console.log(
+        `[Curation] Time budget exceeded before starting batch at index ${i}, stopping curation.`
+      );
+      break;
+    }
+
+    const batch = taskRows.slice(i, i + CURATION_CONCURRENCY);
+    await Promise.all(
+      batch.map(async (taskRow) => {
+        const { task, moduleTitle } = taskRow;
+        // Check time budget before processing individual task
+        if (Date.now() - startTime > TIME_BUDGET_MS) {
+          console.log(
+            `[Curation] Time budget exceeded, skipping task ${task.id}`
+          );
+          return;
+        }
+
+        try {
+          // Curate resources
+          const candidates = await curateTaskResources(
+            task.title,
+            curationParams,
+            params.skillLevel
+          );
+
+          if (candidates.length > 0) {
+            await upsertAndAttach(task.id, candidates);
+            console.log(
+              `[Curation] Attached ${candidates.length} resources to task ${task.id}`
+            );
+          }
+
+          // Generate and append micro-explanation
+          try {
+            // Skip micro-explanations if time budget is already exhausted
+            if (Date.now() - startTime > TIME_BUDGET_MS) {
+              console.log(
+                `[Curation] Time budget exceeded before micro-explanation for task ${task.id}`
+              );
+              return;
+            }
+            const provider = getGenerationProvider();
+            const microExplanation = await generateMicroExplanation(provider, {
+              topic: params.topic,
+              moduleTitle,
+              taskTitle: task.title,
+              skillLevel: params.skillLevel,
+            });
+            const marker = `<!-- micro-explanation-${task.id} -->`;
+            if (task.description?.includes(marker)) {
+              console.log(
+                `[Curation] Skipping micro-explanation for task ${task.id}; already present`
+              );
+              return;
+            }
+            const markedExplanation = `${marker}\n${microExplanation}`;
+            await appendTaskDescription(task.id, markedExplanation);
+            task.description = task.description
+              ? `${task.description}\n\n${markedExplanation}`
+              : markedExplanation;
+            console.log(
+              `[Curation] Added micro-explanation to task ${task.id}`
+            );
+          } catch (explanationError) {
+            console.error(
+              `[Curation] Failed to generate micro-explanation for task ${task.id}:`,
+              explanationError
+            );
+            // Continue with other tasks - don't fail curation for micro-explanation errors
+          }
+        } catch (error) {
+          console.error(`[Curation] Failed to curate task ${task.id}:`, error);
+          // Continue with other tasks
+        }
+      })
+    );
+
+    // Check time budget after batch completion (though the pre-batch check will catch for next)
+    if (Date.now() - startTime > TIME_BUDGET_MS) {
+      console.log(
+        `[Curation] Time budget exceeded after batch at index ${i}, stopping curation.`
+      );
+      break;
+    }
+  }
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[Curation] Completed in ${elapsed}ms`);
+}
+
+/**
+ * Curate resources for a single task
+ * Blends YouTube and docs results with diversity preference
+ */
+async function curateTaskResources(
+  taskTitle: string,
+  params: {
+    query: string;
+    minScore: number;
+    maxResults: number;
+  },
+  _skillLevel: 'beginner' | 'intermediate' | 'advanced'
+): Promise<Scored[]> {
+  const candidates: Scored[] = [];
+
+  // Search YouTube
+  try {
+    const ytResults = await curateYouTube({
+      ...params,
+      query: `${params.query} ${taskTitle}`,
+    });
+    candidates.push(...ytResults);
+  } catch (error) {
+    console.error('[Curation] YouTube search failed:', error);
+  }
+
+  // Search docs if needed
+  if (candidates.length < params.maxResults) {
+    try {
+      const docResults = await curateDocs({
+        ...params,
+        query: `${params.query} ${taskTitle}`,
+      });
+      candidates.push(...docResults);
+    } catch (error) {
+      console.error('[Curation] Docs search failed:', error);
+    }
+  }
+
+  // Blend and select top candidates with diversity preference
+  const top = selectTop(candidates, {
+    minScore: params.minScore,
+    maxItems: params.maxResults,
+    preferDiversity: true,
+    earlyStopEnabled: true,
+  });
+
+  return top;
 }

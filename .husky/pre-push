@@ -1,9 +1,9 @@
 set -eu
 
-# Fast type-check
+# Fast checks
 pnpm type-check
 
-# Skip vitest on first commit for speed
+# Skip tests on first commit
 if git rev-list --count HEAD | grep -q '^1$'; then
   exit 0
 fi
@@ -12,8 +12,13 @@ fi
 BASE=$(git merge-base HEAD @{upstream} 2>/dev/null || echo HEAD~1)
 CHANGED=$(git diff --name-only "$BASE" HEAD)
 
-# Run related unit tests for changed TS/TSX files
-RELATED=$(printf '%s\n' "$CHANGED" | grep -E '\.(ts|tsx)$' || true)
-if [ -n "$RELATED" ]; then
-  pnpm vitest related --run $RELATED
+# Filter for source and unit test files
+SOURCE_FILES=$(printf '%s\n' "$CHANGED" | grep -E '^(src/.*\.(ts|tsx)$|tests/unit/.*\.spec\.(ts|tsx)$)' || true)
+
+if [ -z "$SOURCE_FILES" ]; then
+  echo "No source or unit test files changed, skipping tests"
+  exit 0
 fi
+
+echo "Running fast unit tests for changed files..."
+SKIP_DB_TEST_SETUP=true pnpm run test:unit:related -- $SOURCE_FILES

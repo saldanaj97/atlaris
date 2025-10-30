@@ -8,7 +8,7 @@ import {
   users,
 } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 async function ensureUser(): Promise<void> {
   const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
@@ -19,10 +19,28 @@ async function ensureUser(): Promise<void> {
     .onConflictDoNothing();
 }
 
+const ORIGINAL = {
+  AI_PROVIDER: process.env.AI_PROVIDER,
+  AI_USE_MOCK: process.env.AI_USE_MOCK,
+};
+
 describe('Server Action: generateLearningPlan', () => {
   beforeEach(() => {
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
+  });
+
+  afterEach(() => {
+    if (ORIGINAL.AI_PROVIDER === undefined) {
+      delete process.env.AI_PROVIDER;
+    } else {
+      process.env.AI_PROVIDER = ORIGINAL.AI_PROVIDER;
+    }
+    if (ORIGINAL.AI_USE_MOCK === undefined) {
+      delete process.env.AI_USE_MOCK;
+    } else {
+      process.env.AI_USE_MOCK = ORIGINAL.AI_USE_MOCK;
+    }
   });
 
   it('creates a plan, generates modules/tasks, and persists them', async () => {
@@ -122,4 +140,3 @@ describe('Server Action: generateLearningPlan', () => {
     }
   });
 });
-

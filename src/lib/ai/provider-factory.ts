@@ -10,13 +10,28 @@ import { RouterGenerationProvider } from './providers/router';
  */
 export function getGenerationProvider(): AiPlanGenerationProvider {
   const providerType = process.env.AI_PROVIDER?.toLowerCase();
+  const isTest =
+    process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID;
+
+  // In test mode, honor AI_USE_MOCK to allow tests to force router path
+  if (isTest && process.env.AI_USE_MOCK === 'false') {
+    return new RouterGenerationProvider();
+  }
 
   if (
     providerType === 'mock' ||
     (!providerType && process.env.NODE_ENV === 'development')
   ) {
     // Use mock provider in development or when explicitly configured
-    return new MockGenerationProvider();
+    const deterministicSeed = process.env.MOCK_GENERATION_SEED
+      ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
+      : undefined;
+    return new MockGenerationProvider({
+      deterministicSeed:
+        deterministicSeed !== undefined && !isNaN(deterministicSeed)
+          ? deterministicSeed
+          : undefined,
+    });
   }
   // Default to router for real usage with failover
   return new RouterGenerationProvider();

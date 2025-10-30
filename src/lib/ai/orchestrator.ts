@@ -7,6 +7,7 @@ import {
 import type { FailureClassification } from '@/lib/types/client';
 
 import { classifyFailure } from './classification';
+import { pacePlan } from './pacing';
 import {
   parseGenerationStream,
   type ParsedGeneration,
@@ -21,6 +22,53 @@ import {
 import { getGenerationProvider } from './provider-factory';
 import { createAdaptiveTimeout, type AdaptiveTimeoutConfig } from './timeout';
 
+// Helper to safely attach an abort listener across environments where
+// AbortSignal may not implement addEventListener (e.g., some jsdom/polyfills).
+function attachAbortListener(
+  signal: AbortSignal,
+  listener: () => void
+): () => void {
+  if (signal.aborted) {
+    listener();
+    return () => {};
+  }
+
+  // Preferred path: EventTarget-style listeners
+  if (
+    'addEventListener' in signal &&
+    typeof signal.addEventListener === 'function'
+  ) {
+    const handler = (_ev: Event) => listener();
+    signal.addEventListener('abort', handler as EventListener);
+    return () => {
+      try {
+        signal.removeEventListener?.('abort', handler as EventListener);
+      } catch {
+        // ignore cleanup failures
+      }
+    };
+  }
+
+  // Fallback: onabort handler
+  if ('onabort' in signal) {
+    const prev = signal.onabort;
+    signal.onabort = function (this: AbortSignal, ev: Event) {
+      try {
+        if (typeof prev === 'function') prev.call(this, ev);
+      } finally {
+        listener();
+      }
+    };
+    return () => {
+      // Restore previous handler
+      signal.onabort = prev ?? null;
+    };
+  }
+
+  // Last resort: no-op cleanup if neither API is present
+  return () => {};
+}
+
 export interface GenerationAttemptContext {
   planId: string;
   userId: string;
@@ -33,6 +81,7 @@ export interface RunGenerationOptions {
   clock?: () => number;
   dbClient?: Parameters<typeof startAttempt>[0]['dbClient'];
   now?: () => Date;
+  signal?: AbortSignal;
 }
 
 export interface GenerationSuccessResult {
@@ -121,12 +170,21 @@ export async function runGenerationAttempt(
   });
   const startedAt = attemptClockStart;
 
+  // Combine timeout signal with external shutdown signal if provided
+  const externalSignal = options.signal;
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  const cleanupTimeoutAbort = attachAbortListener(timeout.signal, onAbort);
+  const cleanupExternalAbort = externalSignal
+    ? attachAbortListener(externalSignal, onAbort)
+    : undefined;
+
   let providerMetadata: ProviderMetadata | undefined;
   let rawText: string | undefined;
 
   try {
     const providerResult = await provider.generate(context.input, {
-      signal: timeout.signal,
+      signal: controller.signal,
       timeoutMs: options.timeoutConfig?.baseMs,
     });
 
@@ -138,13 +196,18 @@ export async function runGenerationAttempt(
 
     rawText = parsed.rawText;
 
+    // Apply pacing to trim modules to fit user's time capacity
+    const pacedModules = pacePlan(parsed.modules, context.input);
+
     const durationMs = clock() - startedAt;
     timeout.cancel();
+    cleanupTimeoutAbort();
+    cleanupExternalAbort?.();
 
     const attempt = await recordSuccess({
       planId: context.planId,
       preparation,
-      modules: parsed.modules,
+      modules: pacedModules,
       providerMetadata: providerMetadata ?? {},
       durationMs,
       extendedTimeout: timeout.didExtend,
@@ -155,7 +218,7 @@ export async function runGenerationAttempt(
     return {
       status: 'success',
       classification: null,
-      modules: parsed.modules,
+      modules: pacedModules,
       rawText,
       metadata: providerMetadata ?? {},
       durationMs,
@@ -165,6 +228,8 @@ export async function runGenerationAttempt(
     };
   } catch (error) {
     timeout.cancel();
+    cleanupTimeoutAbort();
+    cleanupExternalAbort?.();
     const durationMs = clock() - startedAt;
     const timedOut = timeout.timedOut || error instanceof ProviderTimeoutError;
 

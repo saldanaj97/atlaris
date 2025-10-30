@@ -418,12 +418,9 @@ describe('Subscription Management', () => {
 
       await cancelSubscription(userId);
 
-      expect(updateSubscription).toHaveBeenCalledWith(
-        'sub_to_cancel',
-        {
-          cancel_at_period_end: true,
-        }
-      );
+      expect(updateSubscription).toHaveBeenCalledWith('sub_to_cancel', {
+        cancel_at_period_end: true,
+      });
     });
 
     it('throws error if no active subscription', async () => {

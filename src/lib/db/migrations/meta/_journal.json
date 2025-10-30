@@ -57,6 +57,13 @@
       "when": 1760055000000,
       "tag": "0007_plan_generation_status",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1761342265613,
+      "tag": "0008_bouncy_tusk",
+      "breakpoints": true
     }
   ]
 }

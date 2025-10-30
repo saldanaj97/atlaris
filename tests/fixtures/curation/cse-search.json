@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "title": "React Documentation - Hooks",
+      "link": "https://react.dev/reference/react",
+      "snippet": "Learn how to use React Hooks like useState, useEffect, and more."
+    },
+    {
+      "title": "TypeScript Handbook - React with TypeScript",
+      "link": "https://www.typescriptlang.org/docs/handbook/react.html",
+      "snippet": "Complete guide to using TypeScript with React components."
+    },
+    {
+      "title": "MDN Web Docs - React Getting Started",
+      "link": "https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Client-side_JavaScript_frameworks/React_getting_started",
+      "snippet": "Learn React fundamentals from Mozilla Developer Network."
+    }
+  ]
+}

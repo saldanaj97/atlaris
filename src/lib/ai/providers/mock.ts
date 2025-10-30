@@ -9,6 +9,7 @@ import { ProviderError } from '../provider';
 export interface MockGenerationConfig {
   delayMs?: number;
   failureRate?: number;
+  deterministicSeed?: number; // If set, makes generation deterministic
 }
 
 const TOPICS_TEMPLATES = {
@@ -62,6 +63,28 @@ const TASK_TEMPLATES = {
   ],
 };
 
+/**
+ * Seeded random number generator for deterministic tests
+ * Uses a simple LCG (Linear Congruential Generator)
+ */
+class SeededRandom {
+  private seed: number;
+
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+
+  next(): number {
+    // LCG parameters from Numerical Recipes
+    this.seed = (this.seed * 1664525 + 1013904223) >>> 0;
+    return this.seed / 0x100000000;
+  }
+
+  nextInt(min: number, max: number): number {
+    return Math.floor(this.next() * (max - min + 1)) + min;
+  }
+}
+
 function getRandomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -93,17 +116,20 @@ function generateTaskTitle(
   return `${template} ${topic}`;
 }
 
-function generateModules(input: GenerationInput): unknown {
-  const moduleCount = getRandomInt(3, 5);
+function generateModules(input: GenerationInput, rng?: SeededRandom): unknown {
+  const randomInt = (min: number, max: number) =>
+    rng ? rng.nextInt(min, max) : getRandomInt(min, max);
+
+  const moduleCount = randomInt(3, 5);
   const modules = [];
 
   for (let i = 0; i < moduleCount; i++) {
-    const taskCount = getRandomInt(3, 5);
+    const taskCount = randomInt(3, 5);
     const tasks = [];
 
     let totalTaskMinutes = 0;
     for (let j = 0; j < taskCount; j++) {
-      const estimatedMinutes = getRandomInt(30, 90);
+      const estimatedMinutes = randomInt(30, 90);
       totalTaskMinutes += estimatedMinutes;
 
       tasks.push({
@@ -114,7 +140,7 @@ function generateModules(input: GenerationInput): unknown {
     }
 
     // Module time should roughly match sum of tasks, add some buffer
-    const moduleMinutes = Math.max(totalTaskMinutes, getRandomInt(120, 240));
+    const moduleMinutes = Math.max(totalTaskMinutes, randomInt(120, 240));
 
     modules.push({
       title: generateModuleTitle(input.topic, input.skillLevel, i),
@@ -148,7 +174,9 @@ async function* createMockStream(
 }
 
 export class MockGenerationProvider implements AiPlanGenerationProvider {
-  private readonly config: Required<MockGenerationConfig>;
+  private readonly config: Required<
+    Omit<MockGenerationConfig, 'deterministicSeed'>
+  > & { deterministicSeed?: number };
 
   constructor(config: MockGenerationConfig = {}) {
     this.config = {
@@ -158,6 +186,7 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
       failureRate:
         config.failureRate ??
         parseFloat(process.env.MOCK_GENERATION_FAILURE_RATE ?? '0'),
+      deterministicSeed: config.deterministicSeed,
     };
   }
 
@@ -166,8 +195,15 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     input: GenerationInput,
     _options?: GenerationOptions
   ): Promise<ProviderGenerateResult> {
+    // Create seeded RNG if seed is provided
+    const rng =
+      this.config.deterministicSeed !== undefined
+        ? new SeededRandom(this.config.deterministicSeed)
+        : undefined;
+
     // Simulate random failures based on configured rate
-    if (Math.random() < this.config.failureRate) {
+    const failureCheck = rng ? rng.next() : Math.random();
+    if (failureCheck < this.config.failureRate) {
       throw new ProviderError(
         'unknown',
         'Mock provider simulated failure for testing'
@@ -175,11 +211,11 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     }
 
     // Generate realistic modules based on input
-    const payload = generateModules(input);
+    const payload = generateModules(input, rng);
 
-    // Random delay between 5-10 seconds (configurable via env)
+    // Random delay (configurable via env, or deterministic if seeded)
     const baseDelay = this.config.delayMs;
-    const variance = getRandomInt(-2000, 2000);
+    const variance = rng ? rng.nextInt(-2000, 2000) : getRandomInt(-2000, 2000);
     const actualDelay = Math.max(1000, baseDelay + variance);
 
     return {

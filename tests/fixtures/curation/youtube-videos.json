@@ -1,0 +1,61 @@
+{
+  "items": [
+    {
+      "id": "dQw4w9WgXcQ",
+      "statistics": {
+        "viewCount": "1500000",
+        "likeCount": "45000"
+      },
+      "snippet": {
+        "publishedAt": "2023-01-15T10:00:00Z",
+        "channelTitle": "Traversy Media"
+      },
+      "contentDetails": {
+        "duration": "PT25M30S"
+      },
+      "status": {
+        "privacyStatus": "public",
+        "embeddable": true,
+        "license": "youtube"
+      }
+    },
+    {
+      "id": "abc123xyz",
+      "statistics": {
+        "viewCount": "850000",
+        "likeCount": "22000"
+      },
+      "snippet": {
+        "publishedAt": "2023-06-20T14:30:00Z",
+        "channelTitle": "Programming with Mosh"
+      },
+      "contentDetails": {
+        "duration": "PT35M45S"
+      },
+      "status": {
+        "privacyStatus": "public",
+        "embeddable": true,
+        "license": "youtube"
+      }
+    },
+    {
+      "id": "def456uvw",
+      "statistics": {
+        "viewCount": "420000",
+        "likeCount": "18500"
+      },
+      "snippet": {
+        "publishedAt": "2022-11-10T09:15:00Z",
+        "channelTitle": "The Net Ninja"
+      },
+      "contentDetails": {
+        "duration": "PT48M10S"
+      },
+      "status": {
+        "privacyStatus": "public",
+        "embeddable": true,
+        "license": "youtube"
+      }
+    }
+  ]
+}

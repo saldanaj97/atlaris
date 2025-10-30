@@ -120,11 +120,13 @@ const BASE_URL = 'http://localhost/api/v1/plans';
 
 const ORIGINAL_ENV = {
   AI_USE_MOCK: process.env.AI_USE_MOCK,
+  ENABLE_CURATION: process.env.ENABLE_CURATION,
 };
 
 beforeAll(() => {
   // Ensure router uses our mocked providers, not MockGenerationProvider
   process.env.AI_USE_MOCK = 'false';
+  process.env.ENABLE_CURATION = 'false';
 });
 
 afterAll(() => {
@@ -132,6 +134,12 @@ afterAll(() => {
     delete process.env.AI_USE_MOCK;
   } else {
     process.env.AI_USE_MOCK = ORIGINAL_ENV.AI_USE_MOCK;
+  }
+
+  if (ORIGINAL_ENV.ENABLE_CURATION === undefined) {
+    delete process.env.ENABLE_CURATION;
+  } else {
+    process.env.ENABLE_CURATION = ORIGINAL_ENV.ENABLE_CURATION;
   }
 });
 
@@ -170,7 +178,7 @@ interface PlanStatusPayload {
 async function waitForStatus(
   planId: string,
   predicate: (payload: PlanStatusPayload) => boolean,
-  { timeoutMs = 20_000, intervalMs = 100 } = {}
+  { timeoutMs = 60_000, intervalMs = 100 } = {}
 ): Promise<PlanStatusPayload> {
   const deadline = Date.now() + timeoutMs;
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, afterAll, vi } from 'vitest';
 
 import { db } from '@/lib/db/drizzle';
 import { learningPlans } from '@/lib/db/schema';
@@ -111,11 +111,25 @@ vi.mock('@/lib/ai/providers/openrouter', () => {
 // Import after mocks so worker-service uses the mocked providers via the router
 import { processPlanGenerationJob } from '@/lib/jobs/worker-service';
 
+// Preserve original env to avoid leakage across suites
+const origAiUseMock = process.env.AI_USE_MOCK;
+const origAiProvider = process.env.AI_PROVIDER;
+
 describe('Worker-path prompt propagation with dates', () => {
   beforeEach(async () => {
     await truncateAll();
-    // Ensure router does NOT switch to MockGenerationProvider
+    // Ensure router is used by deleting AI_PROVIDER and setting AI_USE_MOCK
+    delete process.env.AI_PROVIDER;
     process.env.AI_USE_MOCK = 'false';
+  });
+
+  afterAll(() => {
+    // Restore original environment values to maintain test isolation
+    if (origAiProvider === undefined) delete process.env.AI_PROVIDER;
+    else process.env.AI_PROVIDER = origAiProvider;
+
+    if (origAiUseMock === undefined) delete process.env.AI_USE_MOCK;
+    else process.env.AI_USE_MOCK = origAiUseMock;
   });
 
   it('passes startDate/deadlineDate through to provider prompt (integration)', async () => {

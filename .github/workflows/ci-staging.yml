@@ -61,7 +61,7 @@ jobs:
     if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [build-staging-env, changes]
+    needs: [changes]
     strategy:
       fail-fast: false
       matrix:
@@ -165,6 +165,8 @@ jobs:
           MOCK_GENERATION_DELAY_MS: ${{ vars.MOCK_GENERATION_DELAY_MS }}
           MOCK_GENERATION_FAILURE_RATE: ${{ vars.MOCK_GENERATION_FAILURE_RATE }}
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ENABLE_CURATION: 'false'
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CF_AI_GATEWAY: ${{ secrets.CF_AI_GATEWAY }}
@@ -183,13 +185,13 @@ jobs:
             echo "No E2E test files found; skipping."
             exit 0
           fi
-          TOTAL=${{ matrix.total }}
           SHARD=${{ matrix.shard }}
+          TOTAL=${{ matrix.total }}
+          if [ "$SHARD" -gt "$FILES" ]; then
+            echo "Shard $SHARD exceeds file count $FILES; skipping this shard."
+            exit 0
+          fi
           if [ "$FILES" -lt "$TOTAL" ]; then
-            if [ "$SHARD" -gt "$FILES" ]; then
-              echo "Shard $SHARD > file count $FILES; skipping shard."
-              exit 0
-            fi
             TOTAL="$FILES"
           fi
           pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL"
@@ -207,7 +209,7 @@ jobs:
     if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.integration == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [build-staging-env, changes]
+    needs: [changes]
     strategy:
       fail-fast: false
       matrix:
@@ -311,6 +313,7 @@ jobs:
           MOCK_GENERATION_DELAY_MS: ${{ vars.MOCK_GENERATION_DELAY_MS }}
           MOCK_GENERATION_FAILURE_RATE: ${{ vars.MOCK_GENERATION_FAILURE_RATE }}
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          ENABLE_CURATION: 'false'
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CF_AI_GATEWAY: ${{ secrets.CF_AI_GATEWAY }}
@@ -329,13 +332,13 @@ jobs:
             echo "No integration test files found; skipping."
             exit 0
           fi
-          TOTAL=${{ matrix.total }}
           SHARD=${{ matrix.shard }}
+          TOTAL=${{ matrix.total }}
+          if [ "$SHARD" -gt "$FILES" ]; then
+            echo "Shard $SHARD exceeds file count $FILES; skipping this shard."
+            exit 0
+          fi
           if [ "$FILES" -lt "$TOTAL" ]; then
-            if [ "$SHARD" -gt "$FILES" ]; then
-              echo "Shard $SHARD > file count $FILES; skipping shard."
-              exit 0
-            fi
             TOTAL="$FILES"
           fi
           pnpm vitest run tests/integration --shard "$SHARD/$TOTAL"

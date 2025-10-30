@@ -1,0 +1,24 @@
+{
+  "head_responses": [
+    {
+      "url": "https://react.dev/reference/react",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "https://www.typescriptlang.org/docs/handbook/react.html",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Client-side_JavaScript_frameworks/React_getting_started",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "https://example.com/broken-link",
+      "status": 404,
+      "ok": false
+    }
+  ]
+}
