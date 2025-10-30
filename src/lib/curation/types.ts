@@ -49,7 +49,6 @@ export type CurationParams = {
   query: string; // Search query
   minScore: number; // Minimum quality threshold
   maxResults?: number; // Maximum number of results (typically 1-3)
-  cacheVersion: string; // Cache version for invalidation
 };
 
 /**

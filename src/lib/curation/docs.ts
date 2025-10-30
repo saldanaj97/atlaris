@@ -4,7 +4,6 @@
  */
 
 import type { ResourceCandidate, CurationParams } from '@/lib/curation/types';
-import { buildCacheKey, getOrSetWithLock } from '@/lib/curation/cache';
 import { curationConfig } from '@/lib/curation/config';
 import { headOk, canonicalizeUrl } from '@/lib/curation/validate';
 import { scoreDoc, selectTop, type Scored } from '@/lib/curation/ranking';
@@ -83,7 +82,7 @@ const TOPIC_HEURISTICS: Record<string, string[]> = {
  */
 async function searchDocsCSE(
   query: string,
-  params: CurationParams
+  _params: CurationParams
 ): Promise<DocsSearchResult[]> {
   const cseId = curationConfig.cseId;
   const cseKey = curationConfig.cseKey;
@@ -92,64 +91,54 @@ async function searchDocsCSE(
     return [];
   }
 
-  const cacheKey = buildCacheKey({
-    query,
-    source: 'doc',
-    paramsVersion: 'cse-v1',
-    cacheVersion: params.cacheVersion,
+  const baseUrl = 'https://www.googleapis.com/customsearch/v1';
+
+  const searchParams = new URLSearchParams({
+    q: query,
+    cx: cseId,
+    key: cseKey,
+    num: '5',
+    fields: 'items(link,title,snippet)',
   });
 
-  return getOrSetWithLock(cacheKey, 'search', async () => {
-    const baseUrl = 'https://www.googleapis.com/customsearch/v1';
+  // Restrict search to allowlisted domains via query operators
+  const siteRestrict = DOMAIN_ALLOWLIST.map((d) => `site:${d}`).join(' OR ');
+  searchParams.set('q', `${query} (${siteRestrict})`);
 
-    const searchParams = new URLSearchParams({
-      q: query,
-      cx: cseId,
-      key: cseKey,
-      num: '5',
-      fields: 'items(link,title,snippet)',
+  const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+
+  if (!response.ok) {
+    let body = '';
+    try {
+      body = await response.text();
+    } catch {
+      body = '<no body>';
+    }
+    console.error(`CSE API error: ${response.status} ${response.statusText}`, {
+      body,
     });
+    throw new Error(`CSE API error: ${response.status}`);
+  }
 
-    // Restrict search to allowlisted domains via query operators
-    const siteRestrict = DOMAIN_ALLOWLIST.map((d) => `site:${d}`).join(' OR ');
-    searchParams.set('q', `${query} (${siteRestrict})`);
+  const data = (await response.json()) as CSESearchResponse;
 
-    const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+  const results: DocsSearchResult[] = [];
 
-    if (!response.ok) {
-      let body = '';
-      try {
-        body = await response.text();
-      } catch {
-        body = '<no body>';
-      }
-      console.error(
-        `CSE API error: ${response.status} ${response.statusText}`,
-        { body }
-      );
-      throw new Error(`CSE API error: ${response.status}`);
+  for (const item of data.items || []) {
+    const url = item.link;
+    const title = item.title;
+    const snippet = item.snippet;
+
+    if (url && title) {
+      results.push({
+        url,
+        title,
+        snippet,
+      });
     }
+  }
 
-    const data = (await response.json()) as CSESearchResponse;
-
-    const results: DocsSearchResult[] = [];
-
-    for (const item of data.items || []) {
-      const url = item.link;
-      const title = item.title;
-      const snippet = item.snippet;
-
-      if (url && title) {
-        results.push({
-          url,
-          title,
-          snippet,
-        });
-      }
-    }
-
-    return results;
-  });
+  return results;
 }
 
 /**
@@ -234,22 +223,9 @@ export async function curateDocs(params: CurationParams): Promise<Scored[]> {
     // Canonicalize URL
     const canonicalUrl = canonicalizeUrl(result.url);
 
-    // Validate with HEAD request (cache via docs-head stage)
-    const headCacheKey = buildCacheKey({
-      query: canonicalUrl,
-      source: 'doc',
-      paramsVersion: 'head-v1',
-      cacheVersion: params.cacheVersion,
-    });
-
-    const isValid = await getOrSetWithLock(
-      headCacheKey,
-      'docs-head',
-      async () => {
-        const check = await headOk(canonicalUrl);
-        return check.ok;
-      }
-    );
+    // Validate with HEAD request (no caching)
+    const check = await headOk(canonicalUrl);
+    const isValid = check.ok;
 
     if (!isValid) {
       continue;

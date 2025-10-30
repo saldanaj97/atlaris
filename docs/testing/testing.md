@@ -63,11 +63,10 @@ Quick reference of all tests in the suite, organized by category:
 
 **Curation Engine:**
 
-- `curation.cache.spec.ts` - Cache get/set, TTLs, negative cache, LRU, dedupe
 - `curation.ranking.spec.ts` - Scoring, cutoff, diversity, early-stop fill
 - `curation.validate.spec.ts` - HEAD checks, YouTube status, URL canonicalization
 - `curation.youtube.adapter.spec.ts` - YouTube search, stats, param shaping
-- `curation.docs.adapter.spec.ts` - Docs search, CSE/heuristics, validation
+- `curation.docs.adapter.spec.ts` - Docs search (CSE/heuristics), validation
 
 **Attempt Tracking:**
 
@@ -195,7 +194,6 @@ it('anonymous users cannot read private learning plans', async () => {
 
 - `plan-generation.test.ts` - Plan creation, worker processing, ready status
 - `plan-generation-curation.spec.ts` - Curation with resources, explanations, cutoff
-- `plan-generation-cache.spec.ts` - Cache behavior and reduced external calls
 - `plan-generation-dates.e2e.test.ts` - Date handling in generation
 - `onboarding-dates-ui.spec.tsx` - UI date picker integration
 

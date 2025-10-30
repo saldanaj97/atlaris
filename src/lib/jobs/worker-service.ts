@@ -328,7 +328,6 @@ async function maybeCurateAndAttachResources(
     query: params.topic,
     minScore: curationConfig.minResourceScore,
     maxResults: curationConfig.maxResults,
-    cacheVersion: curationConfig.cacheVersion,
   };
 
   // Process tasks with simple batching to enforce concurrency without extra deps
@@ -436,7 +435,6 @@ async function curateTaskResources(
     query: string;
     minScore: number;
     maxResults: number;
-    cacheVersion: string;
   },
   _skillLevel: 'beginner' | 'intermediate' | 'advanced'
 ): Promise<Scored[]> {

@@ -7,7 +7,6 @@ import {
   learningPlans,
   modules,
   planGenerations,
-  resourceSearchCache,
   resources,
   taskProgress,
   taskResources,
@@ -52,9 +51,6 @@ export async function truncateAll() {
   );
   await db.execute(sql`TRUNCATE TABLE ${users} RESTART IDENTITY CASCADE`);
   await db.execute(sql`TRUNCATE TABLE ${resources} RESTART IDENTITY CASCADE`);
-  await db.execute(
-    sql`TRUNCATE TABLE ${resourceSearchCache} RESTART IDENTITY CASCADE`
-  );
   userIdCache.clear();
 }
 
@@ -80,29 +76,7 @@ export async function ensureStripeWebhookEventsTable() {
   `);
 }
 
-export async function ensureResourceSearchCacheTable() {
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS resource_search_cache (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-      query_key text NOT NULL UNIQUE,
-      source text NOT NULL,
-      params jsonb NOT NULL,
-      results jsonb NOT NULL,
-      created_at timestamptz NOT NULL DEFAULT now(),
-      expires_at timestamptz NOT NULL
-    )
-  `);
-
-  await db.execute(sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS resource_search_cache_query_key_unique
-    ON resource_search_cache (query_key)
-  `);
-
-  await db.execute(sql`
-    CREATE INDEX IF NOT EXISTS resource_search_cache_source_expires_idx
-    ON resource_search_cache (source, expires_at)
-  `);
-}
+// Cache table removed – no-op helper deleted
 
 export async function ensureUser({
   clerkUserId,

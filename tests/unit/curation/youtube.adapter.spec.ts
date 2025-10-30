@@ -9,7 +9,6 @@ import {
   searchYouTube,
   curateYouTube,
 } from '@/lib/curation/youtube';
-import * as cacheModule from '@/lib/curation/cache';
 import * as validateModule from '@/lib/curation/validate';
 import * as rankingModule from '@/lib/curation/ranking';
 
@@ -29,36 +28,22 @@ describe('YouTube Adapter', () => {
 
   describe('searchYouTube', () => {
     it('should search with minimal fields projection', async () => {
-      const mockResponse = {
-        items: [
-          {
-            id: { videoId: 'abc123' },
-            snippet: {
-              title: 'Test Video',
-              channelTitle: 'Test Channel',
+      const mockFetch = vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          items: [
+            {
+              id: { videoId: 'abc123' },
+              snippet: { title: 'Test Video', channelTitle: 'Test Channel' },
             },
-          },
-        ],
-      };
-
-      vi.spyOn(cacheModule, 'buildCacheKey').mockReturnValue({
-        queryKey: 'test-key',
-        source: 'youtube',
-        paramsHash: 'v1',
-      });
-
-      vi.spyOn(cacheModule, 'getOrSetWithLock').mockResolvedValue(
-        mockResponse.items.map((item) => ({
-          id: item.id.videoId,
-          title: item.snippet.title,
-          channelTitle: item.snippet.channelTitle,
-        }))
-      );
+          ],
+        }),
+      }));
+      global.fetch = mockFetch as unknown as typeof fetch;
 
       const results = await searchYouTube('react hooks', {
         query: 'react hooks',
         minScore: 0.6,
-        cacheVersion: '1',
       });
 
       expect(results).toHaveLength(1);
@@ -70,18 +55,15 @@ describe('YouTube Adapter', () => {
     });
 
     it('should handle empty API responses', async () => {
-      vi.spyOn(cacheModule, 'buildCacheKey').mockReturnValue({
-        queryKey: 'test-key',
-        source: 'youtube',
-        paramsHash: 'v1',
-      });
-
-      vi.spyOn(cacheModule, 'getOrSetWithLock').mockResolvedValue([]);
+      const mockFetch = vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ items: [] }),
+      }));
+      global.fetch = mockFetch as unknown as typeof fetch;
 
       const results = await searchYouTube('test', {
         query: 'test',
         minScore: 0.6,
-        cacheVersion: '1',
       });
 
       expect(results).toEqual([]);
@@ -137,13 +119,6 @@ describe('YouTube Adapter', () => {
       }));
       global.fetch = mockFetch as unknown as typeof fetch;
 
-      // Mock getOrSetWithLock to call the fetcher directly, bypassing cache
-      vi.spyOn(cacheModule, 'getOrSetWithLock').mockImplementation(
-        async (_, __, fetcher) => {
-          return await fetcher();
-        }
-      );
-
       const stats = await getVideoStats(['video1']);
       expect(stats).toEqual([]);
     });
@@ -151,32 +126,37 @@ describe('YouTube Adapter', () => {
 
   describe('curateYouTube', () => {
     it('should apply minScore cutoff', async () => {
-      vi.spyOn(cacheModule, 'buildCacheKey').mockReturnValue({
-        queryKey: 'test-key',
-        source: 'youtube',
-        paramsHash: 'v1',
-      });
-
-      vi.spyOn(cacheModule, 'getOrSetWithLock')
-        .mockResolvedValueOnce([
-          {
-            id: 'video1',
-            title: 'Test Video',
-            channelTitle: 'Test Channel',
-          },
-        ])
-        .mockResolvedValueOnce([
-          {
-            id: 'video1',
-            viewCount: 1000,
-            publishedAt: '2023-01-01T00:00:00Z',
-            duration: 'PT10M',
-            status: {
-              privacyStatus: 'public',
-              embeddable: true,
-            },
-          },
-        ]);
+      // Mock search endpoint then stats endpoint
+      const mockFetch = vi
+        .fn()
+        // search
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [
+              {
+                id: { videoId: 'video1' },
+                snippet: { title: 'Test Video', channelTitle: 'Test Channel' },
+              },
+            ],
+          }),
+        })
+        // stats
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [
+              {
+                id: 'video1',
+                statistics: { viewCount: '1000' },
+                snippet: { publishedAt: '2023-01-01T00:00:00Z' },
+                contentDetails: { duration: 'PT10M' },
+                status: { privacyStatus: 'public', embeddable: true },
+              },
+            ],
+          }),
+        });
+      global.fetch = mockFetch as unknown as typeof fetch;
 
       vi.spyOn(validateModule, 'isYouTubeEmbeddable').mockReturnValue(true);
       vi.spyOn(rankingModule, 'scoreYouTube').mockReturnValue({
@@ -203,46 +183,48 @@ describe('YouTube Adapter', () => {
       const results = await curateYouTube({
         query: 'test',
         minScore: 0.9, // High cutoff
-        cacheVersion: '1',
       });
 
       expect(results).toEqual([]);
     });
 
     it('should respect maxResults limit', async () => {
-      vi.spyOn(cacheModule, 'buildCacheKey').mockReturnValue({
-        queryKey: 'test-key',
-        source: 'youtube',
-        paramsHash: 'v1',
-      });
-
-      vi.spyOn(cacheModule, 'getOrSetWithLock')
-        .mockResolvedValueOnce([
-          {
-            id: 'video1',
-            title: 'First',
-            channelTitle: 'Channel A',
-          },
-          {
-            id: 'video2',
-            title: 'Second',
-            channelTitle: 'Channel B',
-          },
-          {
-            id: 'video3',
-            title: 'Third',
-            channelTitle: 'Channel C',
-          },
-        ])
-        .mockResolvedValueOnce(
-          ['video1', 'video2', 'video3'].map((id) => ({
-            id,
-            viewCount: 1000,
-            publishedAt: '2024-01-01T00:00:00Z',
-            duration: 'PT10M',
-            status: { privacyStatus: 'public', embeddable: true },
-          }))
-        );
+      const mockFetch = vi
+        .fn()
+        // search
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [
+              {
+                id: { videoId: 'video1' },
+                snippet: { title: 'First', channelTitle: 'Channel A' },
+              },
+              {
+                id: { videoId: 'video2' },
+                snippet: { title: 'Second', channelTitle: 'Channel B' },
+              },
+              {
+                id: { videoId: 'video3' },
+                snippet: { title: 'Third', channelTitle: 'Channel C' },
+              },
+            ],
+          }),
+        })
+        // stats
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: ['video1', 'video2', 'video3'].map((id) => ({
+              id,
+              statistics: { viewCount: '1000' },
+              snippet: { publishedAt: '2024-01-01T00:00:00Z' },
+              contentDetails: { duration: 'PT10M' },
+              status: { privacyStatus: 'public', embeddable: true },
+            })),
+          }),
+        });
+      global.fetch = mockFetch as unknown as typeof fetch;
       vi.spyOn(rankingModule, 'selectTop').mockImplementation(
         (candidates, opts) => candidates.slice(0, opts.maxItems)
       );
@@ -250,7 +232,6 @@ describe('YouTube Adapter', () => {
         query: 'test',
         minScore: 0.6,
         maxResults: 2,
-        cacheVersion: '1',
       });
       expect(results).toHaveLength(2);
       expect(rankingModule.selectTop).toHaveBeenCalledWith(

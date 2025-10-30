@@ -97,51 +97,12 @@ const curationEnvSchema = z.object({
   GOOGLE_CSE_ID: z.string().optional(),
   GOOGLE_CSE_KEY: z.string().optional(),
   ENABLE_CURATION: z.string().optional(),
-  CURATION_CACHE_VERSION: z.string().optional(),
-
   // Numbers with coercion, validation and defaults
   MIN_RESOURCE_SCORE: numericEnvVar('MIN_RESOURCE_SCORE', {
     default: 0.6,
     min: 0,
     max: 1,
   }),
-  CURATION_LRU_SIZE: numericEnvVar('CURATION_LRU_SIZE', {
-    default: 500,
-    min: 1,
-    integer: true,
-  }),
-  CURATION_CACHE_TTL_SEARCH_DAYS: numericEnvVar(
-    'CURATION_CACHE_TTL_SEARCH_DAYS',
-    {
-      default: 7,
-      min: 0,
-      integer: true,
-    }
-  ),
-  CURATION_CACHE_TTL_YT_STATS_DAYS: numericEnvVar(
-    'CURATION_CACHE_TTL_YT_STATS_DAYS',
-    {
-      default: 2,
-      min: 0,
-      integer: true,
-    }
-  ),
-  CURATION_CACHE_TTL_DOCS_HEAD_DAYS: numericEnvVar(
-    'CURATION_CACHE_TTL_DOCS_HEAD_DAYS',
-    {
-      default: 5,
-      min: 0,
-      integer: true,
-    }
-  ),
-  CURATION_NEGATIVE_CACHE_TTL_HOURS: numericEnvVar(
-    'CURATION_NEGATIVE_CACHE_TTL_HOURS',
-    {
-      default: 4,
-      min: 0,
-      integer: true,
-    }
-  ),
   CURATION_CONCURRENCY: numericEnvVar('CURATION_CONCURRENCY', {
     default: 3,
     min: 1,
@@ -179,14 +140,6 @@ export type CurationConfig = {
   readonly cseKey: string | undefined;
   readonly enableCuration: boolean;
   readonly minResourceScore: number;
-  readonly cacheVersion: string;
-  readonly lruSize: number;
-  readonly ttl: {
-    readonly searchDays: number;
-    readonly ytStatsDays: number;
-    readonly docsHeadDays: number;
-    readonly negativeHours: number;
-  };
   readonly concurrency: number;
   readonly timeBudgetMs: number;
   readonly maxResults: number;
@@ -230,28 +183,6 @@ export const curationConfig: CurationConfig = (() => {
     // Minimum quality score threshold for resources (0-1 scale)
     // Coerced and validated by Zod with default fallback
     minResourceScore: env.MIN_RESOURCE_SCORE,
-
-    // Cache version for invalidation when scoring/filters change
-    cacheVersion: env.CURATION_CACHE_VERSION ?? '1',
-
-    // In-memory LRU cache size (number of keys)
-    // Coerced and validated by Zod with default fallback
-    lruSize: env.CURATION_LRU_SIZE,
-
-    // Time-to-live settings for different cache stages
-    ttl: {
-      // YouTube search results cache duration (days) - validated defaults
-      searchDays: env.CURATION_CACHE_TTL_SEARCH_DAYS,
-
-      // YouTube video statistics cache duration (days) - validated defaults
-      ytStatsDays: env.CURATION_CACHE_TTL_YT_STATS_DAYS,
-
-      // Documentation HEAD validation cache duration (days) - validated defaults
-      docsHeadDays: env.CURATION_CACHE_TTL_DOCS_HEAD_DAYS,
-
-      // Negative cache (empty/failed searches) duration (hours) - validated defaults
-      negativeHours: env.CURATION_NEGATIVE_CACHE_TTL_HOURS,
-    },
 
     // Worker processing settings
     // Concurrency limit for batch processing tasks

@@ -15,20 +15,12 @@ const { mockCurationConfig } = vi.hoisted(() => ({
   mockCurationConfig: {
     enableCuration: true,
     minResourceScore: 0.6,
-    cacheVersion: '1',
     youtubeApiKey: undefined,
     cseId: undefined,
     cseKey: undefined,
-    lruSize: 500,
     concurrency: 3,
     timeBudgetMs: 30_000,
     maxResults: 3,
-    ttl: {
-      searchDays: 7,
-      ytStatsDays: 2,
-      docsHeadDays: 5,
-      negativeHours: 4,
-    },
   },
 }));
 

@@ -1357,48 +1357,4 @@ export const aiUsageEvents = pgTable(
   ]
 ).enableRLS();
 
-// Resource search cache table (internal service table for curation)
-export const resourceSearchCache = pgTable(
-  'resource_search_cache',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    queryKey: text('query_key').notNull().unique(),
-    source: text('source').notNull(), // 'youtube' | 'doc'
-    params: jsonb('params').$type<Record<string, unknown>>().notNull(),
-    results: jsonb('results').$type<unknown[]>().notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  },
-  (table) => [
-    // Index for cleanup queries by source and expiration
-    index('resource_search_cache_source_expires_idx').on(
-      table.source,
-      table.expiresAt
-    ),
-
-    // RLS policies (internal service table - service role only)
-    pgPolicy('resource_search_cache_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
-    }),
-    pgPolicy('resource_search_cache_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
-    pgPolicy('resource_search_cache_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
-    pgPolicy('resource_search_cache_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
-    }),
-  ]
-).enableRLS();
+// resource_search_cache table removed (curation caching eliminated)

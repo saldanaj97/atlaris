@@ -4,7 +4,6 @@
  */
 
 import type { ResourceCandidate, CurationParams } from '@/lib/curation/types';
-import { buildCacheKey, getOrSetWithLock } from '@/lib/curation/cache';
 import { curationConfig } from '@/lib/curation/config';
 import { isYouTubeEmbeddable } from '@/lib/curation/validate';
 import { scoreYouTube, selectTop, type Scored } from '@/lib/curation/ranking';
@@ -48,77 +47,65 @@ export async function searchYouTube(
   query: string,
   params: CurationParams & { duration?: DurationFilter }
 ): Promise<YouTubeSearchResult[]> {
-  const paramsVersion =
-    params.duration != null ? `search-v1-${params.duration}` : 'search-v1';
-  const cacheKey = buildCacheKey({
-    query,
-    source: 'youtube',
-    paramsVersion,
-    cacheVersion: params.cacheVersion,
+  const apiKey = curationConfig.youtubeApiKey!;
+  const baseUrl = 'https://www.googleapis.com/youtube/v3/search';
+
+  const searchParams = new URLSearchParams({
+    part: 'snippet',
+    type: 'video',
+    maxResults: '10',
+    q: query,
+    key: apiKey,
+    videoDefinition: 'high',
+    fields: 'items(id/videoId,snippet/title,snippet/channelTitle)',
   });
 
-  return getOrSetWithLock(cacheKey, 'search', async () => {
-    const apiKey = curationConfig.youtubeApiKey!;
-    const baseUrl = 'https://www.googleapis.com/youtube/v3/search';
+  // Add duration filter if specified
+  if (params.duration) {
+    searchParams.append('videoDuration', params.duration);
+  }
 
-    const searchParams = new URLSearchParams({
-      part: 'snippet',
-      type: 'video',
-      maxResults: '10',
-      q: query,
-      key: apiKey,
-      videoDefinition: 'high',
-      fields: 'items(id/videoId,snippet/title,snippet/channelTitle)',
-    });
+  const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
 
-    // Add duration filter if specified
-    if (params.duration) {
-      searchParams.append('videoDuration', params.duration);
+  if (!response.ok) {
+    // Surface error to caller
+    let body = '';
+    try {
+      const text = await response.text();
+      body = text;
+    } catch {
+      body = '<no body>';
     }
+    const err = new Error(
+      `YouTube search API error: ${response.status} ${response.statusText} — ${body}`
+    );
+    throw err;
+  }
 
-    const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+  const data = (await response.json()) as {
+    items?: Array<{
+      id?: { videoId?: string };
+      snippet?: { title?: string; channelTitle?: string };
+    }>;
+  };
 
-    if (!response.ok) {
-      // Surface error so callers/caching treat it as transient, not negative cache
-      let body = '';
-      try {
-        const text = await response.text();
-        body = text;
-      } catch {
-        body = '<no body>';
-      }
-      const err = new Error(
-        `YouTube search API error: ${response.status} ${response.statusText} — ${body}`
-      );
-      // Throw so getOrSetWithLock does not cache this failure
-      throw err;
+  const results: YouTubeSearchResult[] = [];
+
+  for (const item of data.items || []) {
+    const videoId = item.id?.videoId;
+    const title = item.snippet?.title;
+    const channelTitle = item.snippet?.channelTitle;
+
+    if (videoId && title && channelTitle) {
+      results.push({
+        id: videoId,
+        title,
+        channelTitle,
+      });
     }
+  }
 
-    const data = (await response.json()) as {
-      items?: Array<{
-        id?: { videoId?: string };
-        snippet?: { title?: string; channelTitle?: string };
-      }>;
-    };
-
-    const results: YouTubeSearchResult[] = [];
-
-    for (const item of data.items || []) {
-      const videoId = item.id?.videoId;
-      const title = item.snippet?.title;
-      const channelTitle = item.snippet?.channelTitle;
-
-      if (videoId && title && channelTitle) {
-        results.push({
-          id: videoId,
-          title,
-          channelTitle,
-        });
-      }
-    }
-
-    return results;
-  });
+  return results;
 }
 
 /**
@@ -135,12 +122,6 @@ export async function getVideoStats(
 
   const apiKey = curationConfig.youtubeApiKey!;
   const baseUrl = 'https://www.googleapis.com/youtube/v3/videos';
-  const key = buildCacheKey({
-    query: ids.slice().sort().join(','),
-    source: 'youtube',
-    paramsVersion: 'yt-stats-v1',
-    cacheVersion: curationConfig.cacheVersion,
-  });
 
   const searchParams = new URLSearchParams({
     part: 'statistics,snippet,contentDetails,status',
@@ -151,58 +132,56 @@ export async function getVideoStats(
   });
 
   try {
-    return await getOrSetWithLock(key, 'yt-stats', async () => {
-      const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+    const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
 
-      if (!response.ok) {
-        let body = '';
-        try {
-          body = await response.text();
-        } catch {
-          body = '<no body>';
-        }
-        console.error(
-          `YouTube stats API error: ${response.status} ${response.statusText}`,
-          { body }
-        );
-        throw new Error(`YouTube stats API error: ${response.status}`);
+    if (!response.ok) {
+      let body = '';
+      try {
+        body = await response.text();
+      } catch {
+        body = '<no body>';
       }
+      console.error(
+        `YouTube stats API error: ${response.status} ${response.statusText}`,
+        { body }
+      );
+      throw new Error(`YouTube stats API error: ${response.status}`);
+    }
 
-      const data = (await response.json()) as {
-        items?: Array<{
-          id?: string;
-          statistics?: { viewCount?: string };
-          snippet?: { publishedAt?: string };
-          contentDetails?: { duration?: string };
-          status?: { privacyStatus?: string; embeddable?: boolean };
-        }>;
-      };
+    const data = (await response.json()) as {
+      items?: Array<{
+        id?: string;
+        statistics?: { viewCount?: string };
+        snippet?: { publishedAt?: string };
+        contentDetails?: { duration?: string };
+        status?: { privacyStatus?: string; embeddable?: boolean };
+      }>;
+    };
 
-      const results: YouTubeVideoStats[] = [];
+    const results: YouTubeVideoStats[] = [];
 
-      for (const item of data.items || []) {
-        const videoId = item.id;
-        const viewCount = item.statistics?.viewCount;
-        const publishedAt = item.snippet?.publishedAt;
-        const duration = item.contentDetails?.duration;
-        const status = item.status;
+    for (const item of data.items || []) {
+      const videoId = item.id;
+      const viewCount = item.statistics?.viewCount;
+      const publishedAt = item.snippet?.publishedAt;
+      const duration = item.contentDetails?.duration;
+      const status = item.status;
 
-        if (videoId && viewCount && publishedAt && duration && status) {
-          results.push({
-            id: videoId,
-            viewCount: Number.parseInt(viewCount, 10),
-            publishedAt,
-            duration,
-            status: {
-              privacyStatus: status.privacyStatus,
-              embeddable: status.embeddable,
-            },
-          });
-        }
+      if (videoId && viewCount && publishedAt && duration && status) {
+        results.push({
+          id: videoId,
+          viewCount: Number.parseInt(viewCount, 10),
+          publishedAt,
+          duration,
+          status: {
+            privacyStatus: status.privacyStatus,
+            embeddable: status.embeddable,
+          },
+        });
       }
+    }
 
-      return results;
-    });
+    return results;
   } catch {
     return [];
   }
