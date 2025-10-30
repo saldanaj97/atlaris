@@ -224,6 +224,14 @@ describe('Plan generation cache behavior E2E', () => {
 
     const firstRunCounters = { ...fetchCounters };
 
+    // Capture counters before second run to compute deltas
+    const countersBeforeSecondRun = {
+      youtubeSearch: fetchCounters.youtubeSearch,
+      youtubeStats: fetchCounters.youtubeStats,
+      docsSearch: fetchCounters.docsSearch,
+      docsHead: fetchCounters.docsHead,
+    };
+
     // Second generation with similar topic
     const requestPayload2 = {
       topic: 'JavaScript Promises Advanced',
@@ -267,8 +275,16 @@ describe('Plan generation cache behavior E2E', () => {
     expect(planPayload1).toBeDefined();
     expect(planPayload2).toBeDefined();
 
-    // Assert reduced upstream calls on rerun (cache effectiveness)
-    const secondRunCounters = { ...fetchCounters };
+    // Calculate deltas: counters after second run - counters before second run
+    // This gives us the second run's calls in isolation
+    const secondRunDeltas = {
+      youtubeSearch:
+        fetchCounters.youtubeSearch - countersBeforeSecondRun.youtubeSearch,
+      youtubeStats:
+        fetchCounters.youtubeStats - countersBeforeSecondRun.youtubeStats,
+      docsSearch: fetchCounters.docsSearch - countersBeforeSecondRun.docsSearch,
+      docsHead: fetchCounters.docsHead - countersBeforeSecondRun.docsHead,
+    };
 
     // Compute totals for comparison
     const totalFirst =
@@ -277,20 +293,20 @@ describe('Plan generation cache behavior E2E', () => {
       firstRunCounters.docsSearch +
       firstRunCounters.docsHead;
     const totalSecond =
-      secondRunCounters.youtubeSearch +
-      secondRunCounters.youtubeStats +
-      secondRunCounters.docsSearch +
-      secondRunCounters.docsHead;
+      secondRunDeltas.youtubeSearch +
+      secondRunDeltas.youtubeStats +
+      secondRunDeltas.docsSearch +
+      secondRunDeltas.docsHead;
 
     // Total external calls in second run should be strictly less than first run
-    expect(totalSecond).toBeLessThanOrEqual(totalFirst);
+    expect(totalSecond).toBeLessThan(totalFirst);
 
     // Ensure at least one individual counter decreased to verify cache is working
     expect(
-      secondRunCounters.youtubeSearch < firstRunCounters.youtubeSearch ||
-        secondRunCounters.youtubeStats < firstRunCounters.youtubeStats ||
-        secondRunCounters.docsSearch < firstRunCounters.docsSearch ||
-        secondRunCounters.docsHead < firstRunCounters.docsHead,
+      secondRunDeltas.youtubeSearch < firstRunCounters.youtubeSearch ||
+        secondRunDeltas.youtubeStats < firstRunCounters.youtubeStats ||
+        secondRunDeltas.docsSearch < firstRunCounters.docsSearch ||
+        secondRunDeltas.docsHead < firstRunCounters.docsHead,
       'Expected at least one counter to decrease due to caching'
     ).toBe(true);
   }, 60_000);
