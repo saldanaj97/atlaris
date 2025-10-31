@@ -11,7 +11,10 @@ import type { ResourceCandidate } from '@/lib/curation/types';
 import { mapSourceToDbResourceType } from '@/lib/curation/types';
 
 /**
- * Extract domain from URL
+ * Return the hostname for a URL with a leading `www.` removed.
+ *
+ * @param url - The input URL string to parse.
+ * @returns The hostname with a leading `www.` removed, or `null` if `url` is not a valid URL.
  */
 function extractDomain(url: string): string | null {
   try {
@@ -23,14 +26,34 @@ function extractDomain(url: string): string | null {
 }
 
 /**
- * Upsert a resource by URL
- * Creates new resource or updates existing one if URL matches
- * @param candidate Resource candidate to upsert
- * @returns Resource ID
+ * Checks whether a string is a well-formed HTTP or HTTPS URL.
+ *
+ * @param raw - The input string to validate as a URL
+ * @returns `true` if `raw` is a valid URL with `http:` or `https:` protocol, `false` otherwise
+ */
+function isValidHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Insert a new resource or update an existing one identified by the candidate's URL.
+ *
+ * @param candidate - Resource candidate containing at least `url`, `title`, and `source`; may include `metadata` (e.g., `durationMinutes`)
+ * @returns The id of the inserted or updated resource
+ * @throws Error if `candidate.url` is not a valid `http:` or `https:` URL
  */
 export async function upsertResource(
   candidate: ResourceCandidate
 ): Promise<string> {
+  // Basic URL validation: must be http(s) with hostname
+  if (!isValidHttpUrl(candidate.url)) {
+    throw new Error('Invalid URL: only http(s) URLs are allowed.');
+  }
   const dbType = mapSourceToDbResourceType(candidate.source);
   const domain = extractDomain(candidate.url);
   const rawDuration = candidate.metadata?.['durationMinutes'];

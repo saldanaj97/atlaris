@@ -64,6 +64,13 @@
       "when": 1761342265613,
       "tag": "0008_bouncy_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1761935493378,
+      "tag": "0009_futuristic_lockjaw",
+      "breakpoints": true
     }
   ]
 }

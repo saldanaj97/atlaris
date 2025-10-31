@@ -119,17 +119,25 @@ import { ensureUser } from '../helpers/db';
 const BASE_URL = 'http://localhost/api/v1/plans';
 
 const ORIGINAL_ENV = {
+  AI_PROVIDER: process.env.AI_PROVIDER,
   AI_USE_MOCK: process.env.AI_USE_MOCK,
   ENABLE_CURATION: process.env.ENABLE_CURATION,
 };
 
 beforeAll(() => {
   // Ensure router uses our mocked providers, not MockGenerationProvider
+  delete process.env.AI_PROVIDER;
   process.env.AI_USE_MOCK = 'false';
   process.env.ENABLE_CURATION = 'false';
 });
 
 afterAll(() => {
+  if (ORIGINAL_ENV.AI_PROVIDER === undefined) {
+    delete process.env.AI_PROVIDER;
+  } else {
+    process.env.AI_PROVIDER = ORIGINAL_ENV.AI_PROVIDER;
+  }
+
   if (ORIGINAL_ENV.AI_USE_MOCK === undefined) {
     delete process.env.AI_USE_MOCK;
   } else {
@@ -144,8 +152,6 @@ afterAll(() => {
 });
 
 beforeEach(() => {
-  vi.restoreAllMocks();
-
   (globalThis as any).__capturedInputs = [];
 });
 

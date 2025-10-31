@@ -22,12 +22,15 @@ async function ensureUser(): Promise<void> {
 const ORIGINAL = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   AI_USE_MOCK: process.env.AI_USE_MOCK,
+  MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
 };
 
 describe('Server Action: generateLearningPlan', () => {
   beforeEach(() => {
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
+    // Deflake: ensure mock provider does not randomly fail
+    process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   });
 
   afterEach(() => {
@@ -40,6 +43,12 @@ describe('Server Action: generateLearningPlan', () => {
       delete process.env.AI_USE_MOCK;
     } else {
       process.env.AI_USE_MOCK = ORIGINAL.AI_USE_MOCK;
+    }
+    if (ORIGINAL.MOCK_GENERATION_FAILURE_RATE === undefined) {
+      delete process.env.MOCK_GENERATION_FAILURE_RATE;
+    } else {
+      process.env.MOCK_GENERATION_FAILURE_RATE =
+        ORIGINAL.MOCK_GENERATION_FAILURE_RATE;
     }
   });
 

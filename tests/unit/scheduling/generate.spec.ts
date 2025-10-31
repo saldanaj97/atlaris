@@ -1,0 +1,78 @@
+import { describe, expect, it } from 'vitest';
+import { generateSchedule } from '@/lib/scheduling/generate';
+import type { ScheduleInputs } from '@/lib/scheduling/types';
+
+describe('generateSchedule', () => {
+  it('should generate complete schedule from inputs', () => {
+    const inputs: ScheduleInputs = {
+      planId: 'plan-123',
+      tasks: [
+        {
+          id: 'task-1',
+          title: 'Learn React',
+          estimatedMinutes: 120,
+          order: 1,
+          moduleId: 'mod-1',
+        },
+        {
+          id: 'task-2',
+          title: 'Build Project',
+          estimatedMinutes: 180,
+          order: 2,
+          moduleId: 'mod-1',
+        },
+      ],
+      startDate: '2025-02-03',
+      deadline: null,
+      weeklyHours: 5,
+      timezone: 'America/New_York',
+    };
+
+    const schedule = generateSchedule(inputs);
+
+    expect(schedule.weeks.length).toBeGreaterThan(0);
+    expect(schedule.totalWeeks).toBeGreaterThan(0);
+    expect(schedule.totalSessions).toBeGreaterThan(0);
+  });
+
+  it('should be deterministic - same inputs produce same output', () => {
+    const inputs: ScheduleInputs = {
+      planId: 'plan-123',
+      tasks: [
+        {
+          id: 'task-1',
+          title: 'Task 1',
+          estimatedMinutes: 60,
+          order: 1,
+          moduleId: 'mod-1',
+        },
+      ],
+      startDate: '2025-02-03',
+      deadline: null,
+      weeklyHours: 10,
+      timezone: 'UTC',
+    };
+
+    const schedule1 = generateSchedule(inputs);
+    const schedule2 = generateSchedule(inputs);
+
+    expect(JSON.stringify(schedule1)).toBe(JSON.stringify(schedule2));
+  });
+
+  it('should handle empty task list', () => {
+    const inputs: ScheduleInputs = {
+      planId: 'plan-123',
+      tasks: [],
+      startDate: '2025-02-03',
+      deadline: null,
+      weeklyHours: 10,
+      timezone: 'UTC',
+    };
+
+    const schedule = generateSchedule(inputs);
+
+    expect(schedule.weeks).toHaveLength(0);
+    expect(schedule.totalWeeks).toBe(0);
+    expect(schedule.totalSessions).toBe(0);
+  });
+});

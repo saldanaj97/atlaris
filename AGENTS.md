@@ -23,20 +23,17 @@ This file provides guidance when working with code in this repository.
 
 ### General rules
 
+- When you are done with the implementation, run the CodeRabbit CLI to review the code changes.
+- Run the command: `coderabbit --prompt-only -t uncommitted`.
+- When running the CodeRabbit CLI to review code changes, don't run it more than 3 times in a given set of changes.
+
 - Ignore any assumptions you may have about how this project works based on your prior experience. This project has its own specific architecture, structure, and conventions that must be followed. Reason from facts only.
 
 - NEVER run the full test suite. Only run the tests that are relevant to the task at hand, have been explicitly requested, or are newly added. When running tests, use the 'vitest' command with the appropriate flags. NOT the 'pnpm test' command.
 
 - Make sure to ALWAYS use the context7 MCP for grabbing the most up to date documentation about a specific topic before starting any coding task or when I ask you a clarifying question. This will ensure you have the most up to date information and avoid any mistakes.
 
-- Before you begin any coding or implementations, make sure to use the rules I have defined in the .github/instructions directory if we are making edits to any of the files or directories matching the patterns below:
-  - src/app/\*\*/\*.tsx
-  - src/app/\*\*/\*.ts
-  - src/components/\*\*/\*.tsx
-  - src/components/\*\*/\*.ts
-  - src/hooks/\*\*/\*.ts
-  - src/hooks/\*\*/\*.tsx
-- AGAIN, MAKE SURE TO ONLY APPLY THAT RULE IF THE FILE MATCHES A PATTERN FROM THE LIST!
+- When dealing with database changes, make sure to always push the schema to the test database as well as the local database using the appropriate commands.
 
 ### Dealing with specific github issues or tasks
 
@@ -100,6 +97,7 @@ Tests cover:
   - Generate migrations: pnpm db:generate
   - Apply migrations: pnpm db:migrate
   - Push schema to DB: pnpm db:push
+  - Push schema to test DB: pnpm db:push:test
   - Seed database: pnpm seed (development mode)
   - Custom seed: pnpm seed:custom
   - Reset database: pnpm seed:reset

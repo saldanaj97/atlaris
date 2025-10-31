@@ -304,8 +304,16 @@ export async function processPlanGenerationJob(
 }
 
 /**
- * Curation and micro-explanations integration
- * Curates resources for each task and optionally generates micro-explanations
+ * Curates and attaches resources for each task in a learning plan and optionally generates micro-explanations.
+ *
+ * Processes tasks in batches according to the configured concurrency and respects the configured time budget.
+ * For each task it attempts to find candidate resources and attach them, and it may prepend a generated
+ * micro-explanation to the task description. Individual task errors (curation or micro-explanation) are
+ * logged and do not stop processing of other tasks.
+ *
+ * @param planId - The identifier of the plan whose tasks will be curated
+ * @param params - Plan generation input (uses fields such as `topic` and `skillLevel` to drive curation)
+ * @param _userId - Caller user id (currently unused by the curation flow)
  */
 async function maybeCurateAndAttachResources(
   planId: string,
@@ -364,6 +372,10 @@ async function maybeCurateAndAttachResources(
             await upsertAndAttach(task.id, candidates);
             console.log(
               `[Curation] Attached ${candidates.length} resources to task ${task.id}`
+            );
+          } else {
+            console.log(
+              `[Curation] No candidates met cutoff for task ${task.id} (minScore=${curationParams.minScore})`
             );
           }
 
@@ -426,8 +438,15 @@ async function maybeCurateAndAttachResources(
 }
 
 /**
- * Curate resources for a single task
- * Blends YouTube and docs results with diversity preference
+ * Curates and selects a ranked set of resources for a single task.
+ *
+ * Performs a YouTube-first search using `params.query` combined with `taskTitle`, falls back to docs when YouTube yields no results meeting `minScore`, and skips docs if enough high-scoring YouTube results are found; the final list is filtered and ranked with a diversity preference.
+ *
+ * @param taskTitle - The task title appended to the base query to scope searches
+ * @param params.query - Base search query or topic used for discovery
+ * @param params.minScore - Score cutoff; resources with numeric scores below this value are considered invalid
+ * @param params.maxResults - Maximum number of resources to return
+ * @returns The top-scored resources after blending and selecting candidates according to `minScore`, `maxResults`, and diversity preferences
  */
 async function curateTaskResources(
   taskTitle: string,
@@ -440,9 +459,10 @@ async function curateTaskResources(
 ): Promise<Scored[]> {
   const candidates: Scored[] = [];
 
-  // Search YouTube
+  // Search YouTube first
+  let ytResults: Scored[] = [];
   try {
-    const ytResults = await curateYouTube({
+    ytResults = await curateYouTube({
       ...params,
       query: `${params.query} ${taskTitle}`,
     });
@@ -451,8 +471,16 @@ async function curateTaskResources(
     console.error('[Curation] YouTube search failed:', error);
   }
 
-  // Search docs if needed
-  if (candidates.length < params.maxResults) {
+  // Determine validity against cutoff
+  const validYtCount = ytResults.filter(
+    (r) => r.numericScore >= params.minScore
+  ).length;
+
+  // Early-stop: enough high-scoring YT results
+  if (validYtCount >= params.maxResults) {
+    // proceed to selection without docs
+  } else if (validYtCount < 1) {
+    // Fallback: Try docs when YT yields <1 valid candidate
     try {
       const docResults = await curateDocs({
         ...params,

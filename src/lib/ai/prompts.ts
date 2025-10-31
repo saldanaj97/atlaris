@@ -7,12 +7,39 @@ export interface PromptParams {
   deadlineDate?: string | null;
 }
 
+/**
+ * Build the system prompt that instructs an AI to produce a curriculum as strict JSON following a defined schema and constraints.
+ *
+ * The generated prompt requires a top-level object { "modules": Module[] } and defines the Module, Task, and Resource schemas, including:
+ * - Module: title, optional description, estimated_minutes (integer >= 0), tasks (3–6 tasks per module)
+ * - Task: title, optional description, estimated_minutes (integer >= 0), resources (one or more Resource entries)
+ * - Resource: title, url, type ("youtube" | "article" | "course" | "doc" | "other")
+ *
+ * It also enforces overall constraints (3–6 modules total, action-oriented titles, integer non-negative time estimates), time-estimate guidelines by skill level, resource requirements (at least one linked resource per task, mixed resource types, prefer high-quality/free), timeline distribution when start/deadline are provided, and prohibits any non-JSON output (no markdown, code fences, or commentary).
+ *
+ * @returns A single string containing the system prompt that mandates JSON-only output adhering to the Module/Task/Resource schemas and the listed constraints
+ */
 export function buildSystemPrompt(): string {
   return [
     'You are an expert curriculum designer. Output strictly JSON only.',
     'Return an object: {"modules": Array<Module>}. No extra text.',
     'Module: { title: string, description?: string, estimated_minutes: int>=0, tasks: Task[] }',
-    'Task: { title: string, description?: string, estimated_minutes: int>=0 }',
+    'Task: { title: string, description?: string, estimated_minutes: int>=0, resources: Resource[] }',
+    'Resource: { title: string, url: string, type: "youtube" | "article" | "course" | "doc" | "other" }',
+    'IMPORTANT: For each task, you MUST include:',
+    '1. A clear, actionable title',
+    '2. A detailed description',
+    '3. An estimated_minutes field (integer) indicating how long the task should take',
+    '4. At least one resource URL (preferably multiple) relevant to the task',
+    'Time Estimate Guidelines:',
+    '- Beginner tasks: typically 30-90 minutes',
+    '- Intermediate tasks: typically 60-180 minutes',
+    '- Advanced tasks: typically 90-240 minutes',
+    '- Adjust based on task complexity and scope',
+    'Resource Requirements:',
+    '- Every task MUST have at least one linked resource',
+    '- Prefer high-quality, free resources when possible',
+    '- Include a mix of resource types: videos, articles, documentation, interactive tutorials',
     'Constraints:',
     '- Provide 3-6 modules total.',
     '- Each module must include 3-6 tasks.',
