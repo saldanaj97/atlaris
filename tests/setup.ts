@@ -4,6 +4,7 @@ if (!process.env.NODE_ENV) {
 }
 
 import { afterAll, afterEach, beforeEach } from 'vitest';
+import { cleanup } from '@testing-library/react';
 
 import { client } from '@/lib/db/drizzle';
 import { Mutex } from 'async-mutex';
@@ -63,6 +64,8 @@ if (!skipDbSetup) {
   });
 
   afterEach(() => {
+    // Ensure React Testing Library cleans up the DOM between tests
+    cleanup();
     releaseDbLock?.();
     releaseDbLock = null;
   });
