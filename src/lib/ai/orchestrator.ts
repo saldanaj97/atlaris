@@ -175,6 +175,10 @@ export async function runGenerationAttempt(
   // on provider-level mocks. No-op outside tests.
   try {
     if (process.env.NODE_ENV === 'test' || process.env.VITEST_WORKER_ID) {
+      // Assert we're truly in a test environment
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Test capture hook invoked in production');
+      }
       type CapturedInput = { provider: string; input: GenerationInput };
       const g = globalThis as unknown as {
         __capturedInputs?: CapturedInput[];
