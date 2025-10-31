@@ -1,7 +1,7 @@
 # Progress Overview
 
-- [ ] Task 1: Install date-fns and Create Scheduling Types
-- [ ] Task 2: Create Inputs Hash Function
+- [x] Task 1: Install date-fns and Create Scheduling Types
+- [x] Task 2: Create Inputs Hash Function
 - [ ] Task 3: Create Date Utility Functions
 - [ ] Task 4: Create Session Distribution Logic
 - [ ] Task 5: Create Plan Schedules Database Table
@@ -19,20 +19,20 @@
 
 # Task 1: Install date-fns and Create Scheduling Types
 
-- [ ] Step 1: Install date-fns package
-- [ ] Step 2: Write test for type definitions
-- [ ] Step 3: Run test to verify it fails
-- [ ] Step 4: Create scheduling types file
-- [ ] Step 5: Run test to verify it passes
-- [ ] Step 6: Commit
+- [x] Step 1: Install date-fns package
+- [x] Step 2: Write test for type definitions
+- [x] Step 3: Run test to verify it fails
+- [x] Step 4: Create scheduling types file
+- [x] Step 5: Run test to verify it passes
+- [x] Step 6: Commit
 
 # Task 2: Create Inputs Hash Function
 
-- [ ] Step 1: Write the failing test
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Create hash function implementation
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
+- [x] Step 1: Write the failing test
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Create hash function implementation
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Commit
 
 # Task 3: Create Date Utility Functions
 
