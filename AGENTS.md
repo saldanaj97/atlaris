@@ -24,7 +24,7 @@ This file provides guidance when working with code in this repository.
 ### General rules
 
 - When you are done with the implementation, run the CodeRabbit CLI to review the code changes.
-- Run the command: `coderrabit --prompt-only -t uncommitted`.
+- Run the command: `coderabbit --prompt-only -t uncommitted`.
 - When running the CodeRabbit CLI to review code changes, don't run it more than 3 times in a given set of changes.
 
 - Ignore any assumptions you may have about how this project works based on your prior experience. This project has its own specific architecture, structure, and conventions that must be followed. Reason from facts only.
