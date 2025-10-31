@@ -9,6 +9,8 @@ export interface ScheduleInputs {
     estimatedMinutes: number;
     order: number;
     moduleId: string;
+    // Optional display title for the module; not used for hashing
+    moduleTitle?: string;
   }>;
   startDate: string; // ISO date string (YYYY-MM-DD)
   deadline: string | null; // ISO date string (YYYY-MM-DD)

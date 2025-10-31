@@ -4,8 +4,9 @@ import type { ScheduleJson } from './types';
  * Validates a generated schedule for correctness
  */
 export function validateSchedule(schedule: ScheduleJson): void {
+  // Allow empty schedules (e.g., when there are no tasks)
   if (schedule.weeks.length === 0) {
-    throw new Error('Schedule must have at least one week');
+    return;
   }
 
   for (const week of schedule.weeks) {
@@ -14,11 +15,7 @@ export function validateSchedule(schedule: ScheduleJson): void {
     }
 
     for (const day of week.days) {
-      if (day.sessions.length === 0) {
-        throw new Error(
-          `Week ${week.weekNumber}, Day ${day.dayNumber} has no sessions`
-        );
-      }
+      // Days with zero sessions are allowed; UI may display them as empty
 
       for (const session of day.sessions) {
         if (!session.taskId || !session.taskTitle) {

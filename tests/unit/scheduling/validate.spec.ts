@@ -38,16 +38,14 @@ describe('Schedule Validation', () => {
       expect(() => validateSchedule(schedule)).not.toThrow();
     });
 
-    it('should throw error for empty weeks array', () => {
+    it('should allow empty schedule (no weeks)', () => {
       const schedule: ScheduleJson = {
         weeks: [],
         totalWeeks: 0,
         totalSessions: 0,
       };
 
-      expect(() => validateSchedule(schedule)).toThrow(
-        'Schedule must have at least one week'
-      );
+      expect(() => validateSchedule(schedule)).not.toThrow();
     });
 
     it('should throw error for week with no days', () => {
@@ -67,6 +65,29 @@ describe('Schedule Validation', () => {
       expect(() => validateSchedule(schedule)).toThrow(
         'Week 1 has no scheduled days'
       );
+    });
+
+    it('should allow days with zero sessions', () => {
+      const schedule: ScheduleJson = {
+        weeks: [
+          {
+            weekNumber: 1,
+            startDate: '2025-02-03',
+            endDate: '2025-02-09',
+            days: [
+              {
+                dayNumber: 1,
+                date: '2025-02-03',
+                sessions: [],
+              },
+            ],
+          },
+        ],
+        totalWeeks: 1,
+        totalSessions: 0,
+      };
+
+      expect(() => validateSchedule(schedule)).not.toThrow();
     });
   });
 

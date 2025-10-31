@@ -144,8 +144,6 @@ afterAll(() => {
 });
 
 beforeEach(() => {
-  vi.restoreAllMocks();
-
   (globalThis as any).__capturedInputs = [];
 });
 

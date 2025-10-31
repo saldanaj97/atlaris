@@ -39,26 +39,25 @@ export async function getPlanSchedule(
     .where(eq(modules.planId, planId))
     .orderBy(asc(modules.order));
 
-  let flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }> =
-    [];
-
-  if (planModules.length > 0) {
-    const moduleIds = planModules.map((m) => m.id);
-    const taskRows = await db
-      .select({
-        task: tasks,
-        moduleTitle: modules.title,
-      })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .where(inArray(modules.id, moduleIds))
-      .orderBy(asc(modules.order), asc(tasks.order));
-
-    flatTasks = taskRows.map((row) => ({
-      ...row.task,
-      moduleTitle: row.moduleTitle,
-    }));
-  }
+  const flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }> =
+    planModules.length > 0
+      ? await (async () => {
+          const moduleIds = planModules.map((m) => m.id);
+          const taskRows = await db
+            .select({
+              task: tasks,
+              moduleTitle: modules.title,
+            })
+            .from(tasks)
+            .innerJoin(modules, eq(tasks.moduleId, modules.id))
+            .where(inArray(modules.id, moduleIds))
+            .orderBy(asc(modules.order), asc(tasks.order));
+          return taskRows.map((row) => ({
+            ...row.task,
+            moduleTitle: row.moduleTitle,
+          }));
+        })()
+      : [];
 
   // Build schedule inputs
   const inputs: ScheduleInputs = {
@@ -69,6 +68,7 @@ export async function getPlanSchedule(
       estimatedMinutes: task.estimatedMinutes,
       order: idx + 1,
       moduleId: task.moduleId,
+      moduleTitle: task.moduleTitle,
     })),
     startDate: plan.startDate || plan.createdAt.toISOString().split('T')[0],
     deadline: plan.deadlineDate,
