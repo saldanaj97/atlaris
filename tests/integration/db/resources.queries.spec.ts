@@ -171,6 +171,51 @@ describe('DB Resources Queries', () => {
       expect(youtubeResource.type).toBe('youtube');
       expect(docResource.type).toBe('doc');
     });
+
+    it('should reject invalid URLs', async () => {
+      const badUrls = [
+        'not-a-url',
+        'ftp://example.com/file',
+        'javascript:alert(1)',
+      ];
+
+      for (const bad of badUrls) {
+        const candidate: ResourceCandidate = {
+          url: bad,
+          title: 'Bad URL',
+          source: 'doc',
+          score: {
+            blended: 0.8,
+            components: {},
+            scoredAt: new Date().toISOString(),
+          },
+          metadata: {},
+        };
+
+        await expect(upsertResource(candidate)).rejects.toThrow(/invalid url/i);
+      }
+    });
+
+    it('should extract domain correctly from URL', async () => {
+      const candidate: ResourceCandidate = {
+        url: 'https://www.react.dev/docs/intro',
+        title: 'React Docs',
+        source: 'doc',
+        score: {
+          blended: 0.9,
+          components: {},
+          scoredAt: new Date().toISOString(),
+        },
+        metadata: {},
+      };
+
+      const resourceId = await upsertResource(candidate);
+      const [row] = await db
+        .select()
+        .from(resources)
+        .where(eq(resources.id, resourceId));
+      expect(row.domain).toBe('react.dev');
+    });
   });
 
   describe('attachTaskResources', () => {

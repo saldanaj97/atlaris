@@ -240,6 +240,11 @@ describe('Plan generation with curation E2E', () => {
     );
     expect(totalAttachedResourcesFromClient).toBeGreaterThan(0);
 
+    // With the default cutoff, ensure each task has at least one resource (when available)
+    for (const task of allTasks as Array<{ resources: unknown[] }>) {
+      expect((task.resources ?? []).length).toBeGreaterThan(0);
+    }
+
     // Verify url/title/type are present for each resource in client payload
     for (const module of planDetail.modules) {
       for (const task of module.tasks) {

@@ -22,6 +22,15 @@ function extractDomain(url: string): string | null {
   }
 }
 
+function isValidHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Upsert a resource by URL
  * Creates new resource or updates existing one if URL matches
@@ -31,6 +40,10 @@ function extractDomain(url: string): string | null {
 export async function upsertResource(
   candidate: ResourceCandidate
 ): Promise<string> {
+  // Basic URL validation: must be http(s) with hostname
+  if (!isValidHttpUrl(candidate.url)) {
+    throw new Error('Invalid URL: only http(s) URLs are allowed.');
+  }
   const dbType = mapSourceToDbResourceType(candidate.source);
   const domain = extractDomain(candidate.url);
   const rawDuration = candidate.metadata?.['durationMinutes'];
