@@ -5,8 +5,10 @@ import { useState } from 'react';
 
 import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ProgressStatus } from '@/lib/types/db';
+import type { ScheduleJson } from '@/lib/scheduling/types';
 
 import { PlanModuleCard } from '@/components/plans/PlanModuleCard';
+import ScheduleWeekList from '@/components/plans/ScheduleWeekList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
@@ -16,9 +18,10 @@ import { PlanPendingState } from './PlanPendingState';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
+  schedule: ScheduleJson;
 }
 
-export default function PlanDetails({ plan }: PlanDetailClientProps) {
+export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
   const router = useRouter();
   const modules = plan.modules ?? [];
   const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
@@ -28,6 +31,9 @@ export default function PlanDetails({ plan }: PlanDetailClientProps) {
       );
       return Object.fromEntries(entries);
     }
+  );
+  const [activeView, setActiveView] = useState<'modules' | 'schedule'>(
+    'modules'
   );
 
   const isPendingOrProcessing =
@@ -58,24 +64,68 @@ export default function PlanDetails({ plan }: PlanDetailClientProps) {
 
             <ExportButtons />
 
-            <section className="space-y-6">
-              <h2 className="text-2xl font-bold">Learning Modules</h2>
-              {modules.length === 0 ? (
-                <Card className="text-muted-foreground p-6 text-center">
-                  No modules yet. Generation will populate this plan soon.
-                </Card>
-              ) : (
-                modules.map((module) => (
-                  <PlanModuleCard
-                    key={module.id}
-                    planId={plan.id}
-                    module={module}
-                    statuses={statuses}
-                    setStatuses={setStatuses}
-                  />
-                ))
-              )}
-            </section>
+            {/* View Toggle */}
+            <div className="mb-6 border-b border-gray-200">
+              <nav className="flex space-x-8" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeView === 'modules'}
+                  onClick={() => setActiveView('modules')}
+                  data-slot="tab"
+                  className={`border-b-2 px-1 py-4 text-sm font-medium ${
+                    activeView === 'modules'
+                      ? 'border-primary text-primary'
+                      : 'text-muted-foreground hover:border-border hover:text-foreground border-transparent'
+                  }`}
+                >
+                  Modules
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeView === 'schedule'}
+                  onClick={() => setActiveView('schedule')}
+                  data-slot="tab"
+                  className={`border-b-2 px-1 py-4 text-sm font-medium ${
+                    activeView === 'schedule'
+                      ? 'border-primary text-primary'
+                      : 'text-muted-foreground hover:border-border hover:text-foreground border-transparent'
+                  }`}
+                >
+                  Schedule
+                </button>
+              </nav>
+            </div>
+
+            {/* Content */}
+            {activeView === 'modules' && (
+              <section className="space-y-6">
+                <h2 className="text-2xl font-bold">Learning Modules</h2>
+                {modules.length === 0 ? (
+                  <Card className="text-muted-foreground p-6 text-center">
+                    No modules yet. Generation will populate this plan soon.
+                  </Card>
+                ) : (
+                  modules.map((module) => (
+                    <PlanModuleCard
+                      key={module.id}
+                      planId={plan.id}
+                      module={module}
+                      statuses={statuses}
+                      setStatuses={setStatuses}
+                    />
+                  ))
+                )}
+              </section>
+            )}
+
+            {activeView === 'schedule' && (
+              <section className="space-y-6">
+                <h2 className="text-2xl font-bold">Learning Schedule</h2>
+                <ScheduleWeekList schedule={schedule} />
+              </section>
+            )}
           </>
         )}
       </div>

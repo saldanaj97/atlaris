@@ -365,6 +365,10 @@ async function maybeCurateAndAttachResources(
             console.log(
               `[Curation] Attached ${candidates.length} resources to task ${task.id}`
             );
+          } else {
+            console.log(
+              `[Curation] No candidates met cutoff for task ${task.id} (minScore=${curationParams.minScore})`
+            );
           }
 
           // Generate and append micro-explanation
@@ -440,9 +444,10 @@ async function curateTaskResources(
 ): Promise<Scored[]> {
   const candidates: Scored[] = [];
 
-  // Search YouTube
+  // Search YouTube first
+  let ytResults: Scored[] = [];
   try {
-    const ytResults = await curateYouTube({
+    ytResults = await curateYouTube({
       ...params,
       query: `${params.query} ${taskTitle}`,
     });
@@ -451,8 +456,16 @@ async function curateTaskResources(
     console.error('[Curation] YouTube search failed:', error);
   }
 
-  // Search docs if needed
-  if (candidates.length < params.maxResults) {
+  // Determine validity against cutoff
+  const validYtCount = ytResults.filter(
+    (r) => r.numericScore >= params.minScore
+  ).length;
+
+  // Early-stop: enough high-scoring YT results
+  if (validYtCount >= params.maxResults) {
+    // proceed to selection without docs
+  } else if (validYtCount < 1) {
+    // Fallback: Try docs when YT yields <1 valid candidate
     try {
       const docResults = await curateDocs({
         ...params,

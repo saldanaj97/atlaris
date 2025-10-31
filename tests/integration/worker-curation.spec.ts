@@ -246,32 +246,37 @@ describe('Worker curation integration', () => {
   });
 
   describe('Source blending and early-stop', () => {
-    it('calls docs only if YouTube returns <3 results', async () => {
+    it('falls back to docs when YouTube yields no valid candidates (below minScore)', async () => {
       mockGetTasks.mockResolvedValue([
         {
-          task: makeTask({ id: 'task1', title: 'Task with YT only' }),
+          task: makeTask({ id: 'task1', title: 'Task with YT low score' }),
           moduleTitle: 'Module 1',
         },
       ]);
+      // All YT results below cutoff (minScore ~0.6 in mock config)
       mockCurateYouTube.mockResolvedValue([
         scoredCandidate({
-          url: 'yt1',
-          title: 'YT1',
+          url: 'yt-low-1',
+          title: 'YT Low',
           source: 'youtube',
-          numericScore: 0.8,
-        }),
-        scoredCandidate({
-          url: 'yt2',
-          title: 'YT2',
-          source: 'youtube',
-          numericScore: 0.7,
+          numericScore: 0.2,
         }),
       ]);
-      mockCurateDocs.mockResolvedValue([]);
+      // Docs returns a valid candidate
+      mockCurateDocs.mockResolvedValue([
+        scoredCandidate({
+          url: 'doc1',
+          title: 'Docs',
+          source: 'doc',
+          numericScore: 0.85,
+        }),
+      ]);
 
       await processPlanGenerationJob(mockJob);
 
-      expect(mockCurateDocs).toHaveBeenCalled(); // Since <3 from YT
+      expect(mockCurateYouTube).toHaveBeenCalled();
+      expect(mockCurateDocs).toHaveBeenCalled(); // Fallback to docs since 0 valid YT
+      expect(mockUpsertAttach).toHaveBeenCalled();
     });
 
     it('skips docs if YouTube returns 3+ high-scoring results (early-stop)', async () => {

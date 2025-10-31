@@ -17,7 +17,7 @@ This checklist summarizes outstanding work based on the MVP breakdown, mapped to
 ## Plan Structuring
 
 - [ ] Week‑based milestones with derived session/day breakdown (dated schedule).
-- [ ] Ensure every task links at least one curated resource.
+- [ ] Ensure every task links at least one curated resource (fallback to docs when YouTube yields none; URL validation enforced; still dependent on candidate availability/cutoff).
 - [ ] Surface time estimates with schedule context in UI.
 
 ## Dynamic Sync

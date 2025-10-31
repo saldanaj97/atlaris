@@ -50,6 +50,12 @@ Quick reference of all tests in the suite, organized by category:
 - `rls.attempts-insert.spec.ts` - RLS blocks non-owner attempt insertion via orchestrator
 - `rls.attempts-visibility.spec.ts` - RLS enforces visibility rules for attempts
 
+**Scheduling (Integration Level):**
+
+- `scheduling/queries.spec.ts` - Schedule cache database queries
+- `scheduling/api.spec.ts` - getPlanSchedule API composition with caching
+- `scheduling/end-to-end.spec.ts` - Full schedule generation flow with real DB
+
 ### Unit Tests (Isolated Components)
 
 **AI/Provider Layer:**
@@ -81,6 +87,17 @@ Quick reference of all tests in the suite, organized by category:
 - `metrics.duration.spec.ts` - Duration calculation accuracy
 - `metrics.duration-precision.spec.ts` - Duration precision edge cases
 - `logging.correlation-id.spec.ts` - Request correlation ID propagation
+
+**Scheduling:**
+
+- `scheduling/types.spec.ts` - Schedule type definitions
+- `scheduling/hash.spec.ts` - Inputs hash computation for cache validation
+- `scheduling/dates.spec.ts` - Date utility functions (add days, weeks, boundaries)
+- `scheduling/distribute.spec.ts` - Session distribution logic
+- `scheduling/generate.spec.ts` - Deterministic schedule generation
+- `scheduling/validate.spec.ts` - Schedule and resource validation
+- `scheduling/schema.spec.ts` - Database schema validation
+- `components/ScheduleWeekList.spec.tsx` - ScheduleWeekList UI component
 
 **API & Mapping:**
 
@@ -645,6 +662,98 @@ The original integration smoke test referenced a `tests` schema from Basejump he
 
 ```env
 SUPABASE_SERVICE_ROLE_KEY=eyJ... # Get from Supabase dashboard
+```
+
+## Scheduling Tests
+
+### Overview
+
+Scheduling tests verify week-based plan structuring with dated schedules, deterministic compute-on-read architecture with JSON caching, and UI toggle between module/schedule views.
+
+### Unit Tests
+
+Located in `tests/unit/scheduling/`:
+
+- **types.spec.ts** - Schedule type definitions
+- **hash.spec.ts** - Inputs hash computation for cache validation
+- **dates.spec.ts** - Date utility functions (add days, weeks, boundaries)
+- **distribute.spec.ts** - Session distribution logic
+- **generate.spec.ts** - Deterministic schedule generation
+- **validate.spec.ts** - Schedule and resource validation
+- **schema.spec.ts** - Database schema validation
+
+Located in `tests/unit/components/`:
+
+- **ScheduleWeekList.spec.tsx** - ScheduleWeekList UI component
+
+### Integration Tests
+
+Located in `tests/integration/scheduling/`:
+
+- **queries.spec.ts** - Schedule cache database queries
+- **api.spec.ts** - getPlanSchedule API composition with caching
+- **end-to-end.spec.ts** - Full schedule generation flow with real DB
+
+### E2E Tests
+
+Located in `tests/e2e/`:
+
+- **plan-schedule-view.spec.tsx** - UI toggle between modules/schedule views
+
+### Running Scheduling Tests
+
+```bash
+# All scheduling unit tests
+pnpm vitest run tests/unit/scheduling
+
+# All scheduling integration tests
+pnpm vitest run tests/integration/scheduling
+
+# Specific test file
+pnpm vitest run tests/unit/scheduling/hash.spec.ts
+```
+
+### Key Test Patterns
+
+**Deterministic Schedule Generation:**
+
+```typescript
+const inputs: ScheduleInputs = {
+  /* ... */
+};
+const schedule1 = generateSchedule(inputs);
+const schedule2 = generateSchedule(inputs);
+
+expect(JSON.stringify(schedule1)).toBe(JSON.stringify(schedule2));
+```
+
+**Cache Validation:**
+
+```typescript
+const inputsHash = computeInputsHash(inputs);
+const cached = await getPlanScheduleCache(planId);
+
+if (cached && cached.inputsHash === inputsHash) {
+  return cached.scheduleJson; // Cache hit
+}
+// Generate and cache new schedule
+```
+
+**Weekly Hours Constraint:**
+
+```typescript
+const weeklyHours = 10;
+const expectedMinutesPerWeek = weeklyHours * 60;
+
+for (const week of schedule.weeks) {
+  let weekMinutes = 0;
+  for (const day of week.days) {
+    for (const session of day.sessions) {
+      weekMinutes += session.estimatedMinutes;
+    }
+  }
+  expect(weekMinutes).toBeGreaterThanOrEqual(expectedMinutesPerWeek * 0.8);
+}
 ```
 
 ## Curation Engine Testing
