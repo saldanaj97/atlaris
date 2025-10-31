@@ -170,6 +170,27 @@ export async function runGenerationAttempt(
   });
   const startedAt = attemptClockStart;
 
+  // Test-only capture hook to aid E2E/integration tests that
+  // assert the exact input passed to providers without relying
+  // on provider-level mocks. No-op outside tests.
+  try {
+    if (process.env.NODE_ENV === 'test' || process.env.VITEST_WORKER_ID) {
+      type CapturedInput = { provider: string; input: GenerationInput };
+      const g = globalThis as unknown as {
+        __capturedInputs?: CapturedInput[];
+      };
+      const arr = g.__capturedInputs;
+      if (arr) {
+        arr.push({
+          provider: provider.constructor?.name ?? 'unknown',
+          input: context.input,
+        });
+      }
+    }
+  } catch {
+    // ignore capture errors in production paths
+  }
+
   // Combine timeout signal with external shutdown signal if provided
   const externalSignal = options.signal;
   const controller = new AbortController();

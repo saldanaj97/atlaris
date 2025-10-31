@@ -12,21 +12,23 @@ import { RouterGenerationProvider } from './providers/router';
  * @returns An instance implementing `AiPlanGenerationProvider` — either a `MockGenerationProvider` (possibly configured with a deterministic seed) or a `RouterGenerationProvider`
  */
 export function getGenerationProvider(): AiPlanGenerationProvider {
-  const providerType = process.env.AI_PROVIDER?.toLowerCase();
+  const providerType = process.env.AI_PROVIDER?.trim()?.toLowerCase();
   const isTest =
     process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID;
 
   // In tests, honor explicit AI_PROVIDER when set; otherwise default to mock unless disabled
   if (isTest) {
-    if (providerType === 'mock') {
-      const deterministicSeed = process.env.MOCK_GENERATION_SEED
-        ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
+    // Parse seed once for reuse
+    const deterministicSeed = process.env.MOCK_GENERATION_SEED
+      ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
+      : undefined;
+    const validSeed =
+      deterministicSeed !== undefined && !isNaN(deterministicSeed)
+        ? deterministicSeed
         : undefined;
+    if (providerType === 'mock') {
       return new MockGenerationProvider({
-        deterministicSeed:
-          deterministicSeed !== undefined && !isNaN(deterministicSeed)
-            ? deterministicSeed
-            : undefined,
+        deterministicSeed: validSeed,
       });
     }
     if (providerType && providerType !== 'mock') {
@@ -37,14 +39,8 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
     if (process.env.AI_USE_MOCK === 'false') {
       return new RouterGenerationProvider();
     }
-    const deterministicSeed = process.env.MOCK_GENERATION_SEED
-      ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
-      : undefined;
     return new MockGenerationProvider({
-      deterministicSeed:
-        deterministicSeed !== undefined && !isNaN(deterministicSeed)
-          ? deterministicSeed
-          : undefined,
+      deterministicSeed: validSeed,
     });
   }
 

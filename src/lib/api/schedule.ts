@@ -44,28 +44,32 @@ export async function getPlanSchedule(
     .where(eq(modules.planId, planId))
     .orderBy(asc(modules.order));
 
-  let flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }> =
-    [];
-
-  if (planModules.length > 0) {
-    const moduleIds = planModules.map((m) => m.id);
-    const taskRows = await db
-      .select({
-        task: tasks,
-        moduleTitle: modules.title,
-      })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .where(inArray(modules.id, moduleIds))
-      .orderBy(asc(modules.order), asc(tasks.order));
-
-    flatTasks = taskRows.map((row) => ({
-      ...row.task,
-      moduleTitle: row.moduleTitle,
-    }));
-  }
+  const flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }> =
+    planModules.length > 0
+      ? await (async () => {
+          const moduleIds = planModules.map((m) => m.id);
+          const taskRows = await db
+            .select({
+              task: tasks,
+              moduleTitle: modules.title,
+            })
+            .from(tasks)
+            .innerJoin(modules, eq(tasks.moduleId, modules.id))
+            .where(inArray(modules.id, moduleIds))
+            .orderBy(asc(modules.order), asc(tasks.order));
+          return taskRows.map((row) => ({
+            ...row.task,
+            moduleTitle: row.moduleTitle,
+          }));
+        })()
+      : [];
 
   // Build schedule inputs
+  if (plan.weeklyHours <= 0) {
+    throw new Error(
+      'Plan weekly hours must be greater than zero to generate a schedule'
+    );
+  }
   const inputs: ScheduleInputs = {
     planId: plan.id,
     tasks: flatTasks.map((task, idx) => ({

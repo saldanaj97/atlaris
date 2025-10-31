@@ -104,7 +104,9 @@ export function distributeTasksToSessions(
             taskTitle: currentTask.title,
             estimatedMinutes: minutesToAllocate,
             moduleId: currentTask.moduleId,
-            moduleName: `Module ${currentTask.moduleId}`, // Will be enriched later
+            moduleName:
+              // Prefer provided module title if available; fallback to id-based label
+              currentTask.moduleTitle || `Module ${currentTask.moduleId}`,
           });
 
           allocatedMinutes += minutesToAllocate;

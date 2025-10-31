@@ -1,4 +1,5 @@
 import type { ScheduleJson } from './types';
+import type { TaskWithResources } from '@/lib/types/db';
 
 /**
  * Ensures the schedule contains at least one week, each week contains days, each day contains sessions, and each session has a `taskId`, `taskTitle`, and `estimatedMinutes` greater than zero.
@@ -7,8 +8,9 @@ import type { ScheduleJson } from './types';
  * @throws Error - If the schedule has no weeks; if any week has no days; if any day has no sessions; if a session is missing `taskId` or `taskTitle`; or if a session's `estimatedMinutes` is less than or equal to zero. Error messages include week/day/task context.
  */
 export function validateSchedule(schedule: ScheduleJson): void {
+  // Allow empty schedules (e.g., when there are no tasks)
   if (schedule.weeks.length === 0) {
-    throw new Error('Schedule must have at least one week');
+    return;
   }
 
   for (const week of schedule.weeks) {
@@ -17,11 +19,7 @@ export function validateSchedule(schedule: ScheduleJson): void {
     }
 
     for (const day of week.days) {
-      if (day.sessions.length === 0) {
-        throw new Error(
-          `Week ${week.weekNumber}, Day ${day.dayNumber} has no sessions`
-        );
-      }
+      // Days with zero sessions are allowed; UI may display them as empty
 
       for (const session of day.sessions) {
         if (!session.taskId || !session.taskTitle) {
@@ -38,12 +36,6 @@ export function validateSchedule(schedule: ScheduleJson): void {
       }
     }
   }
-}
-
-interface TaskWithResources {
-  id: string;
-  title: string;
-  resources: Array<{ id: string; url: string }>;
 }
 
 interface ValidationResult {

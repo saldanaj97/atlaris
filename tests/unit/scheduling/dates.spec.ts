@@ -49,7 +49,8 @@ describe('Date Utilities', () => {
 
   describe('formatDateISO', () => {
     it('should format Date to ISO string', () => {
-      const date = new Date('2025-02-01T12:00:00Z');
+      // Create date using UTC to ensure timezone-independent expectation
+      const date = new Date(Date.UTC(2025, 1, 1, 12, 0, 0));
       const result = formatDateISO(date);
       expect(result).toBe('2025-02-01');
     });
