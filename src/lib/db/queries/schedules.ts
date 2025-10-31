@@ -4,7 +4,9 @@ import { planSchedules } from '@/lib/db/schema';
 import type { ScheduleCacheRow } from '@/lib/scheduling/types';
 
 /**
- * Retrieves cached schedule for a plan
+ * Retrieves the cached schedule for the specified plan.
+ *
+ * @returns The cached schedule row for the given `planId`, or `null` if no cache exists.
  */
 export async function getPlanScheduleCache(
   planId: string
@@ -29,7 +31,12 @@ export async function getPlanScheduleCache(
 }
 
 /**
- * Upserts (insert or update) schedule cache for a plan
+ * Insert or update the schedule cache for a plan in the database.
+ *
+ * On conflict by `planId`, updates the stored fields and sets `generatedAt` to the current date/time.
+ *
+ * @param planId - The ID of the plan whose schedule cache will be created or updated
+ * @param payload - Cache values to store; `deadline` may be `null` to indicate no deadline
  */
 export async function upsertPlanScheduleCache(
   planId: string,
@@ -68,7 +75,9 @@ export async function upsertPlanScheduleCache(
 }
 
 /**
- * Deletes schedule cache for a plan
+ * Remove the schedule cache entry for the specified plan.
+ *
+ * @param planId - The identifier of the plan whose schedule cache will be deleted
  */
 export async function deletePlanScheduleCache(planId: string): Promise<void> {
   await db.delete(planSchedules).where(eq(planSchedules.planId, planId));

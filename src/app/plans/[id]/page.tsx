@@ -11,6 +11,12 @@ interface PlanPageProps {
   params: { id: string };
 }
 
+/**
+ * Renders the plan detail page for a given plan id, including its schedule or an error UI.
+ *
+ * @param params - Route parameters containing the `id` of the learning plan to load
+ * @returns The page UI: `PlanDetails` with the mapped plan and its schedule on success, or `PlanDetailPageError` when required data or schedule cannot be loaded
+ */
 export default async function PlanDetailPage({ params }: PlanPageProps) {
   const { id } = await params;
   if (!id) return <PlanDetailPageError />;

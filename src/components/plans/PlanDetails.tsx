@@ -21,6 +21,13 @@ interface PlanDetailClientProps {
   schedule: ScheduleJson;
 }
 
+/**
+ * Renders the plan details view with modules and an optional learning schedule.
+ *
+ * @param plan - The client-facing plan data to display, including modules and overall status.
+ * @param schedule - The schedule data used to render the learning schedule tab.
+ * @returns The rendered PlanDetails UI containing navigation, plan summary, export controls, and tabbed Modules/Schedule content.
+ */
 export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
   const router = useRouter();
   const modules = plan.modules ?? [];
