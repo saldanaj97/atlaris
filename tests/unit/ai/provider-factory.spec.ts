@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 import { RouterGenerationProvider } from '@/lib/ai/providers/router';
@@ -205,6 +205,7 @@ describe('AI Provider Factory', () => {
     it('should handle empty string AI_PROVIDER', () => {
       process.env.NODE_ENV = 'test';
       process.env.AI_PROVIDER = '';
+      delete process.env.AI_USE_MOCK;
 
       const provider = getGenerationProvider();
 
