@@ -60,6 +60,11 @@ export async function getPlanSchedule(
       : [];
 
   // Build schedule inputs
+  if (plan.weeklyHours <= 0) {
+    throw new Error(
+      'Plan weekly hours must be greater than zero to generate a schedule'
+    );
+  }
   const inputs: ScheduleInputs = {
     planId: plan.id,
     tasks: flatTasks.map((task, idx) => ({
@@ -68,7 +73,6 @@ export async function getPlanSchedule(
       estimatedMinutes: task.estimatedMinutes,
       order: idx + 1,
       moduleId: task.moduleId,
-      moduleTitle: task.moduleTitle,
     })),
     startDate: plan.startDate || plan.createdAt.toISOString().split('T')[0],
     deadline: plan.deadlineDate,

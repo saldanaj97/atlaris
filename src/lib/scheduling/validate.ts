@@ -1,4 +1,5 @@
 import type { ScheduleJson } from './types';
+import type { TaskWithResources } from '@/lib/types/db';
 
 /**
  * Validates a generated schedule for correctness
@@ -32,12 +33,6 @@ export function validateSchedule(schedule: ScheduleJson): void {
       }
     }
   }
-}
-
-interface TaskWithResources {
-  id: string;
-  title: string;
-  resources: Array<{ id: string; url: string }>;
 }
 
 interface ValidationResult {

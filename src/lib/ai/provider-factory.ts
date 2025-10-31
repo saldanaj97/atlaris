@@ -15,15 +15,17 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
 
   // In tests, honor explicit AI_PROVIDER when set; otherwise default to mock unless disabled
   if (isTest) {
-    if (providerType === 'mock') {
-      const deterministicSeed = process.env.MOCK_GENERATION_SEED
-        ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
+    // Parse seed once for reuse
+    const deterministicSeed = process.env.MOCK_GENERATION_SEED
+      ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
+      : undefined;
+    const validSeed =
+      deterministicSeed !== undefined && !isNaN(deterministicSeed)
+        ? deterministicSeed
         : undefined;
+    if (providerType === 'mock') {
       return new MockGenerationProvider({
-        deterministicSeed:
-          deterministicSeed !== undefined && !isNaN(deterministicSeed)
-            ? deterministicSeed
-            : undefined,
+        deterministicSeed: validSeed,
       });
     }
     if (providerType && providerType !== 'mock') {
@@ -34,14 +36,8 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
     if (process.env.AI_USE_MOCK === 'false') {
       return new RouterGenerationProvider();
     }
-    const deterministicSeed = process.env.MOCK_GENERATION_SEED
-      ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
-      : undefined;
     return new MockGenerationProvider({
-      deterministicSeed:
-        deterministicSeed !== undefined && !isNaN(deterministicSeed)
-          ? deterministicSeed
-          : undefined,
+      deterministicSeed: validSeed,
     });
   }
 

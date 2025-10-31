@@ -47,7 +47,11 @@ export function getWeekBoundaries(
  * Format Date object to ISO date string (YYYY-MM-DD)
  */
 export function formatDateISO(date: Date): string {
-  return format(date, 'yyyy-MM-dd');
+  // Format using UTC components to avoid local timezone shifts
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
