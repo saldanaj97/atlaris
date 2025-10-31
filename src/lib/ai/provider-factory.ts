@@ -9,7 +9,7 @@ import { RouterGenerationProvider } from './providers/router';
  * @returns The configured AI generation provider instance
  */
 export function getGenerationProvider(): AiPlanGenerationProvider {
-  const providerType = process.env.AI_PROVIDER?.toLowerCase();
+  const providerType = process.env.AI_PROVIDER?.trim()?.toLowerCase();
   const isTest =
     process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID;
 
