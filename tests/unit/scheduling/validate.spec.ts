@@ -93,16 +93,73 @@ describe('Schedule Validation', () => {
 
   describe('validateTaskResources', () => {
     it('should validate tasks with resources', () => {
+      const now = new Date();
       const tasks = [
         {
           id: 'task-1',
+          moduleId: 'mod-1',
+          order: 1,
           title: 'Task 1',
-          resources: [{ id: 'res-1', url: 'https://example.com' }],
+          description: null,
+          estimatedMinutes: 60,
+          createdAt: now,
+          updatedAt: now,
+          resources: [
+            {
+              id: 'tr-1',
+              taskId: 'task-1',
+              resourceId: 'res-1',
+              order: 1,
+              notes: null,
+              createdAt: now,
+              resource: {
+                id: 'res-1',
+                type: 'youtube' as const,
+                title: 'Resource 1',
+                url: 'https://example.com',
+                domain: null,
+                author: null,
+                durationMinutes: null,
+                costCents: null,
+                currency: null,
+                tags: null,
+                createdAt: now,
+              },
+            },
+          ],
         },
         {
           id: 'task-2',
+          moduleId: 'mod-1',
+          order: 2,
           title: 'Task 2',
-          resources: [{ id: 'res-2', url: 'https://example.com' }],
+          description: null,
+          estimatedMinutes: 60,
+          createdAt: now,
+          updatedAt: now,
+          resources: [
+            {
+              id: 'tr-2',
+              taskId: 'task-2',
+              resourceId: 'res-2',
+              order: 1,
+              notes: null,
+              createdAt: now,
+              resource: {
+                id: 'res-2',
+                type: 'youtube' as const,
+                title: 'Resource 2',
+                url: 'https://example.com/2',
+                domain: null,
+                author: null,
+                durationMinutes: null,
+                costCents: null,
+                currency: null,
+                tags: null,
+                createdAt: now,
+              },
+            },
+          ],
         },
       ];
 
@@ -112,16 +169,51 @@ describe('Schedule Validation', () => {
     });
 
     it('should identify tasks without resources', () => {
+      const now = new Date();
       const tasks = [
         {
           id: 'task-1',
+          moduleId: 'mod-1',
+          order: 1,
           title: 'Task 1',
+          description: null,
+          estimatedMinutes: 60,
+          createdAt: now,
+          updatedAt: now,
           resources: [],
         },
         {
           id: 'task-2',
+          moduleId: 'mod-1',
+          order: 2,
           title: 'Task 2',
-          resources: [{ id: 'res-1', url: 'https://example.com' }],
+          description: null,
+          estimatedMinutes: 60,
+          createdAt: now,
+          updatedAt: now,
+          resources: [
+            {
+              id: 'tr-3',
+              taskId: 'task-2',
+              resourceId: 'res-1',
+              order: 1,
+              notes: null,
+              createdAt: now,
+              resource: {
+                id: 'res-1',
+                type: 'youtube' as const,
+                title: 'Resource 1',
+                url: 'https://example.com',
+                domain: null,
+                author: null,
+                durationMinutes: null,
+                costCents: null,
+                currency: null,
+                tags: null,
+                createdAt: now,
+              },
+            },
+          ],
         },
       ];
 
