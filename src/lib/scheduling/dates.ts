@@ -7,7 +7,11 @@ import {
 } from 'date-fns';
 
 /**
- * Add days to an ISO date string
+ * Compute the date obtained by adding a number of days to an ISO date.
+ *
+ * @param isoDate - An ISO date string in `YYYY-MM-DD` format
+ * @param days - Number of days to add (may be negative to subtract days)
+ * @returns The resulting date formatted as `yyyy-MM-dd`
  */
 export function addDaysToDate(isoDate: string, days: number): string {
   const date = parseISO(isoDate);
@@ -16,7 +20,11 @@ export function addDaysToDate(isoDate: string, days: number): string {
 }
 
 /**
- * Add weeks to an ISO date string
+ * Produce an ISO date string by adding a number of weeks to the given date.
+ *
+ * @param isoDate - Input date in `YYYY-MM-DD` format
+ * @param weeks - Number of weeks to add (may be negative to subtract weeks)
+ * @returns The resulting date formatted as `YYYY-MM-DD`
  */
 export function addWeeksToDate(isoDate: string, weeks: number): string {
   const date = parseISO(isoDate);
@@ -25,8 +33,11 @@ export function addWeeksToDate(isoDate: string, weeks: number): string {
 }
 
 /**
- * Calculate week boundaries based on anchor date and week number
- * Week 1 starts on the anchor date (not forced to Monday)
+ * Computes the inclusive start and end dates for a given week relative to an anchor date.
+ *
+ * @param anchorDate - ISO date string (YYYY-MM-DD) representing the first day of week 1
+ * @param weekNumber - 1-based week index where 1 denotes the week that begins on `anchorDate`
+ * @returns An object with `startDate` and `endDate` formatted as `YYYY-MM-DD`, inclusive for the 7-day week
  */
 export function getWeekBoundaries(
   anchorDate: string,
@@ -44,7 +55,10 @@ export function getWeekBoundaries(
 }
 
 /**
- * Format Date object to ISO date string (YYYY-MM-DD)
+ * Formats a Date object into an ISO date string (YYYY-MM-DD).
+ *
+ * @param date - The Date to format
+ * @returns The date as a string in `YYYY-MM-DD` format
  */
 export function formatDateISO(date: Date): string {
   // Format using UTC components to avoid local timezone shifts
@@ -55,14 +69,21 @@ export function formatDateISO(date: Date): string {
 }
 
 /**
- * Parse ISO date string to Date object
+ * Parse an ISO 8601 date string into a Date object.
+ *
+ * @param isoDate - The date string in 'YYYY-MM-DD' ISO 8601 format
+ * @returns The Date representing the same calendar date as `isoDate`
  */
 export function parseISODate(isoDate: string): Date {
   return parseISO(isoDate);
 }
 
 /**
- * Calculate number of days between two ISO date strings
+ * Computes the number of days between two ISO date strings.
+ *
+ * @param startDate - ISO date string (YYYY-MM-DD) representing the start date
+ * @param endDate - ISO date string (YYYY-MM-DD) representing the end date
+ * @returns The number of days from `startDate` to `endDate` (end minus start)
  */
 export function getDaysBetween(startDate: string, endDate: string): number {
   const start = parseISO(startDate);

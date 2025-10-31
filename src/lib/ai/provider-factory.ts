@@ -3,10 +3,13 @@ import { MockGenerationProvider } from './providers/mock';
 import { RouterGenerationProvider } from './providers/router';
 
 /**
- * Factory function to get the appropriate AI generation provider based on configuration.
- * Checks AI_PROVIDER environment variable to determine which provider to use.
+ * Selects and returns an AI generation provider implementation based on environment configuration.
  *
- * @returns The configured AI generation provider instance
+ * Prioritizes an explicit `AI_PROVIDER`, prefers mock providers in development and most test scenarios
+ * (unless `AI_USE_MOCK` is explicitly `"false"`), and defaults to a router-based provider for production.
+ * If `MOCK_GENERATION_SEED` contains a valid integer, that value is passed as `deterministicSeed` to the mock provider.
+ *
+ * @returns An instance implementing `AiPlanGenerationProvider` — either a `MockGenerationProvider` (possibly configured with a deterministic seed) or a `RouterGenerationProvider`
  */
 export function getGenerationProvider(): AiPlanGenerationProvider {
   const providerType = process.env.AI_PROVIDER?.trim()?.toLowerCase();

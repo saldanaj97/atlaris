@@ -15,7 +15,12 @@ interface GetPlanScheduleParams {
 }
 
 /**
- * Retrieves or computes plan schedule with write-through caching
+ * Produce a plan's schedule, using a write-through cache to reuse a previously computed result when the schedule inputs have not changed.
+ *
+ * Verifies the plan exists and belongs to the requesting user, loads the plan's modules and tasks to build scheduling inputs, and returns either a cached ScheduleJson (when the inputs hash matches) or a newly generated schedule that is persisted to the cache.
+ *
+ * @param params - Object with `planId` and `userId` used to select the plan and verify access.
+ * @returns The ScheduleJson representing the plan's schedule.
  */
 export async function getPlanSchedule(
   params: GetPlanScheduleParams

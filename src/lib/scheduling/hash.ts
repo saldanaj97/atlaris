@@ -2,8 +2,12 @@ import crypto from 'crypto';
 import type { ScheduleInputs } from './types';
 
 /**
- * Computes a deterministic hash of schedule inputs for cache validation.
- * Hash changes when any input that affects schedule calculation changes.
+ * Create a deterministic SHA-256 hex digest representing the given schedule inputs for cache validation.
+ *
+ * The digest reflects the canonicalized inputs: `planId`, `tasks` (each with `id`, `title`, `estimatedMinutes`, `order`, and `moduleId` preserved in their original array order), `startDate`, `deadline`, `weeklyHours`, and `timezone`. The hash changes when any of these included fields change.
+ *
+ * @param inputs - Schedule inputs to include in the canonical representation used for hashing
+ * @returns The SHA-256 hex digest of the canonicalized inputs
  */
 export function computeInputsHash(inputs: ScheduleInputs): string {
   // Create canonical representation of inputs

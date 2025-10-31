@@ -11,7 +11,13 @@ const DEFAULT_SESSIONS_PER_WEEK = 3;
 const SESSION_DAYS_OFFSET = [0, 2, 4]; // Mon, Wed, Fri (0=Mon, 2=Wed, 4=Fri)
 
 /**
- * Distributes tasks across sessions in a week-based structure
+ * Allocate tasks into a week-by-week schedule with three sessions per week (Mon/Wed/Fri).
+ *
+ * @param inputs - Schedule input object containing at least `startDate`, `weeklyHours`, and `tasks`; tasks are distributed in order and may be split across sessions.
+ * @returns The generated schedule object containing `weeks` (each with start/end dates and three session days), `totalWeeks`, and `totalSessions`.
+ * @throws Error if `weeklyHours` is less than or equal to 0.
+ * @throws Error if `tasks` is not an array.
+ * @throws Error if any task has a negative `estimatedMinutes`.
  */
 export function distributeTasksToSessions(
   inputs: ScheduleInputs

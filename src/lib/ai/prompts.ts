@@ -7,6 +7,18 @@ export interface PromptParams {
   deadlineDate?: string | null;
 }
 
+/**
+ * Build the system prompt that instructs an AI to produce a curriculum as strict JSON following a defined schema and constraints.
+ *
+ * The generated prompt requires a top-level object { "modules": Module[] } and defines the Module, Task, and Resource schemas, including:
+ * - Module: title, optional description, estimated_minutes (integer >= 0), tasks (3–6 tasks per module)
+ * - Task: title, optional description, estimated_minutes (integer >= 0), resources (one or more Resource entries)
+ * - Resource: title, url, type ("youtube" | "article" | "course" | "doc" | "other")
+ *
+ * It also enforces overall constraints (3–6 modules total, action-oriented titles, integer non-negative time estimates), time-estimate guidelines by skill level, resource requirements (at least one linked resource per task, mixed resource types, prefer high-quality/free), timeline distribution when start/deadline are provided, and prohibits any non-JSON output (no markdown, code fences, or commentary).
+ *
+ * @returns A single string containing the system prompt that mandates JSON-only output adhering to the Module/Task/Resource schemas and the listed constraints
+ */
 export function buildSystemPrompt(): string {
   return [
     'You are an expert curriculum designer. Output strictly JSON only.',

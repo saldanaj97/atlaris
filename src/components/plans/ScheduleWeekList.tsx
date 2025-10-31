@@ -8,6 +8,14 @@ interface ScheduleWeekListProps {
   schedule: ScheduleJson;
 }
 
+/**
+ * Render a week-by-week view of a schedule with days and sessions.
+ *
+ * Displays a Card for each week including the week's date range. Each day lists its sessions with the task title, a module badge, and the formatted estimated minutes. If the schedule has no weeks, renders a centered muted placeholder message.
+ *
+ * @param schedule - The schedule data to render
+ * @returns A React element representing the structured schedule view
+ */
 export default function ScheduleWeekList({ schedule }: ScheduleWeekListProps) {
   if (schedule.weeks.length === 0) {
     return (
