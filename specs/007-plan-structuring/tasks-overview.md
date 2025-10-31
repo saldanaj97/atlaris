@@ -66,7 +66,7 @@
 - [x] Step 2: Run test to verify it fails
 - [x] Step 3: Create schedule generation implementation
 - [x] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
+- [x] Step 5: Commit
 
 # Task 7: Create Schedule Validation Function
 
