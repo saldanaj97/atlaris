@@ -48,7 +48,7 @@
 - [x] Step 2: Run test to verify it fails
 - [x] Step 3: Create session distribution implementation
 - [x] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
+- [x] Step 5: Commit
 
 # Task 5: Create Plan Schedules Database Table
 
