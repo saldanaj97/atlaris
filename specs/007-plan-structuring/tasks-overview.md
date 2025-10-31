@@ -9,11 +9,11 @@
 - [x] Task 7: Create Schedule Validation Function
 - [x] Task 8: Create Schedule Database Queries
 - [x] Task 9: Create getPlanSchedule API Composition
-- [ ] Task 10: Create ScheduleWeekList UI Component
-- [ ] Task 11: Add Schedule Toggle to Plan Detail Page
-- [ ] Task 12: Update AI Prompts to Request Time Estimates
-- [ ] Task 13: Add Integration Test for Full Schedule Flow
-- [ ] Task 14: Update Testing Documentation
+- [x] Task 10: Create ScheduleWeekList UI Component
+- [x] Task 11: Add Schedule Toggle to Plan Detail Page
+- [x] Task 12: Update AI Prompts to Request Time Estimates
+- [x] Task 13: Add Integration Test for Full Schedule Flow
+- [x] Task 14: Update Testing Documentation
 
 ---
 
@@ -94,35 +94,35 @@
 
 # Task 10: Create ScheduleWeekList UI Component
 
-- [ ] Step 1: Write the failing test
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Create ScheduleWeekList component
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
+- [x] Step 1: Write the failing test
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Create ScheduleWeekList component
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Commit
 
 # Task 11: Add Schedule Toggle to Plan Detail Page
 
-- [ ] Step 1: Write the failing E2E test
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Modify plan detail page to fetch schedule
-- [ ] Step 4: Modify PlanDetails component to add toggle
-- [ ] Step 5: Run E2E test to verify it passes
-- [ ] Step 6: Commit
+- [x] Step 1: Write the failing E2E test
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Modify plan detail page to fetch schedule
+- [x] Step 4: Modify PlanDetails component to add toggle
+- [x] Step 5: Run E2E test to verify it passes
+- [x] Step 6: Commit
 
 # Task 12: Update AI Prompts to Request Time Estimates
 
-- [ ] Step 1: Review current prompts
-- [ ] Step 2: Modify prompts to request time estimates and resources
-- [ ] Step 3: Manual test via plan generation
-- [ ] Step 4: Commit
+- [x] Step 1: Review current prompts
+- [x] Step 2: Modify prompts to request time estimates and resources
+- [x] Step 3: Manual test via plan generation
+- [x] Step 4: Commit
 
 # Task 13: Add Integration Test for Full Schedule Flow
 
-- [ ] Step 1: Write comprehensive integration test
-- [ ] Step 2: Run integration test
-- [ ] Step 3: Commit
+- [x] Step 1: Write comprehensive integration test
+- [x] Step 2: Run integration test
+- [x] Step 3: Commit
 
 # Task 14: Update Testing Documentation
 
-- [ ] Step 1: Add scheduling test section
-- [ ] Step 2: Commit
+- [x] Step 1: Add scheduling test section
+- [x] Step 2: Commit
