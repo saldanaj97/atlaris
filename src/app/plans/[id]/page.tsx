@@ -37,8 +37,8 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
       userId: user.id,
       error,
     });
-    // Return empty schedule as fallback to allow page rendering
-    schedule = { weeks: [], totalWeeks: 0, totalSessions: 0 };
+    // Show error UI to inform the user that schedule failed to load
+    return <PlanDetailPageError message="Failed to load schedule." />;
   }
 
   return <PlanDetails plan={formattedPlanDetails} schedule={schedule} />;
