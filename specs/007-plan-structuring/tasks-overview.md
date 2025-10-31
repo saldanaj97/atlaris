@@ -5,7 +5,7 @@
 - [x] Task 3: Create Date Utility Functions
 - [x] Task 4: Create Session Distribution Logic
 - [x] Task 5: Create Plan Schedules Database Table
-- [ ] Task 6: Create Schedule Generation Function
+- [x] Task 6: Create Schedule Generation Function
 - [ ] Task 7: Create Schedule Validation Function
 - [ ] Task 8: Create Schedule Database Queries
 - [ ] Task 9: Create getPlanSchedule API Composition
@@ -62,10 +62,10 @@
 
 # Task 6: Create Schedule Generation Function
 
-- [ ] Step 1: Write the failing test
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Create schedule generation implementation
-- [ ] Step 4: Run test to verify it passes
+- [x] Step 1: Write the failing test
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Create schedule generation implementation
+- [x] Step 4: Run test to verify it passes
 - [ ] Step 5: Commit
 
 # Task 7: Create Schedule Validation Function
