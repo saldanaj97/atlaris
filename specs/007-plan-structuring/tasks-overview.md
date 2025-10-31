@@ -4,7 +4,7 @@
 - [x] Task 2: Create Inputs Hash Function
 - [x] Task 3: Create Date Utility Functions
 - [x] Task 4: Create Session Distribution Logic
-- [ ] Task 5: Create Plan Schedules Database Table
+- [x] Task 5: Create Plan Schedules Database Table
 - [ ] Task 6: Create Schedule Generation Function
 - [ ] Task 7: Create Schedule Validation Function
 - [ ] Task 8: Create Schedule Database Queries
@@ -52,13 +52,13 @@
 
 # Task 5: Create Plan Schedules Database Table
 
-- [ ] Step 1: Write test for plan schedules schema
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Add plan_schedules table to schema
-- [ ] Step 4: Generate migration
-- [ ] Step 5: Apply migration to test database
-- [ ] Step 6: Run test to verify it passes
-- [ ] Step 7: Commit
+- [x] Step 1: Write test for plan schedules schema
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Add plan_schedules table to schema
+- [x] Step 4: Generate migration
+- [x] Step 5: Apply migration to test database
+- [x] Step 6: Run test to verify it passes
+- [x] Step 7: Commit
 
 # Task 6: Create Schedule Generation Function
 
