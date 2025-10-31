@@ -1,433 +1,309 @@
-# [FEATURE TITLE HERE]
+# Feature Implementation Plan Template
 
-> **Outcome**: <Describe the end-to-end outcome for this feature.>
-
-**Branch**: `feature/<feature-name>`
-
-Legend:
-
-P = Parallelizable (different files, no direct dependency)
-T = Test task (must precede related feature work)
-M = Migration/schema change
-D = Documentation
-
-**Numbering Guidance**: Use global sequential IDs (e.g., F001, F002, T001, T002) across all phases. Preserve ordering so tests (T-series) appear before the related feature (F-series) tasks.
+> Use this template to plan and execute a feature end‑to‑end. Keep it general, but concrete enough that anyone can follow and implement. Follow a strict TDD loop for each task: write failing test → see it fail → implement → see it pass → commit.
 
 ---
 
-## Phase 1: <Phase Title>
+## Overview
 
-**Purpose:** <Describe why this phase exists and what it unlocks.>
+**Feature Name:** [FEATURE_NAME]
 
-**Exit Gate:** <List the conditions that must be satisfied before moving to the next phase.>
+**Goal:** [Describe the high‑level outcome and user value. What is the feature supposed to achieve?]
 
-### Phase 1 Test Plan (T-Series)
+**Success Criteria:**
+- [Measurable outcome 1]
+- [Measurable outcome 2]
+- [Non‑functional target: performance, accessibility, etc.]
 
-- [ ] T001 <Test task description with exact file path and assertions>
-- [ ] T002 <Add/remove rows as needed; keep numbering sequential>
+**Scope:**
+- In‑scope: [bullet list]
+- Out‑of‑scope: [bullet list to prevent scope creep]
 
-### Phase 1 Feature Checklist (F-Series)
-
-- [ ] F001 <Feature task description with exact file path>
-- [ ] F002 [P] <Parallelizable feature task>
-
-### Phase 1 Performance & Observability (Optional)
-
-> Include only if this phase introduces monitoring, logging, or performance-specific tasks; remove section when not applicable.
-
-- [ ] F010 <Optional performance/observability task>
-
-### Phase 1 Details
-
-**Implementation Notes:**
-
-- <Detail any schema updates, service responsibilities, or architectural constraints.>
-
-**Example Snippets / Contracts:**
-
-```typescript
-// Provide representative code or pseudo-code needed for implementation.
-```
+**Risks/Assumptions:**
+- Assumptions: [environment, data availability, feature flags, etc.]
+- Risks + mitigations: [top 2‑3]
 
 ---
 
-## Phase 2: <Phase Title>
+## Architecture
 
-**Purpose:** <Explain the goals and rationale for this phase.>
+Describe how the feature fits into the system. Be specific about boundaries and contracts, but keep tech choices generic and swappable.
 
-**Exit Gate:** <Document the required state before proceeding to Phase 3.>
-
-### Phase 2 Test Plan (T-Series)
-
-- [ ] T010 <Test coverage placeholder>
-- [ ] T011 <Add more tests as needed>
-
-### Phase 2 Feature Checklist (F-Series)
-
-- [ ] F010 <Primary feature task>
-- [ ] F011 [P] <Parallel feature task>
-
-### Phase 2 Performance & Observability (Optional)
-
-> Use this section only when Phase 2 introduces monitoring/performance work; otherwise remove it.
-
-- [ ] F020 <Optional observability improvement>
-
-### Phase 2 Details
-
-**Provider / Service Notes:**
-
-- <Call out external dependencies, configuration toggles, or abstractions introduced in this phase.>
-
-**Sample Output / Interfaces:**
-
-```json
-{
-  "sample": "Provide representative payloads or streaming chunk examples."
-}
-```
+- Approach: [e.g., compute‑on‑read, compute‑on‑write, or hybrid]
+- Caching: [e.g., write‑through/read‑through JSON cache per entity; invalidation keyed by deterministic hash]
+- Data flow: [request → API → queries → core logic → cache → response]
+- Determinism: [note if outputs must be deterministic and how you ensure it]
+- Security: [authn/authz strategy; data access via RLS/policies]
+- Error handling: [validation boundaries, typed errors, retries]
+- Observability: [logging, metrics, tracing, usage tracking]
 
 ---
 
-## Phase 3: <Phase Title>
+## Tech Stack
 
-**Purpose:** <Highlight the primary objective of Phase 3.>
+List the primary technologies you will use, aligned to this repo.
 
-**Exit Gate:** <Define the validation needed before Phase 4 work begins.>
+- Runtime/UI: Next.js App Router (React), TypeScript
+- Data: Drizzle ORM, PostgreSQL (JSONB allowed), RLS policies
+- API: Server functions/routes, composable data loaders
+- Testing: Vitest (+ Testing Library for React)
+- Utilities: [libraries needed for dates, hashing, parsing, etc.]
 
-### Phase 3 Test Plan (T-Series)
-
-- [ ] T020 <Worker/unit/contract test placeholder>
-- [ ] T021 <Additional test>
-
-### Phase 3 Feature Checklist (F-Series)
-
-- [ ] F020 <Core implementation task>
-- [ ] F021 [P] <Parallelizable task>
-- [ ] F022 M <Schema or migration task if needed>
-
-### Phase 3 Performance & Observability (Optional)
-
-> Keep if Phase 3 introduces worker logging, metrics, or rate monitoring. Remove when not needed.
-
-- [ ] F030 <Optional logging/metrics task>
-
-### Phase 3 Details
-
-**Worker Behavior & Lifecycle:**
-
-- <Document polling cadence, concurrency expectations, and shutdown requirements.>
-
-**Configuration / Scripts:**
-
-```bash
-# Example command placeholders
-pnpm dev:worker
-pnpm worker:start
-```
+Note: Prefer small, focused deps. Justify each addition.
 
 ---
 
-## Phase 4: <Phase Title>
+## Milestones & Tasks
 
-**Purpose:** <Describe how this phase integrates the API layer or similar scope.>
+Use the following task pattern. Add/omit tasks as needed. Keep task descriptions technology‑agnostic but precise. For each task, follow the TDD steps provided.
 
-**Exit Gate:** <Specify the verification criteria before frontend work begins.>
+### Task 1: Dependencies and Core Types
 
-### Phase 4 Test Plan (T-Series)
+Purpose: establish minimal deps and shared types used across the feature.
 
-- [ ] T030 <API contract test>
-- [ ] T031 <Rate limiting or error handling test>
+Files:
+- Modify: `package.json`
+- Create: `src/lib/[feature]/types.ts`
+- Test: `tests/unit/[feature]/types.spec.ts`
 
-### Phase 4 Feature Checklist (F-Series)
-
-- [ ] F030 <Endpoint update task>
-- [ ] F031 [P] <Parallel API task>
-- [ ] F032 D <Documentation update>
-
-### Phase 4 Performance & Observability (Optional)
-
-> Retain when API-level metrics or logging tasks are required; otherwise delete this section.
-
-- [ ] F040 <Optional monitoring endpoint>
-
-### Phase 4 Details
-
-**API Contract & Response Shape:**
-
-- <Outline the response payload, error surface, and authentication rules.>
-
-**Example Request / Response:**
-
-```http
-POST /api/v1/example
-Authorization: Bearer <token>
-```
+Steps:
+1) Add dependency (if any)
+   - Run: `pnpm add [package]`
+   - Expected: dependency installed
+2) Write failing test (types)
+   - Run: `pnpm vitest run tests/unit/[feature]/types.spec.ts`
+   - Expected: FAIL (module not found or type mismatch)
+3) Implement types
+4) Re‑run test
+   - Expected: PASS
+5) Commit
+   - Message: `feat: add [FEATURE_NAME] core types and deps`
 
 ---
 
-## Phase 5: <Phase Title>
+### Task 2: Deterministic Input Hashing (for cache/invalidations)
 
-**Purpose:** <Summarize frontend or client-facing goals.>
+Purpose: create a stable hash of inputs that affect outputs to drive cache keys and change detection.
 
-**Exit Gate:** <State the UI/UX or data conditions needed before observability hardening.>
+Files:
+- Create: `src/lib/[feature]/hash.ts`
+- Test: `tests/unit/[feature]/hash.spec.ts`
 
-### Phase 5 Test Plan (T-Series)
+Tests should cover:
+- Same inputs → same hash
+- Meaningful order changes → different hash
+- Critical field changes → different hash
 
-- [ ] T040 <Hook/component test placeholder>
-- [ ] T041 <Error handling test>
-
-### Phase 5 Feature Checklist (F-Series)
-
-- [ ] F040 <Primary UI update>
-- [ ] F041 [P] <Parallel component change>
-
-### Phase 5 Performance & Observability (Optional)
-
-> Include only when this phase adds client-side telemetry, logging, or performance instrumentation.
-
-- [ ] F050 <Optional telemetry task>
-
-### Phase 5 Details
-
-**UX / UI Notes:**
-
-- <Document polling frequencies, state transitions, or copy updates.>
-
-**Component Contracts:**
-
-```tsx
-// Placeholder for React component sample usage.
-```
+TDD Steps:
+1) Write failing test → run with `pnpm vitest run tests/unit/[feature]/hash.spec.ts`
+2) Implement hash function (e.g., canonicalize inputs → JSON stringify → SHA‑256)
+3) Re‑run test → PASS
+4) Commit
 
 ---
 
-## Phase 6: <Phase Title>
+### Task 3: Core Utilities (dates, math, formatting, parsing)
 
-**Purpose:** <Explain the observability/error-handling focus of Phase 6.>
+Purpose: add deterministic helper utilities used by business logic.
 
-**Exit Gate:** <List production-readiness metrics required before validation.>
+Files:
+- Create: `src/lib/[feature]/utils.ts` (or split modules like `dates.ts`)
+- Test: `tests/unit/[feature]/utils.spec.ts`
 
-### Phase 6 Test Plan (T-Series)
+Tests should cover normal cases, boundaries, and negative cases.
 
-- [ ] T050 <Monitoring query test>
-- [ ] T051 <Health endpoint failure mode test>
-
-### Phase 6 Feature Checklist (F-Series)
-
-- [ ] F060 <Monitoring query implementation>
-- [ ] F061 [P] <Logging improvement>
-
-### Phase 6 Performance & Observability (Optional)
-
-> Retain if additional metrics, dashboards, or clean-up jobs are needed; remove when unused.
-
-- [ ] F070 <Optional cleanup or telemetry task>
-
-### Phase 6 Details
-
-**Monitoring Strategy:**
-
-- <Call out metrics captured, retention policies, and alert thresholds.>
-
-**Sample Logs / Dashboards:**
-
-```json
-{"level":"info","event":"job_started","jobId":"<id>"}
-```
+TDD Steps: failing test → implement → pass → commit.
 
 ---
 
-## Phase 7: <Phase Title>
+### Task 4: Core Business Logic
 
-**Purpose:** <Describe final validation, manual testing, and release readiness goals.>
+Purpose: implement the core transformation/decision logic that produces the feature’s output given validated inputs.
 
-**Exit Gate:** <Define the criteria for declaring the feature complete.>
+Files:
+- Create: `src/lib/[feature]/core.ts`
+- Test: `tests/unit/[feature]/core.spec.ts`
 
-### Phase 7 Test Plan (T-Series)
+Guidance:
+- Keep pure and deterministic where possible
+- No I/O in core logic (inject data via parameters)
+- Validate invariants; prefer typed errors
 
-- [ ] T060 <End-to-end validation test>
-- [ ] T061 <Regression or resilience test>
-
-### Phase 7 Feature Checklist (F-Series)
-
-- [ ] F080 <Test suite implementation>
-- [ ] F081 <Manual testing checklist>
-
-### Phase 7 Performance & Observability (Optional)
-
-> Keep for hardening tasks such as load testing or final telemetry adjustments; remove if unnecessary.
-
-- [ ] F090 <Optional load/perf task>
-
-### Phase 7 Details
-
-**Validation Workflow:**
-
-- <Outline automated + manual testing steps, acceptance criteria, and sign-off responsibilities.>
-
-**Manual Testing Checklist Template:**
-
-- [ ] <Step one>
-- [ ] <Step two>
+TDD Steps: failing test → implement → pass → commit.
 
 ---
 
-## Implementation Order
+### Task 5: Persistence – Schema and Migrations (if needed)
 
-1. **Phase 1** – <Key artifacts or dependencies>
-2. **Phase 2** – <Follow-on tasks>
-3. **Phase 3** – <Continue summarizing remaining phases>
-4. **Phase 4** – <...>
-5. **Phase 5** – <...>
-6. **Phase 6** – <...>
-7. **Phase 7** – <...>
+Purpose: add/modify tables to store data and/or caches.
 
----
+Files:
+- Modify: `src/lib/db/schema.ts`
+- Generate: `src/lib/db/migrations/*`
+- Test: `tests/unit/[feature]/schema.spec.ts`
 
-## Dependencies Overview
+Guidance:
+- Favor JSONB for cache blobs when row granularity isn’t needed
+- Add indexes aligned to query patterns
+- Define RLS policies and constraints (non‑negative, uniqueness, stable ordering)
 
-**Phase 1**: <Document which tasks block others; specify any migrations that gate downstream work.>
+Commands:
+- Generate: `pnpm db:generate`
+- Push: `pnpm db:push`
+- Tests: `pnpm vitest run tests/unit/[feature]/schema.spec.ts`
 
-**Phase 2**: <Note cross-phase dependencies and parallelization opportunities.>
-
-**Phase 3**: <Clarify requirements on queue/service availability, provider readiness, etc.>
-
-**Phase 4**: <Describe API dependencies on queue/services.>
-
-**Phase 5**: <State prerequisites from API/status endpoints.>
-
-**Phase 6**: <List prerequisites for monitoring tasks.>
-
-**Phase 7**: <Capture final validation dependencies.>
-
-**Critical Path**: <Summarize key blocking sequence.>
-
-**Parallelization Notes**: <Highlight safe concurrent workstreams by file or domain.>
+Commit with a clear migration summary.
 
 ---
 
-## Parallel Execution Examples
+### Task 6: Data Access – Queries
 
-**Example 1 (after initial migrations):**
+Purpose: implement typed queries that join/compose data for the core logic.
 
-```
-/run-task F001 | /run-task F002 | /run-task T001
-```
+Files:
+- Create: `src/lib/db/queries/[feature].ts`
+- Test: `tests/integration/[feature]/queries.spec.ts`
 
-**Example 2 (after provider + queue ready):**
+Guidance:
+- Keep query functions small and composable
+- Enforce auth/ownership checks at the edge or via RLS
 
-```
-/run-task F020 | /run-task F021 | /run-task T020
-```
-
-**Example 3 (post API integration):**
-
-```
-/run-task F040 | /run-task F041 | /run-task T040
-```
+TDD Steps: failing integration test → implement query → pass → commit.
 
 ---
 
-## Validation Checklist
+### Task 7: Caching (optional but recommended)
 
-- [ ] All required migrations applied and verified (F-series with M flag)
-- [ ] All T-series tasks implemented and passing before dependent F-series tasks close
-- [ ] Optional performance/observability sections evaluated and removed when not needed
-- [ ] Documentation (D) updates completed and reviewed
-- [ ] Environment variables configured for all phases
-- [ ] Manual validation checklist executed
+Purpose: speed up compute‑heavy or deterministic logic with a write‑through/read‑through cache.
+
+Files:
+- Create: `src/lib/[feature]/cache.ts`
+- Test: `tests/integration/[feature]/cache.spec.ts`
+
+Guidance:
+- Compute‑on‑read: compute result server‑side, store JSON in cache table, return
+- Invalidate when input hash changes
+- Store cache metadata (inputs hash, generatedAt, params affecting output)
+
+TDD Steps as usual.
+
+---
+
+### Task 8: API Composition
+
+Purpose: expose a server‑side function/route that composes queries, core logic, and caching.
+
+Files:
+- Create: `src/lib/api/[feature].ts` (or `src/app/api/[feature]/route.ts`)
+- Test: `tests/integration/[feature]/api.spec.ts`
+
+Guidance:
+- Validate inputs (zod or typed guards)
+- Enforce authz; return typed errors
+- Compose: query → core → cache → return
+
+TDD Steps: failing test → implement → pass → commit.
+
+---
+
+### Task 9: UI Components
+
+Purpose: render data and interactions. Keep components small, typed, and accessible.
+
+Files:
+- Create: `src/components/[feature]/[Component].tsx`
+- Test: `tests/unit/components/[feature]/[Component].spec.tsx`
+
+Guidance:
+- Separate data fetching (server) from presentation (client)
+- Consider feature toggles/variants (e.g., alternate views)
+- Accessibility and empty states
+
+TDD Steps: failing test → implement → pass → commit.
+
+---
+
+### Task 10: Background Work (optional)
+
+Purpose: offload long‑running or async tasks.
+
+Files:
+- Create: `src/workers/[feature].ts`
+- Test: `tests/integration/[feature]/worker.spec.ts`
+
+Guidance:
+- Idempotent handlers; retries with backoff
+- Persist job status; instrument duration and failures
+
+---
+
+### Task 11: E2E/Flow Validation
+
+Purpose: verify end‑to‑end behavior through the public API surface.
+
+Files:
+- Create: `tests/e2e/[feature]/flow.spec.ts`
+
+Run: `pnpm vitest run tests/e2e/[feature]/flow.spec.ts`
+
+---
+
+### Task 12: Documentation & Ops
+
+Purpose: document testing, usage, and operational runbooks.
+
+Files:
+- Modify: `docs/testing/testing.md`
+- Modify: additional docs as needed
+
+Include:
+- Test locations and how to run focused tests
+- Any env vars or flags
+- Operational notes (migrations, cache warmup, worker start)
+
+Commit with a docs‑scoped message.
+
+---
+
+## Quality Gates
+
+Before marking done, ensure:
+- Tests: unit, integration, e2e pass (run focused; avoid full suite unless required)
+- Types: `pnpm type-check` clean
+- Lint/format: `pnpm lint` and `pnpm format` clean
+- Migrations applied and reversible
+- RLS/auth verified for data boundaries
+- Performance within targets (cold/hot paths)
+- Accessibility checks for UI
+
+---
+
+## Commit Guidelines
+
+Follow `.github/instructions/commit-message.instructions.md` format. Summaries are imperative and ≤ 50 chars. Scope narrowly to files changed by the task.
+
+Example:
+```
+feat: add [FEATURE_NAME] core types and hashing
+
+Adds shared types and deterministic input hash for cache keys.
+
+Changes:
+- Create src/lib/[feature]/types.ts
+- Create src/lib/[feature]/hash.ts
+- Add unit tests for both
+
+Tests cover:
+- Hash determinism and change sensitivity
+- Type structure and required fields
+```
 
 ---
 
 ## Exit Criteria
 
-<Define the measurable end state for the entire feature, including worker stability, UI polish, and system reliability goals.>
-
----
-
-## Environment Variables
-
-**Development (.env.local):**
-
-```bash
-# <Category>
-KEY=value
-```
-
-**Production (.env.production):**
-
-```bash
-# <Category>
-KEY=value
-```
-
----
-
-## Files to Create
-
-- `<path/to/new/file.ts>` – <Describe purpose>
-- `<path/to/another/new/file.ts>` – <Describe purpose>
-
-## Files to Update
-
-- `<path/to/existing/file.ts>` – <Summarize changes>
-- `<another/path.tsx>` – <Summarize changes>
-
----
-
-## Success Metrics
-
-**Development Phase:**
-
-- [ ] <Metric placeholder>
-- [ ] <Metric placeholder>
-
-**Production Readiness:**
-
-- [ ] <Metric placeholder>
-- [ ] <Metric placeholder>
-
----
-
-## Notes
-
-> **Workflow Tips**: <Insert guidance on running dev servers, workers, or scripts.>
-
-> **Testing Guidance**: <Document how to simulate failures or retries.>
-
-> **Operational Notes**: <Reference logging, monitoring, or support procedures.>
-
----
-
-## Future Improvements: Production-Ready Queue System
-
-### <Migration Path Placeholder>
-
-- <List future architecture upgrades, tooling changes, and benefits.>
-
-**Benefits:**
-
-- ✅ <Benefit placeholder>
-- ✅ <Benefit placeholder>
-
-**Migration Steps:**
-
-1. <Step placeholder>
-2. <Step placeholder>
-
-**Estimated Effort:** <Hours/days>
-
-**When to Revisit:** <Conditions that trigger this improvement>
-
----
-
-## Additional Future Considerations
-
-### <Consideration Title>
-
-- <Detail strategic enhancements, scaling tactics, or advanced features.>
-
-### <Another Consideration>
-
-- <Provide optional roadmap notes>
+- [ ] Feature delivers stated goal and success criteria
+- [ ] All scoped tests green (unit, integration, e2e)
+- [ ] Docs updated (including testing section)
+- [ ] Code reviewed and approved
+- [ ] Ready for deploy; rollout plan noted (flags/migrations)
