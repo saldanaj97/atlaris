@@ -142,10 +142,12 @@ describe('AI Provider Factory', () => {
 
   describe('Production environment behavior', () => {
     beforeEach(() => {
+      (process.env as any).NODE_ENV = 'production';
       delete process.env.VITEST_WORKER_ID;
     });
 
     it('should return RouterGenerationProvider by default in production', () => {
+      (process.env as any).NODE_ENV = 'production';
       delete process.env.AI_PROVIDER;
 
       const provider = getGenerationProvider();
@@ -154,6 +156,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('should return MockGenerationProvider when explicitly set to "mock" in production', () => {
+      (process.env as any).NODE_ENV = 'production';
       process.env.AI_PROVIDER = 'mock';
 
       const provider = getGenerationProvider();
@@ -162,6 +165,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('should return RouterGenerationProvider for any non-mock provider in production', () => {
+      (process.env as any).NODE_ENV = 'production';
       process.env.AI_PROVIDER = 'openai';
 
       const provider = getGenerationProvider();
