@@ -8,7 +8,7 @@
 - [x] Task 6: Create Schedule Generation Function
 - [x] Task 7: Create Schedule Validation Function
 - [x] Task 8: Create Schedule Database Queries
-- [ ] Task 9: Create getPlanSchedule API Composition
+- [x] Task 9: Create getPlanSchedule API Composition
 - [ ] Task 10: Create ScheduleWeekList UI Component
 - [ ] Task 11: Add Schedule Toggle to Plan Detail Page
 - [ ] Task 12: Update AI Prompts to Request Time Estimates
@@ -86,11 +86,11 @@
 
 # Task 9: Create getPlanSchedule API Composition
 
-- [ ] Step 1: Write the failing test
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Create API composition implementation
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
+- [x] Step 1: Write the failing test
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Create API composition implementation
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Commit
 
 # Task 10: Create ScheduleWeekList UI Component
 
