@@ -15,10 +15,6 @@ describe('AI Provider Factory', () => {
   });
 
   describe('Test environment behavior', () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = 'test';
-    });
-
     it('should return MockGenerationProvider by default in test mode', () => {
       delete process.env.AI_PROVIDER;
       delete process.env.AI_USE_MOCK;
@@ -107,7 +103,6 @@ describe('AI Provider Factory', () => {
 
   describe('Development environment behavior', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'development';
       delete process.env.VITEST_WORKER_ID;
     });
 
@@ -147,7 +142,6 @@ describe('AI Provider Factory', () => {
 
   describe('Production environment behavior', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'production';
       delete process.env.VITEST_WORKER_ID;
     });
 
@@ -178,7 +172,6 @@ describe('AI Provider Factory', () => {
 
   describe('VITEST_WORKER_ID detection', () => {
     beforeEach(() => {
-      delete process.env.NODE_ENV;
       process.env.VITEST_WORKER_ID = '1';
     });
 
@@ -203,7 +196,6 @@ describe('AI Provider Factory', () => {
 
   describe('Edge cases', () => {
     it('should handle empty string AI_PROVIDER', () => {
-      process.env.NODE_ENV = 'test';
       process.env.AI_PROVIDER = '';
       delete process.env.AI_USE_MOCK;
 
@@ -213,7 +205,6 @@ describe('AI Provider Factory', () => {
     });
 
     it('should handle whitespace in AI_PROVIDER', () => {
-      process.env.NODE_ENV = 'test';
       process.env.AI_PROVIDER = '  mock  ';
 
       const provider = getGenerationProvider();
@@ -223,7 +214,6 @@ describe('AI Provider Factory', () => {
     });
 
     it('should handle zero as MOCK_GENERATION_SEED', () => {
-      process.env.NODE_ENV = 'test';
       process.env.AI_PROVIDER = 'mock';
       process.env.MOCK_GENERATION_SEED = '0';
 
@@ -233,7 +223,6 @@ describe('AI Provider Factory', () => {
     });
 
     it('should handle negative MOCK_GENERATION_SEED', () => {
-      process.env.NODE_ENV = 'test';
       process.env.AI_PROVIDER = 'mock';
       process.env.MOCK_GENERATION_SEED = '-100';
 

@@ -1,15 +1,18 @@
 # Test Coverage Summary for Plan Structuring Feature
 
 ## Overview
+
 This document summarizes the comprehensive test coverage for the week-based plan structuring feature and related changes in the current branch.
 
 ## New Test Files Created
 
 ### 1. tests/unit/ai/provider-factory.spec.ts
+
 **Lines of Code:** 244  
 **Purpose:** Comprehensive unit tests for AI provider factory logic
 
 **Test Coverage:**
+
 - ✅ Test environment behavior (default mock provider, explicit provider selection)
 - ✅ Development environment behavior (mock by default, respects AI_PROVIDER)
 - ✅ Production environment behavior (router by default, respects explicit config)
@@ -20,16 +23,19 @@ This document summarizes the comprehensive test coverage for the week-based plan
 - ✅ Multiple provider types (openai, anthropic, google, mock)
 
 **Key Test Scenarios:**
+
 - 21 comprehensive test cases covering all branches of the provider factory logic
 - Environment variable isolation between tests (beforeEach/afterEach cleanup)
 - Tests for all valid provider configurations
 - Edge case handling for malformed environment variables
 
 ### 2. tests/unit/jobs/worker-curation-logic.spec.ts
+
 **Lines of Code:** 215  
 **Purpose:** Unit tests for worker service curation decision logic
 
 **Test Coverage:**
+
 - ✅ Early-stop decision logic (when to skip docs API calls)
 - ✅ Fallback mechanisms (when YouTube results are insufficient)
 - ✅ Score threshold validation (exact, above, below cutoff)
@@ -37,6 +43,7 @@ This document summarizes the comprehensive test coverage for the week-based plan
 - ✅ Boundary conditions (maxResults edge cases)
 
 **Key Test Scenarios:**
+
 - Early-stop when YouTube returns enough high-scoring results (≥3 valid candidates)
 - Fallback to docs when YouTube yields 0 valid candidates (below minScore)
 - Fallback when YouTube returns some but not enough valid candidates (1-2 valid)
@@ -50,6 +57,7 @@ This document summarizes the comprehensive test coverage for the week-based plan
 ### Scheduling Feature Tests
 
 #### Unit Tests
+
 1. **tests/unit/scheduling/types.spec.ts**
    - Validates ScheduleInputs type structure
    - Validates ScheduleJson type structure
@@ -101,6 +109,7 @@ This document summarizes the comprehensive test coverage for the week-based plan
    - Empty schedule handling
 
 #### Integration Tests
+
 1. **tests/integration/scheduling/queries.spec.ts** (162 lines)
    - Cache retrieval (getPlanScheduleCache)
    - Cache upsert operations
@@ -121,6 +130,7 @@ This document summarizes the comprehensive test coverage for the week-based plan
    - Session data completeness
 
 #### E2E Tests
+
 1. **tests/e2e/plan-schedule-view.spec.tsx** (193 lines)
    - Module/schedule view toggle
    - Week-grouped schedule display
@@ -130,6 +140,7 @@ This document summarizes the comprehensive test coverage for the week-based plan
 ### Resource Curation Tests
 
 #### Integration Tests (Updated)
+
 1. **tests/integration/db/resources.queries.spec.ts**
    - ✅ URL validation (rejects ftp://, javascript:, invalid URLs)
    - ✅ Domain extraction from URLs
@@ -147,16 +158,19 @@ This document summarizes the comprehensive test coverage for the week-based plan
 ## Files Not Requiring Additional Unit Tests
 
 ### Type Definitions
+
 - **src/lib/scheduling/types.ts**
   - Rationale: Pure TypeScript interface definitions, no runtime logic
   - Coverage: Types are implicitly tested by all scheduling tests
 
 ### Next.js Pages (Covered by E2E)
+
 - **src/app/plans/[id]/page.tsx**
   - Rationale: Next.js server component, data fetching layer
   - Coverage: E2E tests verify complete user flow including this page
 
 ### React Components (Covered by E2E/Integration)
+
 - **src/components/plans/PlanDetails.tsx**
   - Rationale: Complex UI component with state management
   - Coverage: E2E tests verify module/schedule toggle and rendering
@@ -166,6 +180,7 @@ This document summarizes the comprehensive test coverage for the week-based plan
   - Coverage: Error scenarios tested in integration/E2E tests
 
 ### Database Schema
+
 - **src/lib/db/schema.ts**
   - Rationale: Drizzle ORM schema definitions
   - Coverage: Schema validated by schema.spec.ts, migrations tested in integration tests
@@ -173,16 +188,19 @@ This document summarizes the comprehensive test coverage for the week-based plan
 ## Test Quality Metrics
 
 ### Unit Test Coverage
+
 - **Total new unit tests:** 2 files, 459 lines
 - **Test cases added:** 36+ distinct test scenarios
 - **Coverage areas:** Provider factory (21 tests), Curation logic (15 tests)
 
 ### Integration Test Coverage
+
 - **Scheduling:** 3 files covering queries, API, and end-to-end flows
 - **Resource curation:** URL validation and source blending logic
 - **Database operations:** Cache CRUD, resource upsert
 
 ### E2E Test Coverage
+
 - **UI interactions:** Toggle between views, schedule display
 - **Data flow:** Complete schedule generation and rendering pipeline
 
