@@ -2,8 +2,8 @@
 
 - [x] Task 1: Install date-fns and Create Scheduling Types
 - [x] Task 2: Create Inputs Hash Function
-- [ ] Task 3: Create Date Utility Functions
-- [ ] Task 4: Create Session Distribution Logic
+- [x] Task 3: Create Date Utility Functions
+- [x] Task 4: Create Session Distribution Logic
 - [ ] Task 5: Create Plan Schedules Database Table
 - [ ] Task 6: Create Schedule Generation Function
 - [ ] Task 7: Create Schedule Validation Function
@@ -40,14 +40,14 @@
 - [x] Step 2: Run test to verify it fails
 - [x] Step 3: Create date utilities implementation
 - [x] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
+- [x] Step 5: Commit
 
 # Task 4: Create Session Distribution Logic
 
-- [ ] Step 1: Write the failing test
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Create session distribution implementation
-- [ ] Step 4: Run test to verify it passes
+- [x] Step 1: Write the failing test
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Create session distribution implementation
+- [x] Step 4: Run test to verify it passes
 - [ ] Step 5: Commit
 
 # Task 5: Create Plan Schedules Database Table
