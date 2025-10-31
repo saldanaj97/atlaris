@@ -13,14 +13,27 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
   const isTest =
     process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID;
 
-  // In test mode, honor AI_USE_MOCK strictly:
-  // - AI_USE_MOCK === 'false' -> force real router
-  // - otherwise -> default to mock for deterministic, offline tests
+  // In tests, honor explicit AI_PROVIDER when set; otherwise default to mock unless disabled
   if (isTest) {
+    if (providerType === 'mock') {
+      const deterministicSeed = process.env.MOCK_GENERATION_SEED
+        ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
+        : undefined;
+      return new MockGenerationProvider({
+        deterministicSeed:
+          deterministicSeed !== undefined && !isNaN(deterministicSeed)
+            ? deterministicSeed
+            : undefined,
+      });
+    }
+    if (providerType && providerType !== 'mock') {
+      // For any explicit non-mock provider in tests, route through the Router
+      return new RouterGenerationProvider();
+    }
+    // Fallback in tests: prefer mock unless explicitly disabled
     if (process.env.AI_USE_MOCK === 'false') {
       return new RouterGenerationProvider();
     }
-    // Prefer mock in tests unless explicitly disabled
     const deterministicSeed = process.env.MOCK_GENERATION_SEED
       ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
       : undefined;
