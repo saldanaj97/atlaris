@@ -1,6 +1,7 @@
 import PlanDetailPageError from '@/components/plans/Error';
 import PlanDetails from '@/components/plans/PlanDetails';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
+import { getPlanSchedule } from '@/lib/api/schedule';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
@@ -26,5 +27,19 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
   const formattedPlanDetails = mapDetailToClient(plan);
   if (!formattedPlanDetails) return <PlanDetailPageError />;
 
-  return <PlanDetails plan={formattedPlanDetails} />;
+  // Fetch schedule with error handling
+  let schedule;
+  try {
+    schedule = await getPlanSchedule({ planId: id, userId: user.id });
+  } catch (error) {
+    console.error('Failed to fetch schedule:', {
+      planId: id,
+      userId: user.id,
+      error,
+    });
+    // Return empty schedule as fallback to allow page rendering
+    schedule = { weeks: [], totalWeeks: 0, totalSessions: 0 };
+  }
+
+  return <PlanDetails plan={formattedPlanDetails} schedule={schedule} />;
 }
