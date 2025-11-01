@@ -262,6 +262,8 @@ jobs:
           NODE_ENV: 'test'
           DATABASE_URL: ${{ env.DATABASE_URL }}
           BASE_REF: ${{ github.base_ref }}
+          SHARD: ${{ matrix.shard }}
+          TOTAL: ${{ matrix.total }}
         shell: bash
         run: |
           set +e
@@ -278,12 +280,16 @@ jobs:
           echo "Changed candidate files: ${COUNT}"
 
           if [ "${COUNT}" -gt 0 ] && [ "${COUNT}" -le 50 ]; then
-            echo "Running related unit tests for changed files..."
-            # Run related tests without coverage/report aggregation; fall back to full shard on any failure
+            echo "Detected small set of changed files (${COUNT}); using related tests mode."
+            if [ "${SHARD}" != "1" ]; then
+              echo "Skipping related run on shard ${SHARD}/${TOTAL}; only shard 1 executes related tests."
+              exit 0
+            fi
+            echo "Running related unit tests for changed files on shard 1/${TOTAL}..."
             pnpm vitest related --run ${FILES} || {
-              echo "Related tests failed or not supported; falling back to full sharded run.";
+              echo "Related tests failed or not supported; falling back to full sharded run on this shard.";
               pnpm vitest run tests/unit \
-                --shard ${{ matrix.shard }}/${{ matrix.total }} \
+                --shard ${SHARD}/${TOTAL} \
                 --coverage \
                 --coverage.thresholds.lines=0 \
                 --coverage.thresholds.functions=0 \
@@ -296,7 +302,7 @@ jobs:
           else
             echo "No suitable changed files detected; running full sharded unit suite."
             pnpm vitest run tests/unit \
-              --shard ${{ matrix.shard }}/${{ matrix.total }} \
+              --shard ${SHARD}/${TOTAL} \
               --coverage \
               --coverage.thresholds.lines=0 \
               --coverage.thresholds.functions=0 \
@@ -362,7 +368,7 @@ jobs:
           fi
 
   integration-light:
-    name: Integration (light)
+    name: Integration (related or light)
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.code == 'true'
@@ -384,6 +390,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -446,19 +454,54 @@ jobs:
           key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
-      - name: Run light integration tests
+      - name: Run fast integration tests
         env:
           NODE_ENV: 'test'
           ALLOW_DB_TRUNCATE: 'true'
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          BASE_REF: ${{ github.base_ref }}
+        shell: bash
         run: |
-          set -e
-          mapfile -t FILES < <(find tests/integration -type f -path '*/light/*' \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \))
-          if [ "${#FILES[@]}" -eq 0 ]; then
+          set +e
+          echo "Base ref: ${BASE_REF}"
+          CHANGED_FILES=""
+          if [ -n "${BASE_REF}" ]; then
+            git fetch --no-tags --depth=1 origin "${BASE_REF}" || true
+            CHANGED_FILES=$(git diff --name-only "origin/${BASE_REF}"...HEAD | tr '\n' ' ' || true)
+          fi
+
+          FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests)/.*\.(ts|tsx)$' || true)
+          COUNT=$(echo "${FILES}" | wc -w | tr -d ' ')
+          echo "Changed candidate files: ${COUNT}"
+
+          # Global changes that should skip related integration and rely on light subset
+          GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(pnpm-lock.yaml|drizzle(.*)\.config\.ts|drizzle-test\.config\.ts|vitest(\.integration)?\.config\.ts|vitest\.config\.ts|tsconfig\.json|package\.json|src/lib/db/(schema|enums|migrations|drizzle)\.ts)$' || true)
+          if [ -n "${GLOBAL_TRIGGER}" ]; then
+            echo "Detected global change impacting many tests; skipping related integration."
+            COUNT=0
+          fi
+
+          if [ "${COUNT}" -gt 0 ] && [ "${COUNT}" -le 50 ]; then
+            echo "Running vitest related for integration project..."
+            pnpm vitest related --project integration --run ${FILES}
+            EXIT=$?
+            if [ $EXIT -eq 0 ]; then
+              echo "Related integration run completed."
+              exit 0
+            else
+              echo "Related run failed; falling back to light subset."
+            fi
+          else
+            echo "No suitable changed files; using light subset."
+          fi
+
+          # Light subset fallback (or primary when no related)
+          mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \))
+          if [ "${#LIGHT_FILES[@]}" -eq 0 ]; then
             echo "No light integration tests found; skipping."
             exit 0
           fi
-          pnpm vitest run "${FILES[@]}" \
+          pnpm vitest run "${LIGHT_FILES[@]}" \
             --coverage \
             --coverage.thresholds.lines=0 \
             --coverage.thresholds.functions=0 \
@@ -471,7 +514,7 @@ jobs:
         if: always()
         run: |
           if [ -f test-results.json ]; then
-            echo "## 🔎 Integration (light)" >> $GITHUB_STEP_SUMMARY
+            echo "## 🔎 Integration (PR)" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             TOTAL=$(jq -r '.numTotalTests // 0' test-results.json 2>/dev/null || echo "0")
             PASSED=$(jq -r '.numPassedTests // 0' test-results.json 2>/dev/null || echo "0")
