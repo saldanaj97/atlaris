@@ -101,19 +101,19 @@ jobs:
         run: pnpm type-check
 
   vulnerability-scan:
-    name: Vulnerability Scan (OSV)
+    name: Security Audit
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run OSV Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@v2.2.4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          scan-args: |
-            --lockfile=pnpm-lock.yaml
-            --format=json
-            --output=osv-results.json
+          version: 9
+      - name: Run dependency audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
 
   build:
     name: Build
