@@ -403,7 +403,7 @@ jobs:
           && github.event.pull_request.base.ref == 'development'
           && github.event.pull_request.head.repo.full_name == github.repository
           && needs['all-checks-dev'].result == 'success'
-          && contains(github.event.pull_request.labels.*.name, 'auto-merge') }}
+          }}
     permissions:
       pull-requests: write
     steps:
