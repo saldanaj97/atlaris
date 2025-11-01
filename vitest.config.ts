@@ -24,7 +24,23 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json', 'lcov'],
+      exclude: [
+        'node_modules/**',
+        'tests/**',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/mockData/**',
+        'dist/**',
+        '.next/**',
+      ],
+      all: true,
+      thresholds: {
+        lines: 0,
+        functions: 0,
+        branches: 0,
+        statements: 0,
+      },
     },
     projects: [
       {
