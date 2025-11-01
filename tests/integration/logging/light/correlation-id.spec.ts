@@ -9,7 +9,7 @@ import {
   createInput,
   createModules,
   createSequentialNow,
-} from '../../helpers/attempts';
+} from '../../../helpers/attempts';
 
 describe('attempt logging correlation id', () => {
   it('embeds the active correlation id in attempt logs', async () => {
