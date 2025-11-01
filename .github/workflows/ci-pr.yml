@@ -276,7 +276,7 @@ jobs:
 
           # Filter to TS/TSX files under src/ or tests/
           FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests)/.*\.(ts|tsx)$' || true)
-          COUNT=$(echo "${FILES}" | wc -w | tr -d ' ')
+          COUNT=$(echo "${FILES}" | wc -l | tr -d ' ')
           echo "Changed candidate files: ${COUNT}"
 
           if [ "${COUNT}" -gt 0 ] && [ "${COUNT}" -le 50 ]; then
