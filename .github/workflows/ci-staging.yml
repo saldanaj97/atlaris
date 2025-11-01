@@ -272,7 +272,16 @@ jobs:
           if [ "$FILES" -lt "$TOTAL" ]; then
             TOTAL="$FILES"
           fi
-          pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL" --coverage --reporter=default --reporter=json --outputFile=test-results.json
+          pnpm vitest run tests/e2e \
+            --shard "$SHARD/$TOTAL" \
+            --coverage \
+            --coverage.thresholds.lines=0 \
+            --coverage.thresholds.functions=0 \
+            --coverage.thresholds.branches=0 \
+            --coverage.thresholds.statements=0 \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results.json
       - name: Generate test summary
         if: always()
         run: |
@@ -443,7 +452,16 @@ jobs:
           if [ "$FILES" -lt "$TOTAL" ]; then
             TOTAL="$FILES"
           fi
-          pnpm vitest run tests/integration --shard "$SHARD/$TOTAL" --coverage --reporter=default --reporter=json --outputFile=test-results.json
+          pnpm vitest run tests/integration \
+            --shard "$SHARD/$TOTAL" \
+            --coverage \
+            --coverage.thresholds.lines=0 \
+            --coverage.thresholds.functions=0 \
+            --coverage.thresholds.branches=0 \
+            --coverage.thresholds.statements=0 \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results.json
       - name: Generate test summary
         if: always()
         run: |

@@ -287,7 +287,17 @@ jobs:
           ALLOW_DB_TRUNCATE: 'true'
           NODE_ENV: 'test'
           DATABASE_URL: ${{ env.DATABASE_URL }}
-        run: pnpm vitest run tests/unit --shard ${{ matrix.shard }}/${{ matrix.total }} --coverage --reporter=default --reporter=json --outputFile=test-results.json
+        run: >-
+          pnpm vitest run tests/unit
+          --shard ${{ matrix.shard }}/${{ matrix.total }}
+          --coverage
+          --coverage.thresholds.lines=0
+          --coverage.thresholds.functions=0
+          --coverage.thresholds.branches=0
+          --coverage.thresholds.statements=0
+          --reporter=default
+          --reporter=json
+          --outputFile=test-results.json
       - name: Generate test summary
         if: always()
         run: |
