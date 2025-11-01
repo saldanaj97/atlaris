@@ -476,17 +476,17 @@ jobs:
 
           # Global changes that should skip related integration and rely on light subset
           read -r -d '' GLOBAL_TRIGGER_PATTERN <<'EOF'
-^(
-  pnpm-lock\.yaml|
-  drizzle(.*)\.config\.ts|
-  drizzle-test\.config\.ts|
-  vitest(\.integration)?\.config\.ts|
-  vitest\.config\.ts|
-  tsconfig\.json|
-  package\.json|
-  src/lib/db/(schema|enums|migrations|drizzle)\.ts
-)$
-EOF
+          ^(
+            pnpm-lock\.yaml|
+            drizzle(.*)\.config\.ts|
+            drizzle-test\.config\.ts|
+            vitest(\.integration)?\.config\.ts|
+            vitest\.config\.ts|
+            tsconfig\.json|
+            package\.json|
+            src/lib/db/(schema|enums|migrations|drizzle)\.ts
+          )$
+          EOF
           # Remove newlines and spaces for grep -E compatibility
           GLOBAL_TRIGGER_PATTERN_CLEAN=$(echo "${GLOBAL_TRIGGER_PATTERN}" | tr -d '\n' | sed 's/ //g')
           GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E "${GLOBAL_TRIGGER_PATTERN_CLEAN}" || true)
