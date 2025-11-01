@@ -1,8 +1,8 @@
-name: CI - Dev (test env)
+name: CI - PR (trunk)
 
 on:
   pull_request:
-    branches: [development]
+    branches: [main]
     paths-ignore:
       - '**/*.md'
       - '**/*.yaml'
@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -99,39 +100,10 @@ jobs:
       - name: Run TypeScript type check
         run: pnpm type-check
 
-  format:
-    name: Format Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Setup pnpm store cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Format code
-        run: pnpm exec prettier --write .
-
-  security:
+  vulnerability-scan:
     name: Security Audit
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -353,9 +325,160 @@ jobs:
             psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
           fi
 
-  all-checks-dev:
-    name: All Checks Passed (dev)
-    needs: [changes, lint, type-check, format, security, build, unit-tests]
+  integration-light:
+    name: Integration (light)
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - '5432:5432'
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd="pg_isready -U postgres -d postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Prepare ephemeral database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # Wait for database readiness
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
+            sleep 1
+          done
+
+          DB_NAME="ci_${GITHUB_RUN_ID}_int_light_${GITHUB_JOB}"
+          echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
+          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
+
+          # Defensive bootstrap (idempotent)
+          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS pgcrypto;
+          DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE service_role NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
+          LANGUAGE sql
+          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
+          SQL
+
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+      - name: Apply schema with Drizzle
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pnpm db:push
+      - name: Restore Vitest cache
+        uses: actions/cache/restore@v4
+        id: restore-vitest-cache
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
+      - name: Run light integration tests
+        env:
+          NODE_ENV: 'test'
+          ALLOW_DB_TRUNCATE: 'true'
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          set -e
+          mapfile -t FILES < <(find tests/integration -type f -path '*/light/*' \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \))
+          if [ "${#FILES[@]}" -eq 0 ]; then
+            echo "No light integration tests found; skipping."
+            exit 0
+          fi
+          pnpm vitest run "${FILES[@]}" \
+            --coverage \
+            --coverage.thresholds.lines=0 \
+            --coverage.thresholds.functions=0 \
+            --coverage.thresholds.branches=0 \
+            --coverage.thresholds.statements=0 \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results.json
+      - name: Generate test summary
+        if: always()
+        run: |
+          if [ -f test-results.json ]; then
+            echo "## 🔎 Integration (light)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            TOTAL=$(jq -r '.numTotalTests // 0' test-results.json 2>/dev/null || echo "0")
+            PASSED=$(jq -r '.numPassedTests // 0' test-results.json 2>/dev/null || echo "0")
+            FAILED=$(jq -r '.numFailedTests // 0' test-results.json 2>/dev/null || echo "0")
+            SKIPPED=$(jq -r '.numPendingTests // 0' test-results.json 2>/dev/null || echo "0")
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Test results file not found for light integration" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration-light
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Save Vitest cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
+      - name: Cleanup ephemeral database
+        if: always()
+        env:
+          PGPASSWORD: postgres
+        run: |
+          if [ -n "${{ env.DB_NAME }}" ]; then
+            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
+            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
+          fi
+
+  all-checks-pr:
+    name: All Checks Passed (PR)
+    needs: [changes, lint, type-check, vulnerability-scan, build, unit-tests, integration-light]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -366,14 +489,14 @@ jobs:
             [changes]="${{ needs.changes.result }}"
             [lint]="${{ needs.lint.result }}"
             [type-check]="${{ needs['type-check'].result }}"
-            [format]="${{ needs.format.result }}"
-            [security]="${{ needs.security.result }}"
+            [vulnerability-scan]="${{ needs.vulnerability-scan.result }}"
             [build]="${{ needs.build.result }}"
             [unit-tests]="${{ needs['unit-tests'].result }}"
+            [integration-light]="${{ needs['integration-light'].result }}"
           )
 
           failed=0
-          for job in changes lint type-check format security build unit-tests; do
+          for job in changes lint type-check vulnerability-scan build unit-tests integration-light; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)
@@ -386,57 +509,54 @@ jobs:
           if [ "$failed" -ne 0 ]; then
             exit 1
           fi
-      - name: All checks passed (dev)
-        run: echo "✅ All checks passed (dev)"
+      - name: All checks passed (PR)
+        run: echo "✅ All checks passed (PR)"
 
   auto-merge:
     name: Enable auto-merge on PR
-    needs: [all-checks-dev]
+    needs: [all-checks-pr]
     runs-on: ubuntu-latest
-    # Auto-merge conditions:
-    # 1. Must be a pull_request event (not push/merge_group)
-    # 2. Base branch must be 'development'
-    # 3. PR must be from same repo (security: prevents fork PRs from auto-merging)
-    # 4. All dev checks must have passed successfully
-    # 5. PR must have 'auto-merge' label applied
+    # Auto-merge conditions (trunk):
+    # 1. pull_request to 'main'
+    # 2. PR from same repo (avoid forks)
+    # 3. All PR checks passed
     if: ${{ github.event_name == 'pull_request'
-          && github.event.pull_request.base.ref == 'development'
+          && github.event.pull_request.base.ref == 'main'
           && github.event.pull_request.head.repo.full_name == github.repository
-          && needs['all-checks-dev'].result == 'success'
-          }}
+          && needs['all-checks-pr'].result == 'success' }}
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Enable auto-merge via GraphQL
+      - name: Enable auto-merge (size ≤ 300 lines)
         uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request
-            const vars = { o: context.repo.owner, n: context.repo.repo, num: pr.number }
-            const q = `query($o:String!,$n:String!,$num:Int!){
-              repository(owner:$o,name:$n){
-                pullRequest(number:$num){ id autoMergeRequest { enabledAt } }
-              }
-            }`
-            const { repository } = await github.graphql(q, vars)
-            const node = repository?.pullRequest
-            if (!node) {
-              core.warning('PR not found; skipping.')
+            if (!pr) {
+              core.info('No PR context; skipping.')
               return
             }
-            if (node.autoMergeRequest) {
-              core.info('Auto-merge already enabled.')
+            const size = (pr.additions || 0) + (pr.deletions || 0)
+            core.info(`PR size: +${pr.additions} -${pr.deletions} = ${size}`)
+            if (size > 300) {
+              core.info('PR too large for auto-merge; skipping enablement.')
               return
             }
-            const m = `mutation($id:ID!){
-              enablePullRequestAutoMerge(input:{pullRequestId:$id, mergeMethod:MERGE}){
-                pullRequest{ number autoMergeRequest{ enabledAt } }
+            const query = `query($owner:String!, $name:String!, $number:Int!) {
+              repository(owner:$owner, name:$name) {
+                pullRequest(number:$number) { id autoMergeRequest { enabledAt } }
               }
             }`
+            const vars = { owner: context.repo.owner, name: context.repo.repo, number: pr.number }
+            const data = await github.graphql(query, vars)
+            const node = data.repository?.pullRequest
+            if (!node) { core.warning('PR not found; skipping.'); return }
+            if (node.autoMergeRequest) { core.info('Auto-merge already enabled.'); return }
+            const mutation = `mutation($id:ID!){ enablePullRequestAutoMerge(input:{ pullRequestId:$id, mergeMethod:MERGE }) { pullRequest { number autoMergeRequest { enabledAt } } } }`
             try {
-              const res = await github.graphql(m, { id: node.id })
+              const res = await github.graphql(mutation, { id: node.id })
               core.info(`Auto-merge enabled: ${JSON.stringify(res)}`)
             } catch (e) {
               core.warning('Enable "Allow auto-merge" in repo settings and ensure branch protection permits it. ' + e.message)

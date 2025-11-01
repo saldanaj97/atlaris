@@ -1,8 +1,5 @@
 set -eu
 
-# Fast checks
-pnpm type-check
-
 # Skip tests on first commit
 if git rev-list --count HEAD | grep -q '^1$'; then
   exit 0
