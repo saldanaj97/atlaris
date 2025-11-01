@@ -1,1 +1,5 @@
 pnpm lint-staged
+
+pnpm type-check
+
+ggshield secret scan pre-commit
