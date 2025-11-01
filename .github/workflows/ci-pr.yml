@@ -462,7 +462,6 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         shell: bash
         run: |
-          set +e
           echo "Base ref: ${BASE_REF}"
           CHANGED_FILES=""
           if [ -n "${BASE_REF}" ]; then
