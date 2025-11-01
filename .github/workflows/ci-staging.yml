@@ -158,6 +158,108 @@ jobs:
         run: pnpm audit --audit-level=high
         continue-on-error: true
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run ESLint
+        run: pnpm lint
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run TypeScript type check
+        run: pnpm type-check
+
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting
+        run: pnpm exec prettier --check .
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Run dependency audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
   e2e-tests:
     name: E2E / Smoke Tests
     if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.e2e == 'true'
@@ -190,6 +292,13 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Setup pnpm store cache
         uses: actions/cache@v4
         with:
@@ -310,6 +419,44 @@ jobs:
           path: coverage/
           retention-days: 7
           if-no-files-found: ignore
+          pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL" --coverage --reporter=default --reporter=json --outputFile=test-results.json
+      - name: Generate test summary
+        if: always()
+        run: |
+          if [ -f test-results.json ]; then
+            echo "## 🌐 E2E Tests - Shard ${{ matrix.shard }}/${{ matrix.total }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Extract test counts from JSON
+            TOTAL=$(jq -r '.numTotalTests // 0' test-results.json 2>/dev/null || echo "0")
+            PASSED=$(jq -r '.numPassedTests // 0' test-results.json 2>/dev/null || echo "0")
+            FAILED=$(jq -r '.numFailedTests // 0' test-results.json 2>/dev/null || echo "0")
+            SKIPPED=$(jq -r '.numPendingTests // 0' test-results.json 2>/dev/null || echo "0")
+
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "❌ **Tests failed in this shard**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ **All tests passed in this shard**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ Test results file not found for shard ${{ matrix.shard }}" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-e2e-${{ matrix.shard }}
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Save Vitest cache
         if: always()
         uses: actions/cache/save@v4
@@ -318,6 +465,15 @@ jobs:
             node_modules/.vite
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
+      - name: Cleanup ephemeral database
+        if: always()
+        env:
+          PGPASSWORD: postgres
+        run: |
+          if [ -n "${{ env.DB_NAME }}" ]; then
+            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
+            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
+          fi
       - name: Cleanup ephemeral database
         if: always()
         env:
@@ -360,6 +516,13 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Setup pnpm store cache
         uses: actions/cache@v4
         with:
@@ -426,6 +589,8 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+          CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
           ENABLE_CURATION: 'false'
         run: |
           set -e
@@ -481,6 +646,44 @@ jobs:
           path: coverage/
           retention-days: 7
           if-no-files-found: ignore
+          pnpm vitest run tests/integration --shard "$SHARD/$TOTAL" --coverage --reporter=default --reporter=json --outputFile=test-results.json
+      - name: Generate test summary
+        if: always()
+        run: |
+          if [ -f test-results.json ]; then
+            echo "## 🔗 Integration Tests - Shard ${{ matrix.shard }}/${{ matrix.total }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Extract test counts from JSON
+            TOTAL=$(jq -r '.numTotalTests // 0' test-results.json 2>/dev/null || echo "0")
+            PASSED=$(jq -r '.numPassedTests // 0' test-results.json 2>/dev/null || echo "0")
+            FAILED=$(jq -r '.numFailedTests // 0' test-results.json 2>/dev/null || echo "0")
+            SKIPPED=$(jq -r '.numPendingTests // 0' test-results.json 2>/dev/null || echo "0")
+
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "❌ **Tests failed in this shard**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ **All tests passed in this shard**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ Test results file not found for shard ${{ matrix.shard }}" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration-${{ matrix.shard }}
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Save Vitest cache
         if: always()
         uses: actions/cache/save@v4
@@ -489,6 +692,15 @@ jobs:
             node_modules/.vite
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
+      - name: Cleanup ephemeral database
+        if: always()
+        env:
+          PGPASSWORD: postgres
+        run: |
+          if [ -n "${{ env.DB_NAME }}" ]; then
+            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
+            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
+          fi
       - name: Cleanup ephemeral database
         if: always()
         env:
@@ -513,6 +725,13 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Setup pnpm store cache
         uses: actions/cache@v4
         with:
@@ -552,6 +771,7 @@ jobs:
   all-checks-staging:
     name: All Checks Passed (staging)
     needs: [lint, type-check, format, security, integration-tests, e2e-tests, build-staging-env]
+    needs: [lint, type-check, format, security, integration-tests, e2e-tests, build-staging-env]
     if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     steps:
@@ -571,6 +791,18 @@ jobs:
     name: Enable auto-merge on PR
     needs: [all-checks-staging, integration-tests, e2e-tests, changes]
     runs-on: ubuntu-latest
+    # Auto-merge conditions (staging → main):
+    # Required conditions (ALL must be true):
+    # 1. Must be a pull_request event
+    # 2. Base branch must be 'main'
+    # 3. Head branch must be 'development' (enforces dev → staging → main flow)
+    # 4. All staging checks passed successfully
+    # Optional conditions (ANY can be true):
+    # 5a. Integration tests passed successfully, OR
+    # 5b. E2E tests passed successfully, OR
+    # 5c. Both integration and E2E tests were skipped (no relevant changes), OR
+    # 5d. Changes filter detected no integration/e2e changes, OR
+    # 5e. PR has 'allow-auto-merge' label (manual override)
     # Auto-merge conditions (staging → main):
     # Required conditions (ALL must be true):
     # 1. Must be a pull_request event
