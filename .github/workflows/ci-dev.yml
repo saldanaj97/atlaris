@@ -405,6 +405,7 @@ jobs:
           && needs['all-checks-dev'].result == 'success'
           }}
     permissions:
+      contents: write
       pull-requests: write
     steps:
       - name: Enable auto-merge via GraphQL
