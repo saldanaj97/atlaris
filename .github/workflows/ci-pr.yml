@@ -269,7 +269,7 @@ jobs:
           echo "Base ref: ${BASE_REF}"
           CHANGED_FILES=""
           if [ -n "${BASE_REF}" ]; then
-            git fetch --no-tags --depth=1 origin "${BASE_REF}" || true
+            git fetch --no-tags origin "${BASE_REF}" || true
             CHANGED_FILES=$(git diff --name-only "origin/${BASE_REF}"...HEAD | tr '\n' ' ' || true)
           fi
 
