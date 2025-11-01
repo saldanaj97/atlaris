@@ -254,7 +254,7 @@ jobs:
           key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
-      - name: Run unit tests (prefer related on PR)
+      - name: Run unit tests
         id: test
         env:
           SKIP_DB_TEST_SETUP: 'true'
