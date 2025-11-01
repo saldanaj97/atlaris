@@ -56,6 +56,108 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run ESLint
+        run: pnpm lint
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run TypeScript type check
+        run: pnpm type-check
+
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting
+        run: pnpm exec prettier --check .
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Run dependency audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
   e2e-tests:
     name: E2E / Smoke Tests
     if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.e2e == 'true'
@@ -88,6 +190,13 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -146,38 +255,7 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          STRIPE_STARTER_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_MONTHLY_PRICE_ID }}
-          STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
-          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
-          AI_USE_MOCK: ${{ vars.AI_USE_MOCK }}
-          AI_MAX_OUTPUT_TOKENS: ${{ vars.AI_MAX_OUTPUT_TOKENS }}
-          AI_PRIMARY: ${{ vars.AI_PRIMARY }}
-          AI_FALLBACK: ${{ vars.AI_FALLBACK }}
-          AI_ENABLE_OPENROUTER: ${{ vars.AI_ENABLE_OPENROUTER }}
-          MOCK_GENERATION_DELAY_MS: ${{ vars.MOCK_GENERATION_DELAY_MS }}
-          MOCK_GENERATION_FAILURE_RATE: ${{ vars.MOCK_GENERATION_FAILURE_RATE }}
-          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           ENABLE_CURATION: 'false'
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_AI_GATEWAY: ${{ secrets.CF_AI_GATEWAY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OPENROUTER_SITE_URL: ${{ secrets.OPENROUTER_SITE_URL }}
-          OPENROUTER_APP_NAME: ${{ secrets.OPENROUTER_APP_NAME }}
-          STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_PRO_MONTHLY_PRICE_ID }}
-          STRIPE_PRO_YEARLY_PRICE_ID: ${{ secrets.STRIPE_PRO_YEARLY_PRICE_ID }}
-          DEV_CLERK_USER_ID: ${{ secrets.DEV_CLERK_USER_ID }}
-          DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
-          DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
         run: |
           set -e
           FILES=$(find tests/e2e -type f \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \) | wc -l || echo 0)
@@ -194,7 +272,44 @@ jobs:
           if [ "$FILES" -lt "$TOTAL" ]; then
             TOTAL="$FILES"
           fi
-          pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL"
+          pnpm vitest run tests/e2e --shard "$SHARD/$TOTAL" --coverage --reporter=default --reporter=json --outputFile=test-results.json
+      - name: Generate test summary
+        if: always()
+        run: |
+          if [ -f test-results.json ]; then
+            echo "## 🌐 E2E Tests - Shard ${{ matrix.shard }}/${{ matrix.total }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Extract test counts from JSON
+            TOTAL=$(jq -r '.numTotalTests // 0' test-results.json 2>/dev/null || echo "0")
+            PASSED=$(jq -r '.numPassedTests // 0' test-results.json 2>/dev/null || echo "0")
+            FAILED=$(jq -r '.numFailedTests // 0' test-results.json 2>/dev/null || echo "0")
+            SKIPPED=$(jq -r '.numPendingTests // 0' test-results.json 2>/dev/null || echo "0")
+
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "❌ **Tests failed in this shard**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ **All tests passed in this shard**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ Test results file not found for shard ${{ matrix.shard }}" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-e2e-${{ matrix.shard }}
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Save Vitest cache
         if: always()
         uses: actions/cache/save@v4
@@ -203,6 +318,15 @@ jobs:
             node_modules/.vite
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
+      - name: Cleanup ephemeral database
+        if: always()
+        env:
+          PGPASSWORD: postgres
+        run: |
+          if [ -n "${{ env.DB_NAME }}" ]; then
+            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
+            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
+          fi
 
   integration-tests:
     name: Integration Tests
@@ -236,6 +360,13 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -288,43 +419,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run integration tests (shard ${{ matrix.shard }}/${{ matrix.total }})
+        # Minimized env to reduce secret exposure; rely on mocks/defaults.
         env:
           NODE_ENV: 'test'
           ALLOW_DB_TRUNCATE: 'true'
           DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          STRIPE_STARTER_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_MONTHLY_PRICE_ID }}
-          STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
-          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
-          AI_USE_MOCK: ${{ vars.AI_USE_MOCK }}
-          AI_MAX_OUTPUT_TOKENS: ${{ vars.AI_MAX_OUTPUT_TOKENS }}
-          AI_PRIMARY: ${{ vars.AI_PRIMARY }}
-          AI_FALLBACK: ${{ vars.AI_FALLBACK }}
-          AI_ENABLE_OPENROUTER: ${{ vars.AI_ENABLE_OPENROUTER }}
-          MOCK_GENERATION_DELAY_MS: ${{ vars.MOCK_GENERATION_DELAY_MS }}
-          MOCK_GENERATION_FAILURE_RATE: ${{ vars.MOCK_GENERATION_FAILURE_RATE }}
-          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           ENABLE_CURATION: 'false'
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_AI_GATEWAY: ${{ secrets.CF_AI_GATEWAY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OPENROUTER_SITE_URL: ${{ secrets.OPENROUTER_SITE_URL }}
-          OPENROUTER_APP_NAME: ${{ secrets.OPENROUTER_APP_NAME }}
-          STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_PRO_MONTHLY_PRICE_ID }}
-          STRIPE_PRO_YEARLY_PRICE_ID: ${{ secrets.STRIPE_PRO_YEARLY_PRICE_ID }}
-          DEV_CLERK_USER_ID: ${{ secrets.DEV_CLERK_USER_ID }}
-          DEV_CLERK_USER_EMAIL: ${{ secrets.DEV_CLERK_USER_EMAIL }}
-          DEV_CLERK_USER_NAME: ${{ secrets.DEV_CLERK_USER_NAME }}
         run: |
           set -e
           FILES=$(find tests/integration -type f \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \) | wc -l || echo 0)
@@ -341,7 +443,44 @@ jobs:
           if [ "$FILES" -lt "$TOTAL" ]; then
             TOTAL="$FILES"
           fi
-          pnpm vitest run tests/integration --shard "$SHARD/$TOTAL"
+          pnpm vitest run tests/integration --shard "$SHARD/$TOTAL" --coverage --reporter=default --reporter=json --outputFile=test-results.json
+      - name: Generate test summary
+        if: always()
+        run: |
+          if [ -f test-results.json ]; then
+            echo "## 🔗 Integration Tests - Shard ${{ matrix.shard }}/${{ matrix.total }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Extract test counts from JSON
+            TOTAL=$(jq -r '.numTotalTests // 0' test-results.json 2>/dev/null || echo "0")
+            PASSED=$(jq -r '.numPassedTests // 0' test-results.json 2>/dev/null || echo "0")
+            FAILED=$(jq -r '.numFailedTests // 0' test-results.json 2>/dev/null || echo "0")
+            SKIPPED=$(jq -r '.numPendingTests // 0' test-results.json 2>/dev/null || echo "0")
+
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| ✅ Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ❌ Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| ⏭️ Skipped | $SKIPPED |" >> $GITHUB_STEP_SUMMARY
+            echo "| 📊 Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "❌ **Tests failed in this shard**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ **All tests passed in this shard**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ Test results file not found for shard ${{ matrix.shard }}" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration-${{ matrix.shard }}
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Save Vitest cache
         if: always()
         uses: actions/cache/save@v4
@@ -350,6 +489,15 @@ jobs:
             node_modules/.vite
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
+      - name: Cleanup ephemeral database
+        if: always()
+        env:
+          PGPASSWORD: postgres
+        run: |
+          if [ -n "${{ env.DB_NAME }}" ]; then
+            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
+            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
+          fi
 
   build-staging-env:
     name: Build
@@ -365,6 +513,13 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -396,7 +551,7 @@ jobs:
 
   all-checks-staging:
     name: All Checks Passed (staging)
-    needs: [integration-tests, e2e-tests, build-staging-env]
+    needs: [lint, type-check, format, security, integration-tests, e2e-tests, build-staging-env]
     if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     steps:
@@ -416,6 +571,18 @@ jobs:
     name: Enable auto-merge on PR
     needs: [all-checks-staging, integration-tests, e2e-tests, changes]
     runs-on: ubuntu-latest
+    # Auto-merge conditions (staging → main):
+    # Required conditions (ALL must be true):
+    # 1. Must be a pull_request event
+    # 2. Base branch must be 'main'
+    # 3. Head branch must be 'development' (enforces dev → staging → main flow)
+    # 4. All staging checks passed successfully
+    # Optional conditions (ANY can be true):
+    # 5a. Integration tests passed successfully, OR
+    # 5b. E2E tests passed successfully, OR
+    # 5c. Both integration and E2E tests were skipped (no relevant changes), OR
+    # 5d. Changes filter detected no integration/e2e changes, OR
+    # 5e. PR has 'allow-auto-merge' label (manual override)
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.base.ref == 'main' &&
