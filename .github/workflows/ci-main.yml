@@ -121,7 +121,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run OSV Scanner
-        uses: google/osv-scanner-action@v2.2.4
+        uses: google/osv-scanner-action/osv-scanner-action@v2.2.4
         with:
           scan-args: |
             --lockfile=pnpm-lock.yaml
