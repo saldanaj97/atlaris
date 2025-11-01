@@ -1,7 +1,7 @@
-name: CI - Staging (staging env)
+name: CI - Main (trunk)
 
 on:
-  pull_request:
+  push:
     branches: [main]
     paths-ignore:
       - '**/*.md'
@@ -11,13 +11,12 @@ on:
       - '**/*.csv'
       - '**/*.log'
       - '**/*.lock'
-
   merge_group:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -114,53 +113,24 @@ jobs:
       - name: Run TypeScript type check
         run: pnpm type-check
 
-  format:
-    name: Format Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Setup pnpm store cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Format code
-        run: pnpm exec prettier --write .
-
-  security:
-    name: Security Audit
+  vulnerability-scan:
+    name: Vulnerability Scan (OSV)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - name: Run OSV Scanner
+        uses: google/osv-scanner-action@v2.2.4
         with:
-          version: 9
-      - name: Run dependency audit
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
+          scan-args: |
+            --lockfile=pnpm-lock.yaml
+            --format=json
+            --output=osv-results.json
 
   e2e-tests:
     name: E2E / Smoke Tests
-    if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.e2e == 'true'
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: [changes]
@@ -339,7 +309,7 @@ jobs:
 
   integration-tests:
     name: Integration Tests
-    if: (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.integration == 'true'
+    if: needs.changes.outputs.integration == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: [changes]
@@ -567,10 +537,78 @@ jobs:
           path: .next/cache
           key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
 
-  all-checks-staging:
-    name: All Checks Passed (staging)
-    needs: [lint, type-check, format, security, integration-tests, e2e-tests, build-staging-env]
-    if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
+  migration-dry-run:
+    name: DB Migration Dry-Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - '5432:5432'
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd="pg_isready -U postgres -d postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Prepare ephemeral database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
+            sleep 1
+          done
+          DB_NAME="ci_${GITHUB_RUN_ID}_migrate_${GITHUB_JOB}"
+          echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
+          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
+      - name: Apply migrations (dry-run DB)
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: pnpm db:migrate
+      - name: Cleanup ephemeral database
+        if: always()
+        env:
+          PGPASSWORD: postgres
+        run: |
+          if [ -n "${{ env.DB_NAME }}" ]; then
+            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
+            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
+          fi
+
+  all-checks-main:
+    name: All Checks Passed (main)
+    needs: [lint, type-check, vulnerability-scan, integration-tests, e2e-tests, build-staging-env, migration-dry-run]
+    if: always() && (github.event_name == 'push' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     steps:
       - name: Check all required jobs succeeded
@@ -579,15 +617,15 @@ jobs:
           declare -A results=(
             [lint]="${{ needs.lint.result }}"
             [type-check]="${{ needs['type-check'].result }}"
-            [format]="${{ needs.format.result }}"
-            [security]="${{ needs.security.result }}"
+            [vulnerability-scan]="${{ needs.vulnerability-scan.result }}"
+            [build-staging-env]="${{ needs['build-staging-env'].result }}"
+            [migration-dry-run]="${{ needs['migration-dry-run'].result }}"
             [integration-tests]="${{ needs['integration-tests'].result }}"
             [e2e-tests]="${{ needs['e2e-tests'].result }}"
-            [build-staging-env]="${{ needs['build-staging-env'].result }}"
           )
 
           failed=0
-          for job in lint type-check format security integration-tests e2e-tests build-staging-env; do
+          for job in lint type-check vulnerability-scan build-staging-env migration-dry-run integration-tests e2e-tests; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)
@@ -600,61 +638,5 @@ jobs:
           if [ "$failed" -ne 0 ]; then
             exit 1
           fi
-      - name: All checks passed (staging)
-        run: echo "✅ All checks passed (staging)"
-
-  auto-merge:
-    name: Enable auto-merge on PR
-    needs: [all-checks-staging]
-    runs-on: ubuntu-latest
-    # Auto-merge conditions (staging → main):
-    # Required conditions (ALL must be true):
-    # 1. Must be a pull_request event
-    # 2. Base branch must be 'main'
-    # 3. Head branch must be 'development' (enforces dev → staging → main flow)
-    # 4. All staging checks passed successfully (includes lint, type-check, format, security,
-    #    integration-tests, e2e-tests, and build - all must pass or be skipped)
-    # 5. PR must have 'allow-auto-merge' label applied (manual approval)
-    #
-    # Note: The 'all-checks-staging' job validates that ALL jobs (including integration-tests
-    # and e2e-tests) have either passed or been skipped. This ensures we NEVER auto-merge
-    # if any test that ran has failed.
-    if: ${{ github.event_name == 'pull_request'
-          && github.event.pull_request.base.ref == 'main'
-          && github.event.pull_request.head.repo.full_name == github.repository
-          && github.event.pull_request.head.ref == 'development'
-          && needs['all-checks-staging'].result == 'success'
-          }}
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Enable auto-merge via GraphQL
-        uses: actions/github-script@v8
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            if (!context.payload.pull_request) {
-              console.log('No PR context; skipping auto-merge enablement.')
-              return
-            }
-            const prNumber = context.payload.pull_request.number
-            const query = `query($owner:String!, $name:String!, $number:Int!) { repository(owner:$owner, name:$name) { pullRequest(number:$number) { id mergeStateStatus autoMergeRequest { enabledAt } } } }`
-            const vars = { owner: context.repo.owner, name: context.repo.repo, number: prNumber }
-            const prInfo = await github.graphql(query, vars)
-            const pr = prInfo.repository.pullRequest
-            if (!pr) {
-              console.log('Pull request not found; skipping.')
-              return
-            }
-            if (pr.autoMergeRequest) {
-              console.log('Auto-merge already enabled; nothing to do.')
-              return
-            }
-            const mutation = `mutation($prId:ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: MERGE }) { pullRequest { number autoMergeRequest { enabledAt } } } }`
-            try {
-              const res = await github.graphql(mutation, { prId: pr.id })
-              console.log('Auto-merge enabled:', JSON.stringify(res))
-            } catch (e) {
-              console.warn('Failed to enable auto-merge. Ensure repo setting "Allow auto-merge" is enabled and branch protection allows it. Error:', e.message)
-            }
+      - name: All checks passed (main)
+        run: echo "✅ All checks passed (main)"
