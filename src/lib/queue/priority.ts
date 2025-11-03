@@ -9,8 +9,12 @@ export const PRIORITY_TOPICS = [
 type Tier = 'free' | 'starter' | 'pro';
 
 export function isPriorityTopic(topic: string): boolean {
+  // Use word-boundary regex matching to prevent substring false positives
+  // (e.g., "hair engineering" should not match "ai engineering")
   const lower = topic.trim().toLowerCase();
-  return PRIORITY_TOPICS.some((t) => lower.includes(t));
+  const pattern = PRIORITY_TOPICS.map((t) => `\\b${t}\\b`).join('|');
+  const regex = new RegExp(pattern, 'i');
+  return regex.test(lower);
 }
 
 export function computeJobPriority(params: {

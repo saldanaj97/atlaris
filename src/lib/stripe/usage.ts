@@ -11,21 +11,21 @@ export const TIER_LIMITS = {
     monthlyRegenerations: 5,
     monthlyExports: 10,
     maxWeeks: 2 as number | null,
-    maxHours: null as number | null,
+    maxHours: null,
   },
   starter: {
     maxActivePlans: 10,
     monthlyRegenerations: 10,
     monthlyExports: 50,
     maxWeeks: 8 as number | null,
-    maxHours: null as number | null,
+    maxHours: null,
   },
   pro: {
     maxActivePlans: Infinity,
     monthlyRegenerations: 50,
     monthlyExports: Infinity,
-    maxWeeks: null as number | null, // unlimited
-    maxHours: null as number | null,
+    maxWeeks: null, // unlimited
+    maxHours: null,
   },
 } as const;
 
@@ -127,9 +127,10 @@ export function checkPlanDurationCap(params: {
     caps.maxHours !== null &&
     params.weeklyHours * params.totalWeeks > caps.maxHours
   ) {
+    const maxHours: number = caps.maxHours;
     return {
       allowed: false,
-      reason: `${params.tier} tier limited to ${caps.maxHours} total hours. Upgrade for more time.`,
+      reason: `${params.tier} tier limited to ${maxHours} total hours. Upgrade for more time.`,
       upgradeUrl: '/pricing',
     };
   }

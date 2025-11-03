@@ -43,6 +43,7 @@ const PRICING_TIERS = {
       `${TIER_LIMITS.starter.monthlyRegenerations} regenerations per month`,
       `${TIER_LIMITS.starter.monthlyExports} exports per month`,
       'Priority queue',
+      'Priority topics and faster queue',
     ],
     button: null, // Dynamic SubscribeButtons
     variant: 'default' as const,
@@ -57,6 +58,7 @@ const PRICING_TIERS = {
       `${TIER_LIMITS.pro.monthlyRegenerations} regenerations per month`,
       'Unlimited exports',
       'Highest priority + analytics',
+      'Priority topics and faster queue',
     ],
     button: null, // Dynamic SubscribeButtons
     variant: 'default' as const,

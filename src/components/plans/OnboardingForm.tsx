@@ -1,12 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { createPlan } from '@/lib/api/plans';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
+import { TIER_LIMITS } from '@/lib/stripe/usage';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -98,7 +99,6 @@ const TOTAL_STEPS = 5;
 
 // Define once to avoid re-creating on every render
 
-
 export default function OnboardingForm() {
   const today = new Date();
   const router = useRouter();
@@ -106,6 +106,27 @@ export default function OnboardingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<FormState>(initialState);
   const [stepError, setStepError] = useState<string | null>(null);
+  const [userTier, setUserTier] = useState<'free' | 'starter' | 'pro' | null>(
+    null
+  );
+
+  // Fetch user subscription tier on mount
+  useEffect(() => {
+    const fetchUserTier = async () => {
+      try {
+        const res = await fetch('/api/v1/user/subscription');
+        if (res.ok) {
+          const data = (await res.json()) as {
+            tier: 'free' | 'starter' | 'pro' | null;
+          };
+          setUserTier(data.tier);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user tier:', error);
+      }
+    };
+    void fetchUserTier();
+  }, []);
 
   const updateField = <Key extends keyof FormState>(
     field: Key,
@@ -181,6 +202,18 @@ export default function OnboardingForm() {
   };
 
   const isCurrentStepComplete = stepHasRequiredValues(currentStep);
+
+  // Check if selected deadline exceeds free tier limit (2 weeks)
+  const isDeadlineOverCap = () => {
+    if (!formState.deadlineDate || userTier !== 'free') return false;
+    const deadline = new Date(formState.deadlineDate);
+    const startDate = formState.startDate
+      ? new Date(formState.startDate)
+      : today;
+    const weeksDiff =
+      (deadline.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7);
+    return weeksDiff > (TIER_LIMITS.free.maxWeeks || 2);
+  };
 
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) {
@@ -495,6 +528,23 @@ export default function OnboardingForm() {
                     Your learning plan will be structured to help you meet this
                     goal.
                   </p>
+                  {isDeadlineOverCap() && (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        <strong>Upgrade needed:</strong> Free plans are limited
+                        to 2-week learning plans. Upgrade to Starter or Pro for
+                        longer timelines and priority processing.
+                      </p>
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900"
+                      >
+                        <a href="/pricing">View Plans</a>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

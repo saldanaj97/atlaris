@@ -4,9 +4,9 @@ vi.mock('@/lib/db/drizzle', () => ({ db: {} as any }));
 import { checkPlanDurationCap, __test__ } from '@/lib/stripe/usage';
 
 describe('checkPlanDurationCap', () => {
-  it('blocks free > 2 weeks', async () => {
+  it('blocks free > 2 weeks', () => {
     const weeks = 3;
-    const res = await checkPlanDurationCap({
+    const res = checkPlanDurationCap({
       tier: 'free',
       weeklyHours: 5,
       totalWeeks: weeks,
@@ -15,8 +15,8 @@ describe('checkPlanDurationCap', () => {
     expect(res.reason).toMatch(/2-week/);
   });
 
-  it('allows free == 2 weeks', async () => {
-    const res = await checkPlanDurationCap({
+  it('allows free == 2 weeks', () => {
+    const res = checkPlanDurationCap({
       tier: 'free',
       weeklyHours: 5,
       totalWeeks: 2,
@@ -24,8 +24,8 @@ describe('checkPlanDurationCap', () => {
     expect(res.allowed).toBe(true);
   });
 
-  it('allows pro unlimited', async () => {
-    const res = await checkPlanDurationCap({
+  it('allows pro unlimited', () => {
+    const res = checkPlanDurationCap({
       tier: 'pro',
       weeklyHours: 10,
       totalWeeks: 52,
