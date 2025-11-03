@@ -1,6 +1,6 @@
 # Progress Overview
 
-- [ ] Task 1: Define tier caps and priority topics
+- [x] Task 1: Define tier caps and priority topics
 - [ ] Task 2: Enforce free-tier cap at API validation
 - [ ] Task 3: Regeneration API + job + worker
 - [ ] Task 4: UI controls and copy

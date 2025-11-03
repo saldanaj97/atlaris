@@ -10,26 +10,26 @@ export const TIER_LIMITS = {
     maxActivePlans: 3,
     monthlyRegenerations: 5,
     monthlyExports: 10,
-    maxWeeks: 2 as number | null,
-    maxHours: null as number | null,
+    maxWeeks: 2,
+    maxHours: null,
   },
   starter: {
     maxActivePlans: 10,
     monthlyRegenerations: 10,
     monthlyExports: 50,
-    maxWeeks: 8 as number | null,
-    maxHours: null as number | null,
+    maxWeeks: 8,
+    maxHours: null,
   },
   pro: {
     maxActivePlans: Infinity,
     monthlyRegenerations: 50,
     monthlyExports: Infinity,
-    maxWeeks: null as number | null, // unlimited
-    maxHours: null as number | null,
+    maxWeeks: null, // unlimited
+    maxHours: null,
   },
 } as const;
 
-type SubscriptionTier = keyof typeof TIER_LIMITS;
+export type SubscriptionTier = keyof typeof TIER_LIMITS;
 
 // Usage type for incrementing counters
 export type UsageType = 'plan' | 'regeneration' | 'export';
@@ -78,9 +78,11 @@ async function getOrCreateUsageMetrics(userId: string, month: string) {
 }
 
 /**
- * Get user's subscription tier
+ * Resolve user's subscription tier from database
  */
-async function getUserTier(userId: string): Promise<SubscriptionTier> {
+export async function resolveUserTier(
+  userId: string
+): Promise<SubscriptionTier> {
   const [user] = await db
     .select({ subscriptionTier: users.subscriptionTier })
     .from(users)
@@ -93,6 +95,9 @@ async function getUserTier(userId: string): Promise<SubscriptionTier> {
 
   return user.subscriptionTier;
 }
+
+// Internal alias for backward compatibility
+const getUserTier = resolveUserTier;
 
 /**
  * Check if user can create more plans
@@ -366,13 +371,7 @@ export async function markPlanGenerationFailure(
     .where(eq(learningPlans.id, planId));
 }
 
-export async function resolveUserTier(
-  userId: string
-): Promise<SubscriptionTier> {
-  // existing getUserTier, exported for reuse
-  // implementation remains same, exposed for API routes
-  return await getUserTier(userId);
-}
+const TIER_RECOMMENDATION_THRESHOLD_WEEKS = 8;
 
 export function checkPlanDurationCap(params: {
   tier: SubscriptionTier;
@@ -381,7 +380,10 @@ export function checkPlanDurationCap(params: {
 }): { allowed: boolean; reason?: string; upgradeUrl?: string } {
   const caps = TIER_LIMITS[params.tier];
   if (caps.maxWeeks !== null && params.totalWeeks > caps.maxWeeks) {
-    const recommended = params.totalWeeks > 8 ? 'pro' : 'starter';
+    const recommended =
+      params.totalWeeks > TIER_RECOMMENDATION_THRESHOLD_WEEKS
+        ? 'pro'
+        : 'starter';
     return {
       allowed: false,
       reason: `${params.tier} tier limited to ${caps.maxWeeks}-week plans. Upgrade to ${recommended} for longer plans.`,
@@ -394,7 +396,7 @@ export function checkPlanDurationCap(params: {
   ) {
     return {
       allowed: false,
-      reason: `${params.tier} tier limited to ${caps.maxHours} total hours. Upgrade for more time.`,
+      reason: `${String(params.tier)} tier limited to ${String(caps.maxHours)} total hours. Upgrade for more time.`,
       upgradeUrl: '/pricing',
     };
   }
