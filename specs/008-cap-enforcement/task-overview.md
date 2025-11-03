@@ -1,0 +1,65 @@
+# Progress Overview
+
+- [ ] Task 1: Define tier caps and priority topics
+- [ ] Task 2: Enforce free-tier cap at API validation
+- [ ] Task 3: Regeneration API + job + worker
+- [ ] Task 4: UI controls and copy
+- [ ] Task 5: Queue priority behavior verification
+- [ ] Task 6: Stripe webhook and gates coherence check
+- [ ] Task 7: Developer ergonomics and scripts
+
+---
+
+# Task 1: Define Tier Caps and Priority Topics
+
+- [ ] Step 1: Write the failing test (caps)
+- [ ] Step 2: Run test to verify it fails
+- [ ] Step 3: Implement tier caps + helper
+- [ ] Step 4: Run test to verify it passes
+- [ ] Step 5: Commit
+- [ ] Step 6: Write the failing test (priority)
+- [ ] Step 7: Run test to verify it fails
+- [ ] Step 8: Implement priority helper
+- [ ] Step 9: Run test to verify it passes
+- [ ] Step 10: Commit
+
+# Task 2: Enforce Free-Tier Cap at API Validation
+
+- [ ] Step 1: Write the failing integration test
+- [ ] Step 2: Run test to verify it fails
+- [ ] Step 3: Implement server validation
+- [ ] Step 4: Run test to verify it passes
+- [ ] Step 5: Commit
+
+# Task 3: Regeneration API + Job + Worker
+
+- [ ] Step 1: Write the failing test (API)
+- [ ] Step 2: Run test to verify it fails
+- [ ] Step 3: Add job type and processing
+- [ ] Step 4: Implement route
+- [ ] Step 5: Run tests
+- [ ] Step 6: Commit
+
+# Task 4: UI Controls and Copy
+
+- [ ] Step 1: Write the failing e2e test outline
+- [ ] Step 2: Implement components
+- [ ] Step 3: Verify locally (manual)
+- [ ] Step 4: Commit
+
+# Task 5: Queue Priority Behavior Verification
+
+- [ ] Step 1: Extend existing test to prove priority > FIFO
+- [ ] Step 2: Run tests
+- [ ] Step 3: Commit
+
+# Task 6: Stripe Webhook and Gates Coherence Check
+
+- [ ] Step 1: Fetch docs with Context7 MCP (Stripe webhooks)
+- [ ] Step 2: Ensure subscription tier updates flow to UI usage summary
+- [ ] Step 3: Commit (if changes)
+
+# Task 7: Developer Ergonomics and Scripts
+
+- [ ] Step 1: Add worker script
+- [ ] Step 2: Commit
