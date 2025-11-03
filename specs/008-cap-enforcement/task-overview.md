@@ -1,6 +1,6 @@
 # Progress Overview
 
-- [ ] Task 1: Define tier caps and priority topics
+- [x] Task 1: Define tier caps and priority topics
 - [ ] Task 2: Enforce free-tier cap at API validation
 - [ ] Task 3: Regeneration API + job + worker
 - [ ] Task 4: UI controls and copy
@@ -12,16 +12,22 @@
 
 # Task 1: Define Tier Caps and Priority Topics
 
-- [ ] Step 1: Write the failing test (caps)
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement tier caps + helper
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
-- [ ] Step 6: Write the failing test (priority)
-- [ ] Step 7: Run test to verify it fails
-- [ ] Step 8: Implement priority helper
-- [ ] Step 9: Run test to verify it passes
-- [ ] Step 10: Commit
+- [x] Step 1: Write the failing test (caps)
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement tier caps + helper
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Commit
+- [x] Step 6: Write the failing test (priority)
+- [x] Step 7: Run test to verify it fails
+- [x] Step 8: Implement priority helper
+- [x] Step 9: Run test to verify it passes
+- [x] Step 10: Commit
+
+Notes:
+
+- Added `checkPlanDurationCap` and exported `resolveUserTier` wrapper in `src/lib/stripe/usage.ts`.
+- Introduced `PRIORITY_TOPICS`, `isPriorityTopic`, and `computeJobPriority` in `src/lib/queue/priority.ts`.
+- Unit tests added under `tests/unit/stripe/usage.caps.spec.ts` and `tests/unit/queue/priority.spec.ts`.
 
 # Task 2: Enforce Free-Tier Cap at API Validation
 

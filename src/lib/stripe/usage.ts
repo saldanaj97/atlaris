@@ -10,16 +10,22 @@ export const TIER_LIMITS = {
     maxActivePlans: 3,
     monthlyRegenerations: 5,
     monthlyExports: 10,
+    maxWeeks: 2 as number | null,
+    maxHours: null as number | null,
   },
   starter: {
     maxActivePlans: 10,
     monthlyRegenerations: 10,
     monthlyExports: 50,
+    maxWeeks: 8 as number | null,
+    maxHours: null as number | null,
   },
   pro: {
     maxActivePlans: Infinity,
     monthlyRegenerations: 50,
     monthlyExports: Infinity,
+    maxWeeks: null as number | null, // unlimited
+    maxHours: null as number | null,
   },
 } as const;
 
@@ -87,6 +93,52 @@ async function getUserTier(userId: string): Promise<SubscriptionTier> {
 
   return user.subscriptionTier;
 }
+
+/**
+ * Exported wrapper for resolving a user's subscription tier.
+ * Keeps internal getUserTier implementation private while enabling reuse.
+ */
+export async function resolveUserTier(
+  userId: string
+): Promise<SubscriptionTier> {
+  return await getUserTier(userId);
+}
+
+/**
+ * Check whether a requested plan duration is allowed for a given tier.
+ */
+export function checkPlanDurationCap(params: {
+  tier: SubscriptionTier;
+  weeklyHours: number;
+  totalWeeks: number;
+}): { allowed: boolean; reason?: string; upgradeUrl?: string } {
+  const caps = TIER_LIMITS[params.tier];
+
+  if (caps.maxWeeks !== null && params.totalWeeks > caps.maxWeeks) {
+    const recommended = params.totalWeeks > 8 ? 'pro' : 'starter';
+    return {
+      allowed: false,
+      reason: `${params.tier} tier limited to ${caps.maxWeeks}-week plans. Upgrade to ${recommended} for longer plans.`,
+      upgradeUrl: '/pricing',
+    };
+  }
+
+  if (
+    caps.maxHours !== null &&
+    params.weeklyHours * params.totalWeeks > caps.maxHours
+  ) {
+    return {
+      allowed: false,
+      reason: `${params.tier} tier limited to ${caps.maxHours} total hours. Upgrade for more time.`,
+      upgradeUrl: '/pricing',
+    };
+  }
+
+  return { allowed: true };
+}
+
+// Test-only helpers/values
+export const __test__ = { TIER_LIMITS };
 
 /**
  * Check if user can create more plans
