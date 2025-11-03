@@ -37,10 +37,15 @@ export function computeJobPriority(params: {
   tier: SubscriptionTier;
   isPriorityTopic: boolean;
 }): number {
-  if (!['free', 'starter', 'pro'].includes(params.tier)) {
+  const tierPriorities: Record<SubscriptionTier, number> = {
+    free: 1,
+    starter: 5,
+    pro: 10,
+  };
+  const base = tierPriorities[params.tier];
+  if (base === undefined) {
     throw new Error(`Invalid tier: ${params.tier}`);
   }
-  const base = params.tier === 'pro' ? 10 : params.tier === 'starter' ? 5 : 1;
   const topicBoost = params.isPriorityTopic ? 3 : 0;
   return base + topicBoost;
 }
