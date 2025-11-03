@@ -6,7 +6,7 @@ export const PRIORITY_TOPICS = [
   'data structures',
 ] as const;
 
-type Tier = 'free' | 'starter' | 'pro';
+export type Tier = 'free' | 'starter' | 'pro';
 
 export function isPriorityTopic(topic: string): boolean {
   const lower = topic.trim().toLowerCase();
