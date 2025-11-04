@@ -7,7 +7,7 @@ import Link from 'next/link';
 
 import { createPlan } from '@/lib/api/plans';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
-import { TIER_LIMITS } from '@/lib/stripe/usage';
+import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 
 import { Button } from '@/components/ui/button';
@@ -121,6 +121,8 @@ export default function OnboardingForm() {
             tier?: 'free' | 'starter' | 'pro';
           };
           setUserTier(data.tier || 'free');
+        } else {
+          setUserTier('free');
         }
       } catch (error) {
         console.error('Failed to fetch user tier:', error);

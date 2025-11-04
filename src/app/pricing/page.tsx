@@ -1,6 +1,6 @@
 import SubscribeButton from '@/components/billing/SubscribeButton';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
-import { TIER_LIMITS } from '@/lib/stripe/usage';
+import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

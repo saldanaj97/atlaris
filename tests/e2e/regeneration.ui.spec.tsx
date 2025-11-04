@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 
 import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ScheduleJson } from '@/lib/scheduling/types';
@@ -150,7 +150,10 @@ function selectSkillLevel(value: 'beginner' | 'intermediate' | 'advanced') {
 }
 
 function selectWeeklyHoursLabel(label: string) {
-  const sel = screen.getByTestId('weeklyHours') as HTMLSelectElement;
+  const sel = screen.getByTestId('weeklyHours');
+  if (!(sel instanceof HTMLSelectElement)) {
+    throw new Error('Expected select element');
+  }
   const option = Array.from(sel.options).find((o) => o.textContent === label);
   if (!option) throw new Error('Option not found: ' + label);
   fireEvent.change(sel, { target: { value: option.value } });
@@ -211,6 +214,10 @@ describe('Regeneration UI', () => {
     backMock.mockReset();
     createPlanMock.mockReset();
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('Free-tier cap prompt', () => {
