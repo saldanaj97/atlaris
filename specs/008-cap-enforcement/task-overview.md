@@ -5,7 +5,7 @@
 - [x] Task 3: Regeneration API + job + worker
 - [x] Task 4: UI controls and copy
 - [x] Task 5: Queue priority behavior verification
-- [ ] Task 6: Stripe webhook and gates coherence check
+- [x] Task 6: Stripe webhook and gates coherence check
 - [x] Task 7: Developer ergonomics and scripts
 
 ---
@@ -94,9 +94,17 @@ Notes:
 
 # Task 6: Stripe Webhook and Gates Coherence Check
 
-- [ ] Step 1: Fetch docs with Context7 MCP (Stripe webhooks)
-- [ ] Step 2: Ensure subscription tier updates flow to UI usage summary
-- [ ] Step 3: Commit (if changes)
+- [x] Step 1: Fetch docs with Context7 MCP (Stripe webhooks)
+- [x] Step 2: Ensure subscription tier updates flow to UI usage summary
+- [x] Step 3: Commit (if changes)
+
+Notes:
+
+- Verified Stripe webhook signature verification uses `Stripe.webhooks.constructEvent` with raw body, signature header, and webhook secret (matches Stripe docs).
+- Confirmed webhook handles all critical events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`.
+- Verified subscription tier updates flow correctly: webhook → `syncSubscriptionToDb` → updates `users.subscriptionTier` in DB → `getUsageSummary` reads from DB → UI fetches via `/api/v1/user/subscription` route.
+- Confirmed `gates.ts` middleware functions read tier directly from DB, ensuring gates respect webhook-driven tier changes.
+- No code changes needed - implementation is coherent and matches Stripe best practices.
 
 # Task 7: Developer Ergonomics and Scripts
 
