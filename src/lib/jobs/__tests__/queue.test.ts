@@ -169,7 +169,8 @@ describe('Job queue service', () => {
       .set({ subscriptionTier: 'free' })
       .where(eq(users.id, freeUser.userId));
 
-    const freeTopic = 'cooking basics'; // Non-priority topic
+    const freeTopic = 'zzzzzzzzzzzzzzzzzzzz'; // Guaranteed non-priority topic
+    expect(isPriorityTopic(freeTopic)).toBe(false);
     const freePlan = await db
       .insert(learningPlans)
       .values({
