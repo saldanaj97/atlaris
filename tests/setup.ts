@@ -8,7 +8,11 @@ import { cleanup } from '@testing-library/react';
 
 import { client } from '@/lib/db/drizzle';
 import { Mutex } from 'async-mutex';
-import { ensureStripeWebhookEventsTable, truncateAll } from './helpers/db';
+import {
+  ensureJobTypeEnumValue,
+  ensureStripeWebhookEventsTable,
+  truncateAll,
+} from './helpers/db';
 
 if (!process.env.DEV_CLERK_USER_ID) {
   Object.assign(process.env, { DEV_CLERK_USER_ID: 'test-user-id' });
@@ -67,6 +71,7 @@ if (!skipDbSetup) {
   beforeEach(async () => {
     assertSafeToTruncate();
     releaseDbLock = await dbLock.acquire();
+    await ensureJobTypeEnumValue();
     await ensureStripeWebhookEventsTable();
     await truncateAll();
   });

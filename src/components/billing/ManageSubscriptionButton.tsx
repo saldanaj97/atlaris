@@ -38,7 +38,8 @@ export default function ManageSubscriptionButton({
 
       window.location.href = data.portalUrl;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Something went wrong';
+      const message =
+        err instanceof Error ? err.message : 'Something went wrong';
       toast.error('Unable to open billing portal', { description: message });
     } finally {
       setLoading(false);
@@ -46,7 +47,13 @@ export default function ManageSubscriptionButton({
   }
 
   return (
-    <Button className={className} disabled={loading} onClick={() => { void handleClick(); }}>
+    <Button
+      className={className}
+      disabled={loading}
+      onClick={() => {
+        void handleClick();
+      }}
+    >
       {loading ? 'Opening…' : label}
     </Button>
   );

@@ -8,6 +8,9 @@ import { curateDocs } from '@/lib/curation/docs';
 import { curationConfig } from '@/lib/curation/config';
 import { selectTop, type Scored } from '@/lib/curation/ranking';
 import { curateYouTube } from '@/lib/curation/youtube';
+import { db } from '@/lib/db/drizzle';
+import { learningPlans } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 import { upsertAndAttach } from '@/lib/db/queries/resources';
 import {
   appendTaskDescription,
@@ -22,6 +25,7 @@ import type { FailureClassification } from '@/lib/types/client';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
+  planRegenerationOverridesSchema,
   weeklyHoursSchema,
 } from '@/lib/validation/learningPlans';
 
@@ -82,6 +86,13 @@ const planGenerationJobDataSchema = z
         'Deadline date must be a valid ISO date string.'
       )
       .transform((value) => (value ? value : null)),
+  })
+  .strict();
+
+const planRegenerationJobDataSchema = z
+  .object({
+    planId: z.string().uuid('planId must be a valid UUID'),
+    overrides: planRegenerationOverridesSchema.optional(),
   })
   .strict();
 
@@ -293,6 +304,182 @@ export async function processPlanGenerationJob(
       error instanceof Error
         ? error.message || 'Unexpected error processing plan generation job.'
         : 'Unexpected error processing plan generation job.';
+
+    return {
+      status: 'failure',
+      error: message,
+      classification: 'unknown',
+      retryable: true,
+    } satisfies ProcessPlanGenerationJobFailure;
+  }
+}
+
+export type ProcessPlanRegenerationJobResult =
+  | ProcessPlanGenerationJobSuccess
+  | ProcessPlanGenerationJobFailure;
+
+export async function processPlanRegenerationJob(
+  job: Job,
+  opts?: { signal?: AbortSignal }
+): Promise<ProcessPlanRegenerationJobResult> {
+  if (job.type !== JOB_TYPES.PLAN_REGENERATION) {
+    return {
+      status: 'failure',
+      error: `Unsupported job type: ${String(job.type)}`,
+      classification: 'unknown',
+      retryable: false,
+    } satisfies ProcessPlanGenerationJobFailure;
+  }
+
+  if (!job.planId) {
+    return {
+      status: 'failure',
+      error: 'Regeneration job missing planId',
+      classification: 'validation',
+      retryable: false,
+    } satisfies ProcessPlanGenerationJobFailure;
+  }
+
+  const parsedPayload = planRegenerationJobDataSchema.safeParse(job.data);
+  if (!parsedPayload.success) {
+    const message = buildValidationErrorMessage(parsedPayload.error);
+    return {
+      status: 'failure',
+      error: message,
+      classification: 'validation',
+      retryable: false,
+    } satisfies ProcessPlanGenerationJobFailure;
+  }
+  const overrides = parsedPayload.data.overrides;
+
+  try {
+    // Fetch current plan to get existing values
+    const plan = await db.query.learningPlans.findFirst({
+      where: eq(learningPlans.id, job.planId),
+    });
+
+    if (!plan) {
+      return {
+        status: 'failure',
+        error: 'Plan not found for regeneration',
+        classification: 'validation',
+        retryable: false,
+      } satisfies ProcessPlanGenerationJobFailure;
+    }
+
+    // Merge plan values with overrides
+    const mergedInput: PlanGenerationJobData = {
+      topic: overrides?.topic ?? plan.topic,
+      // TODO: Persist plan-level notes once learning_plans includes a notes column so regenerations can carry them forward.
+      notes: overrides?.notes ?? null,
+      skillLevel: overrides?.skillLevel ?? plan.skillLevel,
+      weeklyHours: overrides?.weeklyHours ?? plan.weeklyHours,
+      learningStyle: overrides?.learningStyle ?? plan.learningStyle,
+      startDate:
+        overrides?.startDate ??
+        (plan.startDate ? String(plan.startDate) : null),
+      deadlineDate:
+        overrides?.deadlineDate ??
+        (plan.deadlineDate ? String(plan.deadlineDate) : null),
+    };
+
+    // Use configured provider (mock in tests, router with failover in production)
+    const provider = getGenerationProvider();
+
+    const result = await runGenerationAttempt(
+      {
+        planId: job.planId,
+        userId: job.userId,
+        input: mergedInput,
+      },
+      { provider, signal: opts?.signal }
+    );
+
+    if (result.status === 'success') {
+      const planId = job.planId;
+      const jobResult = buildJobResult(
+        result.modules,
+        result.durationMs,
+        result.attempt.id,
+        result.metadata
+      );
+
+      // Curation and micro-explanations (if enabled)
+      // In production we run this fire-and-forget to avoid blocking the job.
+      // In tests, await for determinism so integration tests can assert effects.
+      if (curationConfig.enableCuration) {
+        const runCuration = () =>
+          maybeCurateAndAttachResources(planId, mergedInput, job.userId).catch(
+            (curationError) => {
+              // Log but don't fail the job
+              console.error('Curation failed:', curationError);
+            }
+          );
+
+        if (process.env.NODE_ENV === 'test') {
+          await runCuration();
+        } else {
+          void runCuration();
+        }
+      }
+
+      await markPlanGenerationSuccess(planId);
+
+      // Record usage on success
+      const usage = result.metadata?.usage;
+      await recordUsage({
+        userId: job.userId,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: result.metadata?.model ?? 'unknown',
+        inputTokens: usage?.promptTokens ?? undefined,
+        outputTokens: usage?.completionTokens ?? undefined,
+        costCents: 0,
+        kind: 'plan',
+      });
+
+      return {
+        status: 'success',
+        result: jobResult,
+      } satisfies ProcessPlanGenerationJobSuccess;
+    }
+
+    const classification = result.classification ?? 'unknown';
+    const retryable =
+      classification !== 'validation' && classification !== 'capped';
+    const message =
+      result.error instanceof Error
+        ? result.error.message
+        : typeof result.error === 'string'
+          ? result.error
+          : 'Regeneration failed.';
+
+    if (!retryable) {
+      const planId = job.planId;
+      await markPlanGenerationFailure(planId);
+
+      // Record AI usage even on failure when provider reports token usage
+      const failedUsage = result.metadata?.usage;
+      await recordUsage({
+        userId: job.userId,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: result.metadata?.model ?? 'unknown',
+        inputTokens: failedUsage?.promptTokens ?? undefined,
+        outputTokens: failedUsage?.completionTokens ?? undefined,
+        costCents: 0,
+      });
+    }
+
+    return {
+      status: 'failure',
+      error: message,
+      classification,
+      retryable,
+    } satisfies ProcessPlanGenerationJobFailure;
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message || 'Unexpected error processing regeneration job.'
+        : 'Unexpected error processing regeneration job.';
 
     return {
       status: 'failure',
