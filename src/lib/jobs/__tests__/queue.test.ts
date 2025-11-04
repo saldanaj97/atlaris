@@ -196,6 +196,7 @@ describe('Job queue service', () => {
       .where(eq(users.id, paidUser.userId));
 
     const paidTopic = 'interview prep'; // Priority topic
+    expect(isPriorityTopic(paidTopic)).toBe(true); // Ensure test is valid if config changes
     const paidPlan = await db
       .insert(learningPlans)
       .values({
