@@ -12,6 +12,12 @@ import {
 export const TOPIC_MAX_LENGTH = 200;
 export const NOTES_MAX_LENGTH = 2000;
 
+// Time constants in milliseconds
+export const MILLISECONDS_PER_WEEK = 7 * 24 * 3600 * 1000;
+export const DEFAULT_PLAN_DURATION_WEEKS = 2;
+export const DEFAULT_PLAN_DURATION_MS =
+  DEFAULT_PLAN_DURATION_WEEKS * MILLISECONDS_PER_WEEK;
+
 function enforceMaxLength(
   value: string,
   maxLength: number,

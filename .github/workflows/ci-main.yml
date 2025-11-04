@@ -405,6 +405,8 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
           ENABLE_CURATION: 'false'
         run: |
           set -e
@@ -590,7 +592,7 @@ jobs:
           DB_NAME="ci_${GITHUB_RUN_ID}_migrate_${GITHUB_JOB}"
           echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
           psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
-          
+
           # Defensive bootstrap (idempotent)
           psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
           CREATE EXTENSION IF NOT EXISTS pgcrypto;

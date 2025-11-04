@@ -1,3 +1,11 @@
+#!/bin/sh
+
+# Skip all tests in CI environment (DATABASE_URL not available)
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "⚠️  Skipping pre-push tests in CI environment"
+  exit 0
+fi
+
 set -eu
 
 # Skip tests on first commit
