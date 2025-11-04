@@ -3,7 +3,7 @@
 - [x] Task 1: Define tier caps and priority topics
 - [x] Task 2: Enforce free-tier cap at API validation
 - [x] Task 3: Regeneration API + job + worker
-- [ ] Task 4: UI controls and copy
+- [x] Task 4: UI controls and copy
 - [x] Task 5: Queue priority behavior verification
 - [ ] Task 6: Stripe webhook and gates coherence check
 - [x] Task 7: Developer ergonomics and scripts
@@ -66,10 +66,18 @@ Notes:
 
 # Task 4: UI Controls and Copy
 
-- [ ] Step 1: Write the failing e2e test outline
-- [ ] Step 2: Implement components
-- [ ] Step 3: Verify locally (manual)
-- [ ] Step 4: Commit
+- [x] Step 1: Write the failing e2e test outline
+- [x] Step 2: Implement components
+- [x] Step 3: Verify locally (manual)
+- [x] Step 4: Commit
+
+Notes:
+
+- Created `RegenerateButton` component in `src/components/plans/RegenerateButton.tsx` that POSTs to regeneration API and shows loading state.
+- Wired `RegenerateButton` into `PlanDetails` component after export controls.
+- Added free-tier cap prompt in `OnboardingForm` step 5 that fetches user tier on mount and shows upgrade message when deadline exceeds 2 weeks.
+- Updated pricing page copy for Starter/Pro tiers to include "Priority topics and faster queue".
+- Added e2e test file `tests/e2e/regeneration.ui.spec.tsx` with tests for free-tier cap prompt and regenerate button functionality.
 
 # Task 5: Queue Priority Behavior Verification
 

@@ -15,6 +15,7 @@ import { ArrowLeft } from 'lucide-react';
 import { ExportButtons } from './ExportButtons';
 import { PlanDetailsCard } from './PlanDetailsCard';
 import { PlanPendingState } from './PlanPendingState';
+import { RegenerateButton } from './RegenerateButton';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
@@ -70,6 +71,10 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
             />
 
             <ExportButtons />
+
+            <div className="mb-6">
+              <RegenerateButton planId={plan.id} />
+            </div>
 
             {/* View Toggle */}
             <div className="mb-6 border-b border-gray-200">
