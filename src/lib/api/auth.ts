@@ -29,24 +29,43 @@ export async function requireUser() {
   return userId;
 }
 
-type HandlerCtx = { req: Request; userId: string };
+type RouteHandlerParams = Record<string, string | undefined>;
+
+type HandlerCtx = {
+  req: Request;
+  userId: string;
+  params: RouteHandlerParams;
+};
 
 type Handler = (ctx: HandlerCtx) => Promise<Response>;
 
-export type PlainHandler = (req: Request) => Promise<Response>;
+export type RouteHandlerContext = {
+  params?: Promise<Record<string, string>>;
+  [key: string]: unknown;
+};
+
+export type PlainHandler = (
+  req: Request,
+  context?: RouteHandlerContext
+) => Promise<Response>;
 
 export function withAuth(handler: Handler): PlainHandler {
-  return async (req: Request) => {
+  return async (req: Request, routeContext?: RouteHandlerContext) => {
     const userId = await requireUser();
-    const context = createRequestContext(req, userId);
-    return withRequestContext(context, () => handler({ req, userId }));
+    const requestContext = createRequestContext(req, userId);
+    const params: RouteHandlerParams = routeContext?.params
+      ? await routeContext.params
+      : {};
+    return withRequestContext(requestContext, () =>
+      handler({ req, userId, params })
+    );
   };
 }
 
 export function withErrorBoundary(fn: PlainHandler): PlainHandler {
-  return async (req) => {
+  return async (req, context) => {
     try {
-      return await fn(req);
+      return await fn(req, context);
     } catch (e) {
       const { toErrorResponse } = await import('./errors');
       return toErrorResponse(e);

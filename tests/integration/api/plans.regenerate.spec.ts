@@ -4,18 +4,21 @@ import { desc, eq } from 'drizzle-orm';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { db } from '@/lib/db/drizzle';
-import { jobQueue, learningPlans } from '@/lib/db/schema';
+import { jobQueue, learningPlans, usageMetrics } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
 async function createRequest(planId: string, body: unknown) {
-  return new Request(`${BASE_URL}/${planId}/regenerate`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  return {
+    request: new Request(`${BASE_URL}/${planId}/regenerate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+    context: { params: Promise.resolve({ planId }) },
+  };
 }
 
 describe('POST /api/v1/plans/:id/regenerate', () => {
@@ -25,6 +28,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   afterEach(async () => {
     await db.delete(jobQueue);
     await db.delete(learningPlans);
+    await db.delete(usageMetrics);
   });
 
   it('enqueues regeneration with priority', async () => {
@@ -55,11 +59,11 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       throw new Error('Failed to create plan');
     }
 
-    const req = await createRequest(plan.id, {
+    const { request, context } = await createRequest(plan.id, {
       overrides: { topic: 'interview prep' },
     });
 
-    const res = await POST(req);
+    const res = await POST(request, context);
     expect(res.status).toBe(202);
 
     const body = await res.json();
@@ -91,11 +95,11 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     const fakePlanId = '00000000-0000-0000-0000-000000000000';
-    const req = await createRequest(fakePlanId, {
+    const { request, context } = await createRequest(fakePlanId, {
       overrides: { topic: 'interview prep' },
     });
 
-    const res = await POST(req);
+    const res = await POST(request, context);
     expect(res.status).toBe(404);
 
     const body = await res.json();
@@ -136,14 +140,271 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     }
 
     // Try to regenerate the other user's plan
-    const req = await createRequest(otherPlan.id, {
+    const { request, context } = await createRequest(otherPlan.id, {
       overrides: { topic: 'interview prep' },
     });
 
-    const res = await POST(req);
+    const res = await POST(request, context);
     expect(res.status).toBe(404);
 
     const body = await res.json();
     expect(body.error).toBe('Plan not found');
+  });
+
+  describe('invalid overrides schema', () => {
+    it('rejects topic that is too short', async () => {
+      setTestUser(clerkUserId);
+      const userId = await ensureUser({
+        clerkUserId,
+        email: clerkEmail,
+      });
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId,
+          topic: 'machine learning',
+          skillLevel: 'intermediate',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+          origin: 'ai',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+        })
+        .returning();
+
+      if (!plan) {
+        throw new Error('Failed to create plan');
+      }
+
+      const { request, context } = await createRequest(plan.id, {
+        overrides: { topic: 'ab' }, // Too short (< 3 chars)
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toBe('Invalid overrides.');
+    });
+
+    it('rejects invalid weeklyHours', async () => {
+      setTestUser(clerkUserId);
+      const userId = await ensureUser({
+        clerkUserId,
+        email: clerkEmail,
+      });
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId,
+          topic: 'machine learning',
+          skillLevel: 'intermediate',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+          origin: 'ai',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+        })
+        .returning();
+
+      if (!plan) {
+        throw new Error('Failed to create plan');
+      }
+
+      const { request, context } = await createRequest(plan.id, {
+        overrides: { weeklyHours: -5 }, // Negative hours
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toBe('Invalid overrides.');
+    });
+
+    it('rejects invalid skillLevel', async () => {
+      setTestUser(clerkUserId);
+      const userId = await ensureUser({
+        clerkUserId,
+        email: clerkEmail,
+      });
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId,
+          topic: 'machine learning',
+          skillLevel: 'intermediate',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+          origin: 'ai',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+        })
+        .returning();
+
+      if (!plan) {
+        throw new Error('Failed to create plan');
+      }
+
+      const { request, context } = await createRequest(plan.id, {
+        overrides: { skillLevel: 'expert' }, // Invalid enum value
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toBe('Invalid overrides.');
+    });
+
+    it('rejects extra fields in overrides', async () => {
+      setTestUser(clerkUserId);
+      const userId = await ensureUser({
+        clerkUserId,
+        email: clerkEmail,
+      });
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId,
+          topic: 'machine learning',
+          skillLevel: 'intermediate',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+          origin: 'ai',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
+        })
+        .returning();
+
+      if (!plan) {
+        throw new Error('Failed to create plan');
+      }
+
+      const { request, context } = await createRequest(plan.id, {
+        overrides: { topic: 'new topic', extraField: 'not allowed' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toBe('Invalid overrides.');
+    });
+  });
+
+  it('rejects regeneration when quota limit exceeded', async () => {
+    setTestUser(clerkUserId);
+    const userId = await ensureUser({
+      clerkUserId,
+      email: clerkEmail,
+      subscriptionTier: 'free', // Free tier has 5 regenerations/month
+    });
+
+    const [plan] = await db
+      .insert(learningPlans)
+      .values({
+        userId,
+        topic: 'machine learning',
+        skillLevel: 'intermediate',
+        weeklyHours: 5,
+        learningStyle: 'practice',
+        visibility: 'private',
+        origin: 'ai',
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+      })
+      .returning();
+
+    if (!plan) {
+      throw new Error('Failed to create plan');
+    }
+
+    // Use up all 5 regenerations by directly updating usage metrics
+    const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+    await db
+      .insert(usageMetrics)
+      .values({
+        userId,
+        month,
+        plansGenerated: 0,
+        regenerationsUsed: 5, // Max for free tier
+        exportsUsed: 0,
+      })
+      .onConflictDoUpdate({
+        target: [usageMetrics.userId, usageMetrics.month],
+        set: { regenerationsUsed: 5 },
+      });
+
+    const { request, context } = await createRequest(plan.id, {
+      overrides: { topic: 'interview prep' },
+    });
+
+    const res = await POST(request, context);
+    expect(res.status).toBe(429); // Too Many Requests
+
+    const body = await res.json();
+    expect(body.error).toMatch(/regeneration limit|quota/i);
+  });
+
+  it('handles concurrent regeneration requests for same plan', async () => {
+    setTestUser(clerkUserId);
+    const userId = await ensureUser({
+      clerkUserId,
+      email: clerkEmail,
+      subscriptionTier: 'pro',
+    });
+
+    const [plan] = await db
+      .insert(learningPlans)
+      .values({
+        userId,
+        topic: 'machine learning',
+        skillLevel: 'intermediate',
+        weeklyHours: 5,
+        learningStyle: 'practice',
+        visibility: 'private',
+        origin: 'ai',
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+      })
+      .returning();
+
+    if (!plan) {
+      throw new Error('Failed to create plan');
+    }
+
+    // Send two concurrent regeneration requests
+    const [res1, res2] = await Promise.all([
+      createRequest(plan.id, {
+        overrides: { topic: 'interview prep 1' },
+      }).then(({ request, context }) => POST(request, context)),
+      createRequest(plan.id, {
+        overrides: { topic: 'interview prep 2' },
+      }).then(({ request, context }) => POST(request, context)),
+    ]);
+
+    // Both requests should succeed
+    expect(res1.status).toBe(202);
+    expect(res2.status).toBe(202);
+
+    // Verify both jobs were created
+    const jobs = await db
+      .select()
+      .from(jobQueue)
+      .where(eq(jobQueue.planId, plan.id))
+      .orderBy(desc(jobQueue.createdAt));
+
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0]?.jobType).toBe('plan_regeneration');
+    expect(jobs[1]?.jobType).toBe('plan_regeneration');
   });
 });
