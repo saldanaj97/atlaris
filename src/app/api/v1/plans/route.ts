@@ -23,6 +23,8 @@ import type { NewLearningPlan } from '@/lib/types/db';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
+  DEFAULT_PLAN_DURATION_MS,
+  MILLISECONDS_PER_WEEK,
 } from '@/lib/validation/learningPlans';
 
 export const GET = withErrorBoundary(
@@ -110,10 +112,10 @@ export const POST = withErrorBoundary(
     const start = body.startDate ? new Date(body.startDate) : new Date();
     const end = body.deadlineDate
       ? new Date(body.deadlineDate)
-      : new Date(start.getTime() + 14 * 24 * 3600 * 1000);
+      : new Date(start.getTime() + DEFAULT_PLAN_DURATION_MS);
     const totalWeeks = Math.max(
       1,
-      Math.ceil((end.getTime() - start.getTime()) / (7 * 24 * 3600 * 1000))
+      Math.ceil((end.getTime() - start.getTime()) / MILLISECONDS_PER_WEEK)
     );
     const cap = checkPlanDurationCap({
       tier: userTier,
