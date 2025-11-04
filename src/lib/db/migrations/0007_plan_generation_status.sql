@@ -1,13 +1,18 @@
-CREATE TYPE "generation_status" AS ENUM ('generating', 'ready', 'failed');--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "generation_status" AS ENUM ('generating', 'ready', 'failed');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
 
 ALTER TABLE "learning_plans"
-  ADD COLUMN "generation_status" "generation_status" NOT NULL DEFAULT 'ready';--> statement-breakpoint
+  ADD COLUMN IF NOT EXISTS "generation_status" "generation_status" NOT NULL DEFAULT 'ready';--> statement-breakpoint
 
 ALTER TABLE "learning_plans"
-  ADD COLUMN "is_quota_eligible" boolean NOT NULL DEFAULT true;--> statement-breakpoint
+  ADD COLUMN IF NOT EXISTS "is_quota_eligible" boolean NOT NULL DEFAULT true;--> statement-breakpoint
 
 ALTER TABLE "learning_plans"
-  ADD COLUMN "finalized_at" timestamptz;--> statement-breakpoint
+  ADD COLUMN IF NOT EXISTS "finalized_at" timestamptz;--> statement-breakpoint
 
 UPDATE "learning_plans"
 SET "finalized_at" = COALESCE("updated_at", "created_at")
