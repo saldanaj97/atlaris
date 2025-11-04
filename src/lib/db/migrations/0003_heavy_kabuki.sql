@@ -10,23 +10,6 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 --> statement-breakpoint
-CREATE TABLE "generation_attempts" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"plan_id" uuid NOT NULL,
-	"status" text NOT NULL,
-	"classification" text,
-	"duration_ms" integer NOT NULL,
-	"modules_count" integer NOT NULL,
-	"tasks_count" integer NOT NULL,
-	"truncated_topic" boolean DEFAULT false NOT NULL,
-	"truncated_notes" boolean DEFAULT false NOT NULL,
-	"normalized_effort" boolean DEFAULT false NOT NULL,
-	"prompt_hash" text,
-	"metadata" jsonb,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
-ALTER TABLE "generation_attempts" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE TABLE "job_queue" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"plan_id" uuid,
@@ -51,35 +34,12 @@ CREATE TABLE "job_queue" (
 );
 --> statement-breakpoint
 ALTER TABLE "job_queue" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
-ALTER TABLE "generation_attempts" ADD CONSTRAINT "generation_attempts_plan_id_learning_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."learning_plans"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "job_queue" ADD CONSTRAINT "job_queue_plan_id_learning_plans_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."learning_plans"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "job_queue" ADD CONSTRAINT "job_queue_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "idx_generation_attempts_plan_id" ON "generation_attempts" USING btree ("plan_id");--> statement-breakpoint
-CREATE INDEX "idx_generation_attempts_created_at" ON "generation_attempts" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "idx_job_queue_status_scheduled_priority" ON "job_queue" USING btree ("status","scheduled_for","priority");--> statement-breakpoint
 CREATE INDEX "idx_job_queue_user_id" ON "job_queue" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "idx_job_queue_plan_id" ON "job_queue" USING btree ("plan_id");--> statement-breakpoint
 CREATE INDEX "idx_job_queue_created_at" ON "job_queue" USING btree ("created_at");--> statement-breakpoint
-CREATE POLICY "generation_attempts_select_own_plan" ON "generation_attempts" AS PERMISSIVE FOR SELECT TO "authenticated" USING (
-        EXISTS (
-          SELECT 1 FROM "learning_plans"
-          WHERE "learning_plans"."id" = "generation_attempts"."plan_id"
-          AND "learning_plans"."user_id" IN (
-            SELECT id FROM "users" WHERE "users"."clerk_user_id" = (select auth.jwt()->>'sub')
-          )
-        )
-      );--> statement-breakpoint
-CREATE POLICY "generation_attempts_select_service" ON "generation_attempts" AS PERMISSIVE FOR SELECT TO "service_role" USING (true);--> statement-breakpoint
-CREATE POLICY "generation_attempts_insert_own_plan" ON "generation_attempts" AS PERMISSIVE FOR INSERT TO "authenticated" WITH CHECK (
-        EXISTS (
-          SELECT 1 FROM "learning_plans"
-          WHERE "learning_plans"."id" = "generation_attempts"."plan_id"
-          AND "learning_plans"."user_id" IN (
-            SELECT id FROM "users" WHERE "users"."clerk_user_id" = (select auth.jwt()->>'sub')
-          )
-        )
-      );--> statement-breakpoint
-CREATE POLICY "generation_attempts_insert_service" ON "generation_attempts" AS PERMISSIVE FOR INSERT TO "service_role" WITH CHECK (true);--> statement-breakpoint
 CREATE POLICY "job_queue_select_own" ON "job_queue" AS PERMISSIVE FOR SELECT TO "authenticated" USING ("job_queue"."user_id" IN (
         SELECT id FROM "users" WHERE "users"."clerk_user_id" = (select auth.jwt()->>'sub')
       ));--> statement-breakpoint
