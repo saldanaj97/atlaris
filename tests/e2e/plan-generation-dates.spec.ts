@@ -212,6 +212,7 @@ describe('E2E: plan generation with dates propagates to provider prompt', () => 
     const _userId = await ensureUser({
       clerkUserId,
       email: `${clerkUserId}@example.com`,
+      subscriptionTier: 'pro',
     });
 
     const requestPayload = {

@@ -28,7 +28,11 @@ describe('POST /api/v1/plans with dates in job payload', () => {
 
   it('persists startDate and deadlineDate to database when provided', async () => {
     setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    await ensureUser({
+      clerkUserId,
+      email: clerkEmail,
+      subscriptionTier: 'pro',
+    });
 
     const startDate = '2025-11-01';
     const deadlineDate = '2025-12-15';
@@ -60,7 +64,11 @@ describe('POST /api/v1/plans with dates in job payload', () => {
 
   it('returns 403 when free tier duration exceeds cap and omits startDate', async () => {
     setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    await ensureUser({
+      clerkUserId,
+      email: clerkEmail,
+      subscriptionTier: 'pro',
+    });
 
     const deadlineDate = '2075-12-15'; // far future to pass any future checks
 
@@ -127,7 +135,11 @@ describe('POST /api/v1/plans with dates in job payload', () => {
 
   it('accepts dates in ISO format and persists to DB', async () => {
     setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    await ensureUser({
+      clerkUserId,
+      email: clerkEmail,
+      subscriptionTier: 'pro',
+    });
 
     const startDate = '2025-06-01';
     const deadlineDate = '2025-12-31';
