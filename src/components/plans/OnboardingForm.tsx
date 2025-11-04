@@ -1,11 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 import { createPlan } from '@/lib/api/plans';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
+import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 
 import { Button } from '@/components/ui/button';
@@ -105,6 +107,30 @@ export default function OnboardingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formState, setFormState] = useState<FormState>(initialState);
   const [stepError, setStepError] = useState<string | null>(null);
+  const [userTier, setUserTier] = useState<'free' | 'starter' | 'pro' | null>(
+    null
+  );
+
+  // Fetch user tier on mount
+  useEffect(() => {
+    const fetchUserTier = async () => {
+      try {
+        const res = await fetch('/api/v1/user/subscription');
+        if (res.ok) {
+          const data = (await res.json()) as {
+            tier?: 'free' | 'starter' | 'pro';
+          };
+          setUserTier(data.tier || 'free');
+        } else {
+          setUserTier('free');
+        }
+      } catch (error) {
+        console.error('Failed to fetch user tier:', error);
+        setUserTier('free');
+      }
+    };
+    void fetchUserTier();
+  }, []);
 
   const updateField = <Key extends keyof FormState>(
     field: Key,
@@ -180,6 +206,24 @@ export default function OnboardingForm() {
   };
 
   const isCurrentStepComplete = stepHasRequiredValues(currentStep);
+
+  // Calculate duration in weeks for cap check
+  const calculateDurationWeeks = (): number | null => {
+    if (!formState.deadlineDate) return null;
+    const start = formState.startDate
+      ? new Date(formState.startDate)
+      : new Date();
+    const deadline = new Date(formState.deadlineDate);
+    const diffTime = deadline.getTime() - start.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.ceil(diffDays / 7);
+  };
+
+  const durationWeeks = calculateDurationWeeks();
+  const exceedsFreeCap =
+    userTier === 'free' &&
+    durationWeeks !== null &&
+    durationWeeks > TIER_LIMITS.free.maxWeeks;
 
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) {
@@ -494,6 +538,21 @@ export default function OnboardingForm() {
                     Your learning plan will be structured to help you meet this
                     goal.
                   </p>
+                  {exceedsFreeCap && (
+                    <div className="mt-4 rounded-lg border border-yellow-500/50 bg-yellow-50 p-4 dark:bg-yellow-950/20">
+                      <p className="text-sm text-yellow-900 dark:text-yellow-100">
+                        Free tier limited to {TIER_LIMITS.free.maxWeeks}-week
+                        plans. Upgrade to{' '}
+                        <Link
+                          href="/pricing"
+                          className="font-semibold underline hover:no-underline"
+                        >
+                          Starter or Pro
+                        </Link>{' '}
+                        for longer plans.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

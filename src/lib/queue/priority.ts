@@ -1,4 +1,4 @@
-import { SubscriptionTier } from '../stripe/usage';
+import type { SubscriptionTier } from '../stripe/tier-limits';
 export const PRIORITY_TOPICS = [
   // seed examples; business can tune this list
   'interview prep',
