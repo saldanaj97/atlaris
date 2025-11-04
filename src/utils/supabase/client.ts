@@ -1,4 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
@@ -22,9 +22,9 @@ export const createClient = () =>
         const headers = new Headers(options?.headers);
 
         // Only add Authorization if not already present
-        if (!headers.has("Authorization")) {
+        if (!headers.has('Authorization')) {
           const token = await getClerkToken();
-          if (token) headers.set("Authorization", `Bearer ${token}`);
+          if (token) headers.set('Authorization', `Bearer ${token}`);
         }
 
         return fetch(url, { ...options, headers });
@@ -36,7 +36,7 @@ let cachedClerkToken: string | null = null;
 
 async function getClerkToken(): Promise<string | null> {
   if (cachedClerkToken) return cachedClerkToken;
-  if (typeof window !== "undefined" && window.Clerk?.session) {
+  if (typeof window !== 'undefined' && window.Clerk?.session) {
     cachedClerkToken = await window.Clerk.session.getToken();
   }
   return cachedClerkToken;

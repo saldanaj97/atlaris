@@ -2,11 +2,11 @@
 
 - [x] Task 1: Define tier caps and priority topics
 - [x] Task 2: Enforce free-tier cap at API validation
-- [ ] Task 3: Regeneration API + job + worker
+- [x] Task 3: Regeneration API + job + worker
 - [ ] Task 4: UI controls and copy
 - [x] Task 5: Queue priority behavior verification
 - [ ] Task 6: Stripe webhook and gates coherence check
-- [ ] Task 7: Developer ergonomics and scripts
+- [x] Task 7: Developer ergonomics and scripts
 
 ---
 
@@ -47,12 +47,22 @@ Notes:
 
 # Task 3: Regeneration API + Job + Worker
 
-- [ ] Step 1: Write the failing test (API)
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Add job type and processing
-- [ ] Step 4: Implement route
-- [ ] Step 5: Run tests
+- [x] Step 1: Write the failing test (API)
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Add job type and processing
+- [x] Step 4: Implement route
+- [x] Step 5: Run tests
 - [ ] Step 6: Commit
+
+Notes:
+
+- Added `plan_regeneration` to `job_type` enum in `src/lib/db/enums.ts`; migration generated (`0010_friendly_silverclaw.sql`).
+- Added `PLAN_REGENERATION` constant and `PlanRegenerationJobData` interface in `src/lib/jobs/types.ts`.
+- Implemented `processPlanRegenerationJob` in `src/lib/jobs/worker-service.ts` that fetches current plan, merges with overrides, and runs generation attempt.
+- Created `src/workers/plan-regenerator.ts` worker that polls for `PLAN_REGENERATION` jobs.
+- Implemented `POST /api/v1/plans/[planId]/regenerate` route that validates ownership, parses overrides, computes priority, and enqueues job.
+- Created integration test `tests/integration/api/plans.regenerate.spec.ts` with 3 test cases (all passing).
+- Added `ensureJobTypeEnumValue()` helper in test setup to ensure enum value exists in test database.
 
 # Task 4: UI Controls and Copy
 
@@ -82,5 +92,10 @@ Notes:
 
 # Task 7: Developer Ergonomics and Scripts
 
-- [ ] Step 1: Add worker script
+- [x] Step 1: Add worker script
 - [ ] Step 2: Commit
+
+Notes:
+
+- Added `dev:regenerator` script: `tsx watch src/workers/plan-regenerator.ts`.
+- Updated `dev:all` script to include `pnpm dev:regenerator` alongside existing services.

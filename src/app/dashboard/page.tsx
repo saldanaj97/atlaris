@@ -39,7 +39,8 @@ export default async function DashboardPage() {
   const reachedExportLimit =
     usage.exports.limit !== Infinity &&
     usage.exports.used >= usage.exports.limit;
-  const limitsReached = reachedPlanLimit || reachedRegenLimit || reachedExportLimit;
+  const limitsReached =
+    reachedPlanLimit || reachedRegenLimit || reachedExportLimit;
 
   return (
     <div className="bg-gradient-subtle min-h-screen">
@@ -128,8 +129,8 @@ export default async function DashboardPage() {
               <Card className="bg-gradient-card border-0 p-6 shadow-sm">
                 <h3 className="mb-2 text-lg font-semibold">Upgrade for more</h3>
                 <p className="text-muted-foreground text-sm">
-                  You’ve reached your current plan limits. Upgrade to unlock more
-                  capacity and features.
+                  You’ve reached your current plan limits. Upgrade to unlock
+                  more capacity and features.
                 </p>
                 <Button asChild className="mt-4 w-full">
                   <Link href="/pricing">View Plans</Link>

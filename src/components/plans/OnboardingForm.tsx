@@ -98,7 +98,6 @@ const TOTAL_STEPS = 5;
 
 // Define once to avoid re-creating on every render
 
-
 export default function OnboardingForm() {
   const today = new Date();
   const router = useRouter();

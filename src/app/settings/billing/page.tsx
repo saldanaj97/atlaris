@@ -58,7 +58,9 @@ export default async function BillingSettingsPage() {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Current Plan</h2>
-                <p className="text-muted-foreground text-sm">Manage your subscription</p>
+                <p className="text-muted-foreground text-sm">
+                  Manage your subscription
+                </p>
               </div>
               <Badge>{usage.tier.toUpperCase()}</Badge>
             </div>
@@ -90,7 +92,9 @@ export default async function BillingSettingsPage() {
                   <span>Active plans</span>
                   <span className="text-muted-foreground">
                     {usage.activePlans.current}/
-                    {usage.activePlans.limit === Infinity ? '∞' : usage.activePlans.limit}
+                    {usage.activePlans.limit === Infinity
+                      ? '∞'
+                      : usage.activePlans.limit}
                   </span>
                 </div>
                 <Progress value={plansValue} />
@@ -101,7 +105,9 @@ export default async function BillingSettingsPage() {
                   <span>Regenerations (monthly)</span>
                   <span className="text-muted-foreground">
                     {usage.regenerations.used}/
-                    {usage.regenerations.limit === Infinity ? '∞' : usage.regenerations.limit}
+                    {usage.regenerations.limit === Infinity
+                      ? '∞'
+                      : usage.regenerations.limit}
                   </span>
                 </div>
                 <Progress value={regenValue} />
@@ -112,7 +118,9 @@ export default async function BillingSettingsPage() {
                   <span>Exports (monthly)</span>
                   <span className="text-muted-foreground">
                     {usage.exports.used}/
-                    {usage.exports.limit === Infinity ? '∞' : usage.exports.limit}
+                    {usage.exports.limit === Infinity
+                      ? '∞'
+                      : usage.exports.limit}
                   </span>
                 </div>
                 <Progress value={exportValue} />
@@ -124,4 +132,3 @@ export default async function BillingSettingsPage() {
     </div>
   );
 }
-

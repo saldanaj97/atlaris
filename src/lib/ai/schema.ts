@@ -18,4 +18,3 @@ export const PlanSchema = z.object({
 });
 
 export type PlanOutput = z.infer<typeof PlanSchema>;
-

@@ -39,7 +39,10 @@ export const jobStatus = pgEnum('job_status', [
   'failed',
 ]);
 
-export const jobType = pgEnum('job_type', ['plan_generation']);
+export const jobType = pgEnum('job_type', [
+  'plan_generation',
+  'plan_regeneration',
+]);
 
 export const subscriptionTier = pgEnum('subscription_tier', [
   'free',
