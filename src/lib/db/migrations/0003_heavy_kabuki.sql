@@ -141,7 +141,7 @@ ALTER POLICY "plan_generations_update_own" ON "plan_generations" TO authenticate
           SELECT 1 FROM "learning_plans"
           WHERE "learning_plans"."id" = "plan_generations"."plan_id"
           AND "learning_plans"."user_id" IN (
-            SELECT id FROM "users" WHERE "users"."clerk_user_id" = (select auth.uid())
+            SELECT id FROM "users" WHERE "users"."clerk_user_id" = (select auth.jwt()->>'sub')
           )
         )
       );--> statement-breakpoint

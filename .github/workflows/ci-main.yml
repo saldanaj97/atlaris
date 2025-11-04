@@ -201,19 +201,6 @@ jobs:
           CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
           LANGUAGE sql
           AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
-          -- CI stub for Supabase helper: auth.uid()
-          CREATE OR REPLACE FUNCTION auth.uid() RETURNS text
-          LANGUAGE sql
-          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb ->> 'sub', NULL) $$;
-          -- CI stub for Supabase helper: auth.uid()
-          CREATE OR REPLACE FUNCTION auth.uid() RETURNS text
-          LANGUAGE sql
-          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb ->> 'sub', NULL) $$;
-          -- CI stub for Supabase helper: auth.uid()
-          -- Returns the subject from JWT claims, which we use as a string user identifier in policies
-          CREATE OR REPLACE FUNCTION auth.uid() RETURNS text
-          LANGUAGE sql
-          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb ->> 'sub', NULL) $$;
           SQL
 
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
