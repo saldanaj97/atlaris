@@ -150,7 +150,7 @@ function selectSkillLevel(value: 'beginner' | 'intermediate' | 'advanced') {
 }
 
 function selectWeeklyHoursLabel(label: string) {
-  const sel = screen.getByTestId('weeklyHours') as unknown as HTMLSelectElement;
+  const sel = screen.getByTestId('weeklyHours') as HTMLSelectElement;
   const option = Array.from(sel.options).find((o) => o.textContent === label);
   if (!option) throw new Error('Option not found: ' + label);
   fireEvent.change(sel, { target: { value: option.value } });
