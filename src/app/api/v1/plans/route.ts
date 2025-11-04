@@ -23,7 +23,7 @@ import type { NewLearningPlan } from '@/lib/types/db';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
-  DEFAULT_PLAN_DURATION_MS,
+  DEFAULT_PLAN_DURATION_WEEKS,
   MILLISECONDS_PER_WEEK,
 } from '@/lib/validation/learningPlans';
 
@@ -87,8 +87,7 @@ async function findCappedPlanWithoutModules(userDbId: string) {
   );
 }
 
-const DEFAULT_PLAN_DURATION_WEEKS = 2;
-const WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
+// Use shared validation constants to avoid duplication
 
 export const POST = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
@@ -122,7 +121,7 @@ export const POST = withErrorBoundary(
           today.setUTCHours(0, 0, 0, 0);
           const deadline = new Date(body.deadlineDate as string);
           const diffMs = deadline.getTime() - today.getTime();
-          return Math.max(1, Math.ceil(diffMs / WEEK_IN_MS));
+          return Math.max(1, Math.ceil(diffMs / MILLISECONDS_PER_WEEK));
         }
 
         return DEFAULT_PLAN_DURATION_WEEKS;
