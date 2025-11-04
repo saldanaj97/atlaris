@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { POST } from '@/app/api/v1/plans/route';
 import { db } from '@/lib/db/drizzle';
-import { learningPlans } from '@/lib/db/schema';
+import { learningPlans, users } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
@@ -58,11 +58,48 @@ describe('POST /api/v1/plans with dates in job payload', () => {
     expect(plan?.deadlineDate).toBe(deadlineDate);
   });
 
-  it('defaults startDate to null when omitted (per createLearningPlanSchema)', async () => {
+  it('returns 403 when free tier duration exceeds cap and omits startDate', async () => {
     setTestUser(clerkUserId);
     await ensureUser({ clerkUserId, email: clerkEmail });
 
     const deadlineDate = '2075-12-15'; // far future to pass any future checks
+
+    const request = await createRequest({
+      topic: 'Advanced TypeScript',
+      skillLevel: 'advanced',
+      weeklyHours: 8,
+      learningStyle: 'reading',
+      deadlineDate,
+      visibility: 'private',
+      origin: 'ai',
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+
+    const payload = await response.json();
+    expect(payload).toEqual({
+      error:
+        'free tier limited to 2-week plans. Upgrade to pro for longer plans.',
+    });
+  });
+
+  it('allows pro tier users to create long-running plans without a startDate', async () => {
+    const proClerkUserId = 'clerk_api_dates_user_pro';
+    const proEmail = 'api-dates-pro@example.com';
+
+    setTestUser(proClerkUserId);
+    const proUserId = await ensureUser({
+      clerkUserId: proClerkUserId,
+      email: proEmail,
+    });
+
+    await db
+      .update(users)
+      .set({ subscriptionTier: 'pro' })
+      .where(eq(users.id, proUserId));
+
+    const deadlineDate = '2075-12-15';
 
     const request = await createRequest({
       topic: 'Advanced TypeScript',
@@ -84,7 +121,6 @@ describe('POST /api/v1/plans with dates in job payload', () => {
       .where(eq(learningPlans.id, payload.id));
 
     expect(plan).toBeDefined();
-    // createLearningPlanSchema allows null startDate
     expect(plan?.startDate).toBeNull();
     expect(plan?.deadlineDate).toBe(deadlineDate);
   });
