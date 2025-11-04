@@ -4,7 +4,7 @@
 - [x] Task 2: Enforce free-tier cap at API validation
 - [ ] Task 3: Regeneration API + job + worker
 - [ ] Task 4: UI controls and copy
-- [ ] Task 5: Queue priority behavior verification
+- [x] Task 5: Queue priority behavior verification
 - [ ] Task 6: Stripe webhook and gates coherence check
 - [ ] Task 7: Developer ergonomics and scripts
 
@@ -63,9 +63,16 @@ Notes:
 
 # Task 5: Queue Priority Behavior Verification
 
-- [ ] Step 1: Extend existing test to prove priority > FIFO
-- [ ] Step 2: Run tests
-- [ ] Step 3: Commit
+- [x] Step 1: Extend existing test to prove priority > FIFO
+- [x] Step 2: Run tests
+- [x] Step 3: Commit
+
+Notes:
+
+- Added test case 'picks paid+priority before free' to verify queue priority behavior.
+- Test enqueues free user job with non-priority topic first, then paid (pro) user job
+  with priority topic second, and verifies paid job is selected first.
+- All 8 tests in queue.test.ts passing (including new test).
 
 # Task 6: Stripe Webhook and Gates Coherence Check
 

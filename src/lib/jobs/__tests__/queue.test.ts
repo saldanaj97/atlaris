@@ -2,7 +2,7 @@ import { and, eq, lt } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { db } from '@/lib/db/drizzle';
-import { jobQueue, learningPlans } from '@/lib/db/schema';
+import { jobQueue, learningPlans, users } from '@/lib/db/schema';
 import {
   completeJob,
   enqueueJob,
@@ -12,6 +12,7 @@ import {
   getUserJobCount,
 } from '@/lib/jobs/queue';
 import { JOB_TYPES } from '@/lib/jobs/types';
+import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
 
 import { ensureUser } from '../../../../tests/helpers/db';
 
@@ -158,6 +159,107 @@ describe('Job queue service', () => {
 
     const midOrder = processed.filter((id) => id === midA || id === midB);
     expect(midOrder).toEqual([midA, midB]);
+  });
+
+  it('picks paid+priority before free', async () => {
+    // Create free user with non-priority topic
+    const freeUser = await createPlanFixture('free-user');
+    await db
+      .update(users)
+      .set({ subscriptionTier: 'free' })
+      .where(eq(users.id, freeUser.userId));
+
+    const freeTopic = 'cooking basics'; // Non-priority topic
+    const freePlan = await db
+      .insert(learningPlans)
+      .values({
+        userId: freeUser.userId,
+        topic: freeTopic,
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+      })
+      .returning();
+
+    if (!freePlan[0]) {
+      throw new Error('Failed to create free plan');
+    }
+
+    // Create paid user (pro) with priority topic
+    const paidUser = await createPlanFixture('paid-user');
+    await db
+      .update(users)
+      .set({ subscriptionTier: 'pro' })
+      .where(eq(users.id, paidUser.userId));
+
+    const paidTopic = 'interview prep'; // Priority topic
+    const paidPlan = await db
+      .insert(learningPlans)
+      .values({
+        userId: paidUser.userId,
+        topic: paidTopic,
+        skillLevel: 'intermediate',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+      })
+      .returning();
+
+    if (!paidPlan[0]) {
+      throw new Error('Failed to create paid plan');
+    }
+
+    // Compute priorities
+    const freePriority = computeJobPriority({
+      tier: 'free',
+      isPriorityTopic: isPriorityTopic(freeTopic),
+    });
+    const paidPriority = computeJobPriority({
+      tier: 'pro',
+      isPriorityTopic: isPriorityTopic(paidTopic),
+    });
+
+    // Enqueue free job first, then paid job
+    const freeJobId = await enqueueJob(
+      JOB_TYPE,
+      freePlan[0].id,
+      freeUser.userId,
+      {
+        topic: freeTopic,
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+      },
+      freePriority
+    );
+
+    const paidJobId = await enqueueJob(
+      JOB_TYPE,
+      paidPlan[0].id,
+      paidUser.userId,
+      {
+        topic: paidTopic,
+        skillLevel: 'intermediate',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+      },
+      paidPriority
+    );
+
+    // Get next job - should be paid+priority despite being enqueued second
+    const firstJob = await getNextJob([JOB_TYPE]);
+    expect(firstJob).not.toBeNull();
+    expect(firstJob?.id).toBe(paidJobId);
+    expect(firstJob?.priority).toBe(paidPriority);
+
+    // Get second job - should be free job
+    const secondJob = await getNextJob([JOB_TYPE]);
+    expect(secondJob).not.toBeNull();
+    expect(secondJob?.id).toBe(freeJobId);
+    expect(secondJob?.priority).toBe(freePriority);
   });
 
   it('handles retry transitions and terminal failure', async () => {
