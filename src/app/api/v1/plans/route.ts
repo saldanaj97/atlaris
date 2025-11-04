@@ -5,7 +5,7 @@ import { count, eq, inArray } from 'drizzle-orm';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
-import { json } from '@/lib/api/response';
+import { json, jsonError } from '@/lib/api/response';
 import { db } from '@/lib/db/drizzle';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
@@ -13,7 +13,12 @@ import { getUserByClerkId } from '@/lib/db/queries/users';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { enqueueJob } from '@/lib/jobs/queue';
 import { JOB_TYPES, type PlanGenerationJobData } from '@/lib/jobs/types';
-import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';
+import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
+import {
+  atomicCheckAndInsertPlan,
+  checkPlanDurationCap,
+  resolveUserTier,
+} from '@/lib/stripe/usage';
 import type { NewLearningPlan } from '@/lib/types/db';
 import {
   CreateLearningPlanInput,
@@ -100,6 +105,27 @@ export const POST = withErrorBoundary(
     // Check rate limit before creating plan
     await checkPlanGenerationRateLimit(user.id);
 
+    // Enforce plan duration cap based on user tier
+    const userTier = await resolveUserTier(user.id);
+    const start = body.startDate ? new Date(body.startDate) : new Date();
+    const end = body.deadlineDate
+      ? new Date(body.deadlineDate)
+      : new Date(start.getTime() + 14 * 24 * 3600 * 1000);
+    const totalWeeks = Math.max(
+      1,
+      Math.ceil((end.getTime() - start.getTime()) / (7 * 24 * 3600 * 1000))
+    );
+    const cap = checkPlanDurationCap({
+      tier: userTier,
+      weeklyHours: body.weeklyHours,
+      totalWeeks,
+    });
+    if (!cap.allowed) {
+      return jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
+        status: 403,
+      });
+    }
+
     const insertPayload: NewLearningPlan = {
       userId: user.id,
       topic: body.topic,
@@ -159,7 +185,17 @@ export const POST = withErrorBoundary(
       deadlineDate: body.deadlineDate ?? null,
     };
 
-    await enqueueJob(JOB_TYPES.PLAN_GENERATION, plan.id, user.id, jobData);
+    const priority = computeJobPriority({
+      tier: userTier,
+      isPriorityTopic: isPriorityTopic(body.topic),
+    });
+    await enqueueJob(
+      JOB_TYPES.PLAN_GENERATION,
+      plan.id,
+      user.id,
+      jobData,
+      priority
+    );
 
     return json(
       {

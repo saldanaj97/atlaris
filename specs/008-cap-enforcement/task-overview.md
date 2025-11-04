@@ -1,7 +1,7 @@
 # Progress Overview
 
 - [x] Task 1: Define tier caps and priority topics
-- [ ] Task 2: Enforce free-tier cap at API validation
+- [x] Task 2: Enforce free-tier cap at API validation
 - [ ] Task 3: Regeneration API + job + worker
 - [ ] Task 4: UI controls and copy
 - [ ] Task 5: Queue priority behavior verification
@@ -32,11 +32,18 @@ Notes:
 
 # Task 2: Enforce Free-Tier Cap at API Validation
 
-- [ ] Step 1: Write the failing integration test
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement server validation
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Commit
+- [x] Step 1: Write the failing integration test
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement server validation
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Commit
+
+Notes:
+
+- Added integration test `tests/integration/api/plans.caps.spec.ts` to verify free-tier cap enforcement.
+- Updated POST /api/v1/plans route to validate plan duration cap before plan creation.
+- Added job priority computation based on user tier and priority topic status.
+- Free-tier requests exceeding 2-week cap now return 403 with descriptive error message.
 
 # Task 3: Regeneration API + Job + Worker
 
