@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import {
@@ -82,10 +82,12 @@ export async function ensureUser({
   clerkUserId,
   email,
   name,
+  subscriptionTier,
 }: {
   clerkUserId: string;
   email: string;
   name?: string;
+  subscriptionTier?: 'free' | 'starter' | 'pro';
 }): Promise<string> {
   //  Don't use cache - always check database
   // The cache is cleared by truncateAll but we want to ensure we always have fresh data
@@ -96,6 +98,13 @@ export async function ensureUser({
   });
 
   if (existing) {
+    // If tier is specified and different from existing, update it
+    if (subscriptionTier && existing.subscriptionTier !== subscriptionTier) {
+      await db
+        .update(users)
+        .set({ subscriptionTier })
+        .where(eq(users.id, existing.id));
+    }
     userIdCache.set(clerkUserId, existing.id);
     return existing.id;
   }
@@ -107,6 +116,7 @@ export async function ensureUser({
       clerkUserId,
       email,
       name: name ?? email,
+      ...(subscriptionTier && { subscriptionTier }),
     })
     .returning({ id: users.id });
 
