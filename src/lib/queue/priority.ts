@@ -13,19 +13,6 @@ function escapeRegex(s: string): string {
 }
 
 export function isPriorityTopic(topic: string): boolean {
-  // Split topic into tokens by common delimiters, trim, lowercase
-  const tokens = topic
-    .toLowerCase()
-    .split(/[\s,\/\-_]+/)
-    .map((t) => t.trim())
-    .filter(Boolean);
-
-  // Check for exact match of any PRIORITY_TOPICS
-  if (PRIORITY_TOPICS.some((t) => tokens.includes(t))) {
-    return true;
-  }
-
-  // Additionally, allow whole-word match as alternative (covers phrases)
   const lower = topic.trim().toLowerCase();
   return PRIORITY_TOPICS.some((t) => {
     const re = new RegExp(`\\b${escapeRegex(t)}\\b`, 'i');

@@ -14,12 +14,20 @@ if (!process.env.DEV_CLERK_USER_ID) {
   Object.assign(process.env, { DEV_CLERK_USER_ID: 'test-user-id' });
 }
 
+if (!process.env.AI_PROVIDER) {
+  Object.assign(process.env, { AI_PROVIDER: 'mock' });
+}
+
 if (!process.env.MOCK_GENERATION_DELAY_MS) {
-  Object.assign(process.env, { MOCK_GENERATION_DELAY_MS: '500' });
+  Object.assign(process.env, { MOCK_GENERATION_DELAY_MS: '100' });
 }
 
 if (!process.env.MOCK_GENERATION_FAILURE_RATE) {
   Object.assign(process.env, { MOCK_GENERATION_FAILURE_RATE: '0' });
+}
+
+if (!process.env.MOCK_GENERATION_SEED) {
+  Object.assign(process.env, { MOCK_GENERATION_SEED: '12345' });
 }
 
 const skipDbSetup = process.env.SKIP_DB_TEST_SETUP === 'true';

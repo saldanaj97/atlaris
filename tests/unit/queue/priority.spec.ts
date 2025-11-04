@@ -51,6 +51,13 @@ describe('isPriorityTopic', () => {
     expect(isPriorityTopic('  machine learning  ')).toBe(true);
   });
 
+  it('matches multi-word phrases within larger strings', () => {
+    expect(isPriorityTopic('Working on interview prep this week')).toBe(true);
+    expect(isPriorityTopic('My focus: ai engineering and system design')).toBe(
+      true
+    );
+  });
+
   it('returns false for non-priority topics', () => {
     expect(isPriorityTopic('cooking')).toBe(false);
   });
