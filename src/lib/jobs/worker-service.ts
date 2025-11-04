@@ -25,6 +25,7 @@ import type { FailureClassification } from '@/lib/types/client';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
+  planRegenerationOverridesSchema,
   weeklyHoursSchema,
 } from '@/lib/validation/learningPlans';
 
@@ -33,7 +34,6 @@ import {
   type Job,
   type PlanGenerationJobData,
   type PlanGenerationJobResult,
-  type PlanRegenerationJobData,
 } from './types';
 
 const planGenerationJobDataSchema = z
@@ -92,63 +92,7 @@ const planGenerationJobDataSchema = z
 const planRegenerationJobDataSchema = z
   .object({
     planId: z.string().uuid('planId must be a valid UUID'),
-    overrides: z
-      .object({
-        topic: z
-          .string()
-          .trim()
-          .min(3, 'topic must be at least 3 characters long.')
-          .max(
-            TOPIC_MAX_LENGTH,
-            `topic must be ${TOPIC_MAX_LENGTH} characters or fewer.`
-          )
-          .optional(),
-        notes: z
-          .string()
-          .trim()
-          .max(
-            NOTES_MAX_LENGTH,
-            `notes must be ${NOTES_MAX_LENGTH} characters or fewer.`
-          )
-          .optional()
-          .nullable()
-          .transform((value) => {
-            if (value === null || value === undefined) {
-              return null;
-            }
-            const trimmed = value.trim();
-            return trimmed.length > 0 ? trimmed : null;
-          }),
-        skillLevel: z
-          .enum(['beginner', 'intermediate', 'advanced'] as const)
-          .optional(),
-        weeklyHours: weeklyHoursSchema.optional(),
-        learningStyle: z
-          .enum(['reading', 'video', 'practice', 'mixed'] as const)
-          .optional(),
-        startDate: z
-          .string()
-          .trim()
-          .optional()
-          .nullable()
-          .refine(
-            (value) => !value || !Number.isNaN(Date.parse(value)),
-            'Start date must be a valid ISO date string.'
-          )
-          .transform((value) => (value ? value : null)),
-        deadlineDate: z
-          .string()
-          .trim()
-          .optional()
-          .nullable()
-          .refine(
-            (value) => !value || !Number.isNaN(Date.parse(value)),
-            'Deadline date must be a valid ISO date string.'
-          )
-          .transform((value) => (value ? value : null)),
-      })
-      .strict()
-      .optional(),
+    overrides: planRegenerationOverridesSchema.optional(),
   })
   .strict();
 
@@ -374,14 +318,6 @@ export type ProcessPlanRegenerationJobResult =
   | ProcessPlanGenerationJobSuccess
   | ProcessPlanGenerationJobFailure;
 
-function toPlanRegenerationJobData(data: unknown): PlanRegenerationJobData {
-  const parsed = planRegenerationJobDataSchema.parse(data);
-  return {
-    planId: parsed.planId,
-    overrides: parsed.overrides,
-  } satisfies PlanRegenerationJobData;
-}
-
 export async function processPlanRegenerationJob(
   job: Job,
   opts?: { signal?: AbortSignal }
@@ -404,15 +340,9 @@ export async function processPlanRegenerationJob(
     } satisfies ProcessPlanGenerationJobFailure;
   }
 
-  let payload: PlanRegenerationJobData;
-  try {
-    payload = toPlanRegenerationJobData(job.data);
-  } catch (error) {
-    const message =
-      error instanceof ZodError
-        ? buildValidationErrorMessage(error)
-        : 'Invalid regeneration job payload.';
-
+  const parsedPayload = planRegenerationJobDataSchema.safeParse(job.data);
+  if (!parsedPayload.success) {
+    const message = buildValidationErrorMessage(parsedPayload.error);
     return {
       status: 'failure',
       error: message,
@@ -420,6 +350,7 @@ export async function processPlanRegenerationJob(
       retryable: false,
     } satisfies ProcessPlanGenerationJobFailure;
   }
+  const overrides = parsedPayload.data.overrides;
 
   try {
     // Fetch current plan to get existing values
@@ -438,16 +369,17 @@ export async function processPlanRegenerationJob(
 
     // Merge plan values with overrides
     const mergedInput: PlanGenerationJobData = {
-      topic: payload.overrides?.topic ?? plan.topic,
-      notes: payload.overrides?.notes ?? null, // Notes not stored in plan schema currently
-      skillLevel: payload.overrides?.skillLevel ?? plan.skillLevel,
-      weeklyHours: payload.overrides?.weeklyHours ?? plan.weeklyHours,
-      learningStyle: payload.overrides?.learningStyle ?? plan.learningStyle,
+      topic: overrides?.topic ?? plan.topic,
+      // TODO: Persist plan-level notes once learning_plans includes a notes column so regenerations can carry them forward.
+      notes: overrides?.notes ?? null,
+      skillLevel: overrides?.skillLevel ?? plan.skillLevel,
+      weeklyHours: overrides?.weeklyHours ?? plan.weeklyHours,
+      learningStyle: overrides?.learningStyle ?? plan.learningStyle,
       startDate:
-        payload.overrides?.startDate ??
+        overrides?.startDate ??
         (plan.startDate ? String(plan.startDate) : null),
       deadlineDate:
-        payload.overrides?.deadlineDate ??
+        overrides?.deadlineDate ??
         (plan.deadlineDate ? String(plan.deadlineDate) : null),
     };
 

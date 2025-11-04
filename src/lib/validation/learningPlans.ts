@@ -65,6 +65,61 @@ const notesSchema = z
     enforceMaxLength(value, NOTES_MAX_LENGTH, ctx, 'notes')
   );
 
+const planNotesOverrideSchema = z
+  .string()
+  .trim()
+  .max(
+    NOTES_MAX_LENGTH,
+    `notes must be ${NOTES_MAX_LENGTH} characters or fewer.`
+  )
+  .transform((value) => {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  });
+
+const planTopicOverrideSchema = z
+  .string()
+  .trim()
+  .min(3, 'topic must be at least 3 characters long.')
+  .max(
+    TOPIC_MAX_LENGTH,
+    `topic must be ${TOPIC_MAX_LENGTH} characters or fewer.`
+  );
+
+const planStartDateOverrideSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => !Number.isNaN(Date.parse(value)),
+    'Start date must be a valid ISO date string.'
+  )
+  .transform((value) => (value ? value : null));
+
+const planDeadlineDateOverrideSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => !Number.isNaN(Date.parse(value)),
+    'Deadline date must be a valid ISO date string.'
+  )
+  .transform((value) => (value ? value : null));
+
+export const planRegenerationOverridesSchema = z
+  .object({
+    topic: planTopicOverrideSchema.optional(),
+    notes: planNotesOverrideSchema.optional().nullable(),
+    skillLevel: skillLevelEnum.optional(),
+    weeklyHours: weeklyHoursSchema.optional(),
+    learningStyle: learningStyleEnum.optional(),
+    startDate: planStartDateOverrideSchema.optional().nullable(),
+    deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
+  })
+  .strict();
+
+export type PlanRegenerationOverridesInput = z.infer<
+  typeof planRegenerationOverridesSchema
+>;
+
 export const createLearningPlanSchema = z.object({
   topic: topicSchema,
   skillLevel: skillLevelEnum,
