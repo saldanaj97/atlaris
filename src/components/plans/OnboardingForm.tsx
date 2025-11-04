@@ -122,8 +122,8 @@ export default function OnboardingForm() {
           };
           setUserTier(data.tier || 'free');
         }
-      } catch {
-        // Silently fail - default to free tier
+      } catch (error) {
+        console.error('Failed to fetch user tier:', error);
         setUserTier('free');
       }
     };
