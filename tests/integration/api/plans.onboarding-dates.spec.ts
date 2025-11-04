@@ -67,7 +67,7 @@ describe('POST /api/v1/plans with dates in job payload', () => {
     await ensureUser({
       clerkUserId,
       email: clerkEmail,
-      subscriptionTier: 'pro',
+      subscriptionTier: 'free',
     });
 
     const deadlineDate = '2075-12-15'; // far future to pass any future checks

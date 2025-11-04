@@ -87,6 +87,9 @@ async function findCappedPlanWithoutModules(userDbId: string) {
   );
 }
 
+const DEFAULT_PLAN_DURATION_WEEKS = 2;
+const WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
+
 export const POST = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
     let body: CreateLearningPlanInput;
@@ -109,23 +112,33 @@ export const POST = withErrorBoundary(
 
     // Enforce plan duration cap based on user tier
     const userTier = await resolveUserTier(user.id);
-    const start = body.startDate ? new Date(body.startDate) : new Date();
-    const end = body.deadlineDate
-      ? new Date(body.deadlineDate)
-      : new Date(start.getTime() + DEFAULT_PLAN_DURATION_MS);
-    const totalWeeks = Math.max(
-      1,
-      Math.ceil((end.getTime() - start.getTime()) / MILLISECONDS_PER_WEEK)
-    );
-    const cap = checkPlanDurationCap({
-      tier: userTier,
-      weeklyHours: body.weeklyHours,
-      totalWeeks,
-    });
-    if (!cap.allowed) {
-      return jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
-        status: 403,
+    const hasStartDate = Boolean(body.startDate);
+    const hasDeadlineDate = Boolean(body.deadlineDate);
+
+    if (!hasStartDate || !hasDeadlineDate) {
+      const totalWeeks = (() => {
+        if (hasDeadlineDate && !hasStartDate) {
+          const today = new Date();
+          today.setUTCHours(0, 0, 0, 0);
+          const deadline = new Date(body.deadlineDate as string);
+          const diffMs = deadline.getTime() - today.getTime();
+          return Math.max(1, Math.ceil(diffMs / WEEK_IN_MS));
+        }
+
+        return DEFAULT_PLAN_DURATION_WEEKS;
+      })();
+
+      const cap = checkPlanDurationCap({
+        tier: userTier,
+        weeklyHours: body.weeklyHours,
+        totalWeeks,
       });
+
+      if (!cap.allowed) {
+        return jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
+          status: 403,
+        });
+      }
     }
 
     const insertPayload: NewLearningPlan = {
