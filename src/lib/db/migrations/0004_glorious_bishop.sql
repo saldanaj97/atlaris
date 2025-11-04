@@ -1,22 +1,4 @@
--- Create enums if not existing
-DO $$ BEGIN
-  CREATE TYPE "public"."job_status" AS ENUM('pending', 'processing', 'completed', 'failed');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
-DO $$ BEGIN
-  CREATE TYPE "public"."job_type" AS ENUM('plan_generation');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
-DO $$ BEGIN
-  CREATE TYPE "public"."learning_style" AS ENUM('reading', 'video', 'practice', 'mixed');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
-DO $$ BEGIN
-  CREATE TYPE "public"."progress_status" AS ENUM('not_started', 'in_progress', 'completed');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
-DO $$ BEGIN
-  CREATE TYPE "public"."resource_type" AS ENUM('youtube', 'article', 'course', 'doc', 'other');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
-DO $$ BEGIN
-  CREATE TYPE "public"."skill_level" AS ENUM('beginner', 'intermediate', 'advanced');
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
+-- Create enums needed in this migration (subscription types only)
 DO $$ BEGIN
   CREATE TYPE "public"."subscription_status" AS ENUM('active', 'canceled', 'past_due', 'trialing');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint

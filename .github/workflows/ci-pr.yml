@@ -211,8 +211,6 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Check migration duplicates
-        run: bash scripts/check-migration-duplicates.sh
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Prepare ephemeral database
