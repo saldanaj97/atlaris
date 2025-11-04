@@ -10,20 +10,26 @@ export const TIER_LIMITS = {
     maxActivePlans: 3,
     monthlyRegenerations: 5,
     monthlyExports: 10,
+    maxWeeks: 2,
+    maxHours: null,
   },
   starter: {
     maxActivePlans: 10,
     monthlyRegenerations: 10,
     monthlyExports: 50,
+    maxWeeks: 8,
+    maxHours: null,
   },
   pro: {
     maxActivePlans: Infinity,
     monthlyRegenerations: 50,
     monthlyExports: Infinity,
+    maxWeeks: null, // unlimited
+    maxHours: null,
   },
 } as const;
 
-type SubscriptionTier = keyof typeof TIER_LIMITS;
+export type SubscriptionTier = keyof typeof TIER_LIMITS;
 
 // Usage type for incrementing counters
 export type UsageType = 'plan' | 'regeneration' | 'export';
@@ -72,9 +78,11 @@ async function getOrCreateUsageMetrics(userId: string, month: string) {
 }
 
 /**
- * Get user's subscription tier
+ * Resolve user's subscription tier from database
  */
-async function getUserTier(userId: string): Promise<SubscriptionTier> {
+export async function resolveUserTier(
+  userId: string
+): Promise<SubscriptionTier> {
   const [user] = await db
     .select({ subscriptionTier: users.subscriptionTier })
     .from(users)
@@ -87,6 +95,9 @@ async function getUserTier(userId: string): Promise<SubscriptionTier> {
 
   return user.subscriptionTier;
 }
+
+// Internal alias for backward compatibility
+const getUserTier = resolveUserTier;
 
 /**
  * Check if user can create more plans
@@ -359,3 +370,37 @@ export async function markPlanGenerationFailure(
     })
     .where(eq(learningPlans.id, planId));
 }
+
+const TIER_RECOMMENDATION_THRESHOLD_WEEKS = 8;
+
+export function checkPlanDurationCap(params: {
+  tier: SubscriptionTier;
+  weeklyHours: number;
+  totalWeeks: number;
+}): { allowed: boolean; reason?: string; upgradeUrl?: string } {
+  const caps = TIER_LIMITS[params.tier];
+  if (caps.maxWeeks !== null && params.totalWeeks > caps.maxWeeks) {
+    const recommended =
+      params.totalWeeks > TIER_RECOMMENDATION_THRESHOLD_WEEKS
+        ? 'pro'
+        : 'starter';
+    return {
+      allowed: false,
+      reason: `${params.tier} tier limited to ${caps.maxWeeks}-week plans. Upgrade to ${recommended} for longer plans.`,
+      upgradeUrl: '/pricing',
+    };
+  }
+  if (
+    caps.maxHours !== null &&
+    params.weeklyHours * params.totalWeeks > caps.maxHours
+  ) {
+    return {
+      allowed: false,
+      reason: `${String(params.tier)} tier limited to ${String(caps.maxHours)} total hours. Upgrade for more time.`,
+      upgradeUrl: '/pricing',
+    };
+  }
+  return { allowed: true };
+}
+
+export const __test__ = { TIER_LIMITS };

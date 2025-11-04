@@ -28,6 +28,7 @@ Notes:
 - Added `checkPlanDurationCap` and exported `resolveUserTier` wrapper in `src/lib/stripe/usage.ts`.
 - Introduced `PRIORITY_TOPICS`, `isPriorityTopic`, and `computeJobPriority` in `src/lib/queue/priority.ts`.
 - Unit tests added under `tests/unit/stripe/usage.caps.spec.ts` and `tests/unit/queue/priority.spec.ts`.
+- Fixed export of Tier type in priority.ts per CodeRabbit review.
 
 # Task 2: Enforce Free-Tier Cap at API Validation
 
