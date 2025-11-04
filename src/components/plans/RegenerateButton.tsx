@@ -28,7 +28,8 @@ export function RegenerateButton({ planId }: RegenerateButtonProps) {
         throw new Error('Failed to enqueue regeneration');
       }
       toast.success('Plan regeneration enqueued');
-    } catch {
+    } catch (error) {
+      console.error('Regeneration failed:', error);
       toast.error('Unable to enqueue regeneration');
     } finally {
       setLoading(false);
