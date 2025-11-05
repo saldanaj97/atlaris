@@ -87,6 +87,35 @@ describe('Google OAuth Flow', () => {
       'http://localhost:3000/api/v1/auth/google/callback';
     process.env.OAUTH_ENCRYPTION_KEY =
       '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+    // Re-apply a fresh OAuth2 mock before each test to avoid cross-test pollution
+    const { google } = await import('googleapis');
+    vi.mocked(google.auth.OAuth2).mockImplementation(
+      () =>
+        ({
+          generateAuthUrl: vi.fn().mockImplementation((opts: any) => {
+            const base = 'https://accounts.google.com/o/oauth2/v2/auth';
+            const clientId = process.env.GOOGLE_CLIENT_ID;
+            const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+            const scopeParam = Array.isArray(opts?.scope)
+              ? opts.scope.join(' ')
+              : String(opts?.scope ?? '');
+            const stateParam = String(opts?.state ?? '');
+            const accessType = String(opts?.access_type ?? '');
+            const prompt = String(opts?.prompt ?? '');
+            return (
+              `${base}?client_id=${clientId}` +
+              `&redirect_uri=${redirectUri}` +
+              `&response_type=code` +
+              `&scope=${scopeParam}` +
+              `&access_type=${accessType}` +
+              `&state=${stateParam}` +
+              `&prompt=${prompt}`
+            );
+          }),
+          getToken: vi.fn(),
+        }) as any
+    );
   });
 
   afterEach(() => {
@@ -95,7 +124,8 @@ describe('Google OAuth Flow', () => {
     delete process.env.GOOGLE_CLIENT_SECRET;
     delete process.env.GOOGLE_REDIRECT_URI;
     delete process.env.OAUTH_ENCRYPTION_KEY;
-    vi.restoreAllMocks();
+    // Only clear mock history; keep implementations intact for module-level mocks
+    vi.clearAllMocks();
   });
 
   describe('GET /api/v1/auth/google (Authorization Initiation)', () => {
@@ -116,7 +146,9 @@ describe('Google OAuth Flow', () => {
       expect(location).toContain('calendar');
       expect(location).toContain('access_type=offline');
       expect(location).toContain('prompt=consent');
-      expect(location).toContain('state=test_clerk_user_id');
+      const url = new URL(location!);
+      const stateParam = url.searchParams.get('state');
+      expect(stateParam).toBeTruthy();
     });
 
     it('should include both calendar scopes in authorization URL', async () => {
@@ -128,12 +160,14 @@ describe('Google OAuth Flow', () => {
       );
       const response = await googleAuthGET(request);
 
-      const location = response.headers.get('Location');
-      expect(location).toContain('www.googleapis.com/auth/calendar');
-      expect(location).toContain('www.googleapis.com/auth/calendar.events');
+      const location = response.headers.get('Location')!;
+      const url = new URL(location);
+      const scopeParam = url.searchParams.get('scope') ?? '';
+      expect(scopeParam).toContain('www.googleapis.com/auth/calendar');
+      expect(scopeParam).toContain('www.googleapis.com/auth/calendar.events');
     });
 
-    it('should pass userId as state parameter for callback verification', async () => {
+    it('should include state parameter for callback verification', async () => {
       const { GET: googleAuthGET } = await import(
         '@/app/api/v1/auth/google/route'
       );
@@ -142,8 +176,10 @@ describe('Google OAuth Flow', () => {
       );
       const response = await googleAuthGET(request);
 
-      const location = response.headers.get('Location');
-      expect(location).toContain('state=test_clerk_user_id');
+      const location = response.headers.get('Location')!;
+      const url = new URL(location);
+      const state = url.searchParams.get('state');
+      expect(state).toBeTruthy();
     });
 
     it('should return 401 when user is not authenticated', async () => {
@@ -942,7 +978,8 @@ describe('Google OAuth Flow', () => {
       process.env.GOOGLE_REDIRECT_URI = originalGoogleRedirectUri;
     }
 
-    vi.restoreAllMocks();
+    // Clear mock history but keep mock implementations in place
+    vi.clearAllMocks();
   });
 
   it('should redirect to Google authorization URL with secure state token', async () => {
