@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { google } from 'googleapis';
+import {
+  generateOAuthStateToken,
+  storeOAuthStateToken,
+} from '@/lib/integrations/oauth-state';
 
 export async function GET(_request: NextRequest) {
   const { userId } = await auth();
@@ -8,6 +12,11 @@ export async function GET(_request: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Generate a cryptographically secure state token
+  const stateToken = generateOAuthStateToken();
+  // Store the mapping between state token and Clerk user ID
+  storeOAuthStateToken(stateToken, userId);
 
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -23,7 +32,7 @@ export async function GET(_request: NextRequest) {
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: scopes,
-    state: userId,
+    state: stateToken, // Use secure token instead of user ID
     prompt: 'consent', // Force consent to get refresh token
   });
 
