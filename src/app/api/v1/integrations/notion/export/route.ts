@@ -47,6 +47,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ notionPageId, success: true });
   } catch (error) {
     console.error('Notion export failed:', error);
-    return NextResponse.json({ error: 'Export failed' }, { status: 500 });
+    let errorMessage = 'Unknown error occurred during export';
+    // Try to provide more specific error messages
+    if (error && typeof error === 'object') {
+      // Notion API error
+      if ('code' in error && typeof error.code === 'string') {
+        if (error.code === 'object_not_found') {
+          errorMessage = 'Plan not found in Notion';
+        } else if (error.code === 'validation_error') {
+          errorMessage = 'Invalid data sent to Notion';
+        } else if (error.code === 'unauthorized') {
+          errorMessage = 'Notion authorization failed';
+        } else {
+          errorMessage = `Notion API error: ${error.code}`;
+        }
+      } else if ('message' in error && typeof error.message === 'string') {
+        // Custom error messages from exportPlanToNotion
+        if (error.message.includes('Plan not found')) {
+          errorMessage = 'Plan not found';
+        } else if (error.message.includes('Invalid parent page')) {
+          errorMessage = 'Invalid parent page in Notion';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
