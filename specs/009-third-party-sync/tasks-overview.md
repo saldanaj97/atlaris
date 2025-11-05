@@ -9,7 +9,7 @@
 - [x] Task 7: Notion Integration - Plan-to-Notion Data Mapper
 - [x] Task 8: Notion Integration - Client with Rate Limiting
 - [ ] Task 9: Notion Integration - Export Endpoint
-- [ ] Task 10: Notion Integration - Delta Sync
+- [x] Task 10: Notion Integration - Delta Sync
 - [ ] Task 11: Google Calendar Integration - OAuth Flow
 - [ ] Task 12: Google Calendar - Event Mapper
 - [ ] Task 13: Google Calendar - Sync Endpoint
@@ -160,11 +160,11 @@
 
 # Task 10: Notion Integration - Delta Sync
 
-- [ ] Step 1: Write failing test for delta sync
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement hash-based delta sync
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Run Coderabbit CLI and implement suggestions
+- [x] Step 1: Write failing test for delta sync
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement hash-based delta sync
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Run Coderabbit CLI and implement suggestions (rate limited, skipped)
 - [ ] Step 6: Commit
 
 ---
