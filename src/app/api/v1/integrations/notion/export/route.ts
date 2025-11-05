@@ -1,42 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db/drizzle';
-import { users } from '@/lib/db/schema';
+import { users, learningPlans } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { exportPlanToNotion } from '@/lib/integrations/notion/sync';
-
-export async function POST(request: NextRequest) {
-  const { userId: clerkUserId } = await auth();
-
-  if (!clerkUserId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.clerkUserId, clerkUserId))
-    .limit(1);
-
-  if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
-  }
-
-  // Get Notion token
-  const notionTokens = await getOAuthTokens(user.id, 'notion');
-  if (!notionTokens) {
-    return NextResponse.json(
-      { error: 'Notion not connected' },
-      { status: 401 }
-    );
-  }
-
 import { z } from 'zod';
 
-const exportRequestSchema = z.object({
-  planId: z.string().uuid('Invalid plan ID format'),
-});
+const exportRequestSchema = z.object({ planId: z.string().uuid() });
 
 export async function POST(request: NextRequest) {
   const { userId: clerkUserId } = await auth();
@@ -64,64 +35,61 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body;
+  let json: unknown;
   try {
-    const rawBody = await request.json();
-    body = exportRequestSchema.parse(rawBody);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Invalid request: planId must be a valid UUID' },
-      { status: 400 }
-    );
+    json = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+  const parsed = exportRequestSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid planId' }, { status: 400 });
+  }
+
+  // Ensure the plan exists and is owned by the authenticated user before exporting
+  try {
+    const [plan] = await db
+      .select({ userId: learningPlans.userId })
+      .from(learningPlans)
+      .where(eq(learningPlans.id, parsed.data.planId))
+      .limit(1);
+
+    if (!plan) {
+      return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+    }
+
+    if (plan.userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+  } catch (e) {
+    console.error('Failed to load plan for Notion export:', e);
+    return NextResponse.json({ error: 'Failed to load plan' }, { status: 500 });
   }
 
   try {
     const notionPageId = await exportPlanToNotion(
-      body.planId,
+      parsed.data.planId,
+      user.id,
       notionTokens.accessToken
     );
 
     return NextResponse.json({ notionPageId, success: true });
-  } catch (error) {
-    console.error('Notion export failed:', error);
-    return NextResponse.json({ error: 'Export failed' }, { status: 500 });
-  }
-}
-
-  try {
-    const notionPageId = await exportPlanToNotion(
-      body.planId,
-      notionTokens.accessToken
-    );
-
-    return NextResponse.json({ notionPageId, success: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Notion export failed:', error);
     let errorMessage = 'Unknown error occurred during export';
-    // Try to provide more specific error messages
-    if (error && typeof error === 'object') {
-      // Notion API error
-      if ('code' in error && typeof error.code === 'string') {
-        if (error.code === 'object_not_found') {
-          errorMessage = 'Plan not found in Notion';
-        } else if (error.code === 'validation_error') {
-          errorMessage = 'Invalid data sent to Notion';
-        } else if (error.code === 'unauthorized') {
-          errorMessage = 'Notion authorization failed';
-        } else {
-          errorMessage = `Notion API error: ${error.code}`;
-        }
-      } else if ('message' in error && typeof error.message === 'string') {
-        // Custom error messages from exportPlanToNotion
-        if (error.message.includes('Plan not found')) {
-          errorMessage = 'Plan not found';
-        } else if (error.message.includes('Invalid parent page')) {
-          errorMessage = 'Invalid parent page in Notion';
-        } else {
-          errorMessage = error.message;
-        }
+    let status = 500;
+    if (error instanceof Error) {
+      const msg = error.message;
+      if (msg.includes('Plan not found')) {
+        errorMessage = 'Plan not found';
+        status = 404;
+      } else if (msg.includes('Access denied')) {
+        errorMessage = 'Forbidden';
+        status = 403;
+      } else {
+        errorMessage = msg;
       }
     }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status });
   }
 }

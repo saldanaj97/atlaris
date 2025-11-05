@@ -74,6 +74,14 @@ export class NotionClient {
         retries: 3,
         minTimeout: 1000,
         maxTimeout: 5000,
+        onFailedAttempt: (error) => {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error';
+          console.warn(
+            `Notion API attempt ${error.attemptNumber} failed:`,
+            errorMessage
+          );
+        },
       }
     );
   }
@@ -96,6 +104,14 @@ export class NotionClient {
         retries: 3,
         minTimeout: 1000,
         maxTimeout: 5000,
+        onFailedAttempt: (error) => {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error';
+          console.warn(
+            `Notion API attempt ${error.attemptNumber} failed:`,
+            errorMessage
+          );
+        },
       }
     );
   }

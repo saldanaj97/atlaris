@@ -1,14 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/drizzle';
-import {
-  users,
-  learningPlans,
-  modules,
-  tasks,
-  integrationTokens,
-} from '@/lib/db/schema';
+import { users, learningPlans, integrationTokens } from '@/lib/db/schema';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
+import { ensureUser } from '../helpers/db';
 
 // Mock Clerk auth before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
@@ -40,20 +35,11 @@ describe('Notion Export API', () => {
       userId: clerkUserId,
     } as Awaited<ReturnType<typeof auth>>);
 
-    await db.delete(tasks);
-    await db.delete(modules);
-    await db.delete(learningPlans);
-    await db.delete(integrationTokens);
-    await db.delete(users);
-
-    const [user] = await db
-      .insert(users)
-      .values({
-        clerkUserId,
-        email: `test-${Date.now()}@example.com`,
-      })
-      .returning();
-    testUserId = user.id;
+    // Ensure test user
+    testUserId = await ensureUser({
+      clerkUserId,
+      email: 'notion-export-test@example.com',
+    });
 
     const [plan] = await db
       .insert(learningPlans)
@@ -114,5 +100,81 @@ describe('Notion Export API', () => {
 
     const response = await POST(request);
     expect(response.status).toBe(401);
+  });
+
+  it('should return 400 for invalid planId format', async () => {
+    const { POST } = await import(
+      '@/app/api/v1/integrations/notion/export/route'
+    );
+
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/integrations/notion/export',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: 'invalid-uuid' }),
+      }
+    );
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it('should return 404 for non-existent plan', async () => {
+    const { POST } = await import(
+      '@/app/api/v1/integrations/notion/export/route'
+    );
+
+    const nonExistentPlanId = '00000000-0000-0000-0000-000000000000';
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/integrations/notion/export',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: nonExistentPlanId }),
+      }
+    );
+
+    const response = await POST(request);
+    expect(response.status).toBe(404);
+  });
+
+  it("should return 403 when trying to export another user's plan", async () => {
+    // Create another user and their plan
+    const [otherUser] = await db
+      .insert(users)
+      .values({
+        clerkUserId: 'other-user',
+        email: 'other@example.com',
+      })
+      .returning();
+
+    const [otherPlan] = await db
+      .insert(learningPlans)
+      .values({
+        userId: otherUser.id,
+        topic: 'Other User Plan',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        generationStatus: 'ready',
+      })
+      .returning();
+
+    const { POST } = await import(
+      '@/app/api/v1/integrations/notion/export/route'
+    );
+
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/integrations/notion/export',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: otherPlan.id }),
+      }
+    );
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
   });
 });

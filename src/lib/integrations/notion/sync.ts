@@ -24,18 +24,19 @@ export async function exportPlanToNotion(
   userId: string,
   accessToken: string
 ): Promise<string> {
-  // Fetch plan with modules and tasks, validating ownership
+  // Fetch plan first
   const [plan] = await db
     .select()
     .from(learningPlans)
-    .where(
-      eq(learningPlans.id, planId),
-      eq(learningPlans.userId, userId)
-    )
+    .where(eq(learningPlans.id, planId))
     .limit(1);
 
   if (!plan) {
-    throw new Error('Plan not found or access denied');
+    throw new Error('Plan not found');
+  }
+
+  if (plan.userId !== userId) {
+    throw new Error("Access denied: plan doesn't belong to user");
   }
 
   const planModules = await db
@@ -57,12 +58,19 @@ export async function exportPlanToNotion(
           .orderBy(asc(tasks.moduleId), asc(tasks.order))
       : [];
 
-  // Combine data
+  // Combine data (optimize task grouping)
+  const tasksByModuleId = new Map<string, Task[]>();
+  for (const task of planTasks) {
+    const list = tasksByModuleId.get(task.moduleId) ?? [];
+    list.push(task);
+    tasksByModuleId.set(task.moduleId, list);
+  }
+
   const fullPlan: FullPlan = {
     ...plan,
     modules: planModules.map((mod) => ({
       ...mod,
-      tasks: planTasks.filter((t) => t.moduleId === mod.id),
+      tasks: tasksByModuleId.get(mod.id) ?? [],
     })),
   };
 
@@ -70,11 +78,13 @@ export async function exportPlanToNotion(
   const blocks = mapFullPlanToBlocks(fullPlan);
 
   // Create Notion page
+  const parentPageId = process.env.NOTION_PARENT_PAGE_ID || '';
+
   const client = new NotionClient(accessToken);
   const notionPage = await client.createPage({
     parent: {
       type: 'page_id',
-      page_id: process.env.NOTION_PARENT_PAGE_ID || '',
+      page_id: parentPageId,
     },
     properties: {
       title: {
