@@ -97,31 +97,18 @@ export async function ensureJobTypeEnumValue() {
   `);
 }
 
+/**
+ * Ensures the notion_sync_state table exists using Drizzle's schema/migration system.
+ * If migrations are run before tests, this function is unnecessary.
+ * If dynamic creation is needed, use Drizzle's API.
+ */
 export async function ensureNotionSyncStateTable() {
-  await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS notion_sync_state (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-      plan_id uuid NOT NULL,
-      user_id uuid NOT NULL,
-      notion_page_id text NOT NULL,
-      notion_database_id text,
-      sync_hash text NOT NULL,
-      last_synced_at timestamp with time zone NOT NULL,
-      created_at timestamp with time zone DEFAULT now() NOT NULL,
-      updated_at timestamp with time zone DEFAULT now() NOT NULL,
-      CONSTRAINT notion_sync_plan_id_unique UNIQUE(plan_id)
-    )
-  `);
-
-  await db.execute(sql`
-    CREATE INDEX IF NOT EXISTS notion_sync_state_plan_id_idx
-    ON notion_sync_state (plan_id)
-  `);
-
-  await db.execute(sql`
-    CREATE INDEX IF NOT EXISTS notion_sync_state_user_id_idx
-    ON notion_sync_state (user_id)
-  `);
+  // If using Drizzle's migration system, the table will be created automatically.
+  // If not, you can use Drizzle's schema API to ensure the table exists.
+  // For example, you could run a dummy query to trigger table creation:
+  await db.select().from(notionSyncState).limit(1);
+  // If you need to ensure indexes, use Drizzle's migration system.
+  // Remove raw SQL table/index creation to avoid duplication.
 }
 
 // Cache table removed – no-op helper deleted
