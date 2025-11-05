@@ -32,8 +32,7 @@ export async function GET(request: NextRequest) {
       new URL(request.url).origin ||
       'http://localhost:3000';
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=unauthorized', baseUrl),
-      { status: 302 }
+      new URL('/settings/integrations?error=unauthorized', baseUrl)
     );
   }
 
@@ -49,15 +48,13 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/settings/integrations?error=${error}`, baseUrl),
-      { status: 302 }
+      new URL(`/settings/integrations?error=${error}`, baseUrl)
     );
   }
 
   if (!code || !stateToken) {
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=missing_parameters', baseUrl),
-      { status: 302 }
+      new URL('/settings/integrations?error=missing_parameters', baseUrl)
     );
   }
 
@@ -65,16 +62,14 @@ export async function GET(request: NextRequest) {
   const stateClerkUserId = validateOAuthStateToken(stateToken);
   if (!stateClerkUserId) {
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=invalid_state', baseUrl),
-      { status: 302 }
+      new URL('/settings/integrations?error=invalid_state', baseUrl)
     );
   }
 
   // Verify the authenticated user matches the user from the state token
   if (clerkUserId !== stateClerkUserId) {
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=user_mismatch', baseUrl),
-      { status: 302 }
+      new URL('/settings/integrations?error=user_mismatch', baseUrl)
     );
   }
 
@@ -87,8 +82,7 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=invalid_user', baseUrl),
-      { status: 302 }
+      new URL('/settings/integrations?error=invalid_user', baseUrl)
     );
   }
 
@@ -119,14 +113,12 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.redirect(
-      new URL('/settings/integrations?google=connected', baseUrl),
-      { status: 302 }
+      new URL('/settings/integrations?google=connected', baseUrl)
     );
   } catch (err) {
     console.error('Google token exchange failed:', err);
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=token_exchange_failed', baseUrl),
-      { status: 302 }
+      new URL('/settings/integrations?error=token_exchange_failed', baseUrl)
     );
   }
 }

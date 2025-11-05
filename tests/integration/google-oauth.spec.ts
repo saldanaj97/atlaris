@@ -16,9 +16,11 @@ vi.mock('googleapis', () => ({
   google: {
     auth: {
       OAuth2: vi.fn().mockImplementation(() => ({
-        generateAuthUrl: vi.fn().mockReturnValue(
-          'https://accounts.google.com/o/oauth2/v2/auth?client_id=test_google_client_id&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fv1%2Fauth%2Fgoogle%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events&access_type=offline&state=test_clerk_user_id&prompt=consent'
-        ),
+        generateAuthUrl: vi
+          .fn()
+          .mockReturnValue(
+            'https://accounts.google.com/o/oauth2/v2/auth?client_id=test_google_client_id&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fv1%2Fauth%2Fgoogle%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events&access_type=offline&state=test_clerk_user_id&prompt=consent'
+          ),
         getToken: vi.fn(),
       })),
     },
@@ -63,7 +65,7 @@ describe('Google OAuth Flow', () => {
   beforeEach(async () => {
     // Ensure table exists
     await ensureIntegrationTokensTable();
-    
+
     // Clear OAuth state tokens cache before each test
     clearOAuthStateTokens();
 
@@ -235,6 +237,7 @@ describe('Google OAuth Flow', () => {
 
   describe('GET /api/v1/auth/google/callback (OAuth Callback)', () => {
     let testUserId: string;
+    let testStateToken: string;
 
     beforeEach(async () => {
       // Clean up test data
@@ -251,6 +254,13 @@ describe('Google OAuth Flow', () => {
         .returning();
 
       testUserId = user.id;
+
+      // Generate and store a state token for testing
+      testStateToken = 'test_state_token_123';
+      const { storeOAuthStateToken } = await import(
+        '@/lib/integrations/oauth-state'
+      );
+      storeOAuthStateToken(testStateToken, 'test_clerk_user_id');
     });
 
     it('should exchange authorization code for tokens and store them', async () => {
@@ -267,6 +277,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -275,7 +290,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -305,6 +320,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -313,7 +333,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -342,6 +362,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -350,7 +375,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -370,7 +395,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?error=access_denied&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?error=access_denied&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -385,7 +410,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -426,13 +451,22 @@ describe('Google OAuth Flow', () => {
     });
 
     it('should redirect with error when user does not exist', async () => {
-      const nonExistentUserId = '00000000-0000-0000-0000-000000000000';
+      // Delete the test user so the database lookup fails
+      await db.delete(users).where(eq(users.id, testUserId));
+
+      // Store a state token that maps to test_clerk_user_id (matching auth mock)
+      // but the user won't exist in the database
+      const nonExistentStateToken = 'non_existent_state_token';
+      const { storeOAuthStateToken } = await import(
+        '@/lib/integrations/oauth-state'
+      );
+      storeOAuthStateToken(nonExistentStateToken, 'test_clerk_user_id');
 
       const { GET: googleCallbackGET } = await import(
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${nonExistentUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${nonExistentStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -450,6 +484,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -458,7 +497,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=invalid_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=invalid_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -480,6 +519,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -488,7 +532,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -509,6 +553,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -517,7 +566,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -540,6 +589,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -548,7 +602,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -578,6 +632,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -586,7 +645,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -615,6 +674,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -623,7 +687,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       let request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code_1&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code_1&state=${testStateToken}`
       );
       await googleCallbackGET(request);
 
@@ -640,12 +704,24 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
 
+      // Store a new state token for the second request (tokens are one-time use)
+      const secondStateToken = 'test_state_token_456';
+      const { storeOAuthStateToken: storeToken } = await import(
+        '@/lib/integrations/oauth-state'
+      );
+      storeToken(secondStateToken, 'test_clerk_user_id');
+
       request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code_2&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code_2&state=${secondStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -680,6 +756,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -688,7 +769,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       await googleCallbackGET(request);
 
@@ -707,6 +788,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -715,7 +801,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -733,6 +819,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -741,7 +832,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/google/callback?code=invalid_code&state=${testUserId}`
+        `http://localhost:3000/api/v1/auth/google/callback?code=invalid_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -765,6 +856,11 @@ describe('Google OAuth Flow', () => {
       vi.mocked(google.auth.OAuth2).mockImplementation(
         () =>
           ({
+            generateAuthUrl: vi
+              .fn()
+              .mockReturnValue(
+                'https://accounts.google.com/o/oauth2/v2/auth?mock=true'
+              ),
             getToken: mockGetToken,
           }) as any
       );
@@ -773,7 +869,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `https://example.com/api/v1/auth/google/callback?code=test_code&state=${testUserId}`
+        `https://example.com/api/v1/auth/google/callback?code=test_code&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -788,7 +884,7 @@ describe('Google OAuth Flow', () => {
         '@/app/api/v1/auth/google/callback/route'
       );
       const request = new NextRequest(
-        `https://example.com/api/v1/auth/google/callback?error=access_denied&state=${testUserId}`
+        `https://example.com/api/v1/auth/google/callback?error=access_denied&state=${testStateToken}`
       );
       const response = await googleCallbackGET(request);
 
@@ -809,7 +905,7 @@ describe('Google OAuth Flow', () => {
 
       expect(response.status).toBe(307);
       expect(response.headers.get('Location')).toContain(
-        '/settings/integrations?error=invalid_user'
+        '/settings/integrations?error=invalid_state'
       );
     });
 
