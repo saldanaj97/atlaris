@@ -56,3 +56,8 @@ export const subscriptionStatus = pgEnum('subscription_status', [
   'past_due',
   'trialing',
 ]);
+
+export const integrationProviderEnum = pgEnum('integration_provider', [
+  'notion',
+  'google_calendar',
+]);

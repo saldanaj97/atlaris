@@ -29,6 +29,14 @@ if (!process.env.GOOGLE_CSE_KEY) {
   Object.assign(process.env, { GOOGLE_CSE_KEY: 'cse-key' });
 }
 
+// Provide OAuth encryption key for token encryption tests (64-char hex for AES-256)
+if (!process.env.OAUTH_ENCRYPTION_KEY) {
+  Object.assign(process.env, {
+    OAUTH_ENCRYPTION_KEY:
+      '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+  });
+}
+
 // Extend expect with jest-dom matchers
 import '@testing-library/jest-dom';
 
