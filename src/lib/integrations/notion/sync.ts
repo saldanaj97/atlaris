@@ -109,13 +109,24 @@ export async function exportPlanToNotion(
       ? notionPage.id
       : '';
 
-  await db.insert(notionSyncState).values({
-    planId,
-    userId: plan.userId,
-    notionPageId: pageId,
-    syncHash: contentHash,
-    lastSyncedAt: new Date(),
-  });
+  await db
+    .insert(notionSyncState)
+    .values({
+      planId,
+      userId: plan.userId,
+      notionPageId: pageId,
+      syncHash: contentHash,
+      lastSyncedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [notionSyncState.planId],
+      set: {
+        userId: plan.userId,
+        notionPageId: pageId,
+        syncHash: contentHash,
+        lastSyncedAt: new Date(),
+      },
+    });
 
   return pageId;
 }
