@@ -1,22 +1,16 @@
 import type { BlockObjectRequest } from '@notionhq/client/build/src/api-endpoints';
-import type { Task } from '@/lib/types/db';
+import type { LearningPlan, Module, Task } from '@/lib/types/db';
 
-interface LearningPlanInput {
-  topic: string;
-  skillLevel: string;
-  weeklyHours: number;
-}
+type MinimalPlan = Pick<LearningPlan, 'topic' | 'skillLevel' | 'weeklyHours'>;
+type MinimalTask = Pick<Task, 'title' | 'description' | 'estimatedMinutes'>;
+type MinimalModule = Pick<
+  Module,
+  'title' | 'description' | 'estimatedMinutes'
+> & {
+  tasks: MinimalTask[];
+};
 
-interface ModuleInput {
-  title: string;
-  description: string | null;
-  estimatedMinutes: number;
-  tasks: Task[];
-}
-
-export function mapPlanToNotionBlocks(
-  plan: LearningPlanInput
-): BlockObjectRequest[] {
+export function mapPlanToNotionBlocks(plan: MinimalPlan): BlockObjectRequest[] {
   const blocks: BlockObjectRequest[] = [];
 
   // Title
@@ -51,7 +45,7 @@ export function mapPlanToNotionBlocks(
   return blocks;
 }
 
-export function mapModuleToBlocks(module: ModuleInput): BlockObjectRequest[] {
+export function mapModuleToBlocks(module: MinimalModule): BlockObjectRequest[] {
   const blocks: BlockObjectRequest[] = [];
 
   // Module heading
@@ -97,9 +91,9 @@ export function mapModuleToBlocks(module: ModuleInput): BlockObjectRequest[] {
     },
   });
 
-  // Tasks as to-do items
+  // Tasks as to-do items with optional nested description
   module.tasks.forEach((task) => {
-    const toDoBlock: BlockObjectRequest = {
+    const todoBlock: BlockObjectRequest = {
       type: 'to_do',
       to_do: {
         rich_text: [
@@ -113,28 +107,31 @@ export function mapModuleToBlocks(module: ModuleInput): BlockObjectRequest[] {
         checked: false,
         color: 'default',
       },
+      ...(task.description
+        ? {
+            children: [
+              {
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: task.description } },
+                  ],
+                  color: 'gray',
+                },
+              },
+            ],
+          }
+        : {}),
     };
 
-    // Task description as child of to-do block
-    if (task.description) {
-      toDoBlock.to_do.children = [
-        {
-          type: 'paragraph',
-          paragraph: {
-            rich_text: [{ type: 'text', text: { content: task.description } }],
-          },
-        },
-      ];
-    }
-
-    blocks.push(toDoBlock);
+    blocks.push(todoBlock);
   });
 
   return blocks;
 }
 
 export function mapFullPlanToBlocks(
-  plan: LearningPlanInput & { modules: ModuleInput[] }
+  plan: MinimalPlan & { modules: MinimalModule[] }
 ): BlockObjectRequest[] {
   const blocks: BlockObjectRequest[] = [];
 
