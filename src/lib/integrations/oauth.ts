@@ -102,28 +102,33 @@ export async function storeOAuthTokens(
       })
     : null;
 
-  // Use upsert pattern: delete then insert (Drizzle doesn't have native upsert for Postgres)
   await db
-    .delete(integrationTokens)
-    .where(
-      and(
-        eq(integrationTokens.userId, userId),
-        eq(integrationTokens.provider, provider)
-      )
-    );
-
-  await db.insert(integrationTokens).values({
-    userId,
-    provider,
-    encryptedAccessToken: encryptedAccess,
-    encryptedRefreshToken: encryptedRefresh,
-    scope: tokenData.scope,
-    expiresAt: tokenData.expiresAt,
-    workspaceId,
-    workspaceName,
-    botId,
-    updatedAt: new Date(),
-  });
+    .insert(integrationTokens)
+    .values({
+      userId,
+      provider,
+      encryptedAccessToken: encryptedAccess,
+      encryptedRefreshToken: encryptedRefresh,
+      scope: tokenData.scope,
+      expiresAt: tokenData.expiresAt ?? null,
+      workspaceId: workspaceId ?? null,
+      workspaceName: workspaceName ?? null,
+      botId: botId ?? null,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [integrationTokens.userId, integrationTokens.provider],
+      set: {
+        encryptedAccessToken: encryptedAccess,
+        encryptedRefreshToken: encryptedRefresh,
+        scope: tokenData.scope,
+        expiresAt: tokenData.expiresAt ?? null,
+        workspaceId: workspaceId ?? null,
+        workspaceName: workspaceName ?? null,
+        botId: botId ?? null,
+        updatedAt: new Date(),
+      },
+    });
 }
 
 export async function getOAuthTokens(
