@@ -38,7 +38,7 @@
 - [x] PR 5: Notion Delta Sync
   - Task 10: Notion Integration - Delta Sync
 
-- [ ] PR 6: Google OAuth + Sync Schema
+- [x] PR 6: Google OAuth + Sync Schema
   - Task 3: Database Schema - Google Calendar Sync State Table
   - Task 11: Google Calendar Integration - OAuth Flow
 
