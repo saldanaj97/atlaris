@@ -351,6 +351,62 @@ export const notionSyncState = pgTable(
   ]
 ).enableRLS();
 
+export const googleCalendarSyncState = pgTable(
+  'google_calendar_sync_state',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    planId: uuid('plan_id')
+      .notNull()
+      .references(() => learningPlans.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    syncToken: text('sync_token'), // Google's incremental sync token
+    calendarId: text('calendar_id').notNull().default('primary'),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    planIdUnique: unique('gcal_sync_plan_id_unique').on(table.planId),
+    planIdIdx: index('google_calendar_sync_state_plan_id_idx').on(table.planId),
+    userIdIdx: index('google_calendar_sync_state_user_id_idx').on(table.userId),
+  })
+);
+
+export const taskCalendarEvents = pgTable(
+  'task_calendar_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    taskId: uuid('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    calendarEventId: text('calendar_event_id').notNull(),
+    calendarId: text('calendar_id').notNull().default('primary'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => ({
+    taskIdUnique: unique('task_calendar_event_unique').on(
+      table.taskId,
+      table.userId
+    ),
+    taskIdIdx: index('task_calendar_events_task_id_idx').on(table.taskId),
+    userIdIdx: index('task_calendar_events_user_id_idx').on(table.userId),
+  })
+);
+
 // Usage metrics table
 export const usageMetrics = pgTable(
   'usage_metrics',
