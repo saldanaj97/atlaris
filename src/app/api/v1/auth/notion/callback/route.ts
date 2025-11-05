@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
+  // Verify user is authenticated
+  const { userId: clerkUserId } = await auth();
+
+  if (!clerkUserId) {
+    const baseUrl =
+      request.nextUrl?.origin ||
+      new URL(request.url).origin ||
+      'http://localhost:3000';
+    return NextResponse.redirect(
+      new URL('/settings/integrations?error=unauthorized', baseUrl),
+      { status: 302 }
+    );
+  }
+
   const url = request.nextUrl || new URL(request.url);
   const searchParams = url.searchParams;
   const code = searchParams.get('code');
@@ -41,6 +56,14 @@ export async function GET(request: NextRequest) {
   if (!user) {
     return NextResponse.redirect(
       new URL('/settings/integrations?error=invalid_user', baseUrl),
+      { status: 302 }
+    );
+  }
+
+  // Verify the authenticated user matches the user in the state parameter
+  if (user.clerkUserId !== clerkUserId) {
+    return NextResponse.redirect(
+      new URL('/settings/integrations?error=user_mismatch', baseUrl),
       { status: 302 }
     );
   }

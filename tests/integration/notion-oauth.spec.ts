@@ -52,6 +52,92 @@ describe('Notion OAuth Flow', () => {
   });
 
   describe('Notion OAuth Callback', () => {
+    it('should reject unauthenticated requests', async () => {
+      // Mock Clerk auth to return no userId
+      const { auth } = await import('@clerk/nextjs/server');
+      vi.mocked(auth).mockResolvedValue({
+        userId: null,
+      } as Awaited<ReturnType<typeof auth>>);
+
+      // Create test user
+      await db.delete(integrationTokens);
+      await db.delete(users);
+      const [user] = await db
+        .insert(users)
+        .values({
+          clerkUserId: 'test_clerk_user_id',
+          email: 'test@example.com',
+        })
+        .returning();
+
+      const request = new NextRequest(
+        `http://localhost:3000/api/v1/auth/notion/callback?code=test_code&state=${user.id}`
+      );
+
+      const { GET: notionCallbackGET } = await import(
+        '@/app/api/v1/auth/notion/callback/route'
+      );
+      const response = await notionCallbackGET(request);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('Location')).toContain('error=unauthorized');
+
+      // Verify no token was stored
+      const tokens = await db
+        .select()
+        .from(integrationTokens)
+        .where(eq(integrationTokens.userId, user.id));
+      expect(tokens.length).toBe(0);
+
+      // Restore auth mock for other tests
+      vi.mocked(auth).mockResolvedValue({
+        userId: 'test_clerk_user_id',
+      } as Awaited<ReturnType<typeof auth>>);
+    });
+
+    it('should reject authenticated user with mismatched userId', async () => {
+      // Mock Clerk auth to return different userId
+      const { auth } = await import('@clerk/nextjs/server');
+      vi.mocked(auth).mockResolvedValue({
+        userId: 'attacker_clerk_user_id',
+      } as Awaited<ReturnType<typeof auth>>);
+
+      // Create test user with different clerkUserId
+      await db.delete(integrationTokens);
+      await db.delete(users);
+      const [user] = await db
+        .insert(users)
+        .values({
+          clerkUserId: 'victim_clerk_user_id',
+          email: 'victim@example.com',
+        })
+        .returning();
+
+      const request = new NextRequest(
+        `http://localhost:3000/api/v1/auth/notion/callback?code=test_code&state=${user.id}`
+      );
+
+      const { GET: notionCallbackGET } = await import(
+        '@/app/api/v1/auth/notion/callback/route'
+      );
+      const response = await notionCallbackGET(request);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get('Location')).toContain('error=user_mismatch');
+
+      // Verify no token was stored
+      const tokens = await db
+        .select()
+        .from(integrationTokens)
+        .where(eq(integrationTokens.userId, user.id));
+      expect(tokens.length).toBe(0);
+
+      // Restore auth mock for other tests
+      vi.mocked(auth).mockResolvedValue({
+        userId: 'test_clerk_user_id',
+      } as Awaited<ReturnType<typeof auth>>);
+    });
+
     it('should exchange code for tokens and store encrypted', async () => {
       // Mock Notion API token exchange
       const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
