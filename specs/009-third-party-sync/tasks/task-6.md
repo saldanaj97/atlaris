@@ -289,8 +289,4 @@ Tests cover:
 - Callback token exchange and encrypted storage"
 ```
 
-**Step 11: Open PR into main**
-
-Create a pull request from the current branch into main, following the commit message guidelines.
-
 ---

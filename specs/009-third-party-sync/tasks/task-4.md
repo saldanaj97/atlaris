@@ -180,8 +180,4 @@ Tests cover:
 - Error handling for invalid ciphertext"
 ```
 
-**Step 7: Open PR into main**
-
-Create a pull request from the current branch into main, following the commit message guidelines.
-
 ---

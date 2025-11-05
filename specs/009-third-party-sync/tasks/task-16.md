@@ -153,7 +153,11 @@ pnpm test:e2e
 
 Expected: PASS
 
-**Step 4: Commit**
+**Step 4: Run Coderabbit CLI and implement suggestions**
+
+Run `coderabbit --prompt-only -t uncommitted` and implement any suggestions from the review.
+
+**Step 5: Commit**
 
 ```bash
 git add tests/e2e/
@@ -176,15 +180,3 @@ Tests cover:
 - Sync state persistence
 - Event mapping creation"
 ```
-
----
-
-## Execution Handoff
-
-Plan complete and saved to `specs/009-third-party-sync/plan.md`. Two execution options:
-
-**1. Subagent-Driven (this session)** - I dispatch fresh subagent per task, review between tasks, fast iteration
-
-**2. Parallel Session (separate)** - Open new session with executing-plans, batch execution with checkpoints
-
-**Which approach?**

@@ -105,8 +105,4 @@ New files:
 - src/lib/db/migrations/XXXX_add_google_calendar_sync_state.sql"
 ```
 
-**Step 6: Open PR into main**
-
-Create a pull request from the current branch into main, following the commit message guidelines.
-
 ---

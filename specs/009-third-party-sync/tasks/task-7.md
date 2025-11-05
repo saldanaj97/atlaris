@@ -300,8 +300,4 @@ Tests cover:
 - Module sections with tasks as to-dos"
 ```
 
-**Step 8: Open PR into main**
-
-Create a pull request from the current branch into main, following the commit message guidelines.
-
 ---

@@ -64,7 +64,6 @@
 - [ ] Step 5: Apply migration to test database
 - [ ] Step 6: Run Coderabbit CLI and implement suggestions
 - [ ] Step 7: Commit schema changes
-- [ ] Step 8: Open PR into main
 
 ---
 
@@ -75,7 +74,6 @@
 - [ ] Step 3: Apply migrations to local and test databases
 - [ ] Step 4: Run Coderabbit CLI and implement suggestions
 - [ ] Step 5: Commit schema changes
-- [ ] Step 6: Open PR into main
 
 ---
 
@@ -86,7 +84,6 @@
 - [ ] Step 3: Generate and apply migrations (local + test)
 - [ ] Step 4: Run Coderabbit CLI and implement suggestions
 - [ ] Step 5: Commit schema changes
-- [ ] Step 6: Open PR into main
 
 ---
 
@@ -98,7 +95,6 @@
 - [ ] Step 4: Run test to verify it passes
 - [ ] Step 5: Run Coderabbit CLI and implement suggestions
 - [ ] Step 6: Commit
-- [ ] Step 7: Open PR into main
 
 ---
 
@@ -110,7 +106,6 @@
 - [ ] Step 4: Run test to verify it passes
 - [ ] Step 5: Run Coderabbit CLI and implement suggestions
 - [ ] Step 6: Commit
-- [ ] Step 7: Open PR into main
 
 ---
 
@@ -125,7 +120,6 @@
 - [ ] Step 7: Run tests to verify they pass
 - [ ] Step 8: Run Coderabbit CLI and implement suggestions
 - [ ] Step 9: Commit
-- [ ] Step 10: Open PR into main
 
 ---
 
@@ -138,7 +132,6 @@
 - [ ] Step 5: Install Notion SDK
 - [ ] Step 6: Run Coderabbit CLI and implement suggestions
 - [ ] Step 7: Commit
-- [ ] Step 8: Open PR into main
 
 ---
 
@@ -150,7 +143,6 @@
 - [ ] Step 4: Run test to verify it passes
 - [ ] Step 5: Run Coderabbit CLI and implement suggestions
 - [ ] Step 6: Commit
-- [ ] Step 7: Open PR into main
 
 ---
 
@@ -163,7 +155,6 @@
 - [ ] Step 5: Run test to verify it passes
 - [ ] Step 6: Run Coderabbit CLI and implement suggestions
 - [ ] Step 7: Commit
-- [ ] Step 8: Open PR into main
 
 ---
 
@@ -175,7 +166,6 @@
 - [ ] Step 4: Run test to verify it passes
 - [ ] Step 5: Run Coderabbit CLI and implement suggestions
 - [ ] Step 6: Commit
-- [ ] Step 7: Open PR into main
 
 ---
 
@@ -188,7 +178,6 @@
 - [ ] Step 5: Run test to verify it passes
 - [ ] Step 6: Run Coderabbit CLI and implement suggestions
 - [ ] Step 7: Commit
-- [ ] Step 8: Open PR into main
 
 ---
 
@@ -200,7 +189,6 @@
 - [ ] Step 4: Run test to verify it passes
 - [ ] Step 5: Run Coderabbit CLI and implement suggestions
 - [ ] Step 6: Commit
-- [ ] Step 7: Open PR into main
 
 ---
 
@@ -212,7 +200,6 @@
 - [ ] Step 4: Run test to verify it passes
 - [ ] Step 5: Run Coderabbit CLI and implement suggestions
 - [ ] Step 6: Commit
-- [ ] Step 7: Open PR into main
 
 ---
 
@@ -226,7 +213,6 @@
 - [ ] Step 6: Generate and apply migrations (local + test)
 - [ ] Step 7: Run Coderabbit CLI and implement suggestions
 - [ ] Step 8: Commit
-- [ ] Step 9: Open PR into main
 
 ---
 
@@ -237,7 +223,6 @@
 - [ ] Step 3: Run test to verify it passes
 - [ ] Step 4: Run Coderabbit CLI and implement suggestions
 - [ ] Step 5: Commit
-- [ ] Step 6: Open PR into main
 
 ---
 
@@ -248,4 +233,3 @@
 - [ ] Step 3: Run E2E test suite
 - [ ] Step 4: Run Coderabbit CLI and implement suggestions
 - [ ] Step 5: Commit
-- [ ] Step 6: Open PR into main

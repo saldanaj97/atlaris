@@ -299,8 +299,4 @@ Tests cover:
 - 401 error when no Notion token found"
 ```
 
-**Step 8: Open PR into main**
-
-Create a pull request from the current branch into main, following the commit message guidelines.
-
 ---
