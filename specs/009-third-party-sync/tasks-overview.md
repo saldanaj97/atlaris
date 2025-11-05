@@ -91,7 +91,7 @@
 
 - [x] Step 1: Write failing test for token encryption
 - [x] Step 2: Run test to verify it fails
-- [x] Step 3: Implement AES-256-CBC encrypt/decrypt utilities
+- [x] Step 3: Implement AES-256-GCM encrypt/decrypt utilities
 - [x] Step 4: Run test to verify it passes
 - [x] Step 5: Run Coderabbit CLI and implement suggestions
 - [x] Step 6: Commit
