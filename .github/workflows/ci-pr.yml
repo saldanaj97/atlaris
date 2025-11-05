@@ -285,9 +285,9 @@ jobs:
               exit 0
             fi
             echo "Running related unit tests for changed files on shard 1/${TOTAL}..."
-            pnpm vitest related --run ${FILES} || {
+            pnpm vitest related --project unit --run ${FILES} || {
               echo "Related tests failed or not supported; falling back to full sharded run on this shard.";
-              pnpm vitest run tests/unit \
+              pnpm vitest run --project unit tests/unit \
                 --shard ${SHARD}/${TOTAL} \
                 --coverage \
                 --coverage.thresholds.lines=0 \
@@ -300,7 +300,7 @@ jobs:
             }
           else
             echo "No suitable changed files detected; running full sharded unit suite."
-            pnpm vitest run tests/unit \
+            pnpm vitest run --project unit tests/unit \
               --shard ${SHARD}/${TOTAL} \
               --coverage \
               --coverage.thresholds.lines=0 \
