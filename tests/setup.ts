@@ -10,6 +10,7 @@ import { client } from '@/lib/db/drizzle';
 import { Mutex } from 'async-mutex';
 import {
   ensureJobTypeEnumValue,
+  ensureNotionSyncStateTable,
   ensureStripeWebhookEventsTable,
   truncateAll,
 } from './helpers/db';
@@ -73,6 +74,7 @@ if (!skipDbSetup) {
     releaseDbLock = await dbLock.acquire();
     await ensureJobTypeEnumValue();
     await ensureStripeWebhookEventsTable();
+    await ensureNotionSyncStateTable();
     await truncateAll();
   });
 

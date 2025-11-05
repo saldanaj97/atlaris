@@ -8,7 +8,7 @@
 - [x] Task 6: Notion Integration - OAuth Authorization Flow
 - [ ] Task 7: Notion Integration - Plan-to-Notion Data Mapper
 - [ ] Task 8: Notion Integration - Client with Rate Limiting
-- [ ] Task 9: Notion Integration - Export Endpoint
+- [x] Task 9: Notion Integration - Export Endpoint
 - [ ] Task 10: Notion Integration - Delta Sync
 - [ ] Task 11: Google Calendar Integration - OAuth Flow
 - [ ] Task 12: Google Calendar - Event Mapper
@@ -24,15 +24,15 @@
   - Task 4: Shared OAuth Infrastructure - Token Encryption Utility
   - Task 5: Shared OAuth Infrastructure - Token Storage Functions
 
-- [ ] PR 2: Notion OAuth + Sync Schema
+- [x] PR 2: Notion OAuth + Sync Schema
   - Task 2: Database Schema - Notion Sync State Table
   - Task 6: Notion Integration - OAuth Authorization Flow
 
-- [ ] PR 3: Notion Mapper + Rate-Limited Client
+- [x] PR 3: Notion Mapper + Rate-Limited Client
   - Task 7: Notion Integration - Plan-to-Notion Data Mapper
   - Task 8: Notion Integration - Client with Rate Limiting
 
-- [ ] PR 4: Notion Export Endpoint (One-off)
+- [x] PR 4: Notion Export Endpoint (One-off)
   - Task 9: Notion Integration - Export Endpoint
 
 - [ ] PR 5: Notion Delta Sync
@@ -148,13 +148,13 @@
 
 # Task 9: Notion Integration - Export Endpoint
 
-- [ ] Step 1: Write failing integration test for export endpoint
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement sync utility module
-- [ ] Step 4: Implement export API endpoint
-- [ ] Step 5: Run test to verify it passes
-- [ ] Step 6: Run Coderabbit CLI and implement suggestions
-- [ ] Step 7: Commit
+- [x] Step 1: Write failing integration test for export endpoint
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement sync utility module
+- [x] Step 4: Implement export API endpoint
+- [x] Step 5: Run test to verify it passes
+- [x] Step 6: Run Coderabbit CLI and implement suggestions
+- [x] Step 7: Commit
 
 ---
 

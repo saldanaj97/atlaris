@@ -14,6 +14,7 @@ import {
   stripeWebhookEvents,
   usageMetrics,
   users,
+  notionSyncState,
 } from '@/lib/db/schema';
 
 /**
@@ -42,6 +43,9 @@ export async function truncateAll() {
   );
   await db.execute(
     sql`TRUNCATE TABLE ${learningPlans} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(
+    sql`TRUNCATE TABLE ${notionSyncState} RESTART IDENTITY CASCADE`
   );
   await db.execute(
     sql`TRUNCATE TABLE ${stripeWebhookEvents} RESTART IDENTITY CASCADE`
@@ -90,6 +94,33 @@ export async function ensureJobTypeEnumValue() {
         ALTER TYPE job_type ADD VALUE 'plan_regeneration';
       END IF;
     END $$;
+  `);
+}
+
+export async function ensureNotionSyncStateTable() {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS notion_sync_state (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      plan_id uuid NOT NULL,
+      user_id uuid NOT NULL,
+      notion_page_id text NOT NULL,
+      notion_database_id text,
+      sync_hash text NOT NULL,
+      last_synced_at timestamp with time zone NOT NULL,
+      created_at timestamp with time zone DEFAULT now() NOT NULL,
+      updated_at timestamp with time zone DEFAULT now() NOT NULL,
+      CONSTRAINT notion_sync_plan_id_unique UNIQUE(plan_id)
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS notion_sync_state_plan_id_idx
+    ON notion_sync_state (plan_id)
+  `);
+
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS notion_sync_state_user_id_idx
+    ON notion_sync_state (user_id)
   `);
 }
 
