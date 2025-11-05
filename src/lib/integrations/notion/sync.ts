@@ -6,9 +6,10 @@ import {
   tasks,
   notionSyncState,
 } from '@/lib/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { NotionClient } from './client';
 import { mapFullPlanToBlocks } from './mapper';
+import type { Task } from '@/lib/types/db';
 
 function calculatePlanHash(plan: { [key: string]: unknown }): string {
   return createHash('sha256').update(JSON.stringify(plan)).digest('hex');
@@ -16,6 +17,7 @@ function calculatePlanHash(plan: { [key: string]: unknown }): string {
 
 export async function exportPlanToNotion(
   planId: string,
+  userId: string,
   accessToken: string
 ): Promise<string> {
   // Fetch plan with modules and tasks
@@ -29,6 +31,7 @@ export async function exportPlanToNotion(
     throw new Error('Plan not found');
   }
 
+  // Ensure the plan belongs to the requesting user
   if (plan.userId !== userId) {
     throw new Error("Access denied: plan doesn't belong to user");
   }
@@ -60,16 +63,35 @@ export async function exportPlanToNotion(
     tasksByModuleId.set(task.moduleId, list);
   }
 
-  const fullPlan: FullPlan = {
+  // Build objects for hashing (full rows) and for Notion (minimal fields)
+  const fullPlanForHash = {
     ...plan,
     modules: planModules.map((mod) => ({
       ...mod,
-      tasks: tasksByModuleId.get(mod.id) ?? [],
+      tasks: (tasksByModuleId.get(mod.id) ?? []).sort(
+        (a, b) => a.order - b.order
+      ),
+    })),
+  };
+
+  const minimalPlanForNotion = {
+    topic: plan.topic,
+    skillLevel: plan.skillLevel,
+    weeklyHours: plan.weeklyHours,
+    modules: planModules.map((mod) => ({
+      title: mod.title,
+      description: mod.description ?? null,
+      estimatedMinutes: mod.estimatedMinutes,
+      tasks: (tasksByModuleId.get(mod.id) ?? []).map((t) => ({
+        title: t.title,
+        description: t.description ?? null,
+        estimatedMinutes: t.estimatedMinutes,
+      })),
     })),
   };
 
   // Map to Notion blocks
-  const blocks = mapFullPlanToBlocks(fullPlan);
+  const blocks = mapFullPlanToBlocks(minimalPlanForNotion);
 
   // Create Notion page
   const parentPageId = process.env.NOTION_PARENT_PAGE_ID || '';
@@ -89,7 +111,7 @@ export async function exportPlanToNotion(
   });
 
   // Calculate content hash for delta sync
-  const contentHash = calculatePlanHash(fullPlan);
+  const contentHash = calculatePlanHash(fullPlanForHash);
 
   // Store sync state
   await db.insert(notionSyncState).values({
@@ -122,16 +144,21 @@ export async function deltaSyncPlanToNotion(
     .select()
     .from(modules)
     .where(eq(modules.planId, planId))
-    .orderBy(modules.order);
+    .orderBy(asc(modules.order));
 
   // Fetch all tasks for all modules in the plan
   const moduleIds = planModules.map((m) => m.id);
   const planTasks =
     moduleIds.length > 0
-      ? await db.select().from(tasks).where(inArray(tasks.moduleId, moduleIds))
+      ? await db
+          .select()
+          .from(tasks)
+          .where(inArray(tasks.moduleId, moduleIds))
+          .orderBy(asc(tasks.moduleId), asc(tasks.order))
       : [];
 
-  const fullPlan = {
+  // Build objects for hashing (full rows) and for Notion (minimal fields)
+  const fullPlanForHash = {
     ...plan,
     modules: planModules.map((mod) => ({
       ...mod,
@@ -139,7 +166,25 @@ export async function deltaSyncPlanToNotion(
     })),
   };
 
-  const currentHash = calculatePlanHash(fullPlan);
+  const minimalPlanForNotion = {
+    topic: plan.topic,
+    skillLevel: plan.skillLevel,
+    weeklyHours: plan.weeklyHours,
+    modules: planModules.map((mod) => ({
+      title: mod.title,
+      description: mod.description ?? null,
+      estimatedMinutes: mod.estimatedMinutes,
+      tasks: planTasks
+        .filter((t) => t.moduleId === mod.id)
+        .map((t) => ({
+          title: t.title,
+          description: t.description ?? null,
+          estimatedMinutes: t.estimatedMinutes,
+        })),
+    })),
+  };
+
+  const currentHash = calculatePlanHash(fullPlanForHash);
 
   // Check existing sync state
   const [syncState] = await db
@@ -150,7 +195,7 @@ export async function deltaSyncPlanToNotion(
 
   if (!syncState) {
     // No previous sync, do full export
-    await exportPlanToNotion(planId, accessToken);
+    await exportPlanToNotion(planId, plan.userId, accessToken);
     return true;
   }
 
@@ -160,19 +205,7 @@ export async function deltaSyncPlanToNotion(
   }
 
   // Changes detected, update Notion page
-  const blocks = mapFullPlanToBlocks(
-    fullPlan as {
-      topic: string;
-      skillLevel: string;
-      weeklyHours: number;
-      modules: Array<{
-        title: string;
-        description: string | null;
-        estimatedMinutes: number;
-        tasks: typeof planTasks;
-      }>;
-    }
-  );
+  const blocks = mapFullPlanToBlocks(minimalPlanForNotion);
   const client = new NotionClient(accessToken);
 
   // Clear existing blocks and append new ones
