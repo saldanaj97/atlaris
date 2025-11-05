@@ -35,7 +35,7 @@
 - [x] PR 4: Notion Export Endpoint (One-off)
   - Task 9: Notion Integration - Export Endpoint
 
-- [ ] PR 5: Notion Delta Sync
+- [x] PR 5: Notion Delta Sync
   - Task 10: Notion Integration - Delta Sync
 
 - [ ] PR 6: Google OAuth + Sync Schema
