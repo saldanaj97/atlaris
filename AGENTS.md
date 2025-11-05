@@ -12,20 +12,20 @@ This file provides guidance when working with code in this repository.
 - Type checking: tsc --noEmit
 - Notable deps:
   - Auth: @clerk/nextjs
-  - Database: @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, postgres
+  - Database: @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, drizzle-seed, postgres
   - AI/LLM: @ai-sdk/google, @ai-sdk/openai, ai (Vercel AI SDK)
   - Payments: stripe
   - UI: @radix-ui/\*, lucide-react, next-themes, sonner, class-variance-authority, tailwind-merge
-  - Background workers: tsx (for worker execution)
-  - Utilities: zod, nanoid, p-retry, dotenv
+  - Background workers: tsx (for worker execution), async-mutex (test coordination)
+  - Utilities: zod, nanoid, p-retry, dotenv, date-fns, lru-cache
 
 ## Important Rules/References(read before coding or committing)
 
 ### General rules
 
-- When you are done with the implementation, run the CodeRabbit CLI to review the code changes.
-- Run the command: `coderabbit --prompt-only -t uncommitted`.
-- When running the CodeRabbit CLI to review code changes, don't run it more than 3 times in a given set of changes.
+- When you are done with code implementation, run the command: `coderabbit --prompt-only -t uncommitted` to review the code changes.
+- Only run the CodeRabbit CLI command on changes to actual code, not any .md files or other non-code files.
+- When given the proposed changes, review the changes and make sure they are correct, and make any necessary adjustments.
 
 - Ignore any assumptions you may have about how this project works based on your prior experience. This project has its own specific architecture, structure, and conventions that must be followed. Reason from facts only.
 
@@ -78,8 +78,9 @@ Tests cover:
 - Dev server (do not auto-run; listed for reference)
   - pnpm dev (Next.js dev server)
   - pnpm dev:worker (background worker for job processing)
+  - pnpm dev:regenerator (background worker for plan regeneration)
   - pnpm dev:stripe (Stripe webhook listener for local testing)
-  - pnpm dev:all (runs all three services concurrently)
+  - pnpm dev:all (runs all four services concurrently)
 - Build (do not auto-run; listed for reference)
   - pnpm build
 - Start production server (do not auto-run; listed for reference)
@@ -104,11 +105,17 @@ Tests cover:
   - Full refresh: pnpm seed:refresh
 - Tests
   - pnpm test (all tests)
-  - pnpm test:unit
-  - pnpm test:integration
-  - pnpm test:e2e
-  - pnpm test:rls (Row Level Security tests)
-  - pnpm test:vitest (alias for all Vitest tests)
+  - pnpm test:unit:full (all unit tests with DB setup)
+  - pnpm test:unit:fast (unit tests skipping DB setup via SKIP_DB_TEST_SETUP=true)
+  - pnpm test:unit:related (unit tests for changed files)
+  - pnpm test:integration:full (all integration tests via bash script)
+  - pnpm test:integration:related (integration tests for changed files)
+  - pnpm test:e2e:full (all e2e tests via bash script)
+  - pnpm test:e2e:related (e2e tests for changed files)
+  - pnpm test:rls:full (Row Level Security tests via bash script)
+  - pnpm test:rls:related (RLS tests for changed files)
+  - pnpm test:suite:full (full test suite without e2e)
+  - pnpm test:suite:all (complete suite including e2e)
   - pnpm test:watch (watch mode)
 
 ## Project structure and architecture
@@ -127,11 +134,12 @@ Tests cover:
     - src/lib/db/schema.ts - Database schema definitions
     - src/lib/db/enums.ts - PostgreSQL enum definitions
     - src/lib/db/drizzle.ts - Drizzle client initialization
-    - src/lib/db/queries.ts - Database queries
+    - src/lib/db/queries.ts - Database queries (legacy, being modularized)
+    - src/lib/db/queries/ - Modular query files (users.ts, plans.ts, modules.ts, tasks.ts, resources.ts, schedules.ts, attempts.ts, index.ts)
     - src/lib/db/seed.ts, src/lib/db/seed-cli.ts - Database seeding utilities
     - src/lib/db/usage.ts - Usage tracking queries
     - src/lib/db/migrations/ - Drizzle migrations output directory
-  - Background workers: src/workers/ (plan-generator.ts, index.ts)
+  - Background workers: src/workers/ (index.ts, plan-generator.ts, plan-regenerator.ts)
   - Tests: tests/ directory with subdirectories (unit/, integration/, e2e/, security/)
   - Documentation: docs/ directory (project-info/, testing/, proposals/, etc.)
 
@@ -156,8 +164,8 @@ Tests cover:
   - Database: Drizzle ORM with postgres-js + Supabase
     - Connection: src/lib/db/drizzle.ts uses DATABASE_URL (store in .env.local or .env.test). For Supabase, include `?sslmode=require`.
     - Schema: src/lib/db/schema.ts (tables) + src/lib/db/enums.ts (PostgreSQL enums)
-    - Queries: src/lib/db/queries.ts
-    - Migrations: managed via drizzle-kit; out dir is src/lib/db/migrations
+    - Queries: src/lib/db/queries/ (modular query files by entity) + src/lib/db/queries.ts (legacy)
+    - Migrations: managed via drizzle-kit; out dir is src/lib/db/migrations/
     - RLS policies: Defined in schema using pgPolicy for Supabase Row Level Security
   - Payments: Stripe integration for subscription billing
   - AI providers: Vercel AI SDK with OpenAI and Google providers for learning plan generation
@@ -201,11 +209,11 @@ Tests cover:
 - Code locations
   - Schema: src/lib/db/schema.ts (tables + RLS policies)
   - Enums: src/lib/db/enums.ts (PostgreSQL enum definitions)
-  - Queries: src/lib/db/queries.ts
+  - Queries: src/lib/db/queries/ (modular query files by entity) + src/lib/db/queries.ts (legacy)
   - Usage tracking: src/lib/db/usage.ts
   - Seeding: src/lib/db/seed.ts, src/lib/db/seed-cli.ts
-  - Migrations: src/lib/db/migrations (drizzle-kit)
-  - Drizzle config: drizzle.config.ts (references both schema.ts and enums.ts)
+  - Migrations: src/lib/db/migrations/ (drizzle-kit output)
+  - Drizzle configs: drizzle.config.ts (main), drizzle-test.config.ts (test env)
 - Implemented features
   - Stripe subscription billing (implemented)
   - Background job processing for AI plan generation
@@ -226,17 +234,26 @@ Tests cover:
   - tests/security/ - Row Level Security (RLS) policy tests
   - tests/setup.ts - Global test setup file
 - Test configuration:
-  - vitest.config.ts - Single-threaded execution to prevent DB conflicts
+  - vitest.config.ts - Multi-project config (integration, e2e, security, unit)
+  - Integration/e2e/security: Single-threaded execution with DB setup to prevent conflicts
+  - Unit tests: Concurrent execution with optional DB setup skip via SKIP_DB_TEST_SETUP
   - Uses .env.test for test environment variables (falls back to .env locally)
   - Isolated test environment with jsdom for React component testing
+  - Test timeouts: 90s for integration/e2e/security, 20s for unit tests
 - Test files: \*.spec.ts, \*.spec.tsx
 - Test commands:
-  - pnpm test (full test suite)
-  - pnpm test:unit (unit tests only)
-  - pnpm test:integration (integration tests only)
-  - pnpm test:e2e (end-to-end tests only)
-  - pnpm test:rls (RLS security tests only)
-  - pnpm test:vitest (alias for all Vitest tests)
+  - pnpm test (all tests)
+  - pnpm test:unit:full (all unit tests with DB setup)
+  - pnpm test:unit:fast (unit tests skipping DB setup via SKIP_DB_TEST_SETUP=true)
+  - pnpm test:unit:related (unit tests for changed files)
+  - pnpm test:integration:full (all integration tests via bash script)
+  - pnpm test:integration:related (integration tests for changed files)
+  - pnpm test:e2e:full (all e2e tests via bash script)
+  - pnpm test:e2e:related (e2e tests for changed files)
+  - pnpm test:rls:full (Row Level Security tests via bash script)
+  - pnpm test:rls:related (RLS tests for changed files)
+  - pnpm test:suite:full (full test suite without e2e)
+  - pnpm test:suite:all (complete suite including e2e)
   - pnpm test:watch (watch mode)
 
 ## Notes for future tasks
