@@ -6,7 +6,7 @@
 - [x] Task 4: Shared OAuth Infrastructure - Token Encryption Utility
 - [x] Task 5: Shared OAuth Infrastructure - Token Storage Functions
 - [ ] Task 6: Notion Integration - OAuth Authorization Flow
-- [ ] Task 7: Notion Integration - Plan-to-Notion Data Mapper
+- [x] Task 7: Notion Integration - Plan-to-Notion Data Mapper
 - [ ] Task 8: Notion Integration - Client with Rate Limiting
 - [ ] Task 9: Notion Integration - Export Endpoint
 - [ ] Task 10: Notion Integration - Delta Sync
@@ -24,7 +24,7 @@
   - Task 4: Shared OAuth Infrastructure - Token Encryption Utility
   - Task 5: Shared OAuth Infrastructure - Token Storage Functions
 
-- [ ] PR 2: Notion OAuth + Sync Schema
+- [x] PR 2: Notion OAuth + Sync Schema
   - Task 2: Database Schema - Notion Sync State Table
   - Task 6: Notion Integration - OAuth Authorization Flow
 
@@ -125,13 +125,13 @@
 
 # Task 7: Notion Integration - Plan-to-Notion Data Mapper
 
-- [ ] Step 1: Write failing unit test for mapping
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement mapper functions
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Install Notion SDK
-- [ ] Step 6: Run Coderabbit CLI and implement suggestions
-- [ ] Step 7: Commit
+- [x] Step 1: Write failing unit test for mapping
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement mapper functions
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Install Notion SDK
+- [x] Step 6: Run Coderabbit CLI and implement suggestions
+- [x] Step 7: Commit
 
 ---
 
