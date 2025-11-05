@@ -100,11 +100,11 @@
 
 # Task 5: Shared OAuth Infrastructure - Token Storage Functions
 
-- [ ] Step 1: Write failing integration test for token storage
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement store/get/delete encrypted tokens
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Run Coderabbit CLI and implement suggestions
+- [x] Step 1: Write failing integration test for token storage
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement store/get/delete encrypted tokens
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Run Coderabbit CLI and implement suggestions
 - [ ] Step 6: Commit
 
 ---

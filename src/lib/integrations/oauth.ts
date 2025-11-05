@@ -1,4 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { db } from '@/lib/db/drizzle';
+import { integrationTokens } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
@@ -69,4 +72,102 @@ export function decryptToken(encryptedData: string): OAuthTokenData {
     expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : undefined,
     scope: parsed.scope,
   };
+}
+
+export type IntegrationProvider = 'notion' | 'google_calendar';
+
+interface StoreTokensParams {
+  userId: string;
+  provider: IntegrationProvider;
+  tokenData: OAuthTokenData;
+  workspaceId?: string;
+  workspaceName?: string;
+  botId?: string;
+}
+
+export async function storeOAuthTokens(
+  params: StoreTokensParams
+): Promise<void> {
+  const { userId, provider, tokenData, workspaceId, workspaceName, botId } =
+    params;
+
+  const encryptedAccess = encryptToken({
+    ...tokenData,
+    refreshToken: undefined,
+  });
+  const encryptedRefresh = tokenData.refreshToken
+    ? encryptToken({
+        accessToken: tokenData.refreshToken,
+        scope: tokenData.scope,
+      })
+    : null;
+
+  // Use upsert pattern: delete then insert (Drizzle doesn't have native upsert for Postgres)
+  await db
+    .delete(integrationTokens)
+    .where(
+      and(
+        eq(integrationTokens.userId, userId),
+        eq(integrationTokens.provider, provider)
+      )
+    );
+
+  await db.insert(integrationTokens).values({
+    userId,
+    provider,
+    encryptedAccessToken: encryptedAccess,
+    encryptedRefreshToken: encryptedRefresh,
+    scope: tokenData.scope,
+    expiresAt: tokenData.expiresAt,
+    workspaceId,
+    workspaceName,
+    botId,
+    updatedAt: new Date(),
+  });
+}
+
+export async function getOAuthTokens(
+  userId: string,
+  provider: IntegrationProvider
+): Promise<OAuthTokenData | null> {
+  const [record] = await db
+    .select()
+    .from(integrationTokens)
+    .where(
+      and(
+        eq(integrationTokens.userId, userId),
+        eq(integrationTokens.provider, provider)
+      )
+    )
+    .limit(1);
+
+  if (!record) {
+    return null;
+  }
+
+  const accessTokenData = decryptToken(record.encryptedAccessToken);
+  const refreshToken = record.encryptedRefreshToken
+    ? decryptToken(record.encryptedRefreshToken).accessToken
+    : undefined;
+
+  return {
+    accessToken: accessTokenData.accessToken,
+    refreshToken,
+    expiresAt: record.expiresAt ?? undefined,
+    scope: record.scope,
+  };
+}
+
+export async function deleteOAuthTokens(
+  userId: string,
+  provider: IntegrationProvider
+): Promise<void> {
+  await db
+    .delete(integrationTokens)
+    .where(
+      and(
+        eq(integrationTokens.userId, userId),
+        eq(integrationTokens.provider, provider)
+      )
+    );
 }
