@@ -32,11 +32,61 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = (await request.json()) as { planId?: string };
+import { z } from 'zod';
 
-  if (!body.planId || typeof body.planId !== 'string') {
-    return NextResponse.json({ error: 'planId required' }, { status: 400 });
+const exportRequestSchema = z.object({
+  planId: z.string().uuid('Invalid plan ID format'),
+});
+
+export async function POST(request: NextRequest) {
+  const { userId: clerkUserId } = await auth();
+
+  if (!clerkUserId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkUserId, clerkUserId))
+    .limit(1);
+
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  }
+
+  // Get Notion token
+  const notionTokens = await getOAuthTokens(user.id, 'notion');
+  if (!notionTokens) {
+    return NextResponse.json(
+      { error: 'Notion not connected' },
+      { status: 401 }
+    );
+  }
+
+  let body;
+  try {
+    const rawBody = await request.json();
+    body = exportRequestSchema.parse(rawBody);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Invalid request: planId must be a valid UUID' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const notionPageId = await exportPlanToNotion(
+      body.planId,
+      notionTokens.accessToken
+    );
+
+    return NextResponse.json({ notionPageId, success: true });
+  } catch (error) {
+    console.error('Notion export failed:', error);
+    return NextResponse.json({ error: 'Export failed' }, { status: 500 });
+  }
+}
 
   try {
     const notionPageId = await exportPlanToNotion(
