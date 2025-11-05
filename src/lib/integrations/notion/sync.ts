@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { db } from '@/lib/db/drizzle';
 import {
   learningPlans,
@@ -5,26 +6,47 @@ import {
   tasks,
   notionSyncState,
 } from '@/lib/db/schema';
-import { eq, inArray, asc } from 'drizzle-orm';
-import type { InferSelectModel } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { NotionClient } from './client';
 import { mapFullPlanToBlocks } from './mapper';
-import { createHash } from 'node:crypto';
+import type { Task } from '@/lib/types/db';
 
-type LearningPlan = InferSelectModel<typeof learningPlans>;
-type Module = InferSelectModel<typeof modules>;
-type Task = InferSelectModel<typeof tasks>;
+// Deterministic JSON stringify: sorts object keys recursively
+function stableStringify(obj: unknown): string {
+  if (obj === null || typeof obj !== 'object') {
+    return JSON.stringify(obj);
+  }
+  if (obj instanceof Date) {
+    return JSON.stringify(obj.toJSON());
+  }
+  if (Array.isArray(obj)) {
+    return '[' + obj.map(stableStringify).join(',') + ']';
+  }
+  const keys = Object.keys(obj).sort();
+  return (
+    '{' +
+    keys
+      .map(
+        (k) =>
+          JSON.stringify(k) +
+          ':' +
+          stableStringify((obj as Record<string, unknown>)[k])
+      )
+      .join(',') +
+    '}'
+  );
+}
 
-type FullPlan = LearningPlan & {
-  modules: Array<Module & { tasks: Task[] }>;
-};
+function calculatePlanHash(plan: { [key: string]: unknown }): string {
+  return createHash('sha256').update(stableStringify(plan)).digest('hex');
+}
 
 export async function exportPlanToNotion(
   planId: string,
   userId: string,
   accessToken: string
 ): Promise<string> {
-  // Fetch plan first
+  // Fetch plan with modules and tasks
   const [plan] = await db
     .select()
     .from(learningPlans)
@@ -35,6 +57,7 @@ export async function exportPlanToNotion(
     throw new Error('Plan not found');
   }
 
+  // Ensure the plan belongs to the requesting user
   if (plan.userId !== userId) {
     throw new Error("Access denied: plan doesn't belong to user");
   }
@@ -66,16 +89,35 @@ export async function exportPlanToNotion(
     tasksByModuleId.set(task.moduleId, list);
   }
 
-  const fullPlan: FullPlan = {
+  // Build objects for hashing (full rows) and for Notion (minimal fields)
+  const fullPlanForHash = {
     ...plan,
     modules: planModules.map((mod) => ({
       ...mod,
-      tasks: tasksByModuleId.get(mod.id) ?? [],
+      tasks: (tasksByModuleId.get(mod.id) ?? []).sort(
+        (a, b) => a.order - b.order
+      ),
+    })),
+  };
+
+  const minimalPlanForNotion = {
+    topic: plan.topic,
+    skillLevel: plan.skillLevel,
+    weeklyHours: plan.weeklyHours,
+    modules: planModules.map((mod) => ({
+      title: mod.title,
+      description: mod.description ?? null,
+      estimatedMinutes: mod.estimatedMinutes,
+      tasks: (tasksByModuleId.get(mod.id) ?? []).map((t) => ({
+        title: t.title,
+        description: t.description ?? null,
+        estimatedMinutes: t.estimatedMinutes,
+      })),
     })),
   };
 
   // Map to Notion blocks
-  const blocks = mapFullPlanToBlocks(fullPlan);
+  const blocks = mapFullPlanToBlocks(minimalPlanForNotion);
 
   // Create Notion page
   const parentPageId = process.env.NOTION_PARENT_PAGE_ID || '';
@@ -95,51 +137,132 @@ export async function exportPlanToNotion(
   });
 
   // Calculate content hash for delta sync
-  const contentForHash = {
+  const contentHash = calculatePlanHash(fullPlanForHash);
+
+  // Store sync state
+  await db.insert(notionSyncState).values({
+    planId,
+    userId: plan.userId,
+    notionPageId: notionPage.id,
+    syncHash: contentHash,
+    lastSyncedAt: new Date(),
+  });
+
+  return notionPage.id;
+}
+
+export async function deltaSyncPlanToNotion(
+  planId: string,
+  accessToken: string
+): Promise<boolean> {
+  // Fetch current plan
+  const [plan] = await db
+    .select()
+    .from(learningPlans)
+    .where(eq(learningPlans.id, planId))
+    .limit(1);
+
+  if (!plan) {
+    throw new Error('Plan not found');
+  }
+
+  const planModules = await db
+    .select()
+    .from(modules)
+    .where(eq(modules.planId, planId))
+    .orderBy(asc(modules.order));
+
+  // Fetch all tasks for all modules in the plan
+  const moduleIds = planModules.map((m) => m.id);
+  const planTasks =
+    moduleIds.length > 0
+      ? await db
+          .select()
+          .from(tasks)
+          .where(inArray(tasks.moduleId, moduleIds))
+          .orderBy(asc(tasks.moduleId), asc(tasks.order))
+      : [];
+
+  // Build objects for hashing (full rows) and for Notion (minimal fields)
+  const fullPlanForHash = {
+    ...plan,
+    modules: planModules.map((mod) => ({
+      ...mod,
+      tasks: planTasks.filter((t) => t.moduleId === mod.id),
+    })),
+  };
+
+  const minimalPlanForNotion = {
     topic: plan.topic,
     skillLevel: plan.skillLevel,
     weeklyHours: plan.weeklyHours,
-    modules: fullPlan.modules.map((mod) => ({
-      order: mod.order,
+    modules: planModules.map((mod) => ({
       title: mod.title,
-      description: mod.description,
+      description: mod.description ?? null,
       estimatedMinutes: mod.estimatedMinutes,
-      tasks: mod.tasks.map((t) => ({
-        order: t.order,
-        title: t.title,
-        description: t.description,
-        estimatedMinutes: t.estimatedMinutes,
-      })),
+      tasks: planTasks
+        .filter((t) => t.moduleId === mod.id)
+        .map((t) => ({
+          title: t.title,
+          description: t.description ?? null,
+          estimatedMinutes: t.estimatedMinutes,
+        })),
     })),
   };
-  const contentHash = createHash('sha256')
-    .update(JSON.stringify(contentForHash))
-    .digest('hex');
 
-  // Store sync state
-  const pageId =
-    'id' in notionPage && typeof notionPage.id === 'string'
-      ? notionPage.id
-      : '';
+  const currentHash = calculatePlanHash(fullPlanForHash);
 
-  await db
-    .insert(notionSyncState)
-    .values({
-      planId,
-      userId: plan.userId,
-      notionPageId: pageId,
-      syncHash: contentHash,
-      lastSyncedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: [notionSyncState.planId],
-      set: {
-        userId: plan.userId,
-        notionPageId: pageId,
-        syncHash: contentHash,
-        lastSyncedAt: new Date(),
+  // Check existing sync state
+  const [syncState] = await db
+    .select()
+    .from(notionSyncState)
+    .where(eq(notionSyncState.planId, planId))
+    .limit(1);
+
+  if (!syncState) {
+    // No previous sync, do full export
+    await exportPlanToNotion(planId, plan.userId, accessToken);
+    return true;
+  }
+
+  if (syncState.syncHash === currentHash) {
+    // No changes detected
+    return false;
+  }
+
+  // Changes detected, update Notion page
+  const blocks = mapFullPlanToBlocks(minimalPlanForNotion);
+  const client = new NotionClient(accessToken);
+  const pageId = syncState.notionPageId;
+
+  // Update page title
+  await client.updatePage({
+    page_id: pageId,
+    properties: {
+      title: {
+        title: [
+          {
+            type: 'text' as const,
+            text: { content: plan.topic },
+          },
+        ],
       },
-    });
+    },
+  });
 
-  return pageId;
+  // Replace blocks (archives existing and appends new ones)
+
+  await client.replaceBlocks(pageId, blocks);
+
+  // Update sync state
+  await db
+    .update(notionSyncState)
+    .set({
+      syncHash: currentHash,
+      lastSyncedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(notionSyncState.planId, planId));
+
+  return true;
 }
