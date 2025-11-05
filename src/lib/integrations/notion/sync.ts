@@ -67,21 +67,7 @@ export async function exportPlanToNotion(
   };
 
   // Map to Notion blocks
-  const blocks = mapFullPlanToBlocks({
-    topic: plan.topic,
-    skillLevel: plan.skillLevel,
-    weeklyHours: plan.weeklyHours,
-    modules: fullPlan.modules.map((mod) => ({
-      title: mod.title,
-      description: mod.description,
-      estimatedMinutes: mod.estimatedMinutes,
-      tasks: mod.tasks.map((t) => ({
-        title: t.title,
-        description: t.description,
-        estimatedMinutes: t.estimatedMinutes,
-      })),
-    })),
-  });
+  const blocks = mapFullPlanToBlocks(fullPlan);
 
   // Create Notion page
   const client = new NotionClient(accessToken);
