@@ -371,12 +371,118 @@ export const googleCalendarSyncState = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => ({
-    planIdUnique: unique('gcal_sync_plan_id_unique').on(table.planId),
-    planIdIdx: index('google_calendar_sync_state_plan_id_idx').on(table.planId),
-    userIdIdx: index('google_calendar_sync_state_user_id_idx').on(table.userId),
-  })
-);
+  (table) => [
+    unique('gcal_sync_plan_id_unique').on(table.planId),
+    index('google_calendar_sync_state_plan_id_idx').on(table.planId),
+    index('google_calendar_sync_state_user_id_idx').on(table.userId),
+
+    // RLS Policies
+
+    // Users can read only their own sync state
+    pgPolicy('google_calendar_sync_state_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+
+    // Service role can read all sync state
+    pgPolicy('google_calendar_sync_state_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+
+    // Users can insert sync state only for themselves and their own plans
+    pgPolicy('google_calendar_sync_state_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`
+        ${table.userId} IN (
+          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        )
+        AND EXISTS (
+          SELECT 1 FROM ${learningPlans}
+          WHERE ${learningPlans.id} = ${table.planId}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
+        )
+      `,
+    }),
+
+    // Service role can insert any sync state
+    pgPolicy('google_calendar_sync_state_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
+
+    // Users can update only their own sync state and their own plans
+    pgPolicy('google_calendar_sync_state_update_own', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`
+        ${table.userId} IN (
+          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        )
+        AND EXISTS (
+          SELECT 1 FROM ${learningPlans}
+          WHERE ${learningPlans.id} = ${table.planId}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
+        )
+      `,
+      withCheck: sql`
+        ${table.userId} IN (
+          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        )
+        AND EXISTS (
+          SELECT 1 FROM ${learningPlans}
+          WHERE ${learningPlans.id} = ${table.planId}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
+        )
+      `,
+    }),
+
+    // Service role can update any sync state
+    pgPolicy('google_calendar_sync_state_update_service', {
+      for: 'update',
+      to: serviceRole,
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
+
+    // Users can delete only their own sync state and their own plans
+    pgPolicy('google_calendar_sync_state_delete_own', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`
+        ${table.userId} IN (
+          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        )
+        AND EXISTS (
+          SELECT 1 FROM ${learningPlans}
+          WHERE ${learningPlans.id} = ${table.planId}
+          AND ${learningPlans.userId} IN (
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+          )
+        )
+      `,
+    }),
+
+    // Service role can delete any sync state
+    pgPolicy('google_calendar_sync_state_delete_service', {
+      for: 'delete',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+  ]
+).enableRLS();
 
 export const taskCalendarEvents = pgTable(
   'task_calendar_events',
@@ -397,15 +503,69 @@ export const taskCalendarEvents = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => ({
-    taskIdUnique: unique('task_calendar_event_unique').on(
-      table.taskId,
-      table.userId
-    ),
-    taskIdIdx: index('task_calendar_events_task_id_idx').on(table.taskId),
-    userIdIdx: index('task_calendar_events_user_id_idx').on(table.userId),
-  })
-);
+  (table) => [
+    unique('task_calendar_event_unique').on(table.taskId, table.userId),
+    index('task_calendar_events_task_id_idx').on(table.taskId),
+    index('task_calendar_events_user_id_idx').on(table.userId),
+
+    // RLS Policies
+    pgPolicy('task_calendar_events_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('task_calendar_events_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+
+    pgPolicy('task_calendar_events_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('task_calendar_events_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
+
+    pgPolicy('task_calendar_events_update_own', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('task_calendar_events_update_service', {
+      for: 'update',
+      to: serviceRole,
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
+
+    pgPolicy('task_calendar_events_delete_own', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('task_calendar_events_delete_service', {
+      for: 'delete',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+  ]
+).enableRLS();
 
 // Usage metrics table
 export const usageMetrics = pgTable(
