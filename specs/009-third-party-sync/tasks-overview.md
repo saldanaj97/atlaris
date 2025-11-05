@@ -1,11 +1,11 @@
 # Progress Overview
 
 - [x] Task 1: Database Schema - Integration Tokens Table
-- [ ] Task 2: Database Schema - Notion Sync State Table
+- [x] Task 2: Database Schema - Notion Sync State Table
 - [ ] Task 3: Database Schema - Google Calendar Sync State Table
 - [x] Task 4: Shared OAuth Infrastructure - Token Encryption Utility
 - [x] Task 5: Shared OAuth Infrastructure - Token Storage Functions
-- [ ] Task 6: Notion Integration - OAuth Authorization Flow
+- [x] Task 6: Notion Integration - OAuth Authorization Flow
 - [ ] Task 7: Notion Integration - Plan-to-Notion Data Mapper
 - [ ] Task 8: Notion Integration - Client with Rate Limiting
 - [ ] Task 9: Notion Integration - Export Endpoint
@@ -69,11 +69,11 @@
 
 # Task 2: Database Schema - Notion Sync State Table
 
-- [ ] Step 1: Add notion_sync_state table to schema
-- [ ] Step 2: Generate migration
-- [ ] Step 3: Apply migrations to local and test databases
-- [ ] Step 4: Run Coderabbit CLI and implement suggestions
-- [ ] Step 5: Commit schema changes
+- [x] Step 1: Add notion_sync_state table to schema
+- [x] Step 2: Generate migration
+- [x] Step 3: Apply migrations to local and test databases
+- [x] Step 4: Run Coderabbit CLI and implement suggestions
+- [x] Step 5: Commit schema changes
 
 ---
 
@@ -111,15 +111,15 @@
 
 # Task 6: Notion Integration - OAuth Authorization Flow
 
-- [ ] Step 1: Write failing test for OAuth redirect
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement authorization redirect endpoint
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Add callback test (failing)
-- [ ] Step 6: Implement callback endpoint
-- [ ] Step 7: Run tests to verify they pass
-- [ ] Step 8: Run Coderabbit CLI and implement suggestions
-- [ ] Step 9: Commit
+- [x] Step 1: Write failing test for OAuth redirect
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement authorization redirect endpoint
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Add callback test (failing)
+- [x] Step 6: Implement callback endpoint
+- [x] Step 7: Run tests to verify they pass
+- [x] Step 8: Run Coderabbit CLI and implement suggestions
+- [x] Step 9: Commit
 
 ---
 
