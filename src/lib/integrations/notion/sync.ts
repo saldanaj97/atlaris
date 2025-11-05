@@ -29,49 +29,56 @@ export async function exportPlanToNotion(
     throw new Error('Plan not found');
   }
 
+  if (plan.userId !== userId) {
+    throw new Error("Access denied: plan doesn't belong to user");
+  }
+
   const planModules = await db
     .select()
     .from(modules)
     .where(eq(modules.planId, planId))
-    .orderBy(modules.order);
+    .orderBy(asc(modules.order));
 
-  // Fetch all tasks for all modules in the plan
-  const moduleIds = planModules.map((m) => m.id);
+  // Get all module IDs
+  const moduleIds = planModules.map((mod) => mod.id);
+
+  // Fetch all tasks for all modules
   const planTasks =
     moduleIds.length > 0
-      ? await db.select().from(tasks).where(inArray(tasks.moduleId, moduleIds))
+      ? await db
+          .select()
+          .from(tasks)
+          .where(inArray(tasks.moduleId, moduleIds))
+          .orderBy(asc(tasks.moduleId), asc(tasks.order))
       : [];
 
-  // Combine data
-  const fullPlan = {
+  // Combine data (optimize task grouping)
+  const tasksByModuleId = new Map<string, Task[]>();
+  for (const task of planTasks) {
+    const list = tasksByModuleId.get(task.moduleId) ?? [];
+    list.push(task);
+    tasksByModuleId.set(task.moduleId, list);
+  }
+
+  const fullPlan: FullPlan = {
     ...plan,
     modules: planModules.map((mod) => ({
       ...mod,
-      tasks: planTasks.filter((t) => t.moduleId === mod.id),
+      tasks: tasksByModuleId.get(mod.id) ?? [],
     })),
   };
 
   // Map to Notion blocks
-  const blocks = mapFullPlanToBlocks(
-    fullPlan as {
-      topic: string;
-      skillLevel: string;
-      weeklyHours: number;
-      modules: Array<{
-        title: string;
-        description: string | null;
-        estimatedMinutes: number;
-        tasks: typeof planTasks;
-      }>;
-    }
-  );
+  const blocks = mapFullPlanToBlocks(fullPlan);
 
   // Create Notion page
+  const parentPageId = process.env.NOTION_PARENT_PAGE_ID || '';
+
   const client = new NotionClient(accessToken);
   const notionPage = await client.createPage({
     parent: {
       type: 'page_id',
-      page_id: process.env.NOTION_PARENT_PAGE_ID || '',
+      page_id: parentPageId,
     },
     properties: {
       title: {

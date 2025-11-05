@@ -1,31 +1,16 @@
-import { Client, APIResponseError } from '@notionhq/client';
+import { Client } from '@notionhq/client';
 import type {
+  AppendBlockChildrenResponse,
+  BlockObjectRequest,
   CreatePageParameters,
+  CreatePageResponse,
   UpdatePageParameters,
-  AppendBlockChildrenParameters,
-} from '@notionhq/client/build/src/api-endpoints';
-import type {
-  PageObjectResponse,
-  PartialPageObjectResponse,
+  UpdatePageResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 import pRetry from 'p-retry';
 
 const MAX_REQUESTS_PER_SECOND = 3;
 const REQUEST_INTERVAL = 1000 / MAX_REQUESTS_PER_SECOND;
-
-function isRetriableError(error: unknown): boolean {
-  if (error instanceof APIResponseError) {
-    const status = error.status;
-    // Don't retry 4xx client errors (auth, validation, etc.)
-    if (status >= 400 && status < 500) {
-      return false;
-    }
-    // Retry 5xx server errors and rate limits (429)
-    return status >= 500 || status === 429;
-  }
-  // Retry network errors and other unknown errors
-  return true;
-}
 
 export class NotionClient {
   private client: Client;
@@ -53,12 +38,11 @@ export class NotionClient {
     return this.requestQueue;
   }
 
-  async createPage(
-    params: CreatePageParameters
-  ): Promise<PageObjectResponse | PartialPageObjectResponse> {
+  async createPage(params: CreatePageParameters): Promise<CreatePageResponse> {
+    await this.rateLimit();
+
     return pRetry(
       async () => {
-        await this.rateLimit();
         const response = await this.client.pages.create(params);
         return response;
       },
@@ -66,23 +50,23 @@ export class NotionClient {
         retries: 3,
         minTimeout: 1000,
         maxTimeout: 5000,
-        shouldRetry: ({ error }) => isRetriableError(error),
-        onFailedAttempt: ({ error, attemptNumber }) => {
+        onFailedAttempt: (error) => {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error';
           console.warn(
-            `Notion API createPage attempt ${attemptNumber} failed:`,
-            error.message
+            `Notion API attempt ${error.attemptNumber} failed:`,
+            errorMessage
           );
         },
       }
     );
   }
 
-  async updatePage(
-    params: UpdatePageParameters
-  ): Promise<PageObjectResponse | PartialPageObjectResponse> {
+  async updatePage(params: UpdatePageParameters): Promise<UpdatePageResponse> {
+    await this.rateLimit();
+
     return pRetry(
       async () => {
-        await this.rateLimit();
         const response = await this.client.pages.update(params);
         return response;
       },
@@ -90,11 +74,12 @@ export class NotionClient {
         retries: 3,
         minTimeout: 1000,
         maxTimeout: 5000,
-        shouldRetry: ({ error }) => isRetriableError(error),
-        onFailedAttempt: ({ error, attemptNumber }) => {
+        onFailedAttempt: (error) => {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error';
           console.warn(
-            `Notion API updatePage attempt ${attemptNumber} failed:`,
-            error.message
+            `Notion API attempt ${error.attemptNumber} failed:`,
+            errorMessage
           );
         },
       }
@@ -103,11 +88,12 @@ export class NotionClient {
 
   async appendBlocks(
     pageId: string,
-    blocks: AppendBlockChildrenParameters['children']
-  ): Promise<ReturnType<Client['blocks']['children']['append']>> {
+    blocks: BlockObjectRequest[]
+  ): Promise<AppendBlockChildrenResponse> {
+    await this.rateLimit();
+
     return pRetry(
       async () => {
-        await this.rateLimit();
         const response = await this.client.blocks.children.append({
           block_id: pageId,
           children: blocks,
@@ -118,11 +104,12 @@ export class NotionClient {
         retries: 3,
         minTimeout: 1000,
         maxTimeout: 5000,
-        shouldRetry: ({ error }) => isRetriableError(error),
-        onFailedAttempt: ({ error, attemptNumber }) => {
+        onFailedAttempt: (error) => {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error';
           console.warn(
-            `Notion API appendBlocks (pageId: ${pageId}) attempt ${attemptNumber} failed:`,
-            error.message
+            `Notion API attempt ${error.attemptNumber} failed:`,
+            errorMessage
           );
         },
       }
