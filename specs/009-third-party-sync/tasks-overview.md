@@ -1,6 +1,6 @@
 # Progress Overview
 
-- [ ] Task 1: Database Schema - Integration Tokens Table
+- [x] Task 1: Database Schema - Integration Tokens Table
 - [ ] Task 2: Database Schema - Notion Sync State Table
 - [ ] Task 3: Database Schema - Google Calendar Sync State Table
 - [ ] Task 4: Shared OAuth Infrastructure - Token Encryption Utility
@@ -57,13 +57,13 @@
 
 # Task 1: Database Schema - Integration Tokens Table
 
-- [ ] Step 1: Add integration provider enum
-- [ ] Step 2: Add integration_tokens table to schema
-- [ ] Step 3: Generate migration
-- [ ] Step 4: Apply migration to local database
-- [ ] Step 5: Apply migration to test database
-- [ ] Step 6: Run Coderabbit CLI and implement suggestions
-- [ ] Step 7: Commit schema changes
+- [x] Step 1: Add integration provider enum
+- [x] Step 2: Add integration_tokens table to schema
+- [x] Step 3: Generate migration
+- [x] Step 4: Apply migration to local database
+- [x] Step 5: Apply migration to test database
+- [x] Step 6: Run Coderabbit CLI and implement suggestions
+- [x] Step 7: Commit schema changes
 
 ---
 

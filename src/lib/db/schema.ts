@@ -29,6 +29,7 @@ import {
   skillLevel,
   subscriptionStatus,
   subscriptionTier,
+  integrationProviderEnum,
 } from './enums';
 
 // Clerk JWT subject helper (Clerk user ID)
@@ -109,6 +110,106 @@ export const users = pgTable(
 
     // Only service role can delete users
     pgPolicy('users_delete_service', {
+      for: 'delete',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+  ]
+).enableRLS();
+
+// Integration tokens table
+export const integrationTokens = pgTable(
+  'integration_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: integrationProviderEnum('provider').notNull(),
+    encryptedAccessToken: text('encrypted_access_token').notNull(),
+    encryptedRefreshToken: text('encrypted_refresh_token'),
+    scope: text('scope').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    workspaceId: text('workspace_id'),
+    workspaceName: text('workspace_name'),
+    botId: text('bot_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique('user_provider_unique').on(table.userId, table.provider),
+    index('integration_tokens_user_id_idx').on(table.userId),
+    index('integration_tokens_provider_idx').on(table.provider),
+
+    // RLS Policies
+
+    // Users can read only their own integration tokens
+    pgPolicy('integration_tokens_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+
+    // Service role can read all integration tokens
+    pgPolicy('integration_tokens_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+
+    // Users can insert tokens only for themselves
+    pgPolicy('integration_tokens_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+
+    // Service role can insert any token
+    pgPolicy('integration_tokens_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
+
+    // Users can update only their own tokens
+    pgPolicy('integration_tokens_update_own', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+
+    // Service role can update any token
+    pgPolicy('integration_tokens_update_service', {
+      for: 'update',
+      to: serviceRole,
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
+
+    // Users can delete only their own tokens
+    pgPolicy('integration_tokens_delete_own', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+
+    // Service role can delete any token
+    pgPolicy('integration_tokens_delete_service', {
       for: 'delete',
       to: serviceRole,
       using: sql`true`,
