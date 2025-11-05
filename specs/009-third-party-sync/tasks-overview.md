@@ -7,7 +7,7 @@
 - [x] Task 5: Shared OAuth Infrastructure - Token Storage Functions
 - [ ] Task 6: Notion Integration - OAuth Authorization Flow
 - [x] Task 7: Notion Integration - Plan-to-Notion Data Mapper
-- [ ] Task 8: Notion Integration - Client with Rate Limiting
+- [x] Task 8: Notion Integration - Client with Rate Limiting
 - [ ] Task 9: Notion Integration - Export Endpoint
 - [ ] Task 10: Notion Integration - Delta Sync
 - [ ] Task 11: Google Calendar Integration - OAuth Flow
@@ -28,7 +28,7 @@
   - Task 2: Database Schema - Notion Sync State Table
   - Task 6: Notion Integration - OAuth Authorization Flow
 
-- [ ] PR 3: Notion Mapper + Rate-Limited Client
+- [x] PR 3: Notion Mapper + Rate-Limited Client
   - Task 7: Notion Integration - Plan-to-Notion Data Mapper
   - Task 8: Notion Integration - Client with Rate Limiting
 
@@ -137,12 +137,12 @@
 
 # Task 8: Notion Integration - Client with Rate Limiting
 
-- [ ] Step 1: Write failing test for rate-limited client
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement client with 3 req/sec + retry
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Run Coderabbit CLI and implement suggestions
-- [ ] Step 6: Commit
+- [x] Step 1: Write failing test for rate-limited client
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement client with 3 req/sec + retry
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Run Coderabbit CLI and implement suggestions
+- [x] Step 6: Commit
 
 ---
 
