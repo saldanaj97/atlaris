@@ -7,7 +7,7 @@ EXTRA_ARGS="$*"
 
 if [[ "$TEST_DIR" == tests/unit* ]]; then
   echo "Running unit tests without DB..."
-  NODE_ENV=test pnpm vitest --config vitest.unit.config.ts run "$TEST_DIR" $EXTRA_ARGS
+  NODE_ENV=test pnpm vitest --config vitest.config.ts run --project unit "$TEST_DIR" $EXTRA_ARGS
   exit $?
 fi
 
@@ -30,7 +30,16 @@ export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54330/atlaris_test
 pnpm db:push
 
 echo "Running tests: $TEST_DIR"
-NODE_ENV=test ALLOW_DB_TRUNCATE=true pnpm vitest --config vitest.integration.config.ts run "$TEST_DIR" $EXTRA_ARGS
+# Determine project based on directory
+PROJECT="integration"
+if [[ "$TEST_DIR" == tests/e2e* ]]; then
+  PROJECT="e2e"
+elif [[ "$TEST_DIR" == tests/security* ]]; then
+  PROJECT="security"
+elif [[ "$TEST_DIR" == tests/integration* ]]; then
+  PROJECT="integration"
+fi
+NODE_ENV=test ALLOW_DB_TRUNCATE=true pnpm vitest --config vitest.config.ts run --project "$PROJECT" "$TEST_DIR" $EXTRA_ARGS
 
 echo "Stopping test database..."
 docker-compose -f docker-compose.test.yml down
