@@ -21,17 +21,21 @@ type FullPlan = LearningPlan & {
 
 export async function exportPlanToNotion(
   planId: string,
+  userId: string,
   accessToken: string
 ): Promise<string> {
-  // Fetch plan with modules and tasks
+  // Fetch plan with modules and tasks, validating ownership
   const [plan] = await db
     .select()
     .from(learningPlans)
-    .where(eq(learningPlans.id, planId))
+    .where(
+      eq(learningPlans.id, planId),
+      eq(learningPlans.userId, userId)
+    )
     .limit(1);
 
   if (!plan) {
-    throw new Error('Plan not found');
+    throw new Error('Plan not found or access denied');
   }
 
   const planModules = await db
