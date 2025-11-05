@@ -4,7 +4,7 @@
 - [ ] Task 2: Database Schema - Notion Sync State Table
 - [ ] Task 3: Database Schema - Google Calendar Sync State Table
 - [x] Task 4: Shared OAuth Infrastructure - Token Encryption Utility
-- [ ] Task 5: Shared OAuth Infrastructure - Token Storage Functions
+- [x] Task 5: Shared OAuth Infrastructure - Token Storage Functions
 - [ ] Task 6: Notion Integration - OAuth Authorization Flow
 - [ ] Task 7: Notion Integration - Plan-to-Notion Data Mapper
 - [ ] Task 8: Notion Integration - Client with Rate Limiting
@@ -19,7 +19,7 @@
 
 # Implementation Overview
 
-- [ ] PR 1: OAuth Security Foundations
+- [x] PR 1: OAuth Security Foundations
   - Task 1: Database Schema - Integration Tokens Table
   - Task 4: Shared OAuth Infrastructure - Token Encryption Utility
   - Task 5: Shared OAuth Infrastructure - Token Storage Functions
@@ -105,7 +105,7 @@
 - [x] Step 3: Implement store/get/delete encrypted tokens
 - [x] Step 4: Run test to verify it passes
 - [x] Step 5: Run Coderabbit CLI and implement suggestions
-- [ ] Step 6: Commit
+- [x] Step 6: Commit
 
 ---
 
