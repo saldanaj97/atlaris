@@ -71,13 +71,23 @@ describe('Notion Delta Sync', () => {
     // Mock Notion Client
     const mockUpdatePage = vi.fn().mockResolvedValue({ id: 'notion_page_123' });
     const mockAppendBlocks = vi.fn().mockResolvedValue({});
+    const mockListChildren = vi.fn().mockResolvedValue({
+      object: 'list',
+      results: [],
+      next_cursor: null,
+      has_more: false,
+      type: 'block',
+    });
+    const mockUpdateBlock = vi.fn().mockResolvedValue({});
     (Client as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
       pages: {
         update: mockUpdatePage,
       },
       blocks: {
+        update: mockUpdateBlock,
         children: {
           append: mockAppendBlocks,
+          list: mockListChildren,
         },
       },
     }));
@@ -87,6 +97,7 @@ describe('Notion Delta Sync', () => {
     expect(hasChanges).toBe(true);
     expect(mockUpdatePage).toHaveBeenCalled();
     expect(mockAppendBlocks).toHaveBeenCalled();
+    expect(mockListChildren).toHaveBeenCalled();
   });
 
   it('should skip sync if no changes detected', async () => {
@@ -134,13 +145,35 @@ describe('Notion Delta Sync', () => {
       })),
     };
 
-    // Calculate the hash the same way the function will
-    const currentHash = createHash('sha256')
-      .update(JSON.stringify(fullPlan))
-      .digest('hex');
+    // Calculate the hash the same way the function does (stable stringify)
+    function stableStringify(obj: unknown): string {
+      if (obj === null || typeof obj !== 'object') {
+        return JSON.stringify(obj);
+      }
+      if (obj instanceof Date) {
+        return JSON.stringify(obj.toJSON());
+      }
+      if (Array.isArray(obj)) {
+        return '[' + obj.map(stableStringify).join(',') + ']';
+      }
+      const keys = Object.keys(obj).sort();
+      return (
+        '{' +
+        keys
+          .map(
+            (k) =>
+              JSON.stringify(k) +
+              ':' +
+              stableStringify((obj as Record<string, unknown>)[k])
+          )
+          .join(',') +
+        '}'
+      );
+    }
 
-    const mockFetch = vi.fn();
-    global.fetch = mockFetch;
+    const currentHash = createHash('sha256')
+      .update(stableStringify(fullPlan))
+      .digest('hex');
 
     // Create sync state with the calculated hash
     await db.insert(notionSyncState).values({
@@ -155,6 +188,5 @@ describe('Notion Delta Sync', () => {
     const hasChanges = await deltaSyncPlanToNotion(testPlanId, 'test_token');
 
     expect(hasChanges).toBe(false);
-    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,8 @@ import type {
   BlockObjectRequest,
   CreatePageParameters,
   CreatePageResponse,
+  ListBlockChildrenResponse,
+  UpdateBlockResponse,
   UpdatePageParameters,
   UpdatePageResponse,
 } from '@notionhq/client/build/src/api-endpoints';
@@ -41,7 +43,7 @@ export class NotionClient {
   async createPage(params: CreatePageParameters): Promise<CreatePageResponse> {
     await this.rateLimit();
 
-    return pRetry(
+    return pRetry<CreatePageResponse>(
       async () => {
         const response = await this.client.pages.create(params);
         return response;
@@ -65,7 +67,7 @@ export class NotionClient {
   async updatePage(params: UpdatePageParameters): Promise<UpdatePageResponse> {
     await this.rateLimit();
 
-    return pRetry(
+    return pRetry<UpdatePageResponse>(
       async () => {
         const response = await this.client.pages.update(params);
         return response;
@@ -92,7 +94,7 @@ export class NotionClient {
   ): Promise<AppendBlockChildrenResponse> {
     await this.rateLimit();
 
-    return pRetry(
+    return pRetry<AppendBlockChildrenResponse>(
       async () => {
         const response = await this.client.blocks.children.append({
           block_id: pageId,
@@ -114,5 +116,77 @@ export class NotionClient {
         },
       }
     );
+  }
+
+  async replaceBlocks(
+    pageId: string,
+    blocks: BlockObjectRequest[]
+  ): Promise<AppendBlockChildrenResponse> {
+    // Step 1: List all existing children blocks (handle pagination)
+    const existingBlockIds: string[] = [];
+    let nextCursor: string | undefined;
+
+    do {
+      await this.rateLimit();
+
+      const response = await pRetry<ListBlockChildrenResponse>(
+        async () => {
+          return await this.client.blocks.children.list({
+            block_id: pageId,
+            start_cursor: nextCursor,
+          });
+        },
+        {
+          retries: 3,
+          minTimeout: 1000,
+          maxTimeout: 5000,
+          onFailedAttempt: (error) => {
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown error';
+            console.warn(
+              `Notion API list children attempt ${error.attemptNumber} failed:`,
+              errorMessage
+            );
+          },
+        }
+      );
+
+      // Collect block IDs
+      for (const block of response.results) {
+        existingBlockIds.push(block.id);
+      }
+
+      nextCursor = response.next_cursor ?? undefined;
+    } while (nextCursor);
+
+    // Step 2: Archive all existing blocks
+    for (const blockId of existingBlockIds) {
+      await this.rateLimit();
+
+      await pRetry<UpdateBlockResponse>(
+        async () => {
+          return await this.client.blocks.update({
+            block_id: blockId,
+            archived: true,
+          });
+        },
+        {
+          retries: 3,
+          minTimeout: 1000,
+          maxTimeout: 5000,
+          onFailedAttempt: (error) => {
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown error';
+            console.warn(
+              `Notion API archive block ${blockId} attempt ${error.attemptNumber} failed:`,
+              errorMessage
+            );
+          },
+        }
+      );
+    }
+
+    // Step 3: Append new blocks
+    return await this.appendBlocks(pageId, blocks);
   }
 }

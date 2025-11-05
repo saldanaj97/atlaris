@@ -11,8 +11,34 @@ import { NotionClient } from './client';
 import { mapFullPlanToBlocks } from './mapper';
 import type { Task } from '@/lib/types/db';
 
+// Deterministic JSON stringify: sorts object keys recursively
+function stableStringify(obj: unknown): string {
+  if (obj === null || typeof obj !== 'object') {
+    return JSON.stringify(obj);
+  }
+  if (obj instanceof Date) {
+    return JSON.stringify(obj.toJSON());
+  }
+  if (Array.isArray(obj)) {
+    return '[' + obj.map(stableStringify).join(',') + ']';
+  }
+  const keys = Object.keys(obj).sort();
+  return (
+    '{' +
+    keys
+      .map(
+        (k) =>
+          JSON.stringify(k) +
+          ':' +
+          stableStringify((obj as Record<string, unknown>)[k])
+      )
+      .join(',') +
+    '}'
+  );
+}
+
 function calculatePlanHash(plan: { [key: string]: unknown }): string {
-  return createHash('sha256').update(JSON.stringify(plan)).digest('hex');
+  return createHash('sha256').update(stableStringify(plan)).digest('hex');
 }
 
 export async function exportPlanToNotion(
@@ -207,11 +233,11 @@ export async function deltaSyncPlanToNotion(
   // Changes detected, update Notion page
   const blocks = mapFullPlanToBlocks(minimalPlanForNotion);
   const client = new NotionClient(accessToken);
+  const pageId = syncState.notionPageId;
 
-  // Clear existing blocks and append new ones
-  // (Notion doesn't have a replace operation, so we update the page)
+  // Update page title
   await client.updatePage({
-    page_id: syncState.notionPageId,
+    page_id: pageId,
     properties: {
       title: {
         title: [
@@ -224,8 +250,9 @@ export async function deltaSyncPlanToNotion(
     },
   });
 
-  // Append updated blocks
-  await client.appendBlocks(syncState.notionPageId, blocks);
+  // Replace blocks (archives existing and appends new ones)
+
+  await client.replaceBlocks(pageId, blocks);
 
   // Update sync state
   await db
