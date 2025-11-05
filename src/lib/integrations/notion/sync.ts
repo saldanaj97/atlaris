@@ -85,8 +85,25 @@ export async function exportPlanToNotion(
   });
 
   // Calculate content hash for delta sync
+  const contentForHash = {
+    topic: plan.topic,
+    skillLevel: plan.skillLevel,
+    weeklyHours: plan.weeklyHours,
+    modules: fullPlan.modules.map((mod) => ({
+      order: mod.order,
+      title: mod.title,
+      description: mod.description,
+      estimatedMinutes: mod.estimatedMinutes,
+      tasks: mod.tasks.map((t) => ({
+        order: t.order,
+        title: t.title,
+        description: t.description,
+        estimatedMinutes: t.estimatedMinutes,
+      })),
+    })),
+  };
   const contentHash = createHash('sha256')
-    .update(JSON.stringify(fullPlan))
+    .update(JSON.stringify(contentForHash))
     .digest('hex');
 
   // Store sync state
