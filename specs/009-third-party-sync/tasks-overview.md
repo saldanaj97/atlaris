@@ -3,7 +3,7 @@
 - [x] Task 1: Database Schema - Integration Tokens Table
 - [ ] Task 2: Database Schema - Notion Sync State Table
 - [ ] Task 3: Database Schema - Google Calendar Sync State Table
-- [ ] Task 4: Shared OAuth Infrastructure - Token Encryption Utility
+- [x] Task 4: Shared OAuth Infrastructure - Token Encryption Utility
 - [ ] Task 5: Shared OAuth Infrastructure - Token Storage Functions
 - [ ] Task 6: Notion Integration - OAuth Authorization Flow
 - [ ] Task 7: Notion Integration - Plan-to-Notion Data Mapper
@@ -89,12 +89,12 @@
 
 # Task 4: Shared OAuth Infrastructure - Token Encryption Utility
 
-- [ ] Step 1: Write failing test for token encryption
-- [ ] Step 2: Run test to verify it fails
-- [ ] Step 3: Implement AES-256-CBC encrypt/decrypt utilities
-- [ ] Step 4: Run test to verify it passes
-- [ ] Step 5: Run Coderabbit CLI and implement suggestions
-- [ ] Step 6: Commit
+- [x] Step 1: Write failing test for token encryption
+- [x] Step 2: Run test to verify it fails
+- [x] Step 3: Implement AES-256-CBC encrypt/decrypt utilities
+- [x] Step 4: Run test to verify it passes
+- [x] Step 5: Run Coderabbit CLI and implement suggestions
+- [x] Step 6: Commit
 
 ---
 
