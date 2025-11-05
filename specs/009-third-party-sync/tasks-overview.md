@@ -1,7 +1,7 @@
 # Progress Overview
 
 - [x] Task 1: Database Schema - Integration Tokens Table
-- [ ] Task 2: Database Schema - Notion Sync State Table
+- [x] Task 2: Database Schema - Notion Sync State Table
 - [ ] Task 3: Database Schema - Google Calendar Sync State Table
 - [x] Task 4: Shared OAuth Infrastructure - Token Encryption Utility
 - [x] Task 5: Shared OAuth Infrastructure - Token Storage Functions
@@ -73,7 +73,7 @@
 - [x] Step 2: Generate migration
 - [x] Step 3: Apply migrations to local and test databases
 - [x] Step 4: Run Coderabbit CLI and implement suggestions
-- [ ] Step 5: Commit schema changes
+- [x] Step 5: Commit schema changes
 
 ---
 
@@ -118,8 +118,8 @@
 - [x] Step 5: Add callback test (failing)
 - [x] Step 6: Implement callback endpoint
 - [x] Step 7: Run tests to verify they pass
-- [ ] Step 8: Run Coderabbit CLI and implement suggestions
-- [ ] Step 9: Commit
+- [x] Step 8: Run Coderabbit CLI and implement suggestions
+- [x] Step 9: Commit
 
 ---
 
