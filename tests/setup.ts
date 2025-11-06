@@ -37,6 +37,14 @@ if (!process.env.MOCK_GENERATION_SEED) {
   Object.assign(process.env, { MOCK_GENERATION_SEED: '12345' });
 }
 
+// Set encryption key for OAuth token crypto in tests (64 hex chars = 32 bytes)
+if (!process.env.OAUTH_ENCRYPTION_KEY) {
+  Object.assign(process.env, {
+    OAUTH_ENCRYPTION_KEY:
+      '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+  });
+}
+
 const skipDbSetup = process.env.SKIP_DB_TEST_SETUP === 'true';
 
 function assertSafeToTruncate() {
