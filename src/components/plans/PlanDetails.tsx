@@ -70,7 +70,7 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
               statuses={statuses}
             />
 
-            <ExportButtons />
+            <ExportButtons planId={plan.id} />
 
             {!isPendingOrProcessing && (
               <div className="mb-6">

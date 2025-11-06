@@ -14,8 +14,8 @@
 - [x] Task 12: Google Calendar - Event Mapper
 - [x] Task 13: Google Calendar - Sync Endpoint
 - [x] Task 14: Tier Gates and Usage Tracking
-- [ ] Task 15: UI Export Buttons Component
-- [ ] Task 16: End-to-End Tests
+- [x] Task 15: UI Export Buttons Component
+- [x] Task 16: End-to-End Tests
 
 # Implementation Overview
 
@@ -49,7 +49,7 @@
 - [x] PR 8: Tier Gates & Usage Enforcement
   - Task 14: Tier Gates and Usage Tracking
 
-- [ ] PR 9: UI + E2E Validation
+- [x] PR 9: UI + E2E Validation
   - Task 15: UI Export Buttons Component
   - Task 16: End-to-End Tests
 
@@ -218,18 +218,18 @@
 
 # Task 15: UI Export Buttons Component
 
-- [ ] Step 1: Write failing unit test
-- [ ] Step 2: Implement component (loading, errors, toasts)
-- [ ] Step 3: Run test to verify it passes
-- [ ] Step 4: Run Coderabbit CLI and implement suggestions
-- [ ] Step 5: Commit
+- [x] Step 1: Write failing unit test
+- [x] Step 2: Implement component (loading, errors, toasts)
+- [x] Step 3: Run test to verify it passes
+- [x] Step 4: Run Coderabbit CLI and implement suggestions
+- [x] Step 5: Commit
 
 ---
 
 # Task 16: End-to-End Tests
 
-- [ ] Step 1: Add Notion export E2E test
-- [ ] Step 2: Add Google Calendar sync E2E test
-- [ ] Step 3: Run E2E test suite
-- [ ] Step 4: Run Coderabbit CLI and implement suggestions
-- [ ] Step 5: Commit
+- [x] Step 1: Add Notion export E2E test
+- [x] Step 2: Add Google Calendar sync E2E test
+- [x] Step 3: Run E2E test suite
+- [x] Step 4: Run Coderabbit CLI and implement suggestions
+- [x] Step 5: Commit
