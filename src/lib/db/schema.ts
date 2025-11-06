@@ -52,6 +52,7 @@ export const users = pgTable(
     subscriptionPeriodEnd: timestamp('subscription_period_end', {
       withTimezone: true,
     }),
+    monthlyExportCount: integer('monthly_export_count').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
