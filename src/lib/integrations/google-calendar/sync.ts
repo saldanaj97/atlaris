@@ -163,12 +163,23 @@ export async function syncPlanToGoogleCalendar(
   }
 
   // Store sync state
-  await db.insert(googleCalendarSyncState).values({
+  const syncState = {
     planId,
     userId: plan.userId,
     calendarId: 'primary',
     lastSyncedAt: new Date(),
-  });
+  };
+
+  await db
+    .insert(googleCalendarSyncState)
+    .values(syncState)
+    .onConflictDoUpdate({
+      target: googleCalendarSyncState.planId,
+      set: {
+        ...syncState,
+        updatedAt: new Date(),
+      },
+    });
 
   return eventsCreated;
 }
