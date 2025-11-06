@@ -11,6 +11,7 @@ The following test files were created/enhanced to provide thorough coverage of t
 ### Total Tests Added: 45+ test cases
 
 #### `mapTaskToCalendarEvent` Function Tests (14 tests)
+
 - ✅ Maps task to calendar event with correct summary, description, and times
 - ✅ Handles tasks without descriptions (converts `null` to `undefined`)
 - ✅ Correctly calculates end time based on estimated minutes (various durations: 15-minute, 60-minute, 90-minute, 240-minute)
@@ -24,6 +25,7 @@ The following test files were created/enhanced to provide thorough coverage of t
 - ✅ Handles start times near end of day (crosses midnight boundary)
 
 #### `generateSchedule` Function Tests (31 tests)
+
 - ✅ Generates schedule starting at 9 AM
 - ✅ Schedules multiple tasks sequentially within a day
 - ✅ Splits tasks across multiple days when exceeding daily capacity
@@ -47,34 +49,41 @@ The following test files were created/enhanced to provide thorough coverage of t
 ### Total Tests Added: 25+ test cases
 
 #### `syncPlanToGoogleCalendar` Function Tests
+
 **Error Handling:**
+
 - ✅ Throws error when plan not found
 - ✅ Throws error when no modules found for plan
 - ✅ Throws error when event creation returns no ID
 - ✅ Throws error when all tasks fail to sync
 
 **OAuth & Authentication:**
+
 - ✅ Sets OAuth credentials correctly (access + refresh tokens)
 - ✅ Creates OAuth2 client with correct credentials from env vars
 - ✅ Handles refresh token being optional
 
 **Event Creation:**
+
 - ✅ Creates calendar events for all tasks
 - ✅ Skips tasks that already have calendar events
 - ✅ Uses primary calendar by default
 - ✅ Calls mapper functions with correct parameters
 
 **Retry Logic:**
+
 - ✅ Retries on API failures (up to 3 attempts)
 - ✅ Implements exponential backoff correctly
 - ✅ Continues syncing other tasks if one fails
 
 **Database Operations:**
+
 - ✅ Deletes calendar event if DB insert fails (cleanup orphans)
 - ✅ Stores sync state after successful sync
 - ✅ Handles tasks with null descriptions
 
 **Edge Cases:**
+
 - ✅ Handles task without scheduled time (skips gracefully)
 - ✅ Maps all tasks before generating schedule
 - ✅ Returns correct count of events created (0, 1, multiple)
@@ -84,12 +93,15 @@ The following test files were created/enhanced to provide thorough coverage of t
 ### Total Tests Added: 18+ test cases
 
 #### POST Route Handler Tests
+
 **Authentication & Authorization:**
+
 - ✅ Returns 401 when user is not authenticated
 - ✅ Returns 404 when user not found in database
 - ✅ Returns 401 when Google Calendar is not connected
 
 **Request Validation:**
+
 - ✅ Returns 400 when planId is missing
 - ✅ Returns 400 when planId is not a valid UUID
 - ✅ Returns 400 when request body is invalid JSON
@@ -98,33 +110,37 @@ The following test files were created/enhanced to provide thorough coverage of t
 - ✅ Includes Zod validation details in error response
 
 **Success Cases:**
+
 - ✅ Returns 200 when sync completes
 - ✅ Calls sync function with correct parameters
 - ✅ Returns correct eventsCreated count (0, 1, multiple)
 - ✅ Handles OAuth tokens without refresh token
 
 **Error Handling:**
+
 - ✅ Returns 500 when sync fails
 - ✅ Logs errors to console
 - ✅ Handles extra fields in request body gracefully
 
 ## Test Statistics
 
-| File | Tests | Lines Covered | Coverage Focus |
-|------|-------|---------------|----------------|
-| `mapper.spec.ts` | 45+ | ~100% | Pure functions, edge cases |
-| `sync.spec.ts` | 25+ | ~95% | Business logic, error handling, retries |
-| `route.spec.ts` | 18+ | ~90% | HTTP handling, validation, auth |
+| File             | Tests | Lines Covered | Coverage Focus                          |
+| ---------------- | ----- | ------------- | --------------------------------------- |
+| `mapper.spec.ts` | 45+   | ~100%         | Pure functions, edge cases              |
+| `sync.spec.ts`   | 25+   | ~95%          | Business logic, error handling, retries |
+| `route.spec.ts`  | 18+   | ~90%          | HTTP handling, validation, auth         |
 
 ## Test Categories
 
 ### Happy Path Tests ✅
+
 - Standard workflow with valid data
 - Multiple valid UUID formats
 - Tasks with various durations
 - Zero events created (valid but empty result)
 
 ### Edge Cases ✅
+
 - Empty task lists
 - Tasks with 0 estimated minutes
 - Tasks without descriptions
@@ -133,6 +149,7 @@ The following test files were created/enhanced to provide thorough coverage of t
 - Fractional weekly hours
 
 ### Error Conditions ✅
+
 - Invalid authentication
 - Missing required fields
 - Invalid data formats
@@ -141,6 +158,7 @@ The following test files were created/enhanced to provide thorough coverage of t
 - Orphaned event cleanup
 
 ### Security Tests ✅
+
 - Authentication checks
 - Authorization checks
 - Input validation (UUID format)
@@ -160,6 +178,7 @@ The following test files were created/enhanced to provide thorough coverage of t
 ## Integration with Existing Tests
 
 The unit tests complement the existing integration test:
+
 - **Integration Test** (`tests/integration/google-calendar-sync.spec.ts`): Tests full workflow with real database
 - **Unit Tests**: Test individual functions and components in isolation
 
