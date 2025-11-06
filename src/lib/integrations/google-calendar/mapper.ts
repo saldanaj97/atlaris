@@ -43,8 +43,13 @@ export function generateSchedule(
   const hoursPerDay = weeklyHours / 7;
   const minutesPerDay = hoursPerDay * 60;
 
-  let currentDate = new Date();
+  const now = new Date();
+  let currentDate = new Date(now);
   currentDate.setHours(9, 0, 0, 0); // Start at 9 AM
+  if (currentDate <= now) {
+    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate.setHours(9, 0, 0, 0);
+  }
   let minutesUsedToday = 0;
 
   tasks.forEach((task) => {
