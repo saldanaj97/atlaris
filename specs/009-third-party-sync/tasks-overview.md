@@ -42,7 +42,7 @@
   - Task 3: Database Schema - Google Calendar Sync State Table
   - Task 11: Google Calendar Integration - OAuth Flow
 
-- [ ] PR 7: Google Event Mapping + Sync
+- [x] PR 7: Google Event Mapping + Sync
   - Task 12: Google Calendar - Event Mapper
   - Task 13: Google Calendar - Sync Endpoint
 
