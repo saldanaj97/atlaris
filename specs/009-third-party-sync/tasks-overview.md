@@ -15,7 +15,7 @@
 - [x] Task 13: Google Calendar - Sync Endpoint
 - [x] Task 14: Tier Gates and Usage Tracking
 - [x] Task 15: UI Export Buttons Component
-- [ ] Task 16: End-to-End Tests
+- [x] Task 16: End-to-End Tests
 
 # Implementation Overview
 
@@ -228,8 +228,8 @@
 
 # Task 16: End-to-End Tests
 
-- [ ] Step 1: Add Notion export E2E test
-- [ ] Step 2: Add Google Calendar sync E2E test
-- [ ] Step 3: Run E2E test suite
-- [ ] Step 4: Run Coderabbit CLI and implement suggestions
-- [ ] Step 5: Commit
+- [x] Step 1: Add Notion export E2E test
+- [x] Step 2: Add Google Calendar sync E2E test
+- [x] Step 3: Run E2E test suite
+- [x] Step 4: Run Coderabbit CLI and implement suggestions
+- [x] Step 5: Commit
