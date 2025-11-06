@@ -53,7 +53,7 @@ export function generateSchedule(
   let minutesUsedToday = 0;
 
   tasks.forEach((task) => {
-    // Should split task across multiple days
+    // Move to next day if task doesn't fit
     if (minutesUsedToday + task.estimatedMinutes > minutesPerDay) {
       // Move to next day
       currentDate.setDate(currentDate.getDate() + 1);

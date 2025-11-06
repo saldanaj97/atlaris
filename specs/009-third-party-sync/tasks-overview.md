@@ -79,11 +79,11 @@
 
 # Task 3: Database Schema - Google Calendar Sync State Table
 
-- [ ] Step 1: Add google_calendar_sync_state table
-- [ ] Step 2: Add task_calendar_events mapping table
-- [ ] Step 3: Generate and apply migrations (local + test)
-- [ ] Step 4: Run Coderabbit CLI and implement suggestions
-- [ ] Step 5: Commit schema changes
+- [x] Step 1: Add google_calendar_sync_state table
+- [x] Step 2: Add task_calendar_events mapping table
+- [x] Step 3: Generate and apply migrations (local + test)
+- [x] Step 4: Run Coderabbit CLI and implement suggestions
+- [x] Step 5: Commit schema changes
 
 ---
 
