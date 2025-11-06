@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { exportPlanToNotion } from '@/lib/integrations/notion/sync';
 import { z } from 'zod';
+import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
 
 const exportRequestSchema = z.object({ planId: z.string().uuid() });
 
@@ -67,12 +68,34 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Tier gate: check export quota for current subscription tier
+    const canExport = await checkExportQuota(user.id, user.subscriptionTier);
+    if (!canExport) {
+      return NextResponse.json(
+        {
+          error: 'Export quota exceeded',
+          message: 'Upgrade your plan to export more learning plans',
+        },
+        { status: 403 }
+      );
+    }
+
     const notionPageId = await exportPlanToNotion(
       parsed.data.planId,
       user.id,
       notionTokens.accessToken
     );
 
+    // Increment usage after a successful export (non-blocking)
+    try {
+      await incrementExportUsage(user.id);
+    } catch (e) {
+      console.error('Failed to increment export usage for Notion export', {
+        userId: user.id,
+        error: e,
+      });
+      // Do not fail the request if usage tracking fails
+    }
     return NextResponse.json({ notionPageId, success: true });
   } catch (error: unknown) {
     console.error('Notion export failed:', error);
