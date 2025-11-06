@@ -13,7 +13,7 @@
 - [x] Task 11: Google Calendar Integration - OAuth Flow
 - [x] Task 12: Google Calendar - Event Mapper
 - [x] Task 13: Google Calendar - Sync Endpoint
-- [ ] Task 14: Tier Gates and Usage Tracking
+- [x] Task 14: Tier Gates and Usage Tracking
 - [ ] Task 15: UI Export Buttons Component
 - [ ] Task 16: End-to-End Tests
 
@@ -46,7 +46,7 @@
   - Task 12: Google Calendar - Event Mapper
   - Task 13: Google Calendar - Sync Endpoint
 
-- [ ] PR 8: Tier Gates & Usage Enforcement
+- [x] PR 8: Tier Gates & Usage Enforcement
   - Task 14: Tier Gates and Usage Tracking
 
 - [ ] PR 9: UI + E2E Validation
@@ -205,14 +205,14 @@
 
 # Task 14: Tier Gates and Usage Tracking
 
-- [ ] Step 1: Write failing integration test for quotas
-- [ ] Step 2: Implement usage tracking helpers
-- [ ] Step 3: Enforce quotas in export/sync endpoints
-- [ ] Step 4: Run tests to verify they pass
-- [ ] Step 5: Add monthly export count to users schema
-- [ ] Step 6: Generate and apply migrations (local + test)
-- [ ] Step 7: Run Coderabbit CLI and implement suggestions
-- [ ] Step 8: Commit
+- [x] Step 1: Write failing integration test for quotas
+- [x] Step 2: Implement usage tracking helpers
+- [x] Step 3: Enforce quotas in export/sync endpoints
+- [x] Step 4: Run tests to verify they pass
+- [x] Step 5: Add monthly export count to users schema
+- [x] Step 6: Generate and apply migrations (local + test)
+- [x] Step 7: Run Coderabbit CLI and implement suggestions
+- [x] Step 8: Commit
 
 ---
 
