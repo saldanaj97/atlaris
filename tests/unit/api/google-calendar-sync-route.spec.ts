@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { z } from 'zod';
 
 // Mock dependencies before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
@@ -49,7 +48,7 @@ describe('Google Calendar Sync Route', () => {
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
     };
-    vi.mocked(db.select).mockReturnValue(mockDb);
+    (db.select as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
   });
 
   afterEach(() => {
@@ -69,7 +68,9 @@ describe('Google Calendar Sync Route', () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId: '123e4567-e89b-12d3-a456-426614174000' }),
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
         }
       );
 
@@ -93,7 +94,9 @@ describe('Google Calendar Sync Route', () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId: '123e4567-e89b-12d3-a456-426614174000' }),
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
         }
       );
 
@@ -118,7 +121,9 @@ describe('Google Calendar Sync Route', () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId: '123e4567-e89b-12d3-a456-426614174000' }),
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
         }
       );
 
@@ -232,7 +237,9 @@ describe('Google Calendar Sync Route', () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId: '123e4567-e89b-12d3-a456-426614174000' }),
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
         }
       );
 
@@ -294,7 +301,9 @@ describe('Google Calendar Sync Route', () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId: '123e4567-e89b-12d3-a456-426614174000' }),
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
         }
       );
 
@@ -392,7 +401,9 @@ describe('Google Calendar Sync Route', () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId: '123e4567-e89b-12d3-a456-426614174000' }),
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
         }
       );
 
@@ -454,7 +465,9 @@ describe('Google Calendar Sync Route', () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId: '123e4567-e89b-12d3-a456-426614174000' }),
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
         }
       );
 
@@ -467,15 +480,17 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should log errors to console', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
       mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
       });
-      
+
       const error = new Error('Test sync error');
       mockSyncPlanToGoogleCalendar.mockRejectedValue(error);
 
@@ -488,7 +503,9 @@ describe('Google Calendar Sync Route', () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId: '123e4567-e89b-12d3-a456-426614174000' }),
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
         }
       );
 
