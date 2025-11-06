@@ -72,9 +72,10 @@ describe('Google Calendar Sync', () => {
     };
     mockDbInsert = {
       values: vi.fn().mockReturnThis(),
+      onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
     };
-    vi.mocked(db.select).mockReturnValue(mockDbSelect);
-    vi.mocked(db.insert).mockReturnValue(mockDbInsert);
+    vi.spyOn(db as any, 'select').mockReturnValue(mockDbSelect);
+    vi.spyOn(db as any, 'insert').mockReturnValue(mockDbInsert);
 
     // Set environment variables
     process.env.GOOGLE_CLIENT_ID = 'test-client-id';
@@ -107,6 +108,7 @@ describe('Google Calendar Sync', () => {
       mockDbSelect.limit
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValueOnce([]);
+      mockDbSelect.orderBy.mockResolvedValue([]);
 
       await expect(
         syncPlanToGoogleCalendar(mockPlanId, mockAccessToken, mockRefreshToken)
@@ -124,7 +126,10 @@ describe('Google Calendar Sync', () => {
 
       mockDbSelect.limit.mockResolvedValue([mockPlan]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect) // plan where
+        .mockReturnValueOnce(mockDbSelect) // modules where
+        .mockResolvedValueOnce(mockTasks); // tasks where (terminal)
 
       vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
 
@@ -150,7 +155,10 @@ describe('Google Calendar Sync', () => {
 
       mockDbSelect.limit.mockResolvedValue([mockPlan]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue([]);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce([]);
 
       vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
 
@@ -193,7 +201,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -241,7 +252,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValueOnce([{ taskId: 'task-1' }]); // Existing event
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -278,7 +292,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -327,7 +344,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       // Schedule doesn't include task-1
       vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
@@ -362,7 +382,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -403,7 +426,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -458,7 +484,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -509,7 +538,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -550,7 +582,10 @@ describe('Google Calendar Sync', () => {
 
       mockDbSelect.limit.mockResolvedValue([mockPlan]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue([]);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce([]);
 
       vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
 
@@ -582,7 +617,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -638,7 +676,10 @@ describe('Google Calendar Sync', () => {
 
       mockDbSelect.limit.mockResolvedValue([mockPlan]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
 
@@ -687,7 +728,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -741,7 +785,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
@@ -780,7 +827,10 @@ describe('Google Calendar Sync', () => {
         .mockResolvedValueOnce([mockPlan])
         .mockResolvedValue([]);
       mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where.mockResolvedValue(mockTasks);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce(mockTasks);
 
       const mockSchedule = new Map([
         ['task-1', new Date('2025-06-01T09:00:00Z')],
