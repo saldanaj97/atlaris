@@ -11,6 +11,8 @@ import { Mutex } from 'async-mutex';
 import {
   ensureJobTypeEnumValue,
   ensureNotionSyncStateTable,
+  ensureGoogleCalendarSyncStateTable,
+  ensureTaskCalendarEventsTable,
   ensureStripeWebhookEventsTable,
   truncateAll,
 } from './helpers/db';
@@ -75,6 +77,8 @@ if (!skipDbSetup) {
     await ensureJobTypeEnumValue();
     await ensureStripeWebhookEventsTable();
     await ensureNotionSyncStateTable();
+    await ensureGoogleCalendarSyncStateTable();
+    await ensureTaskCalendarEventsTable();
     await truncateAll();
   });
 
