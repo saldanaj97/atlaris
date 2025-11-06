@@ -28,10 +28,13 @@ describe('ExportButtons', () => {
   });
 
   it('should show loading state and success message when exporting', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ success: true }),
-    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true }),
+      })
+    );
 
     render(<ExportButtons planId="test-plan-123" />);
 
@@ -58,10 +61,13 @@ describe('ExportButtons', () => {
   });
 
   it('should show error message on export failure', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      json: async () => ({ error: 'Export failed' }),
-    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Export failed' }),
+      })
+    );
 
     render(<ExportButtons planId="test-plan-123" />);
 
@@ -70,6 +76,50 @@ describe('ExportButtons', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Export failed');
+    });
+  });
+
+  it('should handle Google Calendar sync success', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ eventsCreated: 5 }),
+      })
+    );
+
+    render(<ExportButtons planId="test-plan-123" />);
+
+    const calendarButton = screen.getByText(/Add to Google Calendar/i);
+    fireEvent.click(calendarButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Syncing/i)).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Added to Google Calendar', {
+        description: '5 events created',
+      });
+    });
+  });
+
+  it('should handle Google Calendar sync error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Sync failed' }),
+      })
+    );
+
+    render(<ExportButtons planId="test-plan-123" />);
+
+    const calendarButton = screen.getByText(/Add to Google Calendar/i);
+    fireEvent.click(calendarButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Sync failed');
     });
   });
 });

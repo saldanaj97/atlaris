@@ -49,7 +49,7 @@
 - [x] PR 8: Tier Gates & Usage Enforcement
   - Task 14: Tier Gates and Usage Tracking
 
-- [ ] PR 9: UI + E2E Validation
+- [x] PR 9: UI + E2E Validation
   - Task 15: UI Export Buttons Component
   - Task 16: End-to-End Tests
 

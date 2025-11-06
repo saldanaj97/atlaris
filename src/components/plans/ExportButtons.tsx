@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 interface ExportButtonsProps {
   planId: string;
@@ -30,9 +31,8 @@ export function ExportButtons({ planId }: ExportButtonsProps) {
         body: JSON.stringify({ planId }),
       });
 
-      const data = (await response.json()) as ErrorResponse;
-
       if (!response.ok) {
+        const data = (await response.json()) as ErrorResponse;
         if (response.status === 403) {
           toast.error('Export limit reached', {
             description: data.message ?? 'Upgrade your plan to export more',
@@ -46,8 +46,11 @@ export function ExportButtons({ planId }: ExportButtonsProps) {
       toast.success('Exported to Notion', {
         description: 'Your learning plan is now in Notion!',
       });
-    } catch {
-      toast.error('Export failed');
+    } catch (error) {
+      console.error('Notion export error:', error);
+      toast.error('Export failed', {
+        description: 'An unknown error occurred during export',
+      });
     } finally {
       setIsExportingNotion(false);
     }
@@ -86,8 +89,11 @@ export function ExportButtons({ planId }: ExportButtonsProps) {
       toast.success('Added to Google Calendar', {
         description: `${successData.eventsCreated} events created`,
       });
-    } catch {
-      toast.error('Sync failed');
+    } catch (error) {
+      console.error('Calendar sync error:', error);
+      toast.error('Sync failed', {
+        description: 'An unknown error occurred during sync',
+      });
     } finally {
       setIsExportingCalendar(false);
     }
@@ -95,21 +101,21 @@ export function ExportButtons({ planId }: ExportButtonsProps) {
 
   return (
     <div className="flex gap-2">
-      <button
+      <Button
+        variant="default"
         onClick={() => void handleNotionExport()}
         disabled={isExportingNotion}
-        className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
       >
-        {isExportingNotion ? 'Exporting...' : 'Export to Notion'}
-      </button>
+        {isExportingNotion ? 'Exporting…' : 'Export to Notion'}
+      </Button>
 
-      <button
+      <Button
+        variant="default"
         onClick={() => void handleCalendarSync()}
         disabled={isExportingCalendar}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
       >
-        {isExportingCalendar ? 'Syncing...' : 'Add to Google Calendar'}
-      </button>
+        {isExportingCalendar ? 'Syncing…' : 'Add to Google Calendar'}
+      </Button>
     </div>
   );
 }
