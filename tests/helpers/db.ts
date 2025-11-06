@@ -15,6 +15,8 @@ import {
   usageMetrics,
   users,
   notionSyncState,
+  googleCalendarSyncState,
+  taskCalendarEvents,
 } from '@/lib/db/schema';
 
 /**
@@ -46,6 +48,12 @@ export async function truncateAll() {
   );
   await db.execute(
     sql`TRUNCATE TABLE ${notionSyncState} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(
+    sql`TRUNCATE TABLE ${googleCalendarSyncState} RESTART IDENTITY CASCADE`
+  );
+  await db.execute(
+    sql`TRUNCATE TABLE ${taskCalendarEvents} RESTART IDENTITY CASCADE`
   );
   await db.execute(
     sql`TRUNCATE TABLE ${stripeWebhookEvents} RESTART IDENTITY CASCADE`
@@ -109,6 +117,20 @@ export async function ensureNotionSyncStateTable() {
   await db.select().from(notionSyncState).limit(1);
   // If you need to ensure indexes, use Drizzle's migration system.
   // Remove raw SQL table/index creation to avoid duplication.
+}
+
+/**
+ * Ensures the google_calendar_sync_state table exists using Drizzle's schema/migration system.
+ */
+export async function ensureGoogleCalendarSyncStateTable() {
+  await db.select().from(googleCalendarSyncState).limit(1);
+}
+
+/**
+ * Ensures the task_calendar_events table exists using Drizzle's schema/migration system.
+ */
+export async function ensureTaskCalendarEventsTable() {
+  await db.select().from(taskCalendarEvents).limit(1);
 }
 
 // Cache table removed – no-op helper deleted
