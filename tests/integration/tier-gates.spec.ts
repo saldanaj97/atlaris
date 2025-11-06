@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 
 describe('Export Tier Gates', () => {
   let userId: string;
 
   beforeEach(async () => {
-    await db.delete(users);
+    // Clean up only test users to avoid cross-test interference
+    await db.delete(users).where(like(users.email, 'test%'));
     const [user] = await db
       .insert(users)
       .values({
