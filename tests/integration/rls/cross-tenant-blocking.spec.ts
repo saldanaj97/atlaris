@@ -71,7 +71,8 @@ describe('Cross-tenant access blocking via RLS', () => {
         .where(eq(learningPlans.id, plan1.id));
 
       // Should find the plan (service-role bypasses RLS)
-      expect(plans.length).toBeGreaterThanOrEqual(0);
+      expect(plans.length).toBe(1);
+      expect(plans[0].id).toBe(plan1.id);
     });
   });
 

@@ -1,8 +1,9 @@
 import type { Config } from 'drizzle-kit';
 import dotenv from 'dotenv';
 
-// Load test environment variables
-dotenv.config({ path: '.env.test' });
+// Load test environment variables and override any values from .env
+// Ensures DATABASE_URL from .env.test is used for migrations
+dotenv.config({ path: '.env.test', override: true });
 
 export default {
   schema: ['./src/lib/db/schema.ts', './src/lib/db/enums.ts'],

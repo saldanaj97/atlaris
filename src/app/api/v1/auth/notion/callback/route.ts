@@ -40,7 +40,7 @@ export const GET = withErrorBoundary(
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, state))
+      .where(eq(users.clerkUserId, state))
       .limit(1);
 
     if (!user) {

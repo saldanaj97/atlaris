@@ -1,5 +1,19 @@
 'use server';
 
+/**
+ * RLS enforcement note:
+ * - RLS policies exist and are tested, but request/server actions currently use
+ *   the service-role Drizzle client via getDb() unless a request-scoped RLS client
+ *   is injected into the request context.
+ * - Until an RLS-capable Drizzle client is available and wired, request-layer code
+ *   must validate ownership in queries (e.g., see ensureTaskOwnership below).
+ *
+ * Source of truth:
+ * - src/lib/db/runtime.ts — getDb() returns the request-scoped DB when present,
+ *   otherwise the service-role DB.
+ * - src/lib/api/auth.ts — commentary on current non-RLS behavior in request handlers.
+ */
+
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -78,13 +92,12 @@ export async function updateTaskProgressAction({
     throw new Error('User not found.');
   }
 
-  // Ensure all DB operations in this action run under RLS
-  const rlsDb = await getDb();
+  const db = getDb();
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-task-progress'),
     clerkUserId
   );
-  ctx.db = rlsDb;
+  ctx.db = db;
 
   await withRequestContext(ctx, async () => {
     await ensureTaskOwnership(planId, taskId, user.id);
@@ -121,13 +134,12 @@ export async function getPlanForPage(
     throw new Error('User not found');
   }
 
-  // Execute under RLS via request context
-  const rlsDb = await getDb();
+  const db = getDb();
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-plan'),
     clerkUserId
   );
-  ctx.db = rlsDb;
+  ctx.db = db;
 
   return withRequestContext(ctx, () => getLearningPlanDetail(planId, user.id));
 }
@@ -149,13 +161,12 @@ export async function getPlanScheduleForPage(
     throw new Error('User not found');
   }
 
-  // Execute under RLS via request context
-  const rlsDb = await getDb();
+  const db = getDb();
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-schedule'),
     clerkUserId
   );
-  ctx.db = rlsDb;
+  ctx.db = db;
 
   return withRequestContext(ctx, () =>
     getPlanSchedule({ planId, userId: user.id })

@@ -33,7 +33,7 @@ export const GET = withErrorBoundary(
       throw new NotFoundError('User not found.');
     }
 
-    // Fetch the plan (RLS-enforced via getDb)
+    // Fetch the plan (using getDb for future RLS support)
     const db = getDb();
     const plan = await db.query.learningPlans.findFirst({
       where: eq(learningPlans.id, planId),
