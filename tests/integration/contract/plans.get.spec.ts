@@ -105,4 +105,43 @@ describe('GET /api/v1/plans/:planId', () => {
     );
     expect(response.status).toBe(404);
   });
+
+  it('returns 404 when accessing plan owned by another user (cross-tenant protection)', async () => {
+    // Create owner and their plan
+    setTestUser(ownerClerkId);
+    const ownerId = await ensureUser({
+      clerkUserId: ownerClerkId,
+      email: ownerEmail,
+    });
+
+    const [ownerPlan] = await db
+      .insert(learningPlans)
+      .values({
+        userId: ownerId,
+        topic: 'Owner Plan',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'reading',
+        visibility: 'private',
+        origin: 'ai',
+      })
+      .returning();
+
+    // Try to access as a different user
+    const attackerClerkId = 'clerk_plan_detail_attacker';
+    const attackerEmail = 'attacker-detail@example.com';
+    setTestUser(attackerClerkId);
+    await ensureUser({
+      clerkUserId: attackerClerkId,
+      email: attackerEmail,
+    });
+
+    const response = await GET(buildRequest(ownerPlan.id));
+    expect(response.status).toBe(404);
+
+    const error = await response.json();
+    expect(error).toMatchObject({
+      error: expect.stringContaining('not found'),
+    });
+  });
 });
