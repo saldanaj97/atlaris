@@ -588,6 +588,7 @@ pnpm exec vitest run tests/db/stripe.schema.spec.ts
 - Clean up with `truncateAll()` in `beforeEach`
 - Document why RLS is or isn't being tested
 - Test one concern per test
+- **Enforce tenant scoping**: All database query functions that fetch multi-tenant data MUST accept `userId: string` and enforce ownership in the WHERE clause
 
 ### ❌ DON'T
 
@@ -596,6 +597,74 @@ pnpm exec vitest run tests/db/stripe.schema.spec.ts
 - Skip test cleanup (causes test pollution)
 - Use real user credentials in tests
 - Hardcode UUIDs (use `ensureUser` helper)
+- **Create plan-fetching functions without userId**: Never export functions that fetch learning plans using only `planId` without `userId` - this violates tenant isolation
+
+## Tenant Scoping Requirements
+
+### Database Query Functions
+
+All functions in `src/lib/db/queries/` that fetch multi-tenant data (e.g., learning plans, user-specific records) MUST:
+
+1. **Accept `userId: string` as a required parameter**
+2. **Enforce ownership in the WHERE clause** using `eq(table.userId, userId)`
+3. **Return `null` or empty results** when the record doesn't belong to the user
+
+**Example Safe Pattern:**
+
+```typescript
+export async function getLearningPlanDetail(
+  planId: string,
+  userId: string // REQUIRED for tenant scoping
+): Promise<LearningPlanDetail | null> {
+  const planRow = await db
+    .select()
+    .from(learningPlans)
+    .where(
+      and(
+        eq(learningPlans.id, planId),
+        eq(learningPlans.userId, userId) // Enforces ownership
+      )
+    )
+    .limit(1);
+
+  if (!planRow.length) {
+    return null; // Plan doesn't exist or doesn't belong to user
+  }
+  // ... rest of function
+}
+```
+
+**Anti-Pattern (FORBIDDEN):**
+
+```typescript
+// ❌ NEVER DO THIS - violates tenant isolation
+export async function getLearningPlanWithModules(planId: string) {
+  return await db
+    .select()
+    .from(learningPlans)
+    .where(eq(learningPlans.id, planId)); // Missing userId check!
+}
+```
+
+### Testing Tenant Scoping
+
+All plan-fetching query functions must have integration tests that verify:
+
+1. ✅ Function returns correct data for the owner
+2. ✅ Function returns `null` when accessed by a different user (cross-tenant protection)
+3. ✅ Function returns `null` for non-existent plans
+
+See `tests/integration/db/plans.queries.spec.ts` for examples.
+
+### Automated Guard Tests
+
+A regex-based guard test (`tests/integration/db/plans.queries.guard.spec.ts`) automatically scans `src/lib/db/queries/plans.ts` and fails if any exported plan-fetching functions are missing the `userId` parameter. This prevents regressions.
+
+**Running the guard:**
+
+```bash
+pnpm exec vitest run tests/integration/db/plans.queries.guard.spec.ts
+```
 
 ## Troubleshooting
 

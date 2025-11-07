@@ -42,13 +42,21 @@
 - **Recommendation**: Restrict the service-role client to background/worker contexts. For request handlers, require a Supabase client that enforces the caller's JWT or wrap Drizzle calls with a guard that verifies `userId` before executing. Add automated tests to ensure helper functions fail when invoked without matching user IDs.
 - **Evidence**: `db` is a superuser connection and is used directly in request helpers like `getPlanSchedule`, which must manually enforce ownership checks.【F:src/lib/db/drizzle.ts†L1-L31】【F:src/lib/api/schedule.ts†L1-L111】
 
-### 4. Plan loader lacks tenant scoping guardrails
+### 4. Plan loader lacks tenant scoping guardrails ✅ RESOLVED
 
 - **Location**: `src/lib/db/queries/plans.ts` (`getLearningPlanWithModules`).
 - **Issue**: This helper fetches a plan and its modules without checking the owning user. If reused in an authenticated surface without additional filtering, an attacker could enumerate arbitrary plans by ID.
 - **Impact**: Medium—currently unused in request paths, but the helper is a latent footgun.
 - **Recommendation**: Require a `userId` argument (mirroring `getLearningPlanDetail`) and enforce ownership in the query, or add lint/test coverage that forbids exporting multi-tenant data without user filters.
 - **Evidence**: The function accepts only `planId` and runs against the superuser `db` connection with no tenant predicate.【F:src/lib/db/queries/plans.ts†L34-L45】
+- **Resolution**:
+  - Removed the unsafe `getLearningPlanWithModules` function from `src/lib/db/queries/plans.ts` since it had no call sites and violated tenant isolation.
+  - Added comprehensive integration tests (`tests/integration/db/plans.queries.spec.ts`) that verify all plan-fetching functions enforce tenant scoping (returns `null` for cross-tenant access).
+  - Enhanced API contract test (`tests/integration/contract/plans.get.spec.ts`) to verify cross-tenant access returns 404.
+  - Added automated regex-based guard test (`tests/integration/db/plans.queries.guard.spec.ts`) that scans `plans.ts` and fails if any exported plan-fetching functions are missing `userId` parameter, preventing regressions.
+  - Documented tenant scoping requirements in `docs/testing/testing.md` with examples of safe patterns and anti-patterns.
+  - Added tenant scoping rule to `.cursor/rules/nextjs.mdc` security best practices section.
+  - All remaining plan-fetching functions (`getLearningPlanDetail`, `getPlanAttemptsForUser`, `getUserLearningPlans`) properly enforce tenant scoping with `userId` parameter and ownership checks in WHERE clauses.
 
 ## Additional Observations
 

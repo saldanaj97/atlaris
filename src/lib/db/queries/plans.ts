@@ -15,12 +15,7 @@ import {
   mapLearningPlanDetail,
   mapPlanSummaries,
 } from '@/lib/mappers/planQueries';
-import {
-  LearningPlan,
-  LearningPlanDetail,
-  Module,
-  PlanSummary,
-} from '@/lib/types/db';
+import { LearningPlan, LearningPlanDetail, PlanSummary } from '@/lib/types/db';
 
 export async function getUserLearningPlans(
   userId: string
@@ -29,19 +24,6 @@ export async function getUserLearningPlans(
     .select()
     .from(learningPlans)
     .where(eq(learningPlans.userId, userId));
-}
-
-export async function getLearningPlanWithModules(planId: string): Promise<
-  Array<{
-    learning_plans: LearningPlan | null;
-    modules: Module | null;
-  }>
-> {
-  return await db
-    .select()
-    .from(learningPlans)
-    .leftJoin(modules, eq(modules.planId, learningPlans.id))
-    .where(eq(learningPlans.id, planId));
 }
 
 export async function getPlanSummariesForUser(
