@@ -11,9 +11,10 @@ Clear, consistent commit messages improve project maintainability and collaborat
 # Rules
 Make sure unless specified otherwise, to only stage and commit files that were discussed and modified as part of the task at hand. Do not include unrelated files or changes in the commit.
 
+
 ## Format
 
-Follow this structured format for all commit messages:
+Follow this structured format ONLY for commits related to code changes:
 
 ```
 <type>: <short summary (50 chars max)>
