@@ -181,7 +181,7 @@ export async function appendTaskDescription(
 export async function appendTaskMicroExplanation(
   taskId: string,
   microExplanation: string
-): Promise<void> {
+): Promise<string> {
   // Get current task
   const [currentTask] = await db
     .select()
@@ -195,7 +195,8 @@ export async function appendTaskMicroExplanation(
 
   // If micro-explanation already exists, skip
   if (currentTask.hasMicroExplanation) {
-    return;
+    // Return the current DB value (may be null if empty)
+    return currentTask.description ?? '';
   }
 
   // Sanitize the micro-explanation text
@@ -220,4 +221,6 @@ export async function appendTaskMicroExplanation(
       updatedAt: new Date(),
     })
     .where(eq(tasks.id, taskId));
+
+  return newDescription;
 }

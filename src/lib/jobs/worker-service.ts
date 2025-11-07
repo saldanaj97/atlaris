@@ -590,11 +590,12 @@ async function maybeCurateAndAttachResources(
               skillLevel: params.skillLevel,
             });
             // Use appendTaskMicroExplanation which handles duplicate prevention via flag
-            await appendTaskMicroExplanation(task.id, microExplanation);
-            // Update local task object for consistency
-            task.description = task.description
-              ? `${task.description}\n\nMicro-explanation\n${microExplanation}`
-              : `Micro-explanation\n${microExplanation}`;
+            const updatedDescription = await appendTaskMicroExplanation(
+              task.id,
+              microExplanation
+            );
+            // Update local task object from DB-side result to avoid drift
+            task.description = updatedDescription;
             task.hasMicroExplanation = true;
             console.log(
               `[Curation] Added micro-explanation to task ${task.id}`

@@ -14,25 +14,40 @@ export function sanitizePlainText(input: string, maxLength = 10_000): string {
 
   let sanitized = input;
 
-  // Remove HTML comments (including multi-line) robustly (repeatedly until gone)
+  // Remove script and style blocks first (including their content), case-insensitive and non-greedy
   let prevSanitized;
   do {
     prevSanitized = sanitized;
-    sanitized = sanitized.replace(/<!--[\s\S]*?-->/g, '');
+    sanitized = sanitized.replace(/<script[\s\S]*?<\/script>/gi, '');
+  } while (sanitized !== prevSanitized);
+  do {
+    prevSanitized = sanitized;
+    sanitized = sanitized.replace(/<style[\s\S]*?<\/style>/gi, '');
+  } while (sanitized !== prevSanitized);
+
+  // Remove HTML comments (including multi-line) robustly (repeatedly until gone)
+  do {
+    prevSanitized = sanitized;
+    sanitized = sanitized.replace(/<!--[\s\S]*?(?:-->|$)/g, '');
   } while (sanitized !== prevSanitized);
 
   // Remove HTML tags (including script, style, and other potentially dangerous tags)
-  sanitized = sanitized.replace(/<[^>]*>/g, '');
+  do {
+    prevSanitized = sanitized;
+    sanitized = sanitized.replace(/<[^>]*>/gi, '');
+  } while (sanitized !== prevSanitized);
 
   // Decode common HTML entities to plain text equivalents
+  // IMPORTANT: &amp; must be decoded LAST to prevent double-decoding vulnerabilities
+  // (e.g., &amp;lt; -> &lt; -> < would reintroduce dangerous characters)
   sanitized = sanitized
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'");
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&');
 
   // Normalize line endings to \n
   sanitized = sanitized.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
