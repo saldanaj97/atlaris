@@ -11,7 +11,7 @@ import {
   getNextJob,
   getUserJobCount,
 } from '@/lib/jobs/queue';
-import { JOB_TYPES } from '@/lib/jobs/types';
+import { JOB_TYPES, type JobType } from '@/lib/jobs/types';
 import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
 
 import { ensureUser } from '../../../../tests/helpers/db';
@@ -390,5 +390,14 @@ describe('Job queue service', () => {
         )
       );
     expect(otherRows.map((row) => row.id)).toContain(jobOldest);
+  });
+
+  it('rejects invalid job types before query execution', async () => {
+    // Deliberately bypass TS at call site to test runtime guard
+    const invalidTypes = [
+      'plan_generation" ) or true -- ',
+    ] as unknown as JobType[];
+
+    await expect(getNextJob(invalidTypes)).rejects.toThrow('Invalid job type');
   });
 });

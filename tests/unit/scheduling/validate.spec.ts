@@ -102,6 +102,7 @@ describe('Schedule Validation', () => {
           title: 'Task 1',
           description: null,
           estimatedMinutes: 60,
+          hasMicroExplanation: false,
           createdAt: now,
           updatedAt: now,
           resources: [
@@ -135,6 +136,7 @@ describe('Schedule Validation', () => {
           title: 'Task 2',
           description: null,
           estimatedMinutes: 60,
+          hasMicroExplanation: false,
           createdAt: now,
           updatedAt: now,
           resources: [
@@ -178,6 +180,7 @@ describe('Schedule Validation', () => {
           title: 'Task 1',
           description: null,
           estimatedMinutes: 60,
+          hasMicroExplanation: false,
           createdAt: now,
           updatedAt: now,
           resources: [],
@@ -189,6 +192,7 @@ describe('Schedule Validation', () => {
           title: 'Task 2',
           description: null,
           estimatedMinutes: 60,
+          hasMicroExplanation: false,
           createdAt: now,
           updatedAt: now,
           resources: [

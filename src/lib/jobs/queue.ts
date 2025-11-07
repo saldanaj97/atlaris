@@ -1,9 +1,9 @@
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import { jobQueue } from '@/lib/db/schema';
-import { type Job, type JobType } from './types';
+import { JOB_TYPES, type Job, type JobType } from './types';
 
 type JobRow = InferSelectModel<typeof jobQueue>;
 
@@ -27,9 +27,18 @@ function mapRowToJob(row: JobRow): Job {
   };
 }
 
-function buildJobTypeArrayLiteral(types: JobType[]): string {
-  const values = types.map((type) => `"${type}"`);
-  return `'{${values.join(',')}}'::job_type[]`;
+const ALLOWED_JOB_TYPES = new Set(Object.values(JOB_TYPES));
+
+function assertValidJobTypes(
+  values: readonly unknown[]
+): asserts values is JobType[] {
+  if (
+    !values.every(
+      (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v as JobType)
+    )
+  ) {
+    throw new Error('Invalid job type(s) received');
+  }
 }
 
 export async function enqueueJob(
@@ -63,16 +72,17 @@ export async function getNextJob(types: JobType[]): Promise<Job | null> {
     return null;
   }
 
-  const typeArrayLiteral = sql.raw(buildJobTypeArrayLiteral(types));
+  assertValidJobTypes(types);
 
   const startTime = new Date();
 
   const result = await db.transaction(async (tx) => {
+    const typeFilter = inArray(jobQueue.jobType, types);
     const rows = (await tx.execute(sql`
       select id
       from job_queue
       where status = 'pending'
-        and job_type = any(${typeArrayLiteral})
+        and ${typeFilter}
         and scheduled_for <= now()
       order by priority desc, created_at asc
       limit 1

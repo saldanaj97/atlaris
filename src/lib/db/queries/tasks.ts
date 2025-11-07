@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
 import type { ProgressStatus } from '@/lib/types/db';
+import { sanitizePlainText } from '@/lib/utils/sanitize';
 import type { InferSelectModel } from 'drizzle-orm';
 
 type DbTask = InferSelectModel<typeof tasks>;
@@ -129,6 +130,7 @@ export async function setTaskProgress(
 
 /**
  * Update task description by appending new content
+ * Sanitizes all inputs to prevent XSS attacks and ensure safe plain text storage.
  * @param taskId - The ID of the task
  * @param additionalDescription - Additional description text to append
  * @returns Promise that resolves when update completes
@@ -148,10 +150,16 @@ export async function appendTaskDescription(
     throw new Error(`Task not found: ${taskId}`);
   }
 
+  // Sanitize both existing description and new content before appending
+  const sanitizedExisting = currentTask.description
+    ? sanitizePlainText(currentTask.description)
+    : '';
+  const sanitizedAdditional = sanitizePlainText(additionalDescription);
+
   // Append to existing description (or create new if none exists)
-  const newDescription = currentTask.description
-    ? `${currentTask.description}\n\n${additionalDescription}`
-    : additionalDescription;
+  const newDescription = sanitizedExisting
+    ? `${sanitizedExisting}\n\n${sanitizedAdditional}`
+    : sanitizedAdditional;
 
   await db
     .update(tasks)
@@ -160,4 +168,59 @@ export async function appendTaskDescription(
       updatedAt: new Date(),
     })
     .where(eq(tasks.id, taskId));
+}
+
+/**
+ * Append a micro-explanation to a task description.
+ * Uses a flag to prevent duplicate micro-explanations from being added.
+ * Sanitizes all inputs to prevent XSS attacks.
+ * @param taskId - The ID of the task
+ * @param microExplanation - The micro-explanation text to append
+ * @returns Promise that resolves when update completes, or immediately if already has micro-explanation
+ */
+export async function appendTaskMicroExplanation(
+  taskId: string,
+  microExplanation: string
+): Promise<string> {
+  // Get current task
+  const [currentTask] = await db
+    .select()
+    .from(tasks)
+    .where(eq(tasks.id, taskId))
+    .limit(1);
+
+  if (!currentTask) {
+    throw new Error(`Task not found: ${taskId}`);
+  }
+
+  // If micro-explanation already exists, skip
+  if (currentTask.hasMicroExplanation) {
+    // Return the current DB value (may be null if empty)
+    return currentTask.description ?? '';
+  }
+
+  // Sanitize the micro-explanation text
+  const sanitizedExplanation = sanitizePlainText(microExplanation);
+
+  // Sanitize existing description if present
+  const sanitizedExisting = currentTask.description
+    ? sanitizePlainText(currentTask.description)
+    : '';
+
+  // Append with a plain-text prefix (no HTML markers)
+  const prefix = '\n\nMicro-explanation\n';
+  const newDescription = sanitizedExisting
+    ? `${sanitizedExisting}${prefix}${sanitizedExplanation}`
+    : `${prefix}${sanitizedExplanation}`;
+
+  await db
+    .update(tasks)
+    .set({
+      description: newDescription,
+      hasMicroExplanation: true,
+      updatedAt: new Date(),
+    })
+    .where(eq(tasks.id, taskId));
+
+  return newDescription;
 }

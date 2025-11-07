@@ -39,6 +39,7 @@ vi.mock('@/lib/ai/micro-explanations', () => ({
 vi.mock('@/lib/db/queries/tasks', () => ({
   getTasksByPlanId: vi.fn(),
   appendTaskDescription: vi.fn(),
+  appendTaskMicroExplanation: vi.fn(),
 }));
 vi.mock('@/lib/db/queries/resources', () => ({
   upsertAndAttach: vi.fn(),
@@ -66,6 +67,7 @@ import type { Scored } from '@/lib/curation/ranking';
 import {
   getTasksByPlanId,
   appendTaskDescription,
+  appendTaskMicroExplanation,
 } from '@/lib/db/queries/tasks';
 import { upsertAndAttach } from '@/lib/db/queries/resources';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
@@ -81,6 +83,9 @@ describe('Worker curation integration', () => {
   let mockGenerateMicro: MockedFunction<typeof generateMicroExplanation>;
   let mockGetTasks: MockedFunction<typeof getTasksByPlanId>;
   let mockAppendDescription: MockedFunction<typeof appendTaskDescription>;
+  let mockAppendMicroExplanation: MockedFunction<
+    typeof appendTaskMicroExplanation
+  >;
   let mockUpsertAttach: MockedFunction<typeof upsertAndAttach>;
 
   beforeEach(() => {
@@ -116,6 +121,7 @@ describe('Worker curation integration', () => {
     mockGenerateMicro = vi.mocked(generateMicroExplanation);
     mockGetTasks = vi.mocked(getTasksByPlanId);
     mockAppendDescription = vi.mocked(appendTaskDescription);
+    mockAppendMicroExplanation = vi.mocked(appendTaskMicroExplanation);
     mockUpsertAttach = vi.mocked(upsertAndAttach);
 
     // Mock micro-explanations generation
@@ -151,6 +157,7 @@ describe('Worker curation integration', () => {
       title: overrides.title,
       description: overrides.description ?? null,
       estimatedMinutes: overrides.estimatedMinutes ?? 30,
+      hasMicroExplanation: overrides.hasMicroExplanation ?? false,
       createdAt: overrides.createdAt ?? new Date(),
       updatedAt: overrides.updatedAt ?? new Date(),
     } as DbTask;
@@ -431,10 +438,11 @@ describe('Worker curation integration', () => {
           skillLevel: 'beginner',
         })
       );
-      expect(mockAppendDescription).toHaveBeenCalledWith(
+      expect(mockAppendMicroExplanation).toHaveBeenCalledWith(
         'task1',
         expect.stringContaining('Explanation: useState')
       );
+      expect(mockAppendDescription).not.toHaveBeenCalled();
     });
 
     it('skips micro-explanations if budget tight', async () => {
@@ -459,6 +467,26 @@ describe('Worker curation integration', () => {
       expect(mockGenerateMicro).not.toHaveBeenCalled(); // Skipped due to budget
 
       vi.useRealTimers();
+    });
+
+    it('skips micro-explanation if task already has one (flag-based)', async () => {
+      mockGetTasks.mockResolvedValue([
+        {
+          task: makeTask({
+            id: 'task1',
+            title: 'Task with Existing Explanation',
+            hasMicroExplanation: true,
+          }),
+          moduleTitle: 'Module 1',
+        },
+      ]);
+      mockCurateYouTube.mockResolvedValue([]);
+
+      await processPlanGenerationJob(mockJob);
+
+      // Should not generate or append micro-explanation
+      expect(mockGenerateMicro).not.toHaveBeenCalled();
+      expect(mockAppendMicroExplanation).not.toHaveBeenCalled();
     });
   });
 

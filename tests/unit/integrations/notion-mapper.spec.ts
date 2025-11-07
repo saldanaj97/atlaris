@@ -31,6 +31,7 @@ describe('Notion Data Mapper', () => {
         description: 'Learn about string, number, boolean',
         order: 1,
         estimatedMinutes: 30,
+        hasMicroExplanation: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

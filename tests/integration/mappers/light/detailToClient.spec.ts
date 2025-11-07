@@ -78,6 +78,7 @@ function buildTask(
     title: 'Read intro article',
     description: 'Basics overview',
     estimatedMinutes: 45,
+    hasMicroExplanation: false,
     createdAt: BASE_DATE,
     updatedAt: BASE_DATE,
     resources: [buildResource()],

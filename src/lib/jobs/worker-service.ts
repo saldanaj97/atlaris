@@ -13,7 +13,7 @@ import { learningPlans } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { upsertAndAttach } from '@/lib/db/queries/resources';
 import {
-  appendTaskDescription,
+  appendTaskMicroExplanation,
   getTasksByPlanId,
 } from '@/lib/db/queries/tasks';
 import { recordUsage } from '@/lib/db/usage';
@@ -568,6 +568,13 @@ async function maybeCurateAndAttachResources(
 
           // Generate and append micro-explanation
           try {
+            // Skip if task already has a micro-explanation
+            if (task.hasMicroExplanation) {
+              console.log(
+                `[Curation] Skipping micro-explanation for task ${task.id}; already present`
+              );
+              return;
+            }
             // Skip micro-explanations if time budget is already exhausted
             if (Date.now() - startTime > TIME_BUDGET_MS) {
               console.log(
@@ -582,18 +589,14 @@ async function maybeCurateAndAttachResources(
               taskTitle: task.title,
               skillLevel: params.skillLevel,
             });
-            const marker = `<!-- micro-explanation-${task.id} -->`;
-            if (task.description?.includes(marker)) {
-              console.log(
-                `[Curation] Skipping micro-explanation for task ${task.id}; already present`
-              );
-              return;
-            }
-            const markedExplanation = `${marker}\n${microExplanation}`;
-            await appendTaskDescription(task.id, markedExplanation);
-            task.description = task.description
-              ? `${task.description}\n\n${markedExplanation}`
-              : markedExplanation;
+            // Use appendTaskMicroExplanation which handles duplicate prevention via flag
+            const updatedDescription = await appendTaskMicroExplanation(
+              task.id,
+              microExplanation
+            );
+            // Update local task object from DB-side result to avoid drift
+            task.description = updatedDescription;
+            task.hasMicroExplanation = true;
             console.log(
               `[Curation] Added micro-explanation to task ${task.id}`
             );
