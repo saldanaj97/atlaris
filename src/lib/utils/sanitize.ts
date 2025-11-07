@@ -14,8 +14,12 @@ export function sanitizePlainText(input: string, maxLength = 10_000): string {
 
   let sanitized = input;
 
-  // Remove HTML comments (including multi-line)
-  sanitized = sanitized.replace(/<!--[\s\S]*?-->/g, '');
+  // Remove HTML comments (including multi-line) robustly (repeatedly until gone)
+  let prevSanitized;
+  do {
+    prevSanitized = sanitized;
+    sanitized = sanitized.replace(/<!--[\s\S]*?-->/g, '');
+  } while (sanitized !== prevSanitized);
 
   // Remove HTML tags (including script, style, and other potentially dangerous tags)
   sanitized = sanitized.replace(/<[^>]*>/g, '');
