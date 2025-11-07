@@ -120,6 +120,13 @@
       "when": 1762397832859,
       "tag": "0016_woozy_wendigo",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1762542727418,
+      "tag": "0017_hard_kulan_gath",
+      "breakpoints": true
     }
   ]
 }

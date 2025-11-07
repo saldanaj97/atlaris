@@ -1093,6 +1093,9 @@ export const tasks = pgTable(
     title: text('title').notNull(),
     description: text('description'),
     estimatedMinutes: integer('estimated_minutes').notNull(),
+    hasMicroExplanation: boolean('has_micro_explanation')
+      .notNull()
+      .default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

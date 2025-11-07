@@ -17,13 +17,22 @@
 - **Evidence**: `buildJobTypeArrayLiteral` constructs a string literal and `sql.raw` injects it into the query filter.【F:src/lib/jobs/queue.ts†L30-L99】
 - **Resolution**: Fixed in commit `6a2cd85`. Replaced `buildJobTypeArrayLiteral` and `sql.raw()` usage with Drizzle's parameterized `inArray()` operator. Added runtime whitelist guard `assertValidJobTypes()` to validate job types before query execution. Added unit test to ensure invalid job types are rejected.
 
-### 2. Task description updates store untrusted HTML verbatim
+### 2. Task description updates store untrusted HTML verbatim ✅ RESOLVED
 
 - **Location**: `src/lib/db/queries/tasks.ts` (`appendTaskDescription`).
 - **Issue**: Additional description text (likely derived from AI output or user input) is concatenated directly into the task record. Without sanitisation, any HTML/markdown rendered later could execute as stored XSS.
 - **Impact**: High—compromised descriptions can target every viewer of the plan.
 - **Recommendation**: Normalise inputs before persistence (e.g., strip/escape HTML, store in structured rich-text format, or flag content for review). Pair with contextual escaping on render and consider content security policies on consuming surfaces.
 - **Evidence**: The function appends `additionalDescription` directly to the existing `description` column.【F:src/lib/db/queries/tasks.ts†L136-L162】
+- **Resolution**:
+  - Implemented `sanitizePlainText()` utility (`src/lib/utils/sanitize.ts`) that strips HTML tags, removes HTML comments, decodes entities, normalizes newlines, and enforces length limits.
+  - Updated `appendTaskDescription()` to sanitize both existing and new description content before persistence.
+  - Added `appendTaskMicroExplanation()` function with flag-based duplicate prevention (`hasMicroExplanation` boolean on `tasks` table).
+  - Migrated worker logic away from HTML comment markers (`<!-- micro-explanation-<id> -->`) to use the new flag-based approach.
+  - Added database migration (`0017_hard_kulan_gath.sql`) that adds `has_micro_explanation` column and backfills flag for legacy records while stripping markers.
+  - Added comprehensive unit tests for sanitization (`tests/unit/utils/sanitize.spec.ts`) and integration tests for query functions (`tests/integration/db/tasks.queries.spec.ts`).
+  - Updated worker integration tests to verify flag-based duplicate prevention.
+  - UI continues to render descriptions as plain text (React auto-escapes), providing defense-in-depth. No Markdown/HTML rendering added, keeping attack surface minimal.
 
 ### 3. Service-role database client bypasses RLS in request handlers
 
