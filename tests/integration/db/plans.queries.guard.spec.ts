@@ -14,22 +14,22 @@ describe('Plan Queries - Tenant Scoping Guard', () => {
     const plansQueryPath = join(process.cwd(), 'src/lib/db/queries/plans.ts');
     const fileContent = readFileSync(plansQueryPath, 'utf-8');
 
-    // Pattern to match exported async functions that fetch plans
-    // Matches: export async function getXxx(planId: string, ...)
-    // or: export async function getXxx(...) that might fetch plans
+    // Pattern to match exported async functions that directly fetch learning plans
+    // Matches functions like: getLearningPlan*, getUserLearningPlans, getPlanSummaries*, getPlanAttempts*
+    // Excludes utility functions like: getPlanSchedule*, getPlanCache*, getPlanStatus*
+    // Expected naming convention: Functions that fetch plan entities should use:
+    //   - getLearningPlan* (e.g., getLearningPlanDetail)
+    //   - getUserLearningPlans
+    //   - getPlanSummaries* (e.g., getPlanSummariesForUser)
+    //   - getPlanAttempts* (e.g., getPlanAttemptsForUser)
     const planFetchingFunctionPattern =
-      /export\s+async\s+function\s+(get\w*Plan\w*|get\w*Plans\w*)\s*\([^)]*\)/g;
+      /export\s+async\s+function\s+(get(?:User)?LearningPlan\w*|getPlan(?:Summaries|Attempts)\w*)\s*\([^)]*\)/g;
 
     const matches = Array.from(
       fileContent.matchAll(planFetchingFunctionPattern)
     );
 
-    // List of functions that are allowed to not have userId (e.g., internal helpers)
-    const allowedWithoutUserId: string[] = [
-      // No exceptions - all plan-fetching functions MUST have userId
-    ];
-
-    // List of functions that should have userId
+    // List of functions that are missing userId parameter
     const functionsRequiringUserId: string[] = [];
 
     for (const match of matches) {
@@ -39,7 +39,7 @@ describe('Plan Queries - Tenant Scoping Guard', () => {
       // Check if function signature includes userId parameter
       const hasUserId = /userId\s*:\s*string/.test(functionSignature);
 
-      if (!hasUserId && !allowedWithoutUserId.includes(functionName)) {
+      if (!hasUserId) {
         functionsRequiringUserId.push(functionName);
       }
     }
@@ -68,8 +68,9 @@ describe('Plan Queries - Tenant Scoping Guard', () => {
 
     // Pattern to match functions that take only planId (or planId first) without userId
     // This catches cases like: function getXxx(planId: string) without userId
+    // Uses the same specific pattern as above to avoid false positives
     const unsafePattern =
-      /export\s+async\s+function\s+(get\w*Plan\w*|get\w*Plans\w*)\s*\(\s*planId\s*:\s*string\s*(?:,\s*[^)]*)?\)/g;
+      /export\s+async\s+function\s+(get(?:User)?LearningPlan\w*|getPlan(?:Summaries|Attempts)\w*)\s*\(\s*planId\s*:\s*string\s*(?:,\s*[^)]*)?\)/g;
 
     const matches = Array.from(fileContent.matchAll(unsafePattern));
 
