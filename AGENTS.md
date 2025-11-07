@@ -46,6 +46,7 @@ This file provides guidance when working with code in this repository.
 
 ### Commit guidelines
 
+- Only follow the commit message guidelines below if we have made changes to the codebase. If we have made changes to the documentation, testing, or other non-code files, DO NOT follow these guidelines.
 - When writing commit messages, follow the structure and guidelines outline in the .github/instructions/commit-message.instructions.md file. Below is a summary of the structure but make sure to read the full instructions in that file.
 - When commiting, make sure to only stage and commit files that were discussed and modified as part of the task at hand. Do not include unrelated files or changes in the commit.
 - Before comitting, make sure the changes have been linted, typechecked and the project builds successfully.
