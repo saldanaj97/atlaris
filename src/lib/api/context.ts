@@ -4,6 +4,9 @@ import { randomUUID } from 'node:crypto';
 export interface RequestContext {
   correlationId: string;
   userId?: string;
+  // Loosely typed to allow either RLS (Supabase) or service-role (Postgres) Drizzle clients
+  // Callers should use getDb() which returns a consistent, typed handle
+  db?: unknown;
 }
 
 const storage = new AsyncLocalStorage<RequestContext>();

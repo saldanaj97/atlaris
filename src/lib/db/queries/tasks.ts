@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
 import type { ProgressStatus } from '@/lib/types/db';
 import { sanitizePlainText } from '@/lib/utils/sanitize';
@@ -19,6 +19,7 @@ export async function getAllTasksInPlan(
   userId: string,
   planId: string
 ): Promise<DbTask[]> {
+  const db = getDb();
   const rows = await db
     .select({ task: tasks })
     .from(tasks)
@@ -39,6 +40,7 @@ export async function getTasksByPlanId(planId: string): Promise<
     moduleTitle: string;
   }>
 > {
+  const db = getDb();
   const rows = await db
     .select({
       task: tasks,
@@ -61,6 +63,7 @@ export async function getUserTaskProgress(
   userId: string,
   taskId: string
 ): Promise<DbTaskProgress | undefined> {
+  const db = getDb();
   const result = await db
     .select()
     .from(taskProgress)
@@ -80,6 +83,7 @@ export async function getTaskProgressForUserPlan(
   userId: string,
   planId: string
 ): Promise<DbTaskProgress[]> {
+  const db = getDb();
   const rows = await db
     .select({ progress: taskProgress })
     .from(taskProgress)
@@ -103,6 +107,7 @@ export async function setTaskProgress(
   taskId: string,
   status: ProgressStatus
 ): Promise<DbTaskProgress> {
+  const db = getDb();
   const now = new Date();
   const completedAt = status === 'completed' ? now : null;
 
@@ -139,6 +144,7 @@ export async function appendTaskDescription(
   taskId: string,
   additionalDescription: string
 ): Promise<void> {
+  const db = getDb();
   // Get current task
   const [currentTask] = await db
     .select()
@@ -182,6 +188,7 @@ export async function appendTaskMicroExplanation(
   taskId: string,
   microExplanation: string
 ): Promise<string> {
+  const db = getDb();
   // Get current task
   const [currentTask] = await db
     .select()

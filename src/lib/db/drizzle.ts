@@ -14,12 +14,15 @@ if (!process.env.DATABASE_URL) {
 
 const connectionString = process.env.DATABASE_URL;
 
-// RLS BYPASS NOTE (for tests):
-// When using direct postgres connection (postgres-js), we connect as the database owner/superuser.
-// This means Row Level Security (RLS) policies are BYPASSED.
+// SERVICE-ROLE DB CLIENT (RLS BYPASSED)
+// This client connects as the database owner/superuser, bypassing Row Level Security (RLS).
 //
-// In production: Next.js API routes use Supabase client with user JWT → RLS enforced
-// In tests: Direct postgres connection → RLS bypassed (intentional for business logic testing)
+// USAGE RULES:
+// - ✅ Workers/background jobs: Use this client directly (src/workers/**)
+// - ✅ Tests: Use this client for business logic testing (RLS bypassed intentionally)
+// - ✅ Transactional writes: atomicCheckAndInsertPlan and similar atomic operations
+// - ❌ API routes: Use getDb() from @/lib/db/runtime (RLS-enforced via request context)
+// - ❌ Request handlers: Use getDb() from @/lib/db/runtime (RLS-enforced)
 //
 // RLS policies are tested separately in tests/security/rls.policies.spec.ts using
 // authenticated Supabase clients with proper JWT context.
@@ -27,5 +30,7 @@ const connectionString = process.env.DATABASE_URL;
 // This approach allows:
 // 1. Fast, reliable business logic tests without RLS complexity
 // 2. Dedicated security tests that verify RLS policies work correctly
+// 3. Worker processes that need full database access
+// 4. Request handlers that enforce tenant isolation via RLS
 export const client = postgres(connectionString, { prepare: false });
 export const db = drizzle(client, { schema });

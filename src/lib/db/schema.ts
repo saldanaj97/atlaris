@@ -13,12 +13,7 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
-import {
-  anonRole,
-  authenticatedRole,
-  authUid,
-  serviceRole,
-} from 'drizzle-orm/supabase';
+import { anonRole, authenticatedRole, serviceRole } from 'drizzle-orm/supabase';
 import {
   jobStatus,
   jobType,
@@ -1671,7 +1666,7 @@ export const planGenerations = pgTable(
           SELECT 1 FROM ${learningPlans}
           WHERE ${learningPlans.id} = ${table.planId}
           AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${authUid}
+            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
           )
         )
       `,

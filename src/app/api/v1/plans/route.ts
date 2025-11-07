@@ -6,7 +6,7 @@ import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { json, jsonError } from '@/lib/api/response';
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
@@ -40,6 +40,7 @@ export const GET = withErrorBoundary(
 );
 
 async function findCappedPlanWithoutModules(userDbId: string) {
+  const db = getDb();
   const planRows = await db
     .select({ id: learningPlans.id })
     .from(learningPlans)
@@ -176,6 +177,7 @@ export const POST = withErrorBoundary(
     });
 
     // Fetch created row to include timestamps in response (back-compat shape)
+    const db = getDb();
     const [plan] = await db
       .select()
       .from(learningPlans)

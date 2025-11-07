@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { planSchedules } from '@/lib/db/schema';
 import type { ScheduleCacheRow } from '@/lib/scheduling/types';
 
@@ -11,6 +11,7 @@ import type { ScheduleCacheRow } from '@/lib/scheduling/types';
 export async function getPlanScheduleCache(
   planId: string
 ): Promise<ScheduleCacheRow | null> {
+  const db = getDb();
   const [result] = await db
     .select()
     .from(planSchedules)
@@ -49,6 +50,7 @@ export async function upsertPlanScheduleCache(
     deadline: string | null;
   }
 ): Promise<void> {
+  const db = getDb();
   await db
     .insert(planSchedules)
     .values({
@@ -80,5 +82,6 @@ export async function upsertPlanScheduleCache(
  * @param planId - The identifier of the plan whose schedule cache will be deleted
  */
 export async function deletePlanScheduleCache(planId: string): Promise<void> {
+  const db = getDb();
   await db.delete(planSchedules).where(eq(planSchedules.planId, planId));
 }

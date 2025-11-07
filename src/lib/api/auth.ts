@@ -53,6 +53,9 @@ export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
     const userId = await requireUser();
     const requestContext = createRequestContext(req, userId);
+    // NOTE: RLS DB injection removed - getRlsDb() is not implemented
+    // getDb() from @/lib/db/runtime will return service-role DB for now
+    // TODO: Implement RLS drizzle client when drizzle-orm/supabase-js is available
     const params: RouteHandlerParams = routeContext?.params
       ? await routeContext.params
       : {};

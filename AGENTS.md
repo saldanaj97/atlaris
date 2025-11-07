@@ -135,7 +135,9 @@ Tests cover:
   - Database code:
     - src/lib/db/schema.ts - Database schema definitions
     - src/lib/db/enums.ts - PostgreSQL enum definitions
-    - src/lib/db/drizzle.ts - Drizzle client initialization
+    - src/lib/db/drizzle.ts - Service-role Drizzle client (RLS bypassed; for workers/tests)
+    - src/lib/db/rls.ts - RLS-enforced Drizzle client factory (for request handlers)
+    - src/lib/db/runtime.ts - Runtime DB selector (getDb() returns RLS DB in requests, service-role elsewhere)
     - src/lib/db/queries.ts - Database queries (legacy, being modularized)
     - src/lib/db/queries/ - Modular query files (users.ts, plans.ts, modules.ts, tasks.ts, resources.ts, schedules.ts, attempts.ts, index.ts)
     - src/lib/db/seed.ts, src/lib/db/seed-cli.ts - Database seeding utilities
@@ -169,6 +171,13 @@ Tests cover:
     - Queries: src/lib/db/queries/ (modular query files by entity) + src/lib/db/queries.ts (legacy)
     - Migrations: managed via drizzle-kit; out dir is src/lib/db/migrations/
     - RLS policies: Defined in schema using pgPolicy for Supabase Row Level Security
+  - **Database client usage rules (CRITICAL for security)**:
+    - **Request handlers (API routes, server actions)**: MUST use `getDb()` from `@/lib/db/runtime`. This returns an RLS-enforced client that respects tenant isolation.
+    - **Workers/background jobs**: Use `db` from `@/lib/db/drizzle` directly (service-role, RLS bypassed).
+    - **Tests**: Use `db` from `@/lib/db/drizzle` for business logic tests (RLS bypassed intentionally). Use authenticated Supabase clients for RLS policy tests.
+    - **Transactional writes**: Functions like `atomicCheckAndInsertPlan` may use service-role DB for atomicity, but must validate all inputs are caller-scoped.
+    - **ESLint enforcement**: Importing `@/lib/db/drizzle` in request layers (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`) is blocked by lint rules.
+    - See `src/lib/db/drizzle.ts` and `src/lib/db/rls.ts` for detailed usage documentation.
   - Payments: Stripe integration for subscription billing
   - AI providers: Vercel AI SDK with OpenAI and Google providers for learning plan generation
   - Background jobs: Worker infrastructure in src/workers/ for async plan generation

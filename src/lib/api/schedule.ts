@@ -1,6 +1,6 @@
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { eq, asc, inArray } from 'drizzle-orm';
+import { and, eq, asc, inArray } from 'drizzle-orm';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
@@ -26,14 +26,16 @@ export async function getPlanSchedule(
   params: GetPlanScheduleParams
 ): Promise<ScheduleJson> {
   const { planId, userId } = params;
+  const db = getDb();
 
-  // Load plan
+  // Load plan with ownership check in WHERE clause (RLS-enforced)
   const [plan] = await db
     .select()
     .from(learningPlans)
-    .where(eq(learningPlans.id, planId));
+    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
+    .limit(1);
 
-  if (!plan || plan.userId !== userId) {
+  if (!plan) {
     throw new Error('Plan not found or access denied');
   }
 
