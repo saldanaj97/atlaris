@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import {
   generationAttempts,
   learningPlans,
@@ -20,6 +20,7 @@ import { LearningPlan, LearningPlanDetail, PlanSummary } from '@/lib/types/db';
 export async function getUserLearningPlans(
   userId: string
 ): Promise<LearningPlan[]> {
+  const db = getDb();
   return await db
     .select()
     .from(learningPlans)
@@ -29,6 +30,7 @@ export async function getUserLearningPlans(
 export async function getPlanSummariesForUser(
   userId: string
 ): Promise<PlanSummary[]> {
+  const db = getDb();
   const planRows = await db
     .select()
     .from(learningPlans)
@@ -89,6 +91,7 @@ export async function getLearningPlanDetail(
   planId: string,
   userId: string
 ): Promise<LearningPlanDetail | null> {
+  const db = getDb();
   const planRow = await db
     .select()
     .from(learningPlans)
@@ -208,6 +211,7 @@ export async function getLearningPlanDetail(
 }
 
 export async function getPlanAttemptsForUser(planId: string, userId: string) {
+  const db = getDb();
   const planRow = await db
     .select({ id: learningPlans.id })
     .from(learningPlans)

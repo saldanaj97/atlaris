@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import {
   learningPlans,
   modules,
@@ -28,7 +28,8 @@ export async function syncPlanToGoogleCalendar(
 
   const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-  // Fetch plan data
+  // Fetch plan data (RLS-enforced via getDb)
+  const db = getDb();
   const [plan] = await db
     .select()
     .from(learningPlans)

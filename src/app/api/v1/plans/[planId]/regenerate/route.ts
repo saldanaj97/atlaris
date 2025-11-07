@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json, jsonError } from '@/lib/api/response';
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { enqueueJob } from '@/lib/jobs/queue';
@@ -40,7 +40,8 @@ export const POST = withErrorBoundary(
       return jsonError('User not found', { status: 404 });
     }
 
-    // Fetch and verify plan ownership
+    // Fetch and verify plan ownership (RLS-enforced via getDb)
+    const db = getDb();
     const plan = await db.query.learningPlans.findFirst({
       where: eq(learningPlans.id, planId),
     });

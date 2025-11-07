@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { integrationTokens } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -102,6 +102,7 @@ export async function storeOAuthTokens(
       })
     : null;
 
+  const db = getDb();
   await db
     .insert(integrationTokens)
     .values({
@@ -135,6 +136,7 @@ export async function getOAuthTokens(
   userId: string,
   provider: IntegrationProvider
 ): Promise<OAuthTokenData | null> {
+  const db = getDb();
   const [record] = await db
     .select()
     .from(integrationTokens)
@@ -167,6 +169,7 @@ export async function deleteOAuthTokens(
   userId: string,
   provider: IntegrationProvider
 ): Promise<void> {
+  const db = getDb();
   await db
     .delete(integrationTokens)
     .where(

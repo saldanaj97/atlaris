@@ -27,18 +27,19 @@ Move all request-layer DB access to an RLS-enforced client using Supabase + Cler
 
 ### Core snippets (essentials)
 
-RLS client:
+RLS client (future/optional; not implemented in current stack):
 
 ```ts
-// src/lib/db/rls.ts
-import { drizzle } from 'drizzle-orm/supabase-js';
-import * as schema from '@/lib/db/schema';
-import { createClient } from '@/utils/supabase/server';
-
-export async function getRlsDb() {
-  const supabase = await createClient();
-  return drizzle(supabase, { schema });
-}
+// Not implemented: drizzle-orm/supabase-js is not part of our current toolchain.
+// Until supported, rely on getDb() + request context in request layers.
+// import { drizzle } from 'drizzle-orm/supabase-js';
+// import * as schema from '@/lib/db/schema';
+// import { createClient } from '@/utils/supabase/server';
+//
+// export async function getRlsDb() {
+//   const supabase = await createClient();
+//   return drizzle(supabase, { schema });
+// }
 ```
 
 Runtime DB selection:
@@ -57,12 +58,10 @@ export function getDb() {
 Inject RLS DB into request context:
 
 ```ts
-// src/lib/api/auth.ts (inside withAuth)
-import { getRlsDb } from '@/lib/db/rls';
-...
-const requestContext = createRequestContext(req, userId);
-requestContext.db = await getRlsDb();
-return withRequestContext(requestContext, () => handler({ req, userId, params }));
+// Current approach: withAuth creates a request context carrying user identity.
+// getDb() will return the request-scoped DB when RLS client support is added.
+// For now, getDb() returns the service DB outside of tests, and we enforce
+// ownership via WHERE + RLS policies in Supabase-based tests.
 ```
 
 Switch queries to `getDb()`:

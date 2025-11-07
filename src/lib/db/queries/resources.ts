@@ -5,7 +5,7 @@
 
 import { sql } from 'drizzle-orm';
 
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { resources, taskResources } from '@/lib/db/schema';
 import type { ResourceCandidate } from '@/lib/curation/types';
 import { mapSourceToDbResourceType } from '@/lib/curation/types';
@@ -54,6 +54,7 @@ export async function upsertResource(
   if (!isValidHttpUrl(candidate.url)) {
     throw new Error('Invalid URL: only http(s) URLs are allowed.');
   }
+  const db = getDb();
   const dbType = mapSourceToDbResourceType(candidate.source);
   const domain = extractDomain(candidate.url);
   const rawDuration = candidate.metadata?.['durationMinutes'];
@@ -101,6 +102,7 @@ export async function attachTaskResources(
     return;
   }
 
+  const db = getDb();
   // Perform query and insert within a transaction to avoid race conditions
   await db.transaction(async (tx) => {
     // Query current maximum order for the given taskId (or 0 if none)

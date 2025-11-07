@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import type { InferSelectModel } from 'drizzle-orm';
 
@@ -9,6 +9,7 @@ type DbUser = InferSelectModel<typeof users>;
 export async function getUserByClerkId(
   clerkUserId: string
 ): Promise<DbUser | undefined> {
+  const db = getDb();
   const result = await db
     .select()
     .from(users)
@@ -21,6 +22,7 @@ export async function createUser(userData: {
   email: string;
   name?: string;
 }): Promise<DbUser | undefined> {
+  const db = getDb();
   const result = await db.insert(users).values(userData).returning();
   return result[0];
 }

@@ -1,9 +1,9 @@
 import PlanDetailPageError from '@/components/plans/Error';
 import PlanDetails from '@/components/plans/PlanDetails';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import { getPlanSchedule } from '@/lib/api/schedule';
-import { getLearningPlanDetail } from '@/lib/db/queries/plans';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import {
+  getPlanForPage,
+  getPlanScheduleForPage,
+} from '@/app/plans/[id]/actions';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 import { redirect } from 'next/navigation';
 
@@ -21,26 +21,30 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
   const { id } = await params;
   if (!id) return <PlanDetailPageError />;
 
-  const userId = await getEffectiveClerkUserId();
-  if (!userId) redirect(`/sign-in?redirect_url=/plans/${id}`);
+  // Fetch plan data using server action (RLS-enforced via getDb())
+  let plan;
+  try {
+    plan = await getPlanForPage(id);
+  } catch (error) {
+    console.error('Failed to fetch plan:', {
+      planId: id,
+      error,
+    });
+    redirect(`/sign-in?redirect_url=/plans/${id}`);
+  }
 
-  const user = await getUserByClerkId(userId);
-  if (!user) redirect(`/sign-in?redirect_url=/plans/${id}`);
-
-  const plan = await getLearningPlanDetail(id, user.id);
   if (!plan) redirect(`/sign-in?redirect_url=/plans/${id}`);
 
   const formattedPlanDetails = mapDetailToClient(plan);
   if (!formattedPlanDetails) return <PlanDetailPageError />;
 
-  // Fetch schedule with error handling
+  // Fetch schedule with error handling using server action
   let schedule;
   try {
-    schedule = await getPlanSchedule({ planId: id, userId: user.id });
+    schedule = await getPlanScheduleForPage(id);
   } catch (error) {
     console.error('Failed to fetch schedule:', {
       planId: id,
-      userId: user.id,
       error,
     });
     // Show error UI to inform the user that schedule failed to load

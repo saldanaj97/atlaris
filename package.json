@@ -6,6 +6,7 @@
     "build": "next build --turbopack",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:test": "drizzle-kit migrate --config drizzle-test.config.ts",
     "db:push": "drizzle-kit push --config drizzle.config.ts",
     "db:push:test": "drizzle-kit push --config drizzle-test.config.ts",
     "dev": "next dev --turbopack",

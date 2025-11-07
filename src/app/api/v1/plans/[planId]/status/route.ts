@@ -1,7 +1,7 @@
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { learningPlans, modules } from '@/lib/db/schema';
 import { getJobsByPlanId } from '@/lib/jobs/queue';
@@ -33,7 +33,8 @@ export const GET = withErrorBoundary(
       throw new NotFoundError('User not found.');
     }
 
-    // Fetch the plan
+    // Fetch the plan (using getDb for future RLS support)
+    const db = getDb();
     const plan = await db.query.learningPlans.findFirst({
       where: eq(learningPlans.id, planId),
     });

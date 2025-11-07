@@ -125,6 +125,30 @@ export default [
       '@typescript-eslint/require-await': 'off',
     },
   },
+  // Block service-role DB imports in request layers (use getDb() / RLS DB instead)
+  // Note: System endpoints like health checks are excluded
+  {
+    files: [
+      'src/app/api/v1/**',
+      'src/app/**/actions.ts',
+      'src/lib/api/**',
+      'src/lib/integrations/**',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/lib/db/drizzle',
+              message:
+                'Use getDb() from @/lib/db/runtime in request handlers for RLS enforcement. Service-role DB should only be used in workers.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Next.js recommended + Core Web Vitals via compat until flat config is fully supported upstream
   ...compat.extends('plugin:@next/next/core-web-vitals'),
   // Relax rules for test files (must come after Next.js config)

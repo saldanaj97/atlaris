@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import {
   learningPlans,
   modules,
@@ -46,7 +46,8 @@ export async function exportPlanToNotion(
   userId: string,
   accessToken: string
 ): Promise<string> {
-  // Fetch plan with modules and tasks
+  // Fetch plan with modules and tasks (RLS-enforced via getDb)
+  const db = getDb();
   const [plan] = await db
     .select()
     .from(learningPlans)
@@ -57,7 +58,7 @@ export async function exportPlanToNotion(
     throw new Error('Plan not found');
   }
 
-  // Ensure the plan belongs to the requesting user
+  // Ensure the plan belongs to the requesting user (double-check for safety)
   if (plan.userId !== userId) {
     throw new Error("Access denied: plan doesn't belong to user");
   }
@@ -155,7 +156,8 @@ export async function deltaSyncPlanToNotion(
   planId: string,
   accessToken: string
 ): Promise<boolean> {
-  // Fetch current plan
+  // Fetch current plan (RLS-enforced via getDb)
+  const db = getDb();
   const [plan] = await db
     .select()
     .from(learningPlans)
