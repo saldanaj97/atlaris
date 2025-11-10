@@ -87,7 +87,7 @@ export default async function SiteHeader() {
       <div className="flex h-16 flex-col items-center justify-between gap-4 md:flex-row">
         <Link href="/" className="flex items-center space-x-2">
           <BookOpen className="text-primary h-8 w-8" />
-          <span className="text-2xl font-bold">Learn App</span>
+          <span className="text-2xl font-bold">Atlaris</span>
         </Link>
         {headerRight}
       </div>
