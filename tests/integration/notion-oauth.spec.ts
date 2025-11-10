@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/drizzle';
 import { users, integrationTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { setTestUser } from '../helpers/auth';
 
 // Mock Clerk auth before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
@@ -24,6 +25,9 @@ describe('Notion OAuth Flow', () => {
       'http://localhost:3000/api/v1/auth/notion/callback';
     process.env.OAUTH_ENCRYPTION_KEY =
       '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+    // Default to authenticated test user for routes that require it
+    setTestUser('test_clerk_user_id');
   });
 
   afterEach(() => {
@@ -59,6 +63,9 @@ describe('Notion OAuth Flow', () => {
         userId: null,
       } as Awaited<ReturnType<typeof auth>>);
 
+      // Ensure withAuth does not use DEV_CLERK_USER_ID fallback
+      delete process.env.DEV_CLERK_USER_ID;
+
       // Create test user
       await db.delete(integrationTokens);
       await db.delete(users);
@@ -93,6 +100,9 @@ describe('Notion OAuth Flow', () => {
       vi.mocked(auth).mockResolvedValue({
         userId: 'test_clerk_user_id',
       } as Awaited<ReturnType<typeof auth>>);
+
+      // Restore DEV_CLERK_USER_ID for subsequent tests
+      setTestUser('test_clerk_user_id');
     });
 
     it('should reject authenticated user with mismatched userId', async () => {
@@ -101,6 +111,9 @@ describe('Notion OAuth Flow', () => {
       vi.mocked(auth).mockResolvedValue({
         userId: 'attacker_clerk_user_id',
       } as Awaited<ReturnType<typeof auth>>);
+
+      // Ensure withAuth uses mocked auth userId
+      delete process.env.DEV_CLERK_USER_ID;
 
       // Create test user with different clerkUserId
       await db.delete(integrationTokens);
@@ -136,6 +149,9 @@ describe('Notion OAuth Flow', () => {
       vi.mocked(auth).mockResolvedValue({
         userId: 'test_clerk_user_id',
       } as Awaited<ReturnType<typeof auth>>);
+
+      // Restore DEV_CLERK_USER_ID for subsequent tests
+      setTestUser('test_clerk_user_id');
     });
 
     it('should exchange code for tokens and store encrypted', async () => {

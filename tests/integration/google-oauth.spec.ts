@@ -5,6 +5,7 @@ import { users, integrationTokens } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { clearOAuthStateTokens } from '@/lib/integrations/oauth-state';
+import { setTestUser } from '../helpers/auth';
 
 // Mock Clerk auth before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
@@ -79,6 +80,9 @@ describe('Google OAuth Flow', () => {
     vi.mocked(auth).mockResolvedValue({
       userId: 'test_clerk_user_id',
     } as Awaited<ReturnType<typeof auth>>);
+
+    // Ensure route handlers authenticate as this test user
+    setTestUser('test_clerk_user_id');
 
     // Set required env vars
     process.env.GOOGLE_CLIENT_ID = 'test_google_client_id';

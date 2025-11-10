@@ -162,6 +162,11 @@ export async function appendTaskDescription(
     : '';
   const sanitizedAdditional = sanitizePlainText(additionalDescription);
 
+  // If there's nothing meaningful to append, keep the original description unchanged
+  if (!sanitizedAdditional) {
+    return;
+  }
+
   // Append to existing description (or create new if none exists)
   const newDescription = sanitizedExisting
     ? `${sanitizedExisting}\n\n${sanitizedAdditional}`

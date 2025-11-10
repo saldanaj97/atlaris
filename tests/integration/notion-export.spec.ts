@@ -4,6 +4,7 @@ import { db } from '@/lib/db/drizzle';
 import { users, learningPlans, integrationTokens } from '@/lib/db/schema';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { ensureUser } from '../helpers/db';
+import { setTestUser } from '../helpers/auth';
 
 // Mock Clerk auth before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
@@ -34,6 +35,9 @@ describe('Notion Export API', () => {
     vi.mocked(auth).mockResolvedValue({
       userId: clerkUserId,
     } as Awaited<ReturnType<typeof auth>>);
+
+    // Ensure route handlers authenticate as this test user
+    setTestUser(clerkUserId);
 
     // Ensure test user
     testUserId = await ensureUser({
