@@ -43,7 +43,7 @@ export default async function DashboardPage() {
     reachedPlanLimit || reachedRegenLimit || reachedExportLimit;
 
   return (
-    <div className="bg-gradient-subtle min-h-screen">
+    <div className="bg-background min-h-screen">
       <div className="container mx-auto px-6 py-8">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-          <Card className="bg-gradient-card border-0 p-6 shadow-sm">
+          <Card className="p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm">Total Plans</p>
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
             </div>
           </Card>
 
-          <Card className="bg-gradient-card border-0 p-6 shadow-sm">
+          <Card className="p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm">Active Plans</p>
@@ -83,7 +83,7 @@ export default async function DashboardPage() {
             </div>
           </Card>
 
-          <Card className="bg-gradient-card border-0 p-6 shadow-sm">
+          <Card className="p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm">Completed</p>
@@ -95,7 +95,7 @@ export default async function DashboardPage() {
             </div>
           </Card>
 
-          <Card className="bg-gradient-card border-0 p-6 shadow-sm">
+          <Card className="p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-muted-foreground text-sm">Hours Learned</p>
@@ -114,7 +114,7 @@ export default async function DashboardPage() {
 
             <div className="space-y-4">
               {summaries.length === 0 ? (
-                <Card className="bg-gradient-card text-muted-foreground border-0 p-6 text-center">
+                <Card className="text-muted-foreground p-6 text-center">
                   You do not have any learning plans yet. Create one to get
                   started.
                 </Card>
@@ -126,7 +126,7 @@ export default async function DashboardPage() {
 
           <div className="space-y-6">
             {limitsReached ? (
-              <Card className="bg-gradient-card border-0 p-6 shadow-sm">
+              <Card className="p-6 shadow-sm">
                 <h3 className="mb-2 text-lg font-semibold">Upgrade for more</h3>
                 <p className="text-muted-foreground text-sm">
                   You’ve reached your current plan limits. Upgrade to unlock
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
                 </Button>
               </Card>
             ) : null}
-            <Card className="bg-gradient-card border-0 p-6 shadow-sm">
+            <Card className="p-6 shadow-sm">
               <h3 className="mb-3 text-lg font-semibold">Keep Learning</h3>
               <p className="text-muted-foreground text-sm">
                 Stay consistent by reserving time each week. Aim for at least{' '}

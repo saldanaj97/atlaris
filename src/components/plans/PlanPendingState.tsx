@@ -33,20 +33,16 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-gradient-card border-0 p-8 shadow-lg">
+      <Card className="p-8">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
-              <Badge variant="secondary" className="uppercase">
+              <Badge variant="neutral" className="uppercase">
                 {formatSkillLevel(plan.skillLevel)}
               </Badge>
               <Badge
                 variant={
-                  isFailed
-                    ? 'destructive'
-                    : isProcessing
-                      ? 'default'
-                      : 'outline'
+                  isFailed ? 'default' : isProcessing ? 'default' : 'neutral'
                 }
                 className="ml-2 uppercase"
               >

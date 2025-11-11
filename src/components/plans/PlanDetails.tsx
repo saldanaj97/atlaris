@@ -47,14 +47,13 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
   const isPendingOrProcessing =
     plan.status === 'pending' || plan.status === 'processing';
 
-  // TODO: Add way to regenerate the plan or regenerate a module
   return (
-    <div className="bg-gradient-subtle min-h-screen">
+    <div className="bg-background min-h-screen">
       <div className="container mx-auto max-w-6xl">
         <Button
-          variant="ghost"
+          variant="neutral"
           onClick={() => router.push('/plans')}
-          className="space-x-2"
+          className="mb-4 space-x-2"
         >
           <ArrowLeft className="m-4 h-4" />
           <p>Your Plans</p>
@@ -79,9 +78,9 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
             )}
 
             {/* View Toggle */}
-            <div className="mb-6 border-b border-gray-200">
+            <div className="border-foreground mb-6 border-b">
               <nav className="flex space-x-8" role="tablist">
-                <button
+                <Button
                   type="button"
                   role="tab"
                   aria-selected={activeView === 'modules'}
@@ -94,8 +93,8 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
                   }`}
                 >
                   Modules
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   role="tab"
                   aria-selected={activeView === 'schedule'}
@@ -108,7 +107,7 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
                   }`}
                 >
                   Schedule
-                </button>
+                </Button>
               </nav>
             </div>
 

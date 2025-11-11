@@ -54,7 +54,7 @@ export default async function SiteHeader() {
           <div className="hidden items-center gap-3 md:flex">
             <Badge>{usage.tier.toUpperCase()}</Badge>
             {sub.subscriptionStatus ? (
-              <Badge variant="secondary">{sub.subscriptionStatus}</Badge>
+              <Badge variant="neutral">{sub.subscriptionStatus}</Badge>
             ) : null}
             <div className="text-muted-foreground text-xs">
               <div>
