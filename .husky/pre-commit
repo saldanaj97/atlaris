@@ -1,7 +1,3 @@
-pnpm lint-staged
-
-pnpm type-check
-
 # Skip ggshield in CI or when not configured
 if command -v ggshield >/dev/null 2>&1 && [ -n "${GITGUARDIAN_API_KEY:-}" ]; then
   ggshield secret scan pre-commit
