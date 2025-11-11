@@ -268,19 +268,19 @@ export default function OnboardingForm() {
 
   return (
     <div className="min-h-screen">
-      <header className="container mx-auto px-6 py-6">
-        <nav className="flex items-center justify-between">
-          <div className="text-muted-foreground text-sm" aria-live="polite">
+      <div className="container mx-auto px-6 py-6">
+        <div className="flex items-center justify-between">
+          <div className="text-foreground text-sm" aria-live="polite">
             Step {currentStep} of {TOTAL_STEPS}
           </div>
-        </nav>
-      </header>
+        </div>
+      </div>
 
       <div className="container mx-auto max-w-2xl px-6 py-8">
         <div className="mb-8" aria-hidden>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-medium">Progress</span>
-            <span className="text-muted-foreground text-sm">
+            <span className="text-sm">
               {Math.round((currentStep / TOTAL_STEPS) * 100)}%
             </span>
           </div>
@@ -297,7 +297,7 @@ export default function OnboardingForm() {
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
-                <h1 id="onboarding-form-heading" className="text-3xl font-bold">
+                <h1 className="text-3xl font-bold">
                   What would you like to learn?
                 </h1>
                 <p className="text-muted-foreground">
@@ -321,10 +321,6 @@ export default function OnboardingForm() {
                     currentStep === 1 && stepError ? 'step-error' : undefined
                   }
                 />
-                <p className="text-muted-foreground text-sm">
-                  Examples: "Python for data science", "Japanese conversation",
-                  "Guitar fingerpicking"
-                </p>
               </div>
             </div>
           )}
@@ -351,7 +347,7 @@ export default function OnboardingForm() {
                 {skillLevelOptions.map((option) => (
                   <div
                     key={option.value}
-                    className="hover:bg-muted/50 neobrutalism-shadow border-foreground flex items-center space-x-2 rounded-lg border-2 p-4 transition-colors"
+                    className="hover:bg-muted-foreground/30 flex items-center space-x-2 rounded-lg border-2 p-4 transition-colors"
                   >
                     <RadioGroupItem value={option.value} id={option.value} />
                     <div className="flex-1 space-y-1">
@@ -397,12 +393,12 @@ export default function OnboardingForm() {
                 >
                   <SelectTrigger
                     id="weeklyHours"
-                    className="neobrutalism-shadow border-foreground h-12 border-2"
+                    className="bg-card-background h-12 border-2"
                     aria-invalid={currentStep === 3 && !!stepError}
                   >
                     <SelectValue placeholder="Select your weekly availability" />
                   </SelectTrigger>
-                  <SelectContent className="neobrutalism-shadow border-foreground border-2">
+                  <SelectContent className="bg-card-background border-2">
                     {weeklyHourOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
@@ -418,7 +414,6 @@ export default function OnboardingForm() {
             </div>
           )}
 
-          {/* TODO: Allow usesr to multi-select learning styles */}
           {currentStep === 4 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
@@ -444,7 +439,7 @@ export default function OnboardingForm() {
                 {learningStyleOptions.map((option) => (
                   <div
                     key={option.value}
-                    className="hover:bg-muted/50 neobrutalism-shadow border-foreground flex items-center space-x-2 rounded-lg border-2 p-4 transition-colors"
+                    className="hover:bg-muted-foreground/30 flex items-center space-x-2 rounded-lg border-2 p-4 transition-colors"
                   >
                     <RadioGroupItem value={option.value} id={option.value} />
                     <div className="flex-1 space-y-1">
@@ -471,7 +466,7 @@ export default function OnboardingForm() {
                   placeholder="Any specific goals, preferences, or constraints we should know about?"
                   value={formState.notes}
                   onChange={(event) => updateField('notes', event.target.value)}
-                  className="neobrutalism-shadow border-foreground min-h-[80px] border-2"
+                  className="bg-card-background min-h-[80px] border-2"
                 />
                 <p className="text-muted-foreground text-xs">
                   We&apos;ll add manual notes support once the backend is ready.

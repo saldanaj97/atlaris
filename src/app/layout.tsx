@@ -70,7 +70,7 @@ export default function RootLayout({
   return (
     <ClerkProvider afterSignOutUrl="/landing">
       <html lang="en">
-        <body className={`${workSans.className} antialiased`}>
+        <body className={`${workSans.className} mx-auto w-4/5 antialiased`}>
           <SiteHeader />
           <main>{children}</main>
           <Toaster />

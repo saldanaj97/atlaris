@@ -7,6 +7,7 @@ import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import type { PlanSummary } from '@/lib/types/db';
+import { ArrowLeft } from 'lucide-react';
 
 export default async function PlansPage() {
   const userId = await getEffectiveClerkUserId();
@@ -39,11 +40,17 @@ export default async function PlansPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl px-6 py-12">
+    <div className="container mx-auto py-8">
+      <Link href="/dashboard">
+        <Button variant="neutral" className="mb-4 space-x-2">
+          <ArrowLeft className="h-4" />
+          <p>Back to Dashboard</p>
+        </Button>
+      </Link>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-semibold">Your Plans</h1>
+        <h1 className="text-main-foreground text-3xl font-bold">Your Plans</h1>
         <Button asChild>
-          <Link href="/plans/new">New plan</Link>
+          <Link href="/plans/new">Create New Plan</Link>
         </Button>
       </div>
       <PlansList summaries={summaries} />

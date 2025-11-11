@@ -49,14 +49,14 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
 
   return (
     <div className="bg-background min-h-screen">
-      <div className="container mx-auto max-w-6xl">
+      <div className="container mx-auto">
         <Button
           variant="neutral"
-          onClick={() => router.push('/plans')}
+          onClick={() => router.push('/dashboard')}
           className="mb-4 space-x-2"
         >
           <ArrowLeft className="m-4 h-4" />
-          <p>Your Plans</p>
+          <p>Back to Dashboard</p>
         </Button>
 
         {isPendingOrProcessing ? (

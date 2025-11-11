@@ -83,11 +83,13 @@ export default async function SiteHeader() {
   }
 
   return (
-    <header className="container mx-auto px-6 py-4">
-      <div className="flex h-16 flex-col items-center justify-between gap-4 md:flex-row">
+    <header className="container mx-auto my-4 w-full">
+      <div className="bg-card-background rounded-base shadow-shadow border-border flex items-center justify-between gap-4 border-2 p-4">
         <Link href="/" className="flex items-center space-x-2">
-          <BookOpen className="text-primary h-8 w-8" />
-          <span className="text-2xl font-bold">Atlaris</span>
+          <BookOpen className="text-main h-8 w-8" />
+          <span className="text-main-foreground text-2xl font-bold">
+            Atlaris
+          </span>
         </Link>
         {headerRight}
       </div>
