@@ -145,14 +145,14 @@ export default async function DashboardPage() {
             <h3 className="mb-4 text-lg font-semibold">Subscription & Usage</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                   <Crown className="h-4 w-4" />
                   Tier
                 </div>
                 <div className="font-medium capitalize">{usage.tier}</div>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                   <BookOpen className="h-4 w-4" />
                   Active Plans
                 </div>
@@ -164,7 +164,7 @@ export default async function DashboardPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                   <RefreshCcw className="h-4 w-4" />
                   Regenerations (month)
                 </div>
