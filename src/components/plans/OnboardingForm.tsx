@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 const weeklyHourOptions = [
   { value: '1-2', label: '1-2 hours per week' },
@@ -266,40 +267,37 @@ export default function OnboardingForm() {
   };
 
   return (
-    <div className="bg-gradient-subtle min-h-screen">
-      <header className="container mx-auto px-6 py-6">
-        <nav className="flex items-center justify-between">
-          <div className="text-muted-foreground text-sm" aria-live="polite">
+    <div className="min-h-screen">
+      <div className="container mx-auto px-6 py-6">
+        <div className="flex items-center justify-between">
+          <div className="text-foreground text-sm" aria-live="polite">
             Step {currentStep} of {TOTAL_STEPS}
           </div>
-        </nav>
-      </header>
+        </div>
+      </div>
 
       <div className="container mx-auto max-w-2xl px-6 py-8">
         <div className="mb-8" aria-hidden>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-medium">Progress</span>
-            <span className="text-muted-foreground text-sm">
+            <span className="text-sm">
               {Math.round((currentStep / TOTAL_STEPS) * 100)}%
             </span>
           </div>
           <div className="bg-muted h-2 w-full rounded-full">
-            <div
-              className="bg-gradient-hero h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / TOTAL_STEPS) * 100}%` }}
-            />
+            <Progress value={Math.round((currentStep / TOTAL_STEPS) * 100)} />
           </div>
         </div>
 
         <Card
-          className="bg-gradient-card border-0 p-8 shadow-lg"
+          className="p-8"
           role="form"
           aria-labelledby="onboarding-form-heading"
         >
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
-                <h1 id="onboarding-form-heading" className="text-3xl font-bold">
+                <h1 className="text-3xl font-bold">
                   What would you like to learn?
                 </h1>
                 <p className="text-muted-foreground">
@@ -317,16 +315,12 @@ export default function OnboardingForm() {
                   placeholder="e.g., Swift for iOS development, Advanced Excel formulas, Digital marketing fundamentals..."
                   value={formState.topic}
                   onChange={(event) => updateField('topic', event.target.value)}
-                  className="min-h-[120px]"
+                  className="neobrutalism-shadow border-foreground min-h-[120px] border-2"
                   aria-invalid={currentStep === 1 && !!stepError}
                   aria-describedby={
                     currentStep === 1 && stepError ? 'step-error' : undefined
                   }
                 />
-                <p className="text-muted-foreground text-sm">
-                  Examples: "Python for data science", "Japanese conversation",
-                  "Guitar fingerpicking"
-                </p>
               </div>
             </div>
           )}
@@ -335,7 +329,7 @@ export default function OnboardingForm() {
             <div className="space-y-6">
               <div className="space-y-2 text-center">
                 <h1 className="text-3xl font-bold">
-                  What\'s your current skill level?
+                  What&apos;s your current skill level?
                 </h1>
                 <p className="text-muted-foreground">
                   This helps us tailor the complexity and starting point of your
@@ -353,7 +347,7 @@ export default function OnboardingForm() {
                 {skillLevelOptions.map((option) => (
                   <div
                     key={option.value}
-                    className="hover:bg-muted/50 flex items-center space-x-2 rounded-lg border p-4 transition-colors"
+                    className="hover:bg-muted-foreground/30 flex items-center space-x-2 rounded-lg border-2 p-4 transition-colors"
                   >
                     <RadioGroupItem value={option.value} id={option.value} />
                     <div className="flex-1 space-y-1">
@@ -380,7 +374,7 @@ export default function OnboardingForm() {
                   How much time can you commit?
                 </h1>
                 <p className="text-muted-foreground">
-                  We\'ll structure your learning plan to fit your schedule.
+                  We&apos;ll structure your learning plan to fit your schedule.
                 </p>
               </div>
 
@@ -399,12 +393,12 @@ export default function OnboardingForm() {
                 >
                   <SelectTrigger
                     id="weeklyHours"
-                    className="h-12"
+                    className="bg-card-background h-12 border-2"
                     aria-invalid={currentStep === 3 && !!stepError}
                   >
                     <SelectValue placeholder="Select your weekly availability" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-card-background border-2">
                     {weeklyHourOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
@@ -420,7 +414,6 @@ export default function OnboardingForm() {
             </div>
           )}
 
-          {/* TODO: Allow usesr to multi-select learning styles */}
           {currentStep === 4 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">
@@ -446,7 +439,7 @@ export default function OnboardingForm() {
                 {learningStyleOptions.map((option) => (
                   <div
                     key={option.value}
-                    className="hover:bg-muted/50 flex items-center space-x-2 rounded-lg border p-4 transition-colors"
+                    className="hover:bg-muted-foreground/30 flex items-center space-x-2 rounded-lg border-2 p-4 transition-colors"
                   >
                     <RadioGroupItem value={option.value} id={option.value} />
                     <div className="flex-1 space-y-1">
@@ -473,11 +466,11 @@ export default function OnboardingForm() {
                   placeholder="Any specific goals, preferences, or constraints we should know about?"
                   value={formState.notes}
                   onChange={(event) => updateField('notes', event.target.value)}
-                  className="min-h-[80px]"
+                  className="bg-card-background min-h-[80px] border-2"
                 />
                 <p className="text-muted-foreground text-xs">
-                  We\'ll add manual notes support once the backend is ready. For
-                  now this helps tune your generated path.
+                  We&apos;ll add manual notes support once the backend is ready.
+                  For now this helps tune your generated path.
                 </p>
               </div>
             </div>
@@ -503,9 +496,17 @@ export default function OnboardingForm() {
                   <DatePicker
                     id="startDate"
                     value={formState.startDate || undefined}
-                    onChange={(val) =>
-                      updateField('startDate', val || undefined)
-                    }
+                    onChange={(val: Date | undefined) => {
+                      if (!val) {
+                        updateField('startDate', undefined);
+                        return;
+                      }
+                      const year = val.getFullYear();
+                      const month = String(val.getMonth() + 1).padStart(2, '0');
+                      const day = String(val.getDate()).padStart(2, '0');
+                      const isoString = `${year}-${month}-${day}`;
+                      updateField('startDate', isoString);
+                    }}
                     placeholder="Pick a start date"
                     minDate={today}
                   />
@@ -514,7 +515,7 @@ export default function OnboardingForm() {
                   </p>
                 </div>
 
-                <div className="flex flex-col space-y-4">
+                <div className="space-y-4">
                   <Label
                     htmlFor="deadlineDate"
                     className="text-base font-medium"
@@ -524,7 +525,17 @@ export default function OnboardingForm() {
                   <DatePicker
                     id="deadlineDate"
                     value={formState.deadlineDate || undefined}
-                    onChange={(val) => updateField('deadlineDate', val ?? '')}
+                    onChange={(val: Date | undefined) => {
+                      if (!val) {
+                        updateField('deadlineDate', '');
+                        return;
+                      }
+                      const year = val.getFullYear();
+                      const month = String(val.getMonth() + 1).padStart(2, '0');
+                      const day = String(val.getDate()).padStart(2, '0');
+                      const isoString = `${year}-${month}-${day}`;
+                      updateField('deadlineDate', isoString);
+                    }}
                     placeholder="Pick a deadline"
                     required
                     minDate={today}
@@ -569,11 +580,7 @@ export default function OnboardingForm() {
           )}
 
           <div className="flex justify-between border-t pt-8">
-            <Button
-              variant="outline"
-              onClick={goToPreviousStep}
-              disabled={isSubmitting}
-            >
+            <Button onClick={goToPreviousStep} disabled={isSubmitting}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               {currentStep === 1 ? 'Back' : 'Previous'}
             </Button>
@@ -583,7 +590,7 @@ export default function OnboardingForm() {
                 currentStep === TOTAL_STEPS ? handleSubmit : goToNextStep
               }
               disabled={isSubmitting || !isCurrentStepComplete}
-              className="bg-gradient-hero hover:shadow-glow"
+              className="bg-gradient-hero"
             >
               {isSubmitting ? (
                 <>

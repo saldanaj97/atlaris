@@ -26,17 +26,13 @@ const LandingPage = () => {
             </div>
 
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Button
-                size="lg"
-                className="bg-gradient-hero hover:shadow-glow transition-all duration-300"
-                asChild
-              >
+              <Button size="lg" className="transition-all duration-300" asChild>
                 <Link href="/plans/new">
                   Create Your First Path
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" asChild>
+              <Button variant="neutral" size="lg" asChild>
                 <Link href="/plans/new">View Example</Link>
               </Button>
             </div>
@@ -97,7 +93,7 @@ const LandingPage = () => {
         </div>
 
         <div className="grid gap-8 md:grid-cols-3">
-          <Card className="bg-gradient-card space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
+          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
             <div className="bg-learning-primary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
               <Target className="text-learning-primary h-6 w-6" />
             </div>
@@ -108,7 +104,7 @@ const LandingPage = () => {
             </p>
           </Card>
 
-          <Card className="bg-gradient-card space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
+          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
             <div className="bg-learning-secondary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
               <Clock className="text-learning-secondary h-6 w-6" />
             </div>
@@ -119,7 +115,7 @@ const LandingPage = () => {
             </p>
           </Card>
 
-          <Card className="bg-gradient-card space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
+          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
             <div className="bg-learning-success/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
               <ArrowRight className="text-learning-success h-6 w-6" />
             </div>
@@ -142,7 +138,7 @@ const LandingPage = () => {
           </p>
           <Button
             size="lg"
-            variant="secondary"
+            variant="neutral"
             className="text-primary bg-white hover:bg-white/90"
             asChild
           >

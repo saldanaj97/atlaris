@@ -54,7 +54,7 @@ export default async function BillingSettingsPage() {
         <h1 className="mb-6 text-3xl font-bold">Billing</h1>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="bg-gradient-card border-0 p-6">
+          <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Current Plan</h2>
@@ -83,7 +83,7 @@ export default async function BillingSettingsPage() {
             </div>
           </Card>
 
-          <Card className="bg-gradient-card border-0 p-6">
+          <Card className="p-6">
             <h2 className="mb-4 text-xl font-semibold">Usage</h2>
 
             <div className="space-y-5">

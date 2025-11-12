@@ -66,7 +66,7 @@ export default function PlansList({ summaries }: PlansListProps) {
                   {plan.topic}
                 </CardTitle>
                 <Badge
-                  variant={isCompleted ? 'default' : 'secondary'}
+                  variant={isCompleted ? 'default' : 'neutral'}
                   className="capitalize"
                 >
                   {isCompleted ? 'completed' : 'active'}

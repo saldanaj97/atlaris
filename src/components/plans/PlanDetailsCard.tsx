@@ -57,11 +57,11 @@ export const PlanDetailsCard = ({
     : null;
 
   return (
-    <Card className="bg-gradient-card border-0 p-8 shadow-lg">
+    <Card className="p-8">
       <div className="grid gap-6 md:grid-cols-3">
         <div className="space-y-4 md:col-span-2">
           <CardHeader className="space-y-1">
-            <Badge variant="secondary" className="uppercase">
+            <Badge variant="neutral" className="uppercase">
               {formatSkillLevel(plan.skillLevel)}
             </Badge>
             {plan.status ? (
@@ -70,8 +70,8 @@ export const PlanDetailsCard = ({
                   plan.status === 'ready'
                     ? 'default'
                     : plan.status === 'failed'
-                      ? 'destructive'
-                      : 'outline'
+                      ? 'default'
+                      : 'neutral'
                 }
                 className="uppercase"
               >

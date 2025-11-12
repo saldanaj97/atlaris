@@ -3,9 +3,22 @@
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react";
 import * as React from "react";
+import { format } from 'date-fns';
+import { cn } from "@/lib/utils";
+
+export type DatePickerProps = {
+  id?: string;
+  placeholder?: string;
+  value?: string;
+  onChange?: (date: Date | undefined) => void;
+  required?: boolean;
+  disabled?: boolean;
+  minDate?: Date;
+  maxDate?: Date;
+  className?: string;
+};
 
 function dateFromISO(value: string | undefined | null): Date | undefined {
   if (!value) return undefined;
@@ -27,55 +40,56 @@ function isoFromDate(date: Date | undefined): string | undefined {
   return `${y}-${m}-${d}`;
 }
 
-export type DatePickerProps = {
-  id?: string;
-  placeholder?: string;
-  value?: string;
-  onChange?: (value: string | undefined) => void;
-  required?: boolean;
-  disabled?: boolean;
-  minDate?: Date;
-  maxDate?: Date;
-  className?: string;
-};
 
 export function DatePicker({ id, placeholder = "Pick a date", value, onChange, required, disabled, minDate, maxDate, className }: DatePickerProps) {
-  const date = dateFromISO(value);
+  const [date, setDate] = React.useState<Date | undefined>(value ? dateFromISO(value) : undefined);
   const [open, setOpen] = React.useState(false);
   const isInvalid = Boolean(required) && !value;
+
+  // Sync internal state with value prop changes
+  React.useEffect(() => {
+    const newDate = value ? dateFromISO(value) : undefined;
+    setDate(newDate);
+  }, [value]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           id={id}
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          aria-required={required}
-          aria-invalid={isInvalid || undefined}
-          className={cn("h-10 w-full justify-start text-left font-normal", !date && "text-muted-foreground", className)}
+          variant="noShadow"
           disabled={disabled}
-          data-slot="date-picker-trigger"
+          className={cn(
+            "w-full h-12 justify-start text-left font-base neobrutalism-shadow border-foreground border-2",
+            className
+          )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? isoFromDate(date) : <span>{placeholder}</span>}
+          <CalendarIcon className="h-4 w-4" />
+          {date ? format(date, "PPP") : <span className="text-muted-foreground">{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start" data-slot="date-picker-content">
+      <PopoverContent
+        className="w-auto border-0 p-0"
+        align="start"
+        sideOffset={8}
+        alignOffset={0}
+        collisionPadding={16}
+      >
         <Calendar
           mode="single"
           selected={date}
-          onSelect={(d: Date | undefined) => {
-            const iso = isoFromDate(d);
-            onChange?.(iso);
+          onSelect={(selectedDate) => {
+            setDate(selectedDate);
+            if (selectedDate) {
+              onChange?.(selectedDate);
+            } else {
+              onChange?.(undefined);
+            }
             setOpen(false);
           }}
           disabled={disabled}
           fromDate={minDate}
           toDate={maxDate}
-          initialFocus
         />
       </PopoverContent>
     </Popover>
