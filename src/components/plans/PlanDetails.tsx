@@ -3,9 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import type { ScheduleJson } from '@/lib/scheduling/types';
 import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ProgressStatus } from '@/lib/types/db';
-import type { ScheduleJson } from '@/lib/scheduling/types';
 
 import { PlanModuleCard } from '@/components/plans/PlanModuleCard';
 import ScheduleWeekList from '@/components/plans/ScheduleWeekList';

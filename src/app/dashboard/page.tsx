@@ -5,17 +5,17 @@ import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { formatWeeklyHours } from '@/lib/formatters';
+import { getUsageSummary } from '@/lib/stripe/usage';
 import {
+  ArrowRight,
   BookOpen,
   Clock,
   Plus,
   Target,
   TrendingUp,
-  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getUsageSummary } from '@/lib/stripe/usage';
 
 export default async function DashboardPage() {
   const userId = await getEffectiveClerkUserId();
@@ -118,9 +118,11 @@ export default async function DashboardPage() {
         <div className="space-y-6 lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Your Learning Plans</h2>
-            <Button>
-              <Link href="/plans">View All Plans</Link>
-              <ArrowRight className="h-4" />
+            <Button asChild>
+              <Link href="/plans">
+                View All Plans
+                <ArrowRight className="h-4" />
+              </Link>
             </Button>
           </div>
 
