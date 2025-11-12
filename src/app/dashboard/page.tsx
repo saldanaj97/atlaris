@@ -13,6 +13,8 @@ import {
   Plus,
   Target,
   TrendingUp,
+  RefreshCcw,
+  Crown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -139,6 +141,42 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-6">
+          <Card className="p-6">
+            <h3 className="mb-4 text-lg font-semibold">Subscription & Usage</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <Crown className="h-4 w-4" />
+                  Tier
+                </div>
+                <div className="font-medium capitalize">{usage.tier}</div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <BookOpen className="h-4 w-4" />
+                  Active Plans
+                </div>
+                <div className="font-medium">
+                  {usage.activePlans.current} /{' '}
+                  {usage.activePlans.limit === Infinity
+                    ? '∞'
+                    : usage.activePlans.limit}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <RefreshCcw className="h-4 w-4" />
+                  Regenerations (month)
+                </div>
+                <div className="font-medium">
+                  {usage.regenerations.used} /{' '}
+                  {usage.regenerations.limit === Infinity
+                    ? '∞'
+                    : usage.regenerations.limit}
+                </div>
+              </div>
+            </div>
+          </Card>
           {limitsReached ? (
             <Card className="p-6">
               <h3 className="mb-2 text-lg font-semibold">Upgrade for more</h3>
