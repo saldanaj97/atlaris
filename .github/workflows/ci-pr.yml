@@ -261,6 +261,7 @@ jobs:
           ALLOW_DB_TRUNCATE: 'true'
           NODE_ENV: 'test'
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           BASE_REF: ${{ github.base_ref }}
           SHARD: ${{ matrix.shard }}
           TOTAL: ${{ matrix.total }}

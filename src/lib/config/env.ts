@@ -35,11 +35,13 @@ export function requireEnv(key: string): string {
 }
 
 const ensureServerRuntime = () => {
-  // Allow known test environments (e.g., Vitest + JSDOM) where `window` exists
-  // but code still executes in a Node.js context. Vitest sets VITEST_WORKER_ID.
+  // Allow Node-based test environments (e.g., Vitest + JSDOM) where `window` exists
+  // but execution is still in Node.js (presents `process.versions.node`).
   if (typeof window !== 'undefined') {
+    const hasProcess = typeof process !== 'undefined';
+    const isNodeLike = hasProcess && Boolean(process.versions?.node);
     const isVitest = optionalEnv('VITEST_WORKER_ID');
-    if (!isVitest) {
+    if (!isNodeLike && !isVitest) {
       throw new Error(
         'Attempted to access a server-only environment variable in the browser bundle.'
       );
@@ -65,8 +67,17 @@ const ensureServerRuntime = () => {
 const serverRequiredCache = new Map<string, string>();
 const serverOptionalCache = new Map<string, string | undefined>();
 
+// In test runtime, environment values may change between tests; avoid caching.
+// Treat non-production runtimes (development, test) as mutable envs; avoid caching to
+// ensure tests and dev server reflect env changes without process restarts.
+const isTestRuntime =
+  typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+
 const getServerRequired = (key: string): string => {
   ensureServerRuntime();
+  if (isTestRuntime) {
+    return requireEnv(key);
+  }
   if (!serverRequiredCache.has(key)) {
     serverRequiredCache.set(key, requireEnv(key));
   }
@@ -75,25 +86,32 @@ const getServerRequired = (key: string): string => {
 
 const getServerOptional = (key: string): string | undefined => {
   ensureServerRuntime();
+  if (isTestRuntime) {
+    return optionalEnv(key);
+  }
   if (!serverOptionalCache.has(key)) {
     serverOptionalCache.set(key, optionalEnv(key));
   }
   return serverOptionalCache.get(key);
 };
 
-export const appEnv = (() => {
-  const nodeEnv =
-    (optionalEnv('NODE_ENV') as NodeEnv | undefined) ?? 'development';
-  const vitestWorkerId = optionalEnv('VITEST_WORKER_ID');
-
-  return {
-    nodeEnv,
-    vitestWorkerId,
-    isProduction: nodeEnv === 'production',
-    isDevelopment: nodeEnv === 'development',
-    isTest: nodeEnv === 'test' || Boolean(vitestWorkerId),
-  } as const;
-})();
+export const appEnv = {
+  get nodeEnv(): NodeEnv {
+    return (optionalEnv('NODE_ENV') as NodeEnv | undefined) ?? 'development';
+  },
+  get vitestWorkerId(): string | undefined {
+    return optionalEnv('VITEST_WORKER_ID');
+  },
+  get isProduction(): boolean {
+    return this.nodeEnv === 'production';
+  },
+  get isDevelopment(): boolean {
+    return this.nodeEnv === 'development';
+  },
+  get isTest(): boolean {
+    return this.nodeEnv === 'test' || Boolean(this.vitestWorkerId);
+  },
+} as const;
 
 export const databaseEnv = {
   get url() {
@@ -180,7 +198,9 @@ export const workerEnv = {
 
 export const aiEnv = {
   get provider() {
-    return getServerOptional('AI_PROVIDER')?.toLowerCase();
+    const raw = getServerOptional('AI_PROVIDER');
+    const normalized = normalize(raw);
+    return normalized?.toLowerCase();
   },
   get useMock() {
     return getServerOptional('AI_USE_MOCK');
@@ -336,39 +356,25 @@ export const loggingEnv = {
 
 export const curationWeightsEnv = {
   get ytPopularity() {
-    return parseFloat(
-      getServerOptional('CURATION_YT_WEIGHT_POPULARITY') ?? '0.45'
-    );
+    return toNumber(getServerOptional('CURATION_YT_WEIGHT_POPULARITY'), 0.45);
   },
   get ytRecency() {
-    return parseFloat(
-      getServerOptional('CURATION_YT_WEIGHT_RECENCY') ?? '0.25'
-    );
+    return toNumber(getServerOptional('CURATION_YT_WEIGHT_RECENCY'), 0.25);
   },
   get ytRelevance() {
-    return parseFloat(
-      getServerOptional('CURATION_YT_WEIGHT_RELEVANCE') ?? '0.25'
-    );
+    return toNumber(getServerOptional('CURATION_YT_WEIGHT_RELEVANCE'), 0.25);
   },
   get ytSuitability() {
-    return parseFloat(
-      getServerOptional('CURATION_YT_WEIGHT_SUITABILITY') ?? '0.05'
-    );
+    return toNumber(getServerOptional('CURATION_YT_WEIGHT_SUITABILITY'), 0.05);
   },
   get docAuthority() {
-    return parseFloat(
-      getServerOptional('CURATION_DOC_WEIGHT_AUTHORITY') ?? '0.6'
-    );
+    return toNumber(getServerOptional('CURATION_DOC_WEIGHT_AUTHORITY'), 0.6);
   },
   get docRelevance() {
-    return parseFloat(
-      getServerOptional('CURATION_DOC_WEIGHT_RELEVANCE') ?? '0.3'
-    );
+    return toNumber(getServerOptional('CURATION_DOC_WEIGHT_RELEVANCE'), 0.3);
   },
   get docRecency() {
-    return parseFloat(
-      getServerOptional('CURATION_DOC_WEIGHT_RECENCY') ?? '0.1'
-    );
+    return toNumber(getServerOptional('CURATION_DOC_WEIGHT_RECENCY'), 0.1);
   },
   get recencyDecayDays() {
     return toNumber(getServerOptional('CURATION_RECENCY_DECAY_DAYS'), 365);
