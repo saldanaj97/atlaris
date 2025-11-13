@@ -285,7 +285,7 @@ jobs:
               exit 0
             fi
             echo "Running related unit tests for changed files on shard 1/${TOTAL}..."
-            pnpm vitest related --project unit --run ${FILES} || {
+            pnpm vitest related --project unit --run --coverage ${FILES} || {
               echo "Related tests failed or not supported; falling back to full sharded run on this shard.";
               pnpm vitest run --project unit tests/unit \
                 --shard ${SHARD}/${TOTAL} \
@@ -344,8 +344,18 @@ jobs:
           path: coverage/
           retention-days: 7
           if-no-files-found: ignore
-      - name: Upload coverage to Codecov (unit)
+      - name: Check coverage file exists
+        id: check-coverage
         if: always()
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ coverage/lcov.info not found; skipping Codecov upload"
+          fi
+      - name: Upload coverage to Codecov (unit)
+        if: always() && steps.check-coverage.outputs.exists == 'true'
         uses: codecov/codecov-action@v4
         with:
           files: coverage/lcov.info
@@ -503,10 +513,20 @@ jobs:
 
           if [ "${COUNT}" -gt 0 ] && [ "${COUNT}" -le 50 ]; then
             echo "Running vitest related for integration project..."
-            pnpm vitest related --project integration --run ${FILES}
+            pnpm vitest related --project integration --run --coverage \
+              --reporter=default \
+              --reporter=json \
+              --outputFile=test-results.json \
+              ${FILES}
             EXIT=$?
             if [ $EXIT -eq 0 ]; then
               echo "Related integration run completed."
+              # Ensure coverage file exists before exiting
+              if [ -f coverage/lcov.info ]; then
+                echo "Coverage report generated successfully."
+              else
+                echo "⚠️ Warning: coverage/lcov.info not found after test run"
+              fi
               exit 0
             else
               echo "Related run failed; falling back to light subset."
@@ -553,8 +573,18 @@ jobs:
           path: coverage/
           retention-days: 7
           if-no-files-found: ignore
-      - name: Upload coverage to Codecov (integration)
+      - name: Check coverage file exists
+        id: check-coverage
         if: always()
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ coverage/lcov.info not found; skipping Codecov upload"
+          fi
+      - name: Upload coverage to Codecov (integration)
+        if: always() && steps.check-coverage.outputs.exists == 'true'
         uses: codecov/codecov-action@v4
         with:
           files: coverage/lcov.info
