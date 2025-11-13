@@ -1,5 +1,7 @@
 # Learning Path App
 
+[![codecov](https://codecov.io/gh/saldanaj97/atlaris/branch/main/graph/badge.svg)](https://app.codecov.io/gh/saldanaj97/atlaris)
+
 A Next.js application for creating AI-backed personalized learning plans with structured modules and tasks.
 
 ## Features

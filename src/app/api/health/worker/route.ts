@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import { and, eq, lt, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
-import { db } from '@/lib/db/drizzle';
+import { getDb } from '@/lib/db/runtime';
 import { jobQueue } from '@/lib/db/schema';
 
 const STUCK_JOB_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
@@ -28,6 +28,7 @@ interface HealthCheckResponse {
 export async function GET() {
   const timestamp = new Date().toISOString();
   const stuckThreshold = new Date(Date.now() - STUCK_JOB_THRESHOLD_MS);
+  const db = getDb();
 
   try {
     // Check for stuck jobs (processing for > 10 minutes)

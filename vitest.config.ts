@@ -36,10 +36,10 @@ export default defineConfig({
       ],
       all: true,
       thresholds: {
-        lines: 0,
-        functions: 0,
-        branches: 0,
-        statements: 0,
+        lines: 60,
+        functions: 55,
+        branches: 50,
+        statements: 60,
       },
     },
     projects: [
@@ -89,6 +89,15 @@ export default defineConfig({
           setupFiles: ['tests/setup.ts'],
           maxConcurrency: 1,
           alias: testAliases,
+          coverage: {
+            thresholds: {
+              // Enforce a conservative baseline for security coverage
+              lines: 75,
+              functions: 70,
+              branches: 70,
+              statements: 75,
+            },
+          },
         },
       },
       {

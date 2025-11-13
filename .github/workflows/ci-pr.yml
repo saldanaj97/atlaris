@@ -303,10 +303,6 @@ jobs:
             pnpm vitest run --project unit tests/unit \
               --shard ${SHARD}/${TOTAL} \
               --coverage \
-              --coverage.thresholds.lines=0 \
-              --coverage.thresholds.functions=0 \
-              --coverage.thresholds.branches=0 \
-              --coverage.thresholds.statements=0 \
               --reporter=default \
               --reporter=json \
               --outputFile=test-results.json
@@ -348,6 +344,13 @@ jobs:
           path: coverage/
           retention-days: 7
           if-no-files-found: ignore
+      - name: Upload coverage to Codecov (unit)
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          flags: unit
+          verbose: true
       - name: Save Vitest cache
         if: always()
         uses: actions/cache/save@v4
@@ -519,10 +522,6 @@ jobs:
           fi
           pnpm vitest run "${LIGHT_FILES[@]}" \
             --coverage \
-            --coverage.thresholds.lines=0 \
-            --coverage.thresholds.functions=0 \
-            --coverage.thresholds.branches=0 \
-            --coverage.thresholds.statements=0 \
             --reporter=default \
             --reporter=json \
             --outputFile=test-results.json
@@ -553,6 +552,13 @@ jobs:
           path: coverage/
           retention-days: 7
           if-no-files-found: ignore
+      - name: Upload coverage to Codecov (integration)
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/lcov.info
+          flags: integration
+          verbose: true
       - name: Save Vitest cache
         if: always()
         uses: actions/cache/save@v4
