@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { and, eq, lt, sql } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 import { db } from '@/lib/db/drizzle';
 import { jobQueue } from '@/lib/db/schema';
@@ -28,6 +28,8 @@ interface HealthCheckResponse {
 export async function GET() {
   const timestamp = new Date().toISOString();
   const stuckThreshold = new Date(Date.now() - STUCK_JOB_THRESHOLD_MS);
+  // Use service-role DB to bypass RLS and get system-wide metrics
+  // Health checks need to see all jobs across all users, not just the authenticated user's jobs
 
   try {
     // Check for stuck jobs (processing for > 10 minutes)
