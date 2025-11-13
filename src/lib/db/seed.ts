@@ -1,9 +1,9 @@
+import { appEnv, devClerkEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 import dotenv from 'dotenv';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { reset, seed } from 'drizzle-seed';
-import { appEnv, devClerkEnv } from '@/lib/config/env';
-import { logger } from '@/lib/logging/logger';
 import * as schema from './schema';
 
 dotenv.config();
@@ -188,13 +188,13 @@ export async function seedDatabase(
     seed: seedValue = 12345,
   } = options || {};
 
-  logger.info('🌱 Starting database seeding...');
+  logger.info({ emoji: '🌱' }, 'Starting database seeding...');
 
   // Reset database if requested
   if (shouldReset) {
-    logger.info('🗑️  Resetting database...');
+    logger.info({ emoji: '🗑️' }, 'Resetting database...');
     await reset(db, schema);
-    logger.info('✅ Database reset complete');
+    logger.info({ emoji: '✅' }, 'Database reset complete');
   }
 
   // generation_attempts captures real AI runs; keep empty during synthetic seeding
@@ -493,7 +493,10 @@ export async function seedDatabase(
           .where(eq(schema.learningPlans.userId, devUserId))
           .limit(1);
         if (existingPlans.length === 0) {
-          logger.info('🛠️  Creating curated dev user learning plans...');
+          logger.info(
+            { emoji: '🛠️' },
+            'Creating curated dev user learning plans...'
+          );
 
           // Curated plan definitions (concise but representative)
           const curatedPlans: Array<{
@@ -763,10 +766,11 @@ export async function seedDatabase(
             }
           }
 
-          logger.info('✅ Curated dev user dataset created.');
+          logger.info({ emoji: '✅' }, 'Curated dev user dataset created.');
         } else {
           logger.info(
-            'ℹ️  Dev user already has plans; skipping curated dataset.'
+            { emoji: 'ℹ️' },
+            'Dev user already has plans; skipping curated dataset.'
           );
         }
 
@@ -857,7 +861,7 @@ export async function seedDatabase(
               }
             }
           }
-          logger.info('✅ Added random-style dev user plans.');
+          logger.info({ emoji: '✅' }, 'Added random-style dev user plans.');
         }
       }
     } catch (err) {
@@ -871,10 +875,10 @@ export async function seedDatabase(
   }
 
   // After seeding (and curated dev data), create task-resource relationships (placeholder)
-  logger.info('🔗 Creating task-resource relationships...');
+  logger.info({ emoji: '🔗' }, 'Creating task-resource relationships...');
 
   // Generate per-user task progress with unique (task_id, user_id) pairs
-  logger.info('🧭 Generating task progress (unique pairs)...');
+  logger.info({ emoji: '🧭' }, 'Generating task progress (unique pairs)...');
   const users = await db.select({ id: schema.users.id }).from(schema.users);
   const tasks = await db.select({ id: schema.tasks.id }).from(schema.tasks);
 
@@ -977,7 +981,7 @@ export async function seedDatabase(
   );
 
   // Generate job queue entries
-  logger.info('📋 Generating job queue entries...');
+  logger.info({ emoji: '📋' }, 'Generating job queue entries...');
   const plans = await db
     .select({
       id: schema.learningPlans.id,
@@ -1167,25 +1171,30 @@ export async function seedDatabase(
     `✅ Inserted ${jobRows.length} job_queue entries.`
   );
 
-  logger.info('✅ Database seeding completed successfully!');
-  logger.info(`📈 Generated approximately:`);
-  logger.info(`   - ${userCount} users`);
-  logger.info(`   - ${planCount} learning plans`);
-  logger.info(`   - ${planCount * 4} modules (avg 4 per plan)`);
-  logger.info(`   - ${planCount * 20} tasks (avg 5 per module)`);
-  logger.info(`   - ${resourceCount} resources`);
-  logger.info(`   - ~${progressRows.length} task progress records`);
-  logger.info(`   - ${Math.floor(planCount * 0.3)} plan generation records`);
-  logger.info(`   - ${jobRows.length} job queue entries`);
+  logger.info({ emoji: '✅' }, 'Database seeding completed successfully!');
+  logger.info(
+    {
+      emoji: '📈',
+      userCount,
+      planCount,
+      moduleCount: planCount * 4,
+      taskCount: planCount * 20,
+      resourceCount,
+      progressCount: progressRows.length,
+      generationCount: Math.floor(planCount * 0.3),
+      jobCount: jobRows.length,
+    },
+    'Generated approximately:'
+  );
 }
 
 /**
  * Reset database - clears all data
  */
 export async function resetDatabase(db: ReturnType<typeof drizzle>) {
-  logger.info('🗑️  Resetting database...');
+  logger.info({ emoji: '🗑️' }, 'Resetting database...');
   await reset(db, schema);
-  logger.info('✅ Database reset complete');
+  logger.info({ emoji: '✅' }, 'Database reset complete');
 }
 
 /**

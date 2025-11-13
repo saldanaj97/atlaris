@@ -13,7 +13,7 @@ import type {
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
 import { PlanSchema } from '@/lib/ai/schema';
-import { googleAiEnv, openRouterEnv } from '@/lib/config/env';
+import { openRouterEnv } from '@/lib/config/env';
 
 function toStream(obj: unknown): AsyncIterable<string> {
   const data = JSON.stringify(obj);
@@ -59,7 +59,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     const app = cfg.appName ?? openRouterEnv.appName;
     if (site) this.headers['HTTP-Referer'] = site;
     if (app) this.headers['X-Title'] = app;
-    this.maxOutputTokens = cfg.maxOutputTokens ?? googleAiEnv.maxOutputTokens;
+    this.maxOutputTokens = cfg.maxOutputTokens ?? openRouterEnv.maxOutputTokens;
     this.temperature = cfg.temperature ?? 0.2;
   }
 

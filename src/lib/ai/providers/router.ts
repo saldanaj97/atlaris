@@ -93,18 +93,20 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
         return result;
       } catch (err) {
         lastError = err;
-        if (!appEnv.isProduction) {
-          const message = err instanceof Error ? err.message : 'unknown error';
-          logger.warn(
-            {
-              source: 'ai-router',
-              event: 'provider_failed',
-              provider: providerName,
-              message,
-            },
-            'AI router provider failed'
-          );
-        }
+        const message = err instanceof Error ? err.message : 'unknown error';
+        // Always log provider failures in production for visibility
+        logger.warn(
+          {
+            source: 'ai-router',
+            event: 'provider_failed',
+            provider: providerName,
+            message,
+            ...(err instanceof Error && !appEnv.isProduction
+              ? { stack: err.stack }
+              : {}),
+          },
+          'AI router provider failed'
+        );
         continue; // try next provider
       }
     }

@@ -15,7 +15,7 @@ const toNumber = (
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-const toBoolean = (value: string | undefined, fallback = false): boolean => {
+const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
   if (value === undefined) return fallback;
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
 };
@@ -40,6 +40,21 @@ const ensureServerRuntime = () => {
   }
 };
 
+/**
+ * Cache for server-only environment variables.
+ *
+ * These caches assume that environment variables are immutable after process start.
+ * This is the standard behavior in Node.js where env vars are set at process
+ * initialization and don't change during runtime.
+ *
+ * Performance note: The cache avoids repeated process.env lookups and validation
+ * for frequently accessed environment variables, which is especially beneficial
+ * in long-running processes like workers.
+ *
+ * If dynamic environment variable updates are needed in the future (e.g., for
+ * hot-reload scenarios or runtime configuration changes), a cache invalidation
+ * mechanism would need to be implemented.
+ */
 const serverRequiredCache = new Map<string, string>();
 const serverOptionalCache = new Map<string, string | undefined>();
 
@@ -80,8 +95,12 @@ export const databaseEnv = {
 } as const;
 
 export const supabaseEnv = {
-  url: requireEnv('NEXT_PUBLIC_SUPABASE_URL'),
-  anonKey: requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
+  get url() {
+    return requireEnv('NEXT_PUBLIC_SUPABASE_URL');
+  },
+  get anonKey() {
+    return requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
+  },
 } as const;
 
 export const notionEnv = {
@@ -145,10 +164,10 @@ export const stripeEnv = {
 
 export const workerEnv = {
   get pollIntervalMs() {
-    return toNumber(getServerOptional('WORKER_POLL_INTERVAL_MS'), 2000) ?? 2000;
+    return toNumber(getServerOptional('WORKER_POLL_INTERVAL_MS'), 2000);
   },
   get concurrency() {
-    return toNumber(getServerOptional('WORKER_CONCURRENCY'), 1) ?? 1;
+    return toNumber(getServerOptional('WORKER_CONCURRENCY'), 1);
   },
 } as const;
 
@@ -174,7 +193,7 @@ export const aiEnv = {
     return getServerOptional('AI_OVERFLOW');
   },
   get enableOpenRouter() {
-    return toBoolean(getServerOptional('AI_ENABLE_OPENROUTER'));
+    return toBoolean(getServerOptional('AI_ENABLE_OPENROUTER'), false);
   },
   get primaryModel() {
     return getServerOptional('AI_PRIMARY');
@@ -223,15 +242,10 @@ export const aiMicroExplanationEnv = {
     },
   },
   get microExplanationMaxTokens() {
-    return (
-      toNumber(getServerOptional('AI_MICRO_EXPLANATION_MAX_TOKENS'), 200) ?? 200
-    );
+    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_MAX_TOKENS'), 200);
   },
   get microExplanationTemperature() {
-    return (
-      toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4) ??
-      0.4
-    );
+    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4);
   },
   get primaryModel() {
     return getServerOptional('AI_PRIMARY') ?? 'gemini-1.5-flash';
@@ -243,7 +257,7 @@ export const aiMicroExplanationEnv = {
     return getServerOptional('AI_OVERFLOW') ?? 'google/gemini-2.0-pro-exp';
   },
   get enableOpenRouter() {
-    return getServerOptional('AI_ENABLE_OPENROUTER') === 'true';
+    return toBoolean(getServerOptional('AI_ENABLE_OPENROUTER'), false);
   },
 } as const;
 
@@ -259,6 +273,9 @@ export const openRouterEnv = {
   },
   get baseUrl() {
     return getServerOptional('OPENROUTER_BASE_URL');
+  },
+  get maxOutputTokens() {
+    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'), 1200);
   },
 } as const;
 
@@ -282,7 +299,7 @@ export const googleAiEnv = {
     return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
   },
   get maxOutputTokens() {
-    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'), 1200) ?? 1200;
+    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'), 1200);
   },
 } as const;
 
@@ -300,7 +317,7 @@ export const devClerkEnv = {
 
 export const attemptsEnv = {
   get cap() {
-    return toNumber(getServerOptional('ATTEMPT_CAP'), 3) ?? 3;
+    return toNumber(getServerOptional('ATTEMPT_CAP'), 3);
   },
 } as const;
 
@@ -347,9 +364,7 @@ export const curationWeightsEnv = {
     );
   },
   get recencyDecayDays() {
-    return (
-      toNumber(getServerOptional('CURATION_RECENCY_DECAY_DAYS'), 365) ?? 365
-    );
+    return toNumber(getServerOptional('CURATION_RECENCY_DECAY_DAYS'), 365);
   },
 } as const;
 

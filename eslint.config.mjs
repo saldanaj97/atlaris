@@ -132,6 +132,13 @@ export default [
       'no-console': 'off',
     },
   },
+  // Allow console usage in CLI entry points
+  {
+    files: ['src/lib/db/*-cli.ts', 'src/scripts/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
   // Block service-role DB imports in request layers (use getDb() / RLS DB instead)
   // Note: System endpoints like health checks are excluded
   {

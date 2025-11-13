@@ -123,38 +123,28 @@ export class CloudflareAiProvider implements AiPlanGenerationProvider {
       baseURL: this.baseURL,
     });
 
-    let plan: unknown;
-    let usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
-    try {
-      const result = await generateObject({
-        model: openai(this.model),
-        schema: PlanSchema,
-        system: buildSystemPrompt(),
-        prompt: buildUserPrompt({
-          topic: input.topic,
-          skillLevel: input.skillLevel as PromptParams['skillLevel'],
-          learningStyle: input.learningStyle as PromptParams['learningStyle'],
-          weeklyHours: input.weeklyHours,
-          startDate: input.startDate,
-          deadlineDate: input.deadlineDate,
-        }),
-        maxOutputTokens: this.maxOutputTokens,
-        temperature: this.temperature,
-      });
-      plan = result.object;
-      usage = result.usage as typeof usage;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      logger.error(
-        {
-          source: 'ai-provider',
-          event: 'cloudflare_generate_failed',
-          errorMessage: message,
-        },
-        'Cloudflare provider generation failed'
-      );
-      throw err;
-    }
+    const result = await generateObject({
+      model: openai(this.model),
+      schema: PlanSchema,
+      system: buildSystemPrompt(),
+      prompt: buildUserPrompt({
+        topic: input.topic,
+        skillLevel: input.skillLevel as PromptParams['skillLevel'],
+        learningStyle: input.learningStyle as PromptParams['learningStyle'],
+        weeklyHours: input.weeklyHours,
+        startDate: input.startDate,
+        deadlineDate: input.deadlineDate,
+      }),
+      maxOutputTokens: this.maxOutputTokens,
+      temperature: this.temperature,
+    });
+
+    const plan = result.object;
+    const usage = result.usage as {
+      inputTokens?: number;
+      outputTokens?: number;
+      totalTokens?: number;
+    };
 
     return {
       stream: toStream(plan),

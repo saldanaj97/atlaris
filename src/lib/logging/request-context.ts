@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { createLogger } from './logger';
 import type { Logger } from './logger';
+import { createLogger } from './logger';
 
 export const REQUEST_ID_HEADER = 'x-request-id';
 
@@ -15,7 +15,8 @@ export function createRequestContext(
   context: Record<string, unknown> = {}
 ): RequestContext {
   const incomingId = request.headers.get(REQUEST_ID_HEADER);
-  const requestId = incomingId?.trim() ? incomingId : randomUUID();
+  const trimmedId = incomingId?.trim();
+  const requestId = trimmedId ? trimmedId : randomUUID();
 
   return {
     requestId,

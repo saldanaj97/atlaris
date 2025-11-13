@@ -54,14 +54,8 @@ async function shutdown(signal: NodeJS.Signals) {
 
   try {
     await Promise.race([worker.stop(), timeoutPromise]);
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
     process.exit(0);
   } catch (error) {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
     logger.error(
       {
         source: 'plan-generation-worker',
@@ -71,6 +65,10 @@ async function shutdown(signal: NodeJS.Signals) {
       'Failed to stop worker during shutdown'
     );
     process.exit(1);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 }
 

@@ -91,6 +91,11 @@ export class AttemptCapExceededError extends AppError {
   }
 }
 
+/**
+ * Internal utility function to serialize errors into a safe, loggable format.
+ * Used for error logging when unexpected errors occur outside of AppError handling.
+ * Not exported as it's only intended for internal use within this module.
+ */
 function toSafeError(err: unknown): Record<string, unknown> {
   if (err instanceof AppError) {
     return {

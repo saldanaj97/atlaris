@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
+import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { googleOAuthEnv } from '@/lib/config/env';
+import { getDb } from '@/lib/db/runtime';
+import { users } from '@/lib/db/schema';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { validateOAuthStateToken } from '@/lib/integrations/oauth-state';
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
-import { getDb } from '@/lib/db/runtime';
-import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { google } from 'googleapis';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const GET = withErrorBoundary(
   withAuth(async ({ req, userId: clerkUserId }) => {
@@ -22,7 +22,7 @@ export const GET = withErrorBoundary(
     const redirectWithRequestId = (url: URL) =>
       attachRequestIdHeader(NextResponse.redirect(url), requestId);
 
-    // Validate required Google OAuth environment variables
+    // Access Google OAuth environment variables (will throw if missing)
     const { clientId, clientSecret, redirectUri } = googleOAuthEnv;
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
