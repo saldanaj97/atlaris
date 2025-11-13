@@ -351,6 +351,7 @@ jobs:
           files: coverage/lcov.info
           flags: unit
           verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Save Vitest cache
         if: always()
         uses: actions/cache/save@v4
@@ -559,6 +560,7 @@ jobs:
           files: coverage/lcov.info
           flags: integration
           verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Save Vitest cache
         if: always()
         uses: actions/cache/save@v4
