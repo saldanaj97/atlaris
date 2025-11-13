@@ -1,4 +1,0 @@
-path_filters:
-  - '!**/*.md'
-  - 'src/**'
-  - 'tests/**'
