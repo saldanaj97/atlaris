@@ -35,10 +35,15 @@ export function requireEnv(key: string): string {
 }
 
 const ensureServerRuntime = () => {
+  // Allow known test environments (e.g., Vitest + JSDOM) where `window` exists
+  // but code still executes in a Node.js context. Vitest sets VITEST_WORKER_ID.
   if (typeof window !== 'undefined') {
-    throw new Error(
-      'Attempted to access a server-only environment variable in the browser bundle.'
-    );
+    const isVitest = optionalEnv('VITEST_WORKER_ID');
+    if (!isVitest) {
+      throw new Error(
+        'Attempted to access a server-only environment variable in the browser bundle.'
+      );
+    }
   }
 };
 
