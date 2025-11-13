@@ -10,6 +10,8 @@ import { CloudflareAiProvider } from '@/lib/ai/providers/cloudflare';
 import { GoogleAiProvider } from '@/lib/ai/providers/google';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 import { OpenRouterProvider } from '@/lib/ai/providers/openrouter';
+import { aiEnv, appEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 
 export interface RouterConfig {
   useMock?: boolean;
@@ -21,12 +23,9 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 
   constructor(cfg: RouterConfig = {}) {
     const useMock =
-      cfg.useMock ??
-      (process.env.AI_USE_MOCK === 'true' &&
-        process.env.NODE_ENV !== 'production');
+      cfg.useMock ?? (aiEnv.useMock === 'true' && !appEnv.isProduction);
 
-    const enableOpenRouter =
-      cfg.enableOpenRouter ?? process.env.AI_ENABLE_OPENROUTER === 'true';
+    const enableOpenRouter = cfg.enableOpenRouter ?? aiEnv.enableOpenRouter;
 
     if (useMock) {
       this.providers = [() => new MockGenerationProvider()];
@@ -38,14 +37,14 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     chain.push(
       () =>
         new GoogleAiProvider({
-          model: process.env.AI_PRIMARY ?? 'gemini-1.5-flash',
+          model: aiEnv.primaryModel ?? 'gemini-1.5-flash',
         })
     );
     // Fallback: Cloudflare Workers AI
     chain.push(
       () =>
         new CloudflareAiProvider({
-          model: process.env.AI_FALLBACK ?? '@cf/meta/llama-3.1-8b-instruct',
+          model: aiEnv.fallbackModel ?? '@cf/meta/llama-3.1-8b-instruct',
         })
     );
     // Overflow: OpenRouter if enabled
@@ -54,7 +53,7 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
         () =>
           new OpenRouterProvider({
             model: (
-              process.env.AI_OVERFLOW ?? 'google/gemini-2.0-pro-exp'
+              aiEnv.deterministicOverflowModel ?? 'google/gemini-2.0-pro-exp'
             ).replace(/^openrouter\//, ''),
           })
       );
@@ -72,15 +71,15 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     for (const factory of this.providers) {
       const provider = factory();
       const providerName = provider.constructor?.name ?? 'unknown-provider';
-      if (process.env.NODE_ENV !== 'production') {
+      if (!appEnv.isProduction) {
         // Lightweight debug signal to help trace provider order and failures locally
-        console.info(
-          JSON.stringify({
+        logger.debug(
+          {
             source: 'ai-router',
-            level: 'info',
             event: 'provider_attempt',
             provider: providerName,
-          })
+          },
+          'AI router attempting provider'
         );
       }
       try {
@@ -94,16 +93,16 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
         return result;
       } catch (err) {
         lastError = err;
-        if (process.env.NODE_ENV !== 'production') {
+        if (!appEnv.isProduction) {
           const message = err instanceof Error ? err.message : 'unknown error';
-          console.warn(
-            JSON.stringify({
+          logger.warn(
+            {
               source: 'ai-router',
-              level: 'warn',
               event: 'provider_failed',
               provider: providerName,
               message,
-            })
+            },
+            'AI router provider failed'
           );
         }
         continue; // try next provider

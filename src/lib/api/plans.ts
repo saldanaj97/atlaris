@@ -1,3 +1,4 @@
+import { clientLogger } from '@/lib/logging/client';
 import type { PlanStatus } from '@/lib/types/client';
 import type { LearningStyle, SkillLevel } from '@/lib/types/db';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
@@ -52,7 +53,7 @@ export async function createPlan(
         (await response.json()) as Partial<ErrorResponse> | null;
       message = extractErrorMessage(errorBody, message);
     } catch (error) {
-      console.error('Failed to parse createPlan error response', error);
+      clientLogger.error('Failed to parse createPlan error response', error);
     }
     throw new Error(message);
   }

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { clientLogger } from '@/lib/logging/client';
 
 interface ExportButtonsProps {
   planId: string;
@@ -47,7 +48,7 @@ export function ExportButtons({ planId }: ExportButtonsProps) {
         description: 'Your learning plan is now in Notion!',
       });
     } catch (error) {
-      console.error('Notion export error:', error);
+      clientLogger.error('Notion export error:', error);
       toast.error('Export failed', {
         description: 'An unknown error occurred during export',
       });
@@ -90,7 +91,7 @@ export function ExportButtons({ planId }: ExportButtonsProps) {
         description: `${successData.eventsCreated} events created`,
       });
     } catch (error) {
-      console.error('Calendar sync error:', error);
+      clientLogger.error('Calendar sync error:', error);
       toast.error('Sync failed', {
         description: 'An unknown error occurred during sync',
       });

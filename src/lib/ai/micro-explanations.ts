@@ -14,6 +14,8 @@ import {
   buildMicroExplanationUserPrompt,
 } from '@/lib/ai/prompts';
 import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
+import { aiMicroExplanationEnv, appEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 
 /**
  * Schema for micro-explanation response
@@ -54,7 +56,7 @@ async function tryGenerateWithProvider(
   };
 
   if (providerName === 'google') {
-    const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const apiKey = aiMicroExplanationEnv.googleApiKey;
     const provider = apiKey ? createGoogleGenerativeAI({ apiKey }) : google;
 
     const { object } = await generateObject({
@@ -69,15 +71,18 @@ async function tryGenerateWithProvider(
   }
 
   if (providerName === 'cloudflare') {
-    const apiToken = process.env.CF_API_TOKEN ?? process.env.CF_API_KEY;
-    if (!apiToken) {
-      throw new Error('CF_API_TOKEN is not set');
+    const { apiToken, apiKey, accountId, gatewayUrl } =
+      aiMicroExplanationEnv.cloudflare;
+    const resolvedToken = apiToken ?? apiKey;
+    if (!resolvedToken) {
+      throw new Error(
+        'Cloudflare AI requires either apiToken or apiKey to be configured'
+      );
     }
-    const accountId = process.env.CF_ACCOUNT_ID;
-    const gatewayUrl = process.env.CF_AI_GATEWAY;
-
     if (!gatewayUrl && !accountId) {
-      throw new Error('Either CF_AI_GATEWAY or CF_ACCOUNT_ID must be set');
+      throw new Error(
+        'Cloudflare AI requires a gatewayUrl or accountId to be configured'
+      );
     }
     let baseURL =
       gatewayUrl ??
@@ -95,7 +100,7 @@ async function tryGenerateWithProvider(
       ? config.model.replace(/^@cf\//, '')
       : config.model;
     const openai = createOpenAI({
-      apiKey: apiToken,
+      apiKey: resolvedToken,
       baseURL,
     });
 
@@ -111,16 +116,14 @@ async function tryGenerateWithProvider(
   }
 
   if (providerName === 'openrouter') {
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const { apiKey, baseUrl, siteUrl, appName } =
+      aiMicroExplanationEnv.openRouter;
     if (!apiKey) {
-      throw new Error('OPENROUTER_API_KEY is not set');
+      throw new Error('OpenRouter API key is not configured');
     }
 
-    const baseURL =
-      process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1';
+    const baseURL = baseUrl ?? 'https://openrouter.ai/api/v1';
     const headers: Record<string, string> = {};
-    const siteUrl = process.env.OPENROUTER_SITE_URL;
-    const appName = process.env.OPENROUTER_APP_NAME;
     if (siteUrl) headers['HTTP-Referer'] = siteUrl;
     if (appName) headers['X-Title'] = appName;
 
@@ -164,13 +167,8 @@ export async function generateMicroExplanation(
   const userPrompt = buildMicroExplanationUserPrompt(args);
 
   // Configuration for micro-explanations (shorter, faster)
-  const maxOutputTokens = parseInt(
-    process.env.AI_MICRO_EXPLANATION_MAX_TOKENS ?? '200',
-    10
-  );
-  const temperature = parseFloat(
-    process.env.AI_MICRO_EXPLANATION_TEMPERATURE ?? '0.4'
-  );
+  const maxOutputTokens = aiMicroExplanationEnv.microExplanationMaxTokens;
+  const temperature = aiMicroExplanationEnv.microExplanationTemperature;
 
   const config: MicroExplanationProviderConfig = {
     model: '', // Will be set per provider
@@ -185,21 +183,18 @@ export async function generateMicroExplanation(
   }> = [
     {
       name: 'google',
-      model: process.env.AI_PRIMARY ?? 'gemini-1.5-flash',
+      model: aiMicroExplanationEnv.primaryModel,
     },
     {
       name: 'cloudflare',
-      model: process.env.AI_FALLBACK ?? '@cf/meta/llama-3.1-8b-instruct',
+      model: aiMicroExplanationEnv.fallbackModel,
     },
   ];
 
-  if (process.env.AI_ENABLE_OPENROUTER === 'true') {
+  if (aiMicroExplanationEnv.enableOpenRouter) {
     providers.push({
       name: 'openrouter',
-      model: (process.env.AI_OVERFLOW ?? 'google/gemini-2.0-pro-exp').replace(
-        /^openrouter\//,
-        ''
-      ),
+      model: aiMicroExplanationEnv.overflowModel.replace(/^openrouter\//, ''),
     });
   }
 
@@ -209,14 +204,14 @@ export async function generateMicroExplanation(
     const providerName = providerInfo.name;
     config.model = providerInfo.model;
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.info(
-        JSON.stringify({
+    if (!appEnv.isProduction) {
+      logger.debug(
+        {
           source: 'micro-explanation',
-          level: 'info',
           event: 'provider_attempt',
           provider: providerName,
-        })
+        },
+        'Attempting micro-explanation provider'
       );
     }
 
@@ -241,16 +236,16 @@ export async function generateMicroExplanation(
       return formatMicroExplanation(explanation);
     } catch (err) {
       lastError = err;
-      if (process.env.NODE_ENV !== 'production') {
+      if (!appEnv.isProduction) {
         const message = err instanceof Error ? err.message : 'unknown error';
-        console.warn(
-          JSON.stringify({
+        logger.warn(
+          {
             source: 'micro-explanation',
-            level: 'warn',
             event: 'provider_failed',
             provider: providerName,
             message,
-          })
+          },
+          'Micro-explanation provider failed'
         );
       }
       continue; // try next provider

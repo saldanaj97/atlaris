@@ -1,4 +1,6 @@
+import { attemptsEnv } from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/api/context';
+import { logger } from '@/lib/logging/logger';
 import type { InferSelectModel } from 'drizzle-orm';
 import { count, eq } from 'drizzle-orm';
 
@@ -25,7 +27,7 @@ import type { GenerationInput } from '@/lib/ai/provider';
 import { db } from '../drizzle';
 import { generationAttempts, learningPlans, modules, tasks } from '../schema';
 
-const ATTEMPT_CAP = Number(process.env.ATTEMPT_CAP) || 3;
+const ATTEMPT_CAP = attemptsEnv.cap;
 
 interface SanitizedField {
   value: string | undefined;
@@ -92,7 +94,14 @@ function logAttemptEvent(
     ...payload,
     correlationId: correlationId ?? null,
   } satisfies Record<string, unknown>;
-  console.info(`[attempts] ${event}`, enriched);
+  logger.info(
+    {
+      source: 'attempts',
+      event,
+      ...enriched,
+    },
+    `attempts_${event}`
+  );
 }
 
 interface MetadataParams {

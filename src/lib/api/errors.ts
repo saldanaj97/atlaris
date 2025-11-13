@@ -1,5 +1,6 @@
 // Centralized error types and helpers for API layer
 
+import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 
 export class AppError extends Error {
@@ -90,6 +91,36 @@ export class AttemptCapExceededError extends AppError {
   }
 }
 
+function toSafeError(err: unknown): Record<string, unknown> {
+  if (err instanceof AppError) {
+    return {
+      name: err.name,
+      message: err.message,
+      status: err.status(),
+      code: err.code(),
+    };
+  }
+
+  if (err instanceof Error) {
+    return {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+    };
+  }
+
+  if (typeof err === 'object' && err !== null) {
+    return {
+      message: 'Unknown error object',
+      type: err.constructor?.name ?? 'Object',
+    };
+  }
+
+  return {
+    message: String(err),
+  };
+}
+
 export function toErrorResponse(err: unknown) {
   if (err instanceof AppError) {
     const body: Record<string, unknown> = {
@@ -114,7 +145,7 @@ export function toErrorResponse(err: unknown) {
 
     return Response.json(body, { status: err.status() });
   }
-  console.error('Unexpected error', err);
+  logger.error({ error: toSafeError(err) }, 'Unexpected API error');
   return Response.json(
     { error: 'Internal Server Error', code: 'INTERNAL_ERROR' },
     { status: 500 }

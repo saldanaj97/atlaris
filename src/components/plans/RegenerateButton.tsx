@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { clientLogger } from '@/lib/logging/client';
 
 interface RegenerateButtonProps {
   planId: string;
@@ -29,7 +30,7 @@ export function RegenerateButton({ planId }: RegenerateButtonProps) {
       }
       toast.success('Plan regeneration enqueued');
     } catch (error) {
-      console.error('Regeneration failed:', error);
+      clientLogger.error('Regeneration failed:', error);
       toast.error('Unable to enqueue regeneration');
     } finally {
       setLoading(false);

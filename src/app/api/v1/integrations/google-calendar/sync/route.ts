@@ -7,6 +7,10 @@ import { z } from 'zod';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
+import {
+  attachRequestIdHeader,
+  createRequestContext,
+} from '@/lib/logging/request-context';
 
 const syncRequestSchema = z.object({
   planId: z.string().uuid('Invalid plan ID format'),
@@ -15,6 +19,13 @@ const syncRequestSchema = z.object({
 export const POST = withErrorBoundary(
   withAuth(async ({ req, userId: clerkUserId }) => {
     const request = req as NextRequest;
+    const { requestId, logger } = createRequestContext(req, {
+      route: 'google_calendar_sync',
+      clerkUserId,
+    });
+    const respondJson = (payload: unknown, init?: ResponseInit) =>
+      attachRequestIdHeader(NextResponse.json(payload, init), requestId);
+
     const db = getDb();
     const [user] = await db
       .select()
@@ -23,12 +34,12 @@ export const POST = withErrorBoundary(
       .limit(1);
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return respondJson({ error: 'User not found' }, { status: 404 });
     }
 
     const googleTokens = await getOAuthTokens(user.id, 'google_calendar');
     if (!googleTokens) {
-      return NextResponse.json(
+      return respondJson(
         { error: 'Google Calendar not connected' },
         { status: 401 }
       );
@@ -41,12 +52,12 @@ export const POST = withErrorBoundary(
       body = syncRequestSchema.parse(rawBody);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return NextResponse.json(
+        return respondJson(
           { error: 'Invalid request', details: error.issues },
           { status: 400 }
         );
       }
-      return NextResponse.json(
+      return respondJson(
         { error: 'Invalid request body' },
         { status: 400 }
       );
@@ -65,7 +76,7 @@ export const POST = withErrorBoundary(
         .limit(1);
 
       if (!plan) {
-        return NextResponse.json(
+        return respondJson(
           { error: 'Plan not found or access denied' },
           { status: 404 }
         );
@@ -74,7 +85,7 @@ export const POST = withErrorBoundary(
       // Tier gate: check export quota for current subscription tier
       const canExport = await checkExportQuota(user.id, user.subscriptionTier);
       if (!canExport) {
-        return NextResponse.json(
+        return respondJson(
           {
             error: 'Export quota exceeded',
             message: 'Upgrade your plan to export more learning plans',
@@ -93,19 +104,26 @@ export const POST = withErrorBoundary(
       try {
         await incrementExportUsage(user.id);
       } catch (e) {
-        console.error(
-          'Failed to increment export usage for Google Calendar sync',
+        logger.error(
           {
             userId: user.id,
             error: e,
-          }
+          },
+          'Failed to increment export usage for Google Calendar sync'
         );
         // Do not fail the request if usage tracking fails
       }
-      return NextResponse.json({ eventsCreated, success: true });
+      return respondJson({ eventsCreated, success: true });
     } catch (error) {
-      console.error('Google Calendar sync failed:', error);
-      return NextResponse.json({ error: 'Sync failed' }, { status: 500 });
+      logger.error(
+        {
+          planId,
+          userId: user.id,
+          error,
+        },
+        'Google Calendar sync failed'
+      );
+      return respondJson({ error: 'Sync failed' }, { status: 500 });
     }
   })
 );

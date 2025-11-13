@@ -1,28 +1,43 @@
 import { withErrorBoundary } from '@/lib/api/auth';
+import { appEnv, stripeEnv } from '@/lib/config/env';
+import {
+  attachRequestIdHeader,
+  createRequestContext,
+} from '@/lib/logging/request-context';
 import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export const POST = withErrorBoundary(async (req: Request) => {
+  const { requestId, logger } = createRequestContext(req, {
+    route: 'stripe_webhook',
+  });
+  const respond = (body: BodyInit | null, init?: ResponseInit) =>
+    attachRequestIdHeader(new Response(body, init), requestId);
+
   const rawBody = await req.text();
   const signature = req.headers.get('stripe-signature');
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  const isProd = process.env.NODE_ENV === 'production';
-  const allowDevPayloads =
-    !isProd && process.env.STRIPE_WEBHOOK_DEV_MODE === '1';
+  const webhookSecret = stripeEnv.webhookSecret;
+  const isProd = appEnv.isProduction;
+  const allowDevPayloads = !isProd && stripeEnv.webhookDevMode;
 
   // Basic body size guard (avoid excessive payloads)
   const MAX_BYTES = 256 * 1024; // 256KB
   if (Buffer.byteLength(rawBody, 'utf8') > MAX_BYTES) {
-    return new Response('payload too large', { status: 413 });
+    logger.warn(
+      { size: Buffer.byteLength(rawBody, 'utf8') },
+      'Stripe webhook payload too large'
+    );
+    return respond('payload too large', { status: 413 });
   }
 
   // If a webhook secret is configured, verify the signature using our Stripe client
   let event: Stripe.Event;
   if (webhookSecret) {
     if (!signature) {
-      return new Response('missing signature', { status: 400 });
+      logger.warn('Stripe webhook missing signature');
+      return respond('missing signature', { status: 400 });
     }
 
     try {
@@ -33,36 +48,45 @@ export const POST = withErrorBoundary(async (req: Request) => {
         300
       );
     } catch (error) {
-      console.error('Stripe webhook signature verification failed', {
-        message: error instanceof Error ? error.message : String(error),
-      });
-      return new Response('signature verification failed', { status: 400 });
+      logger.error(
+        {
+          error,
+        },
+        'Stripe webhook signature verification failed'
+      );
+      return respond('signature verification failed', { status: 400 });
     }
   } else {
     // In non-production without secret, accept JSON payloads (dev convenience)
     if (!allowDevPayloads) {
-      return new Response('webhook misconfigured', { status: 500 });
+      logger.error(
+        'Stripe webhook misconfigured: missing secret outside development'
+      );
+      return respond('webhook misconfigured', { status: 500 });
     }
     try {
       event = JSON.parse(rawBody) as Stripe.Event;
     } catch {
-      return new Response('bad request', { status: 400 });
+      return respond('bad request', { status: 400 });
     }
 
     const eventType =
       event && typeof event === 'object' && 'type' in event
         ? ((event as { type?: string }).type ?? 'unknown')
         : 'unknown';
-    console.log('Stripe webhook dev mode event received (noop)', {
-      type: eventType,
-    });
-    return new Response('ok');
+    logger.info(
+      {
+        type: eventType,
+      },
+      'Stripe webhook dev mode event received (noop)'
+    );
+    return respond('ok');
   }
 
   // Ignore mode-mismatched events (e.g., test events hitting prod)
   const expectLive = isProd;
   if (event.livemode !== expectLive) {
-    return new Response('ok');
+    return respond('ok');
   }
 
   const { db } = await import('@/lib/db/drizzle');
@@ -76,14 +100,17 @@ export const POST = withErrorBoundary(async (req: Request) => {
     .limit(1);
 
   if (alreadyProcessed.length > 0) {
-    console.log('Duplicate Stripe webhook event skipped', { type: event.type });
-    return new Response('ok');
+    logger.info(
+      { type: event.type, eventId: event.id },
+      'Duplicate Stripe webhook event skipped'
+    );
+    return respond('ok');
   }
 
   switch (event.type) {
     case 'checkout.session.completed': {
       // Subscription is automatically handled by subscription.created event
-      console.log('Stripe checkout.session.completed webhook processed');
+      logger.info('Stripe checkout.session.completed webhook processed');
       break;
     }
 
@@ -94,9 +121,12 @@ export const POST = withErrorBoundary(async (req: Request) => {
         '@/lib/stripe/subscriptions'
       );
       await syncSubscriptionToDb(subscription);
-      console.log('Stripe subscription sync webhook processed', {
-        type: event.type,
-      });
+      logger.info(
+        {
+          type: event.type,
+        },
+        'Stripe subscription sync webhook processed'
+      );
       break;
     }
 
@@ -119,7 +149,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
         })
         .where(eq(users.stripeCustomerId, customerId));
 
-      console.log('Stripe subscription deletion webhook processed');
+      logger.info('Stripe subscription deletion webhook processed');
       break;
     }
 
@@ -140,13 +170,16 @@ export const POST = withErrorBoundary(async (req: Request) => {
           })
           .where(eq(users.stripeCustomerId, customerId));
 
-        console.log('Stripe invoice.payment_failed webhook processed');
+        logger.info(
+          { customerId },
+          'Stripe invoice.payment_failed webhook processed'
+        );
       }
       break;
     }
 
     default:
-      console.log('Unhandled Stripe webhook event', { type: event.type });
+      logger.warn({ type: event.type }, 'Unhandled Stripe webhook event');
       break;
   }
 
@@ -159,5 +192,5 @@ export const POST = withErrorBoundary(async (req: Request) => {
     })
     .onConflictDoNothing({ target: stripeWebhookEvents.eventId });
 
-  return new Response('ok');
+  return respond('ok');
 });

@@ -1,3 +1,4 @@
+import { appEnv } from '@/lib/config/env';
 import {
   recordFailure,
   recordSuccess,
@@ -174,9 +175,9 @@ export async function runGenerationAttempt(
   // assert the exact input passed to providers without relying
   // on provider-level mocks. No-op outside tests.
   try {
-    if (process.env.NODE_ENV === 'test' || process.env.VITEST_WORKER_ID) {
+    if (appEnv.isTest) {
       // Assert we're truly in a test environment
-      if (process.env.NODE_ENV === 'production') {
+      if (appEnv.isProduction) {
         throw new Error('Test capture hook invoked in production');
       }
       type CapturedInput = { provider: string; input: GenerationInput };

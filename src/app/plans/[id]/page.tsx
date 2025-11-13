@@ -5,6 +5,7 @@ import {
   getPlanScheduleForPage,
 } from '@/app/plans/[id]/actions';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import { logger } from '@/lib/logging/logger';
 import { redirect } from 'next/navigation';
 
 interface PlanPageProps {
@@ -26,10 +27,13 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
   try {
     plan = await getPlanForPage(id);
   } catch (error) {
-    console.error('Failed to fetch plan:', {
-      planId: id,
-      error,
-    });
+    logger.error(
+      {
+        planId: id,
+        error,
+      },
+      'Failed to fetch plan'
+    );
     redirect(`/sign-in?redirect_url=/plans/${id}`);
   }
 
@@ -43,10 +47,13 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
   try {
     schedule = await getPlanScheduleForPage(id);
   } catch (error) {
-    console.error('Failed to fetch schedule:', {
-      planId: id,
-      error,
-    });
+    logger.error(
+      {
+        planId: id,
+        error,
+      },
+      'Failed to fetch plan schedule'
+    );
     // Show error UI to inform the user that schedule failed to load
     return <PlanDetailPageError message="Failed to load schedule." />;
   }

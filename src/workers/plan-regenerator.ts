@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import { client } from '@/lib/db/drizzle';
+import { logger } from '@/lib/logging/logger';
 import {
   completeJob,
   failJob,
@@ -39,13 +40,13 @@ async function main() {
   process.on('SIGINT', () => shutdown.abort());
   process.on('SIGTERM', () => shutdown.abort());
 
-  console.info(
-    JSON.stringify({
+  logger.info(
+    {
       source: 'plan-regeneration-worker',
-      level: 'info',
       event: 'worker_start',
       pollIntervalMs: DEFAULT_POLL_INTERVAL_MS,
-    })
+    },
+    'Plan regeneration worker started'
   );
 
   while (!shutdown.signal.aborted) {
@@ -58,16 +59,16 @@ async function main() {
       }
 
       const startedAt = Date.now();
-      console.info(
-        JSON.stringify({
+      logger.info(
+        {
           source: 'plan-regeneration-worker',
-          level: 'info',
           event: 'job_started',
           jobId: job.id,
           planId: job.planId,
           attempts: job.attempts,
           maxAttempts: job.maxAttempts,
-        })
+        },
+        'Plan regeneration job started'
       );
 
       try {
@@ -78,17 +79,17 @@ async function main() {
         if (result.status === 'success') {
           await completeJob(job.id, result.result);
           const durationMs = Date.now() - startedAt;
-          console.info(
-            JSON.stringify({
+          logger.info(
+            {
               source: 'plan-regeneration-worker',
-              level: 'info',
               event: 'job_completed',
               jobId: job.id,
               planId: job.planId,
               durationMs,
               modulesCount: result.result.modulesCount,
               tasksCount: result.result.tasksCount,
-            })
+            },
+            'Plan regeneration job completed'
           );
         } else {
           const failOptions: FailJobOptions | undefined = result.retryable
@@ -97,69 +98,71 @@ async function main() {
 
           await failJob(job.id, result.error, failOptions);
           const durationMs = Date.now() - startedAt;
-          console.log(
-            JSON.stringify({
-              source: 'plan-regeneration-worker',
-              level: result.retryable ? 'warn' : 'error',
-              event: 'job_failed',
-              jobId: job.id,
-              planId: job.planId,
-              classification: result.classification,
-              retryable: result.retryable,
-              durationMs,
-            })
-          );
+          const logPayload = {
+            source: 'plan-regeneration-worker',
+            event: 'job_failed',
+            jobId: job.id,
+            planId: job.planId,
+            classification: result.classification,
+            retryable: result.retryable,
+            durationMs,
+          };
+          if (result.retryable) {
+            logger.warn(logPayload, 'Plan regeneration job failed (retryable)');
+          } else {
+            logger.error(logPayload, 'Plan regeneration job failed');
+          }
         }
       } catch (error) {
         const normalized = normalizeError(error);
-        console.error(
-          JSON.stringify({
+        logger.error(
+          {
             source: 'plan-regeneration-worker',
-            level: 'error',
             event: 'job_processing_error',
             jobId: job.id,
             planId: job.planId,
             message: normalized.message,
             name: normalized.name ?? null,
-          })
+          },
+          'Plan regeneration job processing error'
         );
 
         try {
           await failJob(job.id, normalized.message);
         } catch (failError) {
           const fallback = normalizeError(failError);
-          console.error(
-            JSON.stringify({
+          logger.error(
+            {
               source: 'plan-regeneration-worker',
-              level: 'error',
               event: 'job_fail_fallback_error',
               jobId: job.id,
               planId: job.planId,
               message: fallback.message,
-            })
+            },
+            'Plan regeneration fail fallback error'
           );
         }
       }
     } catch (error) {
       const normalized = normalizeError(error);
-      console.error(
-        JSON.stringify({
+      logger.error(
+        {
           source: 'plan-regeneration-worker',
-          level: 'error',
           event: 'worker_loop_error',
           message: normalized.message,
-        })
+        },
+        'Plan regeneration loop error'
       );
       await sleep(DEFAULT_POLL_INTERVAL_MS);
     }
   }
 
-  console.info(
-    JSON.stringify({
+  logger.info(
+    {
       source: 'plan-regeneration-worker',
-      level: 'info',
       event: 'worker_stopped',
-    })
+    },
+    'Plan regeneration worker stopped'
   );
 
   await client.end({ timeout: 5 });

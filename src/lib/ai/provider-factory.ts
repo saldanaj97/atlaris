@@ -1,3 +1,4 @@
+import { aiEnv, appEnv } from '@/lib/config/env';
 import type { AiPlanGenerationProvider } from './provider';
 import { MockGenerationProvider } from './providers/mock';
 import { RouterGenerationProvider } from './providers/router';
@@ -12,23 +13,19 @@ import { RouterGenerationProvider } from './providers/router';
  * @returns An instance implementing `AiPlanGenerationProvider` — either a `MockGenerationProvider` (possibly configured with a deterministic seed) or a `RouterGenerationProvider`
  */
 export function getGenerationProvider(): AiPlanGenerationProvider {
-  const providerType = process.env.AI_PROVIDER?.trim()?.toLowerCase();
-  const isTest =
-    process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID;
+  const providerType = aiEnv.provider;
+  const isTest = appEnv.isTest;
 
   // In tests, honor explicit AI_PROVIDER when set; otherwise default to mock unless disabled
   if (isTest) {
     // Parse seed once for reuse
-    const deterministicSeed = process.env.MOCK_GENERATION_SEED
-      ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
-      : undefined;
-    const validSeed =
-      deterministicSeed !== undefined && !isNaN(deterministicSeed)
-        ? deterministicSeed
+    const deterministicSeed =
+      typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
+        ? aiEnv.mockSeed
         : undefined;
     if (providerType === 'mock') {
       return new MockGenerationProvider({
-        deterministicSeed: validSeed,
+        deterministicSeed,
       });
     }
     if (providerType && providerType !== 'mock') {
@@ -36,27 +33,22 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
       return new RouterGenerationProvider();
     }
     // Fallback in tests: prefer mock unless explicitly disabled
-    if (process.env.AI_USE_MOCK === 'false') {
+    if (aiEnv.useMock === 'false') {
       return new RouterGenerationProvider();
     }
     return new MockGenerationProvider({
-      deterministicSeed: validSeed,
+      deterministicSeed,
     });
   }
 
-  if (
-    providerType === 'mock' ||
-    (!providerType && process.env.NODE_ENV === 'development')
-  ) {
+  if (providerType === 'mock' || (!providerType && appEnv.isDevelopment)) {
     // Use mock provider in development or when explicitly configured
-    const deterministicSeed = process.env.MOCK_GENERATION_SEED
-      ? parseInt(process.env.MOCK_GENERATION_SEED, 10)
-      : undefined;
+    const deterministicSeed =
+      typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
+        ? aiEnv.mockSeed
+        : undefined;
     return new MockGenerationProvider({
-      deterministicSeed:
-        deterministicSeed !== undefined && !isNaN(deterministicSeed)
-          ? deterministicSeed
-          : undefined,
+      deterministicSeed,
     });
   }
   // Default to router for real usage with failover

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { notionEnv } from '@/lib/config/env';
 
 export async function GET(_request: NextRequest) {
   const { userId } = await auth();
@@ -8,12 +9,11 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const clientId = process.env.NOTION_CLIENT_ID;
-  const redirectUri = process.env.NOTION_REDIRECT_URI;
+  const { clientId, redirectUri } = notionEnv;
 
   if (!clientId || !redirectUri) {
     return NextResponse.json(
-      { error: 'Notion OAuth not configured' },
+      { error: 'Notion OAuth is not configured' },
       { status: 500 }
     );
   }

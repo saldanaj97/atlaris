@@ -13,6 +13,7 @@ import type {
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
 import { PlanSchema } from '@/lib/ai/schema';
+import { googleAiEnv, openRouterEnv } from '@/lib/config/env';
 
 function toStream(obj: unknown): AsyncIterable<string> {
   const data = JSON.stringify(obj);
@@ -49,17 +50,16 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
   private readonly temperature: number;
 
   constructor(cfg: OpenRouterProviderConfig = {}) {
-    this.apiKey = cfg.apiKey ?? process.env.OPENROUTER_API_KEY;
-    this.baseURL = cfg.baseURL ?? 'https://openrouter.ai/api/v1';
+    this.apiKey = cfg.apiKey ?? openRouterEnv.apiKey;
+    this.baseURL =
+      cfg.baseURL ?? openRouterEnv.baseUrl ?? 'https://openrouter.ai/api/v1';
     this.model = cfg.model ?? 'google/gemini-2.0-pro-exp';
     this.headers = {};
-    const site = cfg.siteUrl ?? process.env.OPENROUTER_SITE_URL;
-    const app = cfg.appName ?? process.env.OPENROUTER_APP_NAME;
+    const site = cfg.siteUrl ?? openRouterEnv.siteUrl;
+    const app = cfg.appName ?? openRouterEnv.appName;
     if (site) this.headers['HTTP-Referer'] = site;
     if (app) this.headers['X-Title'] = app;
-    this.maxOutputTokens =
-      cfg.maxOutputTokens ??
-      parseInt(process.env.AI_MAX_OUTPUT_TOKENS ?? '1200', 10);
+    this.maxOutputTokens = cfg.maxOutputTokens ?? googleAiEnv.maxOutputTokens;
     this.temperature = cfg.temperature ?? 0.2;
   }
 

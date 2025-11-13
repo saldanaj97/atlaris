@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { notionEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import {
   learningPlans,
@@ -121,7 +122,7 @@ export async function exportPlanToNotion(
   const blocks = mapFullPlanToBlocks(minimalPlanForNotion);
 
   // Create Notion page
-  const parentPageId = process.env.NOTION_PARENT_PAGE_ID || '';
+  const parentPageId = notionEnv.parentPageId;
 
   const client = new NotionClient(accessToken);
   const notionPage = await client.createPage({

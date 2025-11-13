@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { stripeEnv } from '@/lib/config/env';
 
 /**
  * Stripe client singleton
@@ -13,11 +14,7 @@ let stripeInstance: Stripe | null = null;
  */
 export function getStripe(): Stripe {
   if (!stripeInstance) {
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-
-    if (!secretKey) {
-      throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
-    }
+    const secretKey = stripeEnv.secretKey;
 
     stripeInstance = new Stripe(secretKey, {
       // Let SDK use its default pinned API version; tests assert initialization only

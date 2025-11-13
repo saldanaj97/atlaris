@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 
 import { createPlan } from '@/lib/api/plans';
+import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
@@ -126,7 +127,7 @@ export default function OnboardingForm() {
           setUserTier('free');
         }
       } catch (error) {
-        console.error('Failed to fetch user tier:', error);
+        clientLogger.error('Failed to fetch user tier:', error);
         setUserTier('free');
       }
     };
@@ -245,7 +246,7 @@ export default function OnboardingForm() {
     try {
       payload = mapOnboardingToCreateInput(rawValues);
     } catch (error) {
-      console.error('Failed to map onboarding values', error);
+      clientLogger.error('Failed to map onboarding values', error);
       toast.error('Please double-check the form and try again.');
       return;
     }

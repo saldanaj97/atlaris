@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
+import { googleOAuthEnv } from '@/lib/config/env';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { validateOAuthStateToken } from '@/lib/integrations/oauth-state';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import {
+  attachRequestIdHeader,
+  createRequestContext,
+} from '@/lib/logging/request-context';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -10,21 +15,15 @@ import { eq } from 'drizzle-orm';
 export const GET = withErrorBoundary(
   withAuth(async ({ req, userId: clerkUserId }) => {
     const request = req as NextRequest;
-    // Validate required Google OAuth environment variables
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
-    if (!clientId || !clientSecret || !redirectUri) {
-      console.error('Missing required Google OAuth environment variables:', {
-        GOOGLE_CLIENT_ID: !!clientId,
-        GOOGLE_CLIENT_SECRET: !!clientSecret,
-        GOOGLE_REDIRECT_URI: !!redirectUri,
-      });
-      return NextResponse.redirect(
-        new URL('/settings/integrations?error=missing_env_vars', request.url)
-      );
-    }
+    const { requestId, logger } = createRequestContext(req, {
+      route: 'google_oauth_callback',
+      clerkUserId,
+    });
+    const redirectWithRequestId = (url: URL) =>
+      attachRequestIdHeader(NextResponse.redirect(url), requestId);
 
+    // Validate required Google OAuth environment variables
+    const { clientId, clientSecret, redirectUri } = googleOAuthEnv;
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const stateToken = searchParams.get('state'); // Secure state token
@@ -36,13 +35,13 @@ export const GET = withErrorBoundary(
       'http://localhost:3000';
 
     if (error) {
-      return NextResponse.redirect(
+      return redirectWithRequestId(
         new URL(`/settings/integrations?error=${error}`, baseUrl)
       );
     }
 
     if (!code || !stateToken) {
-      return NextResponse.redirect(
+      return redirectWithRequestId(
         new URL('/settings/integrations?error=missing_parameters', baseUrl)
       );
     }
@@ -50,14 +49,14 @@ export const GET = withErrorBoundary(
     // Validate the state token and retrieve the associated Clerk user ID
     const stateClerkUserId = validateOAuthStateToken(stateToken);
     if (!stateClerkUserId) {
-      return NextResponse.redirect(
+      return redirectWithRequestId(
         new URL('/settings/integrations?error=invalid_state', baseUrl)
       );
     }
 
     // Verify the authenticated user matches the user from the state token
     if (clerkUserId !== stateClerkUserId) {
-      return NextResponse.redirect(
+      return redirectWithRequestId(
         new URL('/settings/integrations?error=user_mismatch', baseUrl)
       );
     }
@@ -71,7 +70,7 @@ export const GET = withErrorBoundary(
       .limit(1);
 
     if (!user) {
-      return NextResponse.redirect(
+      return redirectWithRequestId(
         new URL('/settings/integrations?error=invalid_user', baseUrl)
       );
     }
@@ -102,12 +101,12 @@ export const GET = withErrorBoundary(
         },
       });
 
-      return NextResponse.redirect(
+      return redirectWithRequestId(
         new URL('/settings/integrations?google=connected', baseUrl)
       );
     } catch (err) {
-      console.error('Google token exchange failed:', err);
-      return NextResponse.redirect(
+      logger.error({ error: err }, 'Google token exchange failed');
+      return redirectWithRequestId(
         new URL('/settings/integrations?error=token_exchange_failed', baseUrl)
       );
     }

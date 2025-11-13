@@ -1,13 +1,10 @@
+import { stripeEnv } from '@/lib/config/env';
 import SubscribeButton from './SubscribeButton';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { getStripe } from '../../lib/stripe/client';
 import { PRICING_TIERS } from './PricingTiers';
-
-function getEnv(name: string) {
-  return process.env[name];
-}
 
 function formatAmount(cents?: number | null, currency: string = 'USD') {
   if (cents == null) return '—';
@@ -21,8 +18,7 @@ function formatAmount(cents?: number | null, currency: string = 'USD') {
 
 export default async function MonthlyPricingCards() {
   // TODO: Make sure this is safe
-  const starterMonthly = getEnv('STRIPE_STARTER_MONTHLY_PRICE_ID');
-  const proMonthly = getEnv('STRIPE_PRO_MONTHLY_PRICE_ID');
+  const { starterMonthly, proMonthly } = stripeEnv.pricing;
 
   const missingPrices = !starterMonthly || !proMonthly;
 

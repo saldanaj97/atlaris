@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { notionEnv } from '@/lib/config/env';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { withErrorBoundary } from '@/lib/api/auth';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
+import {
+  attachRequestIdHeader,
+  createRequestContext,
+} from '@/lib/logging/request-context';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const GET = withErrorBoundary(async (req: Request) => {
   const request = req as NextRequest;
+  const { requestId, logger } = createRequestContext(req, {
+    route: 'notion_oauth_callback',
+  });
+  const redirectWithRequestId = (url: URL) =>
+    attachRequestIdHeader(NextResponse.redirect(url, { status: 302 }), requestId);
 
   const url = request.nextUrl || new URL(request.url);
   const searchParams = url.searchParams;
@@ -23,25 +33,22 @@ export const GET = withErrorBoundary(async (req: Request) => {
 
   // Handle provider error immediately
   if (error) {
-    return NextResponse.redirect(
-      new URL(`/settings/integrations?error=${error}`, baseUrl),
-      { status: 302 }
+    return redirectWithRequestId(
+      new URL(`/settings/integrations?error=${error}`, baseUrl)
     );
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(
-      new URL('/settings/integrations?error=missing_parameters', baseUrl),
-      { status: 302 }
+    return redirectWithRequestId(
+      new URL('/settings/integrations?error=missing_parameters', baseUrl)
     );
   }
 
   // Authenticate current user (redirect on unauthenticated instead of JSON)
   const clerkUserId = await getEffectiveClerkUserId();
   if (!clerkUserId) {
-    return NextResponse.redirect(
-      new URL('/settings/integrations?error=unauthorized', baseUrl),
-      { status: 302 }
+    return redirectWithRequestId(
+      new URL('/settings/integrations?error=unauthorized', baseUrl)
     );
   }
 
@@ -54,17 +61,15 @@ export const GET = withErrorBoundary(async (req: Request) => {
     .limit(1);
 
   if (!user) {
-    return NextResponse.redirect(
-      new URL('/settings/integrations?error=invalid_user', baseUrl),
-      { status: 302 }
+    return redirectWithRequestId(
+      new URL('/settings/integrations?error=invalid_user', baseUrl)
     );
   }
 
   // Verify authenticated user matches the user in the state parameter (via clerkUserId)
   if (user.clerkUserId !== clerkUserId) {
-    return NextResponse.redirect(
-      new URL('/settings/integrations?error=user_mismatch', baseUrl),
-      { status: 302 }
+    return redirectWithRequestId(
+      new URL('/settings/integrations?error=user_mismatch', baseUrl)
     );
   }
 
@@ -74,13 +79,13 @@ export const GET = withErrorBoundary(async (req: Request) => {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Basic ${Buffer.from(
-        `${process.env.NOTION_CLIENT_ID}:${process.env.NOTION_CLIENT_SECRET}`
+        `${notionEnv.clientId}:${notionEnv.clientSecret}`
       ).toString('base64')}`,
     },
     body: JSON.stringify({
       grant_type: 'authorization_code',
       code,
-      redirect_uri: process.env.NOTION_REDIRECT_URI,
+      redirect_uri: notionEnv.redirectUri,
     }),
   });
 
@@ -89,10 +94,14 @@ export const GET = withErrorBoundary(async (req: Request) => {
       error?: string;
       error_description?: string;
     };
-    console.error('Notion token exchange failed:', errorData);
-    return NextResponse.redirect(
-      new URL('/settings/integrations?error=token_exchange_failed', baseUrl),
-      { status: 302 }
+    logger.error(
+      {
+        error: errorData,
+      },
+      'Notion token exchange failed'
+    );
+    return redirectWithRequestId(
+      new URL('/settings/integrations?error=token_exchange_failed', baseUrl)
     );
   }
 
@@ -118,20 +127,21 @@ export const GET = withErrorBoundary(async (req: Request) => {
       botId: tokenData.bot_id,
     });
   } catch (err) {
-    console.error('Failed to store OAuth tokens:', {
-      userId: user.id,
-      provider: 'notion',
-      workspaceId: tokenData.workspace_id,
-      error: err instanceof Error ? err.message : 'Unknown error',
-    });
-    return NextResponse.redirect(
-      new URL('/settings/integrations?error=token_storage_failed', baseUrl),
-      { status: 302 }
+    logger.error(
+      {
+        userId: user.id,
+        provider: 'notion',
+        workspaceId: tokenData.workspace_id,
+        error: err,
+      },
+      'Failed to store Notion OAuth tokens'
+    );
+    return redirectWithRequestId(
+      new URL('/settings/integrations?error=token_storage_failed', baseUrl)
     );
   }
 
-  return NextResponse.redirect(
-    new URL('/settings/integrations?notion=connected', baseUrl),
-    { status: 302 }
+  return redirectWithRequestId(
+    new URL('/settings/integrations?notion=connected', baseUrl)
   );
 });

@@ -13,6 +13,8 @@ import type {
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
 import { PlanSchema } from '@/lib/ai/schema';
+import { appEnv, cloudflareAiEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 
 function toStream(obj: unknown): AsyncIterable<string> {
   const data = JSON.stringify(obj);
@@ -48,12 +50,12 @@ export class CloudflareAiProvider implements AiPlanGenerationProvider {
 
   constructor(cfg: CloudflareProviderConfig = {}) {
     this.apiToken =
-      cfg.apiToken ?? process.env.CF_API_TOKEN ?? process.env.CF_API_KEY;
+      cfg.apiToken ?? cloudflareAiEnv.apiToken ?? cloudflareAiEnv.apiKey;
     const rawFromEnv =
       cfg.baseURL ||
-      process.env.CF_AI_GATEWAY ||
-      (process.env.CF_ACCOUNT_ID
-        ? `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ACCOUNT_ID}/ai/v1`
+      cloudflareAiEnv.gatewayUrl ||
+      (cloudflareAiEnv.accountId
+        ? `https://api.cloudflare.com/client/v4/accounts/${cloudflareAiEnv.accountId}/ai/v1`
         : undefined);
 
     // If a Cloudflare AI Gateway URL is provided but points to the Workers AI
@@ -77,9 +79,7 @@ export class CloudflareAiProvider implements AiPlanGenerationProvider {
     this.model = this.baseURL.includes('/openai')
       ? resolvedModel.replace(/^@cf\//, '')
       : resolvedModel;
-    this.maxOutputTokens =
-      cfg.maxOutputTokens ??
-      parseInt(process.env.AI_MAX_OUTPUT_TOKENS ?? '1200', 10);
+    this.maxOutputTokens = cfg.maxOutputTokens ?? 1200;
     this.temperature = cfg.temperature ?? 0.2;
   }
 
@@ -88,18 +88,18 @@ export class CloudflareAiProvider implements AiPlanGenerationProvider {
     _options?: GenerationOptions
   ): Promise<ProviderGenerateResult> {
     if (!this.apiToken) {
-      throw new Error('CF_API_TOKEN is not set');
+      throw new Error('Cloudflare AI token is not configured');
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.info(
-        JSON.stringify({
+    if (!appEnv.isProduction) {
+      logger.debug(
+        {
           source: 'ai-provider',
-          level: 'info',
           event: 'cloudflare_config',
           baseURL: this.baseURL,
           model: this.model,
-        })
+        },
+        'Cloudflare provider configuration'
       );
     }
 
@@ -123,21 +123,38 @@ export class CloudflareAiProvider implements AiPlanGenerationProvider {
       baseURL: this.baseURL,
     });
 
-    const { object: plan, usage } = await generateObject({
-      model: openai(this.model),
-      schema: PlanSchema,
-      system: buildSystemPrompt(),
-      prompt: buildUserPrompt({
-        topic: input.topic,
-        skillLevel: input.skillLevel as PromptParams['skillLevel'],
-        learningStyle: input.learningStyle as PromptParams['learningStyle'],
-        weeklyHours: input.weeklyHours,
-        startDate: input.startDate,
-        deadlineDate: input.deadlineDate,
-      }),
-      maxOutputTokens: this.maxOutputTokens,
-      temperature: this.temperature,
-    });
+    let plan: unknown;
+    let usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number } | undefined;
+    try {
+      const result = await generateObject({
+        model: openai(this.model),
+        schema: PlanSchema,
+        system: buildSystemPrompt(),
+        prompt: buildUserPrompt({
+          topic: input.topic,
+          skillLevel: input.skillLevel as PromptParams['skillLevel'],
+          learningStyle: input.learningStyle as PromptParams['learningStyle'],
+          weeklyHours: input.weeklyHours,
+          startDate: input.startDate,
+          deadlineDate: input.deadlineDate,
+        }),
+        maxOutputTokens: this.maxOutputTokens,
+        temperature: this.temperature,
+      });
+      plan = result.object;
+      usage = result.usage as typeof usage;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      logger.error(
+        {
+          source: 'ai-provider',
+          event: 'cloudflare_generate_failed',
+          errorMessage: message,
+        },
+        'Cloudflare provider generation failed'
+      );
+      throw err;
+    }
 
     return {
       stream: toStream(plan),

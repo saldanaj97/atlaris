@@ -1,3 +1,4 @@
+import { aiEnv } from '@/lib/config/env';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -180,12 +181,8 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
 
   constructor(config: MockGenerationConfig = {}) {
     this.config = {
-      delayMs:
-        config.delayMs ??
-        parseInt(process.env.MOCK_GENERATION_DELAY_MS ?? '7000', 10),
-      failureRate:
-        config.failureRate ??
-        parseFloat(process.env.MOCK_GENERATION_FAILURE_RATE ?? '0'),
+      delayMs: config.delayMs ?? aiEnv.mock?.delayMs ?? 7000,
+      failureRate: config.failureRate ?? aiEnv.mock?.failureRate ?? 0,
       deterministicSeed: config.deterministicSeed,
     };
   }

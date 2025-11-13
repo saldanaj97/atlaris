@@ -13,6 +13,7 @@ import type {
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
 import { PlanSchema } from '@/lib/ai/schema';
+import { googleAiEnv } from '@/lib/config/env';
 
 function toStream(obj: unknown): AsyncIterable<string> {
   const data = JSON.stringify(obj);
@@ -44,11 +45,9 @@ export class GoogleAiProvider implements AiPlanGenerationProvider {
   private readonly temperature: number;
 
   constructor(cfg: GoogleProviderConfig = {}) {
-    this.apiKey = cfg.apiKey ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    this.apiKey = cfg.apiKey ?? googleAiEnv.apiKey;
     this.model = cfg.model ?? 'gemini-1.5-flash';
-    this.maxOutputTokens =
-      cfg.maxOutputTokens ??
-      parseInt(process.env.AI_MAX_OUTPUT_TOKENS ?? '1200', 10);
+    this.maxOutputTokens = cfg.maxOutputTokens ?? googleAiEnv.maxOutputTokens;
     this.temperature = cfg.temperature ?? 0.2;
   }
 

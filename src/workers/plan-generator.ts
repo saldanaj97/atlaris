@@ -1,4 +1,6 @@
+import { appEnv } from '@/lib/config/env';
 import { client } from '@/lib/db/drizzle';
+import { logger } from '@/lib/logging/logger';
 import {
   completeJob,
   failJob,
@@ -85,8 +87,7 @@ export class PlanGenerationWorker {
       10
     );
     this.concurrency = Math.max(options.concurrency ?? DEFAULT_CONCURRENCY, 1);
-    const isTest =
-      process.env.NODE_ENV === 'test' || !!process.env.VITEST_WORKER_ID;
+    const isTest = appEnv.isTest;
     this.gracefulShutdownTimeoutMs = Math.max(
       options.gracefulShutdownTimeoutMs ??
         (isTest ? 60_000 : DEFAULT_SHUTDOWN_TIMEOUT_MS),
@@ -347,14 +348,12 @@ export class PlanGenerationWorker {
       ...payload,
     } satisfies Record<string, unknown>;
 
-    const serialized = JSON.stringify(entry);
-
     if (level === 'error') {
-      console.error(serialized);
+      logger.error(entry, event);
     } else if (level === 'warn') {
-      console.warn(serialized);
+      logger.warn(entry, event);
     } else {
-      console.info(serialized);
+      logger.info(entry, event);
     }
   }
 }

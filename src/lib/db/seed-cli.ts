@@ -9,6 +9,7 @@
  *   pnpm seed:custom    # Custom seeding with options
  */
 
+import { logger } from '@/lib/logging/logger';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { resetDatabase, seedDatabase, seedDevelopment } from './seed';
@@ -21,11 +22,11 @@ async function main() {
 
   // Validate environment variables
   if (!LOCAL_DATABASE_URL) {
-    console.error('❌ DATABASE_URL environment variable is required');
+    logger.error('❌ DATABASE_URL environment variable is required');
     process.exit(1);
   }
 
-  console.log('🔌 Connecting to database...');
+  logger.info('🔌 Connecting to database...');
 
   // Create database connection
   const client = postgres(LOCAL_DATABASE_URL);
@@ -34,12 +35,12 @@ async function main() {
   try {
     switch (command) {
       case 'development':
-        console.log('🌱 Seeding development database...');
+        logger.info('🌱 Seeding development database...');
         await seedDevelopment(db);
         break;
 
       case 'reset':
-        console.log('🗑️  Resetting database...');
+        logger.info('🗑️  Resetting database...');
         await resetDatabase(db);
         break;
 
@@ -50,8 +51,15 @@ async function main() {
         const shouldReset = process.argv[6] === 'true';
         const seedValue = parseInt(process.argv[7]) || 12345;
 
-        console.log(
-          `🌱 Custom seeding: ${userCount} users, ${planCount} plans, ${resourceCount} resources`
+        logger.info(
+          {
+            userCount,
+            planCount,
+            resourceCount,
+            shouldReset,
+            seedValue,
+          },
+          '🌱 Custom seeding configuration'
         );
         await seedDatabase(db, {
           userCount,
@@ -63,7 +71,8 @@ async function main() {
         break;
 
       default:
-        console.log(`
+        logger.info(
+          `
 Usage: pnpm seed [command]
 
 Commands:
@@ -75,21 +84,32 @@ Examples:
   pnpm seed dev
   pnpm seed reset
   pnpm seed custom 50 150 500 true
-        `);
+        `
+        );
         process.exit(0);
     }
 
-    console.log('✅ Seeding completed successfully!');
+    logger.info('✅ Seeding completed successfully!');
   } catch (error) {
-    console.error('❌ Seeding failed:', error);
+    logger.error(
+      {
+        error,
+      },
+      '❌ Seeding failed'
+    );
     process.exit(1);
   } finally {
     await client.end();
-    console.log('🔌 Database connection closed');
+    logger.info('🔌 Database connection closed');
   }
 }
 
 main().catch((error) => {
-  console.error('❌ Fatal error:', error);
+  logger.error(
+    {
+      error,
+    },
+    '❌ Fatal error in seeding CLI'
+  );
   process.exit(1);
 });

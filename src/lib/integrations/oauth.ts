@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { oauthEncryptionEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { integrationTokens } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -14,7 +15,7 @@ export interface OAuthTokenData {
 }
 
 function getEncryptionKey(): Buffer {
-  const key = process.env.OAUTH_ENCRYPTION_KEY;
+  const key = oauthEncryptionEnv.encryptionKey;
   if (!key) {
     throw new Error('OAUTH_ENCRYPTION_KEY not configured');
   }

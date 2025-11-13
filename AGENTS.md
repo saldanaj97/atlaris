@@ -35,6 +35,18 @@ This file provides guidance when working with code in this repository.
 
 - When dealing with database changes, make sure to always push the schema to the test database as well as the local database using the appropriate commands.
 
+#### Env & logging usage
+
+- **Environment variables**:
+  - All env access must go through `@/lib/config/env`. Do **not** read `process.env` directly outside that module.
+  - Prefer the exported grouped configs (e.g., `databaseEnv`, `supabaseEnv`, `stripeEnv`, `aiEnv`, `loggingEnv`) instead of raw keys.
+  - If you need a new variable, add it (and its validation) to `src/lib/config/env.ts` rather than inlining a `process.env` read.
+- **Logging**:
+  - Use `@/lib/logging/logger` for structured logging; avoid `console.*` in application code.
+  - For API routes, use helpers from `@/lib/logging/request-context` to obtain `{ requestId, logger }` and to attach the request ID to responses.
+  - In workers and background jobs, create child loggers with job-specific context instead of logging ad hoc.
+  - If you think you need a direct `console.*` call, consider updating the centralized logging utilities instead.
+
 ### Dealing with specific github issues or tasks
 
 - When working on a specific github issue or task, make sure to ALWAYS refer to the specific instructions, requirements, and testing needs defined in the issue or task description. Do not make any assumptions or add any extra features that are not explicitly requested.

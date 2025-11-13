@@ -98,6 +98,7 @@ export default [
       // TS + React common adjustments
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
+      'no-console': 'error',
     },
   },
   {
@@ -123,6 +124,12 @@ export default [
     ],
     rules: {
       '@typescript-eslint/require-await': 'off',
+    },
+  },
+  {
+    files: ['src/lib/logging/client.ts'],
+    rules: {
+      'no-console': 'off',
     },
   },
   // Block service-role DB imports in request layers (use getDb() / RLS DB instead)
