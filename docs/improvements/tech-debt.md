@@ -51,20 +51,20 @@ Major Debt Items:
 
 Recommended Roadmap:
 
-Quick Wins (Week 1-2): 15 hours, 190% ROI
+Quick Wins (Day 1-2): 15 hours, 190% ROI
 
 - Enable test coverage tracking
 - Fix RLS violations
 - Centralize environment variables
 - Extract shared pricing component
 
-Medium-Term (Months 2-3): 140 hours
+Medium-Term (Day 3-5): 140 hours (parallelized)
 
 - Split database schema into modular files
 - Refactor worker service
 - Add structured logging
 
-Long-Term (Months 4-8): 300 hours
+Long-Term (Day 6-7): 300 hours (scoped MVP to fit week)
 
 - Achieve 80% test coverage
 - Implement observability (APM, metrics, tracing)
@@ -584,7 +584,7 @@ Projected (2026-05) - Without Intervention:
 
 ## 4. PRIORITIZED REMEDIATION PLAN
 
-### **Quick Wins (Week 1-2: High Value, Low Effort)**
+### **Quick Wins (Day 1-2: High Value, Low Effort)**
 
 #### **Win #1: Enable Test Coverage Tracking**
 
@@ -698,7 +698,7 @@ Action:
 
 ---
 
-### **Medium-Term Improvements (Month 1-3)**
+### **Medium-Term Improvements (Day 3-5)**
 
 #### **Improvement #1: Split Database Schema**
 
@@ -826,14 +826,15 @@ Benefits:
 
 **Total Medium-Term:**
 
-- **Effort:** 140 hours (~1 month at 35 hours/week)
+- **Target window:** Day 3-5 (aggressive; parallelize across 3-4 engineers)
+- **Effort:** 140 hours (aggregate; plan concurrent workstreams to fit week)
 - **Savings:** 37.4 hours/month after completion
 - **ROI:** Positive after 4-5 months
 - **Maintenance improvement:** Significant
 
 ---
 
-### **Long-Term Initiatives (Quarter 2-4)**
+### **Long-Term Initiatives (Day 6-7)**
 
 #### **Initiative #1: Comprehensive Test Coverage**
 
@@ -981,7 +982,8 @@ Workflow Example: 1. PR merged to main → Deploy to staging
 
 **Total Long-Term:**
 
-- **Effort:** 300 hours (~2 months at 35 hours/week)
+- **Target window:** Day 6-7 (scope to MVPs to fit Week 1)
+- **Effort:** 300 hours (aggregate; deliver MVP scaffolding and critical paths now)
 - **Savings:** 56 hours/month after completion
 - **ROI:** Positive after 6-8 months
 - **System reliability:** Dramatic improvement
@@ -990,111 +992,103 @@ Workflow Example: 1. PR merged to main → Deploy to staging
 
 ## 5. IMPLEMENTATION STRATEGY
 
-### Incremental Refactoring Approach
+### One-Week Phased Plan
 
-**Phase 1: Foundation (Month 1)**
+This compresses all remediation into a single aggressive week. Use parallel workstreams and clear ownership to land core deliverables.
 
-```markdown
-Goal: Establish quality gates and quick wins
-
-Week 1-2:
-✓ Enable test coverage tracking
-✓ Centralize environment variables
-✓ Extract shared pricing component
-✓ Fix RLS enforcement violations
-
-Week 3-4:
-✓ Add structured logging (replace 105 console statements)
-✓ Set up CI coverage reporting
-✓ Document quick win results
-```
-
-**Phase 2: Architecture Improvements (Month 2-3)**
+**Phase 1: Day 1 — Quality Gates & Critical Security**
 
 ```markdown
-Goal: Reduce complexity hotspots
+Goals:
+✓ Fix RLS enforcement violations in 8 routes
+✓ Enable coverage thresholds and CI gate
 
-Month 2:
-✓ Split database schema (1,929 lines → 15 files of ~130 lines each)
-✓ Complete query layer migration (eliminate queries.ts)
-✓ Update all imports and tests
-
-Month 3:
-✓ Refactor worker service (694 lines → 4 services of <200 lines)
-✓ Add unit tests for each service
-✓ Deploy with feature flag (gradual rollout)
+Tasks:
+  - Replace service-role imports with RLS client: getDb() in:
+    - src/app/api/v1/auth/notion/callback/route.ts
+    - src/app/api/v1/plans/route.ts
+    - src/app/api/v1/plans/[planId]/status/route.ts
+    - src/app/api/v1/plans/[planId]/regenerate/route.ts
+    - src/app/api/v1/integrations/notion/export/route.ts
+    - src/app/api/v1/integrations/google-calendar/sync/route.ts
+    - src/app/api/v1/auth/google/callback/route.ts
+    - src/app/api/health/worker/route.ts
+  - Add Vitest coverage thresholds (lines 60 / funcs 55 / branches 50 / statements 60)
+  - Wire coverage check into CI and fail PRs under threshold
 ```
 
-**Phase 3: Quality & Reliability (Month 4-6)**
+**Phase 2: Day 2–3 — Logging, Env, and Duplication**
 
 ```markdown
-Goal: Achieve 80% test coverage and production observability
+Goals:
+✓ Centralize env variables (typed + validated)
+✓ Replace console.log with pino and add correlation IDs
+✓ Extract shared PricingCard and remove duplication
 
-Month 4-5:
-✓ Add integration tests for all 25 API routes
-✓ Add business logic tests (Stripe, AI, RLS)
-✓ Add worker failure scenario tests
-✓ Reach 80% coverage target
-
-Month 6:
-✓ Implement OpenAPI specification
-✓ Add APM integration (Sentry/Datadog)
-✓ Set up metrics dashboards
-✓ Configure alerting rules
+Tasks:
+  - Add src/lib/config/env.ts with requireEnv() helper and exports
+  - Create src/lib/logging/logger.ts (pino) and replace ~105 console.* calls
+  - Add basic request ID propagation helper for API routes
+  - Implement src/components/billing/PricingCard.tsx and refactor Monthly/Yearly components
 ```
 
-**Phase 4: Deployment Excellence (Month 7-8)**
+**Phase 3: Day 3–5 — DB Schema Split + Query Layer Completion**
 
 ```markdown
-Goal: Achieve zero-downtime deployments
+Goals:
+✓ Split schema.ts into modular files (tables/, policies/, relations/)
+✓ Finish migration of legacy queries.ts to modular queries/
 
-Month 7:
-✓ Set up staging environment
-✓ Implement expand-contract migrations
-✓ Create deployment automation workflow
-✓ Add smoke tests
-
-Month 8:
-✓ Implement feature flag system
-✓ Add automated rollback
-✓ Document runbooks for incidents
-✓ Train team on new deployment process
+Tasks:
+  - Create src/lib/db/schema/{tables,policies}/ and relations.ts; re-export via index.ts
+  - Move table and policy definitions; no DB changes required
+  - Update imports across codebase
+  - Audit src/lib/db/queries.ts, move remaining queries, delete legacy file
+  - Ensure type-check and targeted tests pass
 ```
 
-### Team Allocation
+**Phase 4: Day 5–6 — Worker Service Refactor**
+
+```markdown
+Goals:
+✓ Extract handlers + services from monolith
+✓ Add unit tests for generation and curation services
+
+Tasks:
+  - Create src/workers/handlers/* and src/workers/services/* modules
+  - Move orchestration, curation, persistence into separate files (<200 LOC each)
+  - Update worker entry (src/workers/index.ts) to use refactored modules
+  - Add unit tests for services (mock AI providers and DB)
+```
+
+**Phase 5: Day 7 — Observability & API Docs Baseline**
+
+```markdown
+Goals:
+✓ Scaffold OpenAPI from Zod for top routes
+✓ Add APM/logging baseline config
+✓ Document outcomes and open follow-ups
+
+Tasks:
+  - Add zod-to-openapi setup; generate spec for 3 high-traffic routes
+  - Expose a basic docs route (Swagger/Scalar) gated for internal use
+  - Initialize Sentry or Datadog (config placeholders if credentials pending)
+  - Update README/CLAUDE with new patterns and locations
+```
+
+### Coordination & Ownership (suggested)
 
 ```yaml
-Recommended Allocation: 30% of sprint capacity to debt reduction
-
-Example (4-person team, 2-week sprints):
-  Total Capacity: 4 engineers × 10 days = 40 days/sprint
-  Debt Allocation: 40 × 30% = 12 days/sprint
-
-  Team Breakdown:
-    - Senior Engineer (Tech Lead): 4 days/sprint
-      Focus: Architecture decisions, complex refactoring
-
-    - Senior Engineer: 4 days/sprint
-      Focus: Worker service refactoring, test infrastructure
-
-    - Mid-Level Engineer: 3 days/sprint
-      Focus: Test coverage, API documentation
-
-    - Mid-Level Engineer: 1 day/sprint
-      Focus: Low-effort quick wins, documentation updates
-
-Sprint Goals (Example):
-  Sprint 1: Quick wins (coverage tracking, env config, RLS fixes)
-  Sprint 2: Structured logging, pricing component extraction
-  Sprint 3-4: Schema split (part 1: planning & implementation)
-  Sprint 5: Schema split (part 2: testing & migration)
-  Sprint 6: Query layer migration
-  Sprint 7-9: Worker service refactoring
-  Sprint 10-12: Test coverage push to 80%
-  Sprint 13-14: Observability implementation
-  Sprint 15-16: Deployment pipeline improvements
+Day 1: Security + CI — Tech Lead
+Day 2–3: Env + Logging — Senior Engineer
+Day 2–3: Pricing refactor — Mid Engineer
+Day 3–5: Schema + Queries — Senior Engineer + Mid Engineer
+Day 5–6: Worker refactor — Senior Engineer
+Day 7: API docs + Observability — Mid Engineer
 ```
 
+Notes:
+- Some long-term initiatives are scoped to MVPs to fit the week. Open follow-up issues for deeper investment after delivery.
 ---
 
 ## 6. PREVENTION STRATEGY
@@ -1380,32 +1374,32 @@ Your **Atlaris Learning Platform** is a well-architected MVP with strong fundame
 1. **RLS Policy Bypass in 8 API routes** - Data leakage risk - **6 hours to fix**
 2. **No test coverage enforcement** - Regressions reaching production - **2 hours to fix**
 
-**🟡 HIGH PRIORITY (next 3 months):** 3. **God file anti-pattern** (schema.ts at 1,929 lines) - Development bottleneck 4. **Missing observability** - 105 console.log statements, no structured logging 5. **Complex worker service** (694 lines, 6 responsibilities) - Incident debugging takes 3x longer
+**🟡 HIGH PRIORITY (this week):** 3. **God file anti-pattern** (schema.ts at 1,929 lines) - Development bottleneck 4. **Missing observability** - 105 console.log statements, no structured logging 5. **Complex worker service** (694 lines, 6 responsibilities) - Incident debugging takes 3x longer
 
-**🟢 MEDIUM PRIORITY (next 6 months):** 6. **Code duplication** (~15%) - Maintenance overhead, bug propagation 7. **24 outdated dependencies** - Security and feature lag 8. **No deployment automation** - Manual deploys, no rollback strategy
+**🟢 MEDIUM PRIORITY (post‑sprint follow‑ups):** 6. **Code duplication** (~15%) - Maintenance overhead, bug propagation 7. **24 outdated dependencies** - Security and feature lag 8. **No deployment automation** - Manual deploys, no rollback strategy
 
 ### Recommended Action Plan
 
-**Immediate (this week):**
+**This Week (Day-by-Day):**
 
 ```
-☑ Fix RLS violations (6 hours, $900 investment, CRITICAL security fix)
-☑ Enable coverage tracking (2 hours, $300 investment, prevents future regressions)
+Day 1: Fix RLS violations in 8 routes; enable coverage thresholds + CI gate
+Day 2: Centralize env config; start replacing console.* with pino
+Day 3: Finish logging rollout; extract shared PricingCard and refactor usage
+Day 4: Start schema split (tables/, policies/, relations/); begin query migration
+Day 5: Complete query migration; delete legacy queries.ts; verify imports/tests
+Day 6: Refactor worker into handlers/services; add unit tests for services
+Day 7: Scaffold OpenAPI for top routes; add APM/log baseline; document outcomes
 ```
 
-**Month 1:**
+**Post‑Sprint Follow‑Ups (open as issues):**
 
 ```
-☑ Execute all quick wins (15 hours total, $2,250 investment, 190% first-month ROI)
-☑ Add structured logging (16 hours, $2,400 investment, 81% ROI)
-```
-
-**Months 2-8:**
-
-```
-☑ Follow phased remediation plan (455 hours total, $68,250 investment)
-☑ Allocate 30% of sprint capacity to debt reduction
-☑ Track metrics monthly, review quarterly
+— Deepen observability (metrics, tracing, alert rules)
+— Broaden OpenAPI coverage to all routes; publish interactive docs
+— Zero‑downtime deployment pipeline and staging environment
+— Dependency upgrades (remaining packages) and performance benchmarks
+— Coverage uplift from 60% thresholds toward 80% target
 ```
 
 ### Expected Outcomes (12 months)
