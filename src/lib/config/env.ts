@@ -6,14 +6,16 @@ const normalize = (value: string | undefined | null): string | undefined => {
   return trimmed === '' ? undefined : trimmed;
 };
 
-const toNumber = (
+function toNumber(value: string | undefined): number | undefined;
+function toNumber(value: string | undefined, fallback: number): number;
+function toNumber(
   value: string | undefined,
   fallback?: number
-): number | undefined => {
+): number | undefined {
   if (value === undefined) return fallback;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? fallback : parsed;
-};
+}
 
 const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
   if (value === undefined) return fallback;
