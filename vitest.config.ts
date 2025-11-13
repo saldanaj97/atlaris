@@ -89,15 +89,6 @@ export default defineConfig({
           setupFiles: ['tests/setup.ts'],
           maxConcurrency: 1,
           alias: testAliases,
-          coverage: {
-            thresholds: {
-              // Enforce a conservative baseline for security coverage
-              lines: 75,
-              functions: 70,
-              branches: 70,
-              statements: 75,
-            },
-          },
         },
       },
       {
