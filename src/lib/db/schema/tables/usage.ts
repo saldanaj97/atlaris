@@ -1,0 +1,148 @@
+import { sql } from 'drizzle-orm';
+import {
+  check,
+  index,
+  integer,
+  pgPolicy,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
+
+import { users } from './users';
+import { authenticatedRole, clerkSub, serviceRole } from './common';
+
+// Usage tracking tables
+
+export const usageMetrics = pgTable(
+  'usage_metrics',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    month: text('month').notNull(), // YYYY-MM
+    plansGenerated: integer('plans_generated').notNull().default(0),
+    regenerationsUsed: integer('regenerations_used').notNull().default(0),
+    exportsUsed: integer('exports_used').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique('usage_metrics_user_id_month_unique').on(table.userId, table.month),
+    index('idx_usage_metrics_user_id').on(table.userId),
+    index('idx_usage_metrics_month').on(table.month),
+    check('plans_generated_nonneg', sql`${table.plansGenerated} >= 0`),
+    check('regenerations_used_nonneg', sql`${table.regenerationsUsed} >= 0`),
+    check('exports_used_nonneg', sql`${table.exportsUsed} >= 0`),
+
+    // RLS policies
+    pgPolicy('usage_metrics_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('usage_metrics_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+    pgPolicy('usage_metrics_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('usage_metrics_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
+    pgPolicy('usage_metrics_update_own', {
+      for: 'update',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('usage_metrics_update_service', {
+      for: 'update',
+      to: serviceRole,
+      using: sql`true`,
+      withCheck: sql`true`,
+    }),
+    pgPolicy('usage_metrics_delete_own', {
+      for: 'delete',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('usage_metrics_delete_service', {
+      for: 'delete',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+  ]
+).enableRLS();
+
+export const aiUsageEvents = pgTable(
+  'ai_usage_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    costCents: integer('cost_cents').notNull().default(0),
+    requestId: text('request_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('idx_ai_usage_user_id').on(table.userId),
+    index('idx_ai_usage_created_at').on(table.createdAt),
+
+    // RLS policies
+    pgPolicy('ai_usage_events_select_own', {
+      for: 'select',
+      to: authenticatedRole,
+      using: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('ai_usage_events_select_service', {
+      for: 'select',
+      to: serviceRole,
+      using: sql`true`,
+    }),
+    pgPolicy('ai_usage_events_insert_own', {
+      for: 'insert',
+      to: authenticatedRole,
+      withCheck: sql`${table.userId} IN (
+        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      )`,
+    }),
+    pgPolicy('ai_usage_events_insert_service', {
+      for: 'insert',
+      to: serviceRole,
+      withCheck: sql`true`,
+    }),
+  ]
+).enableRLS();

@@ -313,7 +313,7 @@ it('users can read their own private plans', async () => {
    - Passes JWT in `Authorization: Bearer <token>` header
    - Supabase validates JWT and makes it available via `auth.jwt()`
 
-3. **RLS Policies** (`src/lib/db/schema.ts`)
+3. **RLS Policies** (`src/lib/db/schema`)
    - Extract Clerk user ID via `auth.jwt()->>'sub'`
    - Compare against `users.clerk_user_id` column
    - Enforce data isolation between users

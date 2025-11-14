@@ -15,7 +15,7 @@
 
 ### 1) Database schema
 
-- In `src/lib/db/schema.ts` add `hasMicroExplanation` (boolean, default `false`, not null) to `tasks`.
+- In `src/lib/db/schema` add `hasMicroExplanation` (boolean, default `false`, not null) to `tasks`.
 - Generate migration to:
   - Add `has_micro_explanation boolean not null default false`.
   - Backfill: set flag where legacy marker exists and strip the marker from `description`.
