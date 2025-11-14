@@ -6,7 +6,7 @@ import type { Config } from 'drizzle-kit';
 dotenv.config({ path: '.env.local.test' });
 
 export default {
-  schema: ['./src/lib/db/schema.ts', './src/lib/db/enums.ts'],
+  schema: ['./src/lib/db/schema/index.ts', './src/lib/db/enums.ts'],
   out: './src/lib/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {

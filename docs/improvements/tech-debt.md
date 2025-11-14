@@ -110,7 +110,7 @@ Long-Term (Day 6-7): 300 hours (scoped MVP to fit week)
 
 | File                                      | Lines | Complexity  | Issues                                                  |
 | ----------------------------------------- | ----- | ----------- | ------------------------------------------------------- |
-| `src/lib/db/schema.ts`                    | 1,929 | Very High   | Single file defines entire DB schema + RLS policies     |
+| `src/lib/db/schema`                       | 1,929 | Very High   | Single file defines entire DB schema + RLS policies     |
 | `src/lib/db/seed.ts`                      | 1,172 | High        | All seeding logic in one file                           |
 | `src/lib/jobs/worker-service.ts`          | 694   | High        | Job processing, curation, AI orchestration mixed        |
 | `src/components/plans/OnboardingForm.tsx` | 614   | High        | Form validation, state management, UI in one component  |
@@ -168,11 +168,8 @@ Long-Term (Day 6-7): 300 hours (scoped MVP to fit week)
 
 **2. Query Layer Evolution**
 
-- **Current state:** Dual system
-  - Legacy: `src/lib/db/queries.ts` (centralized, deprecated)
-  - New: `src/lib/db/queries/*.ts` (modular by entity)
-- **Problem:** 50% of queries migrated, 50% remain in legacy file
-- **Impact:** Developers unsure where to add new queries; duplication risk
+- **Current state:** All queries now live in `src/lib/db/queries/*.ts` (entity-scoped modules such as `users.ts`, `plans.ts`, `jobs.ts`)
+- **Impact:** Modular layout keeps ownership clear and avoids duplication; continue to enforce additions via the barrel index
 
 **3. Mixed Responsibilities in Worker Service**
 
@@ -556,7 +553,7 @@ Architecture Metrics:
   integrations: 3 (Stripe, Notion, Google Calendar)
 
   database_clients: 2 (service-role, RLS-enforced)
-  query_files: 7 (modular) + 1 (legacy queries.ts)
+  query_files: 8 (modular, includes jobs.ts)
 ```
 
 ### Trend Projection
@@ -735,27 +732,28 @@ Benefits:
 #### **Improvement #2: Complete Query Layer Migration**
 
 ```yaml
+Status: ✅ Complete
 Effort: 24 hours
 Savings: 5 hours/month (consistent query patterns)
 ROI: Positive after 5 months
 
-Tasks:
-  1. Audit src/lib/db/queries.ts - identify remaining queries (estimate: 30%)
-  2. Move to appropriate modular file in src/lib/db/queries/
-  3. Update all imports
-  4. Delete queries.ts
-  5. Document query organization in CLAUDE.md
+Delivered steps:
+  - Audited the legacy src/lib/db/queries.ts helpers
+  - Moved everything into src/lib/db/queries/*.ts (entity modules + jobs.ts)
+  - Updated all imports to rely on the barrel index
+  - Removed the monolithic queries.ts file
+  - Documented the final layout in CLAUDE/AGENTS
 
-After:
-  src/lib/db/queries/
-    ├── users.ts (complete)
-    ├── plans.ts (complete)
-    ├── modules.ts (complete)
-    ├── tasks.ts (complete)
-    ├── resources.ts (complete)
-    ├── schedules.ts (complete)
-    ├── attempts.ts (complete)
-    └── index.ts (barrel export)
+Current layout: src/lib/db/queries/
+  ├── users.ts
+  ├── plans.ts
+  ├── modules.ts
+  ├── tasks.ts
+  ├── resources.ts
+  ├── schedules.ts
+  ├── attempts.ts
+  ├── jobs.ts (queue monitoring + cleanup)
+  └── index.ts (barrel export)
 ```
 
 #### **Improvement #3: Refactor Worker Service**
@@ -1004,17 +1002,18 @@ Goals:
 ✓ Enable coverage thresholds and CI gate
 
 Tasks:
-  - Replace service-role imports with RLS client: getDb() in:
-    - src/app/api/v1/auth/notion/callback/route.ts
-    - src/app/api/v1/plans/route.ts
-    - src/app/api/v1/plans/[planId]/status/route.ts
-    - src/app/api/v1/plans/[planId]/regenerate/route.ts
-    - src/app/api/v1/integrations/notion/export/route.ts
-    - src/app/api/v1/integrations/google-calendar/sync/route.ts
-    - src/app/api/v1/auth/google/callback/route.ts
-    - src/app/api/health/worker/route.ts
-  - Add Vitest coverage thresholds (lines 60 / funcs 55 / branches 50 / statements 60)
-  - Wire coverage check into CI and fail PRs under threshold
+
+- Replace service-role imports with RLS client: getDb() in:
+  - src/app/api/v1/auth/notion/callback/route.ts
+  - src/app/api/v1/plans/route.ts
+  - src/app/api/v1/plans/[planId]/status/route.ts
+  - src/app/api/v1/plans/[planId]/regenerate/route.ts
+  - src/app/api/v1/integrations/notion/export/route.ts
+  - src/app/api/v1/integrations/google-calendar/sync/route.ts
+  - src/app/api/v1/auth/google/callback/route.ts
+  - src/app/api/health/worker/route.ts
+- Add Vitest coverage thresholds (lines 60 / funcs 55 / branches 50 / statements 60)
+- Wire coverage check into CI and fail PRs under threshold
 ```
 
 **Phase 2: Day 2–3 — Logging, Env, and Duplication**
@@ -1026,25 +1025,27 @@ Goals:
 ✓ Extract shared PricingCard and remove duplication
 
 Tasks:
-  - Add src/lib/config/env.ts with requireEnv() helper and exports
-  - Create src/lib/logging/logger.ts (pino) and replace ~105 console.* calls
-  - Add basic request ID propagation helper for API routes
-  - Implement src/components/billing/PricingCard.tsx and refactor Monthly/Yearly components
+
+- Add src/lib/config/env.ts with requireEnv() helper and exports
+- Create src/lib/logging/logger.ts (pino) and replace ~105 console.\* calls
+- Add basic request ID propagation helper for API routes
+- Implement src/components/billing/PricingCard.tsx and refactor Monthly/Yearly components
 ```
 
 **Phase 3: Day 3–5 — DB Schema Split + Query Layer Completion**
 
 ```markdown
 Goals:
-✓ Split schema.ts into modular files (tables/, policies/, relations/)
+✓ Split schema into modular files (tables/, common helpers, relations/)
 ✓ Finish migration of legacy queries.ts to modular queries/
 
 Tasks:
-  - Create src/lib/db/schema/{tables,policies}/ and relations.ts; re-export via index.ts
-  - Move table and policy definitions; no DB changes required
-  - Update imports across codebase
-  - Audit src/lib/db/queries.ts, move remaining queries, delete legacy file
-  - Ensure type-check and targeted tests pass
+
+- Create src/lib/db/schema/tables/\* modules plus relations.ts; re-export via index.ts
+- Move table and policy definitions; no DB changes required
+- Update imports across codebase
+- Move the remaining job helpers into src/lib/db/queries/jobs.ts and remove the monolith
+- Ensure type-check and targeted tests pass
 ```
 
 **Phase 4: Day 5–6 — Worker Service Refactor**
@@ -1055,10 +1056,11 @@ Goals:
 ✓ Add unit tests for generation and curation services
 
 Tasks:
-  - Create src/workers/handlers/* and src/workers/services/* modules
-  - Move orchestration, curation, persistence into separate files (<200 LOC each)
-  - Update worker entry (src/workers/index.ts) to use refactored modules
-  - Add unit tests for services (mock AI providers and DB)
+
+- Create src/workers/handlers/_ and src/workers/services/_ modules
+- Move orchestration, curation, persistence into separate files (<200 LOC each)
+- Update worker entry (src/workers/index.ts) to use refactored modules
+- Add unit tests for services (mock AI providers and DB)
 ```
 
 **Phase 5: Day 7 — Observability & API Docs Baseline**
@@ -1070,10 +1072,11 @@ Goals:
 ✓ Document outcomes and open follow-ups
 
 Tasks:
-  - Add zod-to-openapi setup; generate spec for 3 high-traffic routes
-  - Expose a basic docs route (Swagger/Scalar) gated for internal use
-  - Initialize Sentry or Datadog (config placeholders if credentials pending)
-  - Update README/CLAUDE with new patterns and locations
+
+- Add zod-to-openapi setup; generate spec for 3 high-traffic routes
+- Expose a basic docs route (Swagger/Scalar) gated for internal use
+- Initialize Sentry or Datadog (config placeholders if credentials pending)
+- Update README/CLAUDE with new patterns and locations
 ```
 
 ### Coordination & Ownership (suggested)
@@ -1088,7 +1091,9 @@ Day 7: API docs + Observability — Mid Engineer
 ```
 
 Notes:
+
 - Some long-term initiatives are scoped to MVPs to fit the week. Open follow-up issues for deeper investment after delivery.
+
 ---
 
 ## 6. PREVENTION STRATEGY

@@ -149,13 +149,12 @@ Tests cover:
     - pricing/ - Pricing page
     - settings/ - User settings
   - Database code:
-    - src/lib/db/schema.ts - Database schema definitions
+    - src/lib/db/schema/ - Database schema definitions and RLS policies
     - src/lib/db/enums.ts - PostgreSQL enum definitions
     - src/lib/db/drizzle.ts - Service-role Drizzle client (RLS bypassed; for workers/tests)
     - src/lib/db/rls.ts - RLS-enforced Drizzle client factory (for request handlers)
     - src/lib/db/runtime.ts - Runtime DB selector (getDb() returns RLS DB in requests, service-role elsewhere)
-    - src/lib/db/queries.ts - Database queries (legacy, being modularized)
-    - src/lib/db/queries/ - Modular query files (users.ts, plans.ts, modules.ts, tasks.ts, resources.ts, schedules.ts, attempts.ts, index.ts)
+    - src/lib/db/queries/ - Modular query files (attempts.ts, modules.ts, plans.ts, resources.ts, schedules.ts, tasks.ts, users.ts, jobs.ts)
     - src/lib/db/seed.ts, src/lib/db/seed-cli.ts - Database seeding utilities
     - src/lib/db/usage.ts - Usage tracking queries
     - src/lib/db/migrations/ - Drizzle migrations output directory
@@ -183,8 +182,8 @@ Tests cover:
   - Authentication: @clerk/nextjs for user authentication
   - Database: Drizzle ORM with postgres-js + Supabase
     - Connection: src/lib/db/drizzle.ts uses DATABASE_URL (store in .env.local or .env.test). For Supabase, include `?sslmode=require`.
-    - Schema: src/lib/db/schema.ts (tables) + src/lib/db/enums.ts (PostgreSQL enums)
-    - Queries: src/lib/db/queries/ (modular query files by entity) + src/lib/db/queries.ts (legacy)
+    - Schema: src/lib/db/schema (tables) + src/lib/db/enums.ts (PostgreSQL enums)
+    - Queries: src/lib/db/queries/ (modular query files by entity)
     - Migrations: managed via drizzle-kit; out dir is src/lib/db/migrations/
     - RLS policies: Defined in schema using pgPolicy for Supabase Row Level Security
   - **Database client usage rules (CRITICAL for security)**:
@@ -234,9 +233,9 @@ Tests cover:
   - task_resources(task_id), task_resources(resource_id)
   - plan_generations(plan_id)
 - Code locations
-  - Schema: src/lib/db/schema.ts (tables + RLS policies)
+  - Schema: src/lib/db/schema (tables + RLS policies)
   - Enums: src/lib/db/enums.ts (PostgreSQL enum definitions)
-  - Queries: src/lib/db/queries/ (modular query files by entity) + src/lib/db/queries.ts (legacy)
+  - Queries: src/lib/db/queries/ (modular query files by entity)
   - Usage tracking: src/lib/db/usage.ts
   - Seeding: src/lib/db/seed.ts, src/lib/db/seed-cli.ts
   - Migrations: src/lib/db/migrations/ (drizzle-kit output)
