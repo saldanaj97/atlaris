@@ -1,3 +1,64 @@
-pnpm lint-staged
+#!/bin/sh
 
-pnpm type-check
+# Get the current branch name
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+# Check if only .md files are being pushed
+check_only_md_files() {
+  local remote_sha=$1
+
+  # Get the list of changed files
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    # New branch, compare with main/origin
+    changed_files=$(git diff --name-only origin/main 2>/dev/null || git diff --name-only --cached)
+  else
+    # Existing branch, compare with remote
+    changed_files=$(git diff --name-only "$remote_sha" HEAD)
+  fi
+
+  # If no changed files, allow push
+  if [ -z "$changed_files" ]; then
+    return 1
+  fi
+
+  # Check if all changed files are .md files
+  non_md_files=$(echo "$changed_files" | grep -v '\.md$' || true)
+
+  if [ -z "$non_md_files" ]; then
+    return 0  # Only .md files
+  else
+    return 1  # Non-.md files exist
+  fi
+}
+
+# Read the remote and remote branch being pushed to
+while read local_ref local_sha remote_ref remote_sha
+do
+  # Extract the remote branch name (remove refs/heads/ prefix)
+  remote_branch=$(echo "$remote_ref" | sed 's/refs\/heads\///')
+
+  # Check if only .md files are being pushed
+  if check_only_md_files "$remote_sha"; then
+    echo "Only .md files detected in push. Skipping CI checks."
+    continue
+  fi
+
+  # If pushing directly to main branch
+  if [ "$current_branch" = "main" ] && [ "$remote_branch" = "main" ]; then
+    echo "Detected push to main branch. Running local CI checks..."
+
+    # Run PR checks (lint, type-check, build, tests)
+    echo "Running local-ci:pr checks..."
+    pnpm local-ci:pr || exit 1
+
+    # Run main branch checks (includes integration and e2e tests)
+    echo "Running local-ci:main checks..."
+    pnpm local-ci:main || exit 1
+
+    echo "All Local CI(PR and Main) checks passed!"
+  else
+    echo "Not pushing to main branch directly. Running basic checks..."
+    pnpm lint:fix
+    pnpm type-check
+  fi
+done
