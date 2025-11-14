@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { notionEnv } from '@/lib/config/env';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { withErrorBoundary } from '@/lib/api/auth';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
+import { getClerkAuthUserId } from '@/lib/api/auth';
 import {
   attachRequestIdHeader,
   createRequestContext,
@@ -17,7 +17,10 @@ export const GET = withErrorBoundary(async (req: Request) => {
     route: 'notion_oauth_callback',
   });
   const redirectWithRequestId = (url: URL) =>
-    attachRequestIdHeader(NextResponse.redirect(url, { status: 302 }), requestId);
+    attachRequestIdHeader(
+      NextResponse.redirect(url, { status: 302 }),
+      requestId
+    );
 
   const url = request.nextUrl || new URL(request.url);
   const searchParams = url.searchParams;
@@ -44,8 +47,10 @@ export const GET = withErrorBoundary(async (req: Request) => {
     );
   }
 
-  // Authenticate current user (redirect on unauthenticated instead of JSON)
-  const clerkUserId = await getEffectiveClerkUserId();
+  // Authenticate current user (redirect on unauthenticated instead of JSON).
+  // We intentionally bypass DEV_CLERK_USER_ID here and rely on the actual
+  // Clerk session to prevent OAuth flows from being spoofed via overrides.
+  const clerkUserId = await getClerkAuthUserId();
   if (!clerkUserId) {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=unauthorized', baseUrl)

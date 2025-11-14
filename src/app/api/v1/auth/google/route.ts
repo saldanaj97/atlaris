@@ -1,11 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { google } from 'googleapis';
 import { googleOAuthEnv } from '@/lib/config/env';
 import {
   generateOAuthStateToken,
   storeOAuthStateToken,
 } from '@/lib/integrations/oauth-state';
+import { logger } from '@/lib/logging/logger';
+import { auth } from '@clerk/nextjs/server';
+import { google } from 'googleapis';
+import { NextRequest, NextResponse } from 'next/server';
+
+function getGoogleOAuthConfig() {
+  try {
+    return {
+      clientId: googleOAuthEnv.clientId,
+      clientSecret: googleOAuthEnv.clientSecret,
+      redirectUri: googleOAuthEnv.redirectUri,
+    };
+  } catch (error) {
+    logger.error({ error }, 'Google OAuth configuration error');
+    return null;
+  }
+}
 
 export async function GET(_request: NextRequest) {
   const { userId } = await auth();
@@ -14,15 +28,23 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const config = getGoogleOAuthConfig();
+  if (!config) {
+    return NextResponse.json(
+      { error: 'Google OAuth is not configured' },
+      { status: 503 }
+    );
+  }
+
   // Generate a cryptographically secure state token
   const stateToken = generateOAuthStateToken();
   // Store the mapping between state token and Clerk user ID
   storeOAuthStateToken(stateToken, userId);
 
   const oauth2Client = new google.auth.OAuth2(
-    googleOAuthEnv.clientId,
-    googleOAuthEnv.clientSecret,
-    googleOAuthEnv.redirectUri
+    config.clientId,
+    config.clientSecret,
+    config.redirectUri
   );
 
   const scopes = [

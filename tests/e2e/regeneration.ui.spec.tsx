@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 
+import type { DatePickerProps } from '@/components/ui/date-picker';
 import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ScheduleJson } from '@/lib/scheduling/types';
 
@@ -34,20 +35,24 @@ vi.mock('@/components/ui/date-picker', () => {
       onChange,
       required,
       className,
-    }: {
-      id: string;
-      value?: string;
-      onChange?: (val: string | undefined) => void;
-      required?: boolean;
-      className?: string;
-    }) => (
+    }: DatePickerProps) => (
       <input
         id={id}
         data-testid={id}
         value={value ?? ''}
-        onChange={(e) =>
-          onChange?.((e.currentTarget as HTMLInputElement).value || undefined)
-        }
+        onChange={(e) => {
+          const raw = (e.currentTarget as HTMLInputElement).value;
+          if (!raw) {
+            onChange?.(undefined);
+            return;
+          }
+          const [yearStr, monthStr, dayStr] = raw.split('-');
+          const year = Number(yearStr);
+          const month = Number(monthStr);
+          const day = Number(dayStr);
+          const date = new Date(year, month - 1, day);
+          onChange?.(date);
+        }}
         required={required}
         className={className}
       />

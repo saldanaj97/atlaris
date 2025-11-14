@@ -1,26 +1,27 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-
+import { logger } from '@/lib/logging/logger';
 import { db } from '@/lib/db/drizzle';
 import { jobQueue } from '@/lib/db/schema';
 import { JOB_TYPES } from '@/lib/jobs/types';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
 import { ensureUser } from '../../helpers/db';
 
+type WorkerLogEntry = {
+  source: string;
+  level: string;
+  event: string;
+  timestamp: string;
+};
+
 describe('Worker Logging', () => {
-  let consoleInfoSpy: ReturnType<typeof vi.spyOn>;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+  let loggerInfoSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    loggerInfoSpy = vi.spyOn(logger, 'info');
   });
 
   afterEach(() => {
-    consoleInfoSpy.mockRestore();
-    consoleErrorSpy.mockRestore();
-    consoleWarnSpy.mockRestore();
+    loggerInfoSpy.mockRestore();
   });
 
   it('should log structured JSON with required keys', async () => {
@@ -61,26 +62,28 @@ describe('Worker Logging', () => {
     // Stop worker
     await worker.stop();
 
-    // Get all console.info calls
-    const infoLogs = consoleInfoSpy.mock.calls.map((call) => call[0] as string);
-
-    // Parse JSON logs
-    const parsedLogs = infoLogs
-      .filter((log) => {
-        try {
-          JSON.parse(log);
-          return true;
-        } catch {
-          return false;
-        }
-      })
-      .map((log) => JSON.parse(log));
+    // Get all logger.info calls (first argument is the structured entry)
+    const parsedLogs = loggerInfoSpy.mock.calls
+      .map((call) => call[0] as Record<string, unknown>)
+      .filter((log) => Boolean(log));
 
     expect(parsedLogs.length).toBeGreaterThan(0);
 
-    // Find the worker_start event
-    const startLog = parsedLogs.find((log) => log.event === 'worker_start');
+    // Find the worker_start event with strict shape checking
+    const startLog = parsedLogs.find(
+      (log): log is WorkerLogEntry =>
+        typeof log.event === 'string' &&
+        log.event === 'worker_start' &&
+        typeof log.timestamp === 'string' &&
+        typeof log.source === 'string' &&
+        typeof log.level === 'string'
+    );
+
     expect(startLog).toBeDefined();
+
+    if (!startLog) {
+      throw new Error('worker_start log entry not found');
+    }
 
     // Verify required keys are present
     expect(startLog).toHaveProperty('source');

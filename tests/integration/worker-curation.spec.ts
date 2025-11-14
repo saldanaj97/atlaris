@@ -1,10 +1,10 @@
 import {
-  describe,
-  it,
-  expect,
-  vi,
-  beforeEach,
   afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
   type MockedFunction,
 } from 'vitest';
 
@@ -56,23 +56,24 @@ vi.mock('@/lib/stripe/usage', () => ({
   markPlanGenerationFailure: vi.fn(async () => {}),
 }));
 
-import { processPlanGenerationJob } from '@/lib/jobs/worker-service';
-import { curateDocs } from '@/lib/curation/docs';
-import { curateYouTube } from '@/lib/curation/youtube';
 import { generateMicroExplanation } from '@/lib/ai/micro-explanations';
-import type { InferSelectModel } from 'drizzle-orm';
-import { tasks as tasksTable } from '@/lib/db/schema';
-import type { ResourceCandidate } from '@/lib/curation/types';
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { curateDocs } from '@/lib/curation/docs';
 import type { Scored } from '@/lib/curation/ranking';
+import type { ResourceCandidate } from '@/lib/curation/types';
+import { curateYouTube } from '@/lib/curation/youtube';
+import { upsertAndAttach } from '@/lib/db/queries/resources';
 import {
-  getTasksByPlanId,
   appendTaskDescription,
   appendTaskMicroExplanation,
+  getTasksByPlanId,
 } from '@/lib/db/queries/tasks';
-import { upsertAndAttach } from '@/lib/db/queries/resources';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { tasks as tasksTable } from '@/lib/db/schema';
 import type { Job, PlanGenerationJobData } from '@/lib/jobs/types';
 import { JOB_TYPES } from '@/lib/jobs/types';
+import { processPlanGenerationJob } from '@/lib/jobs/worker-service';
+import { logger } from '@/lib/logging/logger';
+import type { InferSelectModel } from 'drizzle-orm';
 
 describe('Worker curation integration', () => {
   let mockJob: Job;
@@ -492,7 +493,15 @@ describe('Worker curation integration', () => {
 
   describe('Observability', () => {
     it('logs curation metrics', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const childLogger = logger.child({});
+      const infoSpy = vi.spyOn(childLogger, 'info');
+      const warnSpy = vi.spyOn(childLogger, 'warn');
+      const errorSpy = vi.spyOn(childLogger, 'error');
+      const childSpy = vi
+        .spyOn(logger, 'child')
+        .mockReturnValue(
+          childLogger as unknown as ReturnType<typeof logger.child>
+        );
 
       mockGetTasks.mockResolvedValue([
         {
@@ -512,17 +521,23 @@ describe('Worker curation integration', () => {
 
       await processPlanGenerationJob(mockJob);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Curation] Starting curation')
+      expect(infoSpy).toHaveBeenCalledWith(
+        { taskCount: 1 },
+        'Starting resource curation'
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Attached 1 resources')
+      expect(infoSpy).toHaveBeenCalledWith(
+        { taskId: 'task1', resourceCount: 1 },
+        'Attached curated resources to task'
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Completed in')
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ elapsedMs: expect.any(Number) }),
+        'Completed curation run'
       );
 
-      consoleSpy.mockRestore();
+      childSpy.mockRestore();
+      infoSpy.mockRestore();
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
     });
   });
 });
