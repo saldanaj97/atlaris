@@ -13,6 +13,7 @@ export const PRICING_TIERS = {
     button: <Link href="/dashboard">Continue Free</Link>,
     variant: 'default' as const,
     badge: 'Current',
+    recommended: false,
   },
   starter: {
     name: 'Starter',
@@ -40,5 +41,9 @@ export const PRICING_TIERS = {
     button: null, // Dynamic SubscribeButtons
     variant: 'default' as const,
     badge: 'Best',
+    recommended: false,
   },
-};
+} as const;
+
+export type TierKey = keyof typeof PRICING_TIERS;
+export type PricingTier = (typeof PRICING_TIERS)[TierKey];
