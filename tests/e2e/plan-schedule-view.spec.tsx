@@ -34,7 +34,9 @@ vi.mock('@/components/plans/ExportButtons', () => ({
 }));
 
 vi.mock('@/components/ui/button', () => ({
-  Button: (props: any) => <button {...props}>{props.children}</button>,
+  Button: (props: React.ComponentProps<'button'>) => (
+    <button {...props}>{props.children}</button>
+  ),
 }));
 
 async function renderPlanDetails(

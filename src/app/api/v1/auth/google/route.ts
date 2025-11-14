@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { google } from 'googleapis';
 import { googleOAuthEnv } from '@/lib/config/env';
 import {
   generateOAuthStateToken,
   storeOAuthStateToken,
 } from '@/lib/integrations/oauth-state';
+import { logger } from '@/lib/logging/logger';
+import { auth } from '@clerk/nextjs/server';
+import { google } from 'googleapis';
+import { NextRequest, NextResponse } from 'next/server';
 
 function getGoogleOAuthConfig() {
   try {
@@ -15,6 +16,7 @@ function getGoogleOAuthConfig() {
       redirectUri: googleOAuthEnv.redirectUri,
     };
   } catch (error) {
+    logger.error({ error }, 'Google OAuth configuration error');
     return null;
   }
 }

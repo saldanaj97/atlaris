@@ -32,6 +32,18 @@ export async function getEffectiveClerkUserId(): Promise<string | null> {
   return userId ?? null;
 }
 
+/**
+ * Returns the Clerk user id from the actual Clerk session, ignoring
+ * DEV_CLERK_USER_ID overrides. This is intended for security-sensitive flows
+ * (e.g. OAuth callbacks) where we must validate the currently authenticated
+ * end user rather than a test/development override.
+ */
+export async function getClerkAuthUserId(): Promise<string | null> {
+  const { auth } = await import('@clerk/nextjs/server');
+  const { userId } = await auth();
+  return userId ?? null;
+}
+
 export async function requireUser() {
   const userId = await getEffectiveClerkUserId();
   if (!userId) throw new AuthError();

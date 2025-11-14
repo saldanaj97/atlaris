@@ -493,15 +493,15 @@ describe('Worker curation integration', () => {
 
   describe('Observability', () => {
     it('logs curation metrics', async () => {
-      const infoSpy = vi.fn();
-      const warnSpy = vi.fn();
-      const errorSpy = vi.fn();
-      const childSpy = vi.spyOn(logger, 'child').mockReturnValue({
-        info: infoSpy,
-        warn: warnSpy,
-        error: errorSpy,
-        child: vi.fn().mockReturnThis(),
-      } as unknown as ReturnType<typeof logger.child>);
+      const childLogger = logger.child({});
+      const infoSpy = vi.spyOn(childLogger, 'info');
+      const warnSpy = vi.spyOn(childLogger, 'warn');
+      const errorSpy = vi.spyOn(childLogger, 'error');
+      const childSpy = vi
+        .spyOn(logger, 'child')
+        .mockReturnValue(
+          childLogger as unknown as ReturnType<typeof logger.child>
+        );
 
       mockGetTasks.mockResolvedValue([
         {
@@ -535,6 +535,9 @@ describe('Worker curation integration', () => {
       );
 
       childSpy.mockRestore();
+      infoSpy.mockRestore();
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
     });
   });
 });

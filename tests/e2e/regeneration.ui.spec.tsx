@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 
+import type { DatePickerProps } from '@/components/ui/date-picker';
 import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ScheduleJson } from '@/lib/scheduling/types';
 
@@ -28,7 +29,13 @@ vi.mock('sonner', () => ({
 // Mock DatePicker to a simple input for easier interaction in tests
 vi.mock('@/components/ui/date-picker', () => {
   return {
-    DatePicker: ({ id, value, onChange, required, className }: any) => (
+    DatePicker: ({
+      id,
+      value,
+      onChange,
+      required,
+      className,
+    }: DatePickerProps) => (
       <input
         id={id}
         data-testid={id}
