@@ -16,7 +16,7 @@ export async function getEffectiveClerkUserId(): Promise<string | null> {
   // This keeps auth-dependent helpers usable in pure Node test environments.
   if (appEnv.vitestWorkerId) {
     const devUserId = devClerkEnv.userId;
-    return devUserId ?? null;
+    return devUserId || null;
   }
 
   // In non-production runtimes, prefer DEV_CLERK_USER_ID when present.

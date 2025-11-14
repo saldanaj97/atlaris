@@ -1,9 +1,21 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setTestUser } from '../../helpers/auth';
+
+// Shared logger mock to capture error logs
+const mockLogger = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  child: vi.fn(),
+} as any;
+mockLogger.child.mockReturnValue(mockLogger);
 
 // Mock dependencies before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+vi.mock('@/lib/logging/logger', () => ({
+  logger: mockLogger,
+  createLogger: () => mockLogger,
 }));
 
 vi.mock('@/lib/db/drizzle', () => ({
@@ -21,25 +33,34 @@ vi.mock('@/lib/integrations/google-calendar/sync', () => ({
 }));
 
 describe('Google Calendar Sync Route', () => {
-  let mockAuth: any;
   let mockDb: any;
   let mockGetOAuthTokens: any;
   let mockSyncPlanToGoogleCalendar: any;
+  let mockCheckExportQuota: any;
+  let mockIncrementExportUsage: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
+    // Default to authenticated test user for routes that require it
+    setTestUser('clerk-user-123');
+
     // Import mocked functions
-    const { auth } = await import('@clerk/nextjs/server');
     const { db } = await import('@/lib/db/drizzle');
     const { getOAuthTokens } = await import('@/lib/integrations/oauth');
     const { syncPlanToGoogleCalendar } = await import(
       '@/lib/integrations/google-calendar/sync'
     );
+    const usage = await import('@/lib/db/usage');
 
-    mockAuth = vi.mocked(auth);
     mockGetOAuthTokens = vi.mocked(getOAuthTokens);
     mockSyncPlanToGoogleCalendar = vi.mocked(syncPlanToGoogleCalendar);
+    mockCheckExportQuota = vi
+      .spyOn(usage, 'checkExportQuota')
+      .mockResolvedValue(true);
+    mockIncrementExportUsage = vi
+      .spyOn(usage, 'incrementExportUsage')
+      .mockResolvedValue(undefined);
 
     // Setup db mock
     mockDb = {
@@ -57,7 +78,8 @@ describe('Google Calendar Sync Route', () => {
 
   describe('POST /api/v1/integrations/google-calendar/sync', () => {
     it('should return 401 when user is not authenticated', async () => {
-      mockAuth.mockResolvedValue({ userId: null });
+      // Simulate unauthenticated request by clearing DEV_CLERK_USER_ID override
+      delete process.env.DEV_CLERK_USER_ID;
 
       const { POST } = await import(
         '@/app/api/v1/integrations/google-calendar/sync/route'
@@ -82,7 +104,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should return 404 when user is not found in database', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([]);
 
       const { POST } = await import(
@@ -108,7 +129,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should return 401 when Google Calendar is not connected', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue(null);
 
@@ -135,7 +155,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should return 400 when planId is missing', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'token',
@@ -163,7 +182,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should return 400 when planId is not a valid UUID', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'token',
@@ -192,7 +210,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should return 400 when request body is invalid JSON', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'token',
@@ -220,8 +237,9 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should return 200 with success when sync completes', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
-      mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
+      mockDb.limit.mockResolvedValue([
+        { id: 'user-123', subscriptionTier: 'free' },
+      ]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
@@ -249,11 +267,12 @@ describe('Google Calendar Sync Route', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.eventsCreated).toBe(5);
+      expect(mockCheckExportQuota).toHaveBeenCalledWith('user-123', 'free');
+      expect(mockIncrementExportUsage).toHaveBeenCalledWith('user-123');
     });
 
     it('should call syncPlanToGoogleCalendar with correct parameters', async () => {
       const planId = '123e4567-e89b-12d3-a456-426614174000';
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'test-token',
@@ -284,8 +303,9 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should return 500 when sync fails', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
-      mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
+      mockDb.limit.mockResolvedValue([
+        { id: 'user-123', subscriptionTier: 'free' },
+      ]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'test-token',
         refreshToken: 'test-refresh',
@@ -312,10 +332,47 @@ describe('Google Calendar Sync Route', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Sync failed');
+      expect(mockCheckExportQuota).toHaveBeenCalledWith('user-123', 'free');
+      expect(mockIncrementExportUsage).not.toHaveBeenCalled();
+    });
+
+    it('should return 403 and skip sync when export quota is exceeded', async () => {
+      mockDb.limit.mockResolvedValue([
+        { id: 'user-123', subscriptionTier: 'free' },
+      ]);
+      mockGetOAuthTokens.mockResolvedValue({
+        accessToken: 'test-token',
+        refreshToken: 'test-refresh',
+      });
+      mockSyncPlanToGoogleCalendar.mockResolvedValue(5);
+      mockCheckExportQuota.mockResolvedValueOnce(false);
+
+      const { POST } = await import(
+        '@/app/api/v1/integrations/google-calendar/sync/route'
+      );
+
+      const request = new NextRequest(
+        'http://localhost:3000/api/v1/integrations/google-calendar/sync',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
+        }
+      );
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(data.error).toBe('Export quota exceeded');
+      expect(mockCheckExportQuota).toHaveBeenCalledWith('user-123', 'free');
+      expect(mockSyncPlanToGoogleCalendar).not.toHaveBeenCalled();
+      expect(mockIncrementExportUsage).not.toHaveBeenCalled();
     });
 
     it('should handle planId with different UUID formats', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'token',
@@ -349,7 +406,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should reject invalid UUID formats', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'token',
@@ -384,7 +440,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should handle OAuth tokens without refresh token', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'test-token',
@@ -418,7 +473,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should include Zod validation details in error response', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'token',
@@ -448,7 +502,6 @@ describe('Google Calendar Sync Route', () => {
     });
 
     it('should return eventsCreated count of 0 when no events are synced', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'test-token',
@@ -479,12 +532,7 @@ describe('Google Calendar Sync Route', () => {
       expect(data.eventsCreated).toBe(0);
     });
 
-    it('should log errors to console', async () => {
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
+    it('should log errors via structured logger', async () => {
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'test-token',
@@ -511,16 +559,14 @@ describe('Google Calendar Sync Route', () => {
 
       await POST(request);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        'Google Calendar sync failed:',
-        error
-      );
-
-      consoleErrorSpy.mockRestore();
+      expect(mockLogger.error).toHaveBeenCalled();
+      const lastCall =
+        mockLogger.error.mock.calls[mockLogger.error.mock.calls.length - 1];
+      expect(lastCall[1]).toBe('Google Calendar sync failed');
+      expect(lastCall[0]).toMatchObject({ error });
     });
 
     it('should handle extra fields in request body gracefully', async () => {
-      mockAuth.mockResolvedValue({ userId: 'clerk-user-123' });
       mockDb.limit.mockResolvedValue([{ id: 'user-123' }]);
       mockGetOAuthTokens.mockResolvedValue({
         accessToken: 'token',

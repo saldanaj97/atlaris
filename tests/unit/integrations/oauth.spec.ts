@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
 import {
-  encryptToken,
   decryptToken,
+  encryptToken,
   OAuthTokenData,
 } from '@/lib/integrations/oauth';
+import { describe, expect, it } from 'vitest';
 
 describe('OAuth Token Encryption', () => {
   const mockToken: OAuthTokenData = {
@@ -37,7 +37,7 @@ describe('OAuth Token Encryption', () => {
     delete process.env.OAUTH_ENCRYPTION_KEY;
 
     expect(() => encryptToken(mockToken)).toThrow(
-      'OAUTH_ENCRYPTION_KEY not configured'
+      'Missing required environment variable: OAUTH_ENCRYPTION_KEY'
     );
 
     process.env.OAUTH_ENCRYPTION_KEY = originalKey;

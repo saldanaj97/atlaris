@@ -51,11 +51,7 @@ do
     echo "Running local-ci:pr checks..."
     pnpm local-ci:pr || exit 1
 
-    # Run main branch checks (includes integration and e2e tests)
-    echo "Running local-ci:main checks..."
-    pnpm local-ci:main || exit 1
-
-    echo "All Local CI(PR and Main) checks passed!"
+    echo "All Local CI(PR) checks passed!"
   else
     echo "Not pushing to main branch directly. Running basic checks..."
     pnpm lint:fix

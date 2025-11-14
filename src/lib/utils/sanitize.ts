@@ -26,9 +26,10 @@ export function sanitizePlainText(input: string, maxLength = 10_000): string {
   } while (sanitized !== prevSanitized);
 
   // Remove HTML comments (including multi-line) robustly (repeatedly until gone)
+  // Also consume trailing newline to join surrounding text
   do {
     prevSanitized = sanitized;
-    sanitized = sanitized.replace(/<!--[\s\S]*?(?:-->|$)/g, '');
+    sanitized = sanitized.replace(/<!--[\s\S]*?(?:-->|$)\n?/g, '');
   } while (sanitized !== prevSanitized);
 
   // Remove HTML tags (including script, style, and other potentially dangerous tags)
