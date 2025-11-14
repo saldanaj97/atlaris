@@ -7,12 +7,20 @@ import { AuthError } from './errors';
  * In development or test (Vitest), if DEV_CLERK_USER_ID is set, that value is returned
  * (allowing you to bypass real Clerk provisioning while seeding a deterministic user).
  *
- * NOTE: We avoid a static import of '@clerk/nextjs/server' so test runs that rely on
- * DEV_CLERK_USER_ID do not trigger Next.js server-only module guards.
+ * NOTE: In Vitest test runs, we avoid importing '@clerk/nextjs/server' entirely.
+ * This prevents server-only module guards from firing when tests exercise auth-aware
+ * helpers (e.g., gating middleware) outside of a real Next.js server context.
  */
 export async function getEffectiveClerkUserId(): Promise<string | null> {
-  // In test/dev mode, use DEV_CLERK_USER_ID if it's a non-empty string
-  if (!appEnv.isProduction || appEnv.vitestWorkerId) {
+  // In Vitest, rely solely on DEV_CLERK_USER_ID and never import Clerk.
+  // This keeps auth-dependent helpers usable in pure Node test environments.
+  if (appEnv.vitestWorkerId) {
+    const devUserId = devClerkEnv.userId;
+    return devUserId ?? null;
+  }
+
+  // In non-production runtimes, prefer DEV_CLERK_USER_ID when present.
+  if (!appEnv.isProduction) {
     const devUserId = devClerkEnv.userId;
     if (devUserId !== undefined) {
       // Return the value as-is, converting empty string to null

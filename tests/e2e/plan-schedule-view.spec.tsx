@@ -34,13 +34,7 @@ vi.mock('@/components/plans/ExportButtons', () => ({
 }));
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-  }: {
-    children: React.ReactNode;
-    onClick?: () => void;
-  }) => <button onClick={onClick}>{children}</button>,
+  Button: (props: any) => <button {...props}>{props.children}</button>,
 }));
 
 async function renderPlanDetails(

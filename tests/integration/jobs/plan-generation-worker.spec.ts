@@ -204,6 +204,9 @@ describe('PlanGenerationWorker', () => {
         const jobRow = await db.query.jobQueue.findFirst({
           where: (fields, operators) => operators.eq(fields.id, jobId),
         });
+        if (jobRow?.status === 'failed') {
+          throw new Error(`Job failed: ${jobRow.error ?? 'unknown error'}`);
+        }
         return jobRow?.status === 'completed';
       });
     } finally {
@@ -213,7 +216,6 @@ describe('PlanGenerationWorker', () => {
     const jobRow = await db.query.jobQueue.findFirst({
       where: (fields, operators) => operators.eq(fields.id, jobId),
     });
-
     expect(jobRow?.status).toBe('completed');
     expect(jobRow?.error).toBeNull();
     expect(jobRow?.result).not.toBeNull();

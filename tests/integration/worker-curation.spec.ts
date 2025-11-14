@@ -73,6 +73,7 @@ import { upsertAndAttach } from '@/lib/db/queries/resources';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import type { Job, PlanGenerationJobData } from '@/lib/jobs/types';
 import { JOB_TYPES } from '@/lib/jobs/types';
+import { logger } from '@/lib/logging/logger';
 
 describe('Worker curation integration', () => {
   let mockJob: Job;
@@ -492,7 +493,17 @@ describe('Worker curation integration', () => {
 
   describe('Observability', () => {
     it('logs curation metrics', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const infoSpy = vi.fn();
+      const warnSpy = vi.fn();
+      const errorSpy = vi.fn();
+      const childSpy = vi
+        .spyOn(logger, 'child')
+        .mockReturnValue({
+          info: infoSpy,
+          warn: warnSpy,
+          error: errorSpy,
+          child: vi.fn().mockReturnThis(),
+        } as unknown as typeof logger);
 
       mockGetTasks.mockResolvedValue([
         {
@@ -512,17 +523,20 @@ describe('Worker curation integration', () => {
 
       await processPlanGenerationJob(mockJob);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Curation] Starting curation')
+      expect(infoSpy).toHaveBeenCalledWith(
+        { taskCount: 1 },
+        'Starting resource curation'
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Attached 1 resources')
+      expect(infoSpy).toHaveBeenCalledWith(
+        { taskId: 'task1', resourceCount: 1 },
+        'Attached curated resources to task'
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Completed in')
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ elapsedMs: expect.any(Number) }),
+        'Completed curation run'
       );
 
-      consoleSpy.mockRestore();
+      childSpy.mockRestore();
     });
   });
 });

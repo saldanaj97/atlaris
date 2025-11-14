@@ -7,11 +7,31 @@ import {
   storeOAuthStateToken,
 } from '@/lib/integrations/oauth-state';
 
+function getGoogleOAuthConfig() {
+  try {
+    return {
+      clientId: googleOAuthEnv.clientId,
+      clientSecret: googleOAuthEnv.clientSecret,
+      redirectUri: googleOAuthEnv.redirectUri,
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
 export async function GET(_request: NextRequest) {
   const { userId } = await auth();
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const config = getGoogleOAuthConfig();
+  if (!config) {
+    return NextResponse.json(
+      { error: 'Google OAuth is not configured' },
+      { status: 503 }
+    );
   }
 
   // Generate a cryptographically secure state token
@@ -20,9 +40,9 @@ export async function GET(_request: NextRequest) {
   storeOAuthStateToken(stateToken, userId);
 
   const oauth2Client = new google.auth.OAuth2(
-    googleOAuthEnv.clientId,
-    googleOAuthEnv.clientSecret,
-    googleOAuthEnv.redirectUri
+    config.clientId,
+    config.clientSecret,
+    config.redirectUri
   );
 
   const scopes = [

@@ -12,9 +12,19 @@ vi.mock('@/components/ui/date-picker', () => {
         id={id}
         data-testid={id}
         value={value ?? ''}
-        onChange={(e) =>
-          onChange?.((e.currentTarget as HTMLInputElement).value || undefined)
-        }
+        onChange={(e) => {
+          const raw = (e.currentTarget as HTMLInputElement).value;
+          if (!raw) {
+            onChange?.(undefined);
+            return;
+          }
+          const [yearStr, monthStr, dayStr] = raw.split('-');
+          const year = Number(yearStr);
+          const month = Number(monthStr);
+          const day = Number(dayStr);
+          const date = new Date(year, month - 1, day);
+          onChange?.(date);
+        }}
         required={required}
         className={className}
       />
