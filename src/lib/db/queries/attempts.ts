@@ -1,5 +1,5 @@
-import { attemptsEnv } from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/api/context';
+import { appEnv, attemptsEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 import type { InferSelectModel } from 'drizzle-orm';
 import { count, eq } from 'drizzle-orm';
@@ -105,7 +105,7 @@ function logAttemptEvent(
 
   // In test environments, emit a lightweight console log that integration tests can assert on.
   // This mirrors a human-readable log line without altering production logging behavior.
-  if (process.env?.NODE_ENV === 'test' || process.env?.VITEST_WORKER_ID) {
+  if (appEnv.isTest) {
     // Example: "[attempts] success", { correlationId: '...', ...payload }
     // eslint-disable-next-line no-console
     console.info(`[attempts] ${event}`, enriched);
