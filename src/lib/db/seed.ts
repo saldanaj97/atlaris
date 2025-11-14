@@ -1,3 +1,5 @@
+import { appEnv, devClerkEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 import dotenv from 'dotenv';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -186,13 +188,13 @@ export async function seedDatabase(
     seed: seedValue = 12345,
   } = options || {};
 
-  console.log('🌱 Starting database seeding...');
+  logger.info({ emoji: '🌱' }, 'Starting database seeding...');
 
   // Reset database if requested
   if (shouldReset) {
-    console.log('🗑️  Resetting database...');
+    logger.info({ emoji: '🗑️' }, 'Resetting database...');
     await reset(db, schema);
-    console.log('✅ Database reset complete');
+    logger.info({ emoji: '✅' }, 'Database reset complete');
   }
 
   // generation_attempts captures real AI runs; keep empty during synthetic seeding
@@ -201,20 +203,25 @@ export async function seedDatabase(
   // job_queue will be seeded manually after the main seed; clear any auto-generated data
   await db.delete(schema.jobQueue);
 
-  console.log(
-    `📊 Seeding with ${userCount} users, ${planCount} plans, ${resourceCount} resources`
+  logger.info(
+    {
+      userCount,
+      planCount,
+      resourceCount,
+    },
+    '📊 Seeding configuration'
   );
 
   let adjustedUserCount = userCount;
   let insertedDevUser = false;
-  const isDevEnv = process.env.NODE_ENV !== 'production';
+  const isDevEnv = !appEnv.isProduction;
 
   // Seed the database with all tables and relationships
   // Optional: deterministic dev user injection (before randomized seeding)
   // for easier local testing and predictable auth
-  const devClerkUserId = process.env.DEV_CLERK_USER_ID;
-  const devEmail = process.env.DEV_CLERK_USER_EMAIL || 'dev@example.com';
-  const devName = process.env.DEV_CLERK_USER_NAME || 'Dev User';
+  const devClerkUserId = devClerkEnv.userId;
+  const devEmail = devClerkEnv.email;
+  const devName = devClerkEnv.name;
 
   if (isDevEnv && devClerkUserId) {
     try {
@@ -229,9 +236,19 @@ export async function seedDatabase(
         })
         .onConflictDoNothing();
       insertedDevUser = true;
-      console.log(`👤 Ensured deterministic dev user '${devClerkUserId}'`);
+      logger.info(
+        {
+          clerkUserId: devClerkUserId,
+        },
+        `👤 Ensured deterministic dev user '${devClerkUserId}'`
+      );
     } catch (e) {
-      console.warn('⚠️  Could not insert deterministic dev user:', e);
+      logger.warn(
+        {
+          error: e,
+        },
+        '⚠️  Could not insert deterministic dev user'
+      );
     }
 
     // If we successfully (or previously) have that user, reduce the random user count by 1
@@ -476,7 +493,10 @@ export async function seedDatabase(
           .where(eq(schema.learningPlans.userId, devUserId))
           .limit(1);
         if (existingPlans.length === 0) {
-          console.log('🛠️  Creating curated dev user learning plans...');
+          logger.info(
+            { emoji: '🛠️' },
+            'Creating curated dev user learning plans...'
+          );
 
           // Curated plan definitions (concise but representative)
           const curatedPlans: Array<{
@@ -746,10 +766,11 @@ export async function seedDatabase(
             }
           }
 
-          console.log('✅ Curated dev user dataset created.');
+          logger.info({ emoji: '✅' }, 'Curated dev user dataset created.');
         } else {
-          console.log(
-            'ℹ️  Dev user already has plans; skipping curated dataset.'
+          logger.info(
+            { emoji: 'ℹ️' },
+            'Dev user already has plans; skipping curated dataset.'
           );
         }
 
@@ -763,8 +784,11 @@ export async function seedDatabase(
         const currentCount = currentCountResult.length;
         if (currentCount < targetMinPlans) {
           const toCreate = targetMinPlans - currentCount;
-          console.log(
-            `🧪 Adding ${toCreate} random-style plan(s) for dev user to reach baseline.`
+          logger.info(
+            {
+              toCreate,
+            },
+            '🧪 Adding random-style plan(s) for dev user to reach baseline.'
           );
 
           for (let i = 0; i < toCreate; i++) {
@@ -837,19 +861,24 @@ export async function seedDatabase(
               }
             }
           }
-          console.log('✅ Added random-style dev user plans.');
+          logger.info({ emoji: '✅' }, 'Added random-style dev user plans.');
         }
       }
     } catch (err) {
-      console.warn('⚠️  Failed creating curated dev dataset:', err);
+      logger.warn(
+        {
+          error: err,
+        },
+        '⚠️  Failed creating curated dev dataset'
+      );
     }
   }
 
   // After seeding (and curated dev data), create task-resource relationships (placeholder)
-  console.log('🔗 Creating task-resource relationships...');
+  logger.info({ emoji: '🔗' }, 'Creating task-resource relationships...');
 
   // Generate per-user task progress with unique (task_id, user_id) pairs
-  console.log('🧭 Generating task progress (unique pairs)...');
+  logger.info({ emoji: '🧭' }, 'Generating task progress (unique pairs)...');
   const users = await db.select({ id: schema.users.id }).from(schema.users);
   const tasks = await db.select({ id: schema.tasks.id }).from(schema.tasks);
 
@@ -944,12 +973,15 @@ export async function seedDatabase(
       });
   }
 
-  console.log(
+  logger.info(
+    {
+      count: progressRows.length,
+    },
     `✅ Inserted ~${progressRows.length} task_progress rows (deduplicated).`
   );
 
   // Generate job queue entries
-  console.log('📋 Generating job queue entries...');
+  logger.info({ emoji: '📋' }, 'Generating job queue entries...');
   const plans = await db
     .select({
       id: schema.learningPlans.id,
@@ -1132,27 +1164,37 @@ export async function seedDatabase(
     await db.insert(schema.jobQueue).values(chunk);
   }
 
-  console.log(`✅ Inserted ${jobRows.length} job_queue entries.`);
+  logger.info(
+    {
+      count: jobRows.length,
+    },
+    `✅ Inserted ${jobRows.length} job_queue entries.`
+  );
 
-  console.log('✅ Database seeding completed successfully!');
-  console.log(`📈 Generated approximately:`);
-  console.log(`   - ${userCount} users`);
-  console.log(`   - ${planCount} learning plans`);
-  console.log(`   - ${planCount * 4} modules (avg 4 per plan)`);
-  console.log(`   - ${planCount * 20} tasks (avg 5 per module)`);
-  console.log(`   - ${resourceCount} resources`);
-  console.log(`   - ~${progressRows.length} task progress records`);
-  console.log(`   - ${Math.floor(planCount * 0.3)} plan generation records`);
-  console.log(`   - ${jobRows.length} job queue entries`);
+  logger.info({ emoji: '✅' }, 'Database seeding completed successfully!');
+  logger.info(
+    {
+      emoji: '📈',
+      userCount,
+      planCount,
+      moduleCount: planCount * 4,
+      taskCount: planCount * 20,
+      resourceCount,
+      progressCount: progressRows.length,
+      generationCount: Math.floor(planCount * 0.3),
+      jobCount: jobRows.length,
+    },
+    'Generated approximately:'
+  );
 }
 
 /**
  * Reset database - clears all data
  */
 export async function resetDatabase(db: ReturnType<typeof drizzle>) {
-  console.log('🗑️  Resetting database...');
+  logger.info({ emoji: '🗑️' }, 'Resetting database...');
   await reset(db, schema);
-  console.log('✅ Database reset complete');
+  logger.info({ emoji: '✅' }, 'Database reset complete');
 }
 
 /**

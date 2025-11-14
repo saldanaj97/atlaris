@@ -3,6 +3,7 @@
  * Handles scoring, normalization, blending, and selection
  */
 
+import { curationWeightsEnv } from '@/lib/config/env';
 import type { ResourceCandidate, Score } from '@/lib/curation/types';
 
 /**
@@ -40,13 +41,13 @@ type WeightConfig = {
  * Get scoring weights for YouTube from environment or use defaults
  */
 function getYouTubeWeights(): WeightConfig {
+  const { ytPopularity, ytRecency, ytRelevance, ytSuitability } =
+    curationWeightsEnv;
   return {
-    popularity: parseFloat(process.env.CURATION_YT_WEIGHT_POPULARITY || '0.45'),
-    recency: parseFloat(process.env.CURATION_YT_WEIGHT_RECENCY || '0.25'),
-    relevance: parseFloat(process.env.CURATION_YT_WEIGHT_RELEVANCE || '0.25'),
-    suitability: parseFloat(
-      process.env.CURATION_YT_WEIGHT_SUITABILITY || '0.05'
-    ),
+    popularity: ytPopularity,
+    recency: ytRecency,
+    relevance: ytRelevance,
+    suitability: ytSuitability,
     authority: 0,
   };
 }
@@ -55,10 +56,11 @@ function getYouTubeWeights(): WeightConfig {
  * Get scoring weights for docs from environment or use defaults
  */
 function getDocsWeights(): WeightConfig {
+  const { docAuthority, docRelevance, docRecency } = curationWeightsEnv;
   return {
-    authority: parseFloat(process.env.CURATION_DOC_WEIGHT_AUTHORITY || '0.6'),
-    relevance: parseFloat(process.env.CURATION_DOC_WEIGHT_RELEVANCE || '0.3'),
-    recency: parseFloat(process.env.CURATION_DOC_WEIGHT_RECENCY || '0.1'),
+    authority: docAuthority,
+    relevance: docRelevance,
+    recency: docRecency,
     popularity: 0,
     suitability: 0,
   };
@@ -90,9 +92,7 @@ function computeRecencyScore(
     0,
     (now.getTime() - publishedDate.getTime()) / msPerDay
   );
-  const decayHalfLife = parseFloat(
-    process.env.CURATION_RECENCY_DECAY_DAYS || '365'
-  );
+  const decayHalfLife = curationWeightsEnv.recencyDecayDays;
   // Exponential decay: e^(-ageDays / halfLife), clamped to [0, 1]
   return Math.min(1, Math.exp(-ageDays / decayHalfLife));
 }

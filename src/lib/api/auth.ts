@@ -1,3 +1,4 @@
+import { appEnv, devClerkEnv } from '@/lib/config/env';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 
@@ -11,8 +12,8 @@ import { AuthError } from './errors';
  */
 export async function getEffectiveClerkUserId(): Promise<string | null> {
   // In test/dev mode, use DEV_CLERK_USER_ID if it's a non-empty string
-  if (process.env.NODE_ENV !== 'production' || process.env.VITEST_WORKER_ID) {
-    const devUserId = process.env.DEV_CLERK_USER_ID;
+  if (!appEnv.isProduction || appEnv.vitestWorkerId) {
+    const devUserId = devClerkEnv.userId;
     if (devUserId !== undefined) {
       // Return the value as-is, converting empty string to null
       return devUserId || null;

@@ -1,5 +1,6 @@
 'use client';
 
+import { clientLogger } from '@/lib/logging/client';
 import type { PlanStatus } from '@/lib/types/client';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -54,7 +55,7 @@ export function usePlanStatus(
         setIsPolling(false);
       }
     } catch (err) {
-      console.error('Failed to poll plan status:', err);
+      clientLogger.error('Failed to poll plan status:', err);
       // Don't stop polling on network errors, just log
     }
   }, [planId]);

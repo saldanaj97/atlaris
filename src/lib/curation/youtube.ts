@@ -3,6 +3,7 @@
  * Handles search, stats retrieval, and curation with caching
  */
 
+import { logger } from '@/lib/logging/logger';
 import type { ResourceCandidate, CurationParams } from '@/lib/curation/types';
 import { curationConfig } from '@/lib/curation/config';
 import { isYouTubeEmbeddable } from '@/lib/curation/validate';
@@ -141,9 +142,13 @@ export async function getVideoStats(
       } catch {
         body = '<no body>';
       }
-      console.error(
-        `YouTube stats API error: ${response.status} ${response.statusText}`,
-        { body }
+      logger.error(
+        {
+          status: response.status,
+          statusText: response.statusText,
+          body,
+        },
+        'YouTube stats API error'
       );
       throw new Error(`YouTube stats API error: ${response.status}`);
     }

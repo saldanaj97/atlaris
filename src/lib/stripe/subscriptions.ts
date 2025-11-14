@@ -1,5 +1,6 @@
 import { db } from '@/lib/db/drizzle';
 import { users } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { getStripe } from './client';
@@ -51,8 +52,12 @@ export async function syncSubscriptionToDb(
     .limit(1);
 
   if (!user) {
-    console.error(
-      `No user found for Stripe customer ID: ${customerId}. Skipping sync.`
+    logger.error(
+      {
+        customerId,
+        event: 'subscription_sync_missing_user',
+      },
+      'No user found for Stripe customer ID. Skipping sync.'
     );
     return;
   }
@@ -83,7 +88,14 @@ export async function syncSubscriptionToDb(
         tier = tierMetadata;
       }
     } catch (error) {
-      console.error('Error retrieving price/product:', error);
+      logger.error(
+        {
+          priceId,
+          event: 'subscription_sync_price_fetch_failed',
+          error,
+        },
+        'Error retrieving Stripe price/product during subscription sync'
+      );
     }
   }
 

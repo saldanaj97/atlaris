@@ -5,14 +5,11 @@
 // This module no longer loads dotenv to avoid conflicts between .env and .env.test
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { databaseEnv } from '@/lib/config/env';
 
 import * as schema from './schema';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set');
-}
-
-const connectionString = process.env.DATABASE_URL;
+const connectionString = databaseEnv.url;
 
 // SERVICE-ROLE DB CLIENT (RLS BYPASSED)
 // This client connects as the database owner/superuser, bypassing Row Level Security (RLS).

@@ -10,9 +10,33 @@ import type {
   UpdatePageResponse,
 } from '@notionhq/client/build/src/api-endpoints';
 import pRetry from 'p-retry';
+import { logger } from '@/lib/logging/logger';
 
 const MAX_REQUESTS_PER_SECOND = 3;
 const REQUEST_INTERVAL = 1000 / MAX_REQUESTS_PER_SECOND;
+
+function logNotionAttemptFailure(
+  operation: string,
+  error: unknown
+): void {
+  const message = error instanceof Error ? error.message : 'Unknown error';
+  const errorRecord = error as Record<string, unknown>;
+  logger.warn(
+    {
+      operation,
+      attemptNumber:
+        typeof errorRecord.attemptNumber === 'number'
+          ? errorRecord.attemptNumber
+          : undefined,
+      retriesLeft:
+        typeof errorRecord.retriesLeft === 'number'
+          ? errorRecord.retriesLeft
+          : undefined,
+      message,
+    },
+    `Notion API ${operation} attempt failed`
+  );
+}
 
 export class NotionClient {
   private client: Client;
@@ -53,12 +77,7 @@ export class NotionClient {
         minTimeout: 1000,
         maxTimeout: 5000,
         onFailedAttempt: (error) => {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error';
-          console.warn(
-            `Notion API attempt ${error.attemptNumber} failed:`,
-            errorMessage
-          );
+          logNotionAttemptFailure('create_page', error);
         },
       }
     );
@@ -77,12 +96,7 @@ export class NotionClient {
         minTimeout: 1000,
         maxTimeout: 5000,
         onFailedAttempt: (error) => {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error';
-          console.warn(
-            `Notion API attempt ${error.attemptNumber} failed:`,
-            errorMessage
-          );
+          logNotionAttemptFailure('update_page', error);
         },
       }
     );
@@ -107,12 +121,7 @@ export class NotionClient {
         minTimeout: 1000,
         maxTimeout: 5000,
         onFailedAttempt: (error) => {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown error';
-          console.warn(
-            `Notion API attempt ${error.attemptNumber} failed:`,
-            errorMessage
-          );
+          logNotionAttemptFailure('append_blocks', error);
         },
       }
     );
@@ -141,12 +150,7 @@ export class NotionClient {
           minTimeout: 1000,
           maxTimeout: 5000,
           onFailedAttempt: (error) => {
-            const errorMessage =
-              error instanceof Error ? error.message : 'Unknown error';
-            console.warn(
-              `Notion API list children attempt ${error.attemptNumber} failed:`,
-              errorMessage
-            );
+            logNotionAttemptFailure('list_children', error);
           },
         }
       );
@@ -175,12 +179,7 @@ export class NotionClient {
           minTimeout: 1000,
           maxTimeout: 5000,
           onFailedAttempt: (error) => {
-            const errorMessage =
-              error instanceof Error ? error.message : 'Unknown error';
-            console.warn(
-              `Notion API archive block ${blockId} attempt ${error.attemptNumber} failed:`,
-              errorMessage
-            );
+            logNotionAttemptFailure(`archive_block_${blockId}`, error);
           },
         }
       );

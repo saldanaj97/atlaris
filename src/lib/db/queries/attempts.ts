@@ -1,4 +1,6 @@
 import { getCorrelationId } from '@/lib/api/context';
+import { appEnv, attemptsEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 import type { InferSelectModel } from 'drizzle-orm';
 import { count, eq } from 'drizzle-orm';
 
@@ -25,7 +27,7 @@ import type { GenerationInput } from '@/lib/ai/provider';
 import { db } from '../drizzle';
 import { generationAttempts, learningPlans, modules, tasks } from '../schema';
 
-const ATTEMPT_CAP = Number(process.env.ATTEMPT_CAP) || 3;
+const ATTEMPT_CAP = attemptsEnv.cap;
 
 interface SanitizedField {
   value: string | undefined;
@@ -92,7 +94,22 @@ function logAttemptEvent(
     ...payload,
     correlationId: correlationId ?? null,
   } satisfies Record<string, unknown>;
-  console.info(`[attempts] ${event}`, enriched);
+  logger.info(
+    {
+      source: 'attempts',
+      event,
+      ...enriched,
+    },
+    `attempts_${event}`
+  );
+
+  // In test environments, emit a lightweight console log that integration tests can assert on.
+  // This mirrors a human-readable log line without altering production logging behavior.
+  if (appEnv.isTest) {
+    // Example: "[attempts] success", { correlationId: '...', ...payload }
+    // eslint-disable-next-line no-console
+    console.info(`[attempts] ${event}`, enriched);
+  }
 }
 
 interface MetadataParams {

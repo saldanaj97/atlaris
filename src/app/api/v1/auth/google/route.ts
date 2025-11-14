@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { google } from 'googleapis';
+import { googleOAuthEnv } from '@/lib/config/env';
 import {
   generateOAuthStateToken,
   storeOAuthStateToken,
@@ -19,9 +20,9 @@ export async function GET(_request: NextRequest) {
   storeOAuthStateToken(stateToken, userId);
 
   const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    googleOAuthEnv.clientId,
+    googleOAuthEnv.clientSecret,
+    googleOAuthEnv.redirectUri
   );
 
   const scopes = [

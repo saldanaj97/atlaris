@@ -1,5 +1,7 @@
 import { ZodError, z } from 'zod';
 
+import { appEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
 import type { ProviderMetadata } from '@/lib/ai/provider';
 import { getGenerationProvider } from '@/lib/ai/provider-factory';
@@ -235,12 +237,19 @@ export async function processPlanGenerationJob(
         const runCuration = () =>
           maybeCurateAndAttachResources(planId, payload, job.userId).catch(
             (curationError) => {
-              // Log but don't fail the job
-              console.error('Curation failed:', curationError);
+              logger.error(
+                {
+                  planId,
+                  jobId: job.id,
+                  error: curationError,
+                  event: 'plan_generation_curation_failed',
+                },
+                'Curation failed during plan generation job'
+              );
             }
           );
 
-        if (process.env.NODE_ENV === 'test') {
+        if (appEnv.isTest) {
           await runCuration();
         } else {
           void runCuration();
@@ -411,12 +420,19 @@ export async function processPlanRegenerationJob(
         const runCuration = () =>
           maybeCurateAndAttachResources(planId, mergedInput, job.userId).catch(
             (curationError) => {
-              // Log but don't fail the job
-              console.error('Curation failed:', curationError);
+              logger.error(
+                {
+                  planId,
+                  jobId: job.id,
+                  error: curationError,
+                  event: 'plan_regeneration_curation_failed',
+                },
+                'Curation failed during plan regeneration job'
+              );
             }
           );
 
-        if (process.env.NODE_ENV === 'test') {
+        if (appEnv.isTest) {
           await runCuration();
         } else {
           void runCuration();
@@ -510,12 +526,19 @@ async function maybeCurateAndAttachResources(
   const CURATION_CONCURRENCY = curationConfig.concurrency;
   const TIME_BUDGET_MS = curationConfig.timeBudgetMs;
   const startTime = Date.now();
+  const curationLogger = logger.child({
+    source: 'plan_curation',
+    planId,
+  });
 
   // Get all tasks for the plan
   const taskRows = await getTasksByPlanId(planId);
 
-  console.log(
-    `[Curation] Starting curation for ${taskRows.length} tasks in plan ${planId}`
+  curationLogger.info(
+    {
+      taskCount: taskRows.length,
+    },
+    'Starting resource curation'
   );
 
   // Prepare curation params
@@ -529,8 +552,12 @@ async function maybeCurateAndAttachResources(
   for (let i = 0; i < taskRows.length; i += CURATION_CONCURRENCY) {
     // Check time budget before starting a new batch
     if (Date.now() - startTime > TIME_BUDGET_MS) {
-      console.log(
-        `[Curation] Time budget exceeded before starting batch at index ${i}, stopping curation.`
+      curationLogger.warn(
+        {
+          batchIndex: i,
+          elapsedMs: Date.now() - startTime,
+        },
+        'Time budget exceeded before starting batch, stopping curation'
       );
       break;
     }
@@ -541,8 +568,12 @@ async function maybeCurateAndAttachResources(
         const { task, moduleTitle } = taskRow;
         // Check time budget before processing individual task
         if (Date.now() - startTime > TIME_BUDGET_MS) {
-          console.log(
-            `[Curation] Time budget exceeded, skipping task ${task.id}`
+          curationLogger.warn(
+            {
+              taskId: task.id,
+              elapsedMs: Date.now() - startTime,
+            },
+            'Time budget exceeded, skipping task'
           );
           return;
         }
@@ -557,12 +588,20 @@ async function maybeCurateAndAttachResources(
 
           if (candidates.length > 0) {
             await upsertAndAttach(task.id, candidates);
-            console.log(
-              `[Curation] Attached ${candidates.length} resources to task ${task.id}`
+            curationLogger.info(
+              {
+                taskId: task.id,
+                resourceCount: candidates.length,
+              },
+              'Attached curated resources to task'
             );
           } else {
-            console.log(
-              `[Curation] No candidates met cutoff for task ${task.id} (minScore=${curationParams.minScore})`
+            curationLogger.info(
+              {
+                taskId: task.id,
+                minScore: curationParams.minScore,
+              },
+              'No curated resources met cutoff for task'
             );
           }
 
@@ -570,15 +609,22 @@ async function maybeCurateAndAttachResources(
           try {
             // Skip if task already has a micro-explanation
             if (task.hasMicroExplanation) {
-              console.log(
-                `[Curation] Skipping micro-explanation for task ${task.id}; already present`
+              curationLogger.info(
+                {
+                  taskId: task.id,
+                },
+                'Skipping micro-explanation; already present'
               );
               return;
             }
             // Skip micro-explanations if time budget is already exhausted
             if (Date.now() - startTime > TIME_BUDGET_MS) {
-              console.log(
-                `[Curation] Time budget exceeded before micro-explanation for task ${task.id}`
+              curationLogger.warn(
+                {
+                  taskId: task.id,
+                  elapsedMs: Date.now() - startTime,
+                },
+                'Time budget exceeded before micro-explanation generation'
               );
               return;
             }
@@ -597,18 +643,30 @@ async function maybeCurateAndAttachResources(
             // Update local task object from DB-side result to avoid drift
             task.description = updatedDescription;
             task.hasMicroExplanation = true;
-            console.log(
-              `[Curation] Added micro-explanation to task ${task.id}`
+            curationLogger.info(
+              {
+                taskId: task.id,
+              },
+              'Added micro-explanation to task'
             );
           } catch (explanationError) {
-            console.error(
-              `[Curation] Failed to generate micro-explanation for task ${task.id}:`,
-              explanationError
+            curationLogger.error(
+              {
+                taskId: task.id,
+                error: explanationError,
+              },
+              'Failed to generate micro-explanation for task'
             );
             // Continue with other tasks - don't fail curation for micro-explanation errors
           }
         } catch (error) {
-          console.error(`[Curation] Failed to curate task ${task.id}:`, error);
+          curationLogger.error(
+            {
+              taskId: task.id,
+              error,
+            },
+            'Failed to curate task'
+          );
           // Continue with other tasks
         }
       })
@@ -616,15 +674,24 @@ async function maybeCurateAndAttachResources(
 
     // Check time budget after batch completion (though the pre-batch check will catch for next)
     if (Date.now() - startTime > TIME_BUDGET_MS) {
-      console.log(
-        `[Curation] Time budget exceeded after batch at index ${i}, stopping curation.`
+      curationLogger.warn(
+        {
+          batchIndex: i,
+          elapsedMs: Date.now() - startTime,
+        },
+        'Time budget exceeded after batch, stopping curation'
       );
       break;
     }
   }
 
   const elapsed = Date.now() - startTime;
-  console.log(`[Curation] Completed in ${elapsed}ms`);
+  curationLogger.info(
+    {
+      elapsedMs: elapsed,
+    },
+    'Completed curation run'
+  );
 }
 
 /**
@@ -648,6 +715,10 @@ async function curateTaskResources(
   _skillLevel: 'beginner' | 'intermediate' | 'advanced'
 ): Promise<Scored[]> {
   const candidates: Scored[] = [];
+  const searchLogger = logger.child({
+    source: 'plan_curation_search',
+    taskTitle,
+  });
 
   // Search YouTube first
   let ytResults: Scored[] = [];
@@ -658,7 +729,12 @@ async function curateTaskResources(
     });
     candidates.push(...ytResults);
   } catch (error) {
-    console.error('[Curation] YouTube search failed:', error);
+    searchLogger.error(
+      {
+        error,
+      },
+      'YouTube search failed during curation'
+    );
   }
 
   // Determine validity against cutoff
@@ -678,7 +754,12 @@ async function curateTaskResources(
       });
       candidates.push(...docResults);
     } catch (error) {
-      console.error('[Curation] Docs search failed:', error);
+      searchLogger.error(
+        {
+          error,
+        },
+        'Docs search failed during curation'
+      );
     }
   }
 

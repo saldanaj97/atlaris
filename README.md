@@ -112,6 +112,20 @@ src/
 - `pnpm format` - Format with Prettier
 - `pnpm test` - Run test suite
 
+### Configuration & Environment
+
+- **Centralized env config**: All environment variables are accessed via `@/lib/config/env`. Do **not** use `process.env` directly in application code.
+- **Typed groups**: The env module exposes grouped configs (e.g., `databaseEnv`, `stripeEnv`, `aiEnv`, `loggingEnv`) so call sites only depend on the values they need.
+- **Validation**: Required variables are read via `requireEnv(...)` and will throw at startup if missing; optional variables are surfaced as `undefined`-aware values.
+- **Public vs private**: Follow Next.js guidance for public runtime envs (`NEXT_PUBLIC_*`) but still access them through the env module to keep usage consistent and testable.
+
+### Logging
+
+- **Structured logger**: Use the `logger` from `@/lib/logging/logger` instead of `console.*` for server-side logs.
+- **Request-scoped context**: In API routes, use `createRequestContext` and `attachRequestIdHeader` from `@/lib/logging/request-context` to get a `{ requestId, logger }` pair and to propagate the request ID in responses.
+- **Workers and jobs**: In workers, create child loggers with job-specific context (e.g., `{ jobId }`) rather than printing directly.
+- **No direct console**: Application code should not call `console.*` directly; if you need a new logging use case, extend the logging utilities instead.
+
 ### Database
 
 - `pnpm db:generate` - Generate Drizzle migrations

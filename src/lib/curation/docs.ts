@@ -3,6 +3,7 @@
  * Handles CSE search and heuristic fallback with validation
  */
 
+import { logger } from '@/lib/logging/logger';
 import type { ResourceCandidate, CurationParams } from '@/lib/curation/types';
 import { curationConfig } from '@/lib/curation/config';
 import { headOk, canonicalizeUrl } from '@/lib/curation/validate';
@@ -114,9 +115,14 @@ async function searchDocsCSE(
     } catch {
       body = '<no body>';
     }
-    console.error(`CSE API error: ${response.status} ${response.statusText}`, {
-      body,
-    });
+    logger.error(
+      {
+        status: response.status,
+        statusText: response.statusText,
+        body,
+      },
+      'CSE API error during docs curation'
+    );
     throw new Error(`CSE API error: ${response.status}`);
   }
 

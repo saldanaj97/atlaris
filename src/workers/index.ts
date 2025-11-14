@@ -1,19 +1,25 @@
 // Load environment variables for standalone worker execution (e.g., via tsx)
 import 'dotenv/config';
 
+import { workerEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
+
 import { PlanGenerationWorker } from './plan-generator';
 
-function parseNumber(value: string | undefined, fallback: number): number {
-  const parsed = Number.parseInt(value ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
+const SHUTDOWN_TIMEOUT_MS = 30_000;
 
 const worker = new PlanGenerationWorker({
-  pollIntervalMs: parseNumber(process.env.WORKER_POLL_INTERVAL_MS, 2000),
-  concurrency: parseNumber(process.env.WORKER_CONCURRENCY, 1),
+  pollIntervalMs: workerEnv.pollIntervalMs,
+  concurrency: workerEnv.concurrency,
+  gracefulShutdownTimeoutMs: SHUTDOWN_TIMEOUT_MS,
 });
 
-worker.start();
+try {
+  worker.start();
+} catch (error) {
+  logger.error({ error }, 'Failed to start plan generation worker');
+  process.exit(1);
+}
 
 let shuttingDown = false;
 
@@ -26,41 +32,56 @@ async function shutdown(signal: NodeJS.Signals) {
   if (shuttingDown) return;
   shuttingDown = true;
 
-  console.info(
-    JSON.stringify({
+  logger.info(
+    {
       source: 'plan-generation-worker',
-      level: 'info',
       event: 'shutdown_signal',
       signal,
-    })
+    },
+    'Received shutdown signal'
   );
 
+  let timeoutId: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(
+        new Error(
+          `Worker shutdown exceeded ${SHUTDOWN_TIMEOUT_MS}ms in index handler`
+        )
+      );
+    }, SHUTDOWN_TIMEOUT_MS);
+  });
+
   try {
-    await worker.stop();
+    await Promise.race([worker.stop(), timeoutPromise]);
     process.exit(0);
   } catch (error) {
-    console.error(
-      JSON.stringify({
+    logger.error(
+      {
         source: 'plan-generation-worker',
-        level: 'error',
         event: 'shutdown_error',
-        message: error instanceof Error ? error.message : String(error),
-      })
+        error,
+      },
+      'Failed to stop worker during shutdown'
     );
     process.exit(1);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 }
 
 // Handle termination signals for graceful shutdown
 process.once('SIGTERM', (signal) => {
   shutdown(signal).catch((error) => {
-    console.error(
-      JSON.stringify({
+    logger.error(
+      {
         source: 'plan-generation-worker',
-        level: 'error',
         event: 'shutdown_error',
-        message: error instanceof Error ? error.message : String(error),
-      })
+        error,
+      },
+      'Shutdown handler failed after SIGTERM'
     );
     process.exit(1);
   });
@@ -68,13 +89,13 @@ process.once('SIGTERM', (signal) => {
 
 process.once('SIGINT', (signal) => {
   shutdown(signal).catch((error) => {
-    console.error(
-      JSON.stringify({
+    logger.error(
+      {
         source: 'plan-generation-worker',
-        level: 'error',
         event: 'shutdown_error',
-        message: error instanceof Error ? error.message : String(error),
-      })
+        error,
+      },
+      'Shutdown handler failed after SIGINT'
     );
     process.exit(1);
   });

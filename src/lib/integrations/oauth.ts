@@ -1,7 +1,8 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { oauthEncryptionEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { integrationTokens } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
@@ -14,10 +15,7 @@ export interface OAuthTokenData {
 }
 
 function getEncryptionKey(): Buffer {
-  const key = process.env.OAUTH_ENCRYPTION_KEY;
-  if (!key) {
-    throw new Error('OAUTH_ENCRYPTION_KEY not configured');
-  }
+  const key = oauthEncryptionEnv.encryptionKey;
   // AES-256 requires a 32-byte (256-bit) key, which is 64 hex characters
   if (key.length !== 64) {
     throw new Error(

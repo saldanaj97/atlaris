@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { appEnv, curationEnvSource } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 
 /**
  * Helper to create a numeric Zod schema with coercion, validation, and defaults.
@@ -56,9 +58,15 @@ function numericEnvVar(
       // Validate integer requirement
       if (integer && !Number.isInteger(numVal)) {
         // Log warning in non-test environments, but fall back to default
-        if (process.env.NODE_ENV !== 'test') {
-          console.warn(
-            `${varName} must be ${errorParts.join(' ')}, got "${val}". Using default: ${defaultValue}`
+        if (!appEnv.isTest) {
+          logger.warn(
+            {
+              envVar: varName,
+              value: val,
+              expected: errorParts.join(' '),
+              defaultValue,
+            },
+            'Invalid numeric env var value; falling back to default'
           );
         }
         return undefined;
@@ -70,9 +78,15 @@ function numericEnvVar(
         (max !== undefined && numVal > max)
       ) {
         // Log warning in non-test environments, but fall back to default
-        if (process.env.NODE_ENV !== 'test') {
-          console.warn(
-            `${varName} must be ${errorParts.join(' ')}, got "${val}". Using default: ${defaultValue}`
+        if (!appEnv.isTest) {
+          logger.warn(
+            {
+              envVar: varName,
+              value: val,
+              expected: errorParts.join(' '),
+              defaultValue,
+            },
+            'Numeric env var out of bounds; falling back to default'
           );
         }
         return undefined;
@@ -126,9 +140,7 @@ const curationEnvSchema = z.object({
  */
 function isDevOrTest(): boolean {
   // Enables curation only in development and test environments
-  return (
-    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
-  );
+  return appEnv.isDevelopment || appEnv.isTest;
 }
 
 /**
@@ -149,7 +161,7 @@ export type CurationConfig = {
  * Centralized curation configuration with type-safe env reads and sane defaults
  */
 export const curationConfig: CurationConfig = (() => {
-  const env = curationEnvSchema.parse(process.env);
+  const env = curationEnvSchema.parse(curationEnvSource);
   const devOrTest = isDevOrTest();
 
   // Feature flag: enabled by default in dev/test, explicit in production
@@ -159,8 +171,11 @@ export const curationConfig: CurationConfig = (() => {
 
   // Validate YouTube API key only when curation is enabled
   if (enableCuration && !env.YOUTUBE_API_KEY) {
-    console.warn(
-      '[Curation] ENABLE_CURATION is on but YOUTUBE_API_KEY is missing; YouTube adapter will be skipped.'
+    logger.warn(
+      {
+        event: 'curation_missing_youtube_key',
+      },
+      'ENABLE_CURATION is true but YOUTUBE_API_KEY is missing; YouTube adapter will be skipped'
     );
   }
 

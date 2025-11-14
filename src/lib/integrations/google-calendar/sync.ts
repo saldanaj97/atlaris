@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { googleOAuthEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import {
   learningPlans,
@@ -16,9 +17,9 @@ export async function syncPlanToGoogleCalendar(
   refreshToken?: string
 ): Promise<number> {
   const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
+    googleOAuthEnv.clientId,
+    googleOAuthEnv.clientSecret,
+    googleOAuthEnv.redirectUri
   );
 
   oauth2Client.setCredentials({
