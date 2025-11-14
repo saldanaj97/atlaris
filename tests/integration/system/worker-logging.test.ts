@@ -6,6 +6,13 @@ import { JOB_TYPES } from '@/lib/jobs/types';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
 import { ensureUser } from '../../helpers/db';
 
+type WorkerLogEntry = {
+  source: string;
+  level: string;
+  event: string;
+  timestamp: string;
+};
+
 describe('Worker Logging', () => {
   let loggerInfoSpy: ReturnType<typeof vi.spyOn>;
 
@@ -62,9 +69,21 @@ describe('Worker Logging', () => {
 
     expect(parsedLogs.length).toBeGreaterThan(0);
 
-    // Find the worker_start event
-    const startLog = parsedLogs.find((log) => log.event === 'worker_start');
+    // Find the worker_start event with strict shape checking
+    const startLog = parsedLogs.find(
+      (log): log is WorkerLogEntry =>
+        typeof log.event === 'string' &&
+        log.event === 'worker_start' &&
+        typeof log.timestamp === 'string' &&
+        typeof log.source === 'string' &&
+        typeof log.level === 'string'
+    );
+
     expect(startLog).toBeDefined();
+
+    if (!startLog) {
+      throw new Error('worker_start log entry not found');
+    }
 
     // Verify required keys are present
     expect(startLog).toHaveProperty('source');
