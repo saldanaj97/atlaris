@@ -25,14 +25,6 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Use custom hooks for reusable stateful logic
 - Implement proper component hierarchies with clear data flow
 
-### TypeScript Integration
-- Use TypeScript interfaces for props, state, and component definitions
-- Define proper types for event handlers and refs
-- Implement generic components where appropriate
-- Use strict mode in `tsconfig.json` for type safety
-- Leverage React's built-in types (`React.FC`, `React.ComponentProps`, etc.)
-- Create union types for component variants and states
-
 ### Component Design
 - Follow the single responsibility principle for components
 - Use descriptive and consistent naming conventions
@@ -106,7 +98,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 ### Testing
 - Write unit tests for components using React Testing Library
 - Test component behavior, not implementation details
-- Use Jest for test runner and assertion library
+- Use Vitest for test runner and assertion library
 - Implement integration tests for complex component interactions
 - Mock external dependencies and API calls appropriately
 - Test accessibility features and keyboard navigation

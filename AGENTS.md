@@ -100,6 +100,9 @@ Tests cover:
 - Start production server (do not auto-run; listed for reference)
   - pnpm start
   - pnpm worker:start (start worker in production)
+- Local CI simulation (mirrors GitHub Actions workflows)
+  - pnpm local-ci:pr - Mirrors PR CI jobs: lint, type-check, build, unit tests (sharded 1/2, 2/2), integration tests (light subset)
+  - pnpm local-ci:main - Mirrors main branch CI jobs: lint, type-check, build (staging env), migration dry-run, integration tests (sharded 1/2, 2/2), e2e tests (sharded 1/2, 2/2)
 - Lint (type-aware, flat config)
   - pnpm lint
   - pnpm lint:fix
@@ -111,8 +114,9 @@ Tests cover:
 - Database (Drizzle)
   - Generate migrations: pnpm db:generate
   - Apply migrations: pnpm db:migrate
+  - Apply migrations to test DB: pnpm db:migrate:test-db
   - Push schema to DB: pnpm db:push
-  - Push schema to test DB: pnpm db:push:test
+  - Push schema to test DB: pnpm db:push:test-db
   - Seed database: pnpm seed (development mode)
   - Custom seed: pnpm seed:custom
   - Reset database: pnpm seed:reset
