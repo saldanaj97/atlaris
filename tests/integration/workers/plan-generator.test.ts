@@ -1,5 +1,3 @@
-import { createDefaultHandlers } from '../../helpers/workerHelpers';
-import { eq, inArray } from 'drizzle-orm';
 import {
   afterAll,
   afterEach,
@@ -10,6 +8,8 @@ import {
   vi,
 } from 'vitest';
 
+import { eq, inArray } from 'drizzle-orm';
+
 import { db } from '@/lib/db/drizzle';
 import {
   generationAttempts,
@@ -19,10 +19,19 @@ import {
   tasks,
 } from '@/lib/db/schema';
 import { enqueueJob } from '@/lib/jobs/queue';
-import { JOB_TYPES, type PlanGenerationJobResult } from '@/lib/jobs/types';
-import type { ProcessPlanGenerationJobResult } from '@/lib/jobs/worker-service';
-import * as workerService from '@/lib/jobs/worker-service';
-import { PlanGenerationWorker } from '@/workers/plan-generator';
+import {
+  JOB_TYPES,
+  type Job,
+  type PlanGenerationJobResult,
+} from '@/lib/jobs/types';
+import {
+  PlanGenerationWorker,
+  type JobHandler,
+} from '@/workers/plan-generator';
+import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-generation-handler';
+import { PersistenceService } from '@/workers/services/persistence-service';
+
+import { createDefaultHandlers } from '../../helpers/workerHelpers';
 
 import { ensureUser } from '../../helpers/db';
 
@@ -214,13 +223,6 @@ describe('PlanGenerationWorker', () => {
   });
 
   it('retries a transient failure before succeeding (J026 retry path / T070)', async () => {
-    const worker = new PlanGenerationWorker({
-      handlers: createDefaultHandlers(),
-      pollIntervalMs: 25,
-      concurrency: 1,
-      closeDbOnStop: false,
-    });
-
     const { planId, userId } = await createPlanFixture('retry');
     const jobId = await enqueueJob(JOB_TYPES.PLAN_GENERATION, planId, userId, {
       topic: 'Retry Path',
@@ -249,10 +251,51 @@ describe('PlanGenerationWorker', () => {
       result: successPayload,
     };
 
+    const persistenceService = new PersistenceService();
     const processSpy = vi
-      .spyOn(workerService, 'processPlanGenerationJob')
-      .mockResolvedValueOnce(failure)
-      .mockResolvedValueOnce(success);
+      .fn<JobHandler['processJob']>()
+      .mockImplementationOnce(async (job: Job) => {
+        await persistenceService.failJob({
+          jobId: job.id,
+          planId: job.planId,
+          userId: job.userId,
+          error: failure.error,
+          retryable: failure.retryable,
+        });
+        return failure;
+      })
+      .mockImplementationOnce(async (job: Job) => {
+        await persistenceService.completeJob({
+          jobId: job.id,
+          planId: job.planId!,
+          userId: job.userId,
+          result: successPayload,
+          metadata: undefined,
+        });
+        return success;
+      });
+
+    const worker = new PlanGenerationWorker({
+      handlers: {
+        [JOB_TYPES.PLAN_GENERATION]: {
+          processJob: (job, opts) => processSpy(job, opts),
+        },
+        [JOB_TYPES.PLAN_REGENERATION]: {
+          async processJob() {
+            return {
+              status: 'failure',
+              error:
+                'Unexpected regeneration job in PlanGenerationWorker retry test',
+              classification: 'unknown',
+              retryable: false,
+            };
+          },
+        },
+      },
+      pollIntervalMs: 25,
+      concurrency: 1,
+      closeDbOnStop: false,
+    });
 
     worker.start();
 
@@ -264,13 +307,12 @@ describe('PlanGenerationWorker', () => {
 
     expect(processSpy.mock.calls.length).toBe(2);
 
-    const [firstCall, secondCall] = processSpy.mock.calls as [
-      [Parameters<typeof workerService.processPlanGenerationJob>[0]],
-      [Parameters<typeof workerService.processPlanGenerationJob>[0]],
-    ];
+    const [firstCall, secondCall] = processSpy.mock.calls;
+    const firstJob = firstCall?.[0] as Job | undefined;
+    const secondJob = secondCall?.[0] as Job | undefined;
 
-    expect(firstCall?.[0].attempts).toBe(0);
-    expect(secondCall?.[0].attempts).toBe(1);
+    expect(firstJob?.attempts).toBe(0);
+    expect(secondJob?.attempts).toBe(1);
 
     const jobRow = await fetchJob(jobId);
     expect(jobRow?.status).toBe('completed');
@@ -284,13 +326,6 @@ describe('PlanGenerationWorker', () => {
   });
 
   it('processes jobs in priority/creation order under load (J026 concurrency + T071)', async () => {
-    const worker = new PlanGenerationWorker({
-      handlers: createDefaultHandlers(),
-      pollIntervalMs: 20,
-      concurrency: 2,
-      closeDbOnStop: false,
-    });
-
     const { planId, userId } = await createPlanFixture('ordering');
 
     const jobIds = await Promise.all([
@@ -337,16 +372,48 @@ describe('PlanGenerationWorker', () => {
       },
     };
 
-    vi.spyOn(workerService, 'processPlanGenerationJob').mockImplementation(
-      async (job) => {
+    const persistenceService = new PersistenceService();
+    const processSpy = vi
+      .fn<JobHandler['processJob']>()
+      .mockImplementation(async (job: Job) => {
         order.push({
           id: job.id,
           priority: job.priority,
           createdAt: job.createdAt,
         });
+
+        await persistenceService.completeJob({
+          jobId: job.id,
+          planId: job.planId!,
+          userId: job.userId,
+          result: stubResult.result,
+          metadata: undefined,
+        });
+
         return stubResult;
-      }
-    );
+      });
+
+    const worker = new PlanGenerationWorker({
+      handlers: {
+        [JOB_TYPES.PLAN_GENERATION]: {
+          processJob: (job, opts) => processSpy(job, opts),
+        },
+        [JOB_TYPES.PLAN_REGENERATION]: {
+          async processJob() {
+            return {
+              status: 'failure',
+              error:
+                'Unexpected regeneration job in PlanGenerationWorker ordering test',
+              classification: 'unknown',
+              retryable: false,
+            };
+          },
+        },
+      },
+      pollIntervalMs: 20,
+      concurrency: 2,
+      closeDbOnStop: false,
+    });
 
     worker.start();
 
@@ -380,13 +447,6 @@ describe('PlanGenerationWorker', () => {
   });
 
   it('waits for in-flight jobs during graceful shutdown (J026 graceful)', async () => {
-    const worker = new PlanGenerationWorker({
-      handlers: createDefaultHandlers(),
-      pollIntervalMs: 20,
-      concurrency: 1,
-      closeDbOnStop: false,
-    });
-
     const { planId, userId } = await createPlanFixture('graceful');
     const jobId = await enqueueJob(JOB_TYPES.PLAN_GENERATION, planId, userId, {
       topic: 'Graceful shutdown',
@@ -396,7 +456,7 @@ describe('PlanGenerationWorker', () => {
       learningStyle: 'practice',
     });
 
-    const result: ProcessPlanGenerationJobResult = {
+    const _result: ProcessPlanGenerationJobResult = {
       status: 'success',
       result: {
         modulesCount: 1,
@@ -406,12 +466,12 @@ describe('PlanGenerationWorker', () => {
       },
     };
 
-    vi.spyOn(workerService, 'processPlanGenerationJob').mockImplementation(
-      async () => {
-        await sleep(200);
-        return result;
-      }
-    );
+    const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
+      pollIntervalMs: 20,
+      concurrency: 1,
+      closeDbOnStop: false,
+    });
 
     worker.start();
 

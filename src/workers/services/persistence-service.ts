@@ -1,11 +1,11 @@
+import type { ProviderMetadata } from '@/lib/ai/provider';
+import { recordUsage } from '@/lib/db/usage';
 import { completeJob, failJob, type FailJobOptions } from '@/lib/jobs/queue';
 import type { PlanGenerationJobResult } from '@/lib/jobs/types';
 import {
-  markPlanGenerationSuccess,
   markPlanGenerationFailure,
+  markPlanGenerationSuccess,
 } from '@/lib/stripe/usage';
-import { recordUsage } from '@/lib/db/usage';
-import type { ProviderMetadata } from '@/lib/ai/provider';
 
 export interface JobCompletionInput {
   jobId: string;
@@ -50,16 +50,7 @@ export class PersistenceService {
     await completeJob(jobId, result);
     await markPlanGenerationSuccess(planId);
 
-    const usage = metadata?.usage;
-    await recordUsage({
-      userId,
-      provider: metadata?.provider ?? 'unknown',
-      model: metadata?.model ?? 'unknown',
-      inputTokens: usage?.promptTokens ?? undefined,
-      outputTokens: usage?.completionTokens ?? undefined,
-      costCents: 0,
-      kind: 'plan',
-    });
+    await this.recordPlanUsage(userId, metadata);
   }
 
   /**
@@ -78,17 +69,30 @@ export class PersistenceService {
 
     if (!retryable && planId) {
       await markPlanGenerationFailure(planId);
-
-      const failedUsage = metadata?.usage;
-      await recordUsage({
-        userId,
-        provider: metadata?.provider ?? 'unknown',
-        model: metadata?.model ?? 'unknown',
-        inputTokens: failedUsage?.promptTokens ?? undefined,
-        outputTokens: failedUsage?.completionTokens ?? undefined,
-        costCents: 0,
-        kind: 'plan',
-      });
+      await this.recordPlanUsage(userId, metadata);
     }
+  }
+
+  /**
+   * Records plan generation usage from provider metadata.
+   *
+   * @param userId - User ID for usage tracking
+   * @param metadata - Provider metadata containing usage information
+   */
+  private async recordPlanUsage(
+    userId: string,
+    metadata?: ProviderMetadata
+  ): Promise<void> {
+    const usage = metadata?.usage;
+    const usageRecord: UsageRecordInput = {
+      userId,
+      provider: metadata?.provider ?? 'unknown',
+      model: metadata?.model ?? 'unknown',
+      inputTokens: usage?.promptTokens ?? undefined,
+      outputTokens: usage?.completionTokens ?? undefined,
+      costCents: 0,
+      kind: 'plan',
+    };
+    await recordUsage(usageRecord);
   }
 }

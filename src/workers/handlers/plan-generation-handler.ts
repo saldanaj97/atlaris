@@ -1,5 +1,11 @@
 import { ZodError, z } from 'zod';
 
+import {
+  JOB_TYPES,
+  type Job,
+  type PlanGenerationJobData,
+  type PlanGenerationJobResult,
+} from '@/lib/jobs/types';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 import {
@@ -7,15 +13,9 @@ import {
   TOPIC_MAX_LENGTH,
   weeklyHoursSchema,
 } from '@/lib/validation/learningPlans';
-import {
-  JOB_TYPES,
-  type Job,
-  type PlanGenerationJobData,
-  type PlanGenerationJobResult,
-} from '@/lib/jobs/types';
 
-import { GenerationService } from '../services/generation-service';
 import { CurationService } from '../services/curation-service';
+import { GenerationService } from '../services/generation-service';
 import { PersistenceService } from '../services/persistence-service';
 
 const planGenerationJobDataSchema = z
@@ -139,9 +139,17 @@ export class PlanGenerationHandler {
     }
 
     if (!job.planId) {
+      const error = 'Plan generation job is missing a planId.';
+      await this.persistenceService.failJob({
+        jobId: job.id,
+        planId: null,
+        userId: job.userId,
+        error,
+        retryable: false,
+      });
       return {
         status: 'failure',
-        error: 'Plan generation job is missing a planId.',
+        error,
         classification: 'validation',
         retryable: false,
       };
@@ -156,6 +164,14 @@ export class PlanGenerationHandler {
           ? buildValidationErrorMessage(error)
           : 'Invalid job payload.';
 
+      await this.persistenceService.failJob({
+        jobId: job.id,
+        planId: job.planId,
+        userId: job.userId,
+        error: message,
+        retryable: false,
+      });
+
       return {
         status: 'failure',
         error: message,
@@ -163,6 +179,9 @@ export class PlanGenerationHandler {
         retryable: false,
       };
     }
+
+    // Track whether we've updated job state to avoid double-updating in outer catch
+    let stateUpdated = false;
 
     try {
       const result = await this.generationService.generatePlan(
@@ -231,6 +250,7 @@ export class PlanGenerationHandler {
           result: jobResult,
           metadata: result.metadata,
         });
+        stateUpdated = true;
 
         return {
           status: 'success',
@@ -248,16 +268,16 @@ export class PlanGenerationHandler {
             ? result.error
             : 'Plan generation failed.';
 
-      if (!retryable) {
-        await this.persistenceService.failJob({
-          jobId: job.id,
-          planId: job.planId,
-          userId: job.userId,
-          error: message,
-          retryable: false,
-          metadata: result.metadata,
-        });
-      }
+      // Always call failJob for generation failures, regardless of retryable flag
+      await this.persistenceService.failJob({
+        jobId: job.id,
+        planId: job.planId,
+        userId: job.userId,
+        error: message,
+        retryable,
+        metadata: result.metadata,
+      });
+      stateUpdated = true;
 
       return {
         status: 'failure',
@@ -266,6 +286,23 @@ export class PlanGenerationHandler {
         retryable,
       };
     } catch (error) {
+      // Only update state if we haven't already called completeJob or failJob
+      if (!stateUpdated) {
+        const message =
+          error instanceof Error
+            ? error.message ||
+              'Unexpected error processing plan generation job.'
+            : 'Unexpected error processing plan generation job.';
+
+        await this.persistenceService.failJob({
+          jobId: job.id,
+          planId: job.planId ?? null,
+          userId: job.userId,
+          error: message,
+          retryable: true,
+        });
+      }
+
       const message =
         error instanceof Error
           ? error.message || 'Unexpected error processing plan generation job.'

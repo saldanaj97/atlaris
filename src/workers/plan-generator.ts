@@ -243,7 +243,7 @@ export class PlanGenerationWorker {
 
       const signal = this.shutdownController?.signal;
       const result = await handler.processJob(job, { signal });
-      await this.finalizeJob(job, result, Date.now() - startedAt);
+      this.finalizeJob(job, result, Date.now() - startedAt);
     } catch (error) {
       const normalized = normalizeError(error);
       this.log('error', 'job_processing_error', {
@@ -258,11 +258,11 @@ export class PlanGenerationWorker {
     }
   }
 
-  private async finalizeJob(
+  private finalizeJob(
     job: Job,
     result: ProcessPlanGenerationJobResult,
     durationMs: number
-  ): Promise<void> {
+  ): void {
     if (result.status === 'success') {
       this.stats.jobsCompleted += 1;
       this.log('info', 'job_completed', {
