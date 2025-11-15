@@ -57,6 +57,9 @@ afterAll(() => {
 });
 
 beforeEach(() => {
+  // Reset modules to ensure curation config is loaded with current env vars
+  vi.resetModules();
+
   // Mock fetch for YouTube API calls to prevent real API failures
   global.fetch = vi.fn(async (input: any, init?: any) => {
     const method =
@@ -301,7 +304,7 @@ describe('Plan generation with curation E2E', () => {
       // Set very high min score to filter out most resources
       process.env.MIN_RESOURCE_SCORE = '0.95';
 
-      // Reset modules to reload config with new env var value
+      // Reset modules again to reload config with new env var value
       vi.resetModules();
 
       // Dynamically re-import worker and related modules to pick up new config
