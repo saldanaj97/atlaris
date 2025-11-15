@@ -1,3 +1,4 @@
+import { createDefaultHandlers } from '../helpers/workerHelpers';
 import {
   afterAll,
   beforeAll,
@@ -234,6 +235,7 @@ describe('E2E: plan generation with dates propagates to provider prompt', () => 
     const planId: string = planPayload.id;
 
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 25,
       concurrency: 1,
       closeDbOnStop: false,

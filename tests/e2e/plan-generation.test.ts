@@ -1,3 +1,4 @@
+import { createDefaultHandlers } from '../helpers/workerHelpers';
 import {
   afterAll,
   afterEach,
@@ -153,6 +154,7 @@ describe('Plan generation end-to-end', () => {
     const planId: string = planPayload.id;
 
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 40,
       concurrency: 1,
       closeDbOnStop: false,
@@ -250,6 +252,7 @@ describe('Plan generation end-to-end', () => {
       .mockImplementation((job) => originalProcessPlanGenerationJob(job));
 
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 25,
       concurrency: 1,
       closeDbOnStop: false,

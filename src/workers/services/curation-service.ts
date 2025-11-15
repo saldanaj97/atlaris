@@ -5,7 +5,7 @@ import { curateDocs } from '@/lib/curation/docs';
 import { curateYouTube } from '@/lib/curation/youtube';
 import { selectTop, type Scored } from '@/lib/curation/ranking';
 import { generateMicroExplanation } from '@/lib/ai/micro-explanations';
-import type { GenerationProvider } from '@/lib/ai/provider';
+import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
 import { getTasksByPlanId } from '@/lib/db/queries/tasks';
 import { upsertAndAttach } from '@/lib/db/queries/resources';
 import { appendTaskMicroExplanation } from '@/lib/db/queries/tasks';
@@ -21,7 +21,7 @@ export interface CurationInput {
  * Handles YouTube and documentation search, resource attachment, and AI-powered task explanations.
  */
 export class CurationService {
-  constructor(private readonly provider: GenerationProvider) {}
+  constructor(private readonly provider: AiPlanGenerationProvider) {}
 
   /**
    * Curates and attaches resources for all tasks in a learning plan and generates micro-explanations.
@@ -176,7 +176,7 @@ export class CurationService {
       minScore: number;
       maxResults: number;
     },
-    _skillLevel: 'beginner' | 'intermediate' | 'advanced'
+    _skillLevel: 'beginner' | 'intermediate' | 'advanced' // Reserved for future skill-level-specific curation strategies
   ): Promise<Scored[]> {
     const candidates: Scored[] = [];
     const searchLogger = logger.child({
@@ -247,7 +247,7 @@ export class CurationService {
     },
     startTime: number,
     timeBudgetMs: number,
-    curationLogger: ReturnType<typeof logger.child>
+    curationLogger: typeof logger
   ): Promise<void> {
     try {
       if (task.hasMicroExplanation) {

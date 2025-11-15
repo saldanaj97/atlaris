@@ -1,3 +1,4 @@
+import { createDefaultHandlers } from '../../helpers/workerHelpers';
 import { eq, inArray } from 'drizzle-orm';
 import {
   afterAll,
@@ -127,6 +128,7 @@ async function fetchJob(jobId: string) {
 describe('PlanGenerationWorker', () => {
   it('processes a plan generation job end-to-end (J026 success + T072 + T073)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 40,
       concurrency: 1,
       closeDbOnStop: false,
@@ -213,6 +215,7 @@ describe('PlanGenerationWorker', () => {
 
   it('retries a transient failure before succeeding (J026 retry path / T070)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 25,
       concurrency: 1,
       closeDbOnStop: false,
@@ -282,6 +285,7 @@ describe('PlanGenerationWorker', () => {
 
   it('processes jobs in priority/creation order under load (J026 concurrency + T071)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 20,
       concurrency: 2,
       closeDbOnStop: false,
@@ -377,6 +381,7 @@ describe('PlanGenerationWorker', () => {
 
   it('waits for in-flight jobs during graceful shutdown (J026 graceful)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 20,
       concurrency: 1,
       closeDbOnStop: false,

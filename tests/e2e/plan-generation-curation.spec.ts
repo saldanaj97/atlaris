@@ -1,3 +1,4 @@
+import { createDefaultHandlers } from '../helpers/workerHelpers';
 /**
  * E2E tests for plan generation with curation
  * Tests: resources attached, explanations appended, cutoff respected, no broken links
@@ -197,6 +198,7 @@ describe('Plan generation with curation E2E', () => {
     // Import worker after env is set so curationConfig picks up keys
     const { PlanGenerationWorker } = await import('@/workers/plan-generator');
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 50,
       concurrency: 1,
       closeDbOnStop: false,
@@ -319,6 +321,7 @@ describe('Plan generation with curation E2E', () => {
       const planId: string = planPayload.id;
 
       const worker = new FreshWorker({
+        handlers: createDefaultHandlers(),
         pollIntervalMs: 50,
         concurrency: 1,
         closeDbOnStop: false,

@@ -27,6 +27,7 @@ import { PlanGenerationWorker } from '@/workers/plan-generator';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
 import { ensureUser } from '../../helpers/db';
+import { createDefaultHandlers } from '../../helpers/workerHelpers';
 
 const originalEnv = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -135,6 +136,7 @@ async function createPlanForUser(key: string) {
 describe('PlanGenerationWorker', () => {
   it('cycles without jobs in the queue (T030)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 50,
       concurrency: 1,
       closeDbOnStop: false,
@@ -161,6 +163,7 @@ describe('PlanGenerationWorker', () => {
 
   it('processes a single plan generation job end-to-end (T031)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 50,
       concurrency: 1,
       closeDbOnStop: false,
@@ -266,6 +269,7 @@ describe('PlanGenerationWorker', () => {
 
   it('retries a transient failure before completing successfully (T032)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 50,
       concurrency: 1,
       closeDbOnStop: false,
@@ -337,6 +341,7 @@ describe('PlanGenerationWorker', () => {
 
   it('marks a job and plan as failed after exhausting max attempts (T033)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 50,
       concurrency: 1,
       closeDbOnStop: false,
@@ -408,6 +413,7 @@ describe('PlanGenerationWorker', () => {
 
   it('processes jobs sequentially when concurrency is set to 1 (T034)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 25,
       concurrency: 1,
       closeDbOnStop: false,
@@ -534,6 +540,7 @@ describe('PlanGenerationWorker', () => {
 
   it('waits for in-flight work during graceful shutdown (T035)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 25,
       concurrency: 1,
       closeDbOnStop: false,
@@ -589,6 +596,7 @@ describe('PlanGenerationWorker', () => {
 
   it('fails fast on invalid job data and surfaces validation errors (T036)', async () => {
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 25,
       concurrency: 1,
       closeDbOnStop: false,

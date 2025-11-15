@@ -1,6 +1,8 @@
-import type { ProviderMetadata } from '@/lib/ai/provider';
+import type {
+  ProviderMetadata,
+  AiPlanGenerationProvider,
+} from '@/lib/ai/provider';
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
-import type { GenerationProvider } from '@/lib/ai/provider';
 import type { FailureClassification } from '@/lib/types/client';
 
 export interface GenerationInput {
@@ -43,7 +45,7 @@ export type GenerationResult =
  * Wraps the orchestrator and provides a clean interface for the worker handler.
  */
 export class GenerationService {
-  constructor(private readonly provider: GenerationProvider) {}
+  constructor(private readonly provider: AiPlanGenerationProvider) {}
 
   /**
    * Generates a learning plan using the configured AI provider.
@@ -84,13 +86,15 @@ export class GenerationService {
         };
       }
 
-      const classification = result.classification ?? 'unknown';
-      const error =
-        result.error instanceof Error
-          ? result.error
-          : typeof result.error === 'string'
-            ? result.error
-            : 'Plan generation failed.';
+      const classification = result.classification;
+      let error: Error | string;
+      if (result.error instanceof Error) {
+        error = result.error;
+      } else if (typeof result.error === 'string') {
+        error = result.error;
+      } else {
+        error = 'Plan generation failed.';
+      }
 
       return {
         status: 'failure',
