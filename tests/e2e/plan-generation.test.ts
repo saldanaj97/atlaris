@@ -1,3 +1,4 @@
+import { createDefaultHandlers } from '../helpers/workerHelpers';
 import {
   afterAll,
   afterEach,
@@ -19,11 +20,16 @@ import {
   modules,
   tasks,
 } from '@/lib/db/schema';
+import { startAttempt, recordFailure } from '@/lib/db/queries/attempts';
 import { getJobsByPlanId } from '@/lib/jobs/queue';
-import { type PlanGenerationJobResult } from '@/lib/jobs/types';
-import type { ProcessPlanGenerationJobResult } from '@/lib/jobs/worker-service';
-import * as workerService from '@/lib/jobs/worker-service';
+import {
+  JOB_TYPES,
+  type Job,
+  type PlanGenerationJobResult,
+} from '@/lib/jobs/types';
 import { PlanGenerationWorker } from '@/workers/plan-generator';
+import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-generation-handler';
+import { PersistenceService } from '@/workers/services/persistence-service';
 import { eq, inArray } from 'drizzle-orm';
 
 import { setTestUser } from '../helpers/auth';
@@ -153,6 +159,7 @@ describe('Plan generation end-to-end', () => {
     const planId: string = planPayload.id;
 
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 40,
       concurrency: 1,
       closeDbOnStop: false,
@@ -242,14 +249,63 @@ describe('Plan generation end-to-end', () => {
       retryable: true,
     };
 
-    const originalProcessPlanGenerationJob =
-      workerService.processPlanGenerationJob;
+    const handlers = createDefaultHandlers();
+    const realHandler = handlers[JOB_TYPES.PLAN_GENERATION];
+    const originalProcessJob = realHandler.processJob.bind(realHandler);
+    const persistenceService = new PersistenceService();
+
+    async function recordSimulatedFailureAttempt(job: Job) {
+      const rawData = job.data as {
+        topic?: string;
+        notes?: string | null;
+        skillLevel?: 'beginner' | 'intermediate' | 'advanced';
+        weeklyHours?: number;
+        learningStyle?: 'reading' | 'video' | 'practice' | 'mixed';
+      };
+
+      const input = {
+        topic: rawData.topic ?? 'Resilient Background Processing',
+        notes: rawData.notes ?? null,
+        skillLevel: rawData.skillLevel ?? 'advanced',
+        weeklyHours: rawData.weeklyHours ?? 4,
+        learningStyle: rawData.learningStyle ?? 'practice',
+        startDate: null,
+        deadlineDate: null,
+      };
+
+      const prep = await startAttempt({
+        planId: job.planId!,
+        userId: job.userId,
+        input,
+      });
+      await recordFailure({
+        planId: job.planId!,
+        preparation: prep,
+        classification: 'provider_error',
+        durationMs: 500,
+        timedOut: false,
+        extendedTimeout: false,
+        providerMetadata: undefined,
+      });
+    }
+
     const processSpy = vi
-      .spyOn(workerService, 'processPlanGenerationJob')
-      .mockImplementationOnce(async () => failure)
-      .mockImplementation((job) => originalProcessPlanGenerationJob(job));
+      .spyOn(realHandler, 'processJob')
+      .mockImplementationOnce(async (job: Job) => {
+        await recordSimulatedFailureAttempt(job);
+        await persistenceService.failJob({
+          jobId: job.id,
+          planId: job.planId,
+          userId: job.userId,
+          error: failure.error,
+          retryable: true,
+        });
+        return failure;
+      })
+      .mockImplementation((job, opts) => originalProcessJob(job, opts));
 
     const worker = new PlanGenerationWorker({
+      handlers,
       pollIntervalMs: 25,
       concurrency: 1,
       closeDbOnStop: false,

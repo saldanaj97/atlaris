@@ -1,3 +1,4 @@
+import { createDefaultHandlers } from '../../helpers/workerHelpers';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { logger } from '@/lib/logging/logger';
 import { db } from '@/lib/db/drizzle';
@@ -48,6 +49,7 @@ describe('Worker Logging', () => {
     });
 
     const worker = new PlanGenerationWorker({
+      handlers: createDefaultHandlers(),
       pollIntervalMs: 100,
       concurrency: 1,
       closeDbOnStop: false,

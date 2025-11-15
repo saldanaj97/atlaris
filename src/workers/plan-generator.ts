@@ -1,34 +1,32 @@
 import { appEnv } from '@/lib/config/env';
 import { client } from '@/lib/db/drizzle';
 import { logger } from '@/lib/logging/logger';
-import {
-  completeJob,
-  failJob,
-  getNextJob,
-  type FailJobOptions,
-} from '@/lib/jobs/queue';
-import {
-  processPlanGenerationJob,
-  type ProcessPlanGenerationJobFailure,
-  type ProcessPlanGenerationJobResult,
-} from '@/lib/jobs/worker-service';
-import {
-  JOB_TYPES,
-  type Job,
-  type PlanGenerationJobResult,
-} from '@/lib/jobs/types';
+import { getNextJob } from '@/lib/jobs/queue';
+import { JOB_TYPES, type Job, type JobType } from '@/lib/jobs/types';
+import type { ProcessPlanGenerationJobResult } from './handlers/plan-generation-handler';
 
 const DEFAULT_POLL_INTERVAL_MS = 2000;
 const DEFAULT_CONCURRENCY = 1;
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 30_000;
 
-const ACTIVE_JOB_TYPES = [JOB_TYPES.PLAN_GENERATION] as const;
+const ACTIVE_JOB_TYPES = [
+  JOB_TYPES.PLAN_GENERATION,
+  JOB_TYPES.PLAN_REGENERATION,
+] as const;
+
+export interface JobHandler {
+  processJob(
+    job: Job,
+    opts?: { signal?: AbortSignal }
+  ): Promise<ProcessPlanGenerationJobResult>;
+}
 
 export interface PlanGenerationWorkerOptions {
   pollIntervalMs?: number;
   concurrency?: number;
   gracefulShutdownTimeoutMs?: number;
   closeDbOnStop?: boolean;
+  handlers: Record<JobType, JobHandler>;
 }
 
 export interface PlanGenerationWorkerStats {
@@ -65,6 +63,7 @@ export class PlanGenerationWorker {
   private readonly concurrency: number;
   private readonly gracefulShutdownTimeoutMs: number;
   private readonly closeDbOnStop: boolean;
+  private readonly handlers: Record<JobType, JobHandler>;
 
   private isRunning = false;
   private stopRequested = false;
@@ -81,7 +80,7 @@ export class PlanGenerationWorker {
     jobsFailed: 0,
   };
 
-  constructor(options: PlanGenerationWorkerOptions = {}) {
+  constructor(options: PlanGenerationWorkerOptions) {
     this.pollIntervalMs = Math.max(
       options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS,
       10
@@ -94,6 +93,7 @@ export class PlanGenerationWorker {
       1000
     );
     this.closeDbOnStop = options.closeDbOnStop ?? true;
+    this.handlers = options.handlers;
   }
 
   getStats(): PlanGenerationWorkerStats {
@@ -224,105 +224,65 @@ export class PlanGenerationWorker {
     const startedAt = Date.now();
     this.log('info', 'job_started', {
       jobId: job.id,
+      jobType: job.type,
       planId: job.planId,
       attempts: job.attempts,
       maxAttempts: job.maxAttempts,
     });
 
     try {
+      const handler = this.handlers[job.type];
+      if (!handler) {
+        this.log('error', 'unsupported_job_type', {
+          jobId: job.id,
+          jobType: job.type,
+        });
+        this.stats.jobsFailed += 1;
+        return;
+      }
+
       const signal = this.shutdownController?.signal;
-      const result = await processPlanGenerationJob(job, { signal });
-      await this.finalizeJob(job, result, Date.now() - startedAt);
+      const result = await handler.processJob(job, { signal });
+      this.finalizeJob(job, result, Date.now() - startedAt);
     } catch (error) {
       const normalized = normalizeError(error);
       this.log('error', 'job_processing_error', {
         jobId: job.id,
+        jobType: job.type,
         planId: job.planId,
         message: normalized.message,
         name: normalized.name ?? null,
       });
 
-      try {
-        await failJob(job.id, normalized.message);
-        this.stats.jobsFailed += 1;
-      } catch (failError) {
-        const fallback = normalizeError(failError);
-        this.log('error', 'job_fail_fallback_error', {
-          jobId: job.id,
-          planId: job.planId,
-          message: fallback.message,
-        });
-      }
+      this.stats.jobsFailed += 1;
     }
   }
 
-  private async finalizeJob(
+  private finalizeJob(
     job: Job,
     result: ProcessPlanGenerationJobResult,
     durationMs: number
-  ): Promise<void> {
+  ): void {
     if (result.status === 'success') {
-      await this.completeSuccessfulJob(job, result.result, durationMs);
-      return;
-    }
-
-    await this.handleFailedJob(job, result, durationMs);
-  }
-
-  private async completeSuccessfulJob(
-    job: Job,
-    payload: PlanGenerationJobResult,
-    durationMs: number
-  ): Promise<void> {
-    try {
-      await completeJob(job.id, payload);
       this.stats.jobsCompleted += 1;
       this.log('info', 'job_completed', {
         jobId: job.id,
         planId: job.planId,
         durationMs,
-        modulesCount: payload.modulesCount,
-        tasksCount: payload.tasksCount,
+        modulesCount: result.result.modulesCount,
+        tasksCount: result.result.tasksCount,
       });
-    } catch (error) {
-      const details = normalizeError(error);
-      this.log('error', 'job_complete_error', {
-        jobId: job.id,
-        planId: job.planId,
-        message: details.message,
-      });
-      throw error;
+      return;
     }
-  }
 
-  private async handleFailedJob(
-    job: Job,
-    result: ProcessPlanGenerationJobFailure,
-    durationMs: number
-  ): Promise<void> {
-    const failOptions: FailJobOptions | undefined = result.retryable
-      ? undefined
-      : { retryable: false };
-
-    try {
-      await failJob(job.id, result.error, failOptions);
-      this.stats.jobsFailed += 1;
-      this.log(result.retryable ? 'warn' : 'error', 'job_failed', {
-        jobId: job.id,
-        planId: job.planId,
-        classification: result.classification,
-        retryable: result.retryable,
-        durationMs,
-      });
-    } catch (error) {
-      const details = normalizeError(error);
-      this.log('error', 'job_fail_error', {
-        jobId: job.id,
-        planId: job.planId,
-        message: details.message,
-      });
-      throw error;
-    }
+    this.stats.jobsFailed += 1;
+    this.log(result.retryable ? 'warn' : 'error', 'job_failed', {
+      jobId: job.id,
+      planId: job.planId,
+      classification: result.classification,
+      retryable: result.retryable,
+      durationMs,
+    });
   }
 
   private async closeDatabaseConnection(): Promise<void> {
