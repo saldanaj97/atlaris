@@ -180,9 +180,6 @@ export class PlanGenerationHandler {
       };
     }
 
-    // Track whether we've updated job state to avoid double-updating in outer catch
-    let stateUpdated = false;
-
     try {
       const result = await this.generationService.generatePlan(
         {
@@ -250,7 +247,6 @@ export class PlanGenerationHandler {
           result: jobResult,
           metadata: result.metadata,
         });
-        stateUpdated = true;
 
         return {
           status: 'success',
@@ -277,7 +273,6 @@ export class PlanGenerationHandler {
         retryable,
         metadata: result.metadata,
       });
-      stateUpdated = true;
 
       return {
         status: 'failure',
@@ -286,27 +281,18 @@ export class PlanGenerationHandler {
         retryable,
       };
     } catch (error) {
-      // Only update state if we haven't already called completeJob or failJob
-      if (!stateUpdated) {
-        const message =
-          error instanceof Error
-            ? error.message ||
-              'Unexpected error processing plan generation job.'
-            : 'Unexpected error processing plan generation job.';
-
-        await this.persistenceService.failJob({
-          jobId: job.id,
-          planId: job.planId ?? null,
-          userId: job.userId,
-          error: message,
-          retryable: true,
-        });
-      }
-
       const message =
         error instanceof Error
           ? error.message || 'Unexpected error processing plan generation job.'
           : 'Unexpected error processing plan generation job.';
+
+      await this.persistenceService.failJob({
+        jobId: job.id,
+        planId: job.planId ?? null,
+        userId: job.userId,
+        error: message,
+        retryable: true,
+      });
 
       return {
         status: 'failure',

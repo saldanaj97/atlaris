@@ -79,9 +79,19 @@ export class PlanRegenerationHandler {
     }
 
     if (!job.planId) {
+      const error = 'Regeneration job missing planId';
+
+      await this.persistenceService.failJob({
+        jobId: job.id,
+        planId: null,
+        userId: job.userId,
+        error,
+        retryable: false,
+      });
+
       return {
         status: 'failure',
-        error: 'Regeneration job missing planId',
+        error,
         classification: 'validation',
         retryable: false,
       };
@@ -90,6 +100,15 @@ export class PlanRegenerationHandler {
     const parsedPayload = planRegenerationJobDataSchema.safeParse(job.data);
     if (!parsedPayload.success) {
       const message = buildValidationErrorMessage(parsedPayload.error);
+
+      await this.persistenceService.failJob({
+        jobId: job.id,
+        planId: job.planId,
+        userId: job.userId,
+        error: message,
+        retryable: false,
+      });
+
       return {
         status: 'failure',
         error: message,
@@ -106,9 +125,19 @@ export class PlanRegenerationHandler {
       });
 
       if (!plan) {
+        const error = 'Plan not found for regeneration';
+
+        await this.persistenceService.failJob({
+          jobId: job.id,
+          planId: job.planId,
+          userId: job.userId,
+          error,
+          retryable: false,
+        });
+
         return {
           status: 'failure',
-          error: 'Plan not found for regeneration',
+          error,
           classification: 'validation',
           retryable: false,
         };
@@ -201,16 +230,14 @@ export class PlanRegenerationHandler {
             ? result.error
             : 'Regeneration failed.';
 
-      if (!retryable) {
-        await this.persistenceService.failJob({
-          jobId: job.id,
-          planId: job.planId,
-          userId: job.userId,
-          error: message,
-          retryable: false,
-          metadata: result.metadata,
-        });
-      }
+      await this.persistenceService.failJob({
+        jobId: job.id,
+        planId: job.planId,
+        userId: job.userId,
+        error: message,
+        retryable,
+        metadata: result.metadata,
+      });
 
       return {
         status: 'failure',
@@ -223,6 +250,14 @@ export class PlanRegenerationHandler {
         error instanceof Error
           ? error.message || 'Unexpected error processing regeneration job.'
           : 'Unexpected error processing regeneration job.';
+
+      await this.persistenceService.failJob({
+        jobId: job.id,
+        planId: job.planId ?? null,
+        userId: job.userId,
+        error: message,
+        retryable: true,
+      });
 
       return {
         status: 'failure',

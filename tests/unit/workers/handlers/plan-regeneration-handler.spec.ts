@@ -96,6 +96,13 @@ describe('PlanRegenerationHandler', () => {
         expect(result.error).toContain('missing planId');
         expect(result.classification).toBe('validation');
       }
+      expect(persistenceService.failJob).toHaveBeenCalledWith({
+        jobId: 'job-123',
+        planId: null,
+        userId: 'user-123',
+        error: 'Regeneration job missing planId',
+        retryable: false,
+      });
     });
 
     it('should reject invalid job data', async () => {
@@ -120,7 +127,16 @@ describe('PlanRegenerationHandler', () => {
       expect(result.status).toBe('failure');
       if (result.status === 'failure') {
         expect(result.classification).toBe('validation');
+        expect(result.retryable).toBe(false);
       }
+      expect(persistenceService.failJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobId: 'job-123',
+          planId: 'plan-123',
+          userId: 'user-123',
+          retryable: false,
+        })
+      );
     });
 
     it('should reject when plan not found', async () => {
@@ -152,7 +168,15 @@ describe('PlanRegenerationHandler', () => {
       if (result.status === 'failure') {
         expect(result.error).toContain('not found');
         expect(result.classification).toBe('validation');
+        expect(result.retryable).toBe(false);
       }
+      expect(persistenceService.failJob).toHaveBeenCalledWith({
+        jobId: 'job-123',
+        planId: validUuid,
+        userId: 'user-123',
+        error: 'Plan not found for regeneration',
+        retryable: false,
+      });
     });
 
     it('should successfully regenerate plan with overrides', async () => {
@@ -570,7 +594,17 @@ describe('PlanRegenerationHandler', () => {
           expect(result.retryable).toBe(true);
           expect(result.error).toBe('Rate limit exceeded');
         }
-        expect(persistenceService.failJob).not.toHaveBeenCalled();
+        expect(persistenceService.failJob).toHaveBeenCalledWith({
+          jobId: 'job-123',
+          planId: validUuid,
+          userId: 'user-123',
+          error: 'Rate limit exceeded',
+          retryable: true,
+          metadata: {
+            provider: 'openai',
+            model: 'gpt-4o-mini',
+          },
+        });
       });
 
       it('should handle provider_error failure as retryable without persisting', async () => {
@@ -611,7 +645,17 @@ describe('PlanRegenerationHandler', () => {
           expect(result.retryable).toBe(true);
           expect(result.error).toBe('Provider temporarily unavailable');
         }
-        expect(persistenceService.failJob).not.toHaveBeenCalled();
+        expect(persistenceService.failJob).toHaveBeenCalledWith({
+          jobId: 'job-123',
+          planId: validUuid,
+          userId: 'user-123',
+          error: 'Provider temporarily unavailable',
+          retryable: true,
+          metadata: {
+            provider: 'openai',
+            model: 'gpt-4o-mini',
+          },
+        });
       });
 
       it('should handle unknown failure classification as retryable without persisting', async () => {
@@ -648,7 +692,14 @@ describe('PlanRegenerationHandler', () => {
           expect(result.retryable).toBe(true);
           expect(result.error).toBe('Unexpected error');
         }
-        expect(persistenceService.failJob).not.toHaveBeenCalled();
+        expect(persistenceService.failJob).toHaveBeenCalledWith({
+          jobId: 'job-123',
+          planId: validUuid,
+          userId: 'user-123',
+          error: 'Unexpected error',
+          retryable: true,
+          metadata: undefined,
+        });
       });
     });
   });
