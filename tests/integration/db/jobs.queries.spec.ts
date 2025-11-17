@@ -42,7 +42,7 @@ describe('Job Queries', () => {
       // Create some jobs
       await db.insert(jobQueue).values([
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'failed',
@@ -55,7 +55,7 @@ describe('Job Queries', () => {
           completedAt: new Date(),
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'completed',
@@ -78,7 +78,7 @@ describe('Job Queries', () => {
     it('should respect limit parameter', async () => {
       // Create multiple failed jobs
       const jobValues = Array.from({ length: 5 }, (_, i) => ({
-        jobType: 'plan-generation' as const,
+        jobType: 'plan_generation' as const,
         planId,
         userId,
         status: 'failed' as const,
@@ -102,7 +102,7 @@ describe('Job Queries', () => {
       // Create failed jobs with different completion times
       await db.insert(jobQueue).values([
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'failed',
@@ -115,7 +115,7 @@ describe('Job Queries', () => {
           completedAt: new Date(Date.now() - 60000), // 1 minute ago
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'failed',
@@ -138,7 +138,7 @@ describe('Job Queries', () => {
     it('should not return non-failed jobs', async () => {
       await db.insert(jobQueue).values([
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'pending',
@@ -149,7 +149,7 @@ describe('Job Queries', () => {
           scheduledFor: new Date(),
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'processing',
@@ -161,7 +161,7 @@ describe('Job Queries', () => {
           startedAt: new Date(),
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'completed',
@@ -187,7 +187,7 @@ describe('Job Queries', () => {
       // Create jobs with different statuses
       await db.insert(jobQueue).values([
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'pending',
@@ -198,7 +198,7 @@ describe('Job Queries', () => {
           scheduledFor: new Date(),
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'processing',
@@ -210,7 +210,7 @@ describe('Job Queries', () => {
           startedAt: new Date(),
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'completed',
@@ -223,7 +223,7 @@ describe('Job Queries', () => {
           completedAt: new Date(),
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'failed',
@@ -251,7 +251,7 @@ describe('Job Queries', () => {
 
       // Create old job
       await db.insert(jobQueue).values({
-        jobType: 'plan-generation',
+        jobType: 'plan_generation',
         planId,
         userId,
         status: 'completed',
@@ -266,7 +266,7 @@ describe('Job Queries', () => {
 
       // Create recent job
       await db.insert(jobQueue).values({
-        jobType: 'plan-generation',
+        jobType: 'plan_generation',
         planId,
         userId,
         status: 'completed',
@@ -293,7 +293,7 @@ describe('Job Queries', () => {
       // Create completed jobs with known processing times
       await db.insert(jobQueue).values([
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'completed',
@@ -306,7 +306,7 @@ describe('Job Queries', () => {
           completedAt: now,
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'completed',
@@ -333,7 +333,7 @@ describe('Job Queries', () => {
 
       await db.insert(jobQueue).values([
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'completed',
@@ -345,7 +345,7 @@ describe('Job Queries', () => {
           completedAt: new Date(),
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'completed',
@@ -371,7 +371,7 @@ describe('Job Queries', () => {
 
       // Create old completed job
       await db.insert(jobQueue).values({
-        jobType: 'plan-generation',
+        jobType: 'plan_generation',
         planId,
         userId,
         status: 'completed',
@@ -385,7 +385,7 @@ describe('Job Queries', () => {
 
       // Create recent completed job
       await db.insert(jobQueue).values({
-        jobType: 'plan-generation',
+        jobType: 'plan_generation',
         planId,
         userId,
         status: 'completed',
@@ -412,7 +412,7 @@ describe('Job Queries', () => {
       const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
 
       await db.insert(jobQueue).values({
-        jobType: 'plan-generation',
+        jobType: 'plan_generation',
         planId,
         userId,
         status: 'failed',
@@ -436,7 +436,7 @@ describe('Job Queries', () => {
 
       await db.insert(jobQueue).values([
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'pending',
@@ -448,7 +448,7 @@ describe('Job Queries', () => {
           createdAt: oldDate,
         },
         {
-          jobType: 'plan-generation',
+          jobType: 'plan_generation',
           planId,
           userId,
           status: 'processing',
@@ -485,7 +485,7 @@ describe('Job Queries', () => {
 
       // Create many old completed jobs
       const jobValues = Array.from({ length: 20 }, () => ({
-        jobType: 'plan-generation' as const,
+        jobType: 'plan_generation' as const,
         planId,
         userId,
         status: 'completed' as const,

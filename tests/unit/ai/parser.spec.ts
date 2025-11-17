@@ -449,12 +449,15 @@ describe('AI Parser', () => {
     it('should identify ParserError by kind', async () => {
       const stream = createStream(['{ invalid json }']);
 
-      await expect(parseGenerationStream(stream)).rejects.toSatisfy((error) => {
+      try {
+        await parseGenerationStream(stream);
+        expect.fail('Expected parseGenerationStream to throw');
+      } catch (error) {
         expect(error).toBeInstanceOf(ParserError);
         if (error instanceof ParserError) {
           expect(error.kind).toBe('invalid_json');
         }
-      });
+      }
     });
   });
 });

@@ -12,19 +12,17 @@ vi.mock('sonner', () => ({
 }));
 
 describe('SubscribeButton', () => {
-  // Store original window.location
-  const originalLocation = window.location;
-
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock window.location.href
-    delete (window as Partial<Window>).location;
-    window.location = { ...originalLocation, href: '' } as Location;
+    delete (window as Window & { location?: Location }).location;
+    (window as Window & { location: { href: string } }).location = {
+      href: '',
+    } as Location;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    window.location = originalLocation;
   });
 
   it('should render with default label', () => {
