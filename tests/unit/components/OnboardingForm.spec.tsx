@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import OnboardingForm from '@/components/plans/OnboardingForm';
-import { toast } from 'sonner';
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
