@@ -1,4 +1,7 @@
+import * as Sentry from '@sentry/nextjs';
+
 import { appEnv, devClerkEnv } from '@/lib/config/env';
+import { initSentry } from '@/lib/observability/sentry';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 
@@ -72,6 +75,7 @@ export type PlainHandler = (
 
 export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
+    initSentry();
     const userId = await requireUser();
     const requestContext = createRequestContext(req, userId);
     // NOTE: This change is preparatory - RLS enforcement is NOT yet active.
@@ -94,6 +98,10 @@ export function withErrorBoundary(fn: PlainHandler): PlainHandler {
     try {
       return await fn(req, context);
     } catch (e) {
+      initSentry();
+      if (e instanceof Error) {
+        Sentry.captureException(e);
+      }
       const { toErrorResponse } = await import('./errors');
       return toErrorResponse(e);
     }
