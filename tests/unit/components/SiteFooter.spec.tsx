@@ -68,7 +68,7 @@ describe('SiteFooter', () => {
   });
 
   it('should style copyright text appropriately', () => {
-    const { container } = render(<SiteFooter />);
+    render(<SiteFooter />);
 
     const copyrightText = screen.getByText(/© 2025 Atlaris/i);
     expect(copyrightText).toHaveClass('text-muted-foreground');
