@@ -95,7 +95,7 @@ describe('AuthControls', () => {
   });
 
   it('should use default variant for sign up button', () => {
-    const { container } = render(<AuthControls />);
+    render(<AuthControls />);
 
     // The sign up button should have default styling (no explicit variant means default)
     const signUpButton = screen.getByText('Sign Up').closest('button');
