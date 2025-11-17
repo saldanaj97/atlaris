@@ -2,8 +2,7 @@ import { ZodError, z } from 'zod';
 
 import { appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
-import type { ProviderMetadata } from '@/lib/ai/provider';
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { generateMicroExplanation } from '@/lib/ai/micro-explanations';
 import { curateDocs } from '@/lib/curation/docs';
@@ -37,6 +36,11 @@ import {
   type PlanGenerationJobData,
   type PlanGenerationJobResult,
 } from './types';
+import {
+  buildPlanGenerationJobResult,
+  formatGenerationError,
+  isRetryableClassification,
+} from '@/workers/utils/plan-job-helpers';
 
 const planGenerationJobDataSchema = z
   .object({
@@ -134,29 +138,6 @@ function toPlanGenerationJobData(data: unknown): PlanGenerationJobData {
   } satisfies PlanGenerationJobData;
 }
 
-function buildJobResult(
-  modules: ParsedModule[],
-  durationMs: number,
-  attemptId: string,
-  providerMetadata: ProviderMetadata | undefined
-): PlanGenerationJobResult {
-  const modulesCount = modules.length;
-  const tasksCount = modules.reduce(
-    (sum, module) => sum + module.tasks.length,
-    0
-  );
-
-  return {
-    modulesCount,
-    tasksCount,
-    durationMs,
-    metadata: {
-      provider: providerMetadata ?? null,
-      attemptId,
-    },
-  } satisfies PlanGenerationJobResult;
-}
-
 export async function processPlanGenerationJob(
   job: Job,
   opts?: { signal?: AbortSignal }
@@ -223,38 +204,20 @@ export async function processPlanGenerationJob(
 
     if (result.status === 'success') {
       const planId = job.planId;
-      const jobResult = buildJobResult(
-        result.modules,
-        result.durationMs,
-        result.attempt.id,
-        result.metadata
-      );
+      const jobResult = buildPlanGenerationJobResult({
+        modules: result.modules,
+        durationMs: result.durationMs,
+        attemptId: result.attempt.id,
+        providerMetadata: result.metadata,
+      });
 
-      // Curation and micro-explanations (if enabled)
-      // In production we run this fire-and-forget to avoid blocking the job.
-      // In tests, await for determinism so integration tests can assert effects.
-      if (curationConfig.enableCuration) {
-        const runCuration = () =>
-          maybeCurateAndAttachResources(planId, payload, job.userId).catch(
-            (curationError) => {
-              logger.error(
-                {
-                  planId,
-                  jobId: job.id,
-                  error: curationError,
-                  event: 'plan_generation_curation_failed',
-                },
-                'Curation failed during plan generation job'
-              );
-            }
-          );
-
-        if (appEnv.isTest) {
-          await runCuration();
-        } else {
-          void runCuration();
-        }
-      }
+      await orchestrateLegacyCuration({
+        planId,
+        jobId: job.id,
+        params: payload,
+        userId: job.userId,
+        event: 'plan_generation_curation_failed',
+      });
 
       await markPlanGenerationSuccess(planId);
 
@@ -277,14 +240,11 @@ export async function processPlanGenerationJob(
     }
 
     const classification = result.classification ?? 'unknown';
-    const retryable =
-      classification !== 'validation' && classification !== 'capped';
-    const message =
-      result.error instanceof Error
-        ? result.error.message
-        : typeof result.error === 'string'
-          ? result.error
-          : 'Plan generation failed.';
+    const retryable = isRetryableClassification(classification);
+    const message = formatGenerationError(
+      result.error,
+      'Plan generation failed.'
+    );
 
     if (!retryable) {
       const planId = job.planId;
@@ -309,10 +269,10 @@ export async function processPlanGenerationJob(
       retryable,
     } satisfies ProcessPlanGenerationJobFailure;
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message || 'Unexpected error processing plan generation job.'
-        : 'Unexpected error processing plan generation job.';
+    const message = formatGenerationError(
+      error,
+      'Unexpected error processing plan generation job.'
+    );
 
     return {
       status: 'failure',
@@ -406,38 +366,20 @@ export async function processPlanRegenerationJob(
 
     if (result.status === 'success') {
       const planId = job.planId;
-      const jobResult = buildJobResult(
-        result.modules,
-        result.durationMs,
-        result.attempt.id,
-        result.metadata
-      );
+      const jobResult = buildPlanGenerationJobResult({
+        modules: result.modules,
+        durationMs: result.durationMs,
+        attemptId: result.attempt.id,
+        providerMetadata: result.metadata,
+      });
 
-      // Curation and micro-explanations (if enabled)
-      // In production we run this fire-and-forget to avoid blocking the job.
-      // In tests, await for determinism so integration tests can assert effects.
-      if (curationConfig.enableCuration) {
-        const runCuration = () =>
-          maybeCurateAndAttachResources(planId, mergedInput, job.userId).catch(
-            (curationError) => {
-              logger.error(
-                {
-                  planId,
-                  jobId: job.id,
-                  error: curationError,
-                  event: 'plan_regeneration_curation_failed',
-                },
-                'Curation failed during plan regeneration job'
-              );
-            }
-          );
-
-        if (appEnv.isTest) {
-          await runCuration();
-        } else {
-          void runCuration();
-        }
-      }
+      await orchestrateLegacyCuration({
+        planId,
+        jobId: job.id,
+        params: mergedInput,
+        userId: job.userId,
+        event: 'plan_regeneration_curation_failed',
+      });
 
       await markPlanGenerationSuccess(planId);
 
@@ -460,14 +402,8 @@ export async function processPlanRegenerationJob(
     }
 
     const classification = result.classification ?? 'unknown';
-    const retryable =
-      classification !== 'validation' && classification !== 'capped';
-    const message =
-      result.error instanceof Error
-        ? result.error.message
-        : typeof result.error === 'string'
-          ? result.error
-          : 'Regeneration failed.';
+    const retryable = isRetryableClassification(classification);
+    const message = formatGenerationError(result.error, 'Regeneration failed.');
 
     if (!retryable) {
       const planId = job.planId;
@@ -492,10 +428,10 @@ export async function processPlanRegenerationJob(
       retryable,
     } satisfies ProcessPlanGenerationJobFailure;
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message || 'Unexpected error processing regeneration job.'
-        : 'Unexpected error processing regeneration job.';
+    const message = formatGenerationError(
+      error,
+      'Unexpected error processing regeneration job.'
+    );
 
     return {
       status: 'failure',
@@ -503,6 +439,45 @@ export async function processPlanRegenerationJob(
       classification: 'unknown',
       retryable: true,
     } satisfies ProcessPlanGenerationJobFailure;
+  }
+}
+
+async function orchestrateLegacyCuration({
+  planId,
+  jobId,
+  params,
+  userId,
+  event,
+}: {
+  planId: string;
+  jobId: string;
+  params: PlanGenerationJobData;
+  userId: string;
+  event: string;
+}) {
+  if (!curationConfig.enableCuration) {
+    return;
+  }
+
+  const runCuration = () =>
+    maybeCurateAndAttachResources(planId, params, userId).catch(
+      (curationError) => {
+        logger.error(
+          {
+            planId,
+            jobId,
+            error: curationError,
+            event,
+          },
+          'Curation failed during plan job'
+        );
+      }
+    );
+
+  if (appEnv.isTest) {
+    await runCuration();
+  } else {
+    void runCuration();
   }
 }
 

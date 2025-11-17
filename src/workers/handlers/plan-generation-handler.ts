@@ -7,7 +7,6 @@ import {
   type PlanGenerationJobResult,
 } from '@/lib/jobs/types';
 import { buildValidationErrorMessage } from '@/lib/jobs/validation-utils';
-import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 import {
   NOTES_MAX_LENGTH,
@@ -18,6 +17,12 @@ import {
 import { CurationService } from '../services/curation-service';
 import { GenerationService } from '../services/generation-service';
 import { PersistenceService } from '../services/persistence-service';
+import {
+  buildPlanGenerationJobResult,
+  formatGenerationError,
+  isRetryableClassification,
+  runPlanJobCuration,
+} from '../utils/plan-job-helpers';
 
 const planGenerationJobDataSchema = z
   .object({
@@ -193,46 +198,21 @@ export class PlanGenerationHandler {
       );
 
       if (result.status === 'success') {
-        const jobResult: PlanGenerationJobResult = {
-          modulesCount: result.modules.length,
-          tasksCount: result.modules.reduce(
-            (sum, module) => sum + module.tasks.length,
-            0
-          ),
+        const jobResult = buildPlanGenerationJobResult({
+          modules: result.modules,
           durationMs: result.durationMs,
-          metadata: {
-            provider: result.metadata ?? null,
-            attemptId: result.attemptId,
-          },
-        };
+          attemptId: result.attemptId,
+          providerMetadata: result.metadata,
+        });
 
-        // Run curation if enabled
-        if (CurationService.shouldRunCuration()) {
-          const runCuration = () =>
-            this.curationService
-              .curateAndAttachResources({
-                planId: job.planId!,
-                topic: payload.topic,
-                skillLevel: payload.skillLevel,
-              })
-              .catch((curationError) => {
-                logger.error(
-                  {
-                    planId: job.planId,
-                    jobId: job.id,
-                    error: curationError,
-                    event: 'plan_generation_curation_failed',
-                  },
-                  'Curation failed during plan generation job'
-                );
-              });
-
-          if (CurationService.shouldRunSync()) {
-            await runCuration();
-          } else {
-            void runCuration();
-          }
-        }
+        await runPlanJobCuration({
+          curationService: this.curationService,
+          planId: job.planId,
+          jobId: job.id,
+          topic: payload.topic,
+          skillLevel: payload.skillLevel,
+          event: 'plan_generation_curation_error',
+        });
 
         await this.persistenceService.completeJob({
           jobId: job.id,
@@ -249,14 +229,11 @@ export class PlanGenerationHandler {
       }
 
       const classification = result.classification ?? 'unknown';
-      const retryable =
-        classification !== 'validation' && classification !== 'capped';
-      const message =
-        result.error instanceof Error
-          ? result.error.message
-          : typeof result.error === 'string'
-            ? result.error
-            : 'Plan generation failed.';
+      const retryable = isRetryableClassification(classification);
+      const message = formatGenerationError(
+        result.error,
+        'Plan generation failed.'
+      );
 
       // Always call failJob for generation failures, regardless of retryable flag
       await this.persistenceService.failJob({
@@ -275,10 +252,10 @@ export class PlanGenerationHandler {
         retryable,
       };
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message || 'Unexpected error processing plan generation job.'
-          : 'Unexpected error processing plan generation job.';
+      const message = formatGenerationError(
+        error,
+        'Unexpected error processing plan generation job.'
+      );
 
       await this.persistenceService.failJob({
         jobId: job.id,
