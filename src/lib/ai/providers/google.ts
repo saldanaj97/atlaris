@@ -1,19 +1,14 @@
 import { createGoogleGenerativeAI, google } from '@ai-sdk/google';
-import { generateObject } from 'ai';
-
-import {
-  buildSystemPrompt,
-  buildUserPrompt,
-  type PromptParams,
-} from '@/lib/ai/prompts';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
-import { PlanSchema } from '@/lib/ai/schema';
-import { toStream } from '@/lib/ai/utils';
+import {
+  buildPlanProviderResult,
+  generatePlanObject,
+} from '@/lib/ai/providers/base';
 import { googleAiEnv } from '@/lib/config/env';
 
 export interface GoogleProviderConfig {
@@ -46,33 +41,18 @@ export class GoogleAiProvider implements AiPlanGenerationProvider {
       ? createGoogleGenerativeAI({ apiKey: this.apiKey })
       : google;
 
-    const { object: plan, usage } = await generateObject({
+    const { plan, usage } = await generatePlanObject({
       model: provider(this.model),
-      schema: PlanSchema,
-      system: buildSystemPrompt(),
-      prompt: buildUserPrompt({
-        topic: input.topic,
-        skillLevel: input.skillLevel as PromptParams['skillLevel'],
-        learningStyle: input.learningStyle as PromptParams['learningStyle'],
-        weeklyHours: input.weeklyHours,
-        startDate: input.startDate,
-        deadlineDate: input.deadlineDate,
-      }),
+      input,
       maxOutputTokens: this.maxOutputTokens,
       temperature: this.temperature,
     });
 
-    return {
-      stream: toStream(plan),
-      metadata: {
-        provider: 'google',
-        model: this.model,
-        usage: {
-          promptTokens: usage?.inputTokens,
-          completionTokens: usage?.outputTokens,
-          totalTokens: usage?.totalTokens,
-        },
-      },
-    };
+    return buildPlanProviderResult({
+      plan,
+      usage,
+      provider: 'google',
+      model: this.model,
+    });
   }
 }
