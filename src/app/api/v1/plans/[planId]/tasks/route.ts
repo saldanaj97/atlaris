@@ -20,6 +20,11 @@ function getParams(req: Request) {
   };
 }
 
+const isUuid = (value: string): boolean =>
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    value
+  );
+
 /**
  * GET /api/v1/plans/:planId/tasks
  * Retrieves all tasks in the specified learning plan for the authenticated user.
@@ -30,8 +35,8 @@ function getParams(req: Request) {
 export const GET = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
     const { planId } = getParams(req);
-    if (!planId) {
-      throw new NotFoundError('Plan ID is required in the path.');
+    if (!planId || !isUuid(planId)) {
+      throw new NotFoundError('Plan not found.');
     }
 
     const user = await getUserByClerkId(userId);

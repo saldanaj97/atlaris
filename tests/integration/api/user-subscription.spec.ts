@@ -66,6 +66,9 @@ describe('GET /api/v1/user/subscription', () => {
         learningStyle: 'mixed',
         visibility: 'private',
         origin: 'ai',
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+        finalizedAt: new Date(),
       },
       {
         userId,
@@ -75,6 +78,9 @@ describe('GET /api/v1/user/subscription', () => {
         learningStyle: 'practice',
         visibility: 'private',
         origin: 'ai',
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+        finalizedAt: new Date(),
       },
     ]);
 
