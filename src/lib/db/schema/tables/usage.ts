@@ -12,8 +12,9 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { timestampFields } from '../helpers';
+import { recordOwnedByCurrentUser } from '../policy-helpers';
 import { users } from './users';
-import { authenticatedRole, clerkSub, serviceRole } from './common';
+import { authenticatedRole, serviceRole } from './common';
 
 // Usage tracking tables
 
@@ -42,9 +43,7 @@ export const usageMetrics = pgTable(
     pgPolicy('usage_metrics_select_own', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('usage_metrics_select_service', {
       for: 'select',
@@ -54,9 +53,7 @@ export const usageMetrics = pgTable(
     pgPolicy('usage_metrics_insert_own', {
       for: 'insert',
       to: authenticatedRole,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('usage_metrics_insert_service', {
       for: 'insert',
@@ -66,12 +63,8 @@ export const usageMetrics = pgTable(
     pgPolicy('usage_metrics_update_own', {
       for: 'update',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('usage_metrics_update_service', {
       for: 'update',
@@ -82,9 +75,7 @@ export const usageMetrics = pgTable(
     pgPolicy('usage_metrics_delete_own', {
       for: 'delete',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('usage_metrics_delete_service', {
       for: 'delete',
@@ -119,9 +110,7 @@ export const aiUsageEvents = pgTable(
     pgPolicy('ai_usage_events_select_own', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('ai_usage_events_select_service', {
       for: 'select',
@@ -131,9 +120,7 @@ export const aiUsageEvents = pgTable(
     pgPolicy('ai_usage_events_insert_own', {
       for: 'insert',
       to: authenticatedRole,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('ai_usage_events_insert_service', {
       for: 'insert',
