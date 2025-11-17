@@ -405,7 +405,7 @@ describe('Job Queries', () => {
       // Verify old job is gone
       const remainingJobs = await db.select().from(jobQueue);
       expect(remainingJobs.length).toBeGreaterThanOrEqual(1);
-      expect(remainingJobs.every((job) => job.completedAt! > threshold)).toBe(true);
+      expect(remainingJobs.every((job) => job.completedAt && job.completedAt > threshold)).toBe(true);
     });
 
     it('should delete old failed jobs', async () => {
