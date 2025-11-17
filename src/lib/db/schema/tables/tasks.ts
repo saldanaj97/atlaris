@@ -13,6 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { progressStatus, resourceType } from '../../enums';
+import { timestampFields } from '../helpers';
 import { learningPlans } from './plans';
 import { users } from './users';
 import { anonRole, authenticatedRole, clerkSub, serviceRole } from './common';
@@ -30,12 +31,7 @@ export const modules = pgTable(
     title: text('title').notNull(),
     description: text('description'),
     estimatedMinutes: integer('estimated_minutes').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    ...timestampFields,
   },
   (table) => [
     check('order_check', sql`${table.order} >= 1`),
@@ -187,12 +183,7 @@ export const tasks = pgTable(
     hasMicroExplanation: boolean('has_micro_explanation')
       .notNull()
       .default(false),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    ...timestampFields,
   },
   (table) => [
     check('order_check', sql`${table.order} >= 1`),

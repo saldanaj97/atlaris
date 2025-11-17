@@ -96,6 +96,11 @@ src/
 - `GET /api/v1/plans/{id}` - Retrieve plan details with derived status
 - `GET /api/v1/plans/{id}/attempts` - List generation attempt history
 
+### API Docs
+
+- `GET /api/docs/openapi` - OpenAPI document (JSON) for selected high-traffic routes.
+- `GET /api/docs` - Scalar-powered API reference UI (development and test only).
+
 ### Plan Status States
 
 - **pending**: Plan created, AI generation in progress or queued
@@ -125,6 +130,13 @@ src/
 - **Request-scoped context**: In API routes, use `createRequestContext` and `attachRequestIdHeader` from `@/lib/logging/request-context` to get a `{ requestId, logger }` pair and to propagate the request ID in responses.
 - **Workers and jobs**: In workers, create child loggers with job-specific context (e.g., `{ jobId }`) rather than printing directly.
 - **No direct console**: Application code should not call `console.*` directly; if you need a new logging use case, extend the logging utilities instead.
+
+### Observability
+
+- **Sentry baseline**: Sentry is integrated via `@sentry/nextjs` and initialized from `src/lib/observability/sentry.ts`.
+- **Env-gated**: Initialization is controlled via `observabilityEnv` in `src/lib/config/env.ts`:
+  - If `SENTRY_DSN` is not set, Sentry remains a no-op and does not affect runtime behavior.
+  - Optional tuning via `SENTRY_TRACES_SAMPLE_RATE` and `SENTRY_PROFILES_SAMPLE_RATE` (defaults to `0.1`).
 
 ### Database
 
