@@ -40,9 +40,15 @@ if (!process.env.OAUTH_ENCRYPTION_KEY) {
 // Extend expect with jest-dom matchers
 import '@testing-library/jest-dom';
 
+// Provide React global for JSX runtime in tests
+import React from 'react';
+
 // Import Vitest and RTL hooks
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+
+// Make React available as a global for classic JSX runtime
+(globalThis as typeof globalThis & { React?: typeof React }).React ??= React;
 
 // Run cleanup after each test
 afterEach(() => {

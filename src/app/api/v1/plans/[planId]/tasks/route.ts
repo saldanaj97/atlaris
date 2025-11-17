@@ -1,7 +1,11 @@
+import { and, eq } from 'drizzle-orm';
+
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';
 import { getAllTasksInPlan } from '@/lib/db/queries/tasks';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
+import { learningPlans } from '@/lib/db/schema';
 
 function getParams(req: Request) {
   const url = new URL(req.url);
@@ -16,6 +20,11 @@ function getParams(req: Request) {
   };
 }
 
+const isUuid = (value: string): boolean =>
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    value
+  );
+
 /**
  * GET /api/v1/plans/:planId/tasks
  * Retrieves all tasks in the specified learning plan for the authenticated user.
@@ -26,13 +35,27 @@ function getParams(req: Request) {
 export const GET = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
     const { planId } = getParams(req);
-    if (!planId) {
-      throw new NotFoundError('Plan ID is required in the path.');
+    if (!planId || !isUuid(planId)) {
+      throw new NotFoundError('Plan not found.');
     }
 
     const user = await getUserByClerkId(userId);
     if (!user) {
       throw new NotFoundError('User not found.');
+    }
+
+    // Ensure the plan exists and belongs to the authenticated user
+    const db = getDb();
+    const [plan] = await db
+      .select({ id: learningPlans.id })
+      .from(learningPlans)
+      .where(
+        and(eq(learningPlans.id, planId), eq(learningPlans.userId, user.id))
+      )
+      .limit(1);
+
+    if (!plan) {
+      throw new NotFoundError('Plan not found.');
     }
 
     const tasks = await getAllTasksInPlan(user.id, planId);
