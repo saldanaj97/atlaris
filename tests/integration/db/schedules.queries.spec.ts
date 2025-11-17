@@ -252,7 +252,7 @@ describe('Schedule Queries', () => {
       await expect(deletePlanScheduleCache('non-existent-plan')).resolves.not.toThrow();
     });
 
-    it('should only delete specified plan\'s cache', async () => {
+    it("should only delete specified plan's cache", async () => {
       // Create another plan
       const [plan2] = await db
         .insert(learningPlans)
