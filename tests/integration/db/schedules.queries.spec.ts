@@ -6,7 +6,7 @@ import {
   upsertPlanScheduleCache,
   deletePlanScheduleCache,
 } from '@/lib/db/queries/schedules';
-import { learningPlans, planSchedules } from '@/lib/db/schema';
+import { learningPlans } from '@/lib/db/schema';
 import { ensureUser } from '../../helpers/db';
 import type { ScheduleCacheRow } from '@/lib/scheduling/types';
 
