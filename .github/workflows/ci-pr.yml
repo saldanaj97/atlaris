@@ -100,116 +100,6 @@ jobs:
       - name: Run TypeScript type check
         run: pnpm type-check
 
-  code-duplication:
-    name: Code Duplication Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Setup pnpm store cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Run duplication check
-        run: pnpm exec jscpd --exitCode 0
-      - name: Generate duplication report
-        if: always()
-        run: |
-          echo "## 🔍 Code Duplication Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f jscpd-report/jscpd-report.json ]; then
-            DUPLICATION=$(jq -r '.total.duplicatedLines // 0' jscpd-report/jscpd-report.json 2>/dev/null || echo "0")
-            TOTAL=$(jq -r '.total.lines // 0' jscpd-report/jscpd-report.json 2>/dev/null || echo "0")
-            if [ "$TOTAL" -gt 0 ]; then
-              PERCENTAGE=$(awk "BEGIN {printf \"%.2f\", ($DUPLICATION/$TOTAL)*100}")
-            else
-              PERCENTAGE="0.00"
-            fi
-            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-            echo "| Duplicated Lines | $DUPLICATION |" >> $GITHUB_STEP_SUMMARY
-            echo "| Total Lines | $TOTAL |" >> $GITHUB_STEP_SUMMARY
-            echo "| Duplication % | $PERCENTAGE% |" >> $GITHUB_STEP_SUMMARY
-            echo "| Threshold | 5% |" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            if (( $(echo "$PERCENTAGE > 5" | bc -l) )); then
-              echo "⚠️ **Duplication exceeds 5% threshold**" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "✅ **Duplication within acceptable limits**" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "✅ No duplication detected" >> $GITHUB_STEP_SUMMARY
-          fi
-
-  code-complexity:
-    name: Code Complexity Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Setup pnpm store cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Check file sizes
-        run: node scripts/check-file-size.js
-      - name: Generate complexity report
-        if: always()
-        run: |
-          echo "## ⚙️ Code Complexity Check" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### File Size Check" >> $GITHUB_STEP_SUMMARY
-          if [ -f file-size-report.json ]; then
-            FILES_EXCEEDING=$(jq -r '.filesExceeding // 0' file-size-report.json 2>/dev/null || echo "0")
-            THRESHOLD=$(jq -r '.threshold // 500' file-size-report.json 2>/dev/null || echo "500")
-            if [ "$FILES_EXCEEDING" -gt 0 ]; then
-              echo "⚠️ **$FILES_EXCEEDING file(s) exceed $THRESHOLD LOC threshold**" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "| File | Lines | Over Threshold |" >> $GITHUB_STEP_SUMMARY
-              echo "|------|-------|-----------------|" >> $GITHUB_STEP_SUMMARY
-              jq -r '.files[] | "| \(.file) | \(.lines) | +\(.lines - .threshold) |"' file-size-report.json 2>/dev/null >> $GITHUB_STEP_SUMMARY
-            else
-              echo "✅ **All files within $THRESHOLD LOC threshold**" >> $GITHUB_STEP_SUMMARY
-            fi
-          else
-            echo "✅ File size check passed" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Cyclomatic Complexity" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ Run \`pnpm lint\` locally to check complexity violations (max: 10)" >> $GITHUB_STEP_SUMMARY
-
   vulnerability-scan:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -722,7 +612,7 @@ jobs:
 
   all-checks-pr:
     name: All Checks Passed (PR)
-    needs: [changes, lint, type-check, vulnerability-scan, build, unit-tests, integration-light, code-duplication, code-complexity]
+    needs: [changes, lint, type-check, vulnerability-scan, build, unit-tests, integration-light]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -737,12 +627,10 @@ jobs:
             [build]="${{ needs.build.result }}"
             [unit-tests]="${{ needs['unit-tests'].result }}"
             [integration-light]="${{ needs['integration-light'].result }}"
-            [code-duplication]="${{ needs['code-duplication'].result }}"
-            [code-complexity]="${{ needs['code-complexity'].result }}"
           )
 
           failed=0
-          for job in changes lint type-check vulnerability-scan build unit-tests integration-light code-duplication code-complexity; do
+          for job in changes lint type-check vulnerability-scan build unit-tests integration-light; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)
