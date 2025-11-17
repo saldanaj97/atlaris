@@ -61,8 +61,8 @@ export class PersistenceService {
   async failJob(input: JobFailureInput): Promise<void> {
     const { jobId, planId, userId, error, retryable, metadata } = input;
 
-    const failOptions: FailJobOptions | undefined = retryable
-      ? undefined
+    const failOptions: FailJobOptions = retryable
+      ? { retryable: true }
       : { retryable: false };
 
     await failJob(jobId, error, failOptions);
