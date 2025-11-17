@@ -463,7 +463,7 @@ describe('Job Queries', () => {
       ]);
 
       const threshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const deletedCount = await cleanupOldJobs(threshold);
+      await cleanupOldJobs(threshold);
 
       // Should not delete these jobs
       const remainingJobs = await db.select().from(jobQueue);
