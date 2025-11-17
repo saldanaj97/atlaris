@@ -133,12 +133,18 @@ export async function getJobStats(since: Date): Promise<JobStats> {
   const totalFinished = totalCompleted + totalFailed;
   const failureRate = totalFinished > 0 ? totalFailed / totalFinished : 0;
 
+  // PostgreSQL avg() returns numeric type, which postgres-js returns as string to preserve precision
+  const averageProcessingTimeMs =
+    avgResult.avgDuration !== null
+      ? parseFloat(String(avgResult.avgDuration))
+      : null;
+
   return {
     pendingCount: countsByStatus.pending,
     processingCount: countsByStatus.processing,
     completedCount: countsByStatus.completed,
     failedCount: countsByStatus.failed,
-    averageProcessingTimeMs: avgResult.avgDuration,
+    averageProcessingTimeMs,
     failureRate,
   };
 }
