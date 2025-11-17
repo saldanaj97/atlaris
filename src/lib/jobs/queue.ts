@@ -8,7 +8,9 @@ import {
 } from '@/lib/db/queries/jobs';
 import type { Job, JobType } from './types';
 
-export type { FailJobOptions } from '@/lib/db/queries/jobs';
+export interface FailJobOptions {
+  retryable?: boolean;
+}
 
 export async function enqueueJob(
   type: JobType,

@@ -10,7 +10,7 @@ import { PlanSchema, type PlanOutput } from '@/lib/ai/schema';
 import { toStream } from '@/lib/ai/utils';
 
 export type PlanGenerationUsage = Pick<
-  NonNullable<GenerateObjectResult<any>['usage']>,
+  NonNullable<GenerateObjectResult<PlanOutput>['usage']>,
   'inputTokens' | 'outputTokens' | 'totalTokens'
 >;
 

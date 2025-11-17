@@ -12,7 +12,6 @@ import {
 import { integrationProviderEnum } from '../../enums';
 import { timestampFields } from '../helpers';
 import {
-  planOwnedByCurrentUser,
   recordOwnedByCurrentUser,
   userAndPlanOwnedByCurrentUser,
 } from '../policy-helpers';

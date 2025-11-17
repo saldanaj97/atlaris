@@ -1,4 +1,15 @@
-import { and, desc, eq, gte, isNotNull, lt, or, sql } from 'drizzle-orm';
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  lt,
+  lte,
+  or,
+  sql,
+} from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import { jobQueue } from '@/lib/db/schema';
@@ -208,16 +219,19 @@ export async function claimNextPendingJob(
   const startTime = new Date();
 
   const result = await db.transaction(async (tx) => {
-    const rows = (await tx.execute(sql`
-      select id
-      from job_queue
-      where status = 'pending'
-        and job_type = any(${sql.array(types, 'text')})
-        and scheduled_for <= now()
-      order by priority desc, created_at asc
-      limit 1
-      for update skip locked
-    `)) as Array<{ id: string }>;
+    const rows = await tx
+      .select({ id: jobQueue.id })
+      .from(jobQueue)
+      .where(
+        and(
+          eq(jobQueue.status, 'pending'),
+          inArray(jobQueue.jobType, types),
+          lte(jobQueue.scheduledFor, startTime)
+        )
+      )
+      .orderBy(desc(jobQueue.priority), jobQueue.createdAt)
+      .limit(1)
+      .for('update');
 
     const selectedId = rows[0]?.id;
     if (!selectedId) {
