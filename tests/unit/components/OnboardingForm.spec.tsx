@@ -144,8 +144,8 @@ describe('OnboardingForm', () => {
 
     // Verify data is preserved
     await waitFor(() => {
-      const input = screen.getByLabelText(/Learning Topic/i) as HTMLTextAreaElement;
-      expect(input.value).toBe('Learn TypeScript');
+      const input = screen.getByLabelText(/Learning Topic/i);
+      expect(input).toHaveValue('Learn TypeScript');
     });
   });
 
