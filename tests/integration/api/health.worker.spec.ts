@@ -28,12 +28,15 @@ describe('GET /api/health/worker', () => {
     // Create a stuck job (processing for > 10 minutes)
     const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000);
 
+    const testUserId = '00000000-0000-0000-0000-000000000001';
+    const testPlanId = '00000000-0000-0000-0000-000000000002';
+
     await db.insert(jobQueue).values({
-      planId: 'test-plan',
-      userId: 'test-user',
+      planId: testPlanId,
+      userId: testUserId,
       jobType: 'plan_generation',
       status: 'processing',
-      payload: { planId: 'test-plan' },
+      payload: { planId: testPlanId },
       startedAt: elevenMinutesAgo,
     });
 
