@@ -15,8 +15,12 @@ import {
 
 import { generationStatus, learningStyle, skillLevel } from '../../enums';
 import { timestampFields } from '../helpers';
+import {
+  planOwnedByCurrentUser,
+  recordOwnedByCurrentUser,
+} from '../policy-helpers';
 import { users } from './users';
-import { anonRole, authenticatedRole, clerkSub, serviceRole } from './common';
+import { anonRole, authenticatedRole, serviceRole } from './common';
 
 // Learning plans and related tables
 
@@ -74,9 +78,7 @@ export const learningPlans = pgTable(
     pgPolicy('learning_plans_select_own', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Service role can read all plans
@@ -90,9 +92,7 @@ export const learningPlans = pgTable(
     pgPolicy('learning_plans_insert_own', {
       for: 'insert',
       to: authenticatedRole,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Service role can insert any plan
@@ -106,12 +106,8 @@ export const learningPlans = pgTable(
     pgPolicy('learning_plans_update_own', {
       for: 'update',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Service role can update any plan
@@ -126,9 +122,7 @@ export const learningPlans = pgTable(
     pgPolicy('learning_plans_delete_own', {
       for: 'delete',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Service role can delete any plan
@@ -156,106 +150,75 @@ export const planSchedules = pgTable(
     startDate: date('start_date').notNull(),
     deadline: date('deadline'),
   },
-  (table) => [
-    index('idx_plan_schedules_inputs_hash').on(table.inputsHash),
+  (table) => {
+    const planOwnership = planOwnedByCurrentUser({
+      planIdColumn: table.planId,
+      planTable: learningPlans,
+      planIdReferenceColumn: learningPlans.id,
+      planUserIdColumn: learningPlans.userId,
+    });
 
-    // RLS Policies
+    return [
+      index('idx_plan_schedules_inputs_hash').on(table.inputsHash),
 
-    // Users can read schedule cache for their own plans
-    pgPolicy('plan_schedules_select_own', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // RLS Policies
 
-    // Service role can read all schedules
-    pgPolicy('plan_schedules_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
-    }),
+      // Users can read schedule cache for their own plans
+      pgPolicy('plan_schedules_select_own', {
+        for: 'select',
+        to: authenticatedRole,
+        using: planOwnership,
+      }),
 
-    // Users can upsert schedule cache for their own plans
-    pgPolicy('plan_schedules_insert_own', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Service role can read all schedules
+      pgPolicy('plan_schedules_select_service', {
+        for: 'select',
+        to: serviceRole,
+        using: sql`true`,
+      }),
 
-    pgPolicy('plan_schedules_update_own', {
-      for: 'update',
-      to: authenticatedRole,
-      using: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-      withCheck: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Users can upsert schedule cache for their own plans
+      pgPolicy('plan_schedules_insert_own', {
+        for: 'insert',
+        to: authenticatedRole,
+        withCheck: planOwnership,
+      }),
 
-    // Service role can manage all schedules
-    pgPolicy('plan_schedules_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
+      pgPolicy('plan_schedules_update_own', {
+        for: 'update',
+        to: authenticatedRole,
+        using: planOwnership,
+        withCheck: planOwnership,
+      }),
 
-    pgPolicy('plan_schedules_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
+      // Service role can manage all schedules
+      pgPolicy('plan_schedules_insert_service', {
+        for: 'insert',
+        to: serviceRole,
+        withCheck: sql`true`,
+      }),
 
-    // Users can delete schedule cache for their own plans
-    pgPolicy('plan_schedules_delete_own', {
-      for: 'delete',
-      to: authenticatedRole,
-      using: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      pgPolicy('plan_schedules_update_service', {
+        for: 'update',
+        to: serviceRole,
+        using: sql`true`,
+        withCheck: sql`true`,
+      }),
 
-    pgPolicy('plan_schedules_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
-    }),
-  ]
+      // Users can delete schedule cache for their own plans
+      pgPolicy('plan_schedules_delete_own', {
+        for: 'delete',
+        to: authenticatedRole,
+        using: planOwnership,
+      }),
+
+      pgPolicy('plan_schedules_delete_service', {
+        for: 'delete',
+        to: serviceRole,
+        using: sql`true`,
+      }),
+    ];
+  }
 ).enableRLS();
 
 export const planGenerations = pgTable(
@@ -273,110 +236,78 @@ export const planGenerations = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    index('idx_plan_generations_plan_id').on(table.planId),
+  (table) => {
+    const planOwnership = planOwnedByCurrentUser({
+      planIdColumn: table.planId,
+      planTable: learningPlans,
+      planIdReferenceColumn: learningPlans.id,
+      planUserIdColumn: learningPlans.userId,
+    });
 
-    // RLS Policies
+    return [
+      index('idx_plan_generations_plan_id').on(table.planId),
 
-    // Users can read generation records only for their own plans
-    pgPolicy('plan_generations_select_own', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      // RLS Policies
 
-          )
-        )
-      `,
-    }),
+      // Users can read generation records only for their own plans
+      pgPolicy('plan_generations_select_own', {
+        for: 'select',
+        to: authenticatedRole,
+        using: planOwnership,
+      }),
 
-    // Service role can read all generation records
-    pgPolicy('plan_generations_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
-    }),
+      // Service role can read all generation records
+      pgPolicy('plan_generations_select_service', {
+        for: 'select',
+        to: serviceRole,
+        using: sql`true`,
+      }),
 
-    // Users can create generation records only for their own plans
-    pgPolicy('plan_generations_insert_own', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Users can create generation records only for their own plans
+      pgPolicy('plan_generations_insert_own', {
+        for: 'insert',
+        to: authenticatedRole,
+        withCheck: planOwnership,
+      }),
 
-    // Service role can insert any generation record
-    pgPolicy('plan_generations_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
+      // Service role can insert any generation record
+      pgPolicy('plan_generations_insert_service', {
+        for: 'insert',
+        to: serviceRole,
+        withCheck: sql`true`,
+      }),
 
-    // Users can update generation records only for their own plans (rare operation)
-    pgPolicy('plan_generations_update_own', {
-      for: 'update',
-      to: authenticatedRole,
-      using: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-      withCheck: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Users can update generation records only for their own plans (rare operation)
+      pgPolicy('plan_generations_update_own', {
+        for: 'update',
+        to: authenticatedRole,
+        using: planOwnership,
+        withCheck: planOwnership,
+      }),
 
-    // Service role can update any generation record
-    pgPolicy('plan_generations_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
+      // Service role can update any generation record
+      pgPolicy('plan_generations_update_service', {
+        for: 'update',
+        to: serviceRole,
+        using: sql`true`,
+        withCheck: sql`true`,
+      }),
 
-    // Users can delete generation records only for their own plans (rare operation)
-    pgPolicy('plan_generations_delete_own', {
-      for: 'delete',
-      to: authenticatedRole,
-      using: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Users can delete generation records only for their own plans (rare operation)
+      pgPolicy('plan_generations_delete_own', {
+        for: 'delete',
+        to: authenticatedRole,
+        using: planOwnership,
+      }),
 
-    // Service role can delete any generation record
-    pgPolicy('plan_generations_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
-    }),
-  ]
+      // Service role can delete any generation record
+      pgPolicy('plan_generations_delete_service', {
+        for: 'delete',
+        to: serviceRole,
+        using: sql`true`,
+      }),
+    ];
+  }
 ).enableRLS();
 
 export const generationAttempts = pgTable(
@@ -400,55 +331,48 @@ export const generationAttempts = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    index('idx_generation_attempts_plan_id').on(table.planId),
-    index('idx_generation_attempts_created_at').on(table.createdAt),
-    // classification NULL only when status = success (app-enforced; CHECK constraint added in migration)
+  (table) => {
+    const planOwnership = planOwnedByCurrentUser({
+      planIdColumn: table.planId,
+      planTable: learningPlans,
+      planIdReferenceColumn: learningPlans.id,
+      planUserIdColumn: learningPlans.userId,
+    });
 
-    // RLS Policies
+    return [
+      index('idx_generation_attempts_plan_id').on(table.planId),
+      index('idx_generation_attempts_created_at').on(table.createdAt),
+      // classification NULL only when status = success (app-enforced; CHECK constraint added in migration)
 
-    // Authenticated users can read attempts for plans they own
-    pgPolicy('generation_attempts_select_own_plan', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // RLS Policies
 
-    // Service role can read all attempts for observability tooling
-    pgPolicy('generation_attempts_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
-    }),
+      // Authenticated users can read attempts for plans they own
+      pgPolicy('generation_attempts_select_own_plan', {
+        for: 'select',
+        to: authenticatedRole,
+        using: planOwnership,
+      }),
 
-    // Authenticated users can insert attempts only for plans they own
-    pgPolicy('generation_attempts_insert_own_plan', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`
-        EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Service role can read all attempts for observability tooling
+      pgPolicy('generation_attempts_select_service', {
+        for: 'select',
+        to: serviceRole,
+        using: sql`true`,
+      }),
 
-    // Service role can insert attempts (background jobs)
-    pgPolicy('generation_attempts_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
-  ]
+      // Authenticated users can insert attempts only for plans they own
+      pgPolicy('generation_attempts_insert_own_plan', {
+        for: 'insert',
+        to: authenticatedRole,
+        withCheck: planOwnership,
+      }),
+
+      // Service role can insert attempts (background jobs)
+      pgPolicy('generation_attempts_insert_service', {
+        for: 'insert',
+        to: serviceRole,
+        withCheck: sql`true`,
+      }),
+    ];
+  }
 ).enableRLS();

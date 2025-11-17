@@ -11,10 +11,15 @@ import {
 
 import { integrationProviderEnum } from '../../enums';
 import { timestampFields } from '../helpers';
+import {
+  planOwnedByCurrentUser,
+  recordOwnedByCurrentUser,
+  userAndPlanOwnedByCurrentUser,
+} from '../policy-helpers';
 import { learningPlans } from './plans';
 import { tasks } from './tasks';
 import { users } from './users';
-import { authenticatedRole, clerkSub, serviceRole } from './common';
+import { authenticatedRole, serviceRole } from './common';
 
 // Integration-related tables
 
@@ -46,9 +51,7 @@ export const integrationTokens = pgTable(
     pgPolicy('integration_tokens_select_own', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Service role can read all integration tokens
@@ -62,9 +65,7 @@ export const integrationTokens = pgTable(
     pgPolicy('integration_tokens_insert_own', {
       for: 'insert',
       to: authenticatedRole,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Service role can insert any token
@@ -78,12 +79,8 @@ export const integrationTokens = pgTable(
     pgPolicy('integration_tokens_update_own', {
       for: 'update',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Service role can update any token
@@ -98,9 +95,7 @@ export const integrationTokens = pgTable(
     pgPolicy('integration_tokens_delete_own', {
       for: 'delete',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Service role can delete any token
@@ -128,117 +123,82 @@ export const notionSyncState = pgTable(
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
     ...timestampFields,
   },
-  (table) => [
-    unique('notion_sync_plan_id_unique').on(table.planId),
-    index('notion_sync_state_plan_id_idx').on(table.planId),
-    index('notion_sync_state_user_id_idx').on(table.userId),
+  (table) => {
+    const userOwnsRecord = recordOwnedByCurrentUser(table.userId);
+    const userAndPlanOwnership = userAndPlanOwnedByCurrentUser({
+      userIdColumn: table.userId,
+      planIdColumn: table.planId,
+      planTable: learningPlans,
+      planIdReferenceColumn: learningPlans.id,
+      planUserIdColumn: learningPlans.userId,
+    });
 
-    // RLS Policies
+    return [
+      unique('notion_sync_plan_id_unique').on(table.planId),
+      index('notion_sync_state_plan_id_idx').on(table.planId),
+      index('notion_sync_state_user_id_idx').on(table.userId),
 
-    // Users can read only their own sync state
-    pgPolicy('notion_sync_state_select_own', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
-    }),
+      // RLS Policies
 
-    // Service role can read all sync state
-    pgPolicy('notion_sync_state_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
-    }),
+      // Users can read only their own sync state
+      pgPolicy('notion_sync_state_select_own', {
+        for: 'select',
+        to: authenticatedRole,
+        using: userOwnsRecord,
+      }),
 
-    // Users can insert sync state only for themselves and their own plans
-    pgPolicy('notion_sync_state_insert_own', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`
-        ${table.userId} IN (
-          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-        )
-        AND EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Service role can read all sync state
+      pgPolicy('notion_sync_state_select_service', {
+        for: 'select',
+        to: serviceRole,
+        using: sql`true`,
+      }),
 
-    // Service role can insert any sync state
-    pgPolicy('notion_sync_state_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
+      // Users can insert sync state only for themselves and their own plans
+      pgPolicy('notion_sync_state_insert_own', {
+        for: 'insert',
+        to: authenticatedRole,
+        withCheck: userAndPlanOwnership,
+      }),
 
-    // Users can update only their own sync state and their own plans
-    pgPolicy('notion_sync_state_update_own', {
-      for: 'update',
-      to: authenticatedRole,
-      using: sql`
-        ${table.userId} IN (
-          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-        )
-        AND EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-      withCheck: sql`
-        ${table.userId} IN (
-          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-        )
-        AND EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Service role can insert any sync state
+      pgPolicy('notion_sync_state_insert_service', {
+        for: 'insert',
+        to: serviceRole,
+        withCheck: sql`true`,
+      }),
 
-    // Service role can update any sync state
-    pgPolicy('notion_sync_state_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
+      // Users can update only their own sync state and their own plans
+      pgPolicy('notion_sync_state_update_own', {
+        for: 'update',
+        to: authenticatedRole,
+        using: userAndPlanOwnership,
+        withCheck: userAndPlanOwnership,
+      }),
 
-    // Users can delete only their own sync state and their own plans
-    pgPolicy('notion_sync_state_delete_own', {
-      for: 'delete',
-      to: authenticatedRole,
-      using: sql`
-        ${table.userId} IN (
-          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-        )
-        AND EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Service role can update any sync state
+      pgPolicy('notion_sync_state_update_service', {
+        for: 'update',
+        to: serviceRole,
+        using: sql`true`,
+        withCheck: sql`true`,
+      }),
 
-    // Service role can delete any sync state
-    pgPolicy('notion_sync_state_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
-    }),
-  ]
+      // Users can delete only their own sync state and their own plans
+      pgPolicy('notion_sync_state_delete_own', {
+        for: 'delete',
+        to: authenticatedRole,
+        using: userAndPlanOwnership,
+      }),
+
+      // Service role can delete any sync state
+      pgPolicy('notion_sync_state_delete_service', {
+        for: 'delete',
+        to: serviceRole,
+        using: sql`true`,
+      }),
+    ];
+  }
 ).enableRLS();
 
 export const googleCalendarSyncState = pgTable(
@@ -261,117 +221,82 @@ export const googleCalendarSyncState = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
-    unique('gcal_sync_plan_id_unique').on(table.planId),
-    index('google_calendar_sync_state_plan_id_idx').on(table.planId),
-    index('google_calendar_sync_state_user_id_idx').on(table.userId),
+  (table) => {
+    const userOwnsRecord = recordOwnedByCurrentUser(table.userId);
+    const userAndPlanOwnership = userAndPlanOwnedByCurrentUser({
+      userIdColumn: table.userId,
+      planIdColumn: table.planId,
+      planTable: learningPlans,
+      planIdReferenceColumn: learningPlans.id,
+      planUserIdColumn: learningPlans.userId,
+    });
 
-    // RLS Policies
+    return [
+      unique('gcal_sync_plan_id_unique').on(table.planId),
+      index('google_calendar_sync_state_plan_id_idx').on(table.planId),
+      index('google_calendar_sync_state_user_id_idx').on(table.userId),
 
-    // Users can read only their own sync state
-    pgPolicy('google_calendar_sync_state_select_own', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
-    }),
+      // RLS Policies
 
-    // Service role can read all sync state
-    pgPolicy('google_calendar_sync_state_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
-    }),
+      // Users can read only their own sync state
+      pgPolicy('google_calendar_sync_state_select_own', {
+        for: 'select',
+        to: authenticatedRole,
+        using: userOwnsRecord,
+      }),
 
-    // Users can insert sync state only for themselves and their own plans
-    pgPolicy('google_calendar_sync_state_insert_own', {
-      for: 'insert',
-      to: authenticatedRole,
-      withCheck: sql`
-        ${table.userId} IN (
-          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-        )
-        AND EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Service role can read all sync state
+      pgPolicy('google_calendar_sync_state_select_service', {
+        for: 'select',
+        to: serviceRole,
+        using: sql`true`,
+      }),
 
-    // Service role can insert any sync state
-    pgPolicy('google_calendar_sync_state_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
+      // Users can insert sync state only for themselves and their own plans
+      pgPolicy('google_calendar_sync_state_insert_own', {
+        for: 'insert',
+        to: authenticatedRole,
+        withCheck: userAndPlanOwnership,
+      }),
 
-    // Users can update only their own sync state and their own plans
-    pgPolicy('google_calendar_sync_state_update_own', {
-      for: 'update',
-      to: authenticatedRole,
-      using: sql`
-        ${table.userId} IN (
-          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-        )
-        AND EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-      withCheck: sql`
-        ${table.userId} IN (
-          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-        )
-        AND EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Service role can insert any sync state
+      pgPolicy('google_calendar_sync_state_insert_service', {
+        for: 'insert',
+        to: serviceRole,
+        withCheck: sql`true`,
+      }),
 
-    // Service role can update any sync state
-    pgPolicy('google_calendar_sync_state_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
+      // Users can update only their own sync state and their own plans
+      pgPolicy('google_calendar_sync_state_update_own', {
+        for: 'update',
+        to: authenticatedRole,
+        using: userAndPlanOwnership,
+        withCheck: userAndPlanOwnership,
+      }),
 
-    // Users can delete only their own sync state and their own plans
-    pgPolicy('google_calendar_sync_state_delete_own', {
-      for: 'delete',
-      to: authenticatedRole,
-      using: sql`
-        ${table.userId} IN (
-          SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-        )
-        AND EXISTS (
-          SELECT 1 FROM ${learningPlans}
-          WHERE ${learningPlans.id} = ${table.planId}
-          AND ${learningPlans.userId} IN (
-            SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-          )
-        )
-      `,
-    }),
+      // Service role can update any sync state
+      pgPolicy('google_calendar_sync_state_update_service', {
+        for: 'update',
+        to: serviceRole,
+        using: sql`true`,
+        withCheck: sql`true`,
+      }),
 
-    // Service role can delete any sync state
-    pgPolicy('google_calendar_sync_state_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
-    }),
-  ]
+      // Users can delete only their own sync state and their own plans
+      pgPolicy('google_calendar_sync_state_delete_own', {
+        for: 'delete',
+        to: authenticatedRole,
+        using: userAndPlanOwnership,
+      }),
+
+      // Service role can delete any sync state
+      pgPolicy('google_calendar_sync_state_delete_service', {
+        for: 'delete',
+        to: serviceRole,
+        using: sql`true`,
+      }),
+    ];
+  }
 ).enableRLS();
 
 export const taskCalendarEvents = pgTable(
@@ -402,9 +327,7 @@ export const taskCalendarEvents = pgTable(
     pgPolicy('task_calendar_events_select_own', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('task_calendar_events_select_service', {
       for: 'select',
@@ -415,9 +338,7 @@ export const taskCalendarEvents = pgTable(
     pgPolicy('task_calendar_events_insert_own', {
       for: 'insert',
       to: authenticatedRole,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('task_calendar_events_insert_service', {
       for: 'insert',
@@ -428,12 +349,8 @@ export const taskCalendarEvents = pgTable(
     pgPolicy('task_calendar_events_update_own', {
       for: 'update',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
+      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('task_calendar_events_update_service', {
       for: 'update',
@@ -445,9 +362,7 @@ export const taskCalendarEvents = pgTable(
     pgPolicy('task_calendar_events_delete_own', {
       for: 'delete',
       to: authenticatedRole,
-      using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
-      )`,
+      using: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('task_calendar_events_delete_service', {
       for: 'delete',
