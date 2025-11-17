@@ -15,8 +15,8 @@ describe('SubscribeButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock window.location.href
-    delete (window as Window & { location?: Location }).location;
-    (window as Window & { location: { href: string } }).location = {
+    delete (window as any).location;
+    (window as any).location = {
       href: '',
     } as Location;
   });
@@ -28,13 +28,17 @@ describe('SubscribeButton', () => {
   it('should render with default label', () => {
     render(<SubscribeButton priceId="price_123" />);
 
-    expect(screen.getByRole('button', { name: /subscribe/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /subscribe/i })
+    ).toBeInTheDocument();
   });
 
   it('should render with custom label', () => {
     render(<SubscribeButton priceId="price_123" label="Upgrade Now" />);
 
-    expect(screen.getByRole('button', { name: /upgrade now/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /upgrade now/i })
+    ).toBeInTheDocument();
   });
 
   it('should apply custom className', () => {
@@ -47,7 +51,9 @@ describe('SubscribeButton', () => {
   it('should call checkout API with correct priceId', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ sessionUrl: 'https://stripe.com/checkout/session_123' }),
+      json: async () => ({
+        sessionUrl: 'https://stripe.com/checkout/session_123',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -62,7 +68,11 @@ describe('SubscribeButton', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ priceId: 'price_123', successUrl: undefined, cancelUrl: undefined }),
+        body: JSON.stringify({
+          priceId: 'price_123',
+          successUrl: undefined,
+          cancelUrl: undefined,
+        }),
       });
     });
   });
@@ -70,7 +80,9 @@ describe('SubscribeButton', () => {
   it('should include success and cancel URLs when provided', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ sessionUrl: 'https://stripe.com/checkout/session_123' }),
+      json: async () => ({
+        sessionUrl: 'https://stripe.com/checkout/session_123',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -101,11 +113,20 @@ describe('SubscribeButton', () => {
   });
 
   it('should show loading state during checkout', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({
-        ok: true,
-        json: async () => ({ sessionUrl: 'https://stripe.com/checkout' }),
-      }), 100))
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: async () => ({
+                  sessionUrl: 'https://stripe.com/checkout',
+                }),
+              }),
+            100
+          )
+        )
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -120,11 +141,20 @@ describe('SubscribeButton', () => {
   });
 
   it('should disable button during checkout', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({
-        ok: true,
-        json: async () => ({ sessionUrl: 'https://stripe.com/checkout' }),
-      }), 100))
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: async () => ({
+                  sessionUrl: 'https://stripe.com/checkout',
+                }),
+              }),
+            100
+          )
+        )
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -146,7 +176,9 @@ describe('SubscribeButton', () => {
   it('should redirect to checkout session URL on success', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ sessionUrl: 'https://stripe.com/checkout/session_123' }),
+      json: async () => ({
+        sessionUrl: 'https://stripe.com/checkout/session_123',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -156,7 +188,9 @@ describe('SubscribeButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('https://stripe.com/checkout/session_123');
+      expect(window.location.href).toBe(
+        'https://stripe.com/checkout/session_123'
+      );
     });
   });
 
@@ -238,11 +272,20 @@ describe('SubscribeButton', () => {
   });
 
   it('should not allow multiple simultaneous checkout requests', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({
-        ok: true,
-        json: async () => ({ sessionUrl: 'https://stripe.com/checkout' }),
-      }), 200))
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: async () => ({
+                  sessionUrl: 'https://stripe.com/checkout',
+                }),
+              }),
+            200
+          )
+        )
     );
     vi.stubGlobal('fetch', mockFetch);
 

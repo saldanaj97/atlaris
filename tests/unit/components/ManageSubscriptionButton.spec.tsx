@@ -15,8 +15,8 @@ describe('ManageSubscriptionButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock window.location.href
-    delete (window as Window & { location?: Location }).location;
-    (window as Window & { location: { href: string } }).location = {
+    delete (window as any).location;
+    (window as any).location = {
       href: '',
     } as Location;
   });
@@ -28,13 +28,17 @@ describe('ManageSubscriptionButton', () => {
   it('should render with default label', () => {
     render(<ManageSubscriptionButton />);
 
-    expect(screen.getByRole('button', { name: /manage subscription/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /manage subscription/i })
+    ).toBeInTheDocument();
   });
 
   it('should render with custom label', () => {
     render(<ManageSubscriptionButton label="Billing Settings" />);
 
-    expect(screen.getByRole('button', { name: /billing settings/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /billing settings/i })
+    ).toBeInTheDocument();
   });
 
   it('should apply custom className', () => {
@@ -47,7 +51,9 @@ describe('ManageSubscriptionButton', () => {
   it('should call portal API when clicked', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ portalUrl: 'https://billing.stripe.com/portal/session_123' }),
+      json: async () => ({
+        portalUrl: 'https://billing.stripe.com/portal/session_123',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -70,7 +76,9 @@ describe('ManageSubscriptionButton', () => {
   it('should include returnUrl when provided', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ portalUrl: 'https://billing.stripe.com/portal/session_123' }),
+      json: async () => ({
+        portalUrl: 'https://billing.stripe.com/portal/session_123',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -91,11 +99,20 @@ describe('ManageSubscriptionButton', () => {
   });
 
   it('should show loading state during portal creation', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({
-        ok: true,
-        json: async () => ({ portalUrl: 'https://billing.stripe.com/portal' }),
-      }), 100))
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: async () => ({
+                  portalUrl: 'https://billing.stripe.com/portal',
+                }),
+              }),
+            100
+          )
+        )
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -110,11 +127,20 @@ describe('ManageSubscriptionButton', () => {
   });
 
   it('should disable button during portal creation', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({
-        ok: true,
-        json: async () => ({ portalUrl: 'https://billing.stripe.com/portal' }),
-      }), 100))
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: async () => ({
+                  portalUrl: 'https://billing.stripe.com/portal',
+                }),
+              }),
+            100
+          )
+        )
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -136,7 +162,9 @@ describe('ManageSubscriptionButton', () => {
   it('should redirect to portal URL on success', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ portalUrl: 'https://billing.stripe.com/portal/session_123' }),
+      json: async () => ({
+        portalUrl: 'https://billing.stripe.com/portal/session_123',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -146,7 +174,9 @@ describe('ManageSubscriptionButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('https://billing.stripe.com/portal/session_123');
+      expect(window.location.href).toBe(
+        'https://billing.stripe.com/portal/session_123'
+      );
     });
   });
 
@@ -163,9 +193,12 @@ describe('ManageSubscriptionButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Unable to open billing portal', {
-        description: 'Portal creation failed',
-      });
+      expect(toast.error).toHaveBeenCalledWith(
+        'Unable to open billing portal',
+        {
+          description: 'Portal creation failed',
+        }
+      );
     });
   });
 
@@ -182,9 +215,12 @@ describe('ManageSubscriptionButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Unable to open billing portal', {
-        description: 'Missing portal URL',
-      });
+      expect(toast.error).toHaveBeenCalledWith(
+        'Unable to open billing portal',
+        {
+          description: 'Missing portal URL',
+        }
+      );
     });
   });
 
@@ -198,9 +234,12 @@ describe('ManageSubscriptionButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Unable to open billing portal', {
-        description: 'Network error',
-      });
+      expect(toast.error).toHaveBeenCalledWith(
+        'Unable to open billing portal',
+        {
+          description: 'Network error',
+        }
+      );
     });
   });
 
@@ -228,11 +267,20 @@ describe('ManageSubscriptionButton', () => {
   });
 
   it('should not allow multiple simultaneous portal requests', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({
-        ok: true,
-        json: async () => ({ portalUrl: 'https://billing.stripe.com/portal' }),
-      }), 200))
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                ok: true,
+                json: async () => ({
+                  portalUrl: 'https://billing.stripe.com/portal',
+                }),
+              }),
+            200
+          )
+        )
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -252,7 +300,9 @@ describe('ManageSubscriptionButton', () => {
   });
 
   it('should handle generic error objects', async () => {
-    const mockFetch = vi.fn().mockRejectedValue({ message: 'Custom error object' });
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValue({ message: 'Custom error object' });
     vi.stubGlobal('fetch', mockFetch);
 
     render(<ManageSubscriptionButton />);
@@ -261,9 +311,12 @@ describe('ManageSubscriptionButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Unable to open billing portal', {
-        description: 'Something went wrong',
-      });
+      expect(toast.error).toHaveBeenCalledWith(
+        'Unable to open billing portal',
+        {
+          description: 'Something went wrong',
+        }
+      );
     });
   });
 });

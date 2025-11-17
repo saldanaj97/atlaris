@@ -6,9 +6,13 @@ import type { PlanSummary } from '@/lib/types/db';
 
 // Mock Next.js Link component
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
 }));
 
 describe('PlansList', () => {
@@ -32,7 +36,6 @@ describe('PlansList', () => {
     },
     completion: 1.0,
     completedModules: 4,
-    totalModules: 4,
     completedTasks: 20,
     totalTasks: 20,
     totalMinutes: 800,
@@ -101,7 +104,6 @@ describe('PlansList', () => {
     },
     completion: 0.4,
     completedModules: 2,
-    totalModules: 6,
     completedTasks: 8,
     totalTasks: 20,
     totalMinutes: 600,
@@ -190,7 +192,6 @@ describe('PlansList', () => {
     },
     completion: 0.0,
     completedModules: 0,
-    totalModules: 3,
     completedTasks: 0,
     totalTasks: 15,
     totalMinutes: 450,
@@ -236,7 +237,11 @@ describe('PlansList', () => {
   });
 
   it('should render all provided plans', () => {
-    render(<PlansList summaries={[mockCompletedPlan, mockActivePlan, mockBeginnerPlan]} />);
+    render(
+      <PlansList
+        summaries={[mockCompletedPlan, mockActivePlan, mockBeginnerPlan]}
+      />
+    );
 
     expect(screen.getByText('Learn TypeScript')).toBeInTheDocument();
     expect(screen.getByText('Master React Hooks')).toBeInTheDocument();
@@ -354,7 +359,6 @@ describe('PlansList', () => {
     const emptyModulesPlan: PlanSummary = {
       ...mockActivePlan,
       modules: [],
-      totalModules: 0,
     };
 
     render(<PlansList summaries={[emptyModulesPlan]} />);
@@ -376,7 +380,9 @@ describe('PlansList', () => {
   });
 
   it('should maintain grid layout structure', () => {
-    const { container } = render(<PlansList summaries={[mockCompletedPlan, mockActivePlan]} />);
+    const { container } = render(
+      <PlansList summaries={[mockCompletedPlan, mockActivePlan]} />
+    );
 
     const grid = container.querySelector('.grid');
     expect(grid).toBeInTheDocument();

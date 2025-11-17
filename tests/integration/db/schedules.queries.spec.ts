@@ -42,9 +42,16 @@ describe('Schedule Queries', () => {
     it('should insert a new schedule cache', async () => {
       const scheduleData = {
         scheduleJson: {
-          weeks: [{ weekNumber: 1, tasks: [] }],
+          weeks: [
+            {
+              weekNumber: 1,
+              startDate: '2024-01-01',
+              endDate: '2024-01-07',
+              days: [],
+            },
+          ],
           totalWeeks: 1,
-          totalSessions: 0
+          totalSessions: 0,
         } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'hash123',
         timezone: 'America/New_York',
@@ -69,7 +76,18 @@ describe('Schedule Queries', () => {
 
     it('should update existing schedule cache on conflict', async () => {
       const initialData = {
-        scheduleJson: { weeks: [{ weekNumber: 1, tasks: [] }] } as ScheduleCacheRow['scheduleJson'],
+        scheduleJson: {
+          weeks: [
+            {
+              weekNumber: 1,
+              startDate: '2024-01-01',
+              endDate: '2024-01-07',
+              days: [],
+            },
+          ],
+          totalWeeks: 1,
+          totalSessions: 0,
+        } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'hash123',
         timezone: 'America/New_York',
         weeklyHours: 10,
@@ -83,9 +101,22 @@ describe('Schedule Queries', () => {
       // Update with new data
       const updatedData = {
         scheduleJson: {
-          weeks: [{ weekNumber: 1, tasks: [] }, { weekNumber: 2, tasks: [] }],
+          weeks: [
+            {
+              weekNumber: 1,
+              startDate: '2024-01-01',
+              endDate: '2024-01-07',
+              days: [],
+            },
+            {
+              weekNumber: 2,
+              startDate: '2024-01-08',
+              endDate: '2024-01-14',
+              days: [],
+            },
+          ],
           totalWeeks: 2,
-          totalSessions: 0
+          totalSessions: 0,
         } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'hash456',
         timezone: 'America/Los_Angeles',
@@ -109,7 +140,11 @@ describe('Schedule Queries', () => {
 
     it('should handle null deadline', async () => {
       const scheduleData = {
-        scheduleJson: { weeks: [], totalWeeks: 0, totalSessions: 0 } as ScheduleCacheRow['scheduleJson'],
+        scheduleJson: {
+          weeks: [],
+          totalWeeks: 0,
+          totalSessions: 0,
+        } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'hash_no_deadline',
         timezone: 'UTC',
         weeklyHours: 5,
@@ -127,7 +162,11 @@ describe('Schedule Queries', () => {
 
     it('should update generatedAt timestamp on upsert', async () => {
       const scheduleData = {
-        scheduleJson: { weeks: [], totalWeeks: 0, totalSessions: 0 } as ScheduleCacheRow['scheduleJson'],
+        scheduleJson: {
+          weeks: [],
+          totalWeeks: 0,
+          totalSessions: 0,
+        } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'hash_timestamp',
         timezone: 'UTC',
         weeklyHours: 10,
@@ -153,7 +192,9 @@ describe('Schedule Queries', () => {
 
       expect(firstTimestamp).toBeInstanceOf(Date);
       expect(updatedTimestamp).toBeInstanceOf(Date);
-      expect(updatedTimestamp!.getTime()).toBeGreaterThan(firstTimestamp!.getTime());
+      expect(updatedTimestamp!.getTime()).toBeGreaterThan(
+        firstTimestamp!.getTime()
+      );
     });
   });
 
@@ -168,11 +209,56 @@ describe('Schedule Queries', () => {
       const scheduleData = {
         scheduleJson: {
           weeks: [
-            { weekNumber: 1, tasks: ['task1', 'task2'] },
-            { weekNumber: 2, tasks: ['task3'] },
+            {
+              weekNumber: 1,
+              startDate: '2024-03-01',
+              endDate: '2024-03-07',
+              days: [
+                {
+                  dayNumber: 1,
+                  date: '2024-03-01',
+                  sessions: [
+                    {
+                      taskId: 'task1',
+                      taskTitle: 'Task 1',
+                      estimatedMinutes: 60,
+                      moduleId: 'module-1',
+                      moduleName: 'Module 1',
+                    },
+                    {
+                      taskId: 'task2',
+                      taskTitle: 'Task 2',
+                      estimatedMinutes: 30,
+                      moduleId: 'module-1',
+                      moduleName: 'Module 1',
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              weekNumber: 2,
+              startDate: '2024-03-08',
+              endDate: '2024-03-14',
+              days: [
+                {
+                  dayNumber: 1,
+                  date: '2024-03-08',
+                  sessions: [
+                    {
+                      taskId: 'task3',
+                      taskTitle: 'Task 3',
+                      estimatedMinutes: 45,
+                      moduleId: 'module-2',
+                      moduleName: 'Module 2',
+                    },
+                  ],
+                },
+              ],
+            },
           ],
           totalWeeks: 2,
-          totalSessions: 3
+          totalSessions: 3,
         } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'complex_hash',
         timezone: 'Europe/London',
@@ -207,7 +293,11 @@ describe('Schedule Queries', () => {
 
       // Create schedules for both plans
       await upsertPlanScheduleCache(planId, {
-        scheduleJson: { weeks: [], totalWeeks: 0, totalSessions: 0 } as ScheduleCacheRow['scheduleJson'],
+        scheduleJson: {
+          weeks: [],
+          totalWeeks: 0,
+          totalSessions: 0,
+        } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'plan1_hash',
         timezone: 'UTC',
         weeklyHours: 10,
@@ -216,7 +306,11 @@ describe('Schedule Queries', () => {
       });
 
       await upsertPlanScheduleCache(plan2.id, {
-        scheduleJson: { weeks: [], totalWeeks: 0, totalSessions: 0 } as ScheduleCacheRow['scheduleJson'],
+        scheduleJson: {
+          weeks: [],
+          totalWeeks: 0,
+          totalSessions: 0,
+        } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'plan2_hash',
         timezone: 'America/New_York',
         weeklyHours: 5,
@@ -237,7 +331,11 @@ describe('Schedule Queries', () => {
     it('should delete existing schedule cache', async () => {
       // Create a schedule cache
       await upsertPlanScheduleCache(planId, {
-        scheduleJson: { weeks: [], totalWeeks: 0, totalSessions: 0 } as ScheduleCacheRow['scheduleJson'],
+        scheduleJson: {
+          weeks: [],
+          totalWeeks: 0,
+          totalSessions: 0,
+        } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'to_delete_hash',
         timezone: 'UTC',
         weeklyHours: 10,
@@ -259,7 +357,9 @@ describe('Schedule Queries', () => {
 
     it('should not throw error when deleting non-existent cache', async () => {
       // Should not throw
-      await expect(deletePlanScheduleCache('non-existent-plan')).resolves.not.toThrow();
+      await expect(
+        deletePlanScheduleCache('non-existent-plan')
+      ).resolves.not.toThrow();
     });
 
     it("should only delete specified plan's cache", async () => {
@@ -280,7 +380,11 @@ describe('Schedule Queries', () => {
 
       // Create schedules for both plans
       await upsertPlanScheduleCache(planId, {
-        scheduleJson: { weeks: [], totalWeeks: 0, totalSessions: 0 } as ScheduleCacheRow['scheduleJson'],
+        scheduleJson: {
+          weeks: [],
+          totalWeeks: 0,
+          totalSessions: 0,
+        } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'plan1_hash',
         timezone: 'UTC',
         weeklyHours: 10,
@@ -289,7 +393,11 @@ describe('Schedule Queries', () => {
       });
 
       await upsertPlanScheduleCache(plan2.id, {
-        scheduleJson: { weeks: [], totalWeeks: 0, totalSessions: 0 } as ScheduleCacheRow['scheduleJson'],
+        scheduleJson: {
+          weeks: [],
+          totalWeeks: 0,
+          totalSessions: 0,
+        } as ScheduleCacheRow['scheduleJson'],
         inputsHash: 'plan2_hash',
         timezone: 'UTC',
         weeklyHours: 5,
@@ -316,15 +424,49 @@ describe('Schedule Queries', () => {
         weeks: [
           {
             weekNumber: 1,
-            tasks: [
-              { id: 'task1', title: 'Task 1', duration: 60 },
-              { id: 'task2', title: 'Task 2', duration: 30 },
+            startDate: '2024-01-01',
+            endDate: '2024-01-07',
+            days: [
+              {
+                dayNumber: 1,
+                date: '2024-01-01',
+                sessions: [
+                  {
+                    taskId: 'task1',
+                    taskTitle: 'Task 1',
+                    estimatedMinutes: 60,
+                    moduleId: 'module-1',
+                    moduleName: 'Module 1',
+                  },
+                  {
+                    taskId: 'task2',
+                    taskTitle: 'Task 2',
+                    estimatedMinutes: 30,
+                    moduleId: 'module-1',
+                    moduleName: 'Module 1',
+                  },
+                ],
+              },
             ],
           },
           {
             weekNumber: 2,
-            tasks: [
-              { id: 'task3', title: 'Task 3', duration: 45 },
+            startDate: '2024-01-08',
+            endDate: '2024-01-14',
+            days: [
+              {
+                dayNumber: 1,
+                date: '2024-01-08',
+                sessions: [
+                  {
+                    taskId: 'task3',
+                    taskTitle: 'Task 3',
+                    estimatedMinutes: 45,
+                    moduleId: 'module-2',
+                    moduleName: 'Module 2',
+                  },
+                ],
+              },
             ],
           },
         ],
@@ -351,7 +493,12 @@ describe('Schedule Queries', () => {
     });
 
     it('should handle different timezone formats', async () => {
-      const timezones = ['UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo'];
+      const timezones = [
+        'UTC',
+        'America/New_York',
+        'Europe/London',
+        'Asia/Tokyo',
+      ];
 
       for (const timezone of timezones) {
         // Create a new plan for each timezone test
@@ -370,7 +517,11 @@ describe('Schedule Queries', () => {
           .returning();
 
         await upsertPlanScheduleCache(plan.id, {
-          scheduleJson: { weeks: [], totalWeeks: 0, totalSessions: 0 } as ScheduleCacheRow['scheduleJson'],
+          scheduleJson: {
+            weeks: [],
+            totalWeeks: 0,
+            totalSessions: 0,
+          } as ScheduleCacheRow['scheduleJson'],
           inputsHash: `hash_${timezone}`,
           timezone,
           weeklyHours: 10,
