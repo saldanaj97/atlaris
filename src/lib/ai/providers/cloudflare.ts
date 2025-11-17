@@ -13,24 +13,9 @@ import type {
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
 import { PlanSchema } from '@/lib/ai/schema';
+import { toStream } from '@/lib/ai/utils';
 import { appEnv, cloudflareAiEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-
-function toStream(obj: unknown): AsyncIterable<string> {
-  const data = JSON.stringify(obj);
-  return {
-    [Symbol.asyncIterator](): AsyncIterator<string> {
-      let done = false;
-      return {
-        next(): Promise<IteratorResult<string>> {
-          if (done) return Promise.resolve({ done: true, value: undefined });
-          done = true;
-          return Promise.resolve({ done: false, value: data });
-        },
-      };
-    },
-  } as AsyncIterable<string>;
-}
 
 export interface CloudflareProviderConfig {
   apiToken?: string; // CF_API_TOKEN

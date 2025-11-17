@@ -354,6 +354,18 @@ export const loggingEnv = {
   },
 } as const;
 
+export const observabilityEnv = {
+  get sentryDsn() {
+    return getServerOptional('SENTRY_DSN');
+  },
+  get sentryTracesSampleRate() {
+    return toNumber(getServerOptional('SENTRY_TRACES_SAMPLE_RATE'), 0.1);
+  },
+  get sentryProfilesSampleRate() {
+    return toNumber(getServerOptional('SENTRY_PROFILES_SAMPLE_RATE'), 0.1);
+  },
+} as const;
+
 export const curationWeightsEnv = {
   get ytPopularity() {
     return toNumber(getServerOptional('CURATION_YT_WEIGHT_POPULARITY'), 0.45);

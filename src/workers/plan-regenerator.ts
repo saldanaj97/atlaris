@@ -10,30 +10,11 @@ import {
 } from '@/lib/jobs/queue';
 import { processPlanRegenerationJob } from '@/lib/jobs/worker-service';
 import { JOB_TYPES } from '@/lib/jobs/types';
+import { normalizeError, sleep } from './utils';
 
 const DEFAULT_POLL_INTERVAL_MS = 2000;
 
 const ACTIVE_JOB_TYPES = [JOB_TYPES.PLAN_REGENERATION] as const;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function normalizeError(error: unknown): { message: string; name?: string } {
-  if (error instanceof Error) {
-    return { message: error.message, name: error.name };
-  }
-
-  if (typeof error === 'string' && error.length) {
-    return { message: error };
-  }
-
-  try {
-    return { message: JSON.stringify(error) };
-  } catch {
-    return { message: 'Unknown error' };
-  }
-}
 
 async function main() {
   const shutdown = new AbortController();

@@ -11,6 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import { timestampFields } from '../helpers';
 import { users } from './users';
 import { authenticatedRole, clerkSub, serviceRole } from './common';
 
@@ -27,12 +28,7 @@ export const usageMetrics = pgTable(
     plansGenerated: integer('plans_generated').notNull().default(0),
     regenerationsUsed: integer('regenerations_used').notNull().default(0),
     exportsUsed: integer('exports_used').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    ...timestampFields,
   },
   (table) => [
     unique('usage_metrics_user_id_month_unique').on(table.userId, table.month),

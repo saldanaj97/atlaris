@@ -111,6 +111,10 @@ Tests cover:
   - To format arbitrary files: pnpm exec prettier --write <path>
 - Type check only
   - pnpm type-check
+- Code quality checks (warnings only, do not block PRs)
+  - pnpm check:duplication (detect copy-pasted code, threshold: 5%)
+  - pnpm check:complexity (check file sizes >500 LOC)
+  - pnpm check:quality (run both duplication and complexity checks)
 - Database (Drizzle)
   - Generate migrations: pnpm db:generate
   - Apply migrations: pnpm db:migrate
