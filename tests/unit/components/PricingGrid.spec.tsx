@@ -15,9 +15,13 @@ vi.mock('@/components/billing/SubscribeButton', () => ({
 
 // Mock Next.js Link
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
 }));
 
 describe('PricingGrid', () => {
@@ -101,9 +105,14 @@ describe('PricingGrid', () => {
     );
 
     // Should have SubscribeButtons for starter and pro
-    expect(screen.getByTestId('subscribe-price_starter_monthly')).toBeInTheDocument();
-    expect(screen.getByTestId('subscribe-price_pro_monthly')).toBeInTheDocument();
-    expect(screen.getByText('Get Started')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('subscribe-price_starter_monthly')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('subscribe-price_pro_monthly')
+    ).toBeInTheDocument();
+    const buttons = screen.getAllByText('Get Started');
+    expect(buttons.length).toBeGreaterThanOrEqual(2);
   });
 
   it('should render Link for free tier', () => {
@@ -130,10 +139,16 @@ describe('PricingGrid', () => {
       />
     );
 
-    // Check for some expected features
-    expect(screen.getByText(/active plans/)).toBeInTheDocument();
-    expect(screen.getByText(/regenerations per month/)).toBeInTheDocument();
-    expect(screen.getByText(/exports per month/)).toBeInTheDocument();
+    // Check for some expected features (across multiple tiers)
+    expect(screen.getAllByText(/active plans/).length).toBeGreaterThanOrEqual(
+      1
+    );
+    expect(
+      screen.getAllByText(/regenerations per month/).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/exports per month/).length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('should use grid layout', () => {
@@ -162,8 +177,8 @@ describe('PricingGrid', () => {
       />
     );
 
-    // Should have 3 pricing cards
-    const cards = container.querySelectorAll('[class*="Card"]');
+    // Should have at least 3 pricing cards
+    const cards = container.querySelectorAll('[data-slot="card"]');
     expect(cards.length).toBeGreaterThanOrEqual(3);
   });
 
