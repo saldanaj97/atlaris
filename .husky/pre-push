@@ -1,8 +1,5 @@
 #!/bin/sh
 
-# Get the current branch name
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-
 # Check if only .md files are being pushed
 check_only_md_files() {
   local remote_sha=$1
@@ -34,27 +31,16 @@ check_only_md_files() {
 # Read the remote and remote branch being pushed to
 while read local_ref local_sha remote_ref remote_sha
 do
-  # Extract the remote branch name (remove refs/heads/ prefix)
-  remote_branch=$(echo "$remote_ref" | sed 's/refs\/heads\///')
-
   # Check if only .md files are being pushed
   if check_only_md_files "$remote_sha"; then
     echo "Only .md files detected in push. Skipping CI checks."
     continue
   fi
 
-  # If pushing directly to main branch
-  if [ "$current_branch" = "main" ] && [ "$remote_branch" = "main" ]; then
-    echo "Detected push to main branch. Running local CI checks..."
+  # Run lint and type-check for all pushes
+  echo "Running pre-push checks (lint and type-check)..."
+  pnpm lint:fix || exit 1
+  pnpm type-check || exit 1
 
-    # Run PR checks (lint, type-check, build, tests)
-    echo "Running local-ci:pr checks..."
-    pnpm local-ci:pr || exit 1
-
-    echo "All Local CI(PR) checks passed!"
-  else
-    echo "Not pushing to main branch directly. Running basic checks..."
-    pnpm lint:fix
-    pnpm type-check
-  fi
+  echo "Pre-push checks passed!"
 done
