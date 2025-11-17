@@ -38,6 +38,9 @@
     "test:suite:all": "bash scripts/full-test-suite.sh --with-e2e",
     "start": "next start",
     "type-check": "tsc --noEmit",
+    "check:duplication": "jscpd --exitCode 0",
+    "check:complexity": "node scripts/check-file-size.js",
+    "check:quality": "pnpm check:duplication && pnpm check:complexity",
     "prepare": "husky"
   },
   "dependencies": {
@@ -106,6 +109,7 @@
     "eslint-plugin-react": "^7",
     "eslint-plugin-react-hooks": "^5",
     "husky": "^9.1.7",
+    "jscpd": "^4.0.5",
     "jsdom": "^27.0.0",
     "jsonwebtoken": "^9.0.2",
     "lint-staged": "^16.2.5",

@@ -99,6 +99,9 @@ export default [
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
       'no-console': 'error',
+
+      // Code quality: warn on high complexity functions
+      complexity: ['warn', { max: 10 }],
     },
   },
   {
