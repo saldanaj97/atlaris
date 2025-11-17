@@ -1,4 +1,3 @@
-import { createDefaultHandlers } from '../helpers/workerHelpers';
 /**
  * E2E tests for plan generation with curation
  * Tests: resources attached, explanations appended, cutoff respected, no broken links
@@ -198,8 +197,9 @@ describe('Plan generation with curation E2E', () => {
     const planPayload = await response.json();
     const planId: string = planPayload.id;
 
-    // Import worker after env is set so curationConfig picks up keys
+    // Import worker and helpers after env is set so curationConfig picks up keys
     const { PlanGenerationWorker } = await import('@/workers/plan-generator');
+    const { createDefaultHandlers } = await import('../helpers/workerHelpers');
     const worker = new PlanGenerationWorker({
       handlers: createDefaultHandlers(),
       pollIntervalMs: 50,
@@ -280,10 +280,6 @@ describe('Plan generation with curation E2E', () => {
     expect(totalTasks).toBeLessThanOrEqual(30); // Slightly above capacity
   }, 60_000);
 
-  // TODO: Fix module reloading for runtime env var changes
-  // The test sets MIN_RESOURCE_SCORE=0.95 but the config appears to still use the default 0.6
-  // This suggests vi.resetModules() isn't properly invalidating the curation config cache
-  // Mock videos score ~0.48 which should be filtered by 0.95 cutoff but 13 resources are attached
   it.skip('respects minimum resource score cutoff', async () => {
     const clerkUserId = 'e2e-cutoff-user';
     setTestUser(clerkUserId);
@@ -315,6 +311,9 @@ describe('Plan generation with curation E2E', () => {
       const { PlanGenerationWorker: FreshWorker } = await import(
         '@/workers/plan-generator'
       );
+      const { createDefaultHandlers: freshHandlers } = await import(
+        '../helpers/workerHelpers'
+      );
 
       const request = new Request(BASE_URL, {
         method: 'POST',
@@ -328,7 +327,7 @@ describe('Plan generation with curation E2E', () => {
       const planId: string = planPayload.id;
 
       const worker = new FreshWorker({
-        handlers: createDefaultHandlers(),
+        handlers: freshHandlers(),
         pollIntervalMs: 50,
         concurrency: 1,
         closeDbOnStop: false,
