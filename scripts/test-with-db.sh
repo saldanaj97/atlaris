@@ -25,6 +25,19 @@ until docker exec atlaris-test-db pg_isready -U postgres > /dev/null 2>&1; do
   fi
 done
 
+# Bootstrap extensions and roles expected by RLS policies
+echo "Bootstrapping extensions and roles..."
+docker exec atlaris-test-db psql -U postgres -d atlaris_test <<'SQL'
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE service_role NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE SCHEMA IF NOT EXISTS auth;
+CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
+LANGUAGE sql
+AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
+SQL
+
 echo "Applying migrations..."
 export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54330/atlaris_test"
 pnpm db:push

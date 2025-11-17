@@ -28,6 +28,7 @@ function formatDate(value?: Date | null) {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC',
     }).format(value);
   } catch {
     return 'Created recently';
