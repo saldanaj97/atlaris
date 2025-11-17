@@ -10,6 +10,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { integrationProviderEnum } from '../../enums';
+import { timestampFields } from '../helpers';
 import { learningPlans } from './plans';
 import { tasks } from './tasks';
 import { users } from './users';
@@ -32,12 +33,7 @@ export const integrationTokens = pgTable(
     workspaceId: text('workspace_id'),
     workspaceName: text('workspace_name'),
     botId: text('bot_id'),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    ...timestampFields,
   },
   (table) => [
     unique('user_provider_unique').on(table.userId, table.provider),
@@ -130,12 +126,7 @@ export const notionSyncState = pgTable(
     notionDatabaseId: text('notion_database_id'),
     syncHash: text('sync_hash').notNull(), // SHA-256 hash of plan content
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    ...timestampFields,
   },
   (table) => [
     unique('notion_sync_plan_id_unique').on(table.planId),
