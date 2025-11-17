@@ -1,11 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
 import {
   parseGenerationStream,
   ParserError,
-  type ParsedGeneration,
-  type ParsedModule,
   type ParserCallbacks,
 } from '@/lib/ai/parser';
+import { describe, expect, it, vi } from 'vitest';
 
 // Helper to create async iterable from string chunks
 async function* createStream(chunks: string[]): AsyncIterable<string> {
@@ -60,17 +58,17 @@ describe('AI Parser', () => {
     });
 
     it('should throw ParserError for empty response', async () => {
-      const stream = createStream(['']);
+      const promise = parseGenerationStream(createStream(['']));
 
-      await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);
-      await expect(parseGenerationStream(stream)).rejects.toThrow('empty response');
+      await expect(promise).rejects.toThrow(ParserError);
+      await expect(promise).rejects.toThrow('empty response');
     });
 
     it('should throw ParserError for invalid JSON', async () => {
-      const stream = createStream(['{ invalid json }']);
+      const promise = parseGenerationStream(createStream(['{ invalid json }']));
 
-      await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);
-      await expect(parseGenerationStream(stream)).rejects.toThrow('invalid JSON');
+      await expect(promise).rejects.toThrow(ParserError);
+      await expect(promise).rejects.toThrow('invalid JSON');
     });
 
     it('should throw ParserError when response is not an object', async () => {
@@ -80,17 +78,21 @@ describe('AI Parser', () => {
     });
 
     it('should throw ParserError when modules array is missing', async () => {
-      const stream = createStream([JSON.stringify({ data: [] })]);
+      const promise = parseGenerationStream(
+        createStream([JSON.stringify({ data: [] })])
+      );
 
-      await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);
-      await expect(parseGenerationStream(stream)).rejects.toThrow('missing modules array');
+      await expect(promise).rejects.toThrow(ParserError);
+      await expect(promise).rejects.toThrow('missing modules array');
     });
 
     it('should throw ParserError when modules array is empty', async () => {
-      const stream = createStream([JSON.stringify({ modules: [] })]);
+      const promise = parseGenerationStream(
+        createStream([JSON.stringify({ modules: [] })])
+      );
 
-      await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);
-      await expect(parseGenerationStream(stream)).rejects.toThrow('zero modules');
+      await expect(promise).rejects.toThrow(ParserError);
+      await expect(promise).rejects.toThrow('zero modules');
     });
 
     it('should call onFirstModuleDetected callback when modules key is detected', async () => {
@@ -235,10 +237,10 @@ describe('AI Parser', () => {
         ],
       });
 
-      const stream = createStream([invalidJson]);
+      const promise = parseGenerationStream(createStream([invalidJson]));
 
-      await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);
-      await expect(parseGenerationStream(stream)).rejects.toThrow('title');
+      await expect(promise).rejects.toThrow(ParserError);
+      await expect(promise).rejects.toThrow('title');
     });
 
     it('should throw error when module has no tasks', async () => {
@@ -252,10 +254,10 @@ describe('AI Parser', () => {
         ],
       });
 
-      const stream = createStream([invalidJson]);
+      const promise = parseGenerationStream(createStream([invalidJson]));
 
-      await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);
-      await expect(parseGenerationStream(stream)).rejects.toThrow('at least one task');
+      await expect(promise).rejects.toThrow(ParserError);
+      await expect(promise).rejects.toThrow('at least one task');
     });
 
     it('should throw error when task title is missing', async () => {
@@ -269,10 +271,10 @@ describe('AI Parser', () => {
         ],
       });
 
-      const stream = createStream([invalidJson]);
+      const promise = parseGenerationStream(createStream([invalidJson]));
 
-      await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);
-      await expect(parseGenerationStream(stream)).rejects.toThrow('title');
+      await expect(promise).rejects.toThrow(ParserError);
+      await expect(promise).rejects.toThrow('title');
     });
 
     it('should throw error when estimatedMinutes is not a number', async () => {
@@ -286,10 +288,10 @@ describe('AI Parser', () => {
         ],
       });
 
-      const stream = createStream([invalidJson]);
+      const promise = parseGenerationStream(createStream([invalidJson]));
 
-      await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);
-      await expect(parseGenerationStream(stream)).rejects.toThrow('finite number');
+      await expect(promise).rejects.toThrow(ParserError);
+      await expect(promise).rejects.toThrow('finite number');
     });
 
     it('should trim whitespace from titles and descriptions', async () => {

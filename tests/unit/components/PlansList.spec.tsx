@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import React from 'react';
 import PlansList from '@/components/plans/PlansList';
 import type { PlanSummary } from '@/lib/types/db';
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock Next.js Link component
 vi.mock('next/link', () => ({
@@ -270,7 +270,7 @@ describe('PlansList', () => {
   it('should display correct week progress', () => {
     render(<PlansList summaries={[mockActivePlan]} />);
 
-    // completedModules: 2, totalModules: 6, so current week is 3
+    // completedModules: 2, modules.length: 6, so current week is 3
     expect(screen.getByText(/Week 3 of 6/i)).toBeInTheDocument();
   });
 

@@ -1,8 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import React from 'react';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('sonner', () => ({
   toast: {
@@ -15,10 +14,10 @@ describe('ManageSubscriptionButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock window.location.href
-    delete (window as any).location;
-    (window as any).location = {
-      href: '',
-    } as Location;
+    Object.defineProperty(window, 'location', {
+      value: { href: '' },
+      writable: true,
+    });
   });
 
   afterEach(() => {
