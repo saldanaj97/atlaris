@@ -118,6 +118,9 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   });
 
   it('should return 401 for unauthenticated requests', async () => {
+    // Ensure withAuth does not use DEV_CLERK_USER_ID fallback
+    delete process.env.DEV_CLERK_USER_ID;
+
     const { auth } = await import('@clerk/nextjs/server');
     vi.mocked(auth).mockResolvedValue({
       userId: null,

@@ -1,7 +1,11 @@
+import { and, eq } from 'drizzle-orm';
+
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';
 import { getAllTasksInPlan } from '@/lib/db/queries/tasks';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
+import { learningPlans } from '@/lib/db/schema';
 
 function getParams(req: Request) {
   const url = new URL(req.url);
@@ -33,6 +37,20 @@ export const GET = withErrorBoundary(
     const user = await getUserByClerkId(userId);
     if (!user) {
       throw new NotFoundError('User not found.');
+    }
+
+    // Ensure the plan exists and belongs to the authenticated user
+    const db = getDb();
+    const [plan] = await db
+      .select({ id: learningPlans.id })
+      .from(learningPlans)
+      .where(
+        and(eq(learningPlans.id, planId), eq(learningPlans.userId, user.id))
+      )
+      .limit(1);
+
+    if (!plan) {
+      throw new NotFoundError('Plan not found.');
     }
 
     const tasks = await getAllTasksInPlan(user.id, planId);

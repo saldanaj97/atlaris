@@ -47,6 +47,9 @@ describe('POST /api/v1/integrations/disconnect', () => {
   });
 
   it('should require authentication', async () => {
+    // Ensure withAuth does not use DEV_CLERK_USER_ID fallback
+    delete process.env.DEV_CLERK_USER_ID;
+
     const { auth } = await import('@clerk/nextjs/server');
     vi.mocked(auth).mockResolvedValue({
       userId: null,

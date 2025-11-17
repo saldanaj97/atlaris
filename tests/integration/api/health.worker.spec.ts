@@ -1,11 +1,36 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { db } from '@/lib/db/drizzle';
-import { jobQueue } from '@/lib/db/schema';
+import { jobQueue, learningPlans } from '@/lib/db/schema';
+import { ensureUser } from '../../helpers/db';
 
 describe('GET /api/health/worker', () => {
+  let userId: string;
+  let planId: string;
+
   beforeEach(async () => {
     // Clean up any existing test jobs
     await db.delete(jobQueue);
+
+    // Ensure we have a valid user and plan to satisfy FK constraints
+    userId = await ensureUser({
+      clerkUserId: 'worker-health-test-user',
+      email: 'worker-health@example.com',
+    });
+
+    const [plan] = await db
+      .insert(learningPlans)
+      .values({
+        userId,
+        topic: 'Health Check Plan',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'manual',
+      })
+      .returning();
+
+    planId = plan.id;
   });
 
   it('should return healthy status when no issues', async () => {
@@ -28,15 +53,12 @@ describe('GET /api/health/worker', () => {
     // Create a stuck job (processing for > 10 minutes)
     const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000);
 
-    const testUserId = '00000000-0000-0000-0000-000000000001';
-    const testPlanId = '00000000-0000-0000-0000-000000000002';
-
     await db.insert(jobQueue).values({
-      planId: testPlanId,
-      userId: testUserId,
+      planId,
+      userId,
       jobType: 'plan_generation',
       status: 'processing',
-      payload: { planId: testPlanId },
+      payload: { planId },
       startedAt: elevenMinutesAgo,
     });
 
@@ -55,8 +77,8 @@ describe('GET /api/health/worker', () => {
   it('should return unhealthy status when backlog is excessive', async () => {
     // Create 101 pending jobs (threshold is 100)
     const jobs = Array.from({ length: 101 }, (_, i) => ({
-      planId: `test-plan-${i}`,
-      userId: 'test-user',
+      planId,
+      userId,
       jobType: 'plan_generation' as const,
       status: 'pending' as const,
       payload: { planId: `test-plan-${i}` },
@@ -80,8 +102,8 @@ describe('GET /api/health/worker', () => {
     // Create a stuck job
     const elevenMinutesAgo = new Date(Date.now() - 11 * 60 * 1000);
     await db.insert(jobQueue).values({
-      planId: 'stuck-plan',
-      userId: 'test-user',
+      planId,
+      userId,
       jobType: 'plan_generation',
       status: 'processing',
       payload: { planId: 'stuck-plan' },
@@ -90,8 +112,8 @@ describe('GET /api/health/worker', () => {
 
     // Create excessive backlog
     const jobs = Array.from({ length: 101 }, (_, i) => ({
-      planId: `backlog-plan-${i}`,
-      userId: 'test-user',
+      planId,
+      userId,
       jobType: 'plan_generation' as const,
       status: 'pending' as const,
       payload: { planId: `backlog-plan-${i}` },
@@ -116,8 +138,8 @@ describe('GET /api/health/worker', () => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
     await db.insert(jobQueue).values({
-      planId: 'recent-plan',
-      userId: 'test-user',
+      planId,
+      userId,
       jobType: 'plan_generation',
       status: 'processing',
       payload: { planId: 'recent-plan' },
@@ -138,8 +160,8 @@ describe('GET /api/health/worker', () => {
   it('should not count completed jobs in backlog', async () => {
     // Create 101 completed jobs
     const jobs = Array.from({ length: 101 }, (_, i) => ({
-      planId: `completed-plan-${i}`,
-      userId: 'test-user',
+      planId,
+      userId,
       jobType: 'plan_generation' as const,
       status: 'completed' as const,
       payload: { planId: `completed-plan-${i}` },
