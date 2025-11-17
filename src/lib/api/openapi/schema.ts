@@ -1,6 +1,7 @@
 import {
   OpenAPIRegistry,
   OpenApiGeneratorV3,
+  extendZodWithOpenApi,
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
@@ -12,6 +13,9 @@ import {
 } from '@/lib/types/db';
 import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
 
+// Initialize OpenAPI extension for Zod (must be called once)
+extendZodWithOpenApi(z);
+
 const registry = new OpenAPIRegistry();
 
 const skillLevelEnum = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
@@ -19,51 +23,59 @@ const learningStyleEnum = z.enum(
   LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
 );
 
-const errorResponseSchema = z.object({
-  error: z.string(),
-  details: z.unknown().optional(),
-});
+const errorResponseSchema = z
+  .object({
+    error: z.string(),
+    details: z.unknown().optional(),
+  })
+  .openapi('ErrorResponse');
 
-const learningPlanSchema = z.object({
-  id: z.string().uuid(),
-  topic: z.string(),
-  skillLevel: skillLevelEnum,
-  weeklyHours: z.number().int().nullable().optional(),
-  learningStyle: learningStyleEnum,
-  visibility: z.enum(['private', 'public'] as const),
-  origin: z.enum(['ai', 'manual', 'template'] as const),
-  createdAt: z.string().datetime().nullable().optional(),
-});
+const learningPlanSchema = z
+  .object({
+    id: z.string().uuid(),
+    topic: z.string(),
+    skillLevel: skillLevelEnum,
+    weeklyHours: z.number().int().nullable().optional(),
+    learningStyle: learningStyleEnum,
+    visibility: z.enum(['private', 'public'] as const),
+    origin: z.enum(['ai', 'manual', 'template'] as const),
+    createdAt: z.string().datetime().nullable().optional(),
+  })
+  .openapi('LearningPlan');
 
-const planSummarySchema = z.object({
-  plan: learningPlanSchema,
-  completion: z.number(),
-  completedTasks: z.number().int(),
-  totalTasks: z.number().int(),
-  totalMinutes: z.number().int(),
-  completedMinutes: z.number().int(),
-  modules: z.array(
-    z.object({
-      id: z.string().uuid(),
-      planId: z.string().uuid(),
-      title: z.string(),
-      order: z.number().int(),
-    })
-  ),
-  completedModules: z.number().int(),
-});
+const planSummarySchema = z
+  .object({
+    plan: learningPlanSchema,
+    completion: z.number(),
+    completedTasks: z.number().int(),
+    totalTasks: z.number().int(),
+    totalMinutes: z.number().int(),
+    completedMinutes: z.number().int(),
+    modules: z.array(
+      z.object({
+        id: z.string().uuid(),
+        planId: z.string().uuid(),
+        title: z.string(),
+        order: z.number().int(),
+      })
+    ),
+    completedModules: z.number().int(),
+  })
+  .openapi('PlanSummary');
 
-const createPlanResponseSchema = z.object({
-  id: z.string().uuid(),
-  topic: z.string(),
-  skillLevel: skillLevelEnum,
-  weeklyHours: z.number().int().nullable().optional(),
-  learningStyle: learningStyleEnum,
-  visibility: z.enum(['private', 'public'] as const),
-  origin: z.enum(['ai', 'manual', 'template'] as const),
-  createdAt: z.string().datetime().nullable().optional(),
-  status: z.enum(['pending'] as const),
-});
+const createPlanResponseSchema = z
+  .object({
+    id: z.string().uuid(),
+    topic: z.string(),
+    skillLevel: skillLevelEnum,
+    weeklyHours: z.number().int().nullable().optional(),
+    learningStyle: learningStyleEnum,
+    visibility: z.enum(['private', 'public'] as const),
+    origin: z.enum(['ai', 'manual', 'template'] as const),
+    createdAt: z.string().datetime().nullable().optional(),
+    status: z.enum(['pending'] as const),
+  })
+  .openapi('CreatePlanResponse');
 
 const subscriptionUsageSchema = z.object({
   activePlans: z.number().int(),
@@ -71,20 +83,15 @@ const subscriptionUsageSchema = z.object({
   exports: z.number().int(),
 });
 
-const subscriptionResponseSchema = z.object({
-  tier: z.enum(['free', 'starter', 'pro']),
-  status: z.enum(['active', 'canceled', 'past_due', 'trialing']).nullable(),
-  periodEnd: z.string().datetime().nullable(),
-  cancelAtPeriodEnd: z.boolean(),
-  usage: subscriptionUsageSchema,
-});
-
-registry.register('ErrorResponse', errorResponseSchema);
-registry.register('LearningPlan', learningPlanSchema);
-registry.register('PlanSummary', planSummarySchema);
-registry.register('CreatePlanResponse', createPlanResponseSchema);
-registry.register('SubscriptionResponse', subscriptionResponseSchema);
-registry.register('CreateLearningPlanInput', createLearningPlanSchema);
+const subscriptionResponseSchema = z
+  .object({
+    tier: z.enum(['free', 'starter', 'pro']),
+    status: z.enum(['active', 'canceled', 'past_due', 'trialing']).nullable(),
+    periodEnd: z.string().datetime().nullable(),
+    cancelAtPeriodEnd: z.boolean(),
+    usage: subscriptionUsageSchema,
+  })
+  .openapi('SubscriptionResponse');
 
 registry.registerPath({
   method: 'get',
