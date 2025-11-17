@@ -30,7 +30,7 @@ describe('formatMinutes', () => {
 
   it('should format non-integer hours with decimal', () => {
     expect(formatMinutes(90)).toBe('1.5 hrs');
-    expect(formatMinutes(75)).toBe('1.2 hrs');
+    expect(formatMinutes(75)).toBe('1.3 hrs'); // 75 min = 1.25 hrs, rounds to 1.3
     expect(formatMinutes(150)).toBe('2.5 hrs');
   });
 
