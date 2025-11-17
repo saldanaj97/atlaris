@@ -297,7 +297,6 @@ describe('mapOnboardingToCreateInput', () => {
       learningStyle: 'mixed',
       weeklyHours: '6-10',
       deadlineDate: '2026-04-01',
-      notes: undefined,
       notes: 'Focus on async patterns',
     };
 
