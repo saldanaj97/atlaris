@@ -17,7 +17,6 @@ describe('normalizeOnboardingValues', () => {
       weeklyHours: '3-5',
       startDate: '2026-01-01',
       deadlineDate: '2026-03-01',
-      notes: undefined,
       notes: 'Test notes',
     };
 
