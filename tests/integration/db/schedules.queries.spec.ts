@@ -8,7 +8,6 @@ import {
 } from '@/lib/db/queries/schedules';
 import { learningPlans } from '@/lib/db/schema';
 import { ensureUser } from '../../helpers/db';
-import type { ScheduleCacheRow } from '@/lib/scheduling/types';
 
 describe('Schedule Queries', () => {
   let userId: string;
@@ -200,7 +199,9 @@ describe('Schedule Queries', () => {
 
   describe('getPlanScheduleCache', () => {
     it('should return null for non-existent schedule cache', async () => {
-      const cache = await getPlanScheduleCache('non-existent-plan-id');
+      const cache = await getPlanScheduleCache(
+        '00000000-0000-0000-0000-000000000000'
+      );
 
       expect(cache).toBeNull();
     });
@@ -358,7 +359,7 @@ describe('Schedule Queries', () => {
     it('should not throw error when deleting non-existent cache', async () => {
       // Should not throw
       await expect(
-        deletePlanScheduleCache('non-existent-plan')
+        deletePlanScheduleCache('00000000-0000-0000-0000-000000000000')
       ).resolves.not.toThrow();
     });
 

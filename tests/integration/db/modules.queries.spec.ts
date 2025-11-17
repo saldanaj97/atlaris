@@ -89,7 +89,9 @@ describe('Module Queries', () => {
     });
 
     it('should return empty result for non-existent module', async () => {
-      const result = await getModuleWithTasks('non-existent-module-id');
+      const result = await getModuleWithTasks(
+        '00000000-0000-0000-0000-000000000000'
+      );
 
       expect(result).toEqual([]);
     });
@@ -197,7 +199,9 @@ describe('Module Queries', () => {
       expect(result[0].tasks).not.toBeNull();
       expect(result[0].tasks?.id).toBe(task.id);
       expect(result[0].tasks?.title).toBe('Detailed Task');
-      expect(result[0].tasks?.description).toBe('This is a detailed task description');
+      expect(result[0].tasks?.description).toBe(
+        'This is a detailed task description'
+      );
       expect(result[0].tasks?.estimatedMinutes).toBe(90);
       expect(result[0].tasks?.order).toBe(1);
     });
