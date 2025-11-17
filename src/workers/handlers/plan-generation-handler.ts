@@ -207,7 +207,7 @@ export class PlanGenerationHandler {
 
         await runPlanJobCuration({
           curationService: this.curationService,
-          planId: job.planId!,
+          planId: job.planId,
           jobId: job.id,
           topic: payload.topic,
           skillLevel: payload.skillLevel,

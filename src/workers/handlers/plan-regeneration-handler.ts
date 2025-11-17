@@ -173,7 +173,7 @@ export class PlanRegenerationHandler {
 
         await runPlanJobCuration({
           curationService: this.curationService,
-          planId: job.planId!,
+          planId: job.planId,
           jobId: job.id,
           topic: mergedInput.topic,
           skillLevel: mergedInput.skillLevel,
