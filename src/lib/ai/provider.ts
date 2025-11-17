@@ -1,11 +1,9 @@
-import type { PromptParams } from '@/lib/ai/prompts';
-
 export interface GenerationInput {
   topic: string;
   notes?: string | null;
-  skillLevel: PromptParams['skillLevel'];
+  skillLevel: string;
   weeklyHours: number;
-  learningStyle: PromptParams['learningStyle'];
+  learningStyle: string;
   startDate?: string | null;
   deadlineDate?: string | null;
 }
