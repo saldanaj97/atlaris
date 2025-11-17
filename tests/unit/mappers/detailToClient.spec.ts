@@ -85,7 +85,7 @@ describe('mapDetailToClient', () => {
 
     const latestAttempt = {
       id: 'attempt-1',
-      planId: 'gen-1',
+      generationId: 'gen-1',
       attemptNumber: 1,
       status: 'success',
       classification: null,
