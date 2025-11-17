@@ -9,6 +9,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { subscriptionStatus, subscriptionTier } from '../../enums';
+import { timestampFields } from '../helpers';
 import { authenticatedRole, clerkSub, serviceRole } from './common';
 
 // Users table
@@ -30,12 +31,7 @@ export const users = pgTable(
       withTimezone: true,
     }),
     monthlyExportCount: integer('monthly_export_count').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    ...timestampFields,
   },
   (table) => [
     // RLS Policies

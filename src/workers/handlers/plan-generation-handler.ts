@@ -6,6 +6,7 @@ import {
   type PlanGenerationJobData,
   type PlanGenerationJobResult,
 } from '@/lib/jobs/types';
+import { buildValidationErrorMessage } from '@/lib/jobs/validation-utils';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 import {
@@ -86,13 +87,6 @@ export interface ProcessPlanGenerationJobFailure {
 export type ProcessPlanGenerationJobResult =
   | ProcessPlanGenerationJobSuccess
   | ProcessPlanGenerationJobFailure;
-
-function buildValidationErrorMessage(error: ZodError): string {
-  const details = error.issues.map((issue) => issue.message).join('; ');
-  return details.length
-    ? `Invalid job data: ${details}`
-    : 'Invalid job data payload.';
-}
 
 function toPlanGenerationJobData(data: unknown): PlanGenerationJobData {
   const parsed = planGenerationJobDataSchema.parse(data);

@@ -1,6 +1,7 @@
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
+import { getPlanIdFromUrl } from '@/lib/api/route-helpers';
 import { getDb } from '@/lib/db/runtime';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { learningPlans, modules } from '@/lib/db/schema';
@@ -12,18 +13,11 @@ import { eq } from 'drizzle-orm';
  * Returns the status of a learning plan's generation process
  */
 
-function getPlanId(req: Request) {
-  const url = new URL(req.url);
-  const segments = url.pathname.split('/').filter(Boolean);
-  // segments: ['api', 'v1', 'plans', '{planId}', 'status']
-  return segments[segments.length - 2];
-}
-
 type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
 export const GET = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
-    const planId = getPlanId(req);
+    const planId = getPlanIdFromUrl(req, 'second-to-last');
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');
     }

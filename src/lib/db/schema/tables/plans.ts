@@ -14,6 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { generationStatus, learningStyle, skillLevel } from '../../enums';
+import { timestampFields } from '../helpers';
 import { users } from './users';
 import { anonRole, authenticatedRole, clerkSub, serviceRole } from './common';
 
@@ -39,12 +40,7 @@ export const learningPlans = pgTable(
       .default('generating'),
     isQuotaEligible: boolean('is_quota_eligible').notNull().default(false),
     finalizedAt: timestamp('finalized_at', { withTimezone: true }),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    ...timestampFields,
   },
   (table) => [
     check('weekly_hours_check', sql`${table.weeklyHours} >= 0`),

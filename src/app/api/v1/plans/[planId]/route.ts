@@ -1,6 +1,7 @@
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
+import { getPlanIdFromUrl } from '@/lib/api/route-helpers';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
@@ -15,15 +16,9 @@ import { mapDetailToClient } from '@/lib/mappers/detailToClient';
  * PUT intentionally deferred (no direct user edits in MVP; regeneration flow supersedes manual editing).
  */
 
-function getPlanId(req: Request) {
-  const url = new URL(req.url);
-  const segments = url.pathname.split('/').filter(Boolean);
-  return segments[segments.length - 1];
-}
-
 export const GET = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
-    const planId = getPlanId(req);
+    const planId = getPlanIdFromUrl(req, 'last');
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');
     }

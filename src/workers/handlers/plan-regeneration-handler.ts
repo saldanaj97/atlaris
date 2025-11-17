@@ -1,4 +1,4 @@
-import { ZodError, z } from 'zod';
+import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 
 import { logger } from '@/lib/logging/logger';
@@ -12,6 +12,7 @@ import {
   type PlanGenerationJobData,
   type PlanGenerationJobResult,
 } from '@/lib/jobs/types';
+import { buildValidationErrorMessage } from '@/lib/jobs/validation-utils';
 
 import { GenerationService } from '../services/generation-service';
 import { CurationService } from '../services/curation-service';
@@ -39,13 +40,6 @@ export interface ProcessPlanRegenerationJobFailure {
 export type ProcessPlanRegenerationJobResult =
   | ProcessPlanRegenerationJobSuccess
   | ProcessPlanRegenerationJobFailure;
-
-function buildValidationErrorMessage(error: ZodError): string {
-  const details = error.issues.map((issue) => issue.message).join('; ');
-  return details.length
-    ? `Invalid job data: ${details}`
-    : 'Invalid job data payload.';
-}
 
 /**
  * Handler for plan regeneration jobs.
