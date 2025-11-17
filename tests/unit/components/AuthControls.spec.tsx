@@ -87,7 +87,7 @@ describe('AuthControls', () => {
   });
 
   it('should use neutral variant for sign in button', () => {
-    const { container } = render(<AuthControls />);
+    render(<AuthControls />);
 
     // The sign in button should have neutral variant
     const signInButton = screen.getByText('Sign In').closest('button');
