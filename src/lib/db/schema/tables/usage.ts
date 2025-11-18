@@ -14,7 +14,6 @@ import {
 import { timestampFields } from '../helpers';
 import { recordOwnedByCurrentUser } from '../policy-helpers';
 import { users } from './users';
-import { authenticatedRole, serviceRole } from './common';
 
 // Usage tracking tables
 
@@ -42,45 +41,20 @@ export const usageMetrics = pgTable(
     // RLS policies
     pgPolicy('usage_metrics_select_own', {
       for: 'select',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('usage_metrics_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
     }),
     pgPolicy('usage_metrics_insert_own', {
       for: 'insert',
-      to: authenticatedRole,
       withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('usage_metrics_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
     }),
     pgPolicy('usage_metrics_update_own', {
       for: 'update',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
-    pgPolicy('usage_metrics_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
     pgPolicy('usage_metrics_delete_own', {
       for: 'delete',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('usage_metrics_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
     }),
   ]
 ).enableRLS();
@@ -109,23 +83,11 @@ export const aiUsageEvents = pgTable(
     // RLS policies
     pgPolicy('ai_usage_events_select_own', {
       for: 'select',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('ai_usage_events_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
     }),
     pgPolicy('ai_usage_events_insert_own', {
       for: 'insert',
-      to: authenticatedRole,
       withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('ai_usage_events_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
     }),
   ]
 ).enableRLS();

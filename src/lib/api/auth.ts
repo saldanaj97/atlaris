@@ -77,16 +77,19 @@ export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
     initSentry();
     const userId = await requireUser();
-    const requestContext = createRequestContext(req, userId);
-    // NOTE: This change is preparatory - RLS enforcement is NOT yet active.
-    // getDb() from @/lib/db/runtime currently returns service-role DB for all requests.
-    // This means request handlers currently bypass RLS and must manually enforce
-    // ownership checks via WHERE clauses. Until RLS is implemented, there is a
-    // security risk if ownership validation is missed in any query.
-    // TODO(#ISSUE_NUMBER): Implement RLS drizzle client when drizzle-orm/supabase-js is available
+
+    // Create RLS-enforced database client for this request
+    // This client automatically scopes all queries to the authenticated user
+    const { createRlsClient } = await import('@/lib/db/rls');
+    const rlsDb = createRlsClient(userId);
+
+    // Create request context with the RLS-enforced DB
+    const requestContext = createRequestContext(req, userId, rlsDb);
+
     const params: RouteHandlerParams = routeContext?.params
       ? await routeContext.params
       : {};
+
     return withRequestContext(requestContext, () =>
       handler({ req, userId, params })
     );

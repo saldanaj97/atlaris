@@ -50,8 +50,9 @@ export function ensureCorrelationId(source?: HeaderSource): string {
 
 export function createRequestContext(
   req: Request,
-  userId?: string
+  userId?: string,
+  db?: unknown
 ): RequestContext {
   const correlationId = ensureCorrelationId(req.headers);
-  return { correlationId, userId };
+  return { correlationId, userId, db };
 }

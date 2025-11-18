@@ -23,7 +23,6 @@ import {
 } from '../policy-helpers';
 import { learningPlans } from './plans';
 import { users } from './users';
-import { anonRole, authenticatedRole, serviceRole } from './common';
 
 // Modules, tasks, and supporting tables
 
@@ -66,73 +65,38 @@ export const modules = pgTable(
       // Anonymous users can read modules of public plans
       pgPolicy('modules_select_public_anon', {
         for: 'select',
-        to: anonRole,
         using: publicPlanVisibility,
       }),
 
       // Authenticated users can read modules of public plans
       pgPolicy('modules_select_public_auth', {
         for: 'select',
-        to: authenticatedRole,
         using: publicPlanVisibility,
       }),
 
       // Users can read modules of their own plans
       pgPolicy('modules_select_own_plan', {
         for: 'select',
-        to: authenticatedRole,
         using: ownPlanAccess,
-      }),
-
-      // Service role can read all modules
-      pgPolicy('modules_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
       }),
 
       // Users can insert modules only in their own plans
       pgPolicy('modules_insert_own_plan', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: ownPlanAccess,
-      }),
-
-      // Service role can insert any module
-      pgPolicy('modules_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
       }),
 
       // Users can update modules only in their own plans
       pgPolicy('modules_update_own_plan', {
         for: 'update',
-        to: authenticatedRole,
         using: ownPlanAccess,
         withCheck: ownPlanAccess,
-      }),
-
-      // Service role can update any module
-      pgPolicy('modules_update_service', {
-        for: 'update',
-        to: serviceRole,
-        using: sql`true`,
-        withCheck: sql`true`,
       }),
 
       // Users can delete modules only in their own plans
       pgPolicy('modules_delete_own_plan', {
         for: 'delete',
-        to: authenticatedRole,
         using: ownPlanAccess,
-      }),
-
-      // Service role can delete any module
-      pgPolicy('modules_delete_service', {
-        for: 'delete',
-        to: serviceRole,
-        using: sql`true`,
       }),
     ];
   }
@@ -196,73 +160,38 @@ export const tasks = pgTable(
       // Anonymous users can read tasks of public plans
       pgPolicy('tasks_select_public_anon', {
         for: 'select',
-        to: anonRole,
         using: modulePublicAccess,
       }),
 
       // Authenticated users can read tasks of public plans
       pgPolicy('tasks_select_public_auth', {
         for: 'select',
-        to: authenticatedRole,
         using: modulePublicAccess,
       }),
 
       // Users can read tasks of their own plans
       pgPolicy('tasks_select_own_plan', {
         for: 'select',
-        to: authenticatedRole,
         using: moduleOwnPlanAccess,
-      }),
-
-      // Service role can read all tasks
-      pgPolicy('tasks_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
       }),
 
       // Users can insert tasks only in their own plans
       pgPolicy('tasks_insert_own_plan', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: moduleOwnPlanAccess,
-      }),
-
-      // Service role can insert any task
-      pgPolicy('tasks_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
       }),
 
       // Users can update tasks only in their own plans
       pgPolicy('tasks_update_own_plan', {
         for: 'update',
-        to: authenticatedRole,
         using: moduleOwnPlanAccess,
         withCheck: moduleOwnPlanAccess,
-      }),
-
-      // Service role can update any task
-      pgPolicy('tasks_update_service', {
-        for: 'update',
-        to: serviceRole,
-        using: sql`true`,
-        withCheck: sql`true`,
       }),
 
       // Users can delete tasks only in their own plans
       pgPolicy('tasks_delete_own_plan', {
         for: 'delete',
-        to: authenticatedRole,
         using: moduleOwnPlanAccess,
-      }),
-
-      // Service role can delete any task
-      pgPolicy('tasks_delete_service', {
-        for: 'delete',
-        to: serviceRole,
-        using: sql`true`,
       }),
     ];
   }
@@ -317,36 +246,16 @@ export const resources = pgTable(
     // Anonymous users can read all resources (public catalog)
     pgPolicy('resources_select_anon', {
       for: 'select',
-      to: anonRole,
       using: sql`true`,
     }),
 
     // Authenticated users can read all resources
     pgPolicy('resources_select_auth', {
       for: 'select',
-      to: authenticatedRole,
       using: sql`true`,
     }),
 
     // Only service role can manage resources (admin/system only)
-    pgPolicy('resources_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
-
-    pgPolicy('resources_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
-
-    pgPolicy('resources_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
-    }),
   ]
 ).enableRLS();
 
@@ -384,69 +293,36 @@ export const taskResources = pgTable(
       // Anonymous users can read task resources of public plans
       pgPolicy('task_resources_select_public_anon', {
         for: 'select',
-        to: anonRole,
         using: taskPublicAccess,
       }),
 
       // Authenticated users can read task resources of public plans
       pgPolicy('task_resources_select_public_auth', {
         for: 'select',
-        to: authenticatedRole,
         using: taskPublicAccess,
       }),
 
       // Users can read task resources of their own plans
       pgPolicy('task_resources_select_own_plan', {
         for: 'select',
-        to: authenticatedRole,
         using: taskOwnAccess,
-      }),
-
-      // Service role can read all task resources
-      pgPolicy('task_resources_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
       }),
 
       // Users can manage task resources only in their own plans
       pgPolicy('task_resources_insert_own_plan', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: taskOwnAccess,
       }),
 
       pgPolicy('task_resources_update_own_plan', {
         for: 'update',
-        to: authenticatedRole,
         using: taskOwnAccess,
         withCheck: taskOwnAccess,
       }),
 
       pgPolicy('task_resources_delete_own_plan', {
         for: 'delete',
-        to: authenticatedRole,
         using: taskOwnAccess,
-      }),
-
-      // Service role can manage all task resources
-      pgPolicy('task_resources_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
-      }),
-
-      pgPolicy('task_resources_update_service', {
-        for: 'update',
-        to: serviceRole,
-        using: sql`true`,
-        withCheck: sql`true`,
-      }),
-
-      pgPolicy('task_resources_delete_service', {
-        for: 'delete',
-        to: serviceRole,
-        using: sql`true`,
       }),
     ];
   }
@@ -493,38 +369,21 @@ export const taskProgress = pgTable(
       // Users can only read their own progress
       pgPolicy('task_progress_select_own', {
         for: 'select',
-        to: authenticatedRole,
         using: userOwnsRecord,
-      }),
-
-      // Service role can read all progress
-      pgPolicy('task_progress_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
       }),
 
       // Users can create progress only for themselves and only for tasks they can access
       pgPolicy('task_progress_insert_own', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: sql`
           ${wrapCondition(userOwnsRecord)}
           AND ${wrapCondition(taskAccessible)}
         `,
       }),
 
-      // Service role can insert any progress
-      pgPolicy('task_progress_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
-      }),
-
       // Users can update only their own progress (prevent changing taskId or userId)
       pgPolicy('task_progress_update_own', {
         for: 'update',
-        to: authenticatedRole,
         using: userOwnsRecord,
         withCheck: sql`
         ${wrapCondition(userOwnsRecord)}
@@ -532,26 +391,10 @@ export const taskProgress = pgTable(
       `,
       }),
 
-      // Service role can update any progress
-      pgPolicy('task_progress_update_service', {
-        for: 'update',
-        to: serviceRole,
-        using: sql`true`,
-        withCheck: sql`true`,
-      }),
-
       // Users can delete only their own progress
       pgPolicy('task_progress_delete_own', {
         for: 'delete',
-        to: authenticatedRole,
         using: userOwnsRecord,
-      }),
-
-      // Service role can delete any progress
-      pgPolicy('task_progress_delete_service', {
-        for: 'delete',
-        to: serviceRole,
-        using: sql`true`,
       }),
     ];
   }

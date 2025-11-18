@@ -10,7 +10,7 @@ import {
 
 import { subscriptionStatus, subscriptionTier } from '../../enums';
 import { timestampFields } from '../helpers';
-import { authenticatedRole, clerkSub, serviceRole } from './common';
+import { clerkSub } from './common';
 
 // Users table
 
@@ -34,59 +34,36 @@ export const users = pgTable(
     ...timestampFields,
   },
   (table) => [
-    // RLS Policies
+    // RLS Policies (session-variable-based for Neon)
+    //
+    // These policies enforce tenant isolation by checking the JWT claims
+    // session variable set by createRlsClient() from @/lib/db/rls.
+    //
+    // Note: Service-role operations (workers, background jobs) use the
+    // bypass client from @/lib/db/drizzle which has RLS disabled.
 
     // Users can read only their own data
     pgPolicy('users_select_own', {
       for: 'select',
-      to: authenticatedRole,
       using: sql`${table.clerkUserId} = ${clerkSub}`,
-    }),
-
-    // Service role can read all users (admin operations)
-    pgPolicy('users_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
     }),
 
     // Users can only insert their own record during signup
     pgPolicy('users_insert_own', {
       for: 'insert',
-      to: authenticatedRole,
       withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
     }),
 
-    // Service role can insert users (system operations)
-    pgPolicy('users_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
-
-    // Users can update only their own profile fields (not identifiers)
-    // Note: Column-level privileges limit authenticated role to UPDATE only (name).
-    // Stripe/subscription columns are restricted to service_role via GRANTs in migrations.
-    pgPolicy('users_update_own_profile', {
+    // Users can update only their own profile fields
+    // Note: Application-level validation should restrict which fields
+    // users can modify (e.g., name is OK, stripe fields are not)
+    pgPolicy('users_update_own', {
       for: 'update',
-      to: authenticatedRole,
       using: sql`${table.clerkUserId} = ${clerkSub}`,
       withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
     }),
 
-    // Service role can update any user (admin operations)
-    pgPolicy('users_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
-
-    // Only service role can delete users
-    pgPolicy('users_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
-    }),
+    // Users cannot delete their own records
+    // (Deletion is handled by service-role client from workers)
   ]
 ).enableRLS();

@@ -10,8 +10,6 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { serviceRole } from './common';
-
 // Stripe webhook events
 
 export const stripeWebhookEvents = pgTable(
@@ -28,15 +26,5 @@ export const stripeWebhookEvents = pgTable(
   (table) => [
     unique('stripe_webhook_events_event_id_unique').on(table.eventId),
     index('idx_stripe_webhook_events_created_at').on(table.createdAt),
-    pgPolicy('stripe_webhook_events_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
-    }),
-    pgPolicy('stripe_webhook_events_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
   ]
 ).enableRLS();

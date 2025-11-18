@@ -1,5 +1,5 @@
 {
-  "id": "731f9b8d-e450-4579-8542-1d916d7d9286",
+  "id": "e4cc35bb-0582-4844-bfa6-63a9d656ce16",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -118,52 +118,23 @@
           "name": "users_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
-        },
-        "users_select_service": {
-          "name": "users_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "users_insert_own": {
           "name": "users_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         },
-        "users_insert_service": {
-          "name": "users_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
-        },
-        "users_update_own_profile": {
-          "name": "users_update_own_profile",
+        "users_update_own": {
+          "name": "users_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'",
           "withCheck": "\"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
-        },
-        "users_update_service": {
-          "name": "users_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "users_delete_service": {
-          "name": "users_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {},
@@ -291,59 +262,30 @@
           "name": "google_calendar_sync_state_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "google_calendar_sync_state_select_service": {
-          "name": "google_calendar_sync_state_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "google_calendar_sync_state_insert_own": {
           "name": "google_calendar_sync_state_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"google_calendar_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "google_calendar_sync_state_insert_service": {
-          "name": "google_calendar_sync_state_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         },
         "google_calendar_sync_state_update_own": {
           "name": "google_calendar_sync_state_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"google_calendar_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
           "withCheck": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"google_calendar_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "google_calendar_sync_state_update_service": {
-          "name": "google_calendar_sync_state_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
         },
         "google_calendar_sync_state_delete_own": {
           "name": "google_calendar_sync_state_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"google_calendar_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "google_calendar_sync_state_delete_service": {
-          "name": "google_calendar_sync_state_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {},
@@ -486,59 +428,30 @@
           "name": "integration_tokens_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "integration_tokens_select_service": {
-          "name": "integration_tokens_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "integration_tokens_insert_own": {
           "name": "integration_tokens_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "integration_tokens_insert_service": {
-          "name": "integration_tokens_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         },
         "integration_tokens_update_own": {
           "name": "integration_tokens_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
           "withCheck": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "integration_tokens_update_service": {
-          "name": "integration_tokens_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
         },
         "integration_tokens_delete_own": {
           "name": "integration_tokens_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "integration_tokens_delete_service": {
-          "name": "integration_tokens_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {},
@@ -671,59 +584,30 @@
           "name": "notion_sync_state_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "notion_sync_state_select_service": {
-          "name": "notion_sync_state_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "notion_sync_state_insert_own": {
           "name": "notion_sync_state_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"notion_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "notion_sync_state_insert_service": {
-          "name": "notion_sync_state_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         },
         "notion_sync_state_update_own": {
           "name": "notion_sync_state_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"notion_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
           "withCheck": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"notion_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "notion_sync_state_update_service": {
-          "name": "notion_sync_state_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
         },
         "notion_sync_state_delete_own": {
           "name": "notion_sync_state_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"notion_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "notion_sync_state_delete_service": {
-          "name": "notion_sync_state_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {},
@@ -845,59 +729,30 @@
           "name": "task_calendar_events_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "task_calendar_events_select_service": {
-          "name": "task_calendar_events_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "task_calendar_events_insert_own": {
           "name": "task_calendar_events_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "task_calendar_events_insert_service": {
-          "name": "task_calendar_events_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         },
         "task_calendar_events_update_own": {
           "name": "task_calendar_events_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
           "withCheck": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "task_calendar_events_update_service": {
-          "name": "task_calendar_events_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
         },
         "task_calendar_events_delete_own": {
           "name": "task_calendar_events_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "task_calendar_events_delete_service": {
-          "name": "task_calendar_events_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {},
@@ -1037,33 +892,19 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "generation_attempts_select_own_plan": {
-          "name": "generation_attempts_select_own_plan",
+        "generation_attempts_select": {
+          "name": "generation_attempts_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
-        "generation_attempts_select_service": {
-          "name": "generation_attempts_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
-        },
-        "generation_attempts_insert_own_plan": {
-          "name": "generation_attempts_insert_own_plan",
+        "generation_attempts_insert": {
+          "name": "generation_attempts_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "generation_attempts_insert_service": {
-          "name": "generation_attempts_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         }
       },
       "checkConstraints": {},
@@ -1247,77 +1088,34 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "learning_plans_select_public_anon": {
-          "name": "learning_plans_select_public_anon",
+        "learning_plans_select": {
+          "name": "learning_plans_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anon"],
-          "using": "\"learning_plans\".\"visibility\" = 'public'"
+          "to": ["public"],
+          "using": "\"learning_plans\".\"visibility\" = 'public' OR \n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
-        "learning_plans_select_public_auth": {
-          "name": "learning_plans_select_public_auth",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["authenticated"],
-          "using": "\"learning_plans\".\"visibility\" = 'public'"
-        },
-        "learning_plans_select_own": {
-          "name": "learning_plans_select_own",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["authenticated"],
-          "using": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "learning_plans_select_service": {
-          "name": "learning_plans_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
-        },
-        "learning_plans_insert_own": {
-          "name": "learning_plans_insert_own",
+        "learning_plans_insert": {
+          "name": "learning_plans_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
-        "learning_plans_insert_service": {
-          "name": "learning_plans_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
-        },
-        "learning_plans_update_own": {
-          "name": "learning_plans_update_own",
+        "learning_plans_update": {
+          "name": "learning_plans_update",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
           "withCheck": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
-        "learning_plans_update_service": {
-          "name": "learning_plans_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "learning_plans_delete_own": {
-          "name": "learning_plans_delete_own",
+        "learning_plans_delete": {
+          "name": "learning_plans_delete",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "learning_plans_delete_service": {
-          "name": "learning_plans_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {
@@ -1408,63 +1206,34 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "plan_generations_select_own": {
-          "name": "plan_generations_select_own",
+        "plan_generations_select": {
+          "name": "plan_generations_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
-        "plan_generations_select_service": {
-          "name": "plan_generations_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
-        },
-        "plan_generations_insert_own": {
-          "name": "plan_generations_insert_own",
+        "plan_generations_insert": {
+          "name": "plan_generations_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
-        "plan_generations_insert_service": {
-          "name": "plan_generations_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
-        },
-        "plan_generations_update_own": {
-          "name": "plan_generations_update_own",
+        "plan_generations_update": {
+          "name": "plan_generations_update",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
-        "plan_generations_update_service": {
-          "name": "plan_generations_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "plan_generations_delete_own": {
-          "name": "plan_generations_delete_own",
+        "plan_generations_delete": {
+          "name": "plan_generations_delete",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "plan_generations_delete_service": {
-          "name": "plan_generations_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {},
@@ -1555,63 +1324,34 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "plan_schedules_select_own": {
-          "name": "plan_schedules_select_own",
+        "plan_schedules_select": {
+          "name": "plan_schedules_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
-        "plan_schedules_select_service": {
-          "name": "plan_schedules_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
-        },
-        "plan_schedules_insert_own": {
-          "name": "plan_schedules_insert_own",
+        "plan_schedules_insert": {
+          "name": "plan_schedules_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
-        "plan_schedules_update_own": {
-          "name": "plan_schedules_update_own",
+        "plan_schedules_update": {
+          "name": "plan_schedules_update",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
-        "plan_schedules_insert_service": {
-          "name": "plan_schedules_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
-        },
-        "plan_schedules_update_service": {
-          "name": "plan_schedules_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "plan_schedules_delete_own": {
-          "name": "plan_schedules_delete_own",
+        "plan_schedules_delete": {
+          "name": "plan_schedules_delete",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "plan_schedules_delete_service": {
-          "name": "plan_schedules_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {},
@@ -1735,73 +1475,44 @@
           "name": "modules_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anon"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "modules_select_public_auth": {
           "name": "modules_select_public_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "modules_select_own_plan": {
           "name": "modules_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "modules_select_service": {
-          "name": "modules_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "modules_insert_own_plan": {
           "name": "modules_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "modules_insert_service": {
-          "name": "modules_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         },
         "modules_update_own_plan": {
           "name": "modules_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "modules_update_service": {
-          "name": "modules_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
         },
         "modules_delete_own_plan": {
           "name": "modules_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "modules_delete_service": {
-          "name": "modules_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {
@@ -1921,36 +1632,14 @@
           "name": "resources_select_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anon"],
+          "to": ["public"],
           "using": "true"
         },
         "resources_select_auth": {
           "name": "resources_select_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
-          "using": "true"
-        },
-        "resources_insert_service": {
-          "name": "resources_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
-        },
-        "resources_update_service": {
-          "name": "resources_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "resources_delete_service": {
-          "name": "resources_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
+          "to": ["public"],
           "using": "true"
         }
       },
@@ -2083,59 +1772,30 @@
           "name": "task_progress_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "task_progress_select_service": {
-          "name": "task_progress_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "task_progress_insert_own": {
           "name": "task_progress_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n          (\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n          AND (\n      (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  )\n      OR (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n    )\n        "
-        },
-        "task_progress_insert_service": {
-          "name": "task_progress_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         },
         "task_progress_update_own": {
           "name": "task_progress_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
           "withCheck": "\n        (\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n        AND (\n      (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  )\n      OR (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n    )\n      "
-        },
-        "task_progress_update_service": {
-          "name": "task_progress_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
         },
         "task_progress_delete_own": {
           "name": "task_progress_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "task_progress_delete_service": {
-          "name": "task_progress_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {},
@@ -2249,42 +1909,35 @@
           "name": "task_resources_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anon"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "task_resources_select_public_auth": {
           "name": "task_resources_select_public_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "task_resources_select_own_plan": {
           "name": "task_resources_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
-        },
-        "task_resources_select_service": {
-          "name": "task_resources_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "task_resources_insert_own_plan": {
           "name": "task_resources_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         },
         "task_resources_update_own_plan": {
           "name": "task_resources_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  ",
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         },
@@ -2292,30 +1945,8 @@
           "name": "task_resources_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
-        },
-        "task_resources_insert_service": {
-          "name": "task_resources_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
-        },
-        "task_resources_update_service": {
-          "name": "task_resources_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "task_resources_delete_service": {
-          "name": "task_resources_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {
@@ -2451,73 +2082,44 @@
           "name": "tasks_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anon"],
+          "to": ["public"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n      )\n    "
         },
         "tasks_select_public_auth": {
           "name": "tasks_select_public_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n      )\n    "
         },
         "tasks_select_own_plan": {
           "name": "tasks_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
-        },
-        "tasks_select_service": {
-          "name": "tasks_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "tasks_insert_own_plan": {
           "name": "tasks_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
-        },
-        "tasks_insert_service": {
-          "name": "tasks_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         },
         "tasks_update_own_plan": {
           "name": "tasks_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    ",
           "withCheck": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
-        },
-        "tasks_update_service": {
-          "name": "tasks_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
         },
         "tasks_delete_own_plan": {
           "name": "tasks_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
-        },
-        "tasks_delete_service": {
-          "name": "tasks_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {
@@ -2646,29 +2248,15 @@
           "name": "ai_usage_events_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"ai_usage_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "ai_usage_events_select_service": {
-          "name": "ai_usage_events_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "ai_usage_events_insert_own": {
           "name": "ai_usage_events_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    \"ai_usage_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "ai_usage_events_insert_service": {
-          "name": "ai_usage_events_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         }
       },
       "checkConstraints": {},
@@ -2789,59 +2377,30 @@
           "name": "usage_metrics_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "usage_metrics_select_service": {
-          "name": "usage_metrics_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "usage_metrics_insert_own": {
           "name": "usage_metrics_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "usage_metrics_insert_service": {
-          "name": "usage_metrics_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
         },
         "usage_metrics_update_own": {
           "name": "usage_metrics_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
           "withCheck": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "usage_metrics_update_service": {
-          "name": "usage_metrics_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
         },
         "usage_metrics_delete_own": {
           "name": "usage_metrics_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
-        },
-        "usage_metrics_delete_service": {
-          "name": "usage_metrics_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {
@@ -2923,22 +2482,7 @@
           "columns": ["event_id"]
         }
       },
-      "policies": {
-        "stripe_webhook_events_select_service": {
-          "name": "stripe_webhook_events_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
-        },
-        "stripe_webhook_events_insert_service": {
-          "name": "stripe_webhook_events_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
-        }
-      },
+      "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": true
     },
@@ -3166,44 +2710,15 @@
           "name": "job_queue_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "using": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
-        },
-        "job_queue_select_service": {
-          "name": "job_queue_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": ["service_role"],
-          "using": "true"
         },
         "job_queue_insert_own": {
           "name": "job_queue_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": ["authenticated"],
+          "to": ["public"],
           "withCheck": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
-        },
-        "job_queue_insert_service": {
-          "name": "job_queue_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": ["service_role"],
-          "withCheck": "true"
-        },
-        "job_queue_update_service": {
-          "name": "job_queue_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": ["service_role"],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "job_queue_delete_service": {
-          "name": "job_queue_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": ["service_role"],
-          "using": "true"
         }
       },
       "checkConstraints": {
