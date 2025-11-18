@@ -28,7 +28,7 @@ const planRegenerationJobDataSchema = z
     planId: z.string().uuid('planId must be a valid UUID'),
     overrides: planRegenerationOverridesSchema.optional(),
   })
-  .strict();
+  .strip();
 
 export interface ProcessPlanRegenerationJobSuccess {
   status: 'success';

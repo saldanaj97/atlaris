@@ -75,7 +75,7 @@ const planGenerationJobDataSchema = z
       )
       .transform((value) => (value ? value : null)),
   })
-  .strict();
+  .strip();
 
 export interface ProcessPlanGenerationJobSuccess {
   status: 'success';
