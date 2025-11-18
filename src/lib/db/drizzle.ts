@@ -3,13 +3,11 @@
 // - Workers: should import 'dotenv/config' before importing this module
 // - Tests: vitest.config.ts loads .env.test
 // This module no longer loads dotenv to avoid conflicts between .env and .env.test
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
 import { databaseEnv } from '@/lib/config/env';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
 
 import * as schema from './schema';
-
-const connectionString = databaseEnv.url;
 
 // SERVICE-ROLE DB CLIENT (RLS BYPASSED)
 // This client connects as the database owner/superuser, bypassing Row Level Security (RLS).
@@ -29,5 +27,5 @@ const connectionString = databaseEnv.url;
 // 2. Dedicated security tests that verify RLS policies work correctly
 // 3. Worker processes that need full database access
 // 4. Request handlers that enforce tenant isolation via RLS
-export const client = postgres(connectionString, { prepare: false });
+export const client = neon(databaseEnv.url);
 export const db = drizzle(client, { schema });
