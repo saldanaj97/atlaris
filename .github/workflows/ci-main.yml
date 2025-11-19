@@ -206,8 +206,8 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle (staging)
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
         run: pnpm db:push:test-db
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
@@ -223,8 +223,8 @@ jobs:
         env:
           NODE_ENV: 'test'
           ALLOW_DB_TRUNCATE: 'true'
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL_NON_POOLING }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
@@ -388,8 +388,8 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
         run: pnpm db:push:test-db
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
@@ -406,8 +406,8 @@ jobs:
         env:
           NODE_ENV: 'test'
           ALLOW_DB_TRUNCATE: 'true'
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL_NON_POOLING }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
           TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
           ENABLE_CURATION: 'false'
         run: |
@@ -531,7 +531,7 @@ jobs:
         run: pnpm build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL_NON_POOLING }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
       - name: Save Next.js cache
         if: always()
@@ -609,8 +609,8 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply migrations (dry-run DB)
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL_NON_POOLING }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
         run: pnpm db:migrate:test-db
       - name: Cleanup ephemeral database
         if: always()

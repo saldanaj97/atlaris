@@ -240,8 +240,8 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
         run: pnpm db:push:test-db
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
@@ -259,7 +259,8 @@ jobs:
           SKIP_DB_TEST_SETUP: 'true'
           ALLOW_DB_TRUNCATE: 'true'
           NODE_ENV: 'test'
-          DATABASE_URL: ${{ env.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           BASE_REF: ${{ github.base_ref }}
           SHARD: ${{ matrix.shard }}
@@ -455,8 +456,8 @@ jobs:
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
       - name: Apply schema with Drizzle
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
         run: pnpm db:push:test-db
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
@@ -472,7 +473,8 @@ jobs:
         env:
           NODE_ENV: 'test'
           ALLOW_DB_TRUNCATE: 'true'
-          DATABASE_URL: ${{ env.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
           BASE_REF: ${{ github.base_ref }}
           TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
         shell: bash
