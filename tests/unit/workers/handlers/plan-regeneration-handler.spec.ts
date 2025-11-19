@@ -5,7 +5,7 @@ import { GenerationService } from '@/workers/services/generation-service';
 import { CurationService } from '@/workers/services/curation-service';
 import { PersistenceService } from '@/workers/services/persistence-service';
 import { JOB_TYPES } from '@/lib/jobs/types';
-import * as drizzle from '@/lib/db/drizzle';
+import * as drizzle from '@/lib/db/service-role';
 
 vi.mock('@/lib/db/drizzle', () => ({
   db: {

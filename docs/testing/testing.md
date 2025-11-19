@@ -188,7 +188,7 @@ it('creates a learning plan via API', async () => {
 
 **Characteristics:**
 
-- Use Supabase clients with proper auth context
+- Use RLS-aware Drizzle clients with proper auth context
 - Test with different user roles (anon, authenticated, service)
 - Verify unauthorized access is blocked
 - Verify authorized access works
@@ -198,7 +198,7 @@ it('creates a learning plan via API', async () => {
 ```typescript
 // tests/security/rls.policies.spec.ts
 it('anonymous users cannot read private learning plans', async () => {
-  const anonClient = createAnonClient();
+  const anonDb = createAnonRlsDb();
   // Verify RLS blocks access
 });
 ```
@@ -223,6 +223,8 @@ The test suite uses a Supabase-hosted PostgreSQL database configured in `.env.te
 ```env
 # Direct Postgres connection (bypasses RLS - intentional for business logic tests)
 DATABASE_URL="postgresql://postgres.{project}:password@aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require"
+DATABASE_URL_AUTHENTICATED_ROLE="postgresql://app_role.{project}:password@aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require"
+DATABASE_URL_ANONYMOUS_ROLE="postgresql://anon_role.{project}:password@aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require"
 
 # Supabase URL and keys for RLS testing
 NEXT_PUBLIC_SUPABASE_URL=https://{project}.supabase.co
@@ -230,7 +232,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
 
-When schema changes introduce new columns or enum types, run `pnpm exec drizzle-kit push` with the test `DATABASE_URL` exported so the Supabase-hosted database matches the local Drizzle schema (for example, the `generation_status` and `is_quota_eligible` columns added for plan generation lifecycle testing).
+`DATABASE_URL_AUTHENTICATED_ROLE` and `DATABASE_URL_ANONYMOUS_ROLE` must reference Neon roles that are _not_ the database owner (so RLS policies apply when the app role connects). When schema changes introduce new columns or enum types, run `pnpm exec drizzle-kit push` with the owner-level `DATABASE_URL` exported so the hosted database matches the local Drizzle schema (for example, the `generation_status` and `is_quota_eligible` columns added for plan generation lifecycle testing).
 
 To force AI failures in tests, temporarily set `MOCK_GENERATION_FAILURE_RATE=1` (either via environment or inside the test) and reset it to `0` afterwards so other suites continue to exercise the happy path.
 
@@ -251,8 +253,8 @@ To force AI failures in tests, temporarily set `MOCK_GENERATION_FAILURE_RATE=1` 
    - Mixing these concerns makes tests slow, complex, and brittle
 
 3. **Production Uses RLS**
-   - Production API routes use Supabase client with user JWTs
-   - RLS is enforced in production (verified by security tests)
+   - Request handlers call `createRlsClient()` which sets `request.jwt.claims`
+   - Neon/Postgres enforces RLS based on that session variable
    - Business logic tests don't need to simulate this
 
 4. **Industry Standard**
@@ -260,7 +262,7 @@ To force AI failures in tests, temporarily set `MOCK_GENERATION_FAILURE_RATE=1` 
    - Testing frameworks typically provide admin/superuser access for setup
    - Security policies are tested separately with appropriate auth contexts
 
-**See:** `src/lib/db/drizzle.ts` for detailed comments explaining this approach.
+**See:** `src/lib/db/service-role.ts` for detailed comments explaining this approach.
 
 ## RLS Testing Strategy
 
@@ -270,94 +272,60 @@ To force AI failures in tests, temporarily set `MOCK_GENERATION_FAILURE_RATE=1` 
 - ✅ Phase 2: JWT-based RLS testing implementation (COMPLETE)
 - ✅ Phase 3: Configure hosted Supabase test database (COMPLETE)
 
-### How JWT-Based RLS Testing Works
+### How Neon-Based RLS Testing Works
 
-RLS tests simulate Clerk authentication by generating test JWTs that match Clerk's structure:
+RLS tests simulate Clerk authentication by creating Drizzle clients that set
+`request.jwt.claims` before issuing queries:
 
 ```typescript
 import {
-  createAnonClient,
-  createAuthenticatedClient,
-  createServiceRoleClient,
+  createAnonRlsDb,
+  createRlsDbForUser,
+  getServiceRoleDb,
 } from '../helpers/rls';
+import { learningPlans } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
-// Anonymous client - no JWT, tests public access
+// Anonymous client - can only see public data
 it('anonymous users can read public plans', async () => {
-  const anonClient = createAnonClient();
-  const { data } = await anonClient
-    .from('learning_plans')
-    .select('*')
-    .eq('visibility', 'public');
+  const anonDb = createAnonRlsDb();
+  const rows = await anonDb
+    .select()
+    .from(learningPlans)
+    .where(eq(learningPlans.visibility, 'public'));
 
-  expect(data).toHaveLength(1);
+  expect(rows).toHaveLength(1);
 });
 
-// Authenticated client - includes JWT with Clerk user ID
+// Authenticated client - scoped to a specific Clerk user ID
 it('users can read their own private plans', async () => {
-  const userClient = createAuthenticatedClient('user_123');
-  const { data } = await userClient.from('learning_plans').select('*');
+  const userDb = createRlsDbForUser('user_123');
+  const rows = await userDb.select().from(learningPlans);
 
-  expect(data).toHaveLength(1); // Only sees their own plans
+  expect(rows).toHaveLength(1); // Only sees their own plans
 });
 ```
 
 ### How It Works Internally
 
-1. **JWT Generation** (`tests/helpers/jwt.ts`)
-   - Creates a JWT with the Clerk user ID in the `sub` claim
-   - Signs with Supabase's JWT secret
-   - Includes standard claims: `iss`, `iat`, `exp`
+1. **RLS Client Creation** (`tests/helpers/rls.ts`)
+   - Wraps `createRlsClient()` to set `request.jwt.claims` with `{ sub: <clerkUserId> }`
+   - Returns a Drizzle instance that automatically enforces RLS in PostgreSQL
 
-2. **Authenticated Client** (`tests/helpers/rls.ts`)
-   - Generates JWT for the specified Clerk user
-   - Passes JWT in `Authorization: Bearer <token>` header
-   - Supabase validates JWT and makes it available via `auth.jwt()`
+2. **Anonymous Contexts**
+   - `createAnonRlsDb()` connects via the Neon anonymous role and clears `request.jwt.claims`
+   - Policies treat this as an unauthenticated session (only public data is visible)
 
 3. **RLS Policies** (`src/lib/db/schema`)
-   - Extract Clerk user ID via `auth.jwt()->>'sub'`
-   - Compare against `users.clerk_user_id` column
-   - Enforce data isolation between users
+   - Read `current_setting('request.jwt.claims', true)::json->>'sub'`
+   - Compare against `users.clerk_user_id`
+   - Enforce tenant isolation in Neon/Postgres
 
 ### Prerequisites for Full RLS Testing
 
-#### 1. Service Role Key (✅ Configured)
-
-Already set in `.env.test`:
-
-```env
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-```
-
-#### 2. Supabase JWT Secret (⚠️ REQUIRED)
-
-**This is CRITICAL for RLS tests to work.**
-
-The JWT secret is used to sign test tokens so Supabase can validate them. Without it, all authenticated RLS tests will fail with "No suitable key or wrong key type".
-
-**How to get it:**
-
-1. Go to: https://supabase.com/dashboard/project/ulfujbbaiycqomnapxjp/settings/api
-2. Find "JWT Secret" (it's a long base64-encoded string)
-3. Copy it and add to `.env.test`:
-
-```env
-TEST_JWT_SECRET="your-supabase-jwt-secret-here"
-```
-
-**Important Notes:**
-
-- This is NOT the same as the `service_role` key
-- This is NOT the `anon` key
-- It's the raw JWT secret used to sign/verify all JWTs
-- It's typically a long random string (256+ characters)
-
-#### 3. Test Implementation (✅ Complete)
-
-All RLS tests are implemented in `tests/security/rls.policies.spec.ts`:
-
-- ✅ Service role can bypass RLS
-- ✅ Anonymous users can read public data
-- ✅ Anonymous users cannot read private data
+- ✅ `.env.test` must provide Neon `DATABASE_URL`, `DATABASE_URL_AUTHENTICATED_ROLE`, and `DATABASE_URL_ANONYMOUS_ROLE` URLs (owner vs. app vs. anon roles)
+- ✅ Set `RUN_RLS_TESTS=1` (or run in CI) to opt into the slower security suite
+- ✅ Seed the `users` table with the Clerk IDs referenced in each test case
 - ✅ Anonymous users cannot write data
 - ✅ Authenticated users can manage their own data
 - ✅ Authenticated users cannot access other users' data
@@ -457,19 +425,19 @@ it('test as specific user', () => {
 
 ```typescript
 import {
-  createAnonClient,
-  createServiceRoleClient,
-  createAuthenticatedClient,
+  createAnonRlsDb,
+  createRlsDbForUser,
+  getServiceRoleDb,
 } from '../helpers/rls';
 
-// Anonymous client (no auth)
-const anonClient = createAnonClient();
+// Anonymous client (no matching Clerk user)
+const anonDb = createAnonRlsDb();
 
-// Service role (bypasses RLS)
-const adminClient = createServiceRoleClient();
+// Service role (bypasses RLS entirely)
+const adminDb = getServiceRoleDb();
 
-// Authenticated client (TODO: requires service_role key)
-const userClient = createAuthenticatedClient('user_123');
+// Authenticated client (scoped to Clerk user ID)
+const userDb = createRlsDbForUser('user_123');
 ```
 
 ### HTTP Mock Helpers (`tests/helpers/http.ts`)
@@ -583,8 +551,8 @@ pnpm exec vitest run tests/db/stripe.schema.spec.ts
 
 ### ✅ DO
 
-- Use direct DB access (`db` from `@/lib/db/drizzle`) for business logic tests
-- Use Supabase clients (`createAnonClient`, etc.) for security tests
+- Use direct DB access (`db` from `@/lib/db/service-role`) for business logic tests
+- Use RLS helpers (`createAnonRlsDb`, `createRlsDbForUser`, `getServiceRoleDb`) for security tests
 - Clean up with `truncateAll()` in `beforeEach`
 - Document why RLS is or isn't being tested
 - Test one concern per test
@@ -721,7 +689,7 @@ The original integration smoke test referenced a `tests` schema from Basejump he
 
 **Solution:** Verify `vitest.config.ts` loads `.env.test` before other files import `drizzle`.
 
-**Check:** `src/lib/db/drizzle.ts` should NOT load dotenv in test mode.
+**Check:** `src/lib/db/service-role.ts` should NOT load dotenv in test mode.
 
 ### "SUPABASE_SERVICE_ROLE_KEY not set"
 
@@ -912,66 +880,38 @@ Once configured, Supabase validates Clerk‑issued tokens and exposes their clai
 
 ### 2. Test JWTs Mirror Clerk Structure
 
-Security (RLS) tests generate JWTs that intentionally match Clerk's production format so that:
-
-- The `sub` claim represents the Clerk user ID (mapped to `users.clerk_user_id` in our schema)
-- The `iss` claim matches the configured Clerk issuer
-- Optional claims such as `aud`, `azp`, session identifiers (`sid`) may be included for realism
-
-Example test payload (simplified):
-
-```jsonc
-{
-  "sub": "user_123",
-  "iss": "https://kind-wahoo-35.clerk.accounts.dev",
-  "aud": "<frontend-api-url>",
-  "azp": "<frontend-api-url>",
-  "iat": 1730000000,
-  "exp": 1730003600,
-  "sid": "sess_test123",
-}
-```
+Security (RLS) tests no longer mint fake JWTs. Instead, the helpers call
+`createRlsClient()` which sets the `request.jwt.claims` session variable before
+every query. PostgreSQL parses this JSON payload inside the database, so tests
+stay faithful to production while avoiding external signing requirements.
 
 ### 3. RLS Validation Flow
 
 During RLS tests:
 
-1. A test JWT is generated in `tests/helpers/jwt.ts`
-2. It is signed with `TEST_JWT_SECRET` (must equal the Supabase project's JWT secret or a compatible provider secret)\*
-3. Supabase validates the signature and loads claims into `auth.jwt()`
-4. Policies reference `auth.jwt()->>'sub'` to scope data to the authenticated Clerk user
+1. The helper builds `{ sub: '<clerkUserId>' }` and sets it via
+   `SET request.jwt.claims = '<json>'`
+2. Neon/Postgres enforces RLS using the same policies as production
+3. Policies reference `current_setting('request.jwt.claims', true)::json->>'sub'`
+4. Results match what a real API request would observe
 
-This means passing tests demonstrate that, in production, real Clerk JWTs will satisfy the same policies without code changes.
+### 4. Configuration Requirements
 
-### 4. TEST_JWT_SECRET Requirements
-
-Set in `.env.test`:
-
-```env
-TEST_JWT_SECRET="<supabase-jwt-secret>"
-```
-
-Important:
-
-- It MUST match the JWT secret configured under Supabase Project Settings → API (or the secret expected for the configured external provider if Supabase uses that for verification)
-- If mismatched, all authenticated RLS tests will fail with key/verification errors
-- This secret is distinct from `SUPABASE_SERVICE_ROLE_KEY` (a key, not the signing secret)
+- No JWT secrets are required locally—`DATABASE_URL` is sufficient
+- `RUN_RLS_TESTS=1` must be set to execute the slower RLS suite
+- The `users` table must contain rows for the Clerk IDs referenced in tests
 
 ### 5. Why This Matters
 
-Previously, test tokens were structurally minimal and risked diverging from production authentication. By mirroring Clerk's format:
-
-- We reduce false positives (tests passing with unrealistic tokens)
-- We ensure RLS policy logic (`sub`-based ownership, visibility rules) is production-faithful
-- Future additions of claim-dependent policies (e.g., org roles) can be tested confidently
+- Eliminates the need to keep Supabase JWT secrets in sync
+- Moves logic closer to how production actually enforces policies
+- Simplifies local onboarding—no external dashboard configuration needed
 
 ### 6. Updating / Regenerating Claims
 
-If Clerk domain changes (e.g., new instance) update:
-
-- `CLERK_ISSUER` in `.env.test`
-- Supabase provider Issuer value
-- Any hardcoded `iss` expectations in tests (avoid if possible)
+If policy logic starts inspecting additional claims (e.g., organization roles),
+update `createRlsDbForUser()` to include those fields in the JSON payload and
+adjust tests accordingly.
 
 ### 7. Quick Verification Checklist
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { generateLearningPlan } from '@/app/plans/actions';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { learningPlans, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 

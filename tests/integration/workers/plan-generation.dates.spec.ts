@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterAll, vi } from 'vitest';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
 import type { Job } from '@/lib/jobs/types';
 import { JOB_TYPES } from '@/lib/jobs/types';

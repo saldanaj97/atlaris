@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
 import { describe, expect, it } from 'vitest';
 import { setTestUser } from '../../helpers/auth';

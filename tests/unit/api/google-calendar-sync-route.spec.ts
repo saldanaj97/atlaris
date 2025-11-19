@@ -46,7 +46,7 @@ describe('Google Calendar Sync Route', () => {
     setTestUser('clerk-user-123');
 
     // Import mocked functions
-    const { db } = await import('@/lib/db/drizzle');
+    const { db } = await import('@/lib/db/service-role');
     const { getOAuthTokens } = await import('@/lib/integrations/oauth');
     const { syncPlanToGoogleCalendar } = await import(
       '@/lib/integrations/google-calendar/sync'

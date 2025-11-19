@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GET } from '@/app/api/v1/plans/[planId]/attempts/route';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';

@@ -6,7 +6,7 @@ if (!process.env.NODE_ENV) {
 import { afterAll, afterEach, beforeEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
-import { client } from '@/lib/db/drizzle';
+import { client } from '@/lib/db/service-role';
 import { Mutex } from 'async-mutex';
 import {
   ensureJobTypeEnumValue,

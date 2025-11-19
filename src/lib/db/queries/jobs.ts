@@ -11,7 +11,7 @@ import {
   sql,
 } from 'drizzle-orm';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { jobQueue } from '@/lib/db/schema';
 import {
   JOB_TYPES,

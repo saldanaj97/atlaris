@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { getModuleWithTasks } from '@/lib/db/queries/modules';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { ensureUser } from '../../helpers/db';

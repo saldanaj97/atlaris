@@ -6,7 +6,7 @@ import {
   modules,
   tasks,
 } from '@/lib/db/schema';
-import type { db as DbInstance } from '@/lib/db/drizzle';
+import type { db as DbInstance } from '@/lib/db/service-role';
 export class MockDbClient {
   existingAttempts = 0;
   modules: Array<Record<string, unknown>> = [];

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { learningPlans, users } from '@/lib/db/schema';
 import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';
 import { eq } from 'drizzle-orm';

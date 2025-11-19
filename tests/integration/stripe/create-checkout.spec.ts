@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { ensureUser, truncateAll } from '@/../tests/helpers/db';
 import { setTestUser } from '@/../tests/helpers/auth';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
 import { POST } from '@/app/api/v1/stripe/create-checkout/route';
 import * as stripeClient from '@/lib/stripe/client';

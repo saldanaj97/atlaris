@@ -1,4 +1,4 @@
-import { db as serviceDb } from '@/lib/db/drizzle';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { getRequestContext } from '@/lib/api/context';
 
 /**

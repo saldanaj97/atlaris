@@ -17,7 +17,7 @@ import {
   type ProviderGenerateResult,
   type ProviderMetadata,
 } from '@/lib/ai/provider';
-import { client, db } from '@/lib/db/drizzle';
+import { client, db } from '@/lib/db/service-role';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { createUser, getUserByClerkId } from '@/lib/db/queries/users';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';

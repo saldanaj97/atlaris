@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-import { client } from '@/lib/db/drizzle';
+import { client } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import {
   completeJob,

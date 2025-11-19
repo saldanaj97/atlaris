@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { aiUsageEvents, users } from '@/lib/db/schema';
 import { incrementUsage } from '@/lib/stripe/usage';
 import { eq, sql } from 'drizzle-orm';

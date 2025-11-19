@@ -11,11 +11,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { getDb } from '@/lib/db/runtime';
-import { db as serviceDb } from '@/lib/db/drizzle';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { learningPlans, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { truncateAll } from '../../helpers/db';
-import { createAuthenticatedClient } from '../../helpers/rls';
+import { createRlsDbForUser } from '../../helpers/rls';
 
 describe('Cross-tenant access blocking via RLS', () => {
   beforeEach(async () => {
@@ -54,8 +54,8 @@ describe('Cross-tenant access blocking via RLS', () => {
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
       process.env.TEST_JWT_SECRET
     ) {
-      const _supabaseClient = createAuthenticatedClient('clerk_user_1');
-      void _supabaseClient; // avoid unused var lint
+      const _rlsClient = await createRlsDbForUser('clerk_user_1');
+      void _rlsClient; // avoid unused var lint
     }
 
     // Set up request context (without RLS DB for now since drizzle-orm/supabase-js doesn't exist)

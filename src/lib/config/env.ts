@@ -114,8 +114,17 @@ export const appEnv = {
 } as const;
 
 export const databaseEnv = {
-  get url() {
+  get url(): string {
     return getServerRequired('DATABASE_URL');
+  },
+  get nonPoolingUrl(): string {
+    return getServerOptional('DATABASE_URL_NON_POOLING') ?? this.url;
+  },
+  get anonymousRoleUrl(): string {
+    return getServerOptional('DATABASE_URL_ANONYMOUS_ROLE') ?? this.url;
+  },
+  get authenticatedRoleUrl(): string {
+    return getServerOptional('DATABASE_URL_AUTHENTICATED_ROLE') ?? this.url;
   },
 } as const;
 

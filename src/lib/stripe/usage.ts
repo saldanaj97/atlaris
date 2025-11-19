@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
 

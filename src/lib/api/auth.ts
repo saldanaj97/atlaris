@@ -80,8 +80,8 @@ export function withAuth(handler: Handler): PlainHandler {
 
     // Create RLS-enforced database client for this request
     // This client automatically scopes all queries to the authenticated user
-    const { createRlsClient } = await import('@/lib/db/rls');
-    const rlsDb = createRlsClient(userId);
+    const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
+    const rlsDb = await createAuthenticatedRlsClient(userId);
 
     // Create request context with the RLS-enforced DB
     const requestContext = createRequestContext(req, userId, rlsDb);

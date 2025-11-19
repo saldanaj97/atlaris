@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { cleanupOldJobs, getFailedJobs, getJobStats } from '@/lib/db/queries';
 import { jobQueue } from '@/lib/db/schema';
 import { JOB_TYPES } from '@/lib/jobs/types';

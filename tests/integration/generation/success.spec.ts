@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import {
   generationAttempts,
   learningPlans,

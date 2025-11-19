@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
 import { eq, like } from 'drizzle-orm';
 

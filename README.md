@@ -17,7 +17,7 @@ A Next.js application for creating AI-backed personalized learning plans with st
 
 ### 🔒 Security & Data Integrity
 
-- **Row Level Security (RLS)**: Supabase-based access controls ensuring users only see their own data
+- **Row Level Security (RLS)**: Neon-based access controls ensuring users only see their own data
 - **Atomic Transactions**: Generation attempts and content persist together or fail together
 - **Concurrent Safety**: Multiple users can create plans simultaneously without conflicts
 - **Attempt Capping**: Maximum 3 generation attempts per plan to prevent abuse
@@ -34,7 +34,7 @@ A Next.js application for creating AI-backed personalized learning plans with st
 - **Next.js 15** with App Router and React 19
 - **TypeScript** for type safety
 - **Tailwind CSS v4** for styling
-- **Supabase** for PostgreSQL database with RLS
+- **Neon** for PostgreSQL database with RLS
 - **Drizzle ORM** for type-safe database operations
 - **Clerk** for authentication
 - **Vitest** for testing

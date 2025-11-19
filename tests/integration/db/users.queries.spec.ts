@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { getUserByClerkId, createUser } from '@/lib/db/queries/users';
 import { users } from '@/lib/db/schema';
 
@@ -69,7 +69,9 @@ describe('User Queries', () => {
       const after = new Date();
 
       expect(user?.createdAt).toBeInstanceOf(Date);
-      expect(user!.createdAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(user!.createdAt.getTime()).toBeGreaterThanOrEqual(
+        before.getTime()
+      );
       expect(user!.createdAt.getTime()).toBeLessThanOrEqual(after.getTime());
     });
   });

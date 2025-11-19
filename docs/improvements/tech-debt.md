@@ -146,7 +146,7 @@ Long-Term (Day 6-7): 300 hours (scoped MVP to fit week)
 
 **Violated Boundaries:**
 
-- 8 API routes directly import from `@/lib/db/drizzle` (service-role DB) instead of using RLS client
+- 8 API routes directly import from `@/lib/db/service-role` (service-role DB) instead of using RLS client
   - **Files:** `src/app/api/v1/auth/notion/callback/route.ts`, `src/app/api/v1/plans/route.ts`, `src/app/api/v1/plans/[planId]/status/route.ts`, `src/app/api/v1/plans/[planId]/regenerate/route.ts`, `src/app/api/v1/integrations/notion/export/route.ts`, `src/app/api/v1/integrations/google-calendar/sync/route.ts`, `src/app/api/v1/auth/google/callback/route.ts`, `src/app/api/health/worker/route.ts`
   - **Risk:** RLS policy bypass, potential data leakage
   - **Status:** ESLint rule exists but violations present
@@ -681,7 +681,7 @@ Files to fix (8 total): 1. src/app/api/v1/auth/notion/callback/route.ts
   8. src/app/api/health/worker/route.ts
 
 Action:
-  - Replace: import { db } from '@/lib/db/drizzle';
+  - Replace: import { db } from '@/lib/db/service-role';
   - With: import { getDb } from '@/lib/db/runtime';
   - Verify ESLint rule catches this going forward
 ```

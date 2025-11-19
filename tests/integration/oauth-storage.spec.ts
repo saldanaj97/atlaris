@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { users, integrationTokens } from '@/lib/db/schema';
 import {
   storeOAuthTokens,

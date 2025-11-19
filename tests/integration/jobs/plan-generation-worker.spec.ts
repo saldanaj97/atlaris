@@ -10,7 +10,7 @@ import {
 
 import { eq, inArray } from 'drizzle-orm';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import {
   generationAttempts,
   jobQueue as _jobQueue,

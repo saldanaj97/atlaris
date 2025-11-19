@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import * as mapper from '@/lib/integrations/google-calendar/mapper';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { google } from 'googleapis';
 
 // Mock the database
