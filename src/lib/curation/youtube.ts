@@ -3,11 +3,12 @@
  * Handles search, stats retrieval, and curation with caching
  */
 
-import { logger } from '@/lib/logging/logger';
-import type { ResourceCandidate, CurationParams } from '@/lib/curation/types';
 import { curationConfig } from '@/lib/curation/config';
-import { isYouTubeEmbeddable } from '@/lib/curation/validate';
 import { scoreYouTube, selectTop, type Scored } from '@/lib/curation/ranking';
+import type { CurationParams, ResourceCandidate } from '@/lib/curation/types';
+import { isYouTubeEmbeddable } from '@/lib/curation/validate';
+import { logger } from '@/lib/logging/logger';
+import { fetchGoogleApi } from '@/lib/utils/google-api-rate-limiter';
 
 /**
  * YouTube API search result from search.list
@@ -66,7 +67,9 @@ export async function searchYouTube(
     searchParams.append('videoDuration', params.duration);
   }
 
-  const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+  const response = await fetchGoogleApi(
+    `${baseUrl}?${searchParams.toString()}`
+  );
 
   if (!response.ok) {
     // Surface error to caller
@@ -133,7 +136,9 @@ export async function getVideoStats(
   });
 
   try {
-    const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+    const response = await fetchGoogleApi(
+      `${baseUrl}?${searchParams.toString()}`
+    );
 
     if (!response.ok) {
       let body = '';

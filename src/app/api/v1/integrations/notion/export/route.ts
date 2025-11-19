@@ -38,10 +38,7 @@ export const POST = withErrorBoundary(
     // Get Notion token
     const notionTokens = await getOAuthTokens(user.id, 'notion');
     if (!notionTokens) {
-      return respondJson(
-        { error: 'Notion not connected' },
-        { status: 401 }
-      );
+      return respondJson({ error: 'Notion not connected' }, { status: 401 });
     }
 
     let json: unknown;

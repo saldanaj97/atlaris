@@ -11,6 +11,7 @@ import {
 } from '@/lib/curation/youtube';
 import * as validateModule from '@/lib/curation/validate';
 import * as rankingModule from '@/lib/curation/ranking';
+import { googleApiRateLimiter } from '@/lib/utils/google-api-rate-limiter';
 
 // Capture original fetch before any tests run
 const originalFetch = global.fetch;
@@ -18,6 +19,7 @@ const originalFetch = global.fetch;
 describe('YouTube Adapter', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    googleApiRateLimiter.clearCache();
   });
 
   afterEach(() => {
@@ -28,17 +30,23 @@ describe('YouTube Adapter', () => {
 
   describe('searchYouTube', () => {
     it('should search with minimal fields projection', async () => {
-      const mockFetch = vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          items: [
-            {
-              id: { videoId: 'abc123' },
-              snippet: { title: 'Test Video', channelTitle: 'Test Channel' },
-            },
-          ],
-        }),
-      }));
+      const mockFetch = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: { videoId: 'abc123' },
+                  snippet: {
+                    title: 'Test Video',
+                    channelTitle: 'Test Channel',
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+      );
       global.fetch = mockFetch as unknown as typeof fetch;
 
       const results = await searchYouTube('react hooks', {
@@ -55,10 +63,13 @@ describe('YouTube Adapter', () => {
     });
 
     it('should handle empty API responses', async () => {
-      const mockFetch = vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ items: [] }),
-      }));
+      const mockFetch = vi.fn(
+        async () =>
+          new Response(JSON.stringify({ items: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+      );
       global.fetch = mockFetch as unknown as typeof fetch;
 
       const results = await searchYouTube('test', {
@@ -87,10 +98,13 @@ describe('YouTube Adapter', () => {
         ],
       };
 
-      const mockFetch = vi.fn(async () => ({
-        ok: true,
-        json: async () => mockResponse,
-      }));
+      const mockFetch = vi.fn(
+        async () =>
+          new Response(JSON.stringify(mockResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+      );
       global.fetch = mockFetch as unknown as typeof fetch;
 
       const stats = await getVideoStats(['video1']);
@@ -114,9 +128,7 @@ describe('YouTube Adapter', () => {
     });
 
     it('should handle API failures', async () => {
-      const mockFetch = vi.fn(async () => ({
-        ok: false,
-      }));
+      const mockFetch = vi.fn(async () => new Response(null, { status: 400 }));
       global.fetch = mockFetch as unknown as typeof fetch;
 
       const stats = await getVideoStats(['video1']);
@@ -130,32 +142,39 @@ describe('YouTube Adapter', () => {
       const mockFetch = vi
         .fn()
         // search
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            items: [
-              {
-                id: { videoId: 'video1' },
-                snippet: { title: 'Test Video', channelTitle: 'Test Channel' },
-              },
-            ],
-          }),
-        })
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: { videoId: 'video1' },
+                  snippet: {
+                    title: 'Test Video',
+                    channelTitle: 'Test Channel',
+                  },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        )
         // stats
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            items: [
-              {
-                id: 'video1',
-                statistics: { viewCount: '1000' },
-                snippet: { publishedAt: '2023-01-01T00:00:00Z' },
-                contentDetails: { duration: 'PT10M' },
-                status: { privacyStatus: 'public', embeddable: true },
-              },
-            ],
-          }),
-        });
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: 'video1',
+                  statistics: { viewCount: '1000' },
+                  snippet: { publishedAt: '2023-01-01T00:00:00Z' },
+                  contentDetails: { duration: 'PT10M' },
+                  status: { privacyStatus: 'public', embeddable: true },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
       global.fetch = mockFetch as unknown as typeof fetch;
 
       vi.spyOn(validateModule, 'isYouTubeEmbeddable').mockReturnValue(true);
@@ -192,38 +211,42 @@ describe('YouTube Adapter', () => {
       const mockFetch = vi
         .fn()
         // search
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            items: [
-              {
-                id: { videoId: 'video1' },
-                snippet: { title: 'First', channelTitle: 'Channel A' },
-              },
-              {
-                id: { videoId: 'video2' },
-                snippet: { title: 'Second', channelTitle: 'Channel B' },
-              },
-              {
-                id: { videoId: 'video3' },
-                snippet: { title: 'Third', channelTitle: 'Channel C' },
-              },
-            ],
-          }),
-        })
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  id: { videoId: 'video1' },
+                  snippet: { title: 'First', channelTitle: 'Channel A' },
+                },
+                {
+                  id: { videoId: 'video2' },
+                  snippet: { title: 'Second', channelTitle: 'Channel B' },
+                },
+                {
+                  id: { videoId: 'video3' },
+                  snippet: { title: 'Third', channelTitle: 'Channel C' },
+                },
+              ],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        )
         // stats
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            items: ['video1', 'video2', 'video3'].map((id) => ({
-              id,
-              statistics: { viewCount: '1000' },
-              snippet: { publishedAt: '2024-01-01T00:00:00Z' },
-              contentDetails: { duration: 'PT10M' },
-              status: { privacyStatus: 'public', embeddable: true },
-            })),
-          }),
-        });
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              items: ['video1', 'video2', 'video3'].map((id) => ({
+                id,
+                statistics: { viewCount: '1000' },
+                snippet: { publishedAt: '2024-01-01T00:00:00Z' },
+                contentDetails: { duration: 'PT10M' },
+                status: { privacyStatus: 'public', embeddable: true },
+              })),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
       global.fetch = mockFetch as unknown as typeof fetch;
       vi.spyOn(rankingModule, 'selectTop').mockImplementation(
         (candidates, opts) => candidates.slice(0, opts.maxItems)
