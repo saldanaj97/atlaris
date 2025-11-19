@@ -152,8 +152,6 @@ jobs:
         run: pnpm build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
       - name: Save Next.js cache
         if: always()
@@ -243,7 +241,8 @@ jobs:
       - name: Apply schema with Drizzle
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
-        run: pnpm db:push
+          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
+        run: pnpm db:push:test-db
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
         id: restore-vitest-cache
@@ -457,7 +456,8 @@ jobs:
       - name: Apply schema with Drizzle
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
-        run: pnpm db:push
+          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
+        run: pnpm db:push:test-db
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
         id: restore-vitest-cache
@@ -474,9 +474,6 @@ jobs:
           ALLOW_DB_TRUNCATE: 'true'
           DATABASE_URL: ${{ env.DATABASE_URL }}
           BASE_REF: ${{ github.base_ref }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
         shell: bash
         run: |
