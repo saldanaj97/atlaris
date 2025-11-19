@@ -31,7 +31,13 @@ interface RateLimiterOptions {
 }
 
 interface CacheEntry {
-  data: Response;
+  data: {
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    body: string;
+    contentType: string;
+  };
   timestamp: number;
 }
 
@@ -43,6 +49,7 @@ class GoogleApiRateLimiter {
   private lastRequestTime = 0;
   private cache = new Map<string, CacheEntry>();
   private readonly cacheTTL = 5 * 60 * 1000; // 5 minutes
+  private isProcessing = false; // Flag to prevent concurrent processing
 
   // Daily quota tracking (resets at midnight UTC)
   private dailyRequestCount = 0;
@@ -152,7 +159,7 @@ class GoogleApiRateLimiter {
 
             // Cache successful GET responses
             if (cacheKey && response.ok) {
-              this.addToCache(cacheKey, response.clone());
+              await this.addToCache(cacheKey, response);
             }
 
             return response;
@@ -294,28 +301,40 @@ class GoogleApiRateLimiter {
    * Process queued requests respecting concurrency limits
    */
   private processQueue(): void {
-    while (this.queue.length > 0 && this.activeRequests < this.maxConcurrent) {
-      const item = this.queue.shift();
-      if (!item) continue;
+    // Prevent concurrent execution
+    if (this.isProcessing) return;
+    this.isProcessing = true;
 
-      this.activeRequests++;
+    try {
+      while (
+        this.queue.length > 0 &&
+        this.activeRequests < this.maxConcurrent
+      ) {
+        const item = this.queue.shift();
+        if (!item) continue;
 
-      // Execute the request (intentionally not awaited for concurrent processing)
-      void item
-        .fn()
-        .then(item.resolve)
-        .catch(item.reject)
-        .finally(() => {
-          this.activeRequests--;
-          void this.processQueue(); // Process next item
-        });
+        this.activeRequests++;
+
+        // Execute the request (intentionally not awaited for concurrent processing)
+        void item
+          .fn()
+          .then(item.resolve)
+          .catch(item.reject)
+          .finally(() => {
+            this.activeRequests--;
+            void this.processQueue(); // Process next item
+          });
+      }
+    } finally {
+      this.isProcessing = false;
     }
   }
 
   /**
-   * Enforce minimum delay between requests.
-   * Note: This enforces delay between individual request starts, but when maxConcurrent > 1,
-   * multiple requests can start simultaneously, so total throughput may exceed 60s/minDelay RPM.
+   * Enforce minimum delay between request starts.
+   * With concurrency, the effective rate is: maxConcurrent / minDelay requests per second.
+   * For target RPM, minDelay should be: (60000 / targetRPM) / maxConcurrent milliseconds.
+   * Example: 15 RPM with maxConcurrent=2 → minDelay = (4000) / 2 = 8000ms
    */
   private async enforceDelay(): Promise<void> {
     const now = Date.now();
@@ -357,21 +376,66 @@ class GoogleApiRateLimiter {
       return null;
     }
 
-    return entry.data;
+    // Reconstruct Response from cached data
+    const { status, statusText, headers, body, contentType } = entry.data;
+
+    // Create headers object
+    const responseHeaders = new Headers();
+    Object.entries(headers).forEach(([key, value]) => {
+      responseHeaders.set(key, value);
+    });
+
+    // Ensure content-type is set
+    if (!responseHeaders.has('content-type')) {
+      responseHeaders.set('content-type', contentType);
+    }
+
+    return new Response(body, {
+      status,
+      statusText,
+      headers: responseHeaders,
+    });
   }
 
   /**
    * Add response to cache
    */
-  private addToCache(key: string, response: Response): void {
-    this.cache.set(key, {
-      data: response,
-      timestamp: Date.now(),
-    });
+  private async addToCache(key: string, response: Response): Promise<void> {
+    try {
+      // Clone the response before consuming its body
+      const responseClone = response.clone();
 
-    // Clean up old cache entries periodically
-    if (this.cache.size > 100) {
-      this.cleanupCache();
+      // Extract response metadata and body
+      const headers: Record<string, string> = {};
+      responseClone.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+
+      const body = await responseClone.text();
+      const contentType =
+        responseClone.headers.get('content-type') || 'text/plain';
+
+      this.cache.set(key, {
+        data: {
+          status: responseClone.status,
+          statusText: responseClone.statusText,
+          headers,
+          body,
+          contentType,
+        },
+        timestamp: Date.now(),
+      });
+
+      // Clean up old cache entries periodically
+      if (this.cache.size > 100) {
+        this.cleanupCache();
+      }
+    } catch (error) {
+      // If we can't cache the response (e.g., body already consumed), skip caching
+      logger.warn(
+        { key, error: error instanceof Error ? error.message : String(error) },
+        'Failed to cache Google API response'
+      );
     }
   }
 
@@ -417,10 +481,10 @@ class GoogleApiRateLimiter {
 // - 15 requests per minute (RPM)
 // - 250k tokens per minute (TPM)
 // - 1k requests per day (RPD)
-// With maxConcurrent: 1 and 5s spacing: 12 RPM actual (20% safety buffer under 15 RPM limit)
+// With maxConcurrent: 2 and minDelay: 8000ms = 15 RPM (request starts every 8s with 2 concurrent)
 export const googleApiRateLimiter = new GoogleApiRateLimiter({
-  maxConcurrent: 1, // Single concurrent request to enforce sequential processing
-  minDelay: 5000, // 5 seconds between requests = 12 RPM (under 15 RPM limit)
+  maxConcurrent: 2, // Allow 2 concurrent requests
+  minDelay: 8000, // 8 seconds between request starts = 15 RPM with 2 concurrent requests
 });
 
 /**

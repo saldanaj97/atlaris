@@ -15,10 +15,7 @@ import { logger } from '@/lib/logging/logger';
 const MAX_REQUESTS_PER_SECOND = 3;
 const REQUEST_INTERVAL = 1000 / MAX_REQUESTS_PER_SECOND;
 
-function logNotionAttemptFailure(
-  operation: string,
-  error: unknown
-): void {
+function logNotionAttemptFailure(operation: string, error: unknown): void {
   const message = error instanceof Error ? error.message : 'Unknown error';
   const errorRecord = error as Record<string, unknown>;
   logger.warn(

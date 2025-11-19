@@ -57,10 +57,7 @@ export const POST = withErrorBoundary(
           { status: 400 }
         );
       }
-      return respondJson(
-        { error: 'Invalid request body' },
-        { status: 400 }
-      );
+      return respondJson({ error: 'Invalid request body' }, { status: 400 });
     }
 
     const { planId } = body;
