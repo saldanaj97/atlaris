@@ -476,7 +476,7 @@ describe('PlanGenerationHandler', () => {
           attempts: 0,
           maxAttempts: 3,
           data: {
-            topic: 'Go',
+            topic: 'Golang',
             skillLevel: 'beginner',
             weeklyHours: 6,
             learningStyle: 'reading',
