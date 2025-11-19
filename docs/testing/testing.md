@@ -218,18 +218,18 @@ it('anonymous users cannot read private learning plans', async () => {
 
 ### Test Database Configuration
 
-The test suite uses a Supabase-hosted PostgreSQL database configured in `.env.test`:
+The test suite uses a neon-hosted PostgreSQL database configured in `.env.test`:
 
 ```env
 # Direct Postgres connection (bypasses RLS - intentional for business logic tests)
-DATABASE_URL="postgresql://postgres.{project}:password@aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require"
-DATABASE_URL_AUTHENTICATED_ROLE="postgresql://app_role.{project}:password@aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require"
-DATABASE_URL_ANONYMOUS_ROLE="postgresql://anon_role.{project}:password@aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require"
+DATABASE_URL="postgresql://postgres.{project}:password@aws-1-us-east-2.pooler.neon.com:6543/postgres?sslmode=require"
+DATABASE_URL_AUTHENTICATED_ROLE="postgresql://app_role.{project}:password@aws-1-us-east-2.pooler.neon.com:6543/postgres?sslmode=require"
+DATABASE_URL_ANONYMOUS_ROLE="postgresql://anon_role.{project}:password@aws-1-us-east-2.pooler.neon.com:6543/postgres?sslmode=require"
 
-# Supabase URL and keys for RLS testing
-NEXT_PUBLIC_SUPABASE_URL=https://{project}.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
+# neon URL and keys for RLS testing
+NEXT_PUBLIC_NEON_URL=https://{project}.neon.co
+NEXT_PUBLIC_NEON_PUBLISHABLE_KEY=eyJ...
+NEON_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
 
 `DATABASE_URL_AUTHENTICATED_ROLE` and `DATABASE_URL_ANONYMOUS_ROLE` must reference Neon roles that are _not_ the database owner (so RLS policies apply when the app role connects). When schema changes introduce new columns or enum types, run `pnpm exec drizzle-kit push` with the owner-level `DATABASE_URL` exported so the hosted database matches the local Drizzle schema (for example, the `generation_status` and `is_quota_eligible` columns added for plan generation lifecycle testing).
@@ -270,7 +270,7 @@ To force AI failures in tests, temporarily set `MOCK_GENERATION_FAILURE_RATE=1` 
 
 - ✅ Phase 1: Infrastructure and documentation (COMPLETE)
 - ✅ Phase 2: JWT-based RLS testing implementation (COMPLETE)
-- ✅ Phase 3: Configure hosted Supabase test database (COMPLETE)
+- ✅ Phase 3: Configure hosted neon test database (COMPLETE)
 
 ### How Neon-Based RLS Testing Works
 
@@ -389,7 +389,7 @@ export DATABASE_URL="<test-database-url-from-.env.test>"
 pnpm exec drizzle-kit push
 ```
 
-Or use the MCP Supabase tool to apply migrations.
+Or use the MCP neon tool to apply migrations.
 
 ## Test Utilities
 
@@ -649,7 +649,7 @@ pnpm exec drizzle-kit push
 
 ### RLS Security Test Coverage & Seeding
 
-RLS coverage for sensitive tables lives under `tests/security/**` and uses authenticated Supabase clients instead of direct superuser connections. Current focused coverage includes:
+RLS coverage for sensitive tables lives under `tests/security/**` and uses authenticated neon clients instead of direct superuser connections. Current focused coverage includes:
 
 | Table                 | Read Policies         | Write Policies                                                              | Security Tests                                                                 |
 | --------------------- | --------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -672,34 +672,9 @@ These helpers ensure:
 
 If you add RLS tests for another table, prefer extending the existing helper or adding a focused helper in the same directory instead of inlining seeding logic.
 
-#### Adding a New RLS Test
-
-1. Call `cleanCoreTables()` in a `beforeAll`.
-2. Seed base data (e.g. `const base = await seedGenerationAttempts({ withAttempts: false })`).
-3. Insert table‑specific rows with the service role client or extend the helper.
-4. Assert behavior for: anonymous, owner user, other user, service role.
-
 #### Why Not Use Basejump Test Helpers?
 
 The original integration smoke test referenced a `tests` schema from Basejump helpers not applied in CI. Rather than executing custom SQL outside Drizzle migrations, we validate RLS purely through real client interactions which more closely mirrors production behavior and avoids schema drift.
-
-### Tests using wrong DATABASE_URL
-
-**Problem:** `.env` overrides `.env.test`.
-
-**Solution:** Verify `vitest.config.ts` loads `.env.test` before other files import `drizzle`.
-
-**Check:** `src/lib/db/service-role.ts` should NOT load dotenv in test mode.
-
-### "SUPABASE_SERVICE_ROLE_KEY not set"
-
-**Problem:** RLS tests need service role key.
-
-**Solution:** Add to `.env.test`:
-
-```env
-SUPABASE_SERVICE_ROLE_KEY=eyJ... # Get from Supabase dashboard
-```
 
 ## Scheduling Tests
 
@@ -737,19 +712,6 @@ Located in `tests/e2e/`:
 
 - **plan-schedule-view.spec.tsx** - UI toggle between modules/schedule views
 
-### Running Scheduling Tests
-
-```bash
-# All scheduling unit tests
-pnpm vitest run tests/unit/scheduling
-
-# All scheduling integration tests
-pnpm vitest run tests/integration/scheduling
-
-# Specific test file
-pnpm vitest run tests/unit/scheduling/hash.spec.ts
-```
-
 ### Key Test Patterns
 
 **Deterministic Schedule Generation:**
@@ -762,18 +724,6 @@ const schedule1 = generateSchedule(inputs);
 const schedule2 = generateSchedule(inputs);
 
 expect(JSON.stringify(schedule1)).toBe(JSON.stringify(schedule2));
-```
-
-**Cache Validation:**
-
-```typescript
-const inputsHash = computeInputsHash(inputs);
-const cached = await getPlanScheduleCache(planId);
-
-if (cached && cached.inputsHash === inputsHash) {
-  return cached.scheduleJson; // Cache hit
-}
-// Generate and cache new schedule
 ```
 
 **Weekly Hours Constraint:**
@@ -810,18 +760,6 @@ The curation engine tests cover the complete resource attachment pipeline: searc
 
 ### Key Test Patterns
 
-**Deterministic Cache Testing:**
-
-```typescript
-vi.useFakeTimers();
-const key = buildCacheKey({ query: 'test', source: 'youtube', ... });
-await setCachedResults(key, 'search', payload);
-vi.advanceTimersByTime(expiryDuration);
-const result = await getCachedResults(key);
-expect(result).toBeNull(); // Expired
-vi.useRealTimers();
-```
-
 **Concurrency Dedupe:**
 
 ```typescript
@@ -855,28 +793,19 @@ expect(counter.getCount('upstream')).toBeLessThanOrEqual(2);
 ✅ Worker curation integration with time budget  
 ✅ E2E plan generation with curation active
 
-## Future Enhancements
-
-- [ ] Add E2E tests with Playwright
-- [ ] Implement full authenticated RLS testing
-- [ ] Add contract tests for external APIs
-- [ ] Set up CI/CD with GitHub Actions + Docker Postgres
-- [ ] Add performance benchmarks
-- [ ] Add visual regression tests
-
 ## Clerk Integration & JWT Parity (Documentation – Phase 6)
 
-This project now aligns its test authentication flow with the production Clerk → Supabase setup. The goal is for RLS security tests to faithfully model how production requests are authorized.
+This project now aligns its test authentication flow with the production Clerk → neon setup. The goal is for RLS security tests to faithfully model how production requests are authorized.
 
-### 1. Supabase Accepts Clerk JWTs
+### 1. neon Accepts Clerk JWTs
 
-In the Supabase Dashboard you must configure Clerk as a custom/external JWT provider:
+In the neon Dashboard you must configure Clerk as a custom/external JWT provider:
 
 - JWKS URL: `https://kind-wahoo-35.clerk.accounts.dev/.well-known/jwks.json`
 - Issuer (`iss`): `https://kind-wahoo-35.clerk.accounts.dev`
 - (Optional) Audience (`aud`): Your Clerk Frontend API / Publishable domain if enforcement is enabled
 
-Once configured, Supabase validates Clerk‑issued tokens and exposes their claims via `auth.jwt()` in RLS policies and SQL functions.
+Once configured, neon validates Clerk‑issued tokens and exposes their claims via `auth.jwt()` in RLS policies and SQL functions.
 
 ### 2. Test JWTs Mirror Clerk Structure
 
@@ -903,7 +832,7 @@ During RLS tests:
 
 ### 5. Why This Matters
 
-- Eliminates the need to keep Supabase JWT secrets in sync
+- Eliminates the need to keep neon JWT secrets in sync
 - Moves logic closer to how production actually enforces policies
 - Simplifies local onboarding—no external dashboard configuration needed
 
@@ -915,19 +844,20 @@ adjust tests accordingly.
 
 ### 7. Quick Verification Checklist
 
-- [ ] Supabase provider configured with correct JWKS + Issuer
-- [ ] `.env.test` contains real Supabase JWT secret in `TEST_JWT_SECRET`
+- [ ] neon provider configured with correct JWKS + Issuer
+- [ ] `.env.test` contains real neon JWT secret in `TEST_JWT_SECRET`
 - [ ] RLS tests pass locally (`pnpm exec vitest run tests/security`)
 - [ ] `auth.jwt()->>'sub'` returns expected Clerk user ID inside policies (can verify via a diagnostic SELECT during debugging)
 
-\*If using Supabase's external JWT provider feature with Clerk JWKS, Supabase handles key rotation automatically—our tests only need to simulate a structurally correct token when not exercising live JWKS validation locally.
+\*If using neon's external JWT provider feature with Clerk JWKS, neon handles key rotation automatically—our tests only need to simulate a structurally correct token when not exercising live JWKS validation locally.
 
 ## References
 
-- [Vitest Documentation](https://vitest.dev/)
-- [Supabase RLS Guide](https://supabase.com/docs/guides/auth/row-level-security)
+- [Vitest Guide and Docs](https://vitest.dev/guide/)
+- [Neon RLS w/ Drizzle Guide](https://neon.com/docs/guides/rls-drizzle)
+- [Clerk Testing Guide & Docs](https://clerk.com/docs/guides/development/testing/overview)
 - [PostgreSQL RLS Documentation](https://www.postgresql.org/docs/current/ddl-rowsecurity.html)
-- [Drizzle ORM](https://orm.drizzle.team/)
+- [Drizzle ORM](https://orm.drizzle.team/docs/overview)
 
 ## Visual & Accessibility Testing
 

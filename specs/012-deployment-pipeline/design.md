@@ -313,7 +313,7 @@ This document describes the complete CI/CD and deployment pipeline architecture 
 - OpenAI API keys
 - Clerk authentication keys
 - Stripe payment keys
-- Supabase keys (transitioning to Neon)
+- neon keys (transitioning to Neon)
 
 **Fly.io Worker Secrets:**
 

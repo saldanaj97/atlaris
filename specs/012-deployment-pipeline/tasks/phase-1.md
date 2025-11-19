@@ -235,8 +235,8 @@ Set up the foundational infrastructure for the deployment pipeline including Neo
    - Confirm these exist for both Preview (staging) and Production:
      - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
      - `CLERK_SECRET_KEY`
-     - `NEXT_PUBLIC_SUPABASE_URL` (will transition to Neon)
-     - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (may not be needed with Neon)
+   - `NEXT_PUBLIC_NEON_URL` (will transition to Neon)
+   - `NEXT_PUBLIC_NEON_PUBLISHABLE_KEY` (may not be needed with Neon)
      - `STRIPE_SECRET_KEY`
      - `STRIPE_PUBLISHABLE_KEY`
      - `OPENAI_API_KEY`

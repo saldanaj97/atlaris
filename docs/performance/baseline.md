@@ -6,7 +6,7 @@ This note preserves the baseline latency for the `POST /api/v1/plans` endpoint b
 
 - macOS (Apple Silicon)
 - Node.js 20 via `pnpm`
-- Local Supabase/Postgres running at `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+- Local neon/Postgres running at `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
 - Database pre-seeded with the project schema (no generation attempts recorded)
 
 ## How the baseline was captured

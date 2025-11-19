@@ -38,13 +38,13 @@ Implement an asynchronous, AI‑backed learning plan generator that, upon plan c
 ## Technical Context
 
 **Language/Version**: TypeScript (Next.js 15 / React 19)  
-**Primary Dependencies**: Next.js App Router, Drizzle ORM, @supabase/supabase-js, postgres (Supabase), Zod (validation), Clerk auth  
-**Storage**: PostgreSQL (Supabase) with RLS, Drizzle schema (`src/lib/db/schema.ts`)  
+**Primary Dependencies**: Next.js App Router, Drizzle ORM, @neon/neon-js, postgres (neon), Zod (validation), Clerk auth  
+**Storage**: PostgreSQL (neon) with RLS, Drizzle schema (`src/lib/db/schema.ts`)  
 **Testing**: (Currently no runner configured) – Phase 1 will introduce contract test scaffolds (recommended: Vitest)  
 **Target Platform**: Server-rendered web app (Edge not required; Node runtime acceptable)  
 **Project Type**: Single web application (frontend + backend unified in Next.js App Router)  
 **Performance Goals**: Plan create synchronous API p95 latency impact < +200ms over baseline; truncation & validation overhead <5ms p95; generation attempts complete (when successful) within adaptive 10–20s wall clock  
-**Constraints**: Atomic transaction for (attempt + modules + tasks); deterministic ordering uniqueness; adaptive timeout; hard attempt cap (3); deterministic error classification; minimal surface (no extra services beyond Supabase + existing Next server); no user-facing internal errors  
+**Constraints**: Atomic transaction for (attempt + modules + tasks); deterministic ordering uniqueness; adaptive timeout; hard attempt cap (3); deterministic error classification; minimal surface (no extra services beyond neon + existing Next server); no user-facing internal errors  
 **Justification (Server Actions vs API Routes)**: Current implementation continues to use Next.js Route Handlers for create/list operations because:
 
 1. Existing plan creation is already a RESTful route; retaining it avoids duplicative surfaces while we introduce async generation.
@@ -60,8 +60,8 @@ Decision recorded so future migration (if/when Server Actions adopted globally) 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 Principles (from constitution) & Alignment:
 
-- Minimal Surface Area: Feature adds only one new persistence concern (attempt logging) leveraging existing Supabase/Postgres + Drizzle. No additional microservices or external job queue introduced (initial implementation will use in-process async/Edge-safe background trigger or server action invocation pattern). PASS
-- Supabase-Centric Data: All state (plans, modules, tasks, generation attempts) remain in Postgres with RLS. PASS
+- Minimal Surface Area: Feature adds only one new persistence concern (attempt logging) leveraging existing neon/Postgres + Drizzle. No additional microservices or external job queue introduced (initial implementation will use in-process async/Edge-safe background trigger or server action invocation pattern). PASS
+- neon-Centric Data: All state (plans, modules, tasks, generation attempts) remain in Postgres with RLS. PASS
 - Server Actions / App Router First: Plan creation & generation orchestration remain within Next.js route handlers (or server actions when adopted) without bespoke server outside framework. PASS
 - Type Safety: Zod schemas already validate input; new AI output parser will produce typed DTOs before persistence; Drizzle ensures DB types. PASS
 - RLS Security: New table(s) for attempts will mirror existing RLS patterns (ownership via plan -> user). PASS
@@ -75,7 +75,7 @@ Potential Risks / Watchpoints:
 
 Conclusion: No constitutional violations identified; proceed to Phase 0.
 
-Post-Design Re-check (Phase 1 Complete): Designs (generation_attempts table, AI provider abstraction in-process, no external queue) still comply with Minimal Surface & Supabase-centric principles. No new violations introduced. Proceed to /tasks.
+Post-Design Re-check (Phase 1 Complete): Designs (generation_attempts table, AI provider abstraction in-process, no external queue) still comply with Minimal Surface & neon-centric principles. No new violations introduced. Proceed to /tasks.
 
 Derived Status Alignment: Specification now defines plan.status as a derived tri-state (pending|ready|failed) computed from presence/absence and classification of the latest attempt + content rows. Implementation plan intentionally defers denormalized column; mapper tasks (T052+) will compute status on the fly and tests will assert correctness, avoiding premature denormalization.
 
@@ -109,10 +109,10 @@ src/
 │   ├── mappers/             # DB → client mappers
 │   ├── types/               # Shared TypeScript types
 │   └── validation/          # Zod schemas
-└── utils/                   # Supabase clients & misc utilities
+└── utils/                   # neon clients & misc utilities
 
 specs/                       # Feature specs & plans (current feature here)
-supabase/                    # Config + SQL test setup
+neon/                    # Config + SQL test setup
 ```
 
 **Structure Decision**: Single Next.js (web) application with unified API & UI in `src/app`. Feature introduces no new top-level packages or services; generation logic will live under `src/lib/` (e.g., `src/lib/ai/` for provider abstraction and `src/lib/db/queries` additions) and reuse existing route handlers in `src/app/api/v1/plans`.

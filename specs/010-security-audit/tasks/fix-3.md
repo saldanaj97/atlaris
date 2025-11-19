@@ -4,11 +4,11 @@
 
 ### Goal
 
-Move all request-layer DB access to an RLS-enforced client using Supabase + Clerk JWT, remove service-role usage from API routes and helpers, and retain a minimal carve-out for transactional writes that require postgres-js.
+Move all request-layer DB access to an RLS-enforced client using neon + Clerk JWT, remove service-role usage from API routes and helpers, and retain a minimal carve-out for transactional writes that require postgres-js.
 
 ### Key changes
 
-- Introduce RLS Drizzle client for requests (`drizzle-orm/supabase-js`).
+- Introduce RLS Drizzle client for requests (`drizzle-orm/neon-js`).
 - Inject request-scoped RLS DB into a shared request context and expose `getDb()` helper that returns the RLS DB in requests or service-role DB in workers.
 - Refactor request-used query modules and endpoints to rely on `getDb()` instead of importing `db` directly.
 - Keep transactional helpers (e.g., `atomicCheckAndInsertPlan`) on service-role DB, called in a narrow, auditable path.
@@ -30,15 +30,15 @@ Move all request-layer DB access to an RLS-enforced client using Supabase + Cler
 RLS client (future/optional; not implemented in current stack):
 
 ```ts
-// Not implemented: drizzle-orm/supabase-js is not part of our current toolchain.
+// Not implemented: drizzle-orm/neon-js is not part of our current toolchain.
 // Until supported, rely on getDb() + request context in request layers.
-// import { drizzle } from 'drizzle-orm/supabase-js';
+// import { drizzle } from 'drizzle-orm/neon-js';
 // import * as schema from '@/lib/db/schema';
-// import { createClient } from '@/utils/supabase/server';
+// import { createClient } from '@/utils/neon/server';
 //
 // export async function getRlsDb() {
-//   const supabase = await createClient();
-//   return drizzle(supabase, { schema });
+//   const neon = await createClient();
+//   return drizzle(neon, { schema });
 // }
 ```
 
@@ -61,7 +61,7 @@ Inject RLS DB into request context:
 // Current approach: withAuth creates a request context carrying user identity.
 // getDb() will return the request-scoped DB when RLS client support is added.
 // For now, getDb() returns the service DB outside of tests, and we enforce
-// ownership via WHERE + RLS policies in Supabase-based tests.
+// ownership via WHERE + RLS policies in neon-based tests.
 ```
 
 Switch queries to `getDb()`:

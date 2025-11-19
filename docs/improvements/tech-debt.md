@@ -196,7 +196,7 @@ Long-Term (Day 6-7): 300 hours (scoped MVP to fit week)
 ```yaml
 Outdated Packages (24 total):
   Critical Updates:
-    - @supabase/supabase-js: 2.57.2 → 2.81.1 (24 minor versions behind)
+    - @neon/neon-js: 2.57.2 → 2.81.1 (24 minor versions behind)
     - ai (Vercel AI SDK): 5.0.68 → 5.0.93 (25 patch versions behind)
     - @clerk/nextjs: 6.31.9 → 6.35.1 (4 minor versions behind)
 
@@ -343,7 +343,7 @@ Test Timeouts:
 
 - **CI Workflows:** 3 files (`ci-main.yml`, `ci-pr.yml`, `codeql.yml`)
 - **Build commands:** Next.js with Turbopack
-- **Database migrations:** Drizzle Kit with hosted Supabase
+- **Database migrations:** Drizzle Kit with hosted neon
 
 **Issues:**
 
@@ -1365,7 +1365,7 @@ Developer Experience:
 Your **Atlaris Learning Platform** is a well-architected MVP with strong fundamentals:
 
 - Modern Next.js 15 + React 19 stack
-- Solid authentication (Clerk) and database (Supabase + Drizzle)
+- Solid authentication (Clerk) and database (neon + Drizzle)
 - Comprehensive test suite (103 test files)
 - Sophisticated AI generation pipeline
 - CI/CD basics in place

@@ -49,7 +49,7 @@ Implement end-to-end smoke tests that validate the entire deployment stack (API 
 1. Create `tests/smoke/helpers.ts`:
 
 ```typescript
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@neon/neon-js';
 
 export interface SmokeTestConfig {
   apiUrl: string;
@@ -99,11 +99,11 @@ export async function waitForJobCompletion(
 
   while (Date.now() - startTime < maxWaitMs) {
     // Connect to database and check job status
-    const supabase = createClient(databaseUrl, 'service-role-key', {
+    const neon = createClient(databaseUrl, 'service-role-key', {
       auth: { persistSession: false },
     });
 
-    const { data: job, error } = await supabase
+    const { data: job, error } = await neon
       .from('jobs')
       .select('status')
       .eq('id', jobId)
@@ -137,12 +137,12 @@ export async function verifyPlanExists(
   planId: string,
   databaseUrl: string
 ): Promise<{ modulesCount: number; tasksCount: number }> {
-  const supabase = createClient(databaseUrl, 'service-role-key', {
+  const neon = createClient(databaseUrl, 'service-role-key', {
     auth: { persistSession: false },
   });
 
   // Get plan with modules and tasks
-  const { data: plan, error: planError } = await supabase
+  const { data: plan, error: planError } = await neon
     .from('learning_plans')
     .select('id, title, modules(id, title, tasks(id, title))')
     .eq('id', planId)
@@ -173,15 +173,12 @@ export async function cleanupTestData(
   planId: string,
   databaseUrl: string
 ): Promise<void> {
-  const supabase = createClient(databaseUrl, 'service-role-key', {
+  const neon = createClient(databaseUrl, 'service-role-key', {
     auth: { persistSession: false },
   });
 
   // Delete plan (CASCADE will delete modules, tasks, jobs)
-  const { error } = await supabase
-    .from('learning_plans')
-    .delete()
-    .eq('id', planId);
+  const { error } = await neon.from('learning_plans').delete().eq('id', planId);
 
   if (error) {
     console.error(`Failed to cleanup plan ${planId}:`, error.message);
@@ -450,10 +447,11 @@ export default defineConfig({
    - Value: The test API key or Clerk token from Task 4.6
    - Click "Update secret"
 
-3. Add additional secret if using Supabase service role:
-   - Name: `SUPABASE_SERVICE_ROLE_KEY_STAGING` (if needed for smoke tests)
-   - Value: Staging Supabase service role key
-   - Click "Add secret"
+3. Add additional secret if using neon service role:
+
+- Name: `NEON_SERVICE_ROLE_KEY_STAGING` (if needed for smoke tests)
+- Value: Staging neon service role key
+- Click "Add secret"
 
 **Verification:**
 
@@ -664,7 +662,7 @@ Proceed to **Phase 5: Secrets Configuration** to configure all necessary secrets
 
 - **Solution:** Check that workers are running and processing jobs; verify database connection
 
-**Issue:** Cannot connect to Supabase/Neon in smoke test
+**Issue:** Cannot connect to neon in smoke test
 
 - **Solution:** Verify database URL includes `?sslmode=require` and service role key is correct
 

@@ -32,7 +32,7 @@ Ordering Principles Applied:
 - [x] T005 Create Drizzle table model `generationAttempts` in `src/lib/db/schema.ts` (nullable classification, boolean flags) (M)
 - [x] T006 Generate SQL migration file in `src/lib/db/migrations/` adding table + indexes + CHECK constraint `classification_null_on_success` (M)
 - [x] T007 Apply migration (local) and verify via `psql` or Drizzle introspection (M)
-- [x] T008 Add RLS policies SQL (select own, insert own) under `supabase/tests/database/` new file `015-rls-generation_attempts.sql` (M)
+- [x] T008 Add RLS policies SQL (select own, insert own) under `neon/tests/database/` new file `015-rls-generation_attempts.sql` (M)
 - [x] T009 Update seed script `src/lib/db/seed.ts` to ignore new table or add sample attempt optional
 
 ## Phase 3.3: Contract & Integration Tests (Write FIRST – must fail) ⚠️

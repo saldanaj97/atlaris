@@ -12,7 +12,7 @@ This file provides guidance when working with code in this repository.
 - Type checking: tsc --noEmit
 - Notable deps:
   - Auth: @clerk/nextjs
-  - Database: @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, drizzle-seed, postgres
+  - Database: @neon/neon-js, @neon/ssr, drizzle-orm, drizzle-kit, drizzle-seed, postgres
   - AI/LLM: @ai-sdk/google, @ai-sdk/openai, ai (Vercel AI SDK)
   - Payments: stripe
   - UI: @radix-ui/\*, lucide-react, next-themes, sonner, class-variance-authority, tailwind-merge
@@ -39,7 +39,7 @@ This file provides guidance when working with code in this repository.
 
 - **Environment variables**:
   - All env access must go through `@/lib/config/env`. Do **not** read `process.env` directly outside that module.
-  - Prefer the exported grouped configs (e.g., `databaseEnv`, `supabaseEnv`, `stripeEnv`, `aiEnv`, `loggingEnv`) instead of raw keys.
+  - Prefer the exported grouped configs (e.g., `databaseEnv`, `neonEnv`, `stripeEnv`, `aiEnv`, `loggingEnv`) instead of raw keys.
   - If you need a new variable, add it (and its validation) to `src/lib/config/env.ts` rather than inlining a `process.env` read.
 - **Logging**:
   - Use `@/lib/logging/logger` for structured logging; avoid `console.*` in application code.
