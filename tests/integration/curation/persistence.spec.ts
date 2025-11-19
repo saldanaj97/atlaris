@@ -4,7 +4,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import {
   resources,
   taskResources,

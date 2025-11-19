@@ -1,9 +1,915 @@
 {
-  "id": "644296c1-10c0-4284-9073-f1b9d178cab0",
+  "id": "e4cc35bb-0582-4844-bfa6-63a9d656ce16",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "clerk_user_id": {
+          "name": "clerk_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscription_tier": {
+          "name": "subscription_tier",
+          "type": "subscription_tier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'free'"
+        },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stripe_subscription_id": {
+          "name": "stripe_subscription_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscription_status": {
+          "name": "subscription_status",
+          "type": "subscription_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscription_period_end": {
+          "name": "subscription_period_end",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monthly_export_count": {
+          "name": "monthly_export_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_clerk_user_id_unique": {
+          "name": "users_clerk_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["clerk_user_id"]
+        },
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": ["email"]
+        },
+        "users_stripe_customer_id_unique": {
+          "name": "users_stripe_customer_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["stripe_customer_id"]
+        },
+        "users_stripe_subscription_id_unique": {
+          "name": "users_stripe_subscription_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["stripe_subscription_id"]
+        }
+      },
+      "policies": {
+        "users_select_own": {
+          "name": "users_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
+        },
+        "users_insert_own": {
+          "name": "users_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
+        },
+        "users_update_own": {
+          "name": "users_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["public"],
+          "using": "\"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'",
+          "withCheck": "\"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.google_calendar_sync_state": {
+      "name": "google_calendar_sync_state",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sync_token": {
+          "name": "sync_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "calendar_id": {
+          "name": "calendar_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'primary'"
+        },
+        "last_synced_at": {
+          "name": "last_synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "google_calendar_sync_state_plan_id_idx": {
+          "name": "google_calendar_sync_state_plan_id_idx",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "google_calendar_sync_state_user_id_idx": {
+          "name": "google_calendar_sync_state_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "google_calendar_sync_state_plan_id_learning_plans_id_fk": {
+          "name": "google_calendar_sync_state_plan_id_learning_plans_id_fk",
+          "tableFrom": "google_calendar_sync_state",
+          "tableTo": "learning_plans",
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "google_calendar_sync_state_user_id_users_id_fk": {
+          "name": "google_calendar_sync_state_user_id_users_id_fk",
+          "tableFrom": "google_calendar_sync_state",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "gcal_sync_plan_id_unique": {
+          "name": "gcal_sync_plan_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["plan_id"]
+        }
+      },
+      "policies": {
+        "google_calendar_sync_state_select_own": {
+          "name": "google_calendar_sync_state_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "google_calendar_sync_state_insert_own": {
+          "name": "google_calendar_sync_state_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"google_calendar_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "google_calendar_sync_state_update_own": {
+          "name": "google_calendar_sync_state_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["public"],
+          "using": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"google_calendar_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
+          "withCheck": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"google_calendar_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "google_calendar_sync_state_delete_own": {
+          "name": "google_calendar_sync_state_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["public"],
+          "using": "\n    \"google_calendar_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"google_calendar_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.integration_tokens": {
+      "name": "integration_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "integration_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "encrypted_access_token": {
+          "name": "encrypted_access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "encrypted_refresh_token": {
+          "name": "encrypted_refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "workspace_name": {
+          "name": "workspace_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bot_id": {
+          "name": "bot_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "integration_tokens_user_id_idx": {
+          "name": "integration_tokens_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "integration_tokens_provider_idx": {
+          "name": "integration_tokens_provider_idx",
+          "columns": [
+            {
+              "expression": "provider",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "integration_tokens_user_id_users_id_fk": {
+          "name": "integration_tokens_user_id_users_id_fk",
+          "tableFrom": "integration_tokens",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_provider_unique": {
+          "name": "user_provider_unique",
+          "nullsNotDistinct": false,
+          "columns": ["user_id", "provider"]
+        }
+      },
+      "policies": {
+        "integration_tokens_select_own": {
+          "name": "integration_tokens_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "integration_tokens_insert_own": {
+          "name": "integration_tokens_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "integration_tokens_update_own": {
+          "name": "integration_tokens_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["public"],
+          "using": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
+          "withCheck": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "integration_tokens_delete_own": {
+          "name": "integration_tokens_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["public"],
+          "using": "\n    \"integration_tokens\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.notion_sync_state": {
+      "name": "notion_sync_state",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notion_page_id": {
+          "name": "notion_page_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notion_database_id": {
+          "name": "notion_database_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_hash": {
+          "name": "sync_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_synced_at": {
+          "name": "last_synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "notion_sync_state_plan_id_idx": {
+          "name": "notion_sync_state_plan_id_idx",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notion_sync_state_user_id_idx": {
+          "name": "notion_sync_state_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "notion_sync_state_plan_id_learning_plans_id_fk": {
+          "name": "notion_sync_state_plan_id_learning_plans_id_fk",
+          "tableFrom": "notion_sync_state",
+          "tableTo": "learning_plans",
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "notion_sync_state_user_id_users_id_fk": {
+          "name": "notion_sync_state_user_id_users_id_fk",
+          "tableFrom": "notion_sync_state",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "notion_sync_plan_id_unique": {
+          "name": "notion_sync_plan_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["plan_id"]
+        }
+      },
+      "policies": {
+        "notion_sync_state_select_own": {
+          "name": "notion_sync_state_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "notion_sync_state_insert_own": {
+          "name": "notion_sync_state_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"notion_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "notion_sync_state_update_own": {
+          "name": "notion_sync_state_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["public"],
+          "using": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"notion_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
+          "withCheck": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"notion_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "notion_sync_state_delete_own": {
+          "name": "notion_sync_state_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["public"],
+          "using": "\n    \"notion_sync_state\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n   AND \n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"notion_sync_state\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.task_calendar_events": {
+      "name": "task_calendar_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "task_id": {
+          "name": "task_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "calendar_event_id": {
+          "name": "calendar_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "calendar_id": {
+          "name": "calendar_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'primary'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "task_calendar_events_task_id_idx": {
+          "name": "task_calendar_events_task_id_idx",
+          "columns": [
+            {
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "task_calendar_events_user_id_idx": {
+          "name": "task_calendar_events_user_id_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "task_calendar_events_task_id_tasks_id_fk": {
+          "name": "task_calendar_events_task_id_tasks_id_fk",
+          "tableFrom": "task_calendar_events",
+          "tableTo": "tasks",
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "task_calendar_events_user_id_users_id_fk": {
+          "name": "task_calendar_events_user_id_users_id_fk",
+          "tableFrom": "task_calendar_events",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "task_calendar_event_unique": {
+          "name": "task_calendar_event_unique",
+          "nullsNotDistinct": false,
+          "columns": ["task_id", "user_id"]
+        }
+      },
+      "policies": {
+        "task_calendar_events_select_own": {
+          "name": "task_calendar_events_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "task_calendar_events_insert_own": {
+          "name": "task_calendar_events_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "task_calendar_events_update_own": {
+          "name": "task_calendar_events_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["public"],
+          "using": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
+          "withCheck": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "task_calendar_events_delete_own": {
+          "name": "task_calendar_events_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["public"],
+          "using": "\n    \"task_calendar_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.generation_attempts": {
+      "name": "generation_attempts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "classification": {
+          "name": "classification",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "modules_count": {
+          "name": "modules_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tasks_count": {
+          "name": "tasks_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "truncated_topic": {
+          "name": "truncated_topic",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "truncated_notes": {
+          "name": "truncated_notes",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "normalized_effort": {
+          "name": "normalized_effort",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "prompt_hash": {
+          "name": "prompt_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_generation_attempts_plan_id": {
+          "name": "idx_generation_attempts_plan_id",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_generation_attempts_created_at": {
+          "name": "idx_generation_attempts_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "generation_attempts_plan_id_learning_plans_id_fk": {
+          "name": "generation_attempts_plan_id_learning_plans_id_fk",
+          "tableFrom": "generation_attempts",
+          "tableTo": "learning_plans",
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "generation_attempts_select": {
+          "name": "generation_attempts_select",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "generation_attempts_insert": {
+          "name": "generation_attempts_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.learning_plans": {
       "name": "learning_plans",
       "schema": "",
@@ -73,6 +979,27 @@
           "notNull": true,
           "default": "'ai'"
         },
+        "generation_status": {
+          "name": "generation_status",
+          "type": "generation_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'generating'"
+        },
+        "is_quota_eligible": {
+          "name": "is_quota_eligible",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "finalized_at": {
+          "name": "finalized_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -103,6 +1030,48 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_learning_plans_user_quota": {
+          "name": "idx_learning_plans_user_quota",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_quota_eligible",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_learning_plans_user_generation_status": {
+          "name": "idx_learning_plans_user_generation_status",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "generation_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -110,12 +1079,8 @@
           "name": "learning_plans_user_id_users_id_fk",
           "tableFrom": "learning_plans",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -123,97 +1088,34 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {
-        "learning_plans_select_public_anon": {
-          "name": "learning_plans_select_public_anon",
+        "learning_plans_select": {
+          "name": "learning_plans_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "anon"
-          ],
-          "using": "\"learning_plans\".\"visibility\" = 'public'"
+          "to": ["public"],
+          "using": "\"learning_plans\".\"visibility\" = 'public' OR \n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
-        "learning_plans_select_public_auth": {
-          "name": "learning_plans_select_public_auth",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"learning_plans\".\"visibility\" = 'public'"
-        },
-        "learning_plans_select_own": {
-          "name": "learning_plans_select_own",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"learning_plans\".\"user_id\" = (select auth.uid())"
-        },
-        "learning_plans_select_service": {
-          "name": "learning_plans_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
-        },
-        "learning_plans_insert_own": {
-          "name": "learning_plans_insert_own",
+        "learning_plans_insert": {
+          "name": "learning_plans_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\"learning_plans\".\"user_id\" = (select auth.uid())"
+          "to": ["public"],
+          "withCheck": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
-        "learning_plans_insert_service": {
-          "name": "learning_plans_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "service_role"
-          ],
-          "withCheck": "true"
-        },
-        "learning_plans_update_own": {
-          "name": "learning_plans_update_own",
+        "learning_plans_update": {
+          "name": "learning_plans_update",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"learning_plans\".\"user_id\" = (select auth.uid())",
-          "withCheck": "\"learning_plans\".\"user_id\" = (select auth.uid())"
+          "to": ["public"],
+          "using": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
+          "withCheck": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
-        "learning_plans_update_service": {
-          "name": "learning_plans_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "learning_plans_delete_own": {
-          "name": "learning_plans_delete_own",
+        "learning_plans_delete": {
+          "name": "learning_plans_delete",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"learning_plans\".\"user_id\" = (select auth.uid())"
-        },
-        "learning_plans_delete_service": {
-          "name": "learning_plans_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         }
       },
       "checkConstraints": {
@@ -222,6 +1124,237 @@
           "value": "\"learning_plans\".\"weekly_hours\" >= 0"
         }
       },
+      "isRLSEnabled": true
+    },
+    "public.plan_generations": {
+      "name": "plan_generations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parameters": {
+          "name": "parameters",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "output_summary": {
+          "name": "output_summary",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_plan_generations_plan_id": {
+          "name": "idx_plan_generations_plan_id",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "plan_generations_plan_id_learning_plans_id_fk": {
+          "name": "plan_generations_plan_id_learning_plans_id_fk",
+          "tableFrom": "plan_generations",
+          "tableTo": "learning_plans",
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "plan_generations_select": {
+          "name": "plan_generations_select",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "plan_generations_insert": {
+          "name": "plan_generations_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "plan_generations_update": {
+          "name": "plan_generations_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "plan_generations_delete": {
+          "name": "plan_generations_delete",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.plan_schedules": {
+      "name": "plan_schedules",
+      "schema": "",
+      "columns": {
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "schedule_json": {
+          "name": "schedule_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inputs_hash": {
+          "name": "inputs_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "generated_at": {
+          "name": "generated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weekly_hours": {
+          "name": "weekly_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deadline": {
+          "name": "deadline",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_plan_schedules_inputs_hash": {
+          "name": "idx_plan_schedules_inputs_hash",
+          "columns": [
+            {
+              "expression": "inputs_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "plan_schedules_plan_id_learning_plans_id_fk": {
+          "name": "plan_schedules_plan_id_learning_plans_id_fk",
+          "tableFrom": "plan_schedules",
+          "tableTo": "learning_plans",
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "plan_schedules_select": {
+          "name": "plan_schedules_select",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "plan_schedules_insert": {
+          "name": "plan_schedules_insert",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "plan_schedules_update": {
+          "name": "plan_schedules_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "plan_schedules_delete": {
+          "name": "plan_schedules_delete",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        }
+      },
+      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.modules": {
@@ -323,12 +1456,8 @@
           "name": "modules_plan_id_learning_plans_id_fk",
           "tableFrom": "modules",
           "tableTo": "learning_plans",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -338,10 +1467,7 @@
         "modules_plan_id_order_unique": {
           "name": "modules_plan_id_order_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "plan_id",
-            "order"
-          ]
+          "columns": ["plan_id", "order"]
         }
       },
       "policies": {
@@ -349,93 +1475,44 @@
           "name": "modules_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "anon"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "modules_select_public_auth": {
           "name": "modules_select_public_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "modules_select_own_plan": {
           "name": "modules_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "modules_select_service": {
-          "name": "modules_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "modules_insert_own_plan": {
           "name": "modules_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "modules_insert_service": {
-          "name": "modules_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "service_role"
-          ],
-          "withCheck": "true"
+          "to": ["public"],
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "modules_update_own_plan": {
           "name": "modules_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      ",
-          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "modules_update_service": {
-          "name": "modules_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true",
-          "withCheck": "true"
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "modules_delete_own_plan": {
           "name": "modules_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "modules_delete_service": {
-          "name": "modules_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         }
       },
       "checkConstraints": {
@@ -448,168 +1525,6 @@
           "value": "\"modules\".\"estimated_minutes\" >= 0"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.plan_generations": {
-      "name": "plan_generations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "model": {
-          "name": "model",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prompt": {
-          "name": "prompt",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parameters": {
-          "name": "parameters",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "output_summary": {
-          "name": "output_summary",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "idx_plan_generations_plan_id": {
-          "name": "idx_plan_generations_plan_id",
-          "columns": [
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "plan_generations_plan_id_learning_plans_id_fk": {
-          "name": "plan_generations_plan_id_learning_plans_id_fk",
-          "tableFrom": "plan_generations",
-          "tableTo": "learning_plans",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {
-        "plan_generations_select_own": {
-          "name": "plan_generations_select_own",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "plan_generations_select_service": {
-          "name": "plan_generations_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
-        },
-        "plan_generations_insert_own": {
-          "name": "plan_generations_insert_own",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "plan_generations_insert_service": {
-          "name": "plan_generations_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "service_role"
-          ],
-          "withCheck": "true"
-        },
-        "plan_generations_update_own": {
-          "name": "plan_generations_update_own",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      ",
-          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "plan_generations_update_service": {
-          "name": "plan_generations_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "plan_generations_delete_own": {
-          "name": "plan_generations_delete_own",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"learning_plans\"\n          WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "plan_generations_delete_service": {
-          "name": "plan_generations_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
-        }
-      },
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.resources": {
@@ -709,9 +1624,7 @@
         "resources_url_unique": {
           "name": "resources_url_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "url"
-          ]
+          "columns": ["url"]
         }
       },
       "policies": {
@@ -719,46 +1632,14 @@
           "name": "resources_select_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "anon"
-          ],
+          "to": ["public"],
           "using": "true"
         },
         "resources_select_auth": {
           "name": "resources_select_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "true"
-        },
-        "resources_insert_service": {
-          "name": "resources_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "service_role"
-          ],
-          "withCheck": "true"
-        },
-        "resources_update_service": {
-          "name": "resources_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "resources_delete_service": {
-          "name": "resources_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "service_role"
-          ],
+          "to": ["public"],
           "using": "true"
         }
       },
@@ -863,12 +1744,8 @@
           "name": "task_progress_task_id_tasks_id_fk",
           "tableFrom": "task_progress",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -876,12 +1753,8 @@
           "name": "task_progress_user_id_users_id_fk",
           "tableFrom": "task_progress",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -891,10 +1764,7 @@
         "task_progress_task_id_user_id_unique": {
           "name": "task_progress_task_id_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "task_id",
-            "user_id"
-          ]
+          "columns": ["task_id", "user_id"]
         }
       },
       "policies": {
@@ -902,75 +1772,30 @@
           "name": "task_progress_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"task_progress\".\"user_id\" = (select auth.uid())"
-        },
-        "task_progress_select_service": {
-          "name": "task_progress_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
         "task_progress_insert_own": {
           "name": "task_progress_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\n        \"task_progress\".\"user_id\" = (select auth.uid()) AND\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n          AND (\n            \"learning_plans\".\"user_id\" = (select auth.uid()) OR\n            \"learning_plans\".\"visibility\" = 'public'\n          )\n        )\n      "
-        },
-        "task_progress_insert_service": {
-          "name": "task_progress_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "service_role"
-          ],
-          "withCheck": "true"
+          "to": ["public"],
+          "withCheck": "\n          (\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n          AND (\n      (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  )\n      OR (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n    )\n        "
         },
         "task_progress_update_own": {
           "name": "task_progress_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"task_progress\".\"user_id\" = (select auth.uid())",
-          "withCheck": "\"task_progress\".\"user_id\" = (select auth.uid())"
-        },
-        "task_progress_update_service": {
-          "name": "task_progress_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true",
-          "withCheck": "true"
+          "to": ["public"],
+          "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
+          "withCheck": "\n        (\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n        AND (\n      (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  )\n      OR (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n    )\n      "
         },
         "task_progress_delete_own": {
           "name": "task_progress_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"task_progress\".\"user_id\" = (select auth.uid())"
-        },
-        "task_progress_delete_service": {
-          "name": "task_progress_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         }
       },
       "checkConstraints": {},
@@ -1056,12 +1881,8 @@
           "name": "task_resources_task_id_tasks_id_fk",
           "tableFrom": "task_resources",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1069,12 +1890,8 @@
           "name": "task_resources_resource_id_resources_id_fk",
           "tableFrom": "task_resources",
           "tableTo": "resources",
-          "columnsFrom": [
-            "resource_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["resource_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1084,10 +1901,7 @@
         "task_resources_task_id_resource_id_unique": {
           "name": "task_resources_task_id_resource_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "task_id",
-            "resource_id"
-          ]
+          "columns": ["task_id", "resource_id"]
         }
       },
       "policies": {
@@ -1095,93 +1909,44 @@
           "name": "task_resources_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "anon"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "task_resources_select_public_auth": {
           "name": "task_resources_select_public_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "task_resources_select_own_plan": {
           "name": "task_resources_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "task_resources_select_service": {
-          "name": "task_resources_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         },
         "task_resources_insert_own_plan": {
           "name": "task_resources_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+          "to": ["public"],
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         },
         "task_resources_update_own_plan": {
           "name": "task_resources_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      ",
-          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  ",
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         },
         "task_resources_delete_own_plan": {
           "name": "task_resources_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"tasks\"\n          JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "task_resources_insert_service": {
-          "name": "task_resources_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "service_role"
-          ],
-          "withCheck": "true"
-        },
-        "task_resources_update_service": {
-          "name": "task_resources_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "task_resources_delete_service": {
-          "name": "task_resources_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         }
       },
       "checkConstraints": {
@@ -1232,6 +1997,13 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "has_micro_explanation": {
+          "name": "has_micro_explanation",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -1291,12 +2063,8 @@
           "name": "tasks_module_id_modules_id_fk",
           "tableFrom": "tasks",
           "tableTo": "modules",
-          "columnsFrom": [
-            "module_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["module_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1306,10 +2074,7 @@
         "tasks_module_id_order_unique": {
           "name": "tasks_module_id_order_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "module_id",
-            "order"
-          ]
+          "columns": ["module_id", "order"]
         }
       },
       "policies": {
@@ -1317,93 +2082,44 @@
           "name": "tasks_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "anon"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+          "to": ["public"],
+          "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n      )\n    "
         },
         "tasks_select_public_auth": {
           "name": "tasks_select_public_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"visibility\" = 'public'\n        )\n      "
+          "to": ["public"],
+          "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n      )\n    "
         },
         "tasks_select_own_plan": {
           "name": "tasks_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "tasks_select_service": {
-          "name": "tasks_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
         },
         "tasks_insert_own_plan": {
           "name": "tasks_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "tasks_insert_service": {
-          "name": "tasks_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "service_role"
-          ],
-          "withCheck": "true"
+          "to": ["public"],
+          "withCheck": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
         },
         "tasks_update_own_plan": {
           "name": "tasks_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      ",
-          "withCheck": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "tasks_update_service": {
-          "name": "tasks_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true",
-          "withCheck": "true"
+          "to": ["public"],
+          "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    ",
+          "withCheck": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
         },
         "tasks_delete_own_plan": {
           "name": "tasks_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n        EXISTS (\n          SELECT 1 FROM \"modules\"\n          JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n          WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n          AND \"learning_plans\".\"user_id\" = (select auth.uid())\n        )\n      "
-        },
-        "tasks_delete_service": {
-          "name": "tasks_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
         }
       },
       "checkConstraints": {
@@ -1418,8 +2134,8 @@
       },
       "isRLSEnabled": true
     },
-    "public.users": {
-      "name": "users",
+    "public.ai_usage_events": {
+      "name": "ai_usage_events",
       "schema": "",
       "columns": {
         "id": {
@@ -1429,27 +2145,452 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "clerk_user_id": {
-          "name": "clerk_user_id",
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "email": {
-          "name": "email",
+        "model": {
+          "name": "model",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
+        "input_tokens": {
+          "name": "input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "output_tokens": {
+          "name": "output_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "cost_cents": {
+          "name": "cost_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "request_id": {
+          "name": "request_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "subscription_tier": {
-          "name": "subscription_tier",
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_ai_usage_user_id": {
+          "name": "idx_ai_usage_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_ai_usage_created_at": {
+          "name": "idx_ai_usage_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ai_usage_events_user_id_users_id_fk": {
+          "name": "ai_usage_events_user_id_users_id_fk",
+          "tableFrom": "ai_usage_events",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "ai_usage_events_select_own": {
+          "name": "ai_usage_events_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    \"ai_usage_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "ai_usage_events_insert_own": {
+          "name": "ai_usage_events_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    \"ai_usage_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        }
+      },
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.usage_metrics": {
+      "name": "usage_metrics",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
           "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "plans_generated": {
+          "name": "plans_generated",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "regenerations_used": {
+          "name": "regenerations_used",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "exports_used": {
+          "name": "exports_used",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_usage_metrics_user_id": {
+          "name": "idx_usage_metrics_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_usage_metrics_month": {
+          "name": "idx_usage_metrics_month",
+          "columns": [
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "usage_metrics_user_id_users_id_fk": {
+          "name": "usage_metrics_user_id_users_id_fk",
+          "tableFrom": "usage_metrics",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "usage_metrics_user_id_month_unique": {
+          "name": "usage_metrics_user_id_month_unique",
+          "nullsNotDistinct": false,
+          "columns": ["user_id", "month"]
+        }
+      },
+      "policies": {
+        "usage_metrics_select_own": {
+          "name": "usage_metrics_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": ["public"],
+          "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "usage_metrics_insert_own": {
+          "name": "usage_metrics_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": ["public"],
+          "withCheck": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "usage_metrics_update_own": {
+          "name": "usage_metrics_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": ["public"],
+          "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
+          "withCheck": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        },
+        "usage_metrics_delete_own": {
+          "name": "usage_metrics_delete_own",
+          "as": "PERMISSIVE",
+          "for": "DELETE",
+          "to": ["public"],
+          "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
+        }
+      },
+      "checkConstraints": {
+        "plans_generated_nonneg": {
+          "name": "plans_generated_nonneg",
+          "value": "\"usage_metrics\".\"plans_generated\" >= 0"
+        },
+        "regenerations_used_nonneg": {
+          "name": "regenerations_used_nonneg",
+          "value": "\"usage_metrics\".\"regenerations_used\" >= 0"
+        },
+        "exports_used_nonneg": {
+          "name": "exports_used_nonneg",
+          "value": "\"usage_metrics\".\"exports_used\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.stripe_webhook_events": {
+      "name": "stripe_webhook_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "livemode": {
+          "name": "livemode",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_stripe_webhook_events_created_at": {
+          "name": "idx_stripe_webhook_events_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "stripe_webhook_events_event_id_unique": {
+          "name": "stripe_webhook_events_event_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["event_id"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.job_queue": {
+      "name": "job_queue",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "job_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "job_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "max_attempts": {
+          "name": "max_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_at": {
+          "name": "locked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_by": {
+          "name": "locked_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_for": {
+          "name": "scheduled_for",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
@@ -1468,97 +2609,183 @@
           "default": "now()"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
+      "indexes": {
+        "idx_job_queue_status_scheduled_priority": {
+          "name": "idx_job_queue_status_scheduled_priority",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scheduled_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "priority",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_user_id": {
+          "name": "idx_job_queue_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_plan_id": {
+          "name": "idx_job_queue_plan_id",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_created_at": {
+          "name": "idx_job_queue_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "job_queue_plan_id_learning_plans_id_fk": {
+          "name": "job_queue_plan_id_learning_plans_id_fk",
+          "tableFrom": "job_queue",
+          "tableTo": "learning_plans",
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_queue_user_id_users_id_fk": {
+          "name": "job_queue_user_id_users_id_fk",
+          "tableFrom": "job_queue",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "users_clerk_user_id_unique": {
-          "name": "users_clerk_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "clerk_user_id"
-          ]
-        },
-        "users_email_unique": {
-          "name": "users_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {
-        "users_select_own": {
-          "name": "users_select_own",
+        "job_queue_select_own": {
+          "name": "job_queue_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"users\".\"id\" = (select auth.uid())"
+          "to": ["public"],
+          "using": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
         },
-        "users_select_service": {
-          "name": "users_select_service",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
-        },
-        "users_insert_own": {
-          "name": "users_insert_own",
+        "job_queue_insert_own": {
+          "name": "job_queue_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\"users\".\"id\" = (select auth.uid())"
-        },
-        "users_insert_service": {
-          "name": "users_insert_service",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "service_role"
-          ],
-          "withCheck": "true"
-        },
-        "users_update_own_profile": {
-          "name": "users_update_own_profile",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"users\".\"id\" = (select auth.uid())",
-          "withCheck": "\"users\".\"id\" = (select auth.uid())"
-        },
-        "users_update_service": {
-          "name": "users_update_service",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true",
-          "withCheck": "true"
-        },
-        "users_delete_service": {
-          "name": "users_delete_service",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "service_role"
-          ],
-          "using": "true"
+          "to": ["public"],
+          "withCheck": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"clerk_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
         }
       },
-      "checkConstraints": {},
+      "checkConstraints": {
+        "attempts_check": {
+          "name": "attempts_check",
+          "value": "\"job_queue\".\"attempts\" >= 0"
+        },
+        "max_attempts_check": {
+          "name": "max_attempts_check",
+          "value": "\"job_queue\".\"max_attempts\" >= 0"
+        }
+      },
       "isRLSEnabled": true
     }
   },
-  "enums": {},
+  "enums": {
+    "public.generation_status": {
+      "name": "generation_status",
+      "schema": "public",
+      "values": ["generating", "ready", "failed"]
+    },
+    "public.integration_provider": {
+      "name": "integration_provider",
+      "schema": "public",
+      "values": ["notion", "google_calendar"]
+    },
+    "public.job_status": {
+      "name": "job_status",
+      "schema": "public",
+      "values": ["pending", "processing", "completed", "failed"]
+    },
+    "public.job_type": {
+      "name": "job_type",
+      "schema": "public",
+      "values": ["plan_generation", "plan_regeneration"]
+    },
+    "public.learning_style": {
+      "name": "learning_style",
+      "schema": "public",
+      "values": ["reading", "video", "practice", "mixed"]
+    },
+    "public.progress_status": {
+      "name": "progress_status",
+      "schema": "public",
+      "values": ["not_started", "in_progress", "completed"]
+    },
+    "public.resource_type": {
+      "name": "resource_type",
+      "schema": "public",
+      "values": ["youtube", "article", "course", "doc", "other"]
+    },
+    "public.skill_level": {
+      "name": "skill_level",
+      "schema": "public",
+      "values": ["beginner", "intermediate", "advanced"]
+    },
+    "public.subscription_status": {
+      "name": "subscription_status",
+      "schema": "public",
+      "values": ["active", "canceled", "past_due", "trialing"]
+    },
+    "public.subscription_tier": {
+      "name": "subscription_tier",
+      "schema": "public",
+      "values": ["free", "starter", "pro"]
+    }
+  },
   "schemas": {},
   "sequences": {},
   "roles": {},

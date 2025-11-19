@@ -12,7 +12,7 @@ import {
 import { GET as GET_PLAN } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { POST as POST_PLAN } from '@/app/api/v1/plans/route';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import {
   generationAttempts,
   jobQueue,

@@ -229,7 +229,7 @@ describe('Learning Plan Mappers', () => {
 
 **Notes**
 
-- Prefer pure unit tests without hitting the database; mock any external dependencies (Clerk, Supabase, Drizzle) at module boundary.
+- Prefer pure unit tests without hitting the database; mock any external dependencies (Clerk, neon, Drizzle) at module boundary.
 - Re-use the existing `api.error-redaction.spec.ts` patterns to stay consistent with the current suite.
 
 ### Step 3 — Mapper tests

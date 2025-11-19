@@ -38,10 +38,13 @@ describe('OnboardingForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock user subscription fetch
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ tier: 'free' }),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ tier: 'free' }),
+      })
+    );
   });
 
   afterEach(() => {
@@ -51,7 +54,9 @@ describe('OnboardingForm', () => {
   it('should render first step with topic input', () => {
     render(<OnboardingForm />);
 
-    expect(screen.getByText(/What would you like to learn/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/What would you like to learn/i)
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Learning Topic/i)).toBeInTheDocument();
     expect(screen.getByText(/Step 1 of 5/i)).toBeInTheDocument();
   });
@@ -63,15 +68,11 @@ describe('OnboardingForm', () => {
     expect(screen.getByText(/20%/i)).toBeInTheDocument(); // Step 1 of 5 = 20%
   });
 
-  it('should show validation error when advancing without required field', async () => {
+  it('should disable Next button when required field is empty', () => {
     render(<OnboardingForm />);
 
     const nextButton = screen.getByRole('button', { name: /next/i });
-    fireEvent.click(nextButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Please describe what you want to learn/i)).toBeInTheDocument();
-    });
+    expect(nextButton).toBeDisabled();
   });
 
   it('should allow progression to step 2 when topic is entered', async () => {
@@ -84,7 +85,9 @@ describe('OnboardingForm', () => {
     fireEvent.click(nextButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/What's your current skill level/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/What's your current skill level/i)
+      ).toBeInTheDocument();
       expect(screen.getByText(/Step 2 of 5/i)).toBeInTheDocument();
     });
   });
@@ -98,9 +101,9 @@ describe('OnboardingForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /next/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Beginner/i)).toBeInTheDocument();
-      expect(screen.getByText(/Intermediate/i)).toBeInTheDocument();
-      expect(screen.getByText(/Advanced/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Beginner/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Intermediate/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Advanced/i)).toBeInTheDocument();
     });
   });
 
@@ -162,25 +165,18 @@ describe('OnboardingForm', () => {
     expect(nextButton).not.toBeDisabled();
   });
 
-  it('should clear validation error when user starts typing', async () => {
+  it('should enable Next button when user fills required field', () => {
     render(<OnboardingForm />);
 
-    // Try to advance without filling
     const nextButton = screen.getByRole('button', { name: /next/i });
-    fireEvent.click(nextButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Please describe what you want to learn/i)).toBeInTheDocument();
-    });
+    expect(nextButton).toBeDisabled();
 
     // Start typing
     const topicInput = screen.getByLabelText(/Learning Topic/i);
     fireEvent.change(topicInput, { target: { value: 'TypeScript' } });
 
-    // Error should be cleared
-    await waitFor(() => {
-      expect(screen.queryByText(/Please describe what you want to learn/i)).not.toBeInTheDocument();
-    });
+    // Button should now be enabled
+    expect(nextButton).not.toBeDisabled();
   });
 
   it('should show weekly hours select on step 3', async () => {
@@ -201,7 +197,9 @@ describe('OnboardingForm', () => {
 
     // Step 3
     await waitFor(() => {
-      expect(screen.getByText(/How much time can you commit/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/How much time can you commit/i)
+      ).toBeInTheDocument();
       expect(screen.getByText(/Weekly Hours Available/i)).toBeInTheDocument();
     });
   });
@@ -275,7 +273,9 @@ describe('OnboardingForm', () => {
     });
 
     // Component should still render (defaults to free)
-    expect(screen.getByText(/What would you like to learn/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/What would you like to learn/i)
+    ).toBeInTheDocument();
   });
 
   it('should update progress percentage as user advances through steps', async () => {

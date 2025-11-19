@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { jobQueue, learningPlans } from '@/lib/db/schema';
 import { ensureUser } from '../../helpers/db';
 

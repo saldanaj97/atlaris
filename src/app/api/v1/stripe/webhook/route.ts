@@ -89,7 +89,7 @@ export const POST = withErrorBoundary(async (req: Request) => {
     return respond('ok');
   }
 
-  const { db } = await import('@/lib/db/drizzle');
+  const { db } = await import('@/lib/db/service-role');
   const { stripeWebhookEvents, users } = await import('@/lib/db/schema');
   const { eq } = await import('drizzle-orm');
 

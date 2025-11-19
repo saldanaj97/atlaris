@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm';
 import {
   index,
   pgPolicy,
@@ -18,7 +17,6 @@ import {
 import { learningPlans } from './plans';
 import { tasks } from './tasks';
 import { users } from './users';
-import { authenticatedRole, serviceRole } from './common';
 
 // Integration-related tables
 
@@ -49,59 +47,26 @@ export const integrationTokens = pgTable(
     // Users can read only their own integration tokens
     pgPolicy('integration_tokens_select_own', {
       for: 'select',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Service role can read all integration tokens
-    pgPolicy('integration_tokens_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
     }),
 
     // Users can insert tokens only for themselves
     pgPolicy('integration_tokens_insert_own', {
       for: 'insert',
-      to: authenticatedRole,
       withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Service role can insert any token
-    pgPolicy('integration_tokens_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
     }),
 
     // Users can update only their own tokens
     pgPolicy('integration_tokens_update_own', {
       for: 'update',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
       withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Service role can update any token
-    pgPolicy('integration_tokens_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
     }),
 
     // Users can delete only their own tokens
     pgPolicy('integration_tokens_delete_own', {
       for: 'delete',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Service role can delete any token
-    pgPolicy('integration_tokens_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
     }),
   ]
 ).enableRLS();
@@ -142,59 +107,26 @@ export const notionSyncState = pgTable(
       // Users can read only their own sync state
       pgPolicy('notion_sync_state_select_own', {
         for: 'select',
-        to: authenticatedRole,
         using: userOwnsRecord,
-      }),
-
-      // Service role can read all sync state
-      pgPolicy('notion_sync_state_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
       }),
 
       // Users can insert sync state only for themselves and their own plans
       pgPolicy('notion_sync_state_insert_own', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: userAndPlanOwnership,
-      }),
-
-      // Service role can insert any sync state
-      pgPolicy('notion_sync_state_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
       }),
 
       // Users can update only their own sync state and their own plans
       pgPolicy('notion_sync_state_update_own', {
         for: 'update',
-        to: authenticatedRole,
         using: userAndPlanOwnership,
         withCheck: userAndPlanOwnership,
-      }),
-
-      // Service role can update any sync state
-      pgPolicy('notion_sync_state_update_service', {
-        for: 'update',
-        to: serviceRole,
-        using: sql`true`,
-        withCheck: sql`true`,
       }),
 
       // Users can delete only their own sync state and their own plans
       pgPolicy('notion_sync_state_delete_own', {
         for: 'delete',
-        to: authenticatedRole,
         using: userAndPlanOwnership,
-      }),
-
-      // Service role can delete any sync state
-      pgPolicy('notion_sync_state_delete_service', {
-        for: 'delete',
-        to: serviceRole,
-        using: sql`true`,
       }),
     ];
   }
@@ -240,59 +172,26 @@ export const googleCalendarSyncState = pgTable(
       // Users can read only their own sync state
       pgPolicy('google_calendar_sync_state_select_own', {
         for: 'select',
-        to: authenticatedRole,
         using: userOwnsRecord,
-      }),
-
-      // Service role can read all sync state
-      pgPolicy('google_calendar_sync_state_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
       }),
 
       // Users can insert sync state only for themselves and their own plans
       pgPolicy('google_calendar_sync_state_insert_own', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: userAndPlanOwnership,
-      }),
-
-      // Service role can insert any sync state
-      pgPolicy('google_calendar_sync_state_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
       }),
 
       // Users can update only their own sync state and their own plans
       pgPolicy('google_calendar_sync_state_update_own', {
         for: 'update',
-        to: authenticatedRole,
         using: userAndPlanOwnership,
         withCheck: userAndPlanOwnership,
-      }),
-
-      // Service role can update any sync state
-      pgPolicy('google_calendar_sync_state_update_service', {
-        for: 'update',
-        to: serviceRole,
-        using: sql`true`,
-        withCheck: sql`true`,
       }),
 
       // Users can delete only their own sync state and their own plans
       pgPolicy('google_calendar_sync_state_delete_own', {
         for: 'delete',
-        to: authenticatedRole,
         using: userAndPlanOwnership,
-      }),
-
-      // Service role can delete any sync state
-      pgPolicy('google_calendar_sync_state_delete_service', {
-        for: 'delete',
-        to: serviceRole,
-        using: sql`true`,
       }),
     ];
   }
@@ -325,48 +224,23 @@ export const taskCalendarEvents = pgTable(
     // RLS Policies
     pgPolicy('task_calendar_events_select_own', {
       for: 'select',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('task_calendar_events_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
     }),
 
     pgPolicy('task_calendar_events_insert_own', {
       for: 'insert',
-      to: authenticatedRole,
       withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('task_calendar_events_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
     }),
 
     pgPolicy('task_calendar_events_update_own', {
       for: 'update',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
       withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('task_calendar_events_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
     }),
 
     pgPolicy('task_calendar_events_delete_own', {
       for: 'delete',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('task_calendar_events_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
     }),
   ]
 ).enableRLS();

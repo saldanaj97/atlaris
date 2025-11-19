@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
 import type { FailureClassification } from '@/lib/types/client';
 import { planRegenerationOverridesSchema } from '@/lib/validation/learningPlans';

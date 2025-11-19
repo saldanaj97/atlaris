@@ -17,7 +17,7 @@ A Next.js application for creating AI-backed personalized learning plans with st
 
 ### 🔒 Security & Data Integrity
 
-- **Row Level Security (RLS)**: Supabase-based access controls ensuring users only see their own data
+- **Row Level Security (RLS)**: Neon-based access controls ensuring users only see their own data
 - **Atomic Transactions**: Generation attempts and content persist together or fail together
 - **Concurrent Safety**: Multiple users can create plans simultaneously without conflicts
 - **Attempt Capping**: Maximum 3 generation attempts per plan to prevent abuse
@@ -34,7 +34,7 @@ A Next.js application for creating AI-backed personalized learning plans with st
 - **Next.js 15** with App Router and React 19
 - **TypeScript** for type safety
 - **Tailwind CSS v4** for styling
-- **Supabase** for PostgreSQL database with RLS
+- **Neon** for PostgreSQL database with RLS
 - **Drizzle ORM** for type-safe database operations
 - **Clerk** for authentication
 - **Vitest** for testing
@@ -148,12 +148,12 @@ src/
 
 ### Prerequisites
 
-The test suite uses a **hosted Supabase test database** - no local Docker setup required.
+The test suite uses a **hosted neon test database** - no local Docker setup required.
 
-1. **Environment Configuration**: Ensure `.env.test` is configured with hosted Supabase credentials
-   - `DATABASE_URL` - Hosted Supabase connection string
-   - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-   - `SUPABASE_SERVICE_ROLE_KEY` - Service role key for admin operations
+1. **Environment Configuration**: Ensure `.env.test` is configured with hosted neon credentials
+   - `DATABASE_URL` - Hosted neon connection string
+   - `NEXT_PUBLIC_NEON_URL` - neon project URL
+   - `NEON_SERVICE_ROLE_KEY` - Service role key for admin operations
    - `TEST_JWT_SECRET` - JWT secret for RLS testing
 
 ### Running Tests Locally
@@ -188,7 +188,7 @@ The test suite includes four categories, run in this order:
 ### Test Database Architecture
 
 - **Business Logic Tests** use direct Postgres connection (bypasses RLS for speed and determinism)
-- **Security Tests** use Supabase client with JWT authentication (enforces RLS policies)
+- **Security Tests** use neon client with JWT authentication (enforces RLS policies)
 
 This hybrid approach ensures:
 
@@ -221,13 +221,13 @@ See `.github/workflows/ci.yml` and `.github/workflows/test.yml` for details.
 
 **"Connection refused" or "ECONNREFUSED":**
 
-- Check network connectivity to hosted Supabase instance
+- Check network connectivity to hosted neon instance
 - Verify DATABASE_URL is correct in `.env.test`
 
 **Tests fail with "RLS policy" errors:**
 
-- Verify `TEST_JWT_SECRET` in `.env.test` matches your Supabase project's JWT secret
-- Check that `CLERK_ISSUER` in `.env.test` matches Clerk provider configuration in Supabase
+- Verify `TEST_JWT_SECRET` in `.env.test` matches your neon project's JWT secret
+- Check that `CLERK_ISSUER` in `.env.test` matches Clerk provider configuration in neon
 
 **Reset test database:**
 
@@ -242,7 +242,8 @@ This drops all data and re-applies migrations from scratch.
 To learn more about the technologies used:
 
 - [Next.js Documentation](https://nextjs.org/docs) - Learn about Next.js features and API
-- [Supabase Documentation](https://supabase.com/docs) - Database and authentication
+- [Neon Documentation](https://neon.tech/docs) - Database and authentication
+- [Clerk Documentation](https://clerk.com/docs) - Authentication and user management
 - [Drizzle ORM](https://orm.drizzle.team/) - TypeScript ORM
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
 

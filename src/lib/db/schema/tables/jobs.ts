@@ -13,9 +13,9 @@ import {
 
 import { jobStatus, jobType } from '../../enums';
 import { timestampFields } from '../helpers';
+import { clerkSub } from './common';
 import { learningPlans } from './plans';
 import { users } from './users';
-import { authenticatedRole, clerkSub, serviceRole } from './common';
 
 // Background job queue
 
@@ -64,48 +64,21 @@ export const jobQueue = pgTable(
     // Users can read only their own jobs
     pgPolicy('job_queue_select_own', {
       for: 'select',
-      to: authenticatedRole,
       using: sql`${table.userId} IN (
         SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
       )`,
     }),
 
-    // Service role can read all jobs (for worker processing)
-    pgPolicy('job_queue_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
-    }),
-
     // Users can create jobs only for themselves
     pgPolicy('job_queue_insert_own', {
       for: 'insert',
-      to: authenticatedRole,
       withCheck: sql`${table.userId} IN (
         SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
       )`,
     }),
 
-    // Service role can insert any job
-    pgPolicy('job_queue_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
-
     // Only service role can update jobs (worker operations)
-    pgPolicy('job_queue_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
-    }),
 
     // Only service role can delete jobs (cleanup operations)
-    pgPolicy('job_queue_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
-    }),
   ]
 ).enableRLS();

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import {
   generationAttempts,
   learningPlans,

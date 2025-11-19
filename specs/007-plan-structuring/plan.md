@@ -6,7 +6,7 @@
 
 **Architecture:** Compute-on-read with write-through JSON cache per plan. Schedule calculation happens server-side using deterministic date-fns functions, with results cached in a new `plan_schedules` table. UI fetches pre-computed schedules via server-side API composition. No per-task schedule rows in MVP - all schedule data stored as JSONB in cache table.
 
-**Tech Stack:** date-fns (date calculations), Drizzle ORM (schema/migrations), Next.js 15 App Router (server components), React 19 (client UI), TypeScript, PostgreSQL (JSONB), RLS policies (Supabase)
+**Tech Stack:** date-fns (date calculations), Drizzle ORM (schema/migrations), Next.js 15 App Router (server components), React 19 (client UI), TypeScript, PostgreSQL (JSONB), RLS policies (neon)
 
 ---
 

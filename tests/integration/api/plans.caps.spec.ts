@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { POST } from '@/app/api/v1/plans/route';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';

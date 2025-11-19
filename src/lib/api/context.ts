@@ -4,9 +4,12 @@ import { randomUUID } from 'node:crypto';
 export interface RequestContext {
   correlationId: string;
   userId?: string;
-  // Loosely typed to allow either RLS (Supabase) or service-role (Postgres) Drizzle clients
+  // Loosely typed to allow either RLS (neon) or service-role (Postgres) Drizzle clients
   // Callers should use getDb() which returns a consistent, typed handle
   db?: unknown;
+  // Cleanup function for RLS database connections
+  // Should be called when the request completes to close the connection
+  cleanup?: () => Promise<void>;
 }
 
 const storage = new AsyncLocalStorage<RequestContext>();
@@ -50,8 +53,10 @@ export function ensureCorrelationId(source?: HeaderSource): string {
 
 export function createRequestContext(
   req: Request,
-  userId?: string
+  userId?: string,
+  db?: unknown,
+  cleanup?: () => Promise<void>
 ): RequestContext {
   const correlationId = ensureCorrelationId(req.headers);
-  return { correlationId, userId };
+  return { correlationId, userId, db, cleanup };
 }

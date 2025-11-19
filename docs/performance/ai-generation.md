@@ -1,11 +1,11 @@
 # AI Generation Performance Harness
 
-This note captures the initial performance validation for the AI-backed learning plan generation flow. Measurements come from the scripted harness in `scripts/perf/measure-generation.ts`, executed against the local Supabase stack (service role connection on `127.0.0.1:54322`). All runs were executed on macOS with Node 20 via `pnpm tsx`.
+This note captures the initial performance validation for the AI-backed learning plan generation flow. Measurements come from the scripted harness in `scripts/perf/measure-generation.ts`, executed against the local neon stack (service role connection on `127.0.0.1:54322`). All runs were executed on macOS with Node 20 via `pnpm tsx`.
 
 ## Prerequisites
 
-- Local Postgres/Supabase instance seeded with the project schema and data (`DATABASE_URL` defaults to `postgresql://postgres:postgres@127.0.0.1:54322/postgres`).
-- `pnpm install` completed and the Supabase instance running before invoking the harness.
+- Local Postgres/neon instance seeded with the project schema and data (`DATABASE_URL` defaults to `postgresql://postgres:postgres@127.0.0.1:54322/postgres`).
+- `pnpm install` completed and the neon instance running before invoking the harness.
 - Optional: export `PERF_CLERK_USER_ID` and `PERF_USER_EMAIL` to reuse an existing synthetic user; otherwise the script will create `perf-harness-user` automatically.
 
 ## How to run

@@ -12,7 +12,7 @@ This file provides guidance when working with code in this repository.
 - Type checking: tsc --noEmit
 - Notable deps:
   - Auth: @clerk/nextjs
-  - Database: @supabase/supabase-js, @supabase/ssr, drizzle-orm, drizzle-kit, drizzle-seed, postgres
+  - Database: @neon/neon-js, @neon/ssr, drizzle-orm, drizzle-kit, drizzle-seed, postgres
   - AI/LLM: @ai-sdk/google, @ai-sdk/openai, ai (Vercel AI SDK)
   - Payments: stripe
   - UI: @radix-ui/\*, lucide-react, next-themes, sonner, class-variance-authority, tailwind-merge
@@ -39,7 +39,7 @@ This file provides guidance when working with code in this repository.
 
 - **Environment variables**:
   - All env access must go through `@/lib/config/env`. Do **not** read `process.env` directly outside that module.
-  - Prefer the exported grouped configs (e.g., `databaseEnv`, `supabaseEnv`, `stripeEnv`, `aiEnv`, `loggingEnv`) instead of raw keys.
+  - Prefer the exported grouped configs (e.g., `databaseEnv`, `neonEnv`, `stripeEnv`, `aiEnv`, `loggingEnv`) instead of raw keys.
   - If you need a new variable, add it (and its validation) to `src/lib/config/env.ts` rather than inlining a `process.env` read.
 - **Logging**:
   - Use `@/lib/logging/logger` for structured logging; avoid `console.*` in application code.
@@ -153,9 +153,10 @@ Tests cover:
     - pricing/ - Pricing page
     - settings/ - User settings
   - Database code:
+    - src/lib/db/index.ts - Main entry point exporting RLS-enforced clients (default/secure)
     - src/lib/db/schema/ - Database schema definitions and RLS policies
     - src/lib/db/enums.ts - PostgreSQL enum definitions
-    - src/lib/db/drizzle.ts - Service-role Drizzle client (RLS bypassed; for workers/tests)
+    - src/lib/db/service-role.ts - Service-role Drizzle client (RLS bypassed; for workers/tests)
     - src/lib/db/rls.ts - RLS-enforced Drizzle client factory (for request handlers)
     - src/lib/db/runtime.ts - Runtime DB selector (getDb() returns RLS DB in requests, service-role elsewhere)
     - src/lib/db/queries/ - Modular query files (attempts.ts, modules.ts, plans.ts, resources.ts, schedules.ts, tasks.ts, users.ts, jobs.ts)
@@ -184,21 +185,22 @@ Tests cover:
 
 - Authentication and data
   - Authentication: @clerk/nextjs for user authentication
-  - Database: Drizzle ORM with postgres-js + Supabase
-    - Connection: src/lib/db/drizzle.ts uses DATABASE_URL (store in .env.local or .env.test). For Supabase, include `?sslmode=require`.
+  - Database: Drizzle ORM with postgres-js + Neon
+    - Connection: src/lib/db/service-role.ts uses DATABASE_URL (store in .env.local or .env.test). For Neon, include `?sslmode=require`.
     - Schema: src/lib/db/schema (tables) + src/lib/db/enums.ts (PostgreSQL enums)
     - Queries: src/lib/db/queries/ (modular query files by entity)
     - Migrations: managed via drizzle-kit; out dir is src/lib/db/migrations/
-    - RLS policies: Defined in schema using pgPolicy for Supabase Row Level Security
+    - RLS policies: Defined in schema using pgPolicy for Neon Row Level Security
   - **Database client usage rules (CRITICAL for security)**:
+    - **Default import** (`@/lib/db`): RLS-enforced clients (secure, for request handlers)
     - **Request handlers (API routes, server actions)**: MUST use `getDb()` from `@/lib/db/runtime`. This returns an RLS-enforced client that respects tenant isolation.
-    - **Workers/background jobs**: Use `db` from `@/lib/db/drizzle` directly (service-role, RLS bypassed).
-    - **Tests**: Use `db` from `@/lib/db/drizzle` for business logic tests (RLS bypassed intentionally). Use authenticated Supabase clients for RLS policy tests.
+    - **Workers/background jobs**: Use `db` from `@/lib/db/service-role` directly (service-role, RLS bypassed).
+    - **Tests**: Use `db` from `@/lib/db/service-role` for business logic tests (RLS bypassed intentionally). Use authenticated Neon clients for RLS policy tests.
     - **Transactional writes**: Functions like `atomicCheckAndInsertPlan` may use service-role DB for atomicity, but must validate all inputs are caller-scoped.
-    - **ESLint enforcement**: Importing `@/lib/db/drizzle` in request layers (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`) is blocked by lint rules.
-    - See `src/lib/db/drizzle.ts` and `src/lib/db/rls.ts` for detailed usage documentation.
+    - **ESLint enforcement**: Importing `@/lib/db/service-role` in request layers (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`) is blocked by lint rules.
+    - See `src/lib/db/service-role.ts` and `src/lib/db/rls.ts` for detailed usage documentation.
   - Payments: Stripe integration for subscription billing
-  - AI providers: Vercel AI SDK with OpenAI and Google providers for learning plan generation
+  - AI providers: Vercel AI SDK with Google Gemini, OpenAI, Cloudflare Workers AI, and OpenRouter providers for learning plan generation
   - Background jobs: Worker infrastructure in src/workers/ for async plan generation
 
 ## Database schema overview (MVP)
@@ -247,7 +249,7 @@ Tests cover:
 - Implemented features
   - Stripe subscription billing (implemented)
   - Background job processing for AI plan generation
-  - Row Level Security (RLS) policies with Supabase
+  - Row Level Security (RLS) policies with Neon
   - Usage tracking and quotas
 - Future considerations
   - Topic search indexing can be added later

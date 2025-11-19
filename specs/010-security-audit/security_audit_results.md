@@ -37,10 +37,11 @@
 ### 3. Service-role database client bypasses RLS in request handlers
 
 - **Location**: `src/lib/db/drizzle.ts`; consumed by request-layer helpers such as `src/lib/api/schedule.ts`.
-- **Issue**: The Drizzle client connects with the database owner role, explicitly bypassing Supabase RLS. Several request-time helpers call this client directly, so any missed tenant check or new helper risks exposing cross-tenant data.
+- **Issue**: The Drizzle client connects with the database owner role, explicitly bypassing neon RLS. Several request-time helpers call this client directly, so any missed tenant check or new helper risks exposing cross-tenant data.
 - **Impact**: High—RLS is the primary defence-in-depth control; bypassing it in user-facing pathways magnifies damage from logic bugs.
-- **Recommendation**: Restrict the service-role client to background/worker contexts. For request handlers, require a Supabase client that enforces the caller's JWT or wrap Drizzle calls with a guard that verifies `userId` before executing. Add automated tests to ensure helper functions fail when invoked without matching user IDs.
+- **Recommendation**: Restrict the service-role client to background/worker contexts. For request handlers, require a neon client that enforces the caller's JWT or wrap Drizzle calls with a guard that verifies `userId` before executing. Add automated tests to ensure helper functions fail when invoked without matching user IDs.
 - **Evidence**: `db` is a superuser connection and is used directly in request helpers like `getPlanSchedule`, which must manually enforce ownership checks.【F:src/lib/db/drizzle.ts†L1-L31】【F:src/lib/api/schedule.ts†L1-L111】
+- **Resolution**: Rework request handlers to use `createRlsClient()` and audit all request-layer helpers to ensure they do not import the service role `db` directly. Add tests to deny cross-tenant access when `db` is used in request paths.
 
 ### 4. Plan loader lacks tenant scoping guardrails ✅ RESOLVED
 

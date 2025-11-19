@@ -9,7 +9,7 @@ import { curateDocs } from '@/lib/curation/docs';
 import { curationConfig } from '@/lib/curation/config';
 import { selectTop, type Scored } from '@/lib/curation/ranking';
 import { curateYouTube } from '@/lib/curation/youtube';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { upsertAndAttach } from '@/lib/db/queries/resources';

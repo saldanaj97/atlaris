@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { aiUsageEvents, learningPlans, users } from '@/lib/db/schema';
 import { recordUsage } from '@/lib/db/usage';
 import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';

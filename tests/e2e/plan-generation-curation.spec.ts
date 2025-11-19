@@ -16,7 +16,7 @@ import {
 import { POST as POST_PLAN } from '@/app/api/v1/plans/route';
 import { GET as GET_PLAN } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { eq, inArray } from 'drizzle-orm';
 import { modules, taskResources, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../helpers/auth';

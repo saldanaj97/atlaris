@@ -1,5 +1,5 @@
 import { appEnv } from '@/lib/config/env';
-import { client } from '@/lib/db/drizzle';
+import { client } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import { getNextJob } from '@/lib/jobs/queue';
 import { JOB_TYPES, type Job, type JobType } from '@/lib/jobs/types';

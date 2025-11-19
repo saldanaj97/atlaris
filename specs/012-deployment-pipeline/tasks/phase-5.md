@@ -42,7 +42,7 @@ Configure all required secrets and environment variables in Fly.io worker applic
 **Optional (may be needed):**
 
 - `CLERK_SECRET_KEY` - If workers need to verify user context
-- `SUPABASE_SERVICE_ROLE_KEY` - If using Supabase-specific features
+- `NEON_SERVICE_ROLE_KEY` - If using neon-specific features
 - `STRIPE_SECRET_KEY` - If workers need to check subscription status
 
 3. Document which secrets each environment needs:
@@ -294,7 +294,7 @@ Configure all required secrets and environment variables in Fly.io worker applic
    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
    - `CLERK_SECRET_KEY`
    - `DATABASE_URL` (or equivalent Neon connection)
-   - `NEXT_PUBLIC_SUPABASE_URL` (if still using Supabase)
+   - `NEXT_PUBLIC_NEON_URL` (if still using neon)
    - `STRIPE_SECRET_KEY`
    - `STRIPE_PUBLISHABLE_KEY`
    - `OPENAI_API_KEY`

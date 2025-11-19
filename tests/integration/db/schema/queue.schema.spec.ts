@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 
 /**
  * T001: Validates that the job_queue table exposes the expected columns and indexes

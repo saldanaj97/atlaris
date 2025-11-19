@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { users, integrationTokens } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';

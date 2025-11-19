@@ -4,10 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 // In CI, rely on env vars injected by the workflow.
-// Locally, prefer .env.local.test; otherwise fall back to .env.
+// Locally, prefer .env.test; otherwise fall back to .env.
+// Use override: true to force .env.test values even if env vars are already set in shell
 if (!process.env.CI) {
-  if (process.env.NODE_ENV === 'test') config({ path: '.env.local.test' });
-  else config({ path: '.env.test' });
+  if (process.env.NODE_ENV === 'test')
+    config({ path: '.env.test', override: true });
+  else config({ path: '.env' });
 }
 
 // Shared alias configuration for test projects

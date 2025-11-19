@@ -144,7 +144,7 @@ describe('PersistenceService', () => {
       expect(jobQueue.failJob).toHaveBeenCalledWith(
         'job-123',
         'Provider timeout',
-        undefined
+        { retryable: true }
       );
 
       // Should not mark plan as failed or record usage for retryable failures

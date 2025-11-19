@@ -1,7 +1,7 @@
 import { createDefaultHandlers } from '../../helpers/workerHelpers';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { logger } from '@/lib/logging/logger';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { jobQueue } from '@/lib/db/schema';
 import { JOB_TYPES } from '@/lib/jobs/types';
 import { PlanGenerationWorker } from '@/workers/plan-generator';

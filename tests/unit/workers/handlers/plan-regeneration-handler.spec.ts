@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PlanRegenerationHandler } from '@/workers/handlers/plan-regeneration-handler';
-import { GenerationService } from '@/workers/services/generation-service';
-import { CurationService } from '@/workers/services/curation-service';
-import { PersistenceService } from '@/workers/services/persistence-service';
+import * as serviceRoleDb from '@/lib/db/service-role';
 import { JOB_TYPES } from '@/lib/jobs/types';
-import * as drizzle from '@/lib/db/drizzle';
+import { PlanRegenerationHandler } from '@/workers/handlers/plan-regeneration-handler';
+import { CurationService } from '@/workers/services/curation-service';
+import { GenerationService } from '@/workers/services/generation-service';
+import { PersistenceService } from '@/workers/services/persistence-service';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
-vi.mock('@/lib/db/drizzle', () => ({
+vi.mock('@/lib/db/service-role', () => ({
   db: {
     query: {
       learningPlans: {
@@ -141,7 +141,8 @@ describe('PlanRegenerationHandler', () => {
 
     it('should reject when plan not found', async () => {
       const validUuid = '550e8400-e29b-41d4-a716-446655440000';
-      const findFirstMock = vi.mocked(drizzle.db.query.learningPlans.findFirst);
+      const findFirstMock = serviceRoleDb.db.query.learningPlans
+        .findFirst as Mock;
       findFirstMock.mockResolvedValue(undefined as any);
 
       const result = await handler.processJob({
@@ -181,7 +182,8 @@ describe('PlanRegenerationHandler', () => {
 
     it('should successfully regenerate plan with overrides', async () => {
       const validUuid = '550e8400-e29b-41d4-a716-446655440000';
-      const findFirstMock = vi.mocked(drizzle.db.query.learningPlans.findFirst);
+      const findFirstMock = serviceRoleDb.db.query.learningPlans
+        .findFirst as Mock;
       findFirstMock.mockResolvedValue({
         id: validUuid,
         topic: 'Original Topic',
@@ -255,7 +257,8 @@ describe('PlanRegenerationHandler', () => {
 
     it('should use existing plan values when no overrides provided', async () => {
       const validUuid = '550e8400-e29b-41d4-a716-446655440000';
-      const findFirstMock = vi.mocked(drizzle.db.query.learningPlans.findFirst);
+      const findFirstMock = serviceRoleDb.db.query.learningPlans
+        .findFirst as Mock;
       findFirstMock.mockResolvedValue({
         id: validUuid,
         topic: 'Original Topic',
@@ -311,9 +314,8 @@ describe('PlanRegenerationHandler', () => {
     describe('curation', () => {
       beforeEach(() => {
         const validUuid = '550e8400-e29b-41d4-a716-446655440000';
-        const findFirstMock = vi.mocked(
-          drizzle.db.query.learningPlans.findFirst
-        );
+        const findFirstMock = serviceRoleDb.db.query.learningPlans
+          .findFirst as Mock;
         findFirstMock.mockResolvedValue({
           id: validUuid,
           topic: 'Test Topic',
@@ -450,9 +452,8 @@ describe('PlanRegenerationHandler', () => {
     describe('failure classification', () => {
       beforeEach(() => {
         const validUuid = '550e8400-e29b-41d4-a716-446655440000';
-        const findFirstMock = vi.mocked(
-          drizzle.db.query.learningPlans.findFirst
-        );
+        const findFirstMock = serviceRoleDb.db.query.learningPlans
+          .findFirst as Mock;
         findFirstMock.mockResolvedValue({
           id: validUuid,
           topic: 'Test Topic',

@@ -146,7 +146,7 @@ Long-Term (Day 6-7): 300 hours (scoped MVP to fit week)
 
 **Violated Boundaries:**
 
-- 8 API routes directly import from `@/lib/db/drizzle` (service-role DB) instead of using RLS client
+- 8 API routes directly import from `@/lib/db/service-role` (service-role DB) instead of using RLS client
   - **Files:** `src/app/api/v1/auth/notion/callback/route.ts`, `src/app/api/v1/plans/route.ts`, `src/app/api/v1/plans/[planId]/status/route.ts`, `src/app/api/v1/plans/[planId]/regenerate/route.ts`, `src/app/api/v1/integrations/notion/export/route.ts`, `src/app/api/v1/integrations/google-calendar/sync/route.ts`, `src/app/api/v1/auth/google/callback/route.ts`, `src/app/api/health/worker/route.ts`
   - **Risk:** RLS policy bypass, potential data leakage
   - **Status:** ESLint rule exists but violations present
@@ -196,7 +196,7 @@ Long-Term (Day 6-7): 300 hours (scoped MVP to fit week)
 ```yaml
 Outdated Packages (24 total):
   Critical Updates:
-    - @supabase/supabase-js: 2.57.2 → 2.81.1 (24 minor versions behind)
+    - @neon/neon-js: 2.57.2 → 2.81.1 (24 minor versions behind)
     - ai (Vercel AI SDK): 5.0.68 → 5.0.93 (25 patch versions behind)
     - @clerk/nextjs: 6.31.9 → 6.35.1 (4 minor versions behind)
 
@@ -343,7 +343,7 @@ Test Timeouts:
 
 - **CI Workflows:** 3 files (`ci-main.yml`, `ci-pr.yml`, `codeql.yml`)
 - **Build commands:** Next.js with Turbopack
-- **Database migrations:** Drizzle Kit with hosted Supabase
+- **Database migrations:** Drizzle Kit with hosted neon
 
 **Issues:**
 
@@ -681,7 +681,7 @@ Files to fix (8 total): 1. src/app/api/v1/auth/notion/callback/route.ts
   8. src/app/api/health/worker/route.ts
 
 Action:
-  - Replace: import { db } from '@/lib/db/drizzle';
+  - Replace: import { db } from '@/lib/db/service-role';
   - With: import { getDb } from '@/lib/db/runtime';
   - Verify ESLint rule catches this going forward
 ```
@@ -1365,7 +1365,7 @@ Developer Experience:
 Your **Atlaris Learning Platform** is a well-architected MVP with strong fundamentals:
 
 - Modern Next.js 15 + React 19 stack
-- Solid authentication (Clerk) and database (Supabase + Drizzle)
+- Solid authentication (Clerk) and database (neon + Drizzle)
 - Comprehensive test suite (103 test files)
 - Sophisticated AI generation pipeline
 - CI/CD basics in place

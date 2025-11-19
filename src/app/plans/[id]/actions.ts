@@ -19,6 +19,7 @@ import { revalidatePath } from 'next/cache';
 
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
+import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
 import { getPlanSchedule } from '@/lib/api/schedule';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
@@ -92,29 +93,35 @@ export async function updateTaskProgressAction({
     throw new Error('User not found.');
   }
 
-  const db = getDb();
+  const { db: rlsDb, cleanup } =
+    await createAuthenticatedRlsClient(clerkUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-task-progress'),
-    clerkUserId
-  );
-  ctx.db = db;
-
-  await withRequestContext(ctx, async () => {
-    await ensureTaskOwnership(planId, taskId, user.id);
-  });
-
-  const taskProgress = await withRequestContext(ctx, async () =>
-    setTaskProgress(user.id, taskId, status)
+    clerkUserId,
+    rlsDb,
+    cleanup
   );
 
-  revalidatePath(`/plans/${planId}`);
-  revalidatePath('/plans');
+  try {
+    await withRequestContext(ctx, async () => {
+      await ensureTaskOwnership(planId, taskId, user.id);
+    });
 
-  // API route removed; surface the minimal payload expected by clients.
-  return {
-    taskId: taskProgress.taskId,
-    status: taskProgress.status,
-  };
+    const taskProgress = await withRequestContext(ctx, async () =>
+      setTaskProgress(user.id, taskId, status)
+    );
+
+    revalidatePath(`/plans/${planId}`);
+    revalidatePath('/plans');
+
+    // API route removed; surface the minimal payload expected by clients.
+    return {
+      taskId: taskProgress.taskId,
+      status: taskProgress.status,
+    };
+  } finally {
+    await cleanup();
+  }
 }
 
 /**
@@ -134,14 +141,22 @@ export async function getPlanForPage(
     throw new Error('User not found');
   }
 
-  const db = getDb();
+  const { db: rlsDb, cleanup } =
+    await createAuthenticatedRlsClient(clerkUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-plan'),
-    clerkUserId
+    clerkUserId,
+    rlsDb,
+    cleanup
   );
-  ctx.db = db;
 
-  return withRequestContext(ctx, () => getLearningPlanDetail(planId, user.id));
+  try {
+    return await withRequestContext(ctx, () =>
+      getLearningPlanDetail(planId, user.id)
+    );
+  } finally {
+    await cleanup();
+  }
 }
 
 /**
@@ -161,14 +176,20 @@ export async function getPlanScheduleForPage(
     throw new Error('User not found');
   }
 
-  const db = getDb();
+  const { db: rlsDb, cleanup } =
+    await createAuthenticatedRlsClient(clerkUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-schedule'),
-    clerkUserId
+    clerkUserId,
+    rlsDb,
+    cleanup
   );
-  ctx.db = db;
 
-  return withRequestContext(ctx, () =>
-    getPlanSchedule({ planId, userId: user.id })
-  );
+  try {
+    return await withRequestContext(ctx, () =>
+      getPlanSchedule({ planId, userId: user.id })
+    );
+  } finally {
+    await cleanup();
+  }
 }

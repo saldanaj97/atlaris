@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { ensureUser, truncateAll } from '@/../tests/helpers/db';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
 import {
   createCustomer,

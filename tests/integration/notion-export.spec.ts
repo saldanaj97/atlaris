@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { users, learningPlans, integrationTokens } from '@/lib/db/schema';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { ensureUser } from '../helpers/db';

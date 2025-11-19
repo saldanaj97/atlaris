@@ -3,7 +3,7 @@
  * Tests: appendTaskDescription sanitization, appendTaskMicroExplanation flag behavior
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { tasks, modules, learningPlans, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import {

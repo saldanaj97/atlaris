@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import {
   getFailedJobs,
   getJobStats,
@@ -405,7 +405,11 @@ describe('Job Queries', () => {
       // Verify old job is gone
       const remainingJobs = await db.select().from(jobQueue);
       expect(remainingJobs.length).toBeGreaterThanOrEqual(1);
-      expect(remainingJobs.every((job) => job.completedAt && job.completedAt > threshold)).toBe(true);
+      expect(
+        remainingJobs.every(
+          (job) => job.completedAt && job.completedAt > threshold
+        )
+      ).toBe(true);
     });
 
     it('should delete old failed jobs', async () => {
@@ -468,7 +472,9 @@ describe('Job Queries', () => {
       // Should not delete these jobs
       const remainingJobs = await db.select().from(jobQueue);
       const hasPending = remainingJobs.some((job) => job.status === 'pending');
-      const hasProcessing = remainingJobs.some((job) => job.status === 'processing');
+      const hasProcessing = remainingJobs.some(
+        (job) => job.status === 'processing'
+      );
 
       expect(hasPending || hasProcessing).toBe(true);
     });

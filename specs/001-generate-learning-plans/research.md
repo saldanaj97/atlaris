@@ -106,7 +106,7 @@ Scope: Resolve unknowns & codify foundational decisions for implementing real AI
 - Decision: Perform generation within the POST request using `Promise.race([generation, timeout])` but return immediately after plan row creation by deferring heavy work via `void startGeneration(planId, userId)` (fire-and-forget). (Implementation detail for planning; actual function scheduled with minimal awaiting). If hosting constraints require, later move to edge-friendly queue or Cron triggers.
 - Rationale: Avoid introducing new infra while still offloading latency from user response path.
 - Alternatives considered:
-  - Dedicated queue (e.g., Redis, Supabase functions): More operational overhead now.
+  - Dedicated queue (e.g., Redis, neon functions): More operational overhead now.
 
 \n### 15. Idempotency (Deferred)
 

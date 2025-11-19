@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 
 import { ensureUser } from '@/../tests/helpers/db';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import { usageMetrics, users } from '@/lib/db/schema';
 
 describe('Stripe DB schema', () => {

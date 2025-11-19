@@ -20,7 +20,6 @@ import {
   recordOwnedByCurrentUser,
 } from '../policy-helpers';
 import { users } from './users';
-import { anonRole, authenticatedRole, serviceRole } from './common';
 
 // Learning plans and related tables
 
@@ -58,78 +57,33 @@ export const learningPlans = pgTable(
       table.generationStatus
     ),
 
-    // RLS Policies
+    // RLS Policies (session-variable-based for Neon)
+    // Note: Public plan access will be handled at application level
+    // Service-role operations use bypass client from @/lib/db/drizzle
 
-    // Anonymous users can read public plans
-    pgPolicy('learning_plans_select_public_anon', {
+    // Users can read public plans OR their own plans
+    pgPolicy('learning_plans_select', {
       for: 'select',
-      to: anonRole,
-      using: sql`${table.visibility} = 'public'`,
-    }),
-
-    // Authenticated users can read public plans
-    pgPolicy('learning_plans_select_public_auth', {
-      for: 'select',
-      to: authenticatedRole,
-      using: sql`${table.visibility} = 'public'`,
-    }),
-
-    // Users can read their own plans (public or private)
-    pgPolicy('learning_plans_select_own', {
-      for: 'select',
-      to: authenticatedRole,
-      using: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Service role can read all plans
-    pgPolicy('learning_plans_select_service', {
-      for: 'select',
-      to: serviceRole,
-      using: sql`true`,
+      using: sql`${table.visibility} = 'public' OR ${recordOwnedByCurrentUser(table.userId)}`,
     }),
 
     // Users can only create plans for themselves
-    pgPolicy('learning_plans_insert_own', {
+    pgPolicy('learning_plans_insert', {
       for: 'insert',
-      to: authenticatedRole,
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
 
-    // Service role can insert any plan
-    pgPolicy('learning_plans_insert_service', {
-      for: 'insert',
-      to: serviceRole,
-      withCheck: sql`true`,
-    }),
-
-    // Users can update only their own plans (prevent changing userId)
-    pgPolicy('learning_plans_update_own', {
+    // Users can update only their own plans
+    pgPolicy('learning_plans_update', {
       for: 'update',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
       withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Service role can update any plan
-    pgPolicy('learning_plans_update_service', {
-      for: 'update',
-      to: serviceRole,
-      using: sql`true`,
-      withCheck: sql`true`,
     }),
 
     // Users can delete only their own plans
-    pgPolicy('learning_plans_delete_own', {
+    pgPolicy('learning_plans_delete', {
       for: 'delete',
-      to: authenticatedRole,
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Service role can delete any plan
-    pgPolicy('learning_plans_delete_service', {
-      for: 'delete',
-      to: serviceRole,
-      using: sql`true`,
     }),
   ]
 ).enableRLS();
@@ -161,61 +115,30 @@ export const planSchedules = pgTable(
     return [
       index('idx_plan_schedules_inputs_hash').on(table.inputsHash),
 
-      // RLS Policies
+      // RLS Policies (session-variable-based)
 
       // Users can read schedule cache for their own plans
-      pgPolicy('plan_schedules_select_own', {
+      pgPolicy('plan_schedules_select', {
         for: 'select',
-        to: authenticatedRole,
         using: planOwnership,
       }),
 
-      // Service role can read all schedules
-      pgPolicy('plan_schedules_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
-      }),
-
-      // Users can upsert schedule cache for their own plans
-      pgPolicy('plan_schedules_insert_own', {
+      // Users can create/update schedule cache for their own plans
+      pgPolicy('plan_schedules_insert', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: planOwnership,
       }),
 
-      pgPolicy('plan_schedules_update_own', {
+      pgPolicy('plan_schedules_update', {
         for: 'update',
-        to: authenticatedRole,
         using: planOwnership,
         withCheck: planOwnership,
-      }),
-
-      // Service role can manage all schedules
-      pgPolicy('plan_schedules_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
-      }),
-
-      pgPolicy('plan_schedules_update_service', {
-        for: 'update',
-        to: serviceRole,
-        using: sql`true`,
-        withCheck: sql`true`,
       }),
 
       // Users can delete schedule cache for their own plans
-      pgPolicy('plan_schedules_delete_own', {
+      pgPolicy('plan_schedules_delete', {
         for: 'delete',
-        to: authenticatedRole,
         using: planOwnership,
-      }),
-
-      pgPolicy('plan_schedules_delete_service', {
-        for: 'delete',
-        to: serviceRole,
-        using: sql`true`,
       }),
     ];
   }
@@ -247,64 +170,31 @@ export const planGenerations = pgTable(
     return [
       index('idx_plan_generations_plan_id').on(table.planId),
 
-      // RLS Policies
+      // RLS Policies (session-variable-based)
 
       // Users can read generation records only for their own plans
-      pgPolicy('plan_generations_select_own', {
+      pgPolicy('plan_generations_select', {
         for: 'select',
-        to: authenticatedRole,
         using: planOwnership,
-      }),
-
-      // Service role can read all generation records
-      pgPolicy('plan_generations_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
       }),
 
       // Users can create generation records only for their own plans
-      pgPolicy('plan_generations_insert_own', {
+      pgPolicy('plan_generations_insert', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: planOwnership,
       }),
 
-      // Service role can insert any generation record
-      pgPolicy('plan_generations_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
-      }),
-
-      // Users can update generation records only for their own plans (rare operation)
-      pgPolicy('plan_generations_update_own', {
+      // Users can update generation records only for their own plans
+      pgPolicy('plan_generations_update', {
         for: 'update',
-        to: authenticatedRole,
         using: planOwnership,
         withCheck: planOwnership,
       }),
 
-      // Service role can update any generation record
-      pgPolicy('plan_generations_update_service', {
-        for: 'update',
-        to: serviceRole,
-        using: sql`true`,
-        withCheck: sql`true`,
-      }),
-
-      // Users can delete generation records only for their own plans (rare operation)
-      pgPolicy('plan_generations_delete_own', {
+      // Users can delete generation records only for their own plans
+      pgPolicy('plan_generations_delete', {
         for: 'delete',
-        to: authenticatedRole,
         using: planOwnership,
-      }),
-
-      // Service role can delete any generation record
-      pgPolicy('plan_generations_delete_service', {
-        for: 'delete',
-        to: serviceRole,
-        using: sql`true`,
       }),
     ];
   }
@@ -344,34 +234,18 @@ export const generationAttempts = pgTable(
       index('idx_generation_attempts_created_at').on(table.createdAt),
       // classification NULL only when status = success (app-enforced; CHECK constraint added in migration)
 
-      // RLS Policies
+      // RLS Policies (session-variable-based)
 
-      // Authenticated users can read attempts for plans they own
-      pgPolicy('generation_attempts_select_own_plan', {
+      // Users can read attempts for plans they own
+      pgPolicy('generation_attempts_select', {
         for: 'select',
-        to: authenticatedRole,
         using: planOwnership,
       }),
 
-      // Service role can read all attempts for observability tooling
-      pgPolicy('generation_attempts_select_service', {
-        for: 'select',
-        to: serviceRole,
-        using: sql`true`,
-      }),
-
-      // Authenticated users can insert attempts only for plans they own
-      pgPolicy('generation_attempts_insert_own_plan', {
+      // Users can insert attempts only for plans they own
+      pgPolicy('generation_attempts_insert', {
         for: 'insert',
-        to: authenticatedRole,
         withCheck: planOwnership,
-      }),
-
-      // Service role can insert attempts (background jobs)
-      pgPolicy('generation_attempts_insert_service', {
-        for: 'insert',
-        to: serviceRole,
-        withCheck: sql`true`,
       }),
     ];
   }

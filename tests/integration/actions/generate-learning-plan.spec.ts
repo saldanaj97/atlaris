@@ -1,5 +1,5 @@
 import { generateLearningPlan } from '@/app/plans/actions';
-import { db } from '@/lib/db/drizzle';
+import { db } from '@/lib/db/service-role';
 import {
   aiUsageEvents,
   modules,

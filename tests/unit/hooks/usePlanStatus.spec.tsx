@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { usePlanStatus } from '@/hooks/usePlanStatus';
 
 describe('usePlanStatus', () => {
@@ -54,7 +54,8 @@ describe('usePlanStatus', () => {
 
     renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    await waitFor(() => {
+    // Wait for the immediate fetch call
+    await vi.waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/plans/plan-123/status');
     });
   });
@@ -77,7 +78,7 @@ describe('usePlanStatus', () => {
 
     const { result } = renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.status).toBe('processing');
       expect(result.current.attempts).toBe(2);
       expect(result.current.isPolling).toBe(true);
@@ -102,7 +103,7 @@ describe('usePlanStatus', () => {
 
     const { result } = renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.status).toBe('ready');
       expect(result.current.isPolling).toBe(false);
     });
@@ -126,7 +127,7 @@ describe('usePlanStatus', () => {
 
     const { result } = renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.status).toBe('failed');
       expect(result.current.error).toBe('AI provider error');
       expect(result.current.isPolling).toBe(false);
@@ -151,7 +152,7 @@ describe('usePlanStatus', () => {
 
     const { result } = renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.error).toBe('Validation error: topic too short');
     });
   });
@@ -173,9 +174,8 @@ describe('usePlanStatus', () => {
 
     renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    // Initial fetch
-    await vi.runOnlyPendingTimersAsync();
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Wait for the immediate fetch to complete
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
     // First poll after 3 seconds
     await vi.advanceTimersByTimeAsync(3000);
@@ -203,9 +203,8 @@ describe('usePlanStatus', () => {
 
     renderHook(() => usePlanStatus('plan-123', 'processing'));
 
-    // Initial fetch
-    await vi.runOnlyPendingTimersAsync();
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Wait for the immediate fetch to complete
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
     // First poll after 3 seconds
     await vi.advanceTimersByTimeAsync(3000);
@@ -257,16 +256,15 @@ describe('usePlanStatus', () => {
 
     const { result } = renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    // First fetch fails
-    await vi.runOnlyPendingTimersAsync();
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Wait for the immediate fetch to complete (fails)
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
     // Should continue polling despite error
     await vi.advanceTimersByTimeAsync(3000);
     expect(mockFetch).toHaveBeenCalledTimes(2);
 
     // Status should be updated from successful second fetch
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.status).toBe('processing');
       expect(result.current.isPolling).toBe(true);
     });
@@ -292,16 +290,15 @@ describe('usePlanStatus', () => {
 
     const { result } = renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    // First fetch throws network error
-    await vi.runOnlyPendingTimersAsync();
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Wait for the immediate fetch to complete (throws error)
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
     // Should continue polling despite error
     await vi.advanceTimersByTimeAsync(3000);
     expect(mockFetch).toHaveBeenCalledTimes(2);
 
     // Status should be updated from successful second fetch
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.status).toBe('processing');
       expect(result.current.isPolling).toBe(true);
     });
@@ -324,9 +321,8 @@ describe('usePlanStatus', () => {
 
     const { unmount } = renderHook(() => usePlanStatus('plan-123', 'pending'));
 
-    // Initial fetch
-    await vi.runOnlyPendingTimersAsync();
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Wait for the immediate fetch to complete
+    await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
 
     // Unmount the hook
     unmount();
@@ -384,22 +380,21 @@ describe('usePlanStatus', () => {
     const { result } = renderHook(() => usePlanStatus('plan-123', 'pending'));
 
     // Initial fetch - pending
-    await vi.runOnlyPendingTimersAsync();
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.status).toBe('pending');
       expect(result.current.isPolling).toBe(true);
     });
 
     // Second fetch - processing
     await vi.advanceTimersByTimeAsync(3000);
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.status).toBe('processing');
       expect(result.current.isPolling).toBe(true);
     });
 
     // Third fetch - ready (should stop polling)
     await vi.advanceTimersByTimeAsync(3000);
-    await waitFor(() => {
+    await vi.waitFor(() => {
       expect(result.current.status).toBe('ready');
       expect(result.current.isPolling).toBe(false);
     });
