@@ -81,18 +81,24 @@ export function withAuth(handler: Handler): PlainHandler {
     // Create RLS-enforced database client for this request
     // This client automatically scopes all queries to the authenticated user
     const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-    const rlsDb = await createAuthenticatedRlsClient(userId);
+    const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(userId);
 
-    // Create request context with the RLS-enforced DB
-    const requestContext = createRequestContext(req, userId, rlsDb);
+    // Create request context with the RLS-enforced DB and cleanup function
+    const requestContext = createRequestContext(req, userId, rlsDb, cleanup);
 
     const params: RouteHandlerParams = routeContext?.params
       ? await routeContext.params
       : {};
 
-    return withRequestContext(requestContext, () =>
-      handler({ req, userId, params })
-    );
+    try {
+      return await withRequestContext(requestContext, () =>
+        handler({ req, userId, params })
+      );
+    } finally {
+      // Always close the database connection when the request completes
+      // This prevents connection leaks in long-running server processes
+      await cleanup();
+    }
   };
 }
 

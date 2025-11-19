@@ -30,10 +30,14 @@ import {
  * Uses the anonymous database role which provides very restricted access.
  * RLS policies will see null for the user ID.
  *
+ * Note: The underlying connection will be closed automatically via idle_timeout.
+ * For long-running tests, consider calling cleanup() from the full result.
+ *
  * @returns Promise resolving to Drizzle database client with RLS enforcement (anonymous)
  */
 export async function createAnonRlsDb() {
-  return await createAnonymousRlsClient();
+  const result = await createAnonymousRlsClient();
+  return result.db;
 }
 
 /**
@@ -42,11 +46,15 @@ export async function createAnonRlsDb() {
  * Uses the authenticated database role with session variables to enforce
  * user-specific access control via RLS policies.
  *
+ * Note: The underlying connection will be closed automatically via idle_timeout.
+ * For long-running tests, consider calling cleanup() from the full result.
+ *
  * @param clerkUserId - The Clerk user ID (e.g., "user_123")
  * @returns Promise resolving to Drizzle database client with RLS enforcement for this user
  */
 export async function createRlsDbForUser(clerkUserId: string) {
-  return await createAuthenticatedRlsClient(clerkUserId);
+  const result = await createAuthenticatedRlsClient(clerkUserId);
+  return result.db;
 }
 
 /**

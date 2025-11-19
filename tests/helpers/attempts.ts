@@ -6,7 +6,10 @@ import {
   modules,
   tasks,
 } from '@/lib/db/schema';
-import type { db as DbInstance } from '@/lib/db/service-role';
+import type { db } from '@/lib/db/service-role';
+
+type DbInstance = typeof db;
+
 export class MockDbClient {
   existingAttempts = 0;
   modules: Array<Record<string, unknown>> = [];
@@ -115,8 +118,8 @@ export class MockDbClient {
   }
 }
 
-export function asDbClient(mock: MockDbClient): typeof DbInstance {
-  return mock as unknown as typeof DbInstance;
+export function asDbClient(mock: MockDbClient): DbInstance {
+  return mock as unknown as DbInstance;
 }
 
 export function createInput(

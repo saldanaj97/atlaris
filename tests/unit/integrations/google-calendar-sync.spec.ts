@@ -5,7 +5,7 @@ import { db } from '@/lib/db/service-role';
 import { google } from 'googleapis';
 
 // Mock the database
-vi.mock('@/lib/db/drizzle', () => ({
+vi.mock('@/lib/db/service-role', () => ({
   db: {
     select: vi.fn(),
     insert: vi.fn(),

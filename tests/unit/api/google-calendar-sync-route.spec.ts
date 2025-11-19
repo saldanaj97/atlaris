@@ -18,7 +18,7 @@ vi.mock('@/lib/logging/logger', () => ({
   createLogger: () => mockLogger,
 }));
 
-vi.mock('@/lib/db/drizzle', () => ({
+vi.mock('@/lib/db/service-role', () => ({
   db: {
     select: vi.fn(),
   },
