@@ -293,7 +293,7 @@ class GoogleApiRateLimiter {
   /**
    * Process queued requests respecting concurrency limits
    */
-  private async processQueue(): Promise<void> {
+  private processQueue(): void {
     while (this.queue.length > 0 && this.activeRequests < this.maxConcurrent) {
       const item = this.queue.shift();
       if (!item) continue;
@@ -313,7 +313,9 @@ class GoogleApiRateLimiter {
   }
 
   /**
-   * Enforce minimum delay between requests
+   * Enforce minimum delay between requests.
+   * Note: This enforces delay between individual request starts, but when maxConcurrent > 1,
+   * multiple requests can start simultaneously, so total throughput may exceed 60s/minDelay RPM.
    */
   private async enforceDelay(): Promise<void> {
     const now = Date.now();
@@ -415,9 +417,9 @@ class GoogleApiRateLimiter {
 // - 15 requests per minute (RPM)
 // - 250k tokens per minute (TPM)
 // - 1k requests per day (RPD)
-// With 5s spacing: 12 RPM actual (20% safety buffer under 15 RPM limit)
+// With maxConcurrent: 1 and 5s spacing: 12 RPM actual (20% safety buffer under 15 RPM limit)
 export const googleApiRateLimiter = new GoogleApiRateLimiter({
-  maxConcurrent: 2, // Max 2 concurrent requests to avoid bursts
+  maxConcurrent: 1, // Single concurrent request to enforce sequential processing
   minDelay: 5000, // 5 seconds between requests = 12 RPM (under 15 RPM limit)
 });
 
