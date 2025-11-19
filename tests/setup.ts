@@ -3,7 +3,7 @@ if (!process.env.NODE_ENV) {
   Object.assign(process.env, { NODE_ENV: 'test' });
 }
 
-import { afterAll, afterEach, beforeEach } from 'vitest';
+import { afterAll, afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 import { client } from '@/lib/db/service-role';
@@ -44,6 +44,89 @@ if (!process.env.OAUTH_ENCRYPTION_KEY) {
       '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   });
 }
+
+// Mock Google API rate limiter to prevent real API calls in tests
+// unless explicitly overridden by individual tests
+vi.mock('@/lib/utils/google-api-rate-limiter', async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import('@/lib/utils/google-api-rate-limiter')
+  >();
+
+  return {
+    ...actual,
+    fetchGoogleApi: vi.fn(async (url: string | URL) => {
+      // Return mock responses for Google API endpoints
+      const urlString = url.toString();
+
+      // Mock YouTube search API
+      if (urlString.includes('youtube/v3/search')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: { videoId: 'mock-video-1' },
+                snippet: {
+                  title: 'Mock YouTube Video',
+                  channelTitle: 'Mock Channel',
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Mock YouTube videos API
+      if (urlString.includes('youtube/v3/videos')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 'mock-video-1',
+                statistics: { viewCount: '10000' },
+                snippet: { publishedAt: new Date().toISOString() },
+                contentDetails: { duration: 'PT10M' },
+                status: { privacyStatus: 'public', embeddable: true },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Mock Google Custom Search API
+      if (urlString.includes('customsearch/v1')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                link: 'https://example.com/docs',
+                title: 'Mock Documentation',
+                snippet: 'Mock documentation snippet',
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Default mock response for unknown endpoints
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }),
+  };
+});
 
 const skipDbSetup = process.env.SKIP_DB_TEST_SETUP === 'true';
 

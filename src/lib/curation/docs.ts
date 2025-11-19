@@ -8,6 +8,7 @@ import type { ResourceCandidate, CurationParams } from '@/lib/curation/types';
 import { curationConfig } from '@/lib/curation/config';
 import { headOk, canonicalizeUrl } from '@/lib/curation/validate';
 import { scoreDoc, selectTop, type Scored } from '@/lib/curation/ranking';
+import { fetchGoogleApi } from '@/lib/utils/google-api-rate-limiter';
 
 /**
  * CSE search result
@@ -106,7 +107,9 @@ async function searchDocsCSE(
   const siteRestrict = DOMAIN_ALLOWLIST.map((d) => `site:${d}`).join(' OR ');
   searchParams.set('q', `${query} (${siteRestrict})`);
 
-  const response = await fetch(`${baseUrl}?${searchParams.toString()}`);
+  const response = await fetchGoogleApi(`${baseUrl}?${searchParams.toString()}`, {
+    method: 'GET',
+  });
 
   if (!response.ok) {
     let body = '';
