@@ -60,7 +60,14 @@ class GoogleApiRateLimiter {
   private getNextMidnightUTC(): number {
     const now = new Date();
     const midnight = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0)
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0,
+        0,
+        0
+      )
     );
     return midnight.getTime();
   }
@@ -82,7 +89,7 @@ class GoogleApiRateLimiter {
       const resetIn = Math.ceil((this.quotaResetTime - now) / 1000 / 60);
       throw new Error(
         `Daily Google API quota exceeded (${this.dailyQuotaLimit} requests/day). ` +
-        `Quota resets in ${resetIn} minutes.`
+          `Quota resets in ${resetIn} minutes.`
       );
     }
   }
@@ -175,7 +182,6 @@ class GoogleApiRateLimiter {
     shouldRetry: (error: Error, response?: Response) => boolean
   ): Promise<Response> {
     let lastError: Error | null = null;
-    let lastResponse: Response | undefined;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -185,8 +191,10 @@ class GoogleApiRateLimiter {
         const response = await fetch(url, options);
 
         // Check if we should retry based on response
-        if (!response.ok && shouldRetry(new Error(`HTTP ${response.status}`), response)) {
-          lastResponse = response;
+        if (
+          !response.ok &&
+          shouldRetry(new Error(`HTTP ${response.status}`), response)
+        ) {
           lastError = new Error(
             `Google API error: ${response.status} ${response.statusText}`
           );
@@ -247,18 +255,14 @@ class GoogleApiRateLimiter {
 
     // All retries exhausted
     throw (
-      lastError ||
-      new Error(`Request failed after ${maxRetries + 1} attempts`)
+      lastError || new Error(`Request failed after ${maxRetries + 1} attempts`)
     );
   }
 
   /**
    * Default retry logic - retry on network errors and rate limit errors
    */
-  private defaultShouldRetry = (
-    error: Error,
-    response?: Response
-  ): boolean => {
+  private defaultShouldRetry = (error: Error, response?: Response): boolean => {
     // Retry on rate limit errors (429, 500, 503)
     if (response) {
       return (
@@ -283,30 +287,27 @@ class GoogleApiRateLimiter {
    */
   private enqueue(item: QueueItem): void {
     this.queue.push(item);
-    this.processQueue();
+    void this.processQueue();
   }
 
   /**
    * Process queued requests respecting concurrency limits
    */
   private async processQueue(): Promise<void> {
-    while (
-      this.queue.length > 0 &&
-      this.activeRequests < this.maxConcurrent
-    ) {
+    while (this.queue.length > 0 && this.activeRequests < this.maxConcurrent) {
       const item = this.queue.shift();
       if (!item) continue;
 
       this.activeRequests++;
 
-      // Execute the request
-      item
+      // Execute the request (intentionally not awaited for concurrent processing)
+      void item
         .fn()
         .then(item.resolve)
         .catch(item.reject)
         .finally(() => {
           this.activeRequests--;
-          this.processQueue(); // Process next item
+          void this.processQueue(); // Process next item
         });
     }
   }
