@@ -1,6 +1,6 @@
 import { ZodError } from 'zod';
 
-import { count, eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
@@ -40,8 +40,10 @@ export const GET = withErrorBoundary(
 );
 
 async function findCappedPlanWithoutModules(userDbId: string) {
-  const db = getDb();
-  const planRows = await db
+  // Use service-role DB because generation_attempts has no RLS policies
+  // This function is user-scoped (filters by userId) so it's safe
+  const { db: serviceDb } = await import('@/lib/db/service-role');
+  const planRows = await serviceDb
     .select({ id: learningPlans.id })
     .from(learningPlans)
     .where(eq(learningPlans.userId, userDbId));
@@ -52,10 +54,10 @@ async function findCappedPlanWithoutModules(userDbId: string) {
 
   const planIds = planRows.map((row) => row.id);
 
-  const attemptAggregates = await db
+  const attemptAggregates = await serviceDb
     .select({
       planId: generationAttempts.planId,
-      count: count(generationAttempts.id).as('count'),
+      count: sql<number>`count(*)::int`.as('count'),
     })
     .from(generationAttempts)
     .where(inArray(generationAttempts.planId, planIds))
@@ -66,14 +68,14 @@ async function findCappedPlanWithoutModules(userDbId: string) {
   }
 
   const cappedPlanIds = attemptAggregates
-    .filter((row) => row.count >= ATTEMPT_CAP)
+    .filter((row) => Number(row.count) >= ATTEMPT_CAP)
     .map((row) => row.planId);
 
   if (!cappedPlanIds.length) {
     return null;
   }
 
-  const plansWithModules = await db
+  const plansWithModules = await serviceDb
     .select({ planId: modules.planId })
     .from(modules)
     .where(inArray(modules.planId, cappedPlanIds))

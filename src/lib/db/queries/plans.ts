@@ -163,7 +163,10 @@ export async function getLearningPlanDetail(
         .orderBy(asc(taskResources.order))
     : [];
 
-  const [{ attemptCount = 0 } = { attemptCount: 0 }] = await db
+  // Use service-role DB because generation_attempts has no RLS policies
+  // Ownership is already verified via the planRow query above
+  const { db: serviceDb } = await import('@/lib/db/service-role');
+  const [{ attemptCount = 0 } = { attemptCount: 0 }] = await serviceDb
     .select({ attemptCount: count(generationAttempts.id) })
     .from(generationAttempts)
     .where(eq(generationAttempts.planId, planId));
@@ -179,7 +182,7 @@ export async function getLearningPlanDetail(
 
   let latestAttempt = null;
   if (attemptsCount > 0) {
-    const [attempt] = await db
+    const [attempt] = await serviceDb
       .select()
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, planId))
@@ -222,7 +225,10 @@ export async function getPlanAttemptsForUser(planId: string, userId: string) {
     return null;
   }
 
-  const attempts = await db
+  // Use service-role DB because generation_attempts has no RLS policies
+  // Ownership is already verified via the planRow query above
+  const { db: serviceDb } = await import('@/lib/db/service-role');
+  const attempts = await serviceDb
     .select()
     .from(generationAttempts)
     .where(eq(generationAttempts.planId, planId))
