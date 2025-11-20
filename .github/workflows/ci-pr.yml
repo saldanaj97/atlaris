@@ -412,6 +412,10 @@ jobs:
           CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
           LANGUAGE sql
           AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
+
+          -- Grant schema access to RLS roles
+          GRANT USAGE ON SCHEMA public TO authenticated, anonymous;
+          GRANT USAGE ON SCHEMA auth TO authenticated, anonymous;
           SQL
 
           echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
@@ -420,6 +424,24 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
         run: pnpm db:push:test-db
+      - name: Grant table permissions to RLS roles
+        env:
+          PGPASSWORD: postgres
+          DB_NAME: ${{ env.DB_NAME }}
+        run: |
+          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
+          -- Grant permissions on all tables to authenticated and anonymous roles
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
+
+          -- Grant permissions on sequences (for auto-increment IDs)
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous;
+
+          -- Grant default permissions for future tables
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anonymous;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anonymous;
+          SQL
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
         id: restore-vitest-cache
