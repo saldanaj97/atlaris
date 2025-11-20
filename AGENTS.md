@@ -19,23 +19,22 @@ This file provides guidance when working with code in this repository.
   - Background workers: tsx (for worker execution), async-mutex (test coordination)
   - Utilities: zod, nanoid, p-retry, dotenv, date-fns, lru-cache
 
-## Important Rules/References(read before coding or committing)
+## General rules and references(read before coding or committing)
 
 ### General rules
 
-- When you are done with code implementation, run the command: `coderabbit --prompt-only -t uncommitted` to review the code changes.
-- Only run the CodeRabbit CLI command on changes to actual code, not any .md files or other non-code files.
-- When given the proposed changes, review the changes and make sure they are correct, and make any necessary adjustments.
-
-- Ignore any assumptions you may have about how this project works based on your prior experience. This project has its own specific architecture, structure, and conventions that must be followed. Reason from facts only.
-
 - NEVER run the full test suite. Only run the tests that are relevant to the task at hand, have been explicitly requested, or are newly added. When running tests, use the 'vitest' command with the appropriate flags. NOT the 'pnpm test' command.
 
-- Make sure to ALWAYS use the context7 MCP for grabbing the most up to date documentation about a specific topic before starting any coding task or when I ask you a clarifying question. This will ensure you have the most up to date information and avoid any mistakes.
+- When I ask you a clarifying question, make sure to use the context7 MCP for grabbing the most up to date documentation. This will ensure you have the most up to date information and avoid any mistakes.
 
-- When dealing with database changes, make sure to always push the schema to the test database as well as the local database using the appropriate commands.
+### Testing rules and guidelines
 
-#### Env & logging usage
+- When writing or reviewing tests, make sure to follow the specific testing guidelines outlined in:
+  - `.cursor/rules/integration-testing.mdc` for integration tests
+  - `.cursor/rules/unit-testing.mdc` for unit tests
+  - `.cursor/rules/e2e-testing.mdc` for e2e tests
+
+### Env & logging usage
 
 - **Environment variables**:
   - All env access must go through `@/lib/config/env`. Do **not** read `process.env` directly outside that module.
@@ -206,13 +205,15 @@ Tests cover:
 ## Database schema overview (MVP)
 
 - Core entities and relationships
-  - users 1—\* learning_plans
-  - learning_plans 1—\* modules
+  - users 1—\* learning_plans, integration_tokens, notion_sync_state, google_calendar_sync_state, usage_metrics, ai_usage_events, job_queue, task_progress, task_calendar_events
+  - learning_plans 1—\* modules, plan_schedules, plan_generations, generation_attempts, notion_sync_state, google_calendar_sync_state, job_queue
   - modules 1—\* tasks
-  - tasks — resources via task_resources (ordered per task)
-  - users — tasks via task_progress (per-user status; derive module/plan completion)
-  - learning_plans 1—\* plan_generations (regeneration history/attempts)
-  - Background job queue for async plan generation
+  - tasks 1—\* task_resources, task_progress, task_calendar_events
+  - task_resources — resources (many-to-many with ordering and notes)
+  - Background job queue for async plan generation/regeneration
+  - Integration sync states for Notion exports and Google Calendar sync
+  - Usage tracking and quotas (monthly metrics, AI API usage)
+  - Stripe webhook event storage
 - Enums (DB-level, defined in src/lib/db/enums.ts)
   - skill_level: beginner | intermediate | advanced
   - learning_style: reading | video | practice | mixed
@@ -220,40 +221,50 @@ Tests cover:
   - progress_status: not_started | in_progress | completed
   - generation_status: generating | ready | failed
   - job_status: pending | processing | completed | failed
-  - job_type: plan_generation
+  - job_type: plan_generation | plan_regeneration
   - subscription_tier: free | starter | pro
   - subscription_status: active | canceled | past_due | trialing
+  - integration_provider: notion | google_calendar
 - Key constraints and design choices
   - UUID primary keys on all tables; users.id is the internal PK
   - users: clerk_user_id UNIQUE, email UNIQUE
   - FKs generally use ON DELETE CASCADE to avoid orphans
   - Stable ordering: unique(plan_id, order) on modules; unique(module_id, order) on tasks (order starts at 1)
-  - CHECK non-negative integers where applicable: weekly_hours, estimated_minutes, duration_minutes, cost_cents
+  - CHECK non-negative integers where applicable: weekly_hours, estimated_minutes, duration_minutes, cost_cents, attempts, max_attempts
   - Timestamps: created_at default now(); maintain updated_at in app logic or triggers
+  - Row Level Security (RLS) policies enforce tenant isolation with session variables
+  - Public plan visibility allows anonymous read access to public learning plans
 - Indexes (common query patterns)
-  - learning_plans(user_id); optional topic search index (FTS/trigram)
-  - modules(plan_id), modules(plan_id, order)
-  - tasks(module_id), tasks(module_id, order)
-  - task_progress(user_id), task_progress(task_id)
-  - resources(url UNIQUE), resources(type)
-  - task_resources(task_id), task_resources(resource_id)
-  - plan_generations(plan_id)
+  - learning_plans(user_id, is_quota_eligible, generation_status); composite indexes for efficient queries
+  - modules(plan_id, order); tasks(module_id, order)
+  - task_progress(user_id, task_id); resources(type); task_resources(task_id, resource_id)
+  - plan_generations(plan_id); generation_attempts(plan_id, created_at)
+  - job_queue(status, scheduled_for, priority); integration_tokens(user_id, provider)
+  - usage_metrics(user_id, month); ai_usage_events(user_id, created_at)
+  - sync states: notion_sync_state(plan_id), google_calendar_sync_state(plan_id)
 - Code locations
-  - Schema: src/lib/db/schema (tables + RLS policies)
+  - Schema: src/lib/db/schema/tables/ (modular table definitions + RLS policies)
   - Enums: src/lib/db/enums.ts (PostgreSQL enum definitions)
+  - Relations: src/lib/db/schema/relations.ts (Drizzle ORM relationships)
   - Queries: src/lib/db/queries/ (modular query files by entity)
-  - Usage tracking: src/lib/db/usage.ts
+  - Usage tracking: src/lib/db/usage.ts, src/lib/db/schema/tables/usage.ts
   - Seeding: src/lib/db/seed.ts, src/lib/db/seed-cli.ts
   - Migrations: src/lib/db/migrations/ (drizzle-kit output)
   - Drizzle configs: drizzle.config.ts (main), drizzle-test.config.ts (test env)
+  - Database clients: src/lib/db/index.ts (RLS clients), src/lib/db/service-role.ts (bypass client)
 - Implemented features
-  - Stripe subscription billing (implemented)
-  - Background job processing for AI plan generation
-  - Row Level Security (RLS) policies with Neon
-  - Usage tracking and quotas
+  - Stripe subscription billing with webhook handling
+  - Background job processing for AI plan generation/regeneration
+  - Row Level Security (RLS) policies with Neon for multi-tenant isolation
+  - Usage tracking and quotas (monthly limits, AI API usage monitoring)
+  - Third-party integrations: Notion exports, Google Calendar sync
+  - Public plan sharing with anonymous access
+  - Plan scheduling and regeneration tracking
+  - OAuth token management for integrations
 - Future considerations
-  - Topic search indexing can be added later
-  - Exports/integrations (Notion/Google) are out of scope for current MVP
+  - Topic search indexing (FTS/trigram) can be added later
+  - Additional integrations (Google Docs, etc.) follow the same pattern
+  - Plan templates and cloning features
 
 ## Testing
 
@@ -289,5 +300,3 @@ Tests cover:
   - pnpm test:watch (watch mode)
 
 ## Notes for future tasks
-
-- Prefer pnpm for all commands in this repo.
