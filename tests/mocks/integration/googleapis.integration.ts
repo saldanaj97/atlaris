@@ -1,18 +1,4 @@
 import { vi } from 'vitest';
+import { createGoogleApisMock } from '../shared/googleapis.shared';
 
-vi.mock('googleapis', () => ({
-  google: {
-    auth: {
-      OAuth2: vi.fn().mockImplementation(() => ({
-        setCredentials: vi.fn(),
-      })),
-    },
-    calendar: vi.fn().mockReturnValue({
-      events: {
-        insert: vi.fn().mockResolvedValue({
-          data: { id: 'event_123', status: 'confirmed' },
-        }),
-      },
-    }),
-  },
-}));
+vi.mock('googleapis', () => createGoogleApisMock());

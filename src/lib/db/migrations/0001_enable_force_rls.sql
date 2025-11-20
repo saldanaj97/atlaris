@@ -1,4 +1,4 @@
--- Enable RLS on all tables (NOT force RLS to allow BYPASSRLS to work in tests)
+-- Enable RLS on all tables (no FORCE) to allow test/migration/service-role connections with BYPASSRLS/superuser to bypass RLS while normal application request handlers remain subject to policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE learning_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE modules ENABLE ROW LEVEL SECURITY;

@@ -23,7 +23,6 @@ import { db } from '@/lib/db/service-role';
  * Truncate core tables between tests to guarantee isolation.
  * Tables are truncated in dependency order to avoid deadlocks.
  */
-const userIdCache = new Map<string, string>();
 
 export async function truncateAll() {
   // Truncate tables individually in dependency order (children before parents)
@@ -63,7 +62,6 @@ export async function truncateAll() {
   );
   await db.execute(sql`TRUNCATE TABLE ${users} RESTART IDENTITY CASCADE`);
   await db.execute(sql`TRUNCATE TABLE ${resources} RESTART IDENTITY CASCADE`);
-  userIdCache.clear();
 }
 
 export async function ensureStripeWebhookEvents() {
@@ -146,9 +144,6 @@ export async function ensureUser({
   name?: string;
   subscriptionTier?: 'free' | 'starter' | 'pro';
 }): Promise<string> {
-  //  Don't use cache - always check database
-  // The cache is cleared by truncateAll but we want to ensure we always have fresh data
-
   // Try to find existing user first
   const existing = await db.query.users.findFirst({
     where: (fields, operators) => operators.eq(fields.clerkUserId, clerkUserId),
@@ -162,7 +157,6 @@ export async function ensureUser({
         .set({ subscriptionTier })
         .where(eq(users.id, existing.id));
     }
-    userIdCache.set(clerkUserId, existing.id);
     return existing.id;
   }
 
@@ -181,6 +175,5 @@ export async function ensureUser({
     throw new Error(`Failed to create user for ${clerkUserId}`);
   }
 
-  userIdCache.set(clerkUserId, inserted.id);
   return inserted.id;
 }

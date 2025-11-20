@@ -16,7 +16,11 @@ vi.mock('@/lib/db/service-role', () => {
       update: vi.fn(),
       delete: vi.fn(),
       execute: vi.fn(),
-      query: {},
+      query: {
+        learningPlans: {
+          findFirst: vi.fn(),
+        },
+      },
     },
     serviceRoleDb: {
       select: vi.fn(),
