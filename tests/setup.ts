@@ -2,35 +2,16 @@ import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeEach } from 'vitest';
 import './mocks/google-api';
 
+import { client } from '@/lib/db/service-role';
 import { Mutex } from 'async-mutex';
 import {
-  ensureGoogleCalendarSyncStateTable,
+  ensureGoogleCalendarSyncState,
   ensureJobTypeEnumValue,
-  ensureNotionSyncStateTable,
-  ensureStripeWebhookEventsTable,
-  ensureTaskCalendarEventsTable,
+  ensureNotionSyncState,
+  ensureStripeWebhookEvents,
+  ensureTaskCalendarEvents,
   truncateAll,
 } from './helpers/db';
-
-if (!process.env.DEV_CLERK_USER_ID) {
-  Object.assign(process.env, { DEV_CLERK_USER_ID: 'test-user-id' });
-}
-
-if (!process.env.AI_PROVIDER) {
-  Object.assign(process.env, { AI_PROVIDER: 'mock' });
-}
-
-if (!process.env.MOCK_GENERATION_DELAY_MS) {
-  Object.assign(process.env, { MOCK_GENERATION_DELAY_MS: '100' });
-}
-
-if (!process.env.MOCK_GENERATION_FAILURE_RATE) {
-  Object.assign(process.env, { MOCK_GENERATION_FAILURE_RATE: '0' });
-}
-
-if (!process.env.MOCK_GENERATION_SEED) {
-  Object.assign(process.env, { MOCK_GENERATION_SEED: '12345' });
-}
 
 // Set encryption key for OAuth token crypto in tests (64 hex chars = 32 bytes)
 if (!process.env.OAUTH_ENCRYPTION_KEY) {
@@ -78,10 +59,10 @@ if (!skipDbSetup) {
     assertSafeToTruncate();
     releaseDbLock = await dbLock.acquire();
     await ensureJobTypeEnumValue();
-    await ensureStripeWebhookEventsTable();
-    await ensureNotionSyncStateTable();
-    await ensureGoogleCalendarSyncStateTable();
-    await ensureTaskCalendarEventsTable();
+    await ensureStripeWebhookEvents();
+    await ensureNotionSyncState();
+    await ensureGoogleCalendarSyncState();
+    await ensureTaskCalendarEvents();
     await truncateAll();
   });
 
@@ -93,7 +74,6 @@ if (!skipDbSetup) {
   });
 
   afterAll(async () => {
-    const { client } = await import('@/lib/db/service-role');
     await client.end();
   });
 }

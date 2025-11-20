@@ -64,8 +64,7 @@ import * as schema from './schema';
 // ============================================================================
 
 // Use non-pooling connection in tests to avoid pooler issues
-const isTest =
-  typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+const isTest = process.env.NODE_ENV === 'test';
 const dbUrl =
   isTest && databaseEnv.nonPoolingUrl
     ? databaseEnv.nonPoolingUrl

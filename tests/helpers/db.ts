@@ -1,23 +1,23 @@
 import { eq, sql } from 'drizzle-orm';
 
-import { db } from '@/lib/db/service-role';
 import {
   generationAttempts,
+  googleCalendarSyncState,
   jobQueue,
   learningPlans,
   modules,
+  notionSyncState,
   planGenerations,
   resources,
+  stripeWebhookEvents,
+  taskCalendarEvents,
   taskProgress,
   taskResources,
   tasks,
-  stripeWebhookEvents,
   usageMetrics,
   users,
-  notionSyncState,
-  googleCalendarSyncState,
-  taskCalendarEvents,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 /**
  * Truncate core tables between tests to guarantee isolation.
@@ -66,7 +66,7 @@ export async function truncateAll() {
   userIdCache.clear();
 }
 
-export async function ensureStripeWebhookEventsTable() {
+export async function ensureStripeWebhookEvents() {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS stripe_webhook_events (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -110,7 +110,7 @@ export async function ensureJobTypeEnumValue() {
  * If migrations are run before tests, this function is unnecessary.
  * If dynamic creation is needed, use Drizzle's API.
  */
-export async function ensureNotionSyncStateTable() {
+export async function ensureNotionSyncState() {
   // If using Drizzle's migration system, the table will be created automatically.
   // If not, you can use Drizzle's schema API to ensure the table exists.
   // For example, you could run a dummy query to trigger table creation:
@@ -122,14 +122,14 @@ export async function ensureNotionSyncStateTable() {
 /**
  * Ensures the google_calendar_sync_state table exists using Drizzle's schema/migration system.
  */
-export async function ensureGoogleCalendarSyncStateTable() {
+export async function ensureGoogleCalendarSyncState() {
   await db.select().from(googleCalendarSyncState).limit(1);
 }
 
 /**
  * Ensures the task_calendar_events table exists using Drizzle's schema/migration system.
  */
-export async function ensureTaskCalendarEventsTable() {
+export async function ensureTaskCalendarEvents() {
   await db.select().from(taskCalendarEvents).limit(1);
 }
 
