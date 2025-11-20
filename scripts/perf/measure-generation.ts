@@ -17,7 +17,7 @@ import {
   type ProviderGenerateResult,
   type ProviderMetadata,
 } from '@/lib/ai/provider';
-import { client, db } from '@/lib/db/service-role';
+import { client, db, isClientInitialized } from '@/lib/db/service-role';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { createUser, getUserByClerkId } from '@/lib/db/queries/users';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
@@ -506,6 +506,8 @@ async function main() {
     console.error('[measure-generation] Performance harness failed:', error);
     process.exitCode = 1;
   } finally {
-    await client.end();
+    if (isClientInitialized()) {
+      await client.end();
+    }
   }
 })();

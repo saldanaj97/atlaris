@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-import { client } from '@/lib/db/service-role';
+import { client, isClientInitialized } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import {
   completeJob,
@@ -146,7 +146,9 @@ async function main() {
     'Plan regeneration worker stopped'
   );
 
-  await client.end({ timeout: 5 });
+  if (isClientInitialized()) {
+    await client.end({ timeout: 5 });
+  }
 }
 
 void main();

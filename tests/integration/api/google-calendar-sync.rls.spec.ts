@@ -1,3 +1,4 @@
+import '../../../mocks/integration/googleapis.integration';
 import { db } from '@/lib/db/service-role';
 import {
   integrationTokens,
@@ -16,24 +17,6 @@ import { ensureUser } from '../../helpers/db';
 // Mock Clerk auth before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(),
-}));
-
-// Mock googleapis (we only test access control here)
-vi.mock('googleapis', () => ({
-  google: {
-    auth: {
-      OAuth2: vi.fn().mockImplementation(() => ({
-        setCredentials: vi.fn(),
-      })),
-    },
-    calendar: vi.fn().mockReturnValue({
-      events: {
-        insert: vi.fn().mockResolvedValue({
-          data: { id: 'event_123', status: 'confirmed' },
-        }),
-      },
-    }),
-  },
 }));
 
 // Set encryption key for tests (64 hex characters = 32 bytes for AES-256)

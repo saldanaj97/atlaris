@@ -1,14 +1,8 @@
+import '../../mocks/unit/sonner.unit';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('sonner', () => ({
-  toast: {
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}));
 
 describe('ManageSubscriptionButton', () => {
   beforeEach(() => {

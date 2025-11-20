@@ -9,6 +9,7 @@ import type { CurationParams, ResourceCandidate } from '@/lib/curation/types';
 import { isYouTubeEmbeddable } from '@/lib/curation/validate';
 import { logger } from '@/lib/logging/logger';
 import { fetchGoogleApi } from '@/lib/utils/google-api-rate-limiter';
+import { appEnv } from '@/lib/config/env';
 
 /**
  * YouTube API search result from search.list
@@ -223,7 +224,7 @@ function parseDurationToMinutes(duration: string): number {
  */
 export async function curateYouTube(params: CurationParams): Promise<Scored[]> {
   // Skip YouTube curation if API key is not available
-  if (!curationConfig.youtubeApiKey) {
+  if (!curationConfig.youtubeApiKey && !appEnv.isTest) {
     return [];
   }
 

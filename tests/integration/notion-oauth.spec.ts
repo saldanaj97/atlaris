@@ -4,6 +4,7 @@ import { db } from '@/lib/db/service-role';
 import { users, integrationTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../helpers/auth';
+import { ensureUser } from '../helpers/db';
 
 // Mock Clerk auth before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
@@ -12,6 +13,13 @@ vi.mock('@clerk/nextjs/server', () => ({
 
 describe('Notion OAuth Flow', () => {
   beforeEach(async () => {
+    // Create test user in database
+    await ensureUser({
+      clerkUserId: 'test_clerk_user_id',
+      email: 'test@example.com',
+      name: 'Test User',
+    });
+
     // Mock Clerk auth to return test user
     const { auth } = await import('@clerk/nextjs/server');
     vi.mocked(auth).mockResolvedValue({

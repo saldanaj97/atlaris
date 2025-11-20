@@ -1,3 +1,5 @@
+import '../../mocks/unit/sonner.unit';
+import '../../mocks/unit/client-logger.unit';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
@@ -9,21 +11,6 @@ vi.mock('next/navigation', () => ({
     push: vi.fn(),
     back: vi.fn(),
   }),
-}));
-
-vi.mock('sonner', () => ({
-  toast: {
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}));
-
-vi.mock('@/lib/logging/client', () => ({
-  clientLogger: {
-    error: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-  },
 }));
 
 vi.mock('@/lib/api/plans', () => ({

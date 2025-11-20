@@ -24,3 +24,12 @@ export function getPlanIdFromUrl(
     return segments[segments.length - 2];
   }
 }
+
+/**
+ * Validates whether a string is a UUID (version-agnostic).
+ */
+export function isUuid(value: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    value
+  );
+}

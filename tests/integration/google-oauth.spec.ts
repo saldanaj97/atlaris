@@ -6,6 +6,7 @@ import { eq, sql } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { clearOAuthStateTokens } from '@/lib/integrations/oauth-state';
 import { setTestUser } from '../helpers/auth';
+import { ensureUser } from '../helpers/db';
 
 // Mock Clerk auth before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
@@ -66,6 +67,13 @@ describe('Google OAuth Flow', () => {
   beforeEach(async () => {
     // Ensure table exists
     await ensureIntegrationTokensTable();
+
+    // Create test user in database
+    await ensureUser({
+      clerkUserId: 'test_clerk_user_id',
+      email: 'test@example.com',
+      name: 'Test User',
+    });
 
     // Clear OAuth state tokens cache before each test
     clearOAuthStateTokens();

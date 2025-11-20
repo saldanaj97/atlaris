@@ -1,41 +1,18 @@
-// IMPORTANT: Set NODE_ENV before any other imports to prevent loading wrong .env file
-if (!process.env.NODE_ENV) {
-  Object.assign(process.env, { NODE_ENV: 'test' });
-}
-
-import { afterAll, afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
+import './mocks/shared/google-api.shared';
 
-import { client } from '@/lib/db/service-role';
+import { client, isClientInitialized } from '@/lib/db/service-role';
 import { Mutex } from 'async-mutex';
 import {
+  ensureGoogleCalendarSyncState,
   ensureJobTypeEnumValue,
-  ensureNotionSyncStateTable,
-  ensureGoogleCalendarSyncStateTable,
-  ensureTaskCalendarEventsTable,
-  ensureStripeWebhookEventsTable,
+  ensureNotionSyncState,
+  ensureRlsRolesAndPermissions,
+  ensureStripeWebhookEvents,
+  ensureTaskCalendarEvents,
   truncateAll,
 } from './helpers/db';
-
-if (!process.env.DEV_CLERK_USER_ID) {
-  Object.assign(process.env, { DEV_CLERK_USER_ID: 'test-user-id' });
-}
-
-if (!process.env.AI_PROVIDER) {
-  Object.assign(process.env, { AI_PROVIDER: 'mock' });
-}
-
-if (!process.env.MOCK_GENERATION_DELAY_MS) {
-  Object.assign(process.env, { MOCK_GENERATION_DELAY_MS: '100' });
-}
-
-if (!process.env.MOCK_GENERATION_FAILURE_RATE) {
-  Object.assign(process.env, { MOCK_GENERATION_FAILURE_RATE: '0' });
-}
-
-if (!process.env.MOCK_GENERATION_SEED) {
-  Object.assign(process.env, { MOCK_GENERATION_SEED: '12345' });
-}
 
 // Set encryption key for OAuth token crypto in tests (64 hex chars = 32 bytes)
 if (!process.env.OAUTH_ENCRYPTION_KEY) {
@@ -45,98 +22,14 @@ if (!process.env.OAUTH_ENCRYPTION_KEY) {
   });
 }
 
-// Mock Google API rate limiter to prevent real API calls in tests
-// IMPORTANT: This mock must NOT spread the real module (...actual) because that
-// would include the real googleApiRateLimiter singleton which makes real API calls.
-// We explicitly mock both exports to prevent any real API calls.
-vi.mock('@/lib/utils/google-api-rate-limiter', () => ({
-  fetchGoogleApi: vi.fn(async (url: string | URL) => {
-    // Return mock responses for Google API endpoints
-    const urlString = url.toString();
-
-    // Mock YouTube search API
-    if (urlString.includes('youtube/v3/search')) {
-      return new Response(
-        JSON.stringify({
-          items: [
-            {
-              id: { videoId: 'mock-video-1' },
-              snippet: {
-                title: 'Mock YouTube Video',
-                channelTitle: 'Mock Channel',
-              },
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Mock YouTube videos API
-    if (urlString.includes('youtube/v3/videos')) {
-      return new Response(
-        JSON.stringify({
-          items: [
-            {
-              id: 'mock-video-1',
-              statistics: { viewCount: '10000' },
-              snippet: { publishedAt: new Date().toISOString() },
-              contentDetails: { duration: 'PT10M' },
-              status: { privacyStatus: 'public', embeddable: true },
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Mock Google Custom Search API
-    if (urlString.includes('customsearch/v1')) {
-      return new Response(
-        JSON.stringify({
-          items: [
-            {
-              link: 'https://example.com/docs',
-              title: 'Mock Documentation',
-              snippet: 'Mock documentation snippet',
-            },
-          ],
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Default mock response for unknown endpoints
-    return new Response(JSON.stringify({}), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }),
-  // Mock the singleton to prevent any direct usage from making real API calls
-  googleApiRateLimiter: {
-    fetch: vi.fn(async () => new Response(JSON.stringify({}), { status: 200 })),
-    clearCache: vi.fn(),
-    getStatus: vi.fn(() => ({
-      queueLength: 0,
-      activeRequests: 0,
-      cacheSize: 0,
-      dailyRequestCount: 0,
-      dailyQuotaRemaining: 1000,
-      quotaResetsInMinutes: 60,
-    })),
-  },
-}));
-
 const skipDbSetup = process.env.SKIP_DB_TEST_SETUP === 'true';
+
+// Log test configuration for debugging
+beforeAll(() => {
+  if (process.env.USE_LOCAL_NEON === 'true') {
+    console.log('[Test Setup] Using LOCAL Neon configuration (Docker Compose)');
+  }
+});
 
 function assertSafeToTruncate() {
   const url = process.env.DATABASE_URL;
@@ -173,12 +66,13 @@ if (!skipDbSetup) {
   beforeEach(async () => {
     assertSafeToTruncate();
     releaseDbLock = await dbLock.acquire();
-    await ensureJobTypeEnumValue();
-    await ensureStripeWebhookEventsTable();
-    await ensureNotionSyncStateTable();
-    await ensureGoogleCalendarSyncStateTable();
-    await ensureTaskCalendarEventsTable();
     await truncateAll();
+    await ensureRlsRolesAndPermissions();
+    await ensureJobTypeEnumValue();
+    await ensureStripeWebhookEvents();
+    await ensureNotionSyncState();
+    await ensureGoogleCalendarSyncState();
+    await ensureTaskCalendarEvents();
   });
 
   afterEach(() => {
@@ -189,6 +83,8 @@ if (!skipDbSetup) {
   });
 
   afterAll(async () => {
-    await client.end();
+    if (isClientInitialized()) {
+      await client.end();
+    }
   });
 }

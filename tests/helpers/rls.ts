@@ -6,11 +6,11 @@
  *
  * NEON RLS ARCHITECTURE (Session Variable Approach):
  * - All clients use the same database URL (owner role)
- * - FORCE RLS ensures policies apply even to the owner role
+ * - RLS ensures policies apply via session variables
  * - Session variables differentiate between users:
  *   - Authenticated: request.jwt.claims = '{"sub": "clerk_user_id"}'
  *   - Anonymous: request.jwt.claims = 'null'
- *   - Service (test setup): Regular db client from drizzle.ts
+ *   - Service (test setup): Regular db client from drizzle.ts (has BYPASSRLS)
  *
  * USAGE:
  * - createAnonRlsDb() - Creates client with session variable set to null

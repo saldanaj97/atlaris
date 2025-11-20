@@ -73,6 +73,17 @@ const serverOptionalCache = new Map<string, string | undefined>();
 const isTestRuntime =
   typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
 
+/**
+ * Retrieves a required server-only environment variable.
+ *
+ * - Ensures the variable is only accessed in a server runtime (throws if called in browser, unless Node-like test environment).
+ * - In production, value is cached for performance (assuming envs are immutable post-process start).
+ * - In test or development, value is not cached so env changes between tests or reloads are picked up.
+ *
+ * @param {string} key - The name of the environment variable to retrieve.
+ * @returns {string} The value of the required environment variable.
+ * @throws If the environment variable is missing or accessed improperly in a browser bundle.
+ */
 const getServerRequired = (key: string): string => {
   ensureServerRuntime();
   if (isTestRuntime) {
@@ -84,6 +95,17 @@ const getServerRequired = (key: string): string => {
   return serverRequiredCache.get(key)!;
 };
 
+/**
+ * Retrieves an optional server-only environment variable.
+ *
+ * - Ensures the variable is only accessed in a server runtime (throws if called in browser, unless Node-like test environment).
+ * - In production, value is cached for performance (assuming envs are immutable post-process start).
+ * - In test or development, value is not cached so env changes between tests or reloads are picked up.
+ *
+ * @param {string} key - The name of the environment variable to retrieve.
+ * @returns {string | undefined} The value of the optional environment variable, or undefined if not set.
+ * @throws If accessed improperly in a browser bundle.
+ */
 const getServerOptional = (key: string): string | undefined => {
   ensureServerRuntime();
   if (isTestRuntime) {

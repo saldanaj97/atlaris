@@ -1,5 +1,5 @@
 import { appEnv } from '@/lib/config/env';
-import { client } from '@/lib/db/service-role';
+import { client, isClientInitialized } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import { getNextJob } from '@/lib/jobs/queue';
 import { JOB_TYPES, type Job, type JobType } from '@/lib/jobs/types';
@@ -268,8 +268,10 @@ export class PlanGenerationWorker {
 
   private async closeDatabaseConnection(): Promise<void> {
     try {
-      await client.end({ timeout: 5 });
-      this.log('info', 'worker_db_connection_closed', {});
+      if (isClientInitialized()) {
+        await client.end({ timeout: 5 });
+        this.log('info', 'worker_db_connection_closed', {});
+      }
     } catch (error) {
       const details = normalizeError(error);
       this.log('warn', 'worker_db_connection_close_error', details);
