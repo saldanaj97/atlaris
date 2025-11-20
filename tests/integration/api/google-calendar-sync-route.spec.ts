@@ -18,10 +18,16 @@ vi.mock('@/lib/logging/logger', () => ({
   createLogger: () => mockLogger,
 }));
 
-vi.mock('@/lib/db/service-role', () => ({
-  db: {
-    select: vi.fn(),
-  },
+// Mock getDb to return our mocked DB
+const mockDbInstance = {
+  select: vi.fn(),
+  from: vi.fn(),
+  where: vi.fn(),
+  limit: vi.fn(),
+};
+
+vi.mock('@/lib/db/runtime', () => ({
+  getDb: vi.fn(() => mockDbInstance),
 }));
 
 vi.mock('@/lib/integrations/oauth', () => ({
@@ -46,7 +52,6 @@ describe('Google Calendar Sync Route', () => {
     setTestUser('clerk-user-123');
 
     // Import mocked functions
-    const { db } = await import('@/lib/db/service-role');
     const { getOAuthTokens } = await import('@/lib/integrations/oauth');
     const { syncPlanToGoogleCalendar } = await import(
       '@/lib/integrations/google-calendar/sync'
@@ -62,14 +67,12 @@ describe('Google Calendar Sync Route', () => {
       .spyOn(usage, 'incrementExportUsage')
       .mockResolvedValue(undefined);
 
-    // Setup db mock
-    mockDb = {
-      from: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-    };
-    (db.select as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
+    // Setup db mock chain - use mockDbInstance instead
+    mockDb = mockDbInstance;
+    mockDb.from.mockReturnThis();
+    mockDb.select.mockReturnThis();
+    mockDb.where.mockReturnThis();
+    mockDb.limit.mockReturnThis();
   });
 
   afterEach(() => {
