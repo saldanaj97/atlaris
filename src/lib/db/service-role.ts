@@ -51,7 +51,7 @@ import * as schema from './schema';
 //
 // Architecture notes:
 // - Uses owner role which has rolbypassrls = true
-// - FORCE RLS on tables is ignored for this role
+// - RLS policies are bypassed for this role (BYPASSRLS privilege)
 // - All data is accessible regardless of user_id
 // - No tenant isolation - can read/write ALL users' data
 //

@@ -22,11 +22,12 @@
  * - Connect with DATABASE_URL (owner role with BYPASSRLS privilege)
  * - Use SET ROLE to switch to 'authenticated' or 'anonymous' roles (no BYPASSRLS)
  * - Set session variable request.jwt.claims using set_config() with parameterized values
- * - FORCE RLS + roles without BYPASSRLS ensure policies are enforced
+ * - RLS policies (without FORCE) + roles without BYPASSRLS ensure policies are enforced
  *
- * CRITICAL: The owner role has BYPASSRLS privilege which ignores FORCE RLS.
+ * CRITICAL: The owner role has BYPASSRLS privilege which bypasses regular RLS.
  * We use SET ROLE to switch to non-privileged roles that lack BYPASSRLS.
  * This allows a single connection pool while maintaining RLS security.
+ * Note: In test environments, BYPASSRLS allows tests to access tables directly.
  */
 
 import { databaseEnv } from '@/lib/config/env';
@@ -74,7 +75,7 @@ export async function createAuthenticatedRlsClient(
   const jwtClaims = JSON.stringify({ sub: clerkUserId });
 
   // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
-  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses FORCE RLS.
+  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
   // We use SET ROLE to switch to authenticated role which lacks BYPASSRLS.
   // Must use non-pooling connection because poolers may not handle SET ROLE correctly.
   const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
@@ -148,7 +149,7 @@ export async function createAuthenticatedRlsClient(
  */
 export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
   // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
-  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses FORCE RLS.
+  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
   // We use SET ROLE to switch to anonymous role which lacks BYPASSRLS.
   // Must use non-pooling connection because poolers may not handle SET ROLE correctly.
   const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
