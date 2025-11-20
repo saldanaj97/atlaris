@@ -2,7 +2,7 @@ import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeEach } from 'vitest';
 import './mocks/shared/google-api.shared';
 
-import { client } from '@/lib/db/service-role';
+import { client, isClientInitialized } from '@/lib/db/service-role';
 import { Mutex } from 'async-mutex';
 import {
   ensureGoogleCalendarSyncState,
@@ -74,6 +74,8 @@ if (!skipDbSetup) {
   });
 
   afterAll(async () => {
-    await client.end();
+    if (isClientInitialized()) {
+      await client.end();
+    }
   });
 }

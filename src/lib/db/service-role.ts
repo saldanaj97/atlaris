@@ -38,9 +38,11 @@
 
 import { databaseEnv } from '@/lib/config/env';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import postgres, { type Sql } from 'postgres';
 
 import * as schema from './schema';
+
+type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 
 // ============================================================================
 // SERVICE ROLE CLIENT - RLS BYPASSED
@@ -63,29 +65,112 @@ import * as schema from './schema';
 // See @/lib/db/rls.ts for RLS-enforced client implementation.
 // ============================================================================
 
-// Use non-pooling connection in tests to avoid pooler issues
-const isTest = process.env.NODE_ENV === 'test';
-const dbUrl =
-  isTest && databaseEnv.nonPoolingUrl
-    ? databaseEnv.nonPoolingUrl
-    : databaseEnv.url;
+// ============================================================================
+// LAZY INITIALIZATION - ONLY CONNECTS WHEN ACCESSED
+// ============================================================================
+//
+// Previously, the postgres client was initialized at module scope (top-level),
+// which required DATABASE_URL to be present at build time. Next.js imports
+// API routes during the build process to analyze them, which would trigger
+// the initialization and fail if DATABASE_URL was missing.
+//
+// This lazy initialization defers the database connection to the first
+// time it's actually accessed, allowing builds to succeed without DATABASE_URL.
+// The connection is then reused for the lifetime of the process.
 
-export const client = postgres(dbUrl, {
-  max: 10, // Connection pool size for service-role client
-  idle_timeout: 20,
-  connect_timeout: 10,
-});
+let _client: Sql | null = null;
+let _db: ServiceRoleDb | null = null;
 
 /**
- * Service role database client - BYPASSES RLS
+ * Initialize the postgres client if not already initialized.
+ * Uses non-pooling connection in tests to avoid pooler issues.
+ */
+function initializeClient(): Sql {
+  if (_client === null) {
+    const isTest = process.env.NODE_ENV === 'test';
+    const dbUrl =
+      isTest && databaseEnv.nonPoolingUrl
+        ? databaseEnv.nonPoolingUrl
+        : databaseEnv.url;
+
+    _client = postgres(dbUrl, {
+      max: 10, // Connection pool size for service-role client
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+  }
+
+  return _client;
+}
+
+/**
+ * Initialize the Drizzle client if not already initialized.
+ */
+function initializeDb(): ServiceRoleDb {
+  if (_db === null) {
+    _db = drizzle(initializeClient(), { schema });
+  }
+
+  return _db;
+}
+
+/**
+ * Postgres client - lazily initialized on first access.
+ *
+ * This Proxy wraps the actual client to defer initialization until first use.
+ * This allows the module to be imported at build time without requiring
+ * DATABASE_URL to be present.
+ *
+ * ⚠️ DATABASE_URL will be required when the client is first accessed,
+ * not when this module is imported.
+ */
+
+export const client = new Proxy(
+  {},
+  {
+    get(_target, prop: string | symbol): unknown {
+      const actualClient = initializeClient();
+
+      return (actualClient as unknown as Record<string | symbol, unknown>)[
+        prop
+      ];
+    },
+  }
+) as Sql;
+
+/**
+ * Service role database client - BYPASSES RLS (lazily initialized)
  *
  * ⚠️ This export is intentionally named to make it obvious it's dangerous.
  * Use getDb() from @/lib/db/runtime in request handlers instead.
+ *
+ * Initialization is deferred until first access, allowing builds without
+ * DATABASE_URL.
  */
-export const serviceRoleDb = drizzle(client, { schema });
+export const serviceRoleDb = new Proxy(
+  {},
+  {
+    get(_target, prop: string | symbol): unknown {
+      const actualDb = initializeDb();
+
+      return (actualDb as unknown as Record<string | symbol, unknown>)[prop];
+    },
+  }
+  // Cast the proxy to the concrete Drizzle client type
+) as ServiceRoleDb;
 
 /**
  * Shorter alias for serviceRoleDb.
  * Both names are equally valid - use whichever is clearer in context.
  */
-export const db = serviceRoleDb;
+export const db: ServiceRoleDb = serviceRoleDb;
+
+/**
+ * Check if the database client has been initialized.
+ * Useful for conditional cleanup in tests and workers.
+ *
+ * @returns true if the client has been initialized, false otherwise
+ */
+export function isClientInitialized(): boolean {
+  return _client !== null;
+}

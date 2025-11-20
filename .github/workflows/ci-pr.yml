@@ -150,9 +150,6 @@ jobs:
             ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build Next.js app
         run: pnpm build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
       - name: Save Next.js cache
         if: always()
         uses: actions/cache/save@v4
