@@ -226,6 +226,7 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
           ENABLE_CURATION: 'false'
@@ -408,6 +409,7 @@ jobs:
           ALLOW_DB_TRUNCATE: 'true'
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
           ENABLE_CURATION: 'false'
         run: |
@@ -530,8 +532,8 @@ jobs:
       - name: Build Next.js app
         run: pnpm build
         env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
       - name: Save Next.js cache
         if: always()
