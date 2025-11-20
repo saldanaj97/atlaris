@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Under Maintenance - Atlaris</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        .maintenance-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 48px 40px;
+            text-align: center;
+        }
+
+        .icon-container {
+            margin-bottom: 24px;
+        }
+
+        .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        .icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: white;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .message {
+            background: #f7f7f8;
+            border-left: 4px solid #667eea;
+            padding: 20px 24px;
+            margin-bottom: 32px;
+            text-align: left;
+            border-radius: 8px;
+        }
+
+        .message p {
+            color: #4a4a4a;
+            line-height: 1.8;
+            margin-bottom: 12px;
+        }
+
+        .message p:last-child {
+            margin-bottom: 0;
+        }
+
+        .highlight {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .footer {
+            color: #999;
+            font-size: 14px;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 24px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #f59e0b;
+            border-radius: 50%;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .maintenance-container {
+                padding: 32px 24px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+
+            .subtitle {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="maintenance-container">
+        <div class="icon-container">
+            <div class="icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <path d="M12 8v4"></path>
+                    <path d="M12 16h.01"></path>
+                </svg>
+            </div>
+        </div>
+
+        <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span>System Maintenance in Progress</span>
+        </div>
+
+        <h1>We're Currently Under Maintenance</h1>
+
+        <p class="subtitle">
+            Our platform is temporarily unavailable while we perform important updates and improvements.
+        </p>
+
+        <div class="message">
+            <p>
+                We sincerely apologize for any inconvenience this may cause. Our team is actively working on critical fixes and system enhancements to improve your experience.
+            </p>
+            <p>
+                <span class="highlight">Good news:</span> We're in the process of migrating to a zero-downtime infrastructure. Once complete, future updates will occur seamlessly without interrupting your service.
+            </p>
+            <p>
+                We appreciate your patience and understanding as we work to make Atlaris better for you.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>Expected to be back online shortly</p>
+            <p>If you have urgent questions, please contact our support team</p>
+        </div>
+    </div>
+</body>
+</html>
