@@ -1,4 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import '../mocks/e2e/googleapis.e2e';
+import { resetMockEventCounter } from '../mocks/e2e/googleapis.e2e';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '@/lib/db/service-role';
 import {
   users,
@@ -11,36 +13,13 @@ import {
 import { eq } from 'drizzle-orm';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 
-// Mock googleapis before importing
-let mockEventCounter = 0;
-vi.mock('googleapis', () => ({
-  google: {
-    auth: {
-      OAuth2: vi.fn().mockImplementation(() => ({
-        setCredentials: vi.fn(),
-      })),
-    },
-    calendar: vi.fn(() => ({
-      events: {
-        insert: vi.fn().mockImplementation(() => {
-          mockEventCounter++;
-          return Promise.resolve({
-            data: { id: `event_${mockEventCounter}`, status: 'confirmed' },
-          });
-        }),
-        delete: vi.fn().mockResolvedValue({}),
-      },
-    })),
-  },
-}));
-
 describe('Google Calendar Sync E2E Flow', () => {
   let userId: string;
   let planId: string;
 
   beforeEach(async () => {
     // Reset mock counter for unique event IDs
-    mockEventCounter = 0;
+    resetMockEventCounter();
 
     // Setup full test data
     await db.delete(taskCalendarEvents);

@@ -1,3 +1,4 @@
+import '../../mocks/unit/googleapis.unit';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import * as mapper from '@/lib/integrations/google-calendar/mapper';
@@ -9,16 +10,6 @@ vi.mock('@/lib/db/service-role', () => ({
   db: {
     select: vi.fn(),
     insert: vi.fn(),
-  },
-}));
-
-// Mock googleapis
-vi.mock('googleapis', () => ({
-  google: {
-    auth: {
-      OAuth2: vi.fn(),
-    },
-    calendar: vi.fn(),
   },
 }));
 

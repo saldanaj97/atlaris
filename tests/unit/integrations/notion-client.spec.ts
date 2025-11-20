@@ -1,14 +1,7 @@
+import '../../mocks/unit/notion-client.unit';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NotionClient } from '@/lib/integrations/notion/client';
 import { Client } from '@notionhq/client';
-
-vi.mock('@notionhq/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@notionhq/client')>();
-  return {
-    ...actual,
-    Client: vi.fn(),
-  };
-});
 
 describe('NotionClient Rate Limiting', () => {
   let client: NotionClient;

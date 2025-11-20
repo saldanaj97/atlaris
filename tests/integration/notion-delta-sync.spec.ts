@@ -1,3 +1,4 @@
+import '../../mocks/integration/notion-client.integration';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { db } from '@/lib/db/service-role';
@@ -11,14 +12,6 @@ import {
 import { deltaSyncPlanToNotion } from '@/lib/integrations/notion/sync';
 import { eq } from 'drizzle-orm';
 import { Client } from '@notionhq/client';
-
-vi.mock('@notionhq/client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@notionhq/client')>();
-  return {
-    ...actual,
-    Client: vi.fn(),
-  };
-});
 
 describe('Notion Delta Sync', () => {
   let testUserId: string;

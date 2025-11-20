@@ -1,3 +1,4 @@
+import '../mocks/e2e/sonner.e2e';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import React from 'react';
@@ -17,14 +18,6 @@ vi.mock('next/navigation', async (orig) => {
     useRouter: () => ({ push: pushMock, back: backMock }),
   };
 });
-
-// Mock sonner toast
-vi.mock('sonner', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
 
 // Mock DatePicker to a simple input for easier interaction in tests
 vi.mock('@/components/ui/date-picker', () => {

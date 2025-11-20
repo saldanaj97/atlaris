@@ -1,23 +1,10 @@
+import '../../mocks/unit/sonner.unit';
+import '../../mocks/unit/client-logger.unit';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { RegenerateButton } from '@/components/plans/RegenerateButton';
 import { toast } from 'sonner';
-
-vi.mock('sonner', () => ({
-  toast: {
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}));
-
-vi.mock('@/lib/logging/client', () => ({
-  clientLogger: {
-    error: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-  },
-}));
 
 describe('RegenerateButton', () => {
   beforeEach(() => {
@@ -31,7 +18,9 @@ describe('RegenerateButton', () => {
   it('should render with correct default label', () => {
     render(<RegenerateButton planId="test-plan-123" />);
 
-    expect(screen.getByRole('button', { name: /regenerate plan/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /regenerate plan/i })
+    ).toBeInTheDocument();
   });
 
   it('should trigger regeneration API call on click', async () => {
@@ -47,16 +36,22 @@ describe('RegenerateButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/plans/test-plan-123/regenerate', {
-        method: 'POST',
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/plans/test-plan-123/regenerate',
+        {
+          method: 'POST',
+        }
+      );
     });
   });
 
   it('should show loading state during regeneration', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
-    );
+    const mockFetch = vi
+      .fn()
+      .mockImplementation(
+        () =>
+          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
+      );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -73,9 +68,12 @@ describe('RegenerateButton', () => {
   });
 
   it('should disable button during regeneration', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
-    );
+    const mockFetch = vi
+      .fn()
+      .mockImplementation(
+        () =>
+          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
+      );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -123,7 +121,9 @@ describe('RegenerateButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Unable to enqueue regeneration');
+      expect(toast.error).toHaveBeenCalledWith(
+        'Unable to enqueue regeneration'
+      );
     });
   });
 
@@ -137,7 +137,9 @@ describe('RegenerateButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Unable to enqueue regeneration');
+      expect(toast.error).toHaveBeenCalledWith(
+        'Unable to enqueue regeneration'
+      );
     });
   });
 
@@ -187,9 +189,12 @@ describe('RegenerateButton', () => {
   });
 
   it('should not allow multiple simultaneous regenerations', async () => {
-    const mockFetch = vi.fn().mockImplementation(() =>
-      new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 200))
-    );
+    const mockFetch = vi
+      .fn()
+      .mockImplementation(
+        () =>
+          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 200))
+      );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);

@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import '../mocks/e2e/notion-client.e2e';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '@/lib/db/service-role';
 import {
   users,
@@ -10,20 +11,6 @@ import {
 import { eq } from 'drizzle-orm';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { exportPlanToNotion } from '@/lib/integrations/notion/sync';
-
-// Mock @notionhq/client before importing
-vi.mock('@notionhq/client', () => ({
-  Client: vi.fn().mockImplementation(() => ({
-    pages: {
-      create: vi.fn().mockResolvedValue({
-        id: 'notion_page_e2e',
-        object: 'page',
-        created_time: new Date().toISOString(),
-        last_edited_time: new Date().toISOString(),
-      }),
-    },
-  })),
-}));
 
 describe('Notion Export E2E Flow', () => {
   let userId: string;

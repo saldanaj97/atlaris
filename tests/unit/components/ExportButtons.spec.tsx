@@ -1,15 +1,9 @@
+import '../../mocks/unit/sonner.unit';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { ExportButtons } from '@/components/plans/ExportButtons';
 import { toast } from 'sonner';
-
-vi.mock('sonner', () => ({
-  toast: {
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}));
 
 describe('ExportButtons', () => {
   beforeEach(() => {
