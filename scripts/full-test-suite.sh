@@ -40,6 +40,9 @@ echo "Applying migrations..."
 export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:54330/atlaris_test"
 pnpm db:push
 
+echo "Granting RLS bypass to postgres user..."
+docker exec atlaris-test-db psql -U postgres -d atlaris_test -c "ALTER ROLE postgres BYPASSRLS;"
+
 # Run unit tests in background (no DB needed)
 echo "Running unit tests..."
 NODE_ENV=test pnpm vitest run tests/unit & U_PID=$!
