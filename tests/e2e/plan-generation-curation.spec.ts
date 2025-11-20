@@ -24,6 +24,95 @@ import { ensureUser } from '../helpers/db';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
+// Helper to mock Google API rate limiter after vi.resetModules()
+// This prevents real API calls when modules are reloaded with different env vars
+function mockGoogleApiRateLimiter() {
+  vi.doMock('@/lib/utils/google-api-rate-limiter', () => ({
+    fetchGoogleApi: vi.fn(async (url: string | URL) => {
+      const urlString = url.toString();
+
+      // Mock YouTube search API
+      if (urlString.includes('youtube/v3/search')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: { videoId: 'mock-video-1' },
+                snippet: {
+                  title: 'React Hooks Tutorial',
+                  channelTitle: 'React Channel',
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Mock YouTube videos API
+      if (urlString.includes('youtube/v3/videos')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 'mock-video-1',
+                statistics: { viewCount: '10000' },
+                snippet: { publishedAt: new Date().toISOString() },
+                contentDetails: { duration: 'PT10M' },
+                status: { privacyStatus: 'public', embeddable: true },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Mock Google Custom Search API
+      if (urlString.includes('customsearch/v1')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                link: 'https://react.dev/docs',
+                title: 'React Documentation',
+                snippet: 'Learn React',
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Default mock response
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }),
+    googleApiRateLimiter: {
+      fetch: vi.fn(),
+      clearCache: vi.fn(),
+      getStatus: vi.fn(() => ({
+        queueLength: 0,
+        activeRequests: 0,
+        cacheSize: 0,
+        dailyRequestCount: 0,
+        dailyQuotaRemaining: 1000,
+        quotaResetsInMinutes: 60,
+      })),
+    },
+  }));
+}
+
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   ENABLE_CURATION: process.env.ENABLE_CURATION,
@@ -168,6 +257,7 @@ describe('Plan generation with curation E2E', () => {
   it('generates plan with resources, explanations, and cutoff respected (5h/week, 4 weeks)', async () => {
     // Reset modules to ensure curation config is loaded with env vars from beforeAll
     vi.resetModules();
+    mockGoogleApiRateLimiter();
 
     const clerkUserId = 'e2e-curation-user';
     setTestUser(clerkUserId);
@@ -306,6 +396,7 @@ describe('Plan generation with curation E2E', () => {
 
       // Reset modules again to reload config with new env var value
       vi.resetModules();
+      mockGoogleApiRateLimiter();
 
       // Dynamically re-import worker and related modules to pick up new config
       const { PlanGenerationWorker: FreshWorker } = await import(
@@ -392,6 +483,7 @@ describe('Plan generation with curation E2E', () => {
     } finally {
       // Reset modules first before restoring env to prevent config pollution
       vi.resetModules();
+      mockGoogleApiRateLimiter();
 
       // Restore original env
       if (originalMinScore === undefined) {

@@ -8,6 +8,52 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as validateModule from '@/lib/curation/validate';
 import * as rankingModule from '@/lib/curation/ranking';
 
+// Helper to mock Google API rate limiter after vi.resetModules()
+function mockGoogleApiRateLimiter() {
+  vi.doMock('@/lib/utils/google-api-rate-limiter', () => ({
+    fetchGoogleApi: vi.fn(async (url: string | URL) => {
+      const urlString = url.toString();
+
+      // Mock Google Custom Search API
+      if (urlString.includes('customsearch/v1')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                link: 'https://react.dev/docs',
+                title: 'React Documentation',
+                snippet: 'Learn React',
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Default mock response
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }),
+    googleApiRateLimiter: {
+      fetch: vi.fn(),
+      clearCache: vi.fn(),
+      getStatus: vi.fn(() => ({
+        queueLength: 0,
+        activeRequests: 0,
+        cacheSize: 0,
+        dailyRequestCount: 0,
+        dailyQuotaRemaining: 1000,
+        quotaResetsInMinutes: 60,
+      })),
+    },
+  }));
+}
+
 describe('Docs Adapter', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -21,21 +67,8 @@ describe('Docs Adapter', () => {
       process.env.GOOGLE_CSE_KEY = 'test-key';
 
       vi.resetModules();
+      mockGoogleApiRateLimiter();
       const { searchDocs } = await import('@/lib/curation/docs');
-
-      const mockFetch = vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          items: [
-            {
-              link: 'https://react.dev/docs',
-              title: 'React Documentation',
-              snippet: 'Learn React',
-            },
-          ],
-        }),
-      }));
-      global.fetch = mockFetch as unknown as typeof fetch;
 
       const results = await searchDocs('react', {
         query: 'react',
@@ -58,6 +91,7 @@ describe('Docs Adapter', () => {
       delete process.env.GOOGLE_CSE_ID;
       delete process.env.GOOGLE_CSE_KEY;
       vi.resetModules();
+      mockGoogleApiRateLimiter();
       const { searchDocs } = await import('@/lib/curation/docs');
 
       const results = await searchDocs('react', {
@@ -77,6 +111,7 @@ describe('Docs Adapter', () => {
       process.env.GOOGLE_CSE_ID = 'test-id';
       process.env.GOOGLE_CSE_KEY = 'test-key';
       vi.resetModules();
+      mockGoogleApiRateLimiter();
 
       const canonicalizeMock = vi.fn((url: string) => url);
       const headOkMock = vi.fn(async () => ({ ok: true }));
@@ -109,20 +144,6 @@ describe('Docs Adapter', () => {
 
       const { curateDocs } = await import('@/lib/curation/docs');
 
-      const mockFetch = vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          items: [
-            {
-              link: 'https://react.dev/docs',
-              title: 'React Docs',
-              snippet: '',
-            },
-          ],
-        }),
-      }));
-      global.fetch = mockFetch as unknown as typeof fetch;
-
       await curateDocs({
         query: 'react',
         minScore: 0.6,
@@ -139,23 +160,10 @@ describe('Docs Adapter', () => {
       process.env.GOOGLE_CSE_ID = 'test-id';
       process.env.GOOGLE_CSE_KEY = 'test-key';
       vi.resetModules();
+      mockGoogleApiRateLimiter();
       // Spy before import to ensure wrapped functions are used
       vi.spyOn(rankingModule, 'selectTop').mockReturnValue([]);
       const { curateDocs } = await import('@/lib/curation/docs');
-
-      const mockFetch = vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          items: [
-            {
-              link: 'https://invalid-url.com/docs',
-              title: 'Invalid',
-              snippet: '',
-            },
-          ],
-        }),
-      }));
-      global.fetch = mockFetch as unknown as typeof fetch;
 
       vi.spyOn(validateModule, 'canonicalizeUrl').mockImplementation(
         (url) => url
@@ -175,6 +183,7 @@ describe('Docs Adapter', () => {
 
     it('should apply minScore cutoff', async () => {
       vi.resetModules();
+      mockGoogleApiRateLimiter();
       const selectTopMock = vi.fn(() => []);
       vi.doMock('@/lib/curation/ranking', () => ({
         scoreDoc: (x: any) => x,
