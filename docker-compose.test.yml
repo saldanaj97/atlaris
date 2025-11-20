@@ -1,19 +1,28 @@
-version: '3.8'
-
 services:
-  postgres-test:
-    image: postgres:17-alpine
-    container_name: atlaris-test-db
+  postgres:
+    image: postgres:17
+    command: '-d 1'
+    volumes:
+      - db_data:/var/lib/postgresql/data
     ports:
-      - '54330:5432'
+      - '54330:5432' # Maps to local port 54330 to avoid conflicts with local postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: atlaris_test
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=atlaris_test
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 2s
+      interval: 10s
       timeout: 5s
       retries: 5
-    tmpfs:
-      - /var/lib/postgresql/data
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+    environment:
+      - PG_CONNECTION_STRING=postgres://postgres:postgres@postgres:5432/atlaris_test
+    ports:
+      - '4444:4444'
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  db_data:

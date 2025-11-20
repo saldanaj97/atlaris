@@ -1,5 +1,5 @@
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeEach } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import './mocks/shared/google-api.shared';
 
 import { client, isClientInitialized } from '@/lib/db/service-role';
@@ -8,6 +8,7 @@ import {
   ensureGoogleCalendarSyncState,
   ensureJobTypeEnumValue,
   ensureNotionSyncState,
+  ensureRlsRolesAndPermissions,
   ensureStripeWebhookEvents,
   ensureTaskCalendarEvents,
   truncateAll,
@@ -22,6 +23,13 @@ if (!process.env.OAUTH_ENCRYPTION_KEY) {
 }
 
 const skipDbSetup = process.env.SKIP_DB_TEST_SETUP === 'true';
+
+// Log test configuration for debugging
+beforeAll(() => {
+  if (process.env.USE_LOCAL_NEON === 'true') {
+    console.log('[Test Setup] Using LOCAL Neon configuration (Docker Compose)');
+  }
+});
 
 function assertSafeToTruncate() {
   const url = process.env.DATABASE_URL;
@@ -58,12 +66,13 @@ if (!skipDbSetup) {
   beforeEach(async () => {
     assertSafeToTruncate();
     releaseDbLock = await dbLock.acquire();
+    await truncateAll();
+    await ensureRlsRolesAndPermissions();
     await ensureJobTypeEnumValue();
     await ensureStripeWebhookEvents();
     await ensureNotionSyncState();
     await ensureGoogleCalendarSyncState();
     await ensureTaskCalendarEvents();
-    await truncateAll();
   });
 
   afterEach(() => {

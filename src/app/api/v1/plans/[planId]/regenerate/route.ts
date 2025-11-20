@@ -5,6 +5,7 @@ import { ValidationError } from '@/lib/api/errors';
 import { json, jsonError } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
+import { isUuid } from '@/lib/api/route-helpers';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { enqueueJob } from '@/lib/jobs/queue';
 import {
@@ -33,6 +34,9 @@ export const POST = withErrorBoundary(
     const planId = params.planId;
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');
+    }
+    if (!isUuid(planId)) {
+      throw new ValidationError('Invalid plan id format.');
     }
 
     const user = await getUserByClerkId(userId);

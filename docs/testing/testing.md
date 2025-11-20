@@ -236,6 +236,129 @@ NEON_SERVICE_ROLE_KEY=your_service_role_key_here
 
 To force AI failures in tests, temporarily set `MOCK_GENERATION_FAILURE_RATE=1` (either via environment or inside the test) and reset it to `0` afterwards so other suites continue to exercise the happy path.
 
+### Running Tests Locally with Docker
+
+You can run integration, e2e, and other database-dependent tests locally using Docker Compose with a local Neon proxy setup.
+
+#### Prerequisites
+
+- Docker and Docker Compose installed
+- `.env.test` file (already configured with hosted Neon by default)
+
+#### Quick Start
+
+**Option 1: Using New Commands (Recommended)**
+
+```bash
+# Full test suite with local Docker
+pnpm test:local
+
+# Just integration tests
+pnpm test:local:integration
+
+# Just e2e tests
+pnpm test:local:e2e
+```
+
+These commands automatically:
+
+1. Start the Docker containers (postgres + Neon HTTP proxy)
+2. Set `USE_LOCAL_NEON=true` environment variable
+3. Run the appropriate tests
+4. Stop the containers
+
+#### Option 2: Manual Docker Management
+
+For more control, use the helper script:
+
+```bash
+# Start database
+bash scripts/test-local-setup.sh up
+
+# Run tests with local Neon
+USE_LOCAL_NEON=true pnpm test:integration:full
+
+# Stop database
+bash scripts/test-local-setup.sh down
+```
+
+#### Configuration
+
+To use local Docker, uncomment these variables in `.env.test`:
+
+```bash
+# Uncomment these lines to use local Docker Compose setup
+# USE_LOCAL_NEON=true
+# DATABASE_URL=postgres://postgres:postgres@db.localtest.me:54330/atlaris_test
+# DATABASE_URL_NON_POOLING=postgres://postgres:postgres@db.localtest.me:54330/atlaris_test
+# DATABASE_URL_ANONYMOUS_ROLE=postgres://postgres:postgres@db.localtest.me:54330/atlaris_test
+# DATABASE_URL_AUTHENTICATED_ROLE=postgres://postgres:postgres@db.localtest.me:54330/atlaris_test
+```
+
+**Default Behavior:** By default, `.env.test` points to the hosted Neon database, so you can run tests without any configuration changes.
+
+#### How It Works
+
+1. **Docker Compose** (`docker-compose.test.yml`):
+   - Starts a PostgreSQL 17 container on port 54330
+   - Starts a local Neon HTTP proxy (at port 4444)
+   - Database credentials: `postgres:postgres`
+   - Database name: `atlaris_test`
+
+2. **Neon Configuration** (`src/lib/db/neon-config.ts`):
+   - When `USE_LOCAL_NEON=true`, routes connections through the local proxy
+   - Uses HTTP endpoints instead of HTTPS
+   - Uses insecure WebSocket for local connections
+   - Applied automatically when the database module loads
+
+3. **Test Setup**:
+   - Logs to console when using local Neon: `[Test Setup] Using LOCAL Neon configuration (Docker Compose)`
+   - Applies schema with `pnpm db:push` (same as CI)
+   - Truncates and prepares database for tests
+
+#### CI Behavior (Unchanged)
+
+GitHub Actions workflows continue using:
+
+- Hosted Neon database with ephemeral test databases per job
+- No Docker setup required in CI
+- No changes needed to `.env.test` (hosted Neon URLs remain default)
+
+#### Troubleshooting
+
+**"Can't connect to Docker daemon"**
+
+```bash
+# Ensure Docker Desktop is running
+# On Linux, ensure Docker service is started:
+sudo systemctl start docker
+```
+
+**"Database already in use" or port conflict**
+
+```bash
+# Stop all Docker containers
+docker-compose -f docker-compose.test.yml down
+
+# Or manually kill the process using port 54330:
+# macOS/Linux:
+lsof -ti:54330 | xargs kill -9
+```
+
+**"Schema is out of date"**
+
+```bash
+# Ensure migrations are applied to local Docker DB:
+docker-compose -f docker-compose.test.yml up -d
+USE_LOCAL_NEON=true pnpm db:push
+```
+
+**Tests are slow**
+
+- Check Docker resource limits (CPU, memory) in Docker Desktop settings
+- Local Docker may be slower than CI's hosted database
+- Use `pnpm test:unit:fast` for rapid iteration on unit tests
+
 ### Why RLS is Bypassed in Business Logic Tests
 
 **The Question:** "Shouldn't all tests enforce RLS?"

@@ -106,7 +106,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   it('should return 404 for non-existent plan', async () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
-      'http://localhost:3000/api/v1/plans/non-existent-plan-id/tasks',
+      'http://localhost:3000/api/v1/plans/00000000-0000-0000-0000-000000000000/tasks',
       { method: 'GET' }
     );
 
