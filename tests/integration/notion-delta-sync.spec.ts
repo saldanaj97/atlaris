@@ -1,4 +1,4 @@
-import '../../mocks/integration/notion-client.integration';
+import '../mocks/integration/notion-client.integration';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { db } from '@/lib/db/service-role';
