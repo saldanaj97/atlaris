@@ -524,7 +524,7 @@ jobs:
             echo "No light integration tests found; skipping."
             exit 0
           fi
-          pnpm vitest run "${LIGHT_FILES[@]}" \
+          pnpm vitest run --project integration "${LIGHT_FILES[@]}" \
             --coverage \
             --reporter=default \
             --reporter=json \

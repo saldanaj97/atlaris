@@ -248,7 +248,7 @@ jobs:
           if [ "$FILES" -lt "$TOTAL" ]; then
             TOTAL="$FILES"
           fi
-          pnpm vitest run tests/e2e \
+          pnpm vitest run --project e2e tests/e2e \
             --shard "$SHARD/$TOTAL" \
             --coverage \
             --coverage.thresholds.lines=0 \
@@ -435,7 +435,7 @@ jobs:
           if [ "$FILES" -lt "$TOTAL" ]; then
             TOTAL="$FILES"
           fi
-          pnpm vitest run tests/integration \
+          pnpm vitest run --project integration tests/integration \
             --shard "$SHARD/$TOTAL" \
             --coverage \
             --coverage.thresholds.lines=0 \
