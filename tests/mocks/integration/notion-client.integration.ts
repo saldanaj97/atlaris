@@ -1,6 +1,5 @@
 // tests/mocks/integration/notion-client.integration.ts
 import { vi } from 'vitest';
-import { Client } from '@notionhq/client';
 
 // Shared mock functions
 const mockUpdatePage = vi.fn().mockResolvedValue({ id: 'notion_page_123' });
