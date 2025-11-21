@@ -150,16 +150,19 @@ describe('User Queries', () => {
 
   describe('User Data Integrity', () => {
     it('should enforce unique Clerk user IDs', async () => {
+      // Use a unique ID for this test run to avoid conflicts
+      const uniqueClerkId = `clerk_unique_test_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
       // Create first user
       await createUser({
-        clerkUserId: 'clerk_unique_test',
+        clerkUserId: uniqueClerkId,
         email: 'first@example.com',
       });
 
       // Attempt to create duplicate
       await expect(
         createUser({
-          clerkUserId: 'clerk_unique_test',
+          clerkUserId: uniqueClerkId,
           email: 'second@example.com',
         })
       ).rejects.toThrow();
