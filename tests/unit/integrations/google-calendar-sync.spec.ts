@@ -1,9 +1,16 @@
-import '../../mocks/unit/googleapis.unit';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
+import type { GoogleCalendarClient } from '@/lib/integrations/google-calendar/types';
 import * as mapper from '@/lib/integrations/google-calendar/mapper';
 import { db } from '@/lib/db/service-role';
-import { google } from 'googleapis';
+
+// Helper to create a mock Google Calendar client for unit tests
+// This function is called within each test to get a reference to the mock
+// calendar that was set up in beforeEach
+let mockCalendar: any;
+const createMockCalendarClient = (): GoogleCalendarClient => {
+  return mockCalendar as GoogleCalendarClient;
+};
 
 // Mock the database
 vi.mock('@/lib/db/service-role', () => ({
@@ -27,23 +34,13 @@ vi.mock('@/lib/integrations/google-calendar/mapper', async () => {
 
 describe('Google Calendar Sync', () => {
   const mockPlanId = 'plan-123';
-  const mockAccessToken = 'access-token-123';
-  const mockRefreshToken = 'refresh-token-123';
 
-  let mockOAuth2Client: any;
-  let mockCalendar: any;
   let mockDbSelect: any;
   let mockDbInsert: any;
 
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
-
-    // Setup OAuth2 client mock
-    mockOAuth2Client = {
-      setCredentials: vi.fn(),
-    };
-    vi.mocked(google.auth.OAuth2).mockReturnValue(mockOAuth2Client);
 
     // Setup calendar API mock
     mockCalendar = {
@@ -52,7 +49,6 @@ describe('Google Calendar Sync', () => {
         delete: vi.fn(),
       },
     };
-    vi.mocked(google.calendar).mockReturnValue(mockCalendar);
 
     // Setup database mocks
     mockDbSelect = {
@@ -67,11 +63,6 @@ describe('Google Calendar Sync', () => {
     };
     vi.spyOn(db as any, 'select').mockReturnValue(mockDbSelect);
     vi.spyOn(db as any, 'insert').mockReturnValue(mockDbInsert);
-
-    // Set environment variables
-    process.env.GOOGLE_CLIENT_ID = 'test-client-id';
-    process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
-    process.env.GOOGLE_REDIRECT_URI = 'http://localhost:3000/callback';
   });
 
   afterEach(() => {
@@ -82,8 +73,9 @@ describe('Google Calendar Sync', () => {
     it('should throw error when plan not found', async () => {
       mockDbSelect.limit.mockResolvedValue([]);
 
+      const mockClient = createMockCalendarClient();
       await expect(
-        syncPlanToGoogleCalendar(mockPlanId, mockAccessToken, mockRefreshToken)
+        syncPlanToGoogleCalendar(mockPlanId, mockClient)
       ).rejects.toThrow('Plan not found');
     });
 
@@ -102,68 +94,8 @@ describe('Google Calendar Sync', () => {
       mockDbSelect.orderBy.mockResolvedValue([]);
 
       await expect(
-        syncPlanToGoogleCalendar(mockPlanId, mockAccessToken, mockRefreshToken)
+        syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
       ).rejects.toThrow('No modules found for plan');
-    });
-
-    it('should set OAuth credentials correctly', async () => {
-      const mockPlan = {
-        id: mockPlanId,
-        userId: 'user-123',
-        weeklyHours: 10,
-      };
-      const mockModules = [{ id: 'module-1', order: 1 }];
-      const mockTasks: any[] = [];
-
-      mockDbSelect.limit.mockResolvedValue([mockPlan]);
-      mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where
-        .mockReturnValueOnce(mockDbSelect) // plan where
-        .mockReturnValueOnce(mockDbSelect) // modules where
-        .mockResolvedValueOnce(mockTasks); // tasks where (terminal)
-
-      vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
-
-      await syncPlanToGoogleCalendar(
-        mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
-      );
-
-      expect(mockOAuth2Client.setCredentials).toHaveBeenCalledWith({
-        access_token: mockAccessToken,
-        refresh_token: mockRefreshToken,
-      });
-    });
-
-    it('should create OAuth2 client with correct credentials', async () => {
-      const mockPlan = {
-        id: mockPlanId,
-        userId: 'user-123',
-        weeklyHours: 10,
-      };
-      const mockModules = [{ id: 'module-1', order: 1 }];
-
-      mockDbSelect.limit.mockResolvedValue([mockPlan]);
-      mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where
-        .mockReturnValueOnce(mockDbSelect)
-        .mockReturnValueOnce(mockDbSelect)
-        .mockResolvedValueOnce([]);
-
-      vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
-
-      await syncPlanToGoogleCalendar(
-        mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
-      );
-
-      expect(google.auth.OAuth2).toHaveBeenCalledWith(
-        'test-client-id',
-        'test-client-secret',
-        'http://localhost:3000/callback'
-      );
     });
 
     it('should create calendar events for all tasks', async () => {
@@ -215,8 +147,7 @@ describe('Google Calendar Sync', () => {
 
       const result = await syncPlanToGoogleCalendar(
         mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
+        createMockCalendarClient()
       );
 
       expect(result).toBe(2);
@@ -255,8 +186,7 @@ describe('Google Calendar Sync', () => {
 
       const result = await syncPlanToGoogleCalendar(
         mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
+        createMockCalendarClient()
       );
 
       expect(result).toBe(0);
@@ -307,8 +237,7 @@ describe('Google Calendar Sync', () => {
 
       const result = await syncPlanToGoogleCalendar(
         mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
+        createMockCalendarClient()
       );
 
       expect(result).toBe(1);
@@ -345,8 +274,7 @@ describe('Google Calendar Sync', () => {
 
       const result = await syncPlanToGoogleCalendar(
         mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
+        createMockCalendarClient()
       );
 
       expect(result).toBe(0);
@@ -393,7 +321,7 @@ describe('Google Calendar Sync', () => {
       });
 
       await expect(
-        syncPlanToGoogleCalendar(mockPlanId, mockAccessToken, mockRefreshToken)
+        syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
       ).rejects.toThrow('Failed to sync any events');
     });
 
@@ -439,7 +367,7 @@ describe('Google Calendar Sync', () => {
       mockDbInsert.values.mockRejectedValue(new Error('DB Error'));
 
       await expect(
-        syncPlanToGoogleCalendar(mockPlanId, mockAccessToken, mockRefreshToken)
+        syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
       ).rejects.toThrow('Failed to sync any events');
 
       // Should attempt to delete the created event
@@ -501,8 +429,7 @@ describe('Google Calendar Sync', () => {
 
       const result = await syncPlanToGoogleCalendar(
         mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
+        createMockCalendarClient()
       );
 
       expect(result).toBe(1); // Only second task succeeded
@@ -547,11 +474,7 @@ describe('Google Calendar Sync', () => {
         data: { id: 'event-123', status: 'confirmed' },
       });
 
-      await syncPlanToGoogleCalendar(
-        mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
-      );
+      await syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient());
 
       // Check that sync state was inserted
       expect(mockDbInsert.values).toHaveBeenCalledWith(
@@ -561,31 +484,6 @@ describe('Google Calendar Sync', () => {
           calendarId: 'primary',
         })
       );
-    });
-
-    it('should handle refresh token being optional', async () => {
-      const mockPlan = {
-        id: mockPlanId,
-        userId: 'user-123',
-        weeklyHours: 10,
-      };
-      const mockModules = [{ id: 'module-1', order: 1 }];
-
-      mockDbSelect.limit.mockResolvedValue([mockPlan]);
-      mockDbSelect.orderBy.mockResolvedValue(mockModules);
-      mockDbSelect.where
-        .mockReturnValueOnce(mockDbSelect)
-        .mockReturnValueOnce(mockDbSelect)
-        .mockResolvedValueOnce([]);
-
-      vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
-
-      await syncPlanToGoogleCalendar(mockPlanId, mockAccessToken);
-
-      expect(mockOAuth2Client.setCredentials).toHaveBeenCalledWith({
-        access_token: mockAccessToken,
-        refresh_token: undefined,
-      });
     });
 
     it('should use primary calendar by default', async () => {
@@ -626,11 +524,7 @@ describe('Google Calendar Sync', () => {
         data: { id: 'event-123', status: 'confirmed' },
       });
 
-      await syncPlanToGoogleCalendar(
-        mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
-      );
+      await syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient());
 
       expect(mockCalendar.events.insert).toHaveBeenCalledWith({
         calendarId: 'primary',
@@ -674,11 +568,7 @@ describe('Google Calendar Sync', () => {
 
       vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
 
-      await syncPlanToGoogleCalendar(
-        mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
-      );
+      await syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient());
 
       expect(mapper.generateSchedule).toHaveBeenCalledWith(
         [
@@ -744,11 +634,7 @@ describe('Google Calendar Sync', () => {
       // Spy on setTimeout to verify backoff timing
       const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
 
-      await syncPlanToGoogleCalendar(
-        mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
-      );
+      await syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient());
 
       // Should have called setTimeout twice (for two retries)
       expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
@@ -794,7 +680,7 @@ describe('Google Calendar Sync', () => {
       mockCalendar.events.insert.mockRejectedValue(new Error('API Error'));
 
       await expect(
-        syncPlanToGoogleCalendar(mockPlanId, mockAccessToken, mockRefreshToken)
+        syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
       ).rejects.toThrow('Failed to sync any events');
     });
 
@@ -838,8 +724,7 @@ describe('Google Calendar Sync', () => {
 
       const result = await syncPlanToGoogleCalendar(
         mockPlanId,
-        mockAccessToken,
-        mockRefreshToken
+        createMockCalendarClient()
       );
 
       expect(result).toBe(1);

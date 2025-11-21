@@ -1,5 +1,3 @@
-import '../mocks/e2e/googleapis.e2e';
-import { resetMockEventCounter } from '../mocks/e2e/googleapis.e2e';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '@/lib/db/service-role';
 import {
@@ -12,15 +10,53 @@ import {
 } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
+import type { GoogleCalendarClient } from '@/lib/integrations/google-calendar/types';
+import type { calendar_v3 } from 'googleapis';
+
+function createMockCalendarClient(): GoogleCalendarClient {
+  let eventCounter = 0;
+  const createdEvents = new Map<string, calendar_v3.Schema$Event>();
+
+  const eventsApi = {
+    async insert({
+      calendarId,
+      requestBody,
+    }: {
+      calendarId: string;
+      requestBody: calendar_v3.Schema$Event;
+    }): Promise<{ data: calendar_v3.Schema$Event }> {
+      eventCounter++;
+      const id = `event_${eventCounter}`;
+      const event: calendar_v3.Schema$Event = {
+        id,
+        summary: requestBody.summary,
+        description: requestBody.description,
+        start: requestBody.start,
+        end: requestBody.end,
+      };
+      createdEvents.set(id, event);
+      return { data: event };
+    },
+
+    async delete({
+      calendarId,
+      eventId,
+    }: {
+      calendarId: string;
+      eventId: string;
+    }): Promise<void> {
+      createdEvents.delete(eventId);
+    },
+  };
+
+  return { events: eventsApi };
+}
 
 describe('Google Calendar Sync E2E Flow', () => {
   let userId: string;
   let planId: string;
 
   beforeEach(async () => {
-    // Reset mock counter for unique event IDs
-    resetMockEventCounter();
-
     // Setup full test data
     await db.delete(taskCalendarEvents);
     await db.delete(googleCalendarSyncState);
@@ -82,13 +118,10 @@ describe('Google Calendar Sync E2E Flow', () => {
   });
 
   it('should complete full calendar sync workflow', async () => {
-    const eventsCreated = await syncPlanToGoogleCalendar(
-      planId,
-      'e2e_access_token',
-      'e2e_refresh_token'
-    );
+    const mockClient = createMockCalendarClient();
 
-    expect(eventsCreated).toBeGreaterThan(0);
+    const eventsCreated = await syncPlanToGoogleCalendar(planId, mockClient);
+
     expect(eventsCreated).toBe(2); // We created 2 tasks
 
     // Verify event mappings created

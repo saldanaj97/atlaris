@@ -1,3 +1,6 @@
+// Import centralized test env defaults first
+import '../setup/test-env';
+
 import { vi } from 'vitest';
 
 // Set NODE_ENV to 'test' if not already set
@@ -28,14 +31,6 @@ vi.mock('@/lib/db/service-role', () => {
     },
   };
 });
-
-// Provide OAuth encryption key for token encryption tests (64-char hex for AES-256)
-if (!process.env.OAUTH_ENCRYPTION_KEY) {
-  Object.assign(process.env, {
-    OAUTH_ENCRYPTION_KEY:
-      '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-  });
-}
 
 // Extend expect with jest-dom matchers
 import '@testing-library/jest-dom';

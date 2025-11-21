@@ -1,4 +1,3 @@
-import '../mocks/e2e/notion-client.e2e';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '@/lib/db/service-role';
 import {
@@ -11,6 +10,64 @@ import {
 import { eq } from 'drizzle-orm';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { exportPlanToNotion } from '@/lib/integrations/notion/sync';
+import type { NotionIntegrationClient } from '@/lib/integrations/notion/types';
+import type {
+  CreatePageParameters,
+  CreatePageResponse,
+  UpdatePageParameters,
+  UpdatePageResponse,
+  BlockObjectRequest,
+  AppendBlockChildrenResponse,
+} from '@notionhq/client/build/src/api-endpoints';
+
+function createMockNotionClient(): NotionIntegrationClient {
+  return {
+    async createPage(
+      params: CreatePageParameters
+    ): Promise<CreatePageResponse> {
+      return {
+        id: 'notion_page_e2e',
+        url: 'https://notion.so/notion_page_e2e',
+      } as CreatePageResponse;
+    },
+
+    async updatePage(
+      params: UpdatePageParameters
+    ): Promise<UpdatePageResponse> {
+      return {
+        id: params.page_id,
+      } as UpdatePageResponse;
+    },
+
+    async appendBlocks(
+      pageId: string,
+      blocks: BlockObjectRequest[]
+    ): Promise<AppendBlockChildrenResponse> {
+      return {
+        type: 'block' as const,
+        block: {},
+        object: 'list' as const,
+        next_cursor: null,
+        has_more: false,
+        results: [],
+      } as AppendBlockChildrenResponse;
+    },
+
+    async replaceBlocks(
+      pageId: string,
+      blocks: BlockObjectRequest[]
+    ): Promise<AppendBlockChildrenResponse> {
+      return {
+        type: 'block' as const,
+        block: {},
+        object: 'list' as const,
+        next_cursor: null,
+        has_more: false,
+        results: [],
+      } as AppendBlockChildrenResponse;
+    },
+  };
+}
 
 describe('Notion Export E2E Flow', () => {
   let userId: string;
@@ -73,7 +130,9 @@ describe('Notion Export E2E Flow', () => {
   });
 
   it('should complete full Notion export workflow', async () => {
-    const notionPageId = await exportPlanToNotion(planId, userId, 'e2e_token');
+    const mockClient = createMockNotionClient();
+
+    const notionPageId = await exportPlanToNotion(planId, userId, mockClient);
 
     expect(notionPageId).toBe('notion_page_e2e');
 
