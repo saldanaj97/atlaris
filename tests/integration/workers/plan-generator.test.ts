@@ -10,7 +10,6 @@ import {
 
 import { eq, inArray } from 'drizzle-orm';
 
-import { db } from '@/lib/db/service-role';
 import {
   generationAttempts,
   jobQueue,
@@ -18,33 +17,41 @@ import {
   modules,
   tasks,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { enqueueJob } from '@/lib/jobs/queue';
 import {
   JOB_TYPES,
   type Job,
   type PlanGenerationJobResult,
 } from '@/lib/jobs/types';
+import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-generation-handler';
 import {
   PlanGenerationWorker,
   type JobHandler,
 } from '@/workers/plan-generator';
-import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-generation-handler';
 import { PersistenceService } from '@/workers/services/persistence-service';
 
-import { createDefaultHandlers } from '../../helpers/workerHelpers';
-
 import { ensureUser } from '../../helpers/db';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import { createDefaultHandlers } from '../../helpers/workerHelpers';
 
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
+  ENABLE_CURATION: process.env.ENABLE_CURATION,
+  CURATION_TIME_BUDGET_MS: process.env.CURATION_TIME_BUDGET_MS,
+  CURATION_CONCURRENCY: process.env.CURATION_CONCURRENCY,
 };
 
 beforeAll(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   process.env.MOCK_GENERATION_DELAY_MS = '250';
+  // Keep curation fast and bounded in integration tests
+  process.env.ENABLE_CURATION = 'true';
+  process.env.CURATION_TIME_BUDGET_MS = '2000';
+  process.env.CURATION_CONCURRENCY = '8';
 });
 
 afterAll(() => {
@@ -66,6 +73,21 @@ afterAll(() => {
   } else {
     process.env.MOCK_GENERATION_DELAY_MS =
       ORIGINAL_ENV.MOCK_GENERATION_DELAY_MS;
+  }
+  if (ORIGINAL_ENV.ENABLE_CURATION === undefined) {
+    delete process.env.ENABLE_CURATION;
+  } else {
+    process.env.ENABLE_CURATION = ORIGINAL_ENV.ENABLE_CURATION;
+  }
+  if (ORIGINAL_ENV.CURATION_TIME_BUDGET_MS === undefined) {
+    delete process.env.CURATION_TIME_BUDGET_MS;
+  } else {
+    process.env.CURATION_TIME_BUDGET_MS = ORIGINAL_ENV.CURATION_TIME_BUDGET_MS;
+  }
+  if (ORIGINAL_ENV.CURATION_CONCURRENCY === undefined) {
+    delete process.env.CURATION_CONCURRENCY;
+  } else {
+    process.env.CURATION_CONCURRENCY = ORIGINAL_ENV.CURATION_CONCURRENCY;
   }
 });
 
@@ -102,10 +124,10 @@ type PlanFixture = {
 };
 
 async function createPlanFixture(key: string): Promise<PlanFixture> {
-  const clerkUserId = `worker-${key}`;
+  const clerkUserId = buildTestClerkUserId(`worker-${key}`);
   const userId = await ensureUser({
     clerkUserId,
-    email: `${clerkUserId}@example.com`,
+    email: buildTestEmail(clerkUserId),
   });
 
   const [plan] = await db
@@ -164,6 +186,9 @@ describe('PlanGenerationWorker', () => {
     try {
       await waitFor(async () => {
         const row = await fetchJob(jobId);
+        if (row?.status === 'failed') {
+          throw new Error(`Job failed: ${row.error ?? 'unknown error'}`);
+        }
         return row?.status === 'completed';
       });
     } finally {

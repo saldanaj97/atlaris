@@ -29,17 +29,25 @@ import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
 import { ensureUser } from '../../helpers/db';
 import { createDefaultHandlers } from '../../helpers/workerHelpers';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
 
 const originalEnv = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
+  ENABLE_CURATION: process.env.ENABLE_CURATION,
+  CURATION_TIME_BUDGET_MS: process.env.CURATION_TIME_BUDGET_MS,
+  CURATION_CONCURRENCY: process.env.CURATION_CONCURRENCY,
 };
 
 beforeEach(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   process.env.MOCK_GENERATION_DELAY_MS = '1000';
+  // Bound curation in integration to keep jobs under the waitFor timeout
+  process.env.ENABLE_CURATION = 'true';
+  process.env.CURATION_TIME_BUDGET_MS = '2000';
+  process.env.CURATION_CONCURRENCY = '8';
 });
 
 afterEach(() => {
@@ -60,6 +68,21 @@ afterEach(() => {
     delete process.env.MOCK_GENERATION_DELAY_MS;
   } else {
     process.env.MOCK_GENERATION_DELAY_MS = originalEnv.MOCK_GENERATION_DELAY_MS;
+  }
+  if (originalEnv.ENABLE_CURATION === undefined) {
+    delete process.env.ENABLE_CURATION;
+  } else {
+    process.env.ENABLE_CURATION = originalEnv.ENABLE_CURATION;
+  }
+  if (originalEnv.CURATION_TIME_BUDGET_MS === undefined) {
+    delete process.env.CURATION_TIME_BUDGET_MS;
+  } else {
+    process.env.CURATION_TIME_BUDGET_MS = originalEnv.CURATION_TIME_BUDGET_MS;
+  }
+  if (originalEnv.CURATION_CONCURRENCY === undefined) {
+    delete process.env.CURATION_CONCURRENCY;
+  } else {
+    process.env.CURATION_CONCURRENCY = originalEnv.CURATION_CONCURRENCY;
   }
 });
 
@@ -108,10 +131,10 @@ async function fetchJob(jobId: string) {
 }
 
 async function createPlanForUser(key: string) {
-  const clerkUserId = `worker-${key}`;
+  const clerkUserId = buildTestClerkUserId(`worker-${key}`);
   const userId = await ensureUser({
     clerkUserId,
-    email: `${clerkUserId}@example.com`,
+    email: buildTestEmail(clerkUserId),
   });
 
   const [plan] = await db
@@ -170,10 +193,10 @@ describe('PlanGenerationWorker', () => {
       closeDbOnStop: false,
     });
 
-    const clerkUserId = 'worker-test-user';
+    const clerkUserId = buildTestClerkUserId('worker-test-user');
     const userId = await ensureUser({
       clerkUserId,
-      email: 'worker-test-user@example.com',
+      email: buildTestEmail(clerkUserId),
     });
 
     const [plan] = await db
