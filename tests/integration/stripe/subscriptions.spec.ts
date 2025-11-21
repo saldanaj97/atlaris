@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
-import { ensureUser, truncateAll } from '@/../tests/helpers/db';
+
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import {
+  markUserAsSubscribed,
+  buildStripeCustomerId,
+  buildStripeSubscriptionId,
+} from '../../helpers/subscription';
 import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
 import {
@@ -18,21 +25,25 @@ vi.mock('@/lib/stripe/client', () => ({
   getStripe: vi.fn(),
 }));
 
+async function createUniqueUser() {
+  const clerkUserId = buildTestClerkUserId('stripe-subscriptions');
+  const email = buildTestEmail(clerkUserId);
+  return ensureUser({ clerkUserId, email });
+}
+
 describe('Subscription Management', () => {
   beforeEach(async () => {
-    await truncateAll();
+    await resetDbForIntegrationTestFile();
     vi.clearAllMocks();
   });
 
   describe('createCustomer', () => {
     it('creates new Stripe customer and stores ID', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_create_customer',
-        email: 'create.customer@example.com',
-      });
+      const userId = await createUniqueUser();
+      const expectedCustomerId = buildStripeCustomerId(userId, 'create');
 
       const createStripeCustomer = vi.fn().mockResolvedValue({
-        id: 'cus_test123',
+        id: expectedCustomerId,
       });
 
       const mockStripe = {
@@ -48,7 +59,7 @@ describe('Subscription Management', () => {
         'create.customer@example.com'
       );
 
-      expect(customerId).toBe('cus_test123');
+      expect(customerId).toBe(expectedCustomerId);
       expect(createStripeCustomer).toHaveBeenCalledWith({
         email: 'create.customer@example.com',
         metadata: { userId },
@@ -59,19 +70,17 @@ describe('Subscription Management', () => {
         .select()
         .from(users)
         .where(sql`id = ${userId}`);
-      expect(user?.stripeCustomerId).toBe('cus_test123');
+      expect(user?.stripeCustomerId).toBe(expectedCustomerId);
     });
 
     it('returns existing customer ID if already set', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_existing_customer',
-        email: 'existing.customer@example.com',
-      });
+      const userId = await createUniqueUser();
+      const existingCustomerId = buildStripeCustomerId(userId, 'existing');
 
       // Set existing customer ID
       await db
         .update(users)
-        .set({ stripeCustomerId: 'cus_existing456' })
+        .set({ stripeCustomerId: existingCustomerId })
         .where(sql`id = ${userId}`);
 
       const createStripeCustomer = vi.fn(); // Should not be called
@@ -89,30 +98,22 @@ describe('Subscription Management', () => {
         'existing.customer@example.com'
       );
 
-      expect(customerId).toBe('cus_existing456');
+      expect(customerId).toBe(existingCustomerId);
       expect(createStripeCustomer).not.toHaveBeenCalled();
     });
   });
 
   describe('getSubscriptionTier', () => {
     it('returns subscription info for user', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_get_tier',
-        email: 'get.tier@example.com',
-      });
-
+      const userId = await createUniqueUser();
       // Set subscription data
       const periodEnd = new Date('2025-12-31');
-      await db
-        .update(users)
-        .set({
+      const { stripeCustomerId, stripeSubscriptionId } =
+        await markUserAsSubscribed(userId, {
           subscriptionTier: 'pro',
           subscriptionStatus: 'active',
           subscriptionPeriodEnd: periodEnd,
-          stripeCustomerId: 'cus_123',
-          stripeSubscriptionId: 'sub_123',
-        })
-        .where(sql`id = ${userId}`);
+        });
 
       const tier = await getSubscriptionTier(userId);
 
@@ -120,8 +121,8 @@ describe('Subscription Management', () => {
         subscriptionTier: 'pro',
         subscriptionStatus: 'active',
         subscriptionPeriodEnd: periodEnd,
-        stripeCustomerId: 'cus_123',
-        stripeSubscriptionId: 'sub_123',
+        stripeCustomerId,
+        stripeSubscriptionId,
       });
     });
 
@@ -134,20 +135,20 @@ describe('Subscription Management', () => {
 
   describe('syncSubscriptionToDb', () => {
     it('syncs active subscription with starter tier to DB', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_sync_starter',
-        email: 'sync.starter@example.com',
+      const userId = await createUniqueUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'free',
+        subscriptionStatus: 'canceled',
       });
 
-      // Set customer ID
-      await db
-        .update(users)
-        .set({ stripeCustomerId: 'cus_sync123' })
-        .where(sql`id = ${userId}`);
+      const expectedSubscriptionId = buildStripeSubscriptionId(
+        userId,
+        'sync-starter'
+      );
 
       const mockSubscription = {
-        id: 'sub_test789',
-        customer: 'cus_sync123',
+        id: expectedSubscriptionId,
+        customer: stripeCustomerId,
         status: 'active',
         items: {
           data: [
@@ -189,25 +190,25 @@ describe('Subscription Management', () => {
 
       expect(user?.subscriptionTier).toBe('starter');
       expect(user?.subscriptionStatus).toBe('active');
-      expect(user?.stripeSubscriptionId).toBe('sub_test789');
+      expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
       expect(user?.subscriptionPeriodEnd).toEqual(new Date(1735689600 * 1000));
     });
 
     it('syncs canceled subscription to DB', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_sync_canceled',
-        email: 'sync.canceled@example.com',
+      const userId = await createUniqueUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'pro',
+        subscriptionStatus: 'active',
       });
 
-      // Set customer ID
-      await db
-        .update(users)
-        .set({ stripeCustomerId: 'cus_canceled123' })
-        .where(sql`id = ${userId}`);
+      const expectedSubscriptionId = buildStripeSubscriptionId(
+        userId,
+        'sync-canceled'
+      );
 
       const mockSubscription = {
-        id: 'sub_canceled789',
-        customer: 'cus_canceled123',
+        id: expectedSubscriptionId,
+        customer: stripeCustomerId,
         status: 'canceled',
         items: {
           data: [
@@ -249,22 +250,24 @@ describe('Subscription Management', () => {
 
       expect(user?.subscriptionTier).toBe('pro');
       expect(user?.subscriptionStatus).toBe('canceled');
+      expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
     });
 
     it('maps past_due status correctly', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_sync_past_due',
-        email: 'sync.past_due@example.com',
+      const userId = await createUniqueUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'free',
+        subscriptionStatus: 'active',
       });
 
-      await db
-        .update(users)
-        .set({ stripeCustomerId: 'cus_past_due123' })
-        .where(sql`id = ${userId}`);
+      const expectedSubscriptionId = buildStripeSubscriptionId(
+        userId,
+        'past-due'
+      );
 
       const mockSubscription = {
-        id: 'sub_past_due789',
-        customer: 'cus_past_due123',
+        id: expectedSubscriptionId,
+        customer: stripeCustomerId,
         status: 'past_due',
         items: {
           data: [
@@ -304,22 +307,24 @@ describe('Subscription Management', () => {
         .where(sql`id = ${userId}`);
 
       expect(user?.subscriptionStatus).toBe('past_due');
+      expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
     });
 
     it('defaults to free tier when no tier metadata', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_sync_no_tier',
-        email: 'sync.no_tier@example.com',
+      const userId = await createUniqueUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'free',
+        subscriptionStatus: 'active',
       });
 
-      await db
-        .update(users)
-        .set({ stripeCustomerId: 'cus_no_tier123' })
-        .where(sql`id = ${userId}`);
+      const expectedSubscriptionId = buildStripeSubscriptionId(
+        userId,
+        'no-tier'
+      );
 
       const mockSubscription = {
-        id: 'sub_no_tier789',
-        customer: 'cus_no_tier123',
+        id: expectedSubscriptionId,
+        customer: stripeCustomerId,
         status: 'active',
         items: {
           data: [
@@ -357,6 +362,7 @@ describe('Subscription Management', () => {
         .where(sql`id = ${userId}`);
 
       expect(user?.subscriptionTier).toBe('free');
+      expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
     });
 
     it('does not crash if user not found for customer ID', async () => {
@@ -392,19 +398,14 @@ describe('Subscription Management', () => {
 
   describe('cancelSubscription', () => {
     it('cancels subscription at period end', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_cancel_sub',
-        email: 'cancel.sub@example.com',
+      const userId = await createUniqueUser();
+      const { stripeSubscriptionId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
       });
 
-      // Set subscription ID
-      await db
-        .update(users)
-        .set({ stripeSubscriptionId: 'sub_to_cancel' })
-        .where(sql`id = ${userId}`);
-
       const updateSubscription = vi.fn().mockResolvedValue({
-        id: 'sub_to_cancel',
+        id: stripeSubscriptionId,
         cancel_at_period_end: true,
       });
 
@@ -418,16 +419,13 @@ describe('Subscription Management', () => {
 
       await cancelSubscription(userId);
 
-      expect(updateSubscription).toHaveBeenCalledWith('sub_to_cancel', {
+      expect(updateSubscription).toHaveBeenCalledWith(stripeSubscriptionId, {
         cancel_at_period_end: true,
       });
     });
 
     it('throws error if no active subscription', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_no_sub',
-        email: 'no.sub@example.com',
-      });
+      const userId = await createUniqueUser();
 
       await expect(cancelSubscription(userId)).rejects.toThrow(
         'No active subscription found'
@@ -451,14 +449,15 @@ describe('Subscription Management', () => {
 
       vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
 
+      const testCustomerId = buildStripeCustomerId('portal-customer', 'portal');
       const url = await getCustomerPortalUrl(
-        'cus_123',
+        testCustomerId,
         'https://example.com/settings'
       );
 
       expect(url).toBe('https://billing.stripe.com/session_abc123');
       expect(createPortalSession).toHaveBeenCalledWith({
-        customer: 'cus_123',
+        customer: testCustomerId,
         return_url: 'https://example.com/settings',
       });
     });

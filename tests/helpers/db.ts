@@ -72,6 +72,12 @@ export async function truncateAll() {
   await db.execute(sql`TRUNCATE TABLE ${resources} RESTART IDENTITY CASCADE`);
 }
 
+export async function resetDbForIntegrationTestFile() {
+  await truncateAll();
+  await ensureRlsRolesAndPermissions();
+  await ensureJobTypeEnumValue();
+}
+
 export async function ensureStripeWebhookEvents() {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS stripe_webhook_events (

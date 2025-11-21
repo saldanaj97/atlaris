@@ -27,7 +27,7 @@ import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-gen
 import { PersistenceService } from '@/workers/services/persistence-service';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { createDefaultHandlers } from '../../helpers/workerHelpers';
 import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
 
@@ -36,6 +36,10 @@ const originalEnv = {
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
 };
+
+beforeEach(async () => {
+  await resetDbForIntegrationTestFile();
+});
 
 beforeEach(() => {
   process.env.AI_PROVIDER = 'mock';
