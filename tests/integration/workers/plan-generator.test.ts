@@ -39,19 +39,12 @@ const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
-  ENABLE_CURATION: process.env.ENABLE_CURATION,
-  CURATION_TIME_BUDGET_MS: process.env.CURATION_TIME_BUDGET_MS,
-  CURATION_CONCURRENCY: process.env.CURATION_CONCURRENCY,
 };
 
 beforeAll(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   process.env.MOCK_GENERATION_DELAY_MS = '250';
-  // Keep curation fast and bounded in integration tests
-  process.env.ENABLE_CURATION = 'true';
-  process.env.CURATION_TIME_BUDGET_MS = '2000';
-  process.env.CURATION_CONCURRENCY = '8';
 });
 
 afterAll(() => {
@@ -73,21 +66,6 @@ afterAll(() => {
   } else {
     process.env.MOCK_GENERATION_DELAY_MS =
       ORIGINAL_ENV.MOCK_GENERATION_DELAY_MS;
-  }
-  if (ORIGINAL_ENV.ENABLE_CURATION === undefined) {
-    delete process.env.ENABLE_CURATION;
-  } else {
-    process.env.ENABLE_CURATION = ORIGINAL_ENV.ENABLE_CURATION;
-  }
-  if (ORIGINAL_ENV.CURATION_TIME_BUDGET_MS === undefined) {
-    delete process.env.CURATION_TIME_BUDGET_MS;
-  } else {
-    process.env.CURATION_TIME_BUDGET_MS = ORIGINAL_ENV.CURATION_TIME_BUDGET_MS;
-  }
-  if (ORIGINAL_ENV.CURATION_CONCURRENCY === undefined) {
-    delete process.env.CURATION_CONCURRENCY;
-  } else {
-    process.env.CURATION_CONCURRENCY = ORIGINAL_ENV.CURATION_CONCURRENCY;
   }
 });
 
