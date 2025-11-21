@@ -23,10 +23,13 @@ const ORIGINAL = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   AI_USE_MOCK: process.env.AI_USE_MOCK,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
+  DEV_CLERK_USER_ID: process.env.DEV_CLERK_USER_ID,
 };
 
 describe('Server Action: generateLearningPlan', () => {
   beforeEach(() => {
+    // Set test user ID for authentication
+    process.env.DEV_CLERK_USER_ID = 'test-generate-learning-plan';
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
     // Deflake: ensure mock provider does not randomly fail
@@ -34,6 +37,11 @@ describe('Server Action: generateLearningPlan', () => {
   });
 
   afterEach(() => {
+    if (ORIGINAL.DEV_CLERK_USER_ID === undefined) {
+      delete process.env.DEV_CLERK_USER_ID;
+    } else {
+      process.env.DEV_CLERK_USER_ID = ORIGINAL.DEV_CLERK_USER_ID;
+    }
     if (ORIGINAL.AI_PROVIDER === undefined) {
       delete process.env.AI_PROVIDER;
     } else {
