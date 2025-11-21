@@ -2,6 +2,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -29,6 +30,7 @@ import {
   PlanGenerationWorker,
   type JobHandler,
 } from '@/workers/plan-generator';
+import { CurationService } from '@/workers/services/curation-service';
 import { PersistenceService } from '@/workers/services/persistence-service';
 
 import { ensureUser } from '../../helpers/db';
@@ -135,6 +137,11 @@ async function fetchJob(jobId: string) {
 }
 
 describe('PlanGenerationWorker', () => {
+  // Disable external curation in integration tests to avoid network/rate-limit delays
+  beforeEach(() => {
+    vi.spyOn(CurationService, 'shouldRunCuration').mockReturnValue(false);
+  });
+
   it('processes a plan generation job end-to-end (J026 success + T072 + T073)', async () => {
     const worker = new PlanGenerationWorker({
       handlers: createDefaultHandlers(),

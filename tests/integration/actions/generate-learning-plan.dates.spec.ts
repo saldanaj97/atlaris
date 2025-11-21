@@ -1,12 +1,16 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { generateLearningPlan } from '@/app/plans/actions';
-import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+
+const ORIGINAL = {
+  DEV_CLERK_USER_ID: process.env.DEV_CLERK_USER_ID,
+};
 
 describe('Server Action: generateLearningPlan (dates parity)', () => {
   beforeEach(async () => {
@@ -20,6 +24,14 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
     process.env.MOCK_GENERATION_FAILURE_RATE = '0';
     // Speed up: reduce mock generation delay for faster tests
     process.env.MOCK_GENERATION_DELAY_MS = '100';
+  });
+
+  afterEach(() => {
+    if (ORIGINAL.DEV_CLERK_USER_ID === undefined) {
+      delete process.env.DEV_CLERK_USER_ID;
+    } else {
+      process.env.DEV_CLERK_USER_ID = ORIGINAL.DEV_CLERK_USER_ID;
+    }
   });
 
   it('persists startDate and deadlineDate when provided', async () => {

@@ -26,6 +26,7 @@ import {
 import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-generation-handler';
 import { PersistenceService } from '@/workers/services/persistence-service';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import { CurationService } from '@/workers/services/curation-service';
 
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { createDefaultHandlers } from '../../helpers/workerHelpers';
@@ -140,6 +141,11 @@ async function createPlanForUser(key: string) {
 }
 
 describe('PlanGenerationWorker', () => {
+  // Disable external curation in integration tests to avoid network/rate-limit delays
+  beforeEach(() => {
+    vi.spyOn(CurationService, 'shouldRunCuration').mockReturnValue(false);
+  });
+
   it('cycles without jobs in the queue (T030)', async () => {
     const worker = new PlanGenerationWorker({
       handlers: createDefaultHandlers(),
