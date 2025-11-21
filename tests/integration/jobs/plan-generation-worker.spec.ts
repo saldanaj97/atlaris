@@ -1,12 +1,4 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { eq, inArray } from 'drizzle-orm';
 
@@ -44,13 +36,13 @@ const originalEnv = {
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
 };
 
-beforeAll(() => {
+beforeEach(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   process.env.MOCK_GENERATION_DELAY_MS = '1000';
 });
 
-afterAll(() => {
+afterEach(() => {
   if (originalEnv.AI_PROVIDER === undefined) {
     delete process.env.AI_PROVIDER;
   } else {
