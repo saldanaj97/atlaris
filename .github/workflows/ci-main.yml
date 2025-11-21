@@ -209,12 +209,28 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
         run: pnpm db:push:test-db
-      - name: Grant RLS bypass to postgres user
+      - name: Grant RLS bypass and role permissions
         env:
           PGPASSWORD: postgres
         run: |
-          # Grant BYPASSRLS to postgres user to allow tests to access RLS-protected tables
+          # Grant BYPASSRLS to postgres user to allow direct test access
           psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 -c "ALTER ROLE postgres BYPASSRLS;"
+
+          # Grant table permissions to authenticated role for RLS testing
+          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT USAGE ON SCHEMA public TO authenticated;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
+          SQL
+
+          # Grant read-only permissions to anonymous role
+          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT USAGE ON SCHEMA public TO anonymous;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anonymous;
+          SQL
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
         id: restore-vitest-cache
@@ -394,12 +410,28 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
         run: pnpm db:push:test-db
-      - name: Grant RLS bypass to postgres user
+      - name: Grant RLS bypass and role permissions
         env:
           PGPASSWORD: postgres
         run: |
-          # Grant BYPASSRLS to postgres user to allow tests to access RLS-protected tables
+          # Grant BYPASSRLS to postgres user to allow direct test access
           psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 -c "ALTER ROLE postgres BYPASSRLS;"
+
+          # Grant table permissions to authenticated role for RLS testing
+          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT USAGE ON SCHEMA public TO authenticated;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
+          SQL
+
+          # Grant read-only permissions to anonymous role
+          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT USAGE ON SCHEMA public TO anonymous;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anonymous;
+          SQL
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
         id: restore-vitest-cache
@@ -619,12 +651,28 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
         run: pnpm db:migrate:test-db
-      - name: Grant RLS bypass to postgres user
+      - name: Grant RLS bypass and role permissions
         env:
           PGPASSWORD: postgres
         run: |
-          # Grant BYPASSRLS to postgres user to allow tests to access RLS-protected tables
+          # Grant BYPASSRLS to postgres user to allow direct test access
           psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 -c "ALTER ROLE postgres BYPASSRLS;"
+
+          # Grant table permissions to authenticated role for RLS testing
+          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT USAGE ON SCHEMA public TO authenticated;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
+          SQL
+
+          # Grant read-only permissions to anonymous role
+          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
+          GRANT USAGE ON SCHEMA public TO anonymous;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anonymous;
+          SQL
       - name: Cleanup ephemeral database
         if: always()
         env:
