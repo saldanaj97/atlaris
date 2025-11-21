@@ -1,9 +1,3 @@
-import '../mocks/integration/notion-client.integration';
-import {
-  mockUpdatePage,
-  mockAppendBlocks,
-  mockListChildren,
-} from '../mocks/integration/notion-client.integration';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createHash } from 'node:crypto';
 import { db } from '@/lib/db/service-role';
@@ -16,6 +10,7 @@ import {
 } from '@/lib/db/schema';
 import { deltaSyncPlanToNotion } from '@/lib/integrations/notion/sync';
 import { eq } from 'drizzle-orm';
+import { createMockNotionClient } from '../mocks/shared/notion-client.shared';
 
 describe('Notion Delta Sync', () => {
   let testUserId: string;
@@ -65,12 +60,17 @@ describe('Notion Delta Sync', () => {
       lastSyncedAt: new Date('2025-01-01'),
     });
 
-    const hasChanges = await deltaSyncPlanToNotion(testPlanId, 'test_token');
+    const mockClient = createMockNotionClient();
+    const hasChanges = await deltaSyncPlanToNotion(
+      testPlanId,
+      testUserId,
+      mockClient
+    );
 
     expect(hasChanges).toBe(true);
-    expect(mockUpdatePage).toHaveBeenCalled();
-    expect(mockAppendBlocks).toHaveBeenCalled();
-    expect(mockListChildren).toHaveBeenCalled();
+    expect(mockClient._mocks.updatePage).toHaveBeenCalled();
+    expect(mockClient._mocks.appendBlocks).toHaveBeenCalled();
+    expect(mockClient._mocks.listChildren).toHaveBeenCalled();
   });
 
   it('should skip sync if no changes detected', async () => {
@@ -158,7 +158,12 @@ describe('Notion Delta Sync', () => {
     });
 
     // Call the function - it should detect no changes
-    const hasChanges = await deltaSyncPlanToNotion(testPlanId, 'test_token');
+    const mockClient = createMockNotionClient();
+    const hasChanges = await deltaSyncPlanToNotion(
+      testPlanId,
+      testUserId,
+      mockClient
+    );
 
     expect(hasChanges).toBe(false);
   });

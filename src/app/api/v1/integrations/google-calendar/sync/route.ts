@@ -6,6 +6,7 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
+import { createGoogleCalendarClient } from '@/lib/integrations/google-calendar/factory';
 import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
 import {
   attachRequestIdHeader,
@@ -91,10 +92,14 @@ export const POST = withErrorBoundary(
         );
       }
 
+      const calendarClient = createGoogleCalendarClient({
+        accessToken: googleTokens.accessToken,
+        refreshToken: googleTokens.refreshToken,
+      });
+
       const eventsCreated = await syncPlanToGoogleCalendar(
         planId,
-        googleTokens.accessToken,
-        googleTokens.refreshToken
+        calendarClient
       );
 
       // Increment usage after a successful sync (non-blocking)

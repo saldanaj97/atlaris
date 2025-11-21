@@ -1,5 +1,3 @@
-import { google } from 'googleapis';
-import { googleOAuthEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import {
   learningPlans,
@@ -10,24 +8,17 @@ import {
 } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { mapTaskToCalendarEvent, generateSchedule } from './mapper';
+import type { GoogleCalendarClient } from './types';
 
+/**
+ * Syncs plan tasks to Google Calendar using a pre-configured client.
+ * This function is pure with respect to env and third-party client construction.
+ */
 export async function syncPlanToGoogleCalendar(
   planId: string,
-  accessToken: string,
-  refreshToken?: string
+  calendarClient: GoogleCalendarClient
 ): Promise<number> {
-  const oauth2Client = new google.auth.OAuth2(
-    googleOAuthEnv.clientId,
-    googleOAuthEnv.clientSecret,
-    googleOAuthEnv.redirectUri
-  );
-
-  oauth2Client.setCredentials({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
-
-  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+  const calendar = calendarClient;
 
   // Fetch plan data (RLS-enforced via getDb)
   const db = getDb();
