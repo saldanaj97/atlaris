@@ -2,21 +2,21 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { generateLearningPlan } from '@/app/plans/actions';
 import { db } from '@/lib/db/service-role';
-import { learningPlans, users } from '@/lib/db/schema';
+import { learningPlans } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-async function ensureUser(): Promise<{ clerkUserId: string }> {
-  const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
-  const email = `${clerkUserId}@example.com`;
-  await db
-    .insert(users)
-    .values({ clerkUserId, email, name: 'Test' })
-    .onConflictDoNothing();
-  return { clerkUserId };
-}
+import {
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '../../helpers/db';
+import {
+  buildTestClerkUserId,
+  buildTestEmail,
+} from '../../helpers/testIds';
 
 describe('Server Action: generateLearningPlan (dates parity)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
     // Deflake: ensure mock provider does not randomly fail
@@ -26,7 +26,11 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
   });
 
   it('persists startDate and deadlineDate when provided', async () => {
-    const { clerkUserId } = await ensureUser();
+    const clerkUserId = buildTestClerkUserId('generate-plan-dates-both');
+    await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
     process.env.DEV_CLERK_USER_ID = clerkUserId;
 
     const startDate = '2025-11-01';
@@ -59,7 +63,11 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
   });
 
   it('allows omitted startDate (null) while keeping deadlineDate', async () => {
-    const { clerkUserId } = await ensureUser();
+    const clerkUserId = buildTestClerkUserId('generate-plan-dates-deadline-only');
+    await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
     process.env.DEV_CLERK_USER_ID = clerkUserId;
 
     const deadlineDate = '2075-12-15';

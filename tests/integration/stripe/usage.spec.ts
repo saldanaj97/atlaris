@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { ensureUser, truncateAll } from '@/../tests/helpers/db';
+import {
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '@/../tests/helpers/db';
+import {
+  buildTestClerkUserId,
+  buildTestEmail,
+} from '@/../tests/helpers/testIds';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import {
@@ -13,14 +20,15 @@ import {
 
 describe('Usage Tracking', () => {
   beforeEach(async () => {
-    await truncateAll();
+    await resetDbForIntegrationTestFile();
   });
 
   describe('checkPlanLimit', () => {
     it('allows free tier user with 0 plans to create up to 3 plans', async () => {
+      const clerkUserId = buildTestClerkUserId('user-free-plan-limit');
       const userId = await ensureUser({
-        clerkUserId: 'user_free_plan_limit',
-        email: 'free@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // No plans yet
@@ -66,9 +74,10 @@ describe('Usage Tracking', () => {
     });
 
     it('allows starter tier user up to 10 plans', async () => {
+      const clerkUserId = buildTestClerkUserId('user-starter-plan-limit');
       const userId = await ensureUser({
-        clerkUserId: 'user_starter_plan_limit',
-        email: 'starter@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // Upgrade to starter
@@ -107,9 +116,10 @@ describe('Usage Tracking', () => {
     });
 
     it('allows pro tier user unlimited plans', async () => {
+      const clerkUserId = buildTestClerkUserId('user-pro-plan-limit');
       const userId = await ensureUser({
-        clerkUserId: 'user_pro_plan_limit',
-        email: 'pro@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // Upgrade to pro
@@ -137,9 +147,10 @@ describe('Usage Tracking', () => {
     });
 
     it('ignores non-eligible plans when enforcing limits', async () => {
+      const clerkUserId = buildTestClerkUserId('user-plan-limit-non-eligible');
       const userId = await ensureUser({
-        clerkUserId: 'user_plan_limit_non_eligible',
-        email: 'non.eligible@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       const finalizedAt = new Date();
@@ -195,9 +206,10 @@ describe('Usage Tracking', () => {
 
   describe('checkRegenerationLimit', () => {
     it('allows free tier user 5 regenerations per month', async () => {
+      const clerkUserId = buildTestClerkUserId('user-free-regen');
       const userId = await ensureUser({
-        clerkUserId: 'user_free_regen',
-        email: 'free.regen@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       const month = new Date().toISOString().slice(0, 7);
@@ -216,9 +228,10 @@ describe('Usage Tracking', () => {
     });
 
     it('allows starter tier user 10 regenerations per month', async () => {
+      const clerkUserId = buildTestClerkUserId('user-starter-regen');
       const userId = await ensureUser({
-        clerkUserId: 'user_starter_regen',
-        email: 'starter.regen@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // Upgrade to starter
@@ -250,9 +263,10 @@ describe('Usage Tracking', () => {
     });
 
     it('allows pro tier user 50 regenerations per month', async () => {
+      const clerkUserId = buildTestClerkUserId('user-pro-regen');
       const userId = await ensureUser({
-        clerkUserId: 'user_pro_regen',
-        email: 'pro.regen@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // Upgrade to pro
@@ -286,9 +300,10 @@ describe('Usage Tracking', () => {
 
   describe('checkExportLimit', () => {
     it('allows free tier user 10 exports per month', async () => {
+      const clerkUserId = buildTestClerkUserId('user-free-export');
       const userId = await ensureUser({
-        clerkUserId: 'user_free_export',
-        email: 'free.export@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       const month = new Date().toISOString().slice(0, 7);
@@ -307,9 +322,10 @@ describe('Usage Tracking', () => {
     });
 
     it('allows starter tier user 50 exports per month', async () => {
+      const clerkUserId = buildTestClerkUserId('user-starter-export');
       const userId = await ensureUser({
-        clerkUserId: 'user_starter_export',
-        email: 'starter.export@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // Upgrade to starter
@@ -332,9 +348,10 @@ describe('Usage Tracking', () => {
     });
 
     it('allows pro tier user unlimited exports', async () => {
+      const clerkUserId = buildTestClerkUserId('user-pro-export');
       const userId = await ensureUser({
-        clerkUserId: 'user_pro_export',
-        email: 'pro.export@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // Upgrade to pro
@@ -359,9 +376,10 @@ describe('Usage Tracking', () => {
 
   describe('incrementUsage', () => {
     it('creates usage metrics row if not exists and increments plan counter', async () => {
+      const clerkUserId = buildTestClerkUserId('user-increment-plan');
       const userId = await ensureUser({
-        clerkUserId: 'user_increment_plan',
-        email: 'increment.plan@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // No metrics yet
@@ -386,9 +404,10 @@ describe('Usage Tracking', () => {
     });
 
     it('increments regeneration counter for existing row', async () => {
+      const clerkUserId = buildTestClerkUserId('user-increment-regen');
       const userId = await ensureUser({
-        clerkUserId: 'user_increment_regen',
-        email: 'increment.regen@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       const month = new Date().toISOString().slice(0, 7);
@@ -410,9 +429,10 @@ describe('Usage Tracking', () => {
     });
 
     it('increments export counter for existing row', async () => {
+      const clerkUserId = buildTestClerkUserId('user-increment-export');
       const userId = await ensureUser({
-        clerkUserId: 'user_increment_export',
-        email: 'increment.export@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       const month = new Date().toISOString().slice(0, 7);
@@ -434,9 +454,10 @@ describe('Usage Tracking', () => {
     });
 
     it('updates updatedAt timestamp', async () => {
+      const clerkUserId = buildTestClerkUserId('user-increment-timestamp');
       const userId = await ensureUser({
-        clerkUserId: 'user_increment_timestamp',
-        email: 'increment.timestamp@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       const month = new Date().toISOString().slice(0, 7);
@@ -466,9 +487,10 @@ describe('Usage Tracking', () => {
 
   describe('getUsageSummary', () => {
     it('excludes non-eligible plans and counts only eligible ones', async () => {
+      const clerkUserId = buildTestClerkUserId('user-summary-eligibility-filter');
       const userId = await ensureUser({
-        clerkUserId: 'user_summary_eligibility_filter',
-        email: 'summary.eligibility@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       const finalizedAt = new Date();
@@ -522,9 +544,10 @@ describe('Usage Tracking', () => {
       expect(summary.activePlans.current).toBe(2);
     });
     it('returns complete usage summary for free tier', async () => {
+      const clerkUserId = buildTestClerkUserId('user-summary-free');
       const userId = await ensureUser({
-        clerkUserId: 'user_summary_free',
-        email: 'summary.free@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // Create 2 plans
@@ -581,9 +604,10 @@ describe('Usage Tracking', () => {
     });
 
     it('returns summary for pro tier with Infinity limits', async () => {
+      const clerkUserId = buildTestClerkUserId('user-summary-pro');
       const userId = await ensureUser({
-        clerkUserId: 'user_summary_pro',
-        email: 'summary.pro@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // Upgrade to pro
@@ -635,9 +659,10 @@ describe('Usage Tracking', () => {
     });
 
     it('creates usage metrics row for current month if not exists', async () => {
+      const clerkUserId = buildTestClerkUserId('user-summary-create');
       const userId = await ensureUser({
-        clerkUserId: 'user_summary_create',
-        email: 'summary.create@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // No metrics yet
@@ -664,9 +689,10 @@ describe('Usage Tracking', () => {
 
   describe('Monthly Partitioning', () => {
     it('auto-resets usage for new month via separate row', async () => {
+      const clerkUserId = buildTestClerkUserId('user-monthly-partition');
       const userId = await ensureUser({
-        clerkUserId: 'user_monthly_partition',
-        email: 'monthly@example.com',
+        clerkUserId,
+        email: buildTestEmail(clerkUserId),
       });
 
       // January usage

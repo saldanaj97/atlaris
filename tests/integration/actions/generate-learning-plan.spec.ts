@@ -5,19 +5,18 @@ import {
   modules,
   tasks,
   usageMetrics,
-  users,
 } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-async function ensureUser(): Promise<void> {
-  const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
-  const email = `${clerkUserId}@example.com`;
-  await db
-    .insert(users)
-    .values({ clerkUserId, email, name: 'Test' })
-    .onConflictDoNothing();
-}
+import {
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '../../helpers/db';
+import {
+  buildTestClerkUserId,
+  buildTestEmail,
+} from '../../helpers/testIds';
 
 const ORIGINAL = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -26,7 +25,8 @@ const ORIGINAL = {
 };
 
 describe('Server Action: generateLearningPlan', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
     // Deflake: ensure mock provider does not randomly fail
@@ -53,7 +53,12 @@ describe('Server Action: generateLearningPlan', () => {
   });
 
   it('creates a plan, generates modules/tasks, and persists them', async () => {
-    await ensureUser();
+    const clerkUserId = buildTestClerkUserId('generate-plan-success');
+    await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
+    process.env.DEV_CLERK_USER_ID = clerkUserId;
 
     const res = await generateLearningPlan({
       topic: 'React',
@@ -101,7 +106,12 @@ describe('Server Action: generateLearningPlan', () => {
   });
 
   it('marks plan as failed and skips usage on generation failure', async () => {
-    await ensureUser();
+    const clerkUserId = buildTestClerkUserId('generate-plan-failure');
+    await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
+    process.env.DEV_CLERK_USER_ID = clerkUserId;
 
     const originalFailureRate = process.env.MOCK_GENERATION_FAILURE_RATE;
     process.env.MOCK_GENERATION_FAILURE_RATE = '1';

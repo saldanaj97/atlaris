@@ -6,7 +6,14 @@ import type { Job } from '@/lib/jobs/types';
 import { JOB_TYPES } from '@/lib/jobs/types';
 import { buildUserPrompt, type PromptParams } from '@/lib/ai/prompts';
 
-import { ensureUser, truncateAll } from '../../helpers/db';
+import {
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '../../helpers/db';
+import {
+  buildTestClerkUserId,
+  buildTestEmail,
+} from '../../helpers/testIds';
 
 // Capture inputs seen by mocked providers across router chain
 
@@ -117,7 +124,7 @@ const origAiProvider = process.env.AI_PROVIDER;
 
 describe('Worker-path prompt propagation with dates', () => {
   beforeEach(async () => {
-    await truncateAll();
+    await resetDbForIntegrationTestFile();
     // Ensure router is used by deleting AI_PROVIDER and setting AI_USE_MOCK
     delete process.env.AI_PROVIDER;
     process.env.AI_USE_MOCK = 'false';
@@ -133,9 +140,11 @@ describe('Worker-path prompt propagation with dates', () => {
   });
 
   it('passes startDate/deadlineDate through to provider prompt (integration)', async () => {
-    const clerkUserId = 'worker-dates-user';
-    const email = `${clerkUserId}@example.com`;
-    const userId = await ensureUser({ clerkUserId, email });
+    const clerkUserId = buildTestClerkUserId('worker-dates-user');
+    const userId = await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
 
     const [plan] = await db
       .insert(learningPlans)

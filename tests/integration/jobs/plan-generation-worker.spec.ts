@@ -35,8 +35,15 @@ import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-gen
 import { PersistenceService } from '@/workers/services/persistence-service';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
-import { ensureUser } from '../../helpers/db';
+import {
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '../../helpers/db';
 import { createDefaultHandlers } from '../../helpers/workerHelpers';
+import {
+  buildTestClerkUserId,
+  buildTestEmail,
+} from '../../helpers/testIds';
 
 const originalEnv = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -48,6 +55,10 @@ beforeAll(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   process.env.MOCK_GENERATION_DELAY_MS = '1000';
+});
+
+beforeEach(async () => {
+  await resetDbForIntegrationTestFile();
 });
 
 afterAll(() => {
@@ -116,10 +127,10 @@ async function fetchJob(jobId: string) {
 }
 
 async function createPlanForUser(key: string) {
-  const clerkUserId = `worker-${key}`;
+  const clerkUserId = buildTestClerkUserId(`worker-${key}`);
   const userId = await ensureUser({
     clerkUserId,
-    email: `${clerkUserId}@example.com`,
+    email: buildTestEmail(clerkUserId),
   });
 
   const [plan] = await db
@@ -178,10 +189,10 @@ describe('PlanGenerationWorker', () => {
       closeDbOnStop: false,
     });
 
-    const clerkUserId = 'worker-test-user';
+    const clerkUserId = buildTestClerkUserId('worker-test-user');
     const userId = await ensureUser({
       clerkUserId,
-      email: 'worker-test-user@example.com',
+      email: buildTestEmail(clerkUserId),
     });
 
     const [plan] = await db

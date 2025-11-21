@@ -219,6 +219,23 @@ export async function ensureTaskCalendarEvents() {
 
 // Cache table removed – no-op helper deleted
 
+/**
+ * Reset database to a clean state for integration tests.
+ * This is the single authority for DB reset in test files.
+ *
+ * Call this in beforeEach or beforeAll to ensure test isolation.
+ */
+export async function resetDbForIntegrationTestFile() {
+  // Hard reset all core tables
+  await truncateAll();
+
+  // Ensure RLS roles/permissions exist (mirror CI bootstrap)
+  await ensureRlsRolesAndPermissions();
+
+  // Ensure enum values needed by tests exist (e.g. plan_regeneration)
+  await ensureJobTypeEnumValue();
+}
+
 export async function ensureUser({
   clerkUserId,
   email,

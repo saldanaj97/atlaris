@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/service-role';
@@ -10,14 +10,24 @@ import {
 } from '@/lib/db/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import {
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '../../helpers/db';
+import {
+  buildTestClerkUserId,
+  buildTestEmail,
+} from '../../helpers/testIds';
 import { createMockProvider } from '../../helpers/mockProvider';
 
-const clerkUserId = 'clerk_generation_success';
-const clerkEmail = 'generation-success@example.com';
-
 describe('generation integration - success path', () => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+  });
+
   it('persists modules/tasks and logs a successful attempt', async () => {
+    const clerkUserId = buildTestClerkUserId('generation-success');
+    const clerkEmail = buildTestEmail(clerkUserId);
     setTestUser(clerkUserId);
     const userId = await ensureUser({ clerkUserId, email: clerkEmail });
 
