@@ -2,6 +2,7 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -10,7 +11,6 @@ import {
 
 import { eq, inArray } from 'drizzle-orm';
 
-import { db } from '@/lib/db/service-role';
 import {
   generationAttempts,
   jobQueue,
@@ -18,22 +18,24 @@ import {
   modules,
   tasks,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { enqueueJob } from '@/lib/jobs/queue';
 import {
   JOB_TYPES,
   type Job,
   type PlanGenerationJobResult,
 } from '@/lib/jobs/types';
+import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-generation-handler';
 import {
   PlanGenerationWorker,
   type JobHandler,
 } from '@/workers/plan-generator';
-import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-generation-handler';
+import { CurationService } from '@/workers/services/curation-service';
 import { PersistenceService } from '@/workers/services/persistence-service';
 
-import { createDefaultHandlers } from '../../helpers/workerHelpers';
-
 import { ensureUser } from '../../helpers/db';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import { createDefaultHandlers } from '../../helpers/workerHelpers';
 
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -102,10 +104,10 @@ type PlanFixture = {
 };
 
 async function createPlanFixture(key: string): Promise<PlanFixture> {
-  const clerkUserId = `worker-${key}`;
+  const clerkUserId = buildTestClerkUserId(`worker-${key}`);
   const userId = await ensureUser({
     clerkUserId,
-    email: `${clerkUserId}@example.com`,
+    email: buildTestEmail(clerkUserId),
   });
 
   const [plan] = await db
@@ -135,6 +137,11 @@ async function fetchJob(jobId: string) {
 }
 
 describe('PlanGenerationWorker', () => {
+  // Disable external curation in integration tests to avoid network/rate-limit delays
+  beforeEach(() => {
+    vi.spyOn(CurationService, 'shouldRunCuration').mockReturnValue(false);
+  });
+
   it('processes a plan generation job end-to-end (J026 success + T072 + T073)', async () => {
     const worker = new PlanGenerationWorker({
       handlers: createDefaultHandlers(),
@@ -164,6 +171,9 @@ describe('PlanGenerationWorker', () => {
     try {
       await waitFor(async () => {
         const row = await fetchJob(jobId);
+        if (row?.status === 'failed') {
+          throw new Error(`Job failed: ${row.error ?? 'unknown error'}`);
+        }
         return row?.status === 'completed';
       });
     } finally {

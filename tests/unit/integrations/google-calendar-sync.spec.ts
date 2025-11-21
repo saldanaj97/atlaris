@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import type { GoogleCalendarClient } from '@/lib/integrations/google-calendar/types';

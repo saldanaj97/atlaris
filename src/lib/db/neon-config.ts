@@ -43,6 +43,6 @@ export function configureLocalNeon() {
     host === localHost ? `${host}:4444/v2` : `${host}/v2`;
 
   // Use native WebSocket constructor
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
   neonConfig.webSocketConstructor = ws;
 }

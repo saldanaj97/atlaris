@@ -1,12 +1,4 @@
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { eq, inArray } from 'drizzle-orm';
 
@@ -34,9 +26,11 @@ import {
 import type { ProcessPlanGenerationJobResult } from '@/workers/handlers/plan-generation-handler';
 import { PersistenceService } from '@/workers/services/persistence-service';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import { CurationService } from '@/workers/services/curation-service';
 
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { createDefaultHandlers } from '../../helpers/workerHelpers';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
 
 const originalEnv = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -44,13 +38,17 @@ const originalEnv = {
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
 };
 
-beforeAll(() => {
+beforeEach(async () => {
+  await resetDbForIntegrationTestFile();
+});
+
+beforeEach(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.MOCK_GENERATION_FAILURE_RATE = '0';
   process.env.MOCK_GENERATION_DELAY_MS = '1000';
 });
 
-afterAll(() => {
+afterEach(() => {
   if (originalEnv.AI_PROVIDER === undefined) {
     delete process.env.AI_PROVIDER;
   } else {
@@ -116,10 +114,10 @@ async function fetchJob(jobId: string) {
 }
 
 async function createPlanForUser(key: string) {
-  const clerkUserId = `worker-${key}`;
+  const clerkUserId = buildTestClerkUserId(`worker-${key}`);
   const userId = await ensureUser({
     clerkUserId,
-    email: `${clerkUserId}@example.com`,
+    email: buildTestEmail(clerkUserId),
   });
 
   const [plan] = await db
@@ -143,6 +141,11 @@ async function createPlanForUser(key: string) {
 }
 
 describe('PlanGenerationWorker', () => {
+  // Disable external curation in integration tests to avoid network/rate-limit delays
+  beforeEach(() => {
+    vi.spyOn(CurationService, 'shouldRunCuration').mockReturnValue(false);
+  });
+
   it('cycles without jobs in the queue (T030)', async () => {
     const worker = new PlanGenerationWorker({
       handlers: createDefaultHandlers(),
@@ -178,10 +181,10 @@ describe('PlanGenerationWorker', () => {
       closeDbOnStop: false,
     });
 
-    const clerkUserId = 'worker-test-user';
+    const clerkUserId = buildTestClerkUserId('worker-test-user');
     const userId = await ensureUser({
       clerkUserId,
-      email: 'worker-test-user@example.com',
+      email: buildTestEmail(clerkUserId),
     });
 
     const [plan] = await db
