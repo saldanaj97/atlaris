@@ -19,7 +19,7 @@ function createMockCalendarClient(): GoogleCalendarClient {
 
   const eventsApi = {
     async insert({
-      calendarId,
+      calendarId: _calendarId,
       requestBody,
     }: {
       calendarId: string;
@@ -39,7 +39,7 @@ function createMockCalendarClient(): GoogleCalendarClient {
     },
 
     async delete({
-      calendarId,
+      calendarId: _calendarId,
       eventId,
     }: {
       calendarId: string;

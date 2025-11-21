@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import type { calendar_v3 } from 'googleapis';
 import { googleOAuthEnv } from '@/lib/config/env';
 import type { GoogleCalendarClient } from './types';
 
@@ -39,8 +40,21 @@ export function createGoogleCalendarClient(
 
   return {
     events: {
-      insert: (params) => calendar.events.insert(params as any),
-      delete: (params) => calendar.events.delete(params as any).then(() => {}),
+      insert: (params: {
+        calendarId: string;
+        requestBody: calendar_v3.Schema$Event;
+      }) =>
+        calendar.events.insert({
+          calendarId: params.calendarId,
+          requestBody: params.requestBody,
+        }),
+      delete: (params: { calendarId: string; eventId: string }) =>
+        calendar.events
+          .delete({
+            calendarId: params.calendarId,
+            eventId: params.eventId,
+          })
+          .then(() => {}),
     },
   };
 }

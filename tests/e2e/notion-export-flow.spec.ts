@@ -23,7 +23,7 @@ import type {
 function createMockNotionClient(): NotionIntegrationClient {
   return {
     async createPage(
-      params: CreatePageParameters
+      _params: CreatePageParameters
     ): Promise<CreatePageResponse> {
       return {
         id: 'notion_page_e2e',
@@ -40,8 +40,8 @@ function createMockNotionClient(): NotionIntegrationClient {
     },
 
     async appendBlocks(
-      pageId: string,
-      blocks: BlockObjectRequest[]
+      _pageId: string,
+      _blocks: BlockObjectRequest[]
     ): Promise<AppendBlockChildrenResponse> {
       return {
         type: 'block' as const,
@@ -54,8 +54,8 @@ function createMockNotionClient(): NotionIntegrationClient {
     },
 
     async replaceBlocks(
-      pageId: string,
-      blocks: BlockObjectRequest[]
+      _pageId: string,
+      _blocks: BlockObjectRequest[]
     ): Promise<AppendBlockChildrenResponse> {
       return {
         type: 'block' as const,
