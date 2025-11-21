@@ -1,17 +1,17 @@
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert } from 'lucide-react';
 
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
 export default function MaintenancePage() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-5">
-      <Card className="max-w-2xl w-full text-center">
+    <div className="bg-background flex min-h-screen items-center justify-center p-5">
+      <Card className="w-full max-w-2xl text-center">
         <CardContent className="space-y-6">
           {/* Icon */}
           <div className="flex justify-center">
-            <div className="bg-main rounded-full p-5 animate-pulse border-2 border-border shadow-shadow">
-              <ShieldAlert className="w-10 h-10 text-main-foreground" />
+            <div className="bg-main border-border shadow-shadow animate-pulse rounded-full border-2 p-5">
+              <ShieldAlert className="text-main-foreground h-10 w-10" />
             </div>
           </div>
 
@@ -19,20 +19,20 @@ export default function MaintenancePage() {
           <div className="flex justify-center">
             <Badge className="gap-2">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-main-foreground opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-main-foreground"></span>
+                <span className="bg-main-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
+                <span className="bg-main-foreground relative inline-flex h-2 w-2 rounded-full"></span>
               </span>
               System Maintenance in Progress
             </Badge>
           </div>
 
           {/* Title */}
-          <h1 className="text-3xl md:text-4xl font-heading text-foreground">
+          <h1 className="font-heading text-foreground text-3xl md:text-4xl">
             We're Currently Under Maintenance
           </h1>
 
           {/* Subtitle */}
-          <p className="text-lg text-foreground opacity-70">
+          <p className="text-foreground text-lg opacity-70">
             Our platform is temporarily unavailable while we perform important
             updates and improvements.
           </p>
@@ -41,15 +41,15 @@ export default function MaintenancePage() {
           <Card className="text-left">
             <CardContent className="space-y-4">
               <p className="text-foreground leading-relaxed">
-                We sincerely apologize for any inconvenience this may cause.
-                Our team is actively working on critical fixes and system
+                We sincerely apologize for any inconvenience this may cause. Our
+                team is actively working on critical fixes and system
                 enhancements to improve your experience.
               </p>
               <p className="text-foreground leading-relaxed">
-                <span className="text-main font-semibold">Good news:</span> We're
-                in the process of migrating to a zero-downtime infrastructure.
-                Once complete, future updates will occur seamlessly without
-                interrupting your service.
+                <span className="text-main font-semibold">Good news:</span>{' '}
+                We're in the process of migrating to a zero-downtime
+                infrastructure. Once complete, future updates will occur
+                seamlessly without interrupting your service.
               </p>
               <p className="text-foreground leading-relaxed">
                 We appreciate your patience and understanding as we work to make
@@ -60,11 +60,11 @@ export default function MaintenancePage() {
         </CardContent>
 
         {/* Footer */}
-        <CardFooter className="flex-col gap-2 border-t-2 border-border text-center">
-          <p className="text-foreground opacity-60 text-sm">
+        <CardFooter className="border-border flex-col gap-2 border-t-2 text-center">
+          <p className="text-foreground text-sm opacity-60">
             Expected to be back online shortly
           </p>
-          <p className="text-foreground opacity-60 text-sm">
+          <p className="text-foreground text-sm opacity-60">
             If you have urgent questions, please contact our support team
           </p>
         </CardFooter>

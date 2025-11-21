@@ -1,21 +1,22 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { generateLearningPlan } from '@/app/plans/actions';
+import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { learningPlans, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-async function ensureUser(): Promise<{ clerkUserId: string }> {
-  const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
-  const email = `${clerkUserId}@example.com`;
-  await db
-    .insert(users)
-    .values({ clerkUserId, email, name: 'Test' })
-    .onConflictDoNothing();
-  return { clerkUserId };
-}
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+
+const ORIGINAL = {
+  DEV_CLERK_USER_ID: process.env.DEV_CLERK_USER_ID,
+};
 
 describe('Server Action: generateLearningPlan (dates parity)', () => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+  });
+
   beforeEach(() => {
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
@@ -25,8 +26,20 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
     process.env.MOCK_GENERATION_DELAY_MS = '100';
   });
 
+  afterEach(() => {
+    if (ORIGINAL.DEV_CLERK_USER_ID === undefined) {
+      delete process.env.DEV_CLERK_USER_ID;
+    } else {
+      process.env.DEV_CLERK_USER_ID = ORIGINAL.DEV_CLERK_USER_ID;
+    }
+  });
+
   it('persists startDate and deadlineDate when provided', async () => {
-    const { clerkUserId } = await ensureUser();
+    const clerkUserId = buildTestClerkUserId('generate-learning-plan-dates');
+    await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
     process.env.DEV_CLERK_USER_ID = clerkUserId;
 
     const startDate = '2025-11-01';
@@ -59,7 +72,11 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
   });
 
   it('allows omitted startDate (null) while keeping deadlineDate', async () => {
-    const { clerkUserId } = await ensureUser();
+    const clerkUserId = buildTestClerkUserId('generate-learning-plan-dates');
+    await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
     process.env.DEV_CLERK_USER_ID = clerkUserId;
 
     const deadlineDate = '2075-12-15';

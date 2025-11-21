@@ -6,21 +6,11 @@ import { client, isClientInitialized } from '@/lib/db/service-role';
 import { Mutex } from 'async-mutex';
 import {
   ensureGoogleCalendarSyncState,
-  ensureJobTypeEnumValue,
   ensureNotionSyncState,
-  ensureRlsRolesAndPermissions,
   ensureStripeWebhookEvents,
   ensureTaskCalendarEvents,
-  truncateAll,
+  resetDbForIntegrationTestFile,
 } from './helpers/db';
-
-// Set encryption key for OAuth token crypto in tests (64 hex chars = 32 bytes)
-if (!process.env.OAUTH_ENCRYPTION_KEY) {
-  Object.assign(process.env, {
-    OAUTH_ENCRYPTION_KEY:
-      '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-  });
-}
 
 const skipDbSetup = process.env.SKIP_DB_TEST_SETUP === 'true';
 
@@ -66,9 +56,7 @@ if (!skipDbSetup) {
   beforeEach(async () => {
     assertSafeToTruncate();
     releaseDbLock = await dbLock.acquire();
-    await truncateAll();
-    await ensureRlsRolesAndPermissions();
-    await ensureJobTypeEnumValue();
+    await resetDbForIntegrationTestFile();
     await ensureStripeWebhookEvents();
     await ensureNotionSyncState();
     await ensureGoogleCalendarSyncState();

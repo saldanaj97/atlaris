@@ -1,32 +1,29 @@
 import { generateLearningPlan } from '@/app/plans/actions';
 import { db } from '@/lib/db/service-role';
-import {
-  aiUsageEvents,
-  modules,
-  tasks,
-  usageMetrics,
-  users,
-} from '@/lib/db/schema';
+import { aiUsageEvents, modules, tasks, usageMetrics } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-async function ensureUser(): Promise<void> {
-  const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
-  const email = `${clerkUserId}@example.com`;
-  await db
-    .insert(users)
-    .values({ clerkUserId, email, name: 'Test' })
-    .onConflictDoNothing();
-}
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
 
 const ORIGINAL = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   AI_USE_MOCK: process.env.AI_USE_MOCK,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
+  DEV_CLERK_USER_ID: process.env.DEV_CLERK_USER_ID,
 };
 
+let clerkUserId: string;
+
 describe('Server Action: generateLearningPlan', () => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+  });
+
   beforeEach(() => {
+    clerkUserId = buildTestClerkUserId('generate-learning-plan');
+    process.env.DEV_CLERK_USER_ID = clerkUserId;
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
     // Deflake: ensure mock provider does not randomly fail
@@ -34,6 +31,11 @@ describe('Server Action: generateLearningPlan', () => {
   });
 
   afterEach(() => {
+    if (ORIGINAL.DEV_CLERK_USER_ID === undefined) {
+      delete process.env.DEV_CLERK_USER_ID;
+    } else {
+      process.env.DEV_CLERK_USER_ID = ORIGINAL.DEV_CLERK_USER_ID;
+    }
     if (ORIGINAL.AI_PROVIDER === undefined) {
       delete process.env.AI_PROVIDER;
     } else {
@@ -53,7 +55,10 @@ describe('Server Action: generateLearningPlan', () => {
   });
 
   it('creates a plan, generates modules/tasks, and persists them', async () => {
-    await ensureUser();
+    await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
 
     const res = await generateLearningPlan({
       topic: 'React',
@@ -101,7 +106,10 @@ describe('Server Action: generateLearningPlan', () => {
   });
 
   it('marks plan as failed and skips usage on generation failure', async () => {
-    await ensureUser();
+    await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
 
     const originalFailureRate = process.env.MOCK_GENERATION_FAILURE_RATE;
     process.env.MOCK_GENERATION_FAILURE_RATE = '1';

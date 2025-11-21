@@ -1,8 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
-import { ensureUser, truncateAll } from '@/../tests/helpers/db';
-import { setTestUser } from '@/../tests/helpers/auth';
+
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { setTestUser } from '../../helpers/auth';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import {
+  markUserAsSubscribed,
+  buildStripeCustomerId,
+  buildStripeSubscriptionId,
+} from '../../helpers/subscription';
 import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
 import { POST as createPortalPOST } from '@/app/api/v1/stripe/create-portal/route';
@@ -14,29 +21,32 @@ vi.mock('@/lib/stripe/client', () => ({
   getStripe: vi.fn(),
 }));
 
+async function createAuthTestUser() {
+  const clerkUserId = buildTestClerkUserId('stripe-api');
+  const email = buildTestEmail(clerkUserId);
+  const userId = await ensureUser({ clerkUserId, email });
+  setTestUser(clerkUserId);
+  return userId;
+}
+
 describe('Stripe API Routes', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   beforeEach(async () => {
-    await truncateAll();
+    await resetDbForIntegrationTestFile();
     vi.clearAllMocks();
   });
 
   describe('POST /api/v1/stripe/create-portal', () => {
     it('creates portal session for existing customer', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_portal',
-        email: 'portal@example.com',
-      });
-
+      const userId = await createAuthTestUser();
+      const stripeCustomerId = buildStripeCustomerId(userId, 'portal');
       await db
         .update(users)
-        .set({ stripeCustomerId: 'cus_portal123' })
+        .set({ stripeCustomerId })
         .where(sql`id = ${userId}`);
-
-      setTestUser('user_portal');
 
       const mockStripe = {
         billingPortal: {
@@ -75,12 +85,7 @@ describe('Stripe API Routes', () => {
     });
 
     it('returns 400 when no Stripe customer exists', async () => {
-      await ensureUser({
-        clerkUserId: 'user_no_customer',
-        email: 'no.customer@example.com',
-      });
-
-      setTestUser('user_no_customer');
+      await createAuthTestUser();
 
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
@@ -139,15 +144,15 @@ describe('Stripe API Routes', () => {
     });
 
     it('handles subscription.created event and syncs to DB', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_sub_created',
-        email: 'sub.created@example.com',
+      const userId = await createAuthTestUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'free',
+        subscriptionStatus: 'canceled',
       });
-
-      await db
-        .update(users)
-        .set({ stripeCustomerId: 'cus_sub_created' })
-        .where(sql`id = ${userId}`);
+      const expectedSubscriptionId = buildStripeSubscriptionId(
+        userId,
+        'webhook-created'
+      );
 
       const event = {
         id: 'evt_sub_created',
@@ -155,8 +160,8 @@ describe('Stripe API Routes', () => {
         livemode: false,
         data: {
           object: {
-            id: 'sub_new123',
-            customer: 'cus_sub_created',
+            id: expectedSubscriptionId,
+            customer: stripeCustomerId,
             status: 'active',
             items: {
               data: [
@@ -208,25 +213,24 @@ describe('Stripe API Routes', () => {
         .where(sql`id = ${userId}`);
       expect(user?.subscriptionTier).toBe('starter');
       expect(user?.subscriptionStatus).toBe('active');
+      expect(user?.stripeCustomerId).toBe(stripeCustomerId);
+      expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
+      expect(user?.subscriptionPeriodEnd).toEqual(new Date(1735689600 * 1000));
 
       delete process.env.STRIPE_WEBHOOK_SECRET;
       constructEventSpy.mockRestore();
     });
 
     it('handles subscription.deleted event and downgrades to free', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_sub_deleted',
-        email: 'sub.deleted@example.com',
+      const userId = await createAuthTestUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'pro',
+        subscriptionStatus: 'active',
       });
-
-      await db
-        .update(users)
-        .set({
-          stripeCustomerId: 'cus_sub_deleted',
-          subscriptionTier: 'pro',
-          subscriptionStatus: 'active',
-        })
-        .where(sql`id = ${userId}`);
+      const expectedSubscriptionId = buildStripeSubscriptionId(
+        userId,
+        'webhook-deleted'
+      );
 
       const event = {
         id: 'evt_sub_deleted',
@@ -234,8 +238,8 @@ describe('Stripe API Routes', () => {
         livemode: false,
         data: {
           object: {
-            id: 'sub_deleted123',
-            customer: 'cus_sub_deleted',
+            id: expectedSubscriptionId,
+            customer: stripeCustomerId,
           },
         },
       } as unknown as Stripe.Event;
@@ -289,10 +293,7 @@ describe('Stripe API Routes', () => {
 
   describe('GET /api/v1/user/subscription', () => {
     it('returns subscription and usage data', async () => {
-      const userId = await ensureUser({
-        clerkUserId: 'user_get_sub',
-        email: 'get.sub@example.com',
-      });
+      const userId = await createAuthTestUser();
 
       await db
         .update(users)
@@ -302,8 +303,6 @@ describe('Stripe API Routes', () => {
           subscriptionPeriodEnd: new Date('2025-12-31'),
         })
         .where(sql`id = ${userId}`);
-
-      setTestUser('user_get_sub');
 
       const request = new Request('http://localhost/api/v1/user/subscription', {
         method: 'GET',

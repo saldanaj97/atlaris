@@ -18,10 +18,16 @@ vi.mock('@/lib/logging/logger', () => ({
   createLogger: () => mockLogger,
 }));
 
-vi.mock('@/lib/db/service-role', () => ({
-  db: {
-    select: vi.fn(),
-  },
+// Mock getDb to return our mocked DB
+const mockDbInstance = {
+  select: vi.fn(),
+  from: vi.fn(),
+  where: vi.fn(),
+  limit: vi.fn(),
+};
+
+vi.mock('@/lib/db/runtime', () => ({
+  getDb: vi.fn(() => mockDbInstance),
 }));
 
 vi.mock('@/lib/integrations/oauth', () => ({
@@ -32,10 +38,15 @@ vi.mock('@/lib/integrations/google-calendar/sync', () => ({
   syncPlanToGoogleCalendar: vi.fn(),
 }));
 
+vi.mock('@/lib/integrations/google-calendar/factory', () => ({
+  createGoogleCalendarClient: vi.fn(),
+}));
+
 describe('Google Calendar Sync Route', () => {
   let mockDb: any;
   let mockGetOAuthTokens: any;
   let mockSyncPlanToGoogleCalendar: any;
+  let mockCreateGoogleCalendarClient: any;
   let mockCheckExportQuota: any;
   let mockIncrementExportUsage: any;
 
@@ -46,15 +57,18 @@ describe('Google Calendar Sync Route', () => {
     setTestUser('clerk-user-123');
 
     // Import mocked functions
-    const { db } = await import('@/lib/db/service-role');
     const { getOAuthTokens } = await import('@/lib/integrations/oauth');
     const { syncPlanToGoogleCalendar } = await import(
       '@/lib/integrations/google-calendar/sync'
+    );
+    const { createGoogleCalendarClient } = await import(
+      '@/lib/integrations/google-calendar/factory'
     );
     const usage = await import('@/lib/db/usage');
 
     mockGetOAuthTokens = vi.mocked(getOAuthTokens);
     mockSyncPlanToGoogleCalendar = vi.mocked(syncPlanToGoogleCalendar);
+    mockCreateGoogleCalendarClient = vi.mocked(createGoogleCalendarClient);
     mockCheckExportQuota = vi
       .spyOn(usage, 'checkExportQuota')
       .mockResolvedValue(true);
@@ -62,14 +76,21 @@ describe('Google Calendar Sync Route', () => {
       .spyOn(usage, 'incrementExportUsage')
       .mockResolvedValue(undefined);
 
-    // Setup db mock
-    mockDb = {
-      from: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
+    // Setup a mock Google Calendar client object
+    const mockCalendarClient = {
+      events: {
+        insert: vi.fn(),
+        delete: vi.fn(),
+      },
     };
-    (db.select as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
+    mockCreateGoogleCalendarClient.mockReturnValue(mockCalendarClient);
+
+    // Setup db mock chain - use mockDbInstance instead
+    mockDb = mockDbInstance;
+    mockDb.from.mockReturnThis();
+    mockDb.select.mockReturnThis();
+    mockDb.where.mockReturnThis();
+    mockDb.limit.mockReturnThis();
   });
 
   afterEach(() => {
@@ -295,10 +316,21 @@ describe('Google Calendar Sync Route', () => {
 
       await POST(request);
 
+      // Verify the factory was called with the correct tokens
+      expect(mockCreateGoogleCalendarClient).toHaveBeenCalledWith({
+        accessToken: 'test-token',
+        refreshToken: 'test-refresh',
+      });
+
+      // Verify syncPlanToGoogleCalendar was called with planId and the client object
       expect(mockSyncPlanToGoogleCalendar).toHaveBeenCalledWith(
         planId,
-        'test-token',
-        'test-refresh'
+        expect.objectContaining({
+          events: expect.objectContaining({
+            insert: expect.any(Function),
+            delete: expect.any(Function),
+          }),
+        })
       );
     });
 
@@ -465,10 +497,21 @@ describe('Google Calendar Sync Route', () => {
       const response = await POST(request);
       expect(response.status).toBe(200);
 
+      // Verify the factory was called with undefined refresh token
+      expect(mockCreateGoogleCalendarClient).toHaveBeenCalledWith({
+        accessToken: 'test-token',
+        refreshToken: undefined,
+      });
+
+      // Verify syncPlanToGoogleCalendar was called with planId and the client object
       expect(mockSyncPlanToGoogleCalendar).toHaveBeenCalledWith(
         '123e4567-e89b-12d3-a456-426614174000',
-        'test-token',
-        undefined
+        expect.objectContaining({
+          events: expect.objectContaining({
+            insert: expect.any(Function),
+            delete: expect.any(Function),
+          }),
+        })
       );
     });
 

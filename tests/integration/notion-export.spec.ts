@@ -18,12 +18,6 @@ vi.mock('@/lib/integrations/notion/client', () => ({
   })),
 }));
 
-// Set encryption key for tests (64 hex characters = 32 bytes for AES-256)
-if (!process.env.OAUTH_ENCRYPTION_KEY) {
-  process.env.OAUTH_ENCRYPTION_KEY =
-    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-}
-
 describe('Notion Export API', () => {
   let testUserId: string;
   let testPlanId: string;

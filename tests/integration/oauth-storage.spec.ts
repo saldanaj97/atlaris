@@ -8,12 +8,6 @@ import {
 } from '@/lib/integrations/oauth';
 import { eq, and, sql } from 'drizzle-orm';
 
-// Set encryption key for tests (64 hex characters = 32 bytes for AES-256)
-if (!process.env.OAUTH_ENCRYPTION_KEY) {
-  process.env.OAUTH_ENCRYPTION_KEY =
-    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-}
-
 async function ensureIntegrationTokensTable() {
   // Create enum if it doesn't exist
   await db.execute(sql`

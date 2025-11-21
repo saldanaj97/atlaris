@@ -1,4 +1,3 @@
-import '../mocks/e2e/notion-client.e2e';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '@/lib/db/service-role';
 import {
@@ -11,6 +10,7 @@ import {
 import { eq } from 'drizzle-orm';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { exportPlanToNotion } from '@/lib/integrations/notion/sync';
+import { createSimpleMockNotionClient } from '../mocks/shared/notion-client.shared';
 
 describe('Notion Export E2E Flow', () => {
   let userId: string;
@@ -73,7 +73,9 @@ describe('Notion Export E2E Flow', () => {
   });
 
   it('should complete full Notion export workflow', async () => {
-    const notionPageId = await exportPlanToNotion(planId, userId, 'e2e_token');
+    const mockClient = createSimpleMockNotionClient('notion_page_e2e');
+
+    const notionPageId = await exportPlanToNotion(planId, userId, mockClient);
 
     expect(notionPageId).toBe('notion_page_e2e');
 

@@ -117,6 +117,40 @@ const getServerOptional = (key: string): string | undefined => {
   return serverOptionalCache.get(key);
 };
 
+// Check if running in production (not test or development)
+const isProdRuntime =
+  typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
+
+/**
+ * Retrieves an environment variable that is required in production but optional in dev/test.
+ *
+ * - In production: throws if missing (uses requireEnv).
+ * - In dev/test: returns undefined if missing (uses optionalEnv).
+ * - Ensures the variable is only accessed in a server runtime.
+ * - Caching behavior follows the same pattern as getServerRequired/getServerOptional.
+ *
+ * Use this for third-party integration credentials (e.g., Google OAuth, Notion)
+ * that are required in production but can be mocked or omitted in tests.
+ *
+ * @param {string} key - The name of the environment variable to retrieve.
+ * @returns {string | undefined} The value of the environment variable, or undefined in non-prod if not set.
+ * @throws In production if the environment variable is missing.
+ */
+const getServerRequiredProdOnly = (key: string): string | undefined => {
+  ensureServerRuntime();
+
+  if (!isProdRuntime) {
+    // In dev/test/CI, treat as optional – tests/mocks or routes must handle missing
+    return getServerOptional(key);
+  }
+
+  // In prod: genuinely required and cached
+  if (!serverRequiredCache.has(key)) {
+    serverRequiredCache.set(key, requireEnv(key));
+  }
+  return serverRequiredCache.get(key)!;
+};
+
 export const appEnv = {
   get nodeEnv(): NodeEnv {
     return (optionalEnv('NODE_ENV') as NodeEnv | undefined) ?? 'development';
@@ -176,13 +210,13 @@ export const notionEnv = {
 
 export const googleOAuthEnv = {
   get clientId() {
-    return getServerRequired('GOOGLE_CLIENT_ID');
+    return getServerRequiredProdOnly('GOOGLE_CLIENT_ID');
   },
   get clientSecret() {
-    return getServerRequired('GOOGLE_CLIENT_SECRET');
+    return getServerRequiredProdOnly('GOOGLE_CLIENT_SECRET');
   },
   get redirectUri() {
-    return getServerRequired('GOOGLE_REDIRECT_URI');
+    return getServerRequiredProdOnly('GOOGLE_REDIRECT_URI');
   },
 } as const;
 

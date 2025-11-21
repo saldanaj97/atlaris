@@ -1,30 +1,20 @@
 import { db } from '@/lib/db/service-role';
-import { aiUsageEvents, learningPlans, users } from '@/lib/db/schema';
+import { aiUsageEvents, learningPlans } from '@/lib/db/schema';
 import { recordUsage } from '@/lib/db/usage';
 import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-async function ensureUser(): Promise<string> {
-  const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
-  const email = `${clerkUserId}@example.com`;
-  const [user] = await db
-    .insert(users)
-    .values({ clerkUserId, email, name: 'Test' })
-    .onConflictDoNothing()
-    .returning();
-  if (user?.id) return user.id;
-  const [existing] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.clerkUserId, clerkUserId))
-    .limit(1);
-  return existing.id;
-}
+import { ensureUser } from '../../helpers/db';
+import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('AI usage logging', () => {
   it('atomically checks plan limit, creates plan, and records usage event', async () => {
-    const userId = await ensureUser();
+    const clerkUserId = buildTestClerkUserId('db-usage');
+    const userId = await ensureUser({
+      clerkUserId,
+      email: buildTestEmail(clerkUserId),
+    });
 
     // Check the limit and create the plan in a single atomic transaction
     const plan = await atomicCheckAndInsertPlan(userId, {

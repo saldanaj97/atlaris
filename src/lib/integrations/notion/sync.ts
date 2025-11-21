@@ -8,9 +8,9 @@ import {
   notionSyncState,
 } from '@/lib/db/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
-import { NotionClient } from './client';
 import { mapFullPlanToBlocks } from './mapper';
 import type { Task } from '@/lib/types/db';
+import type { NotionIntegrationClient } from './types';
 
 // Deterministic JSON stringify: sorts object keys recursively
 function stableStringify(obj: unknown): string {
@@ -42,10 +42,14 @@ function calculatePlanHash(plan: { [key: string]: unknown }): string {
   return createHash('sha256').update(stableStringify(plan)).digest('hex');
 }
 
+/**
+ * Exports a plan to Notion using a pre-configured client.
+ * This function is pure with respect to env and third-party client construction.
+ */
 export async function exportPlanToNotion(
   planId: string,
   userId: string,
-  accessToken: string
+  notionClient: NotionIntegrationClient
 ): Promise<string> {
   // Fetch plan with modules and tasks (RLS-enforced via getDb)
   const db = getDb();
@@ -124,7 +128,7 @@ export async function exportPlanToNotion(
   // Create Notion page
   const parentPageId = notionEnv.parentPageId;
 
-  const client = new NotionClient(accessToken);
+  const client = notionClient;
   const notionPage = await client.createPage({
     parent: {
       type: 'page_id',
@@ -153,9 +157,14 @@ export async function exportPlanToNotion(
   return notionPage.id;
 }
 
+/**
+ * Delta sync: checks if plan changed and updates Notion page if needed.
+ * This function is pure with respect to env and third-party client construction.
+ */
 export async function deltaSyncPlanToNotion(
   planId: string,
-  accessToken: string
+  userId: string,
+  notionClient: NotionIntegrationClient
 ): Promise<boolean> {
   // Fetch current plan (RLS-enforced via getDb)
   const db = getDb();
@@ -224,7 +233,7 @@ export async function deltaSyncPlanToNotion(
 
   if (!syncState) {
     // No previous sync, do full export
-    await exportPlanToNotion(planId, plan.userId, accessToken);
+    await exportPlanToNotion(planId, userId, notionClient);
     return true;
   }
 
@@ -235,7 +244,7 @@ export async function deltaSyncPlanToNotion(
 
   // Changes detected, update Notion page
   const blocks = mapFullPlanToBlocks(minimalPlanForNotion);
-  const client = new NotionClient(accessToken);
+  const client = notionClient;
   const pageId = syncState.notionPageId;
 
   // Update page title

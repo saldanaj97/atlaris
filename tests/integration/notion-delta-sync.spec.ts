@@ -1,5 +1,4 @@
-import '../../mocks/integration/notion-client.integration';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createHash } from 'node:crypto';
 import { db } from '@/lib/db/service-role';
 import {
@@ -11,7 +10,7 @@ import {
 } from '@/lib/db/schema';
 import { deltaSyncPlanToNotion } from '@/lib/integrations/notion/sync';
 import { eq } from 'drizzle-orm';
-import { Client } from '@notionhq/client';
+import { createMockNotionClient } from '../mocks/shared/notion-client.shared';
 
 describe('Notion Delta Sync', () => {
   let testUserId: string;
@@ -61,36 +60,17 @@ describe('Notion Delta Sync', () => {
       lastSyncedAt: new Date('2025-01-01'),
     });
 
-    // Mock Notion Client
-    const mockUpdatePage = vi.fn().mockResolvedValue({ id: 'notion_page_123' });
-    const mockAppendBlocks = vi.fn().mockResolvedValue({});
-    const mockListChildren = vi.fn().mockResolvedValue({
-      object: 'list',
-      results: [],
-      next_cursor: null,
-      has_more: false,
-      type: 'block',
-    });
-    const mockUpdateBlock = vi.fn().mockResolvedValue({});
-    (Client as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      pages: {
-        update: mockUpdatePage,
-      },
-      blocks: {
-        update: mockUpdateBlock,
-        children: {
-          append: mockAppendBlocks,
-          list: mockListChildren,
-        },
-      },
-    }));
-
-    const hasChanges = await deltaSyncPlanToNotion(testPlanId, 'test_token');
+    const mockClient = createMockNotionClient();
+    const hasChanges = await deltaSyncPlanToNotion(
+      testPlanId,
+      testUserId,
+      mockClient
+    );
 
     expect(hasChanges).toBe(true);
-    expect(mockUpdatePage).toHaveBeenCalled();
-    expect(mockAppendBlocks).toHaveBeenCalled();
-    expect(mockListChildren).toHaveBeenCalled();
+    expect(mockClient._mocks.updatePage).toHaveBeenCalled();
+    expect(mockClient._mocks.appendBlocks).toHaveBeenCalled();
+    expect(mockClient._mocks.listChildren).toHaveBeenCalled();
   });
 
   it('should skip sync if no changes detected', async () => {
@@ -178,7 +158,12 @@ describe('Notion Delta Sync', () => {
     });
 
     // Call the function - it should detect no changes
-    const hasChanges = await deltaSyncPlanToNotion(testPlanId, 'test_token');
+    const mockClient = createMockNotionClient();
+    const hasChanges = await deltaSyncPlanToNotion(
+      testPlanId,
+      testUserId,
+      mockClient
+    );
 
     expect(hasChanges).toBe(false);
   });

@@ -5,6 +5,7 @@ import { users, learningPlans } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { exportPlanToNotion } from '@/lib/integrations/notion/sync';
+import { createNotionIntegrationClient } from '@/lib/integrations/notion/factory';
 import { z } from 'zod';
 import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
 import {
@@ -92,10 +93,14 @@ export const POST = withErrorBoundary(
         );
       }
 
+      const notionClient = createNotionIntegrationClient(
+        notionTokens.accessToken
+      );
+
       const notionPageId = await exportPlanToNotion(
         parsed.data.planId,
         user.id,
-        notionTokens.accessToken
+        notionClient
       );
 
       // Increment usage after a successful export (non-blocking)

@@ -1,5 +1,4 @@
 import { neonConfig } from '@neondatabase/serverless';
-// @ts-expect-error ws module has no types but is used for local Neon proxy config
 import ws from 'ws';
 
 /**
@@ -44,6 +43,6 @@ export function configureLocalNeon() {
     host === localHost ? `${host}:4444/v2` : `${host}/v2`;
 
   // Use native WebSocket constructor
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
   neonConfig.webSocketConstructor = ws;
 }

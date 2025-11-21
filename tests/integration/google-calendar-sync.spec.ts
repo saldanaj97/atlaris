@@ -1,4 +1,3 @@
-import '../../mocks/integration/googleapis.integration';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/service-role';
@@ -19,22 +18,23 @@ vi.mock('@clerk/nextjs/server', () => ({
   auth: vi.fn(),
 }));
 
-// Set encryption key for tests (64 hex characters = 32 bytes for AES-256)
-if (!process.env.OAUTH_ENCRYPTION_KEY) {
-  process.env.OAUTH_ENCRYPTION_KEY =
-    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-}
-
-// Set Google OAuth credentials for tests
-if (!process.env.GOOGLE_CLIENT_ID) {
-  process.env.GOOGLE_CLIENT_ID = 'test_google_client_id';
-}
-if (!process.env.GOOGLE_CLIENT_SECRET) {
-  process.env.GOOGLE_CLIENT_SECRET = 'test_google_client_secret';
-}
-if (!process.env.GOOGLE_REDIRECT_URI) {
-  process.env.GOOGLE_REDIRECT_URI = 'http://localhost:3000/api/oauth/callback';
-}
+// Mock googleapis
+vi.mock('googleapis', () => ({
+  google: {
+    auth: {
+      OAuth2: vi.fn().mockImplementation(() => ({
+        setCredentials: vi.fn(),
+      })),
+    },
+    calendar: vi.fn().mockReturnValue({
+      events: {
+        insert: vi.fn().mockResolvedValue({
+          data: { id: 'event_123', status: 'confirmed' },
+        }),
+      },
+    }),
+  },
+}));
 
 describe('Google Calendar Sync API', () => {
   let testUserId: string;

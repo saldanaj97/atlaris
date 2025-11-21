@@ -1,8 +1,8 @@
 import { appEnv } from '@/lib/config/env';
 import { client, isClientInitialized } from '@/lib/db/service-role';
-import { logger } from '@/lib/logging/logger';
-import { getNextJob } from '@/lib/jobs/queue';
+import { failJob, getNextJob } from '@/lib/jobs/queue';
 import { JOB_TYPES, type Job, type JobType } from '@/lib/jobs/types';
+import { logger } from '@/lib/logging/logger';
 import type { ProcessPlanGenerationJobResult } from './handlers/plan-generation-handler';
 import { normalizeError, sleep } from './utils';
 
@@ -234,6 +234,18 @@ export class PlanGenerationWorker {
         message: normalized.message,
         name: normalized.name ?? null,
       });
+
+      // Defensive fallback: ensure the job is not left stuck in "processing"
+      try {
+        await failJob(job.id, normalized.message, { retryable: true });
+      } catch (persistError) {
+        const details = normalizeError(persistError);
+        this.log('error', 'job_fail_fallback_error', {
+          jobId: job.id,
+          message: details.message,
+          name: details.name ?? null,
+        });
+      }
 
       this.stats.jobsFailed += 1;
     }
