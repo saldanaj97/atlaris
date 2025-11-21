@@ -38,10 +38,15 @@ vi.mock('@/lib/integrations/google-calendar/sync', () => ({
   syncPlanToGoogleCalendar: vi.fn(),
 }));
 
+vi.mock('@/lib/integrations/google-calendar/factory', () => ({
+  createGoogleCalendarClient: vi.fn(),
+}));
+
 describe('Google Calendar Sync Route', () => {
   let mockDb: any;
   let mockGetOAuthTokens: any;
   let mockSyncPlanToGoogleCalendar: any;
+  let mockCreateGoogleCalendarClient: any;
   let mockCheckExportQuota: any;
   let mockIncrementExportUsage: any;
 
@@ -56,16 +61,29 @@ describe('Google Calendar Sync Route', () => {
     const { syncPlanToGoogleCalendar } = await import(
       '@/lib/integrations/google-calendar/sync'
     );
+    const { createGoogleCalendarClient } = await import(
+      '@/lib/integrations/google-calendar/factory'
+    );
     const usage = await import('@/lib/db/usage');
 
     mockGetOAuthTokens = vi.mocked(getOAuthTokens);
     mockSyncPlanToGoogleCalendar = vi.mocked(syncPlanToGoogleCalendar);
+    mockCreateGoogleCalendarClient = vi.mocked(createGoogleCalendarClient);
     mockCheckExportQuota = vi
       .spyOn(usage, 'checkExportQuota')
       .mockResolvedValue(true);
     mockIncrementExportUsage = vi
       .spyOn(usage, 'incrementExportUsage')
       .mockResolvedValue(undefined);
+
+    // Setup a mock Google Calendar client object
+    const mockCalendarClient = {
+      events: {
+        insert: vi.fn(),
+        delete: vi.fn(),
+      },
+    };
+    mockCreateGoogleCalendarClient.mockReturnValue(mockCalendarClient);
 
     // Setup db mock chain - use mockDbInstance instead
     mockDb = mockDbInstance;
@@ -298,10 +316,21 @@ describe('Google Calendar Sync Route', () => {
 
       await POST(request);
 
+      // Verify the factory was called with the correct tokens
+      expect(mockCreateGoogleCalendarClient).toHaveBeenCalledWith({
+        accessToken: 'test-token',
+        refreshToken: 'test-refresh',
+      });
+
+      // Verify syncPlanToGoogleCalendar was called with planId and the client object
       expect(mockSyncPlanToGoogleCalendar).toHaveBeenCalledWith(
         planId,
-        'test-token',
-        'test-refresh'
+        expect.objectContaining({
+          events: expect.objectContaining({
+            insert: expect.any(Function),
+            delete: expect.any(Function),
+          }),
+        })
       );
     });
 
@@ -468,10 +497,21 @@ describe('Google Calendar Sync Route', () => {
       const response = await POST(request);
       expect(response.status).toBe(200);
 
+      // Verify the factory was called with undefined refresh token
+      expect(mockCreateGoogleCalendarClient).toHaveBeenCalledWith({
+        accessToken: 'test-token',
+        refreshToken: undefined,
+      });
+
+      // Verify syncPlanToGoogleCalendar was called with planId and the client object
       expect(mockSyncPlanToGoogleCalendar).toHaveBeenCalledWith(
         '123e4567-e89b-12d3-a456-426614174000',
-        'test-token',
-        undefined
+        expect.objectContaining({
+          events: expect.objectContaining({
+            insert: expect.any(Function),
+            delete: expect.any(Function),
+          }),
+        })
       );
     });
 
