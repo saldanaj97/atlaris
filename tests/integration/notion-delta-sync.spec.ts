@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createHash } from 'node:crypto';
 import { db } from '@/lib/db/service-role';
 import {
@@ -9,31 +9,8 @@ import {
   users,
 } from '@/lib/db/schema';
 import { deltaSyncPlanToNotion } from '@/lib/integrations/notion/sync';
-import type { NotionIntegrationClient } from '@/lib/integrations/notion/types';
 import { eq } from 'drizzle-orm';
-
-// Local mock functions for Notion API
-const mockUpdatePage = vi.fn().mockResolvedValue({ id: 'notion_page_123' });
-const mockAppendBlocks = vi.fn().mockResolvedValue({});
-const mockListChildren = vi.fn().mockResolvedValue({
-  object: 'list',
-  results: [],
-  next_cursor: null,
-  has_more: false,
-  type: 'block',
-});
-
-// Simple mock client for these integration tests
-const createMockNotionClient = (): NotionIntegrationClient => ({
-  createPage: vi.fn().mockResolvedValue({ id: 'notion_page_123' }),
-  updatePage: mockUpdatePage as any,
-  appendBlocks: mockAppendBlocks as any,
-  replaceBlocks: vi.fn().mockImplementation(async (pageId, blocks) => {
-    await mockListChildren();
-    await mockAppendBlocks(pageId, blocks);
-    return { results: [] };
-  }),
-});
+import { createMockNotionClient } from '../mocks/shared/notion-client.shared';
 
 describe('Notion Delta Sync', () => {
   let testUserId: string;
@@ -91,9 +68,9 @@ describe('Notion Delta Sync', () => {
     );
 
     expect(hasChanges).toBe(true);
-    expect(mockUpdatePage).toHaveBeenCalled();
-    expect(mockAppendBlocks).toHaveBeenCalled();
-    expect(mockListChildren).toHaveBeenCalled();
+    expect(mockClient._mocks.updatePage).toHaveBeenCalled();
+    expect(mockClient._mocks.appendBlocks).toHaveBeenCalled();
+    expect(mockClient._mocks.listChildren).toHaveBeenCalled();
   });
 
   it('should skip sync if no changes detected', async () => {

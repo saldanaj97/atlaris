@@ -1,5 +1,4 @@
 import { neonConfig } from '@neondatabase/serverless';
-// @ts-expect-error ws module has no types but is used for local Neon proxy config
 import ws from 'ws';
 
 /**

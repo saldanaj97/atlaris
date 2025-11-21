@@ -1,4 +1,4 @@
-import type { BlockObjectRequest } from '@notionhq/client/build/src/api-endpoints';
+import type { BlockObjectRequest } from './types';
 import type { LearningPlan, Module, Task } from '@/lib/types/db';
 
 type MinimalPlan = Pick<LearningPlan, 'topic' | 'skillLevel' | 'weeklyHours'>;

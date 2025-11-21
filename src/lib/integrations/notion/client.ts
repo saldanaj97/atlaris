@@ -8,7 +8,7 @@ import type {
   UpdateBlockResponse,
   UpdatePageParameters,
   UpdatePageResponse,
-} from '@notionhq/client/build/src/api-endpoints';
+} from './types';
 import pRetry from 'p-retry';
 import { logger } from '@/lib/logging/logger';
 

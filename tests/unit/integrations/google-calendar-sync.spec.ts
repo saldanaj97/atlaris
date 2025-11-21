@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import type { GoogleCalendarClient } from '@/lib/integrations/google-calendar/types';
@@ -6,7 +7,8 @@ import { db } from '@/lib/db/service-role';
 
 // Helper to create a mock Google Calendar client for unit tests
 // This function is called within each test to get a reference to the mock
-// calendar that was set up in beforeEach
+// calendar that was set up in beforeEach. Using `any` for flexibility in mock
+// setup while the helper function provides type safety at the call site.
 let mockCalendar: any;
 const createMockCalendarClient = (): GoogleCalendarClient => {
   return mockCalendar as GoogleCalendarClient;
@@ -631,15 +633,20 @@ describe('Google Calendar Sync', () => {
           data: { id: 'event-123', status: 'confirmed' },
         });
 
-      // Spy on setTimeout to verify backoff timing
-      const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+      // Use fake timers to avoid real delays
+      vi.useFakeTimers();
 
-      await syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient());
+      const promise = syncPlanToGoogleCalendar(
+        mockPlanId,
+        createMockCalendarClient()
+      );
+      await vi.runAllTimersAsync();
+      await promise;
 
-      // Should have called setTimeout twice (for two retries)
-      expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
+      vi.useRealTimers();
 
-      setTimeoutSpy.mockRestore();
+      // Verify the sync completed successfully
+      expect(mockCalendar.events.insert).toHaveBeenCalledTimes(3);
     });
 
     it('should return 0 events created when all tasks fail', async () => {

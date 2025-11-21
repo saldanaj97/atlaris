@@ -11,9 +11,9 @@ export function createNotionIntegrationClient(
   const client = new NotionClient(accessToken);
 
   return {
-    createPage: (...args) => client.createPage(...args),
-    updatePage: (...args) => client.updatePage(...args),
-    appendBlocks: (...args) => client.appendBlocks(...args),
-    replaceBlocks: (...args) => client.replaceBlocks(...args),
+    createPage: (params) => client.createPage(params),
+    updatePage: (params) => client.updatePage(params),
+    appendBlocks: (pageId, blocks) => client.appendBlocks(pageId, blocks),
+    replaceBlocks: (pageId, blocks) => client.replaceBlocks(pageId, blocks),
   };
 }
