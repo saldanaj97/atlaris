@@ -16,21 +16,3 @@ primary_region = "sjc"  # Change to region closest to your Neon database
   cpu_kind = "shared"
   cpus = 1
   memory_mb = 256
-
-# Process check (verifies process is running)
-[checks]
-  [checks.process]
-    type = "process"
-    interval = "15s"
-    timeout = "10s"
-    grace_period = "30s"
-
-# Restart policy
-[restart]
-  policy = "always"
-  max_retries = 5
-
-# Metrics
-[metrics]
-  port = 9091  # Optional: if you add a metrics endpoint later
-  path = "/metrics"

@@ -3,7 +3,7 @@
 # Base image with Node.js LTS
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
+# Install dependencies
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 
@@ -15,22 +15,8 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install dependencies (skip prepare script for production)
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
-
-# Build the application
-FROM base AS builder
-WORKDIR /app
-
-RUN corepack enable && corepack prepare pnpm@9 --activate
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-
-COPY . .
-
-# Build TypeScript (if needed for workers)
-RUN pnpm build || echo "No build step needed"
+# Install all dependencies (need dev deps for tsx)
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Production image
 FROM base AS runner
@@ -42,14 +28,15 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 worker
 
-# Copy dependencies from deps stage
+# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy built application
-COPY --from=builder --chown=worker:nodejs /app .
+# Copy source files (tsx compiles on-the-fly)
+COPY --chown=worker:nodejs package.json pnpm-lock.yaml ./
+COPY --chown=worker:nodejs src ./src
+COPY --chown=worker:nodejs tsconfig.json ./
 
 USER worker
 
 # Default to plan generation worker (can be overridden)
 CMD ["pnpm", "tsx", "src/workers/index.ts"]
-

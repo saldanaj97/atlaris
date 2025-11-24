@@ -156,58 +156,18 @@ jobs:
         run: |
           flyctl status --app ${{ matrix.app }}
 
-  # Step 3: Deploy Next.js to Vercel Production
-  deploy-nextjs:
-    name: Deploy Next.js (Production)
-    needs: [deploy-workers]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Wait for Vercel auto-deploy
-        run: |
-          echo "Vercel auto-deploy should be triggered by push to main"
-          echo "Waiting 90 seconds for deployment to complete..."
-          sleep 90
-
-      # Alternative: Deploy via Vercel CLI if auto-deploy is disabled
-      # - name: Install Vercel CLI
-      #   run: npm install --global vercel@latest
-      #
-      # - name: Deploy to Vercel Production
-      #   env:
-      #     VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      #     VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      #     VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      #   run: |
-      #     vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-      #     vercel build --prod --token=$VERCEL_TOKEN
-      #     vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
-
-  # Step 4: Run smoke tests (placeholder - not yet implemented)
-  smoke-tests:
-    name: Smoke Tests (Production)
-    needs: [deploy-nextjs]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Smoke tests placeholder
-        run: |
-          echo "Smoke tests will be implemented in a future phase"
-          echo "For now, deployment is considered successful"
+  # Note: Next.js deploys automatically via Vercel GitHub integration
 
   # Final: Report deployment status
   report-status:
     name: Report Deployment Status
-    needs: [smoke-tests]
+    needs: [deploy-workers]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check deployment status
         run: |
-          if [ "${{ needs.smoke-tests.result }}" == "success" ]; then
+          if [ "${{ needs.deploy-workers.result }}" == "success" ]; then
             echo "✅ Production deployment successful"
             exit 0
           else
