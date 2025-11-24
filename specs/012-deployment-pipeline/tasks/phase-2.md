@@ -492,9 +492,9 @@ Thumbs.db
    "
    ```
 
-3. Push to `main` branch:
+3. Push to `staging` branch:
    ```bash
-   git push origin main
+   git push origin staging
    ```
 
 **Verification:**

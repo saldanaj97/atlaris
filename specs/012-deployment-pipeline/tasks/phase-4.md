@@ -501,7 +501,7 @@ smoke-tests:
 
     - name: Run smoke tests
       env:
-        SMOKE_TEST_API_URL: https://atlaris-git-main-your-username.vercel.app # Update with your staging URL
+        SMOKE_TEST_API_URL: https://atlaris-git-staging-your-username.vercel.app # Update with your staging URL
         SMOKE_TEST_DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
         SMOKE_TEST_API_KEY: ${{ secrets.SMOKE_TEST_API_KEY }}
       run: pnpm test:smoke
@@ -618,9 +618,9 @@ smoke-tests:
    "
    ```
 
-3. Push to `main` branch:
+3. Push to `staging` branch:
    ```bash
-   git push origin main
+   git push origin staging
    ```
 
 **Verification:**

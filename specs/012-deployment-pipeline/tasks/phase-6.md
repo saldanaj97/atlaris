@@ -26,7 +26,7 @@ Test the complete deployment pipeline end-to-end, verify all components work tog
    echo "# Test staging deployment" >> README.md
    git add README.md
    git commit -m "test: trigger staging deployment"
-   git push origin main
+   git push origin staging
    ```
 
 2. Monitor the deployment in GitHub Actions:
@@ -82,12 +82,13 @@ Test the complete deployment pipeline end-to-end, verify all components work tog
 
 1. Ensure staging is healthy (from Task 6.1)
 
-2. Merge `main` to `prod` branch:
+2. Merge `staging` to `main` branch (or create a tagged release):
 
    ```bash
-   git checkout prod
-   git merge main
-   git push origin prod
+   git checkout main
+   git merge staging
+   git push origin main
+   # Or create a tagged release for production deployment
    ```
 
 3. Monitor the deployment in GitHub Actions:
@@ -120,7 +121,7 @@ Test the complete deployment pipeline end-to-end, verify all components work tog
 
 **Verification:**
 
-- [ ] CI checks passed on prod branch
+- [ ] CI checks passed on main branch
 - [ ] Staging health check passed
 - [ ] Production database migration successful
 - [ ] Both production workers deployed and running
@@ -220,7 +221,7 @@ Test the complete deployment pipeline end-to-end, verify all components work tog
    ```bash
    git add src/lib/db/migrations/0001_test_failure.sql
    git commit -m "test: add failing migration to test error handling"
-   git push origin main
+   git push origin staging
    ```
 
 3. Watch the workflow fail:
@@ -234,7 +235,7 @@ Test the complete deployment pipeline end-to-end, verify all components work tog
    ```bash
    git rm src/lib/db/migrations/0001_test_failure.sql
    git commit -m "test: remove failing migration"
-   git push origin main
+   git push origin staging
    ```
 
 5. Verify deployment succeeds now
@@ -271,7 +272,7 @@ Test the complete deployment pipeline end-to-end, verify all components work tog
    ```bash
    git add tests/smoke/plan-generation.smoke.spec.ts
    git commit -m "test: intentionally fail smoke test"
-   git push origin main
+   git push origin staging
    ```
 
 3. Watch the workflow:
@@ -291,7 +292,7 @@ Test the complete deployment pipeline end-to-end, verify all components work tog
    ```bash
    git add tests/smoke/plan-generation.smoke.spec.ts
    git commit -m "test: restore smoke test"
-   git push origin main
+   git push origin staging
    ```
 
 6. Verify deployment succeeds
@@ -380,13 +381,13 @@ This runbook covers common deployment operations and troubleshooting.
 
 ### Deploy to Staging
 
-**Trigger:** Push to `main` branch
+**Trigger:** Push to `staging` branch
 **Workflow:** `.github/workflows/deploy-staging.yml`
 **Time:** ~10-15 minutes
 
 **Steps:**
 
-1. Push changes to `main`
+1. Push changes to `staging`
 2. CI checks run automatically
 3. If CI passes, deployment starts:
    - Database migration (staging)
@@ -397,15 +398,15 @@ This runbook covers common deployment operations and troubleshooting.
 
 ### Deploy to Production
 
-**Trigger:** Push to `prod` branch
+**Trigger:** Push to `main` branch (or tagged release)
 **Workflow:** `.github/workflows/deploy-production.yml`
 **Time:** ~10-15 minutes
 
 **Steps:**
 
 1. Ensure staging is healthy
-2. Merge `main` to `prod`: `git checkout prod && git merge main && git push`
-3. CI checks run on prod branch
+2. Merge `staging` to `main`: `git checkout main && git merge staging && git push`
+3. CI checks run on main branch
 4. Staging health check runs
 5. If all checks pass, deployment starts:
    - Database migration (production)
@@ -572,7 +573,7 @@ flyctl status --app atlaris-worker-prod
    ```bash
    git add docs/runbook.md
    git commit -m "docs: add deployment runbook"
-   git push origin main
+   git push origin staging
 ````
 
 **Verification:**
@@ -630,9 +631,10 @@ flyctl status --app atlaris-worker-prod
 7. Promote to production:
 
    ```bash
-   git checkout prod
-   git merge main
-   git push origin prod
+   git checkout main
+   git merge staging
+   git push origin main
+   # Or create a tagged release for production deployment
    ```
 
 8. Verify production deployment triggered:
@@ -692,7 +694,7 @@ All phases of the deployment pipeline implementation are complete:
 Now that your deployment pipeline is operational, you can:
 
 1. **Monitor deployments** - Watch the Actions tab for deployment status
-2. **Iterate on features** - Push to `main` for staging, merge to `prod` for production
+2. **Iterate on features** - Push to `staging` for staging, merge to `main` for production
 3. **Scale when needed** - Increase worker instances as user base grows
 4. **Upgrade to zero-downtime** - When you have paying customers, follow the upgrade path in the design doc
 

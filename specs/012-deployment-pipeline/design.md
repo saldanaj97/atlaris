@@ -21,14 +21,14 @@ This document describes the complete CI/CD and deployment pipeline architecture 
 
 ### Environment Architecture
 
-**Staging Environment (`main` branch):**
+**Staging Environment (`staging` branch):**
 
 - **Next.js App:** Vercel preview deployment
 - **Plan Generation Worker:** Fly.io app `atlaris-worker-staging`
 - **Plan Regeneration Worker:** Fly.io app `atlaris-worker-regenerator-staging`
 - **Database:** Neon `staging` branch (PostgreSQL)
 
-**Production Environment (`prod` branch):**
+**Production Environment (`main` branch):**
 
 - **Next.js App:** Vercel production deployment
 - **Plan Generation Worker:** Fly.io app `atlaris-worker-prod`
@@ -48,9 +48,9 @@ This document describes the complete CI/CD and deployment pipeline architecture 
 
 ## Deployment Flow
 
-### Staging Deployment (Push to `main`)
+### Staging Deployment (Push to `staging`)
 
-**Trigger:** Push to `main` branch
+**Trigger:** Push to `staging` branch
 
 **Prerequisites:**
 
@@ -82,14 +82,14 @@ This document describes the complete CI/CD and deployment pipeline architecture 
    - Update GitHub commit status
    - Mark staging as green ✅ if smoke tests pass
 
-### Production Deployment (Push to `prod`)
+### Production Deployment (Push to `main`)
 
-**Trigger:** Push or merge to `prod` branch
+**Trigger:** Push or merge to `main` branch
 
 **Prerequisites:**
 
-- All CI checks pass on `prod` branch
-- Staging deployment is green (last `main` branch deployment successful)
+- All CI checks pass on `main` branch
+- Staging deployment is green (last `staging` branch deployment successful)
 
 **Deployment Steps:**
 
@@ -213,7 +213,7 @@ This document describes the complete CI/CD and deployment pipeline architecture 
 **1. Staging Deployment Workflow**
 
 - **File:** `.github/workflows/deploy-staging.yml`
-- **Trigger:** Push to `main` branch
+- **Trigger:** Push to `staging` branch
 - **Prerequisites:** All CI checks must pass (reuse existing `ci-main.yml` checks)
 - **Steps:**
   1. Run database migrations → Neon `staging` branch
@@ -226,10 +226,10 @@ This document describes the complete CI/CD and deployment pipeline architecture 
 **2. Production Deployment Workflow**
 
 - **File:** `.github/workflows/deploy-production.yml`
-- **Trigger:** Push/merge to `prod` branch
+- **Trigger:** Push/merge to `main` branch
 - **Prerequisites:**
-  - All CI checks pass on `prod` branch
-  - Staging deployment green (check `main` branch last commit status)
+  - All CI checks pass on `main` branch
+  - Staging deployment green (check `staging` branch last commit status)
 - **Steps:**
   1. Run database migrations → Neon `production` branch
   2. Deploy workers to Fly.io
@@ -537,7 +537,7 @@ This document describes the complete CI/CD and deployment pipeline architecture 
 
 1. **Preview Deployments for PRs**
    - Deploy ephemeral environments for each PR
-   - Useful for testing before merge to `main`
+   - Useful for testing before merge to `staging`
    - Cost consideration: May exceed free tier quickly
 
 2. **Automated Performance Testing**

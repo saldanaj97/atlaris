@@ -25,7 +25,7 @@ name: Deploy - Staging
 
 on:
   push:
-    branches: [main]
+    branches: [staging]
   workflow_dispatch: # Allow manual trigger
 
 permissions:
@@ -49,7 +49,7 @@ jobs:
             const { data: workflows } = await github.rest.actions.listWorkflowRunsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              branch: 'main',
+              branch: 'staging',
               event: 'push',
               status: 'completed',
               per_page: 5
@@ -157,7 +157,7 @@ jobs:
 
       - name: Wait for Vercel auto-deploy
         run: |
-          echo "Vercel auto-deploy should be triggered by push to main"
+          echo "Vercel auto-deploy should be triggered by push to staging"
           echo "Waiting 60 seconds for deployment to complete..."
           sleep 60
 
@@ -230,7 +230,7 @@ jobs:
 **Verification:**
 
 - [ ] File created at `.github/workflows/deploy-staging.yml`
-- [ ] Workflow triggers on push to `main` branch
+- [ ] Workflow triggers on push to `staging` branch
 - [ ] All job names and steps are clear and descriptive
 
 **Expected Output:**
@@ -252,7 +252,7 @@ name: Deploy - Production
 
 on:
   push:
-    branches: [prod]
+    branches: [main]
   workflow_dispatch: # Allow manual trigger
 
 permissions:
@@ -264,7 +264,7 @@ concurrency:
   cancel-in-progress: false # Never cancel production deployments
 
 jobs:
-  # Gate 1: Verify CI passed on prod branch
+  # Gate 1: Verify CI passed on main branch
   check-ci:
     name: Verify CI Passed
     runs-on: ubuntu-latest
@@ -276,7 +276,7 @@ jobs:
             const { data: workflows } = await github.rest.actions.listWorkflowRunsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              branch: 'prod',
+              branch: 'main',
               event: 'push',
               status: 'completed',
               per_page: 5
@@ -309,12 +309,12 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Check last staging deployment on main branch
+            // Check last staging deployment on staging branch
             const { data: workflows } = await github.rest.actions.listWorkflowRunsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'deploy-staging.yml',
-              branch: 'main',
+              branch: 'staging',
               status: 'completed',
               per_page: 1
             });
@@ -418,7 +418,7 @@ jobs:
 
       - name: Wait for Vercel auto-deploy
         run: |
-          echo "Vercel auto-deploy should be triggered by push to prod"
+          echo "Vercel auto-deploy should be triggered by push to main"
           echo "Waiting 90 seconds for deployment to complete..."
           sleep 90
 
@@ -471,7 +471,7 @@ jobs:
 **Verification:**
 
 - [ ] File created at `.github/workflows/deploy-production.yml`
-- [ ] Workflow triggers on push to `prod` branch
+- [ ] Workflow triggers on push to `main` branch
 - [ ] Includes both CI and staging health checks as gates
 
 **Expected Output:**
@@ -482,18 +482,18 @@ jobs:
 
 ### Task 3.3: Update CI Workflows to Support Production Branch
 
-**Objective:** Ensure CI workflows run on the `prod` branch in addition to `main`.
+**Objective:** Ensure CI workflows run on the `main` branch in addition to `staging`.
 
 **Steps:**
 
 1. Open `.github/workflows/ci-main.yml`
 
-2. Update the trigger section to include `prod` branch:
+2. Update the trigger section to include `main` branch:
 
 ```yaml
 on:
   push:
-    branches: [main, prod] # Add 'prod' here
+    branches: [staging, main] # Add 'main' here
     paths-ignore:
       - '**/*.md'
       # ... rest of paths-ignore
@@ -505,12 +505,12 @@ on:
 
 **Verification:**
 
-- [ ] `ci-main.yml` updated to trigger on `prod` branch
+- [ ] `ci-main.yml` updated to trigger on `main` branch
 - [ ] File saved successfully
 
 **Expected Output:**
 
-- CI workflows will run on both `main` and `prod` branches
+- CI workflows will run on both `staging` and `main` branches
 
 ---
 
@@ -575,9 +575,9 @@ on:
    git commit -m "feat: add automated deployment workflows
 
    Add GitHub Actions workflows for automated staging and production deployments:
-   - deploy-staging.yml: Deploys to staging on push to main
-   - deploy-production.yml: Deploys to production on push to prod
-   - Update ci-main.yml to run on prod branch
+   - deploy-staging.yml: Deploys to staging on push to staging
+   - deploy-production.yml: Deploys to production on push to main
+   - Update ci-main.yml to run on main branch
 
    Deployment flow:
    1. Verify CI checks passed
@@ -596,9 +596,9 @@ on:
    "
    ```
 
-3. Push to `main` branch:
+3. Push to `staging` branch:
    ```bash
-   git push origin main
+   git push origin staging
    ```
 
 **Verification:**
@@ -613,34 +613,33 @@ on:
 
 ---
 
-### Task 3.6: Create Production Branch
+### Task 3.6: Verify Main Branch Configuration
 
-**Objective:** Create the `prod` branch for production deployments.
+**Objective:** Ensure the `main` branch is properly configured for production deployments.
 
 **Steps:**
 
-1. Create `prod` branch from current `main`:
-
-   ```bash
-   git checkout -b prod
-   ```
-
-2. Push the `prod` branch to remote:
-
-   ```bash
-   git push -u origin prod
-   ```
-
-3. Return to `main` branch:
+1. Verify `main` branch exists:
 
    ```bash
    git checkout main
+   git pull origin main
    ```
 
-4. Configure branch protection rules for `prod` (optional but recommended):
+2. Ensure `main` branch is up to date with latest changes from `staging`:
+
+   ```bash
+   git checkout staging
+   git pull origin staging
+   git checkout main
+   git merge staging
+   git push origin main
+   ```
+
+3. Configure branch protection rules for `main` (optional but recommended):
    - Go to GitHub repository → Settings → Branches
    - Click "Add branch protection rule"
-   - Branch name pattern: `prod`
+   - Branch name pattern: `main`
    - Enable:
      - Require a pull request before merging
      - Require status checks to pass before merging
@@ -649,13 +648,13 @@ on:
 
 **Verification:**
 
-- [ ] `prod` branch exists in remote repository
-- [ ] `prod` branch is up to date with `main`
+- [ ] `main` branch exists in remote repository
+- [ ] `main` branch is up to date with `staging`
 - [ ] Branch protection rules configured (optional)
 
 **Expected Output:**
 
-- `prod` branch created and ready for production deployments
+- `main` branch configured and ready for production deployments
 
 ---
 
@@ -663,10 +662,10 @@ on:
 
 - [ ] Task 3.1: Staging deployment workflow created
 - [ ] Task 3.2: Production deployment workflow created
-- [ ] Task 3.3: CI workflows updated to support prod branch
+- [ ] Task 3.3: CI workflows updated to support main branch
 - [ ] Task 3.4: Workflows validated with actionlint
 - [ ] Task 3.5: All workflow files committed and pushed
-- [ ] Task 3.6: Production branch created
+- [ ] Task 3.6: Main branch configuration verified
 
 ## Next Phase
 
@@ -682,7 +681,7 @@ Proceed to **Phase 4: Smoke Test Implementation** to create end-to-end tests tha
 
 - **Solution:** Skip validation and rely on GitHub's built-in workflow validation when you push
 
-**Issue:** Cannot push to `main` or `prod` branch
+**Issue:** Cannot push to `staging` or `main` branch
 
 - **Solution:** Check if branch protection rules are blocking direct pushes; may need to create PR or temporarily disable rules
 
@@ -692,4 +691,4 @@ Proceed to **Phase 4: Smoke Test Implementation** to create end-to-end tests tha
 
 **Issue:** Deployment workflow doesn't trigger
 
-- **Solution:** Check workflow trigger conditions; ensure you pushed to the correct branch (main for staging, prod for production)
+- **Solution:** Check workflow trigger conditions; ensure you pushed to the correct branch (staging for staging, main for production)

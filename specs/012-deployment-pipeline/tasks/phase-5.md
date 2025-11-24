@@ -407,7 +407,7 @@ This document describes how to manage secrets across all environments.
    ```bash
    git add docs/secrets-management.md
    git commit -m "docs: add secrets management guide"
-   git push origin main
+   git push origin staging
    ```
 
 **Verification:**
