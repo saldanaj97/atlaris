@@ -1,0 +1,18 @@
+# Fly.io configuration for staging plan generation worker
+app = "atlaris-worker-staging"
+primary_region = "sjc"  # Change to region closest to your Neon database
+
+[build]
+  dockerfile = "Dockerfile.worker"
+
+[env]
+  NODE_ENV = "staging"
+
+[processes]
+  app = "pnpm tsx src/workers/index.ts"
+
+# VM resources (start small, scale up if needed)
+[vm]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256

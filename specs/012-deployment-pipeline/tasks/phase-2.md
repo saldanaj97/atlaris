@@ -107,7 +107,7 @@ primary_region = "sjc"  # Change to region closest to your Neon database
   dockerfile = "Dockerfile.worker"
 
 [env]
-  NODE_ENV = "production"
+  NODE_ENV = "staging"
 
 [processes]
   app = "pnpm tsx src/workers/index.ts"
@@ -141,9 +141,9 @@ primary_region = "sjc"  # Change to region closest to your Neon database
 
 **Verification:**
 
-- [ ] File created at `fly.staging.worker.toml` in project root
-- [ ] App name matches Fly.io app created in Phase 1: `atlaris-worker-staging`
-- [ ] Region set to one closest to your Neon database (check Neon dashboard for region)
+- [x] File created at `fly.staging.worker.toml` in project root
+- [x] App name matches Fly.io app created in Phase 1: `atlaris-worker-staging`
+- [x] Region set to one closest to your Neon database (check Neon dashboard for region)
 
 **Expected Output:**
 
@@ -168,7 +168,7 @@ primary_region = "sjc"  # Change to region closest to your Neon database
   dockerfile = "Dockerfile.worker"
 
 [env]
-  NODE_ENV = "production"
+  NODE_ENV = "staging"
 
 [processes]
   app = "pnpm tsx src/workers/plan-regenerator.ts"
@@ -202,9 +202,9 @@ primary_region = "sjc"  # Change to region closest to your Neon database
 
 **Verification:**
 
-- [ ] File created at `fly.staging.regenerator.toml` in project root
-- [ ] App name matches: `atlaris-worker-regenerator-staging`
-- [ ] Process command points to `src/workers/plan-regenerator.ts`
+- [x] File created at `fly.staging.regenerator.toml` in project root
+- [x] App name matches: `atlaris-worker-regenerator-staging`
+- [x] Process command points to `src/workers/plan-regenerator.ts`
 
 **Expected Output:**
 
@@ -263,8 +263,8 @@ primary_region = "sjc"  # Change to region closest to your Neon database
 
 **Verification:**
 
-- [ ] File created at `fly.prod.worker.toml` in project root
-- [ ] App name matches: `atlaris-worker-prod`
+- [x] File created at `fly.prod.worker.toml` in project root
+- [x] App name matches: `atlaris-worker-prod`
 
 **Expected Output:**
 
@@ -323,9 +323,9 @@ primary_region = "sjc"  # Change to region closest to your Neon database
 
 **Verification:**
 
-- [ ] File created at `fly.prod.regenerator.toml` in project root
-- [ ] App name matches: `atlaris-worker-regenerator-prod`
-- [ ] Process command points to `src/workers/plan-regenerator.ts`
+- [x] File created at `fly.prod.regenerator.toml` in project root
+- [x] App name matches: `atlaris-worker-regenerator-prod`
+- [x] Process command points to `src/workers/plan-regenerator.ts`
 
 **Expected Output:**
 
@@ -351,12 +351,14 @@ primary_region = "sjc"  # Change to region closest to your Neon database
 
    ```bash
    docker run --rm \
-     -e DATABASE_URL="your-local-db-url" \
+     -e DATABASE_URL="postgres://postgres:postgres@host.docker.internal:54330/atlaris_test" \
      -e NODE_ENV="development" \
+     -e ENABLE_CURATION="false" \
      atlaris-worker-test
    ```
 
    - Press Ctrl+C to stop after verifying it starts
+   - Note: `host.docker.internal` allows the container to access the host machine's database
 
 4. Clean up test image:
    ```bash
@@ -365,9 +367,9 @@ primary_region = "sjc"  # Change to region closest to your Neon database
 
 **Verification:**
 
-- [ ] Docker build completes successfully
-- [ ] No build errors or warnings
-- [ ] Container starts without immediate crashes (if tested)
+- [x] Docker build completes successfully
+- [x] No build errors or warnings
+- [x] Container starts without immediate crashes (if tested)
 
 **Expected Output:**
 
@@ -445,8 +447,8 @@ Thumbs.db
 
 **Verification:**
 
-- [ ] File created at `.dockerignore` in project root
-- [ ] Rebuild Docker image and verify it's faster/smaller
+- [x] File created at `.dockerignore` in project root
+- [x] Rebuild Docker image and verify it's faster/smaller
 
 **Expected Output:**
 
@@ -499,9 +501,9 @@ Thumbs.db
 
 **Verification:**
 
-- [ ] All files committed successfully
-- [ ] Changes pushed to remote repository
-- [ ] Files visible in GitHub repository
+- [x] All files committed successfully
+- [x] Changes pushed to remote repository
+- [x] Files visible in GitHub repository
 
 **Expected Output:**
 
@@ -511,14 +513,14 @@ Thumbs.db
 
 ## Phase Completion Checklist
 
-- [ ] Task 2.1: Dockerfile.worker created
-- [ ] Task 2.2: fly.staging.worker.toml created
-- [ ] Task 2.3: fly.staging.regenerator.toml created
-- [ ] Task 2.4: fly.prod.worker.toml created
-- [ ] Task 2.5: fly.prod.regenerator.toml created
-- [ ] Task 2.6: Docker build tested locally
-- [ ] Task 2.7: .dockerignore created
-- [ ] Task 2.8: All files committed and pushed
+- [x] Task 2.1: Dockerfile.worker created
+- [x] Task 2.2: fly.staging.worker.toml created
+- [x] Task 2.3: fly.staging.regenerator.toml created
+- [x] Task 2.4: fly.prod.worker.toml created
+- [x] Task 2.5: fly.prod.regenerator.toml created
+- [x] Task 2.6: Docker build tested locally
+- [x] Task 2.7: .dockerignore created
+- [x] Task 2.8: All files committed and pushed
 
 ## Next Phase
 
@@ -541,3 +543,7 @@ Proceed to **Phase 3: Workflow Implementation** to create GitHub Actions workflo
 **Issue:** Worker process exits immediately after starting
 
 - **Solution:** Check that `src/workers/index.ts` and `src/workers/plan-regenerator.ts` exist and have correct entry points
+
+**Issue:** Docker container fails with `ECONNREFUSED` when connecting to database
+
+- **Solution:** Use `host.docker.internal` instead of `localhost` or `db.localtest.me` in the DATABASE_URL. Docker containers run in isolated networks and cannot access the host's localhost directly.

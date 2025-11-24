@@ -48,6 +48,20 @@ export default defineConfig({
     projects: [
       {
         test: {
+          name: 'smoke',
+          globals: true,
+          environment: 'node',
+          isolate: true,
+          sequence: { concurrent: false },
+          pool: 'threads',
+          poolOptions: { threads: { singleThread: true } },
+          testTimeout: 90_000,
+          include: ['tests/smoke/**/*.smoke.spec.{ts,tsx}'],
+          alias: testAliases,
+        },
+      },
+      {
+        test: {
           name: 'integration',
           globals: true,
           environment: 'jsdom',

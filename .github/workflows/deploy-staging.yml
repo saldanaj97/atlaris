@@ -1,0 +1,174 @@
+name: Deploy - Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-staging-${{ github.ref }}
+  cancel-in-progress: false # Don't cancel in-progress deployments
+
+jobs:
+  # Gate: Run essential CI checks before deployment
+  ci-checks:
+    name: CI Checks (Staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm lint
+
+      - name: Run TypeScript type check
+        run: pnpm type-check
+
+      - name: Restore Next.js cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Build Next.js app
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        run: pnpm build
+
+      - name: Save Next.js cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
+
+  # Step 1: Run database migrations
+  migrate-database:
+    name: Migrate Database (Staging)
+    needs: [ci-checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+        run: pnpm db:migrate
+
+      - name: Verify migration success
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+        run: |
+          echo "Migration completed successfully"
+          # Optional: Add a query to verify schema version
+
+  # Step 2: Deploy workers to Fly.io
+  deploy-workers:
+    name: Deploy Workers (Staging)
+    needs: [migrate-database]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        include:
+          - app: atlaris-worker-staging
+            config: fly.staging.worker.toml
+            name: Plan Generator
+          - app: atlaris-worker-regenerator-staging
+            config: fly.staging.regenerator.toml
+            name: Plan Regenerator
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy ${{ matrix.name }} to Fly.io
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy \
+            --config ${{ matrix.config }} \
+            --app ${{ matrix.app }} \
+            --wait-timeout 300
+
+      - name: Verify deployment
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl status --app ${{ matrix.app }}
+
+  # Note: Next.js deploys automatically via Vercel GitHub integration
+
+  # Final: Report deployment status
+  report-status:
+    name: Report Deployment Status
+    needs: [deploy-workers]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployment status
+        run: |
+          if [ "${{ needs.deploy-workers.result }}" == "success" ]; then
+            echo "✅ Staging deployment successful"
+            exit 0
+          else
+            echo "❌ Staging deployment failed"
+            exit 1
+          fi
