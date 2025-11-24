@@ -7,7 +7,7 @@ Configure all required secrets and environment variables in Fly.io worker applic
 ## Prerequisites
 
 - Phase 2 completed (Fly.io apps created)
-- Access to all application secrets (OpenAI keys, Clerk keys, etc.)
+- Access to all application secrets (Google AI keys, Stripe keys, etc.)
 - Neon database connection strings from Phase 1
 
 ## Tasks
@@ -27,41 +27,86 @@ Configure all required secrets and environment variables in Fly.io worker applic
 
 **Required for All Workers:**
 
-- `DATABASE_URL` - Neon database connection string
-- `NODE_ENV` - Should be "production"
+- `DATABASE_URL` - Neon database connection string (required by `@/lib/db/service-role`)
+- `NODE_ENV` - Should be "production" for production workers
 
-**Required for Plan Generation:**
+**Required for Plan Generation (AI Providers):**
 
-- `OPENAI_API_KEY` - OpenAI API key for plan generation
-- `GOOGLE_GENERATIVE_AI_API_KEY` - Google AI key (if using Google provider)
+- `GOOGLE_GENERATIVE_AI_API_KEY` - **Required** - Primary AI provider (Google Gemini)
+- `STRIPE_SECRET_KEY` - **Required** - Used by worker-service.ts for `markPlanGenerationFailure` and `markPlanGenerationSuccess` to track usage
+
+**Optional AI Providers (for fallback/overflow):**
+
+- `OPENROUTER_API_KEY` - Optional - Only needed if `AI_ENABLE_OPENROUTER=true`
+- `CF_API_TOKEN` or `CF_API_KEY` - Optional - For Cloudflare Workers AI (fallback provider)
+- `CF_ACCOUNT_ID` - Optional - For Cloudflare Workers AI
+- `CF_AI_GATEWAY` - Optional - For Cloudflare AI Gateway URL
 
 **Required for Curation (if enabled):**
 
-- `ENABLE_CURATION` - Set to "true" or "false"
+- `ENABLE_CURATION` - Set to "true" or "false" (defaults to false in production, true in dev/test)
+- `YOUTUBE_API_KEY` - **Required if curation enabled** - Used for YouTube resource curation
 
-**Optional (may be needed):**
+**Optional Curation Settings:**
 
-- `CLERK_SECRET_KEY` - If workers need to verify user context
-- `NEON_SERVICE_ROLE_KEY` - If using neon-specific features
-- `STRIPE_SECRET_KEY` - If workers need to check subscription status
+- `GOOGLE_CSE_ID` - Optional - Google Custom Search Engine ID for document search
+- `GOOGLE_CSE_KEY` - Optional - Google Custom Search Engine API key
+- `MIN_RESOURCE_SCORE` - Optional - Minimum resource score threshold (default: 0.6)
+- `CURATION_CONCURRENCY` - Optional - Concurrency limit for curation (default: 3)
+- `CURATION_TIME_BUDGET_MS` - Optional - Time budget for curation in ms (default: 30000)
+- `CURATION_MAX_RESULTS` - Optional - Maximum results per task (default: 3)
+
+**Optional Worker Configuration:**
+
+- `WORKER_POLL_INTERVAL_MS` - Optional - Poll interval in milliseconds (default: 2000)
+- `WORKER_CONCURRENCY` - Optional - Number of concurrent jobs (default: 1)
+
+**Optional AI Configuration:**
+
+- `AI_PROVIDER` - Optional - Explicit provider selection (e.g., "mock", "google", "router")
+- `AI_PRIMARY` - Optional - Primary model name (default: 'gemini-1.5-flash')
+- `AI_FALLBACK` - Optional - Fallback model name (default: '@cf/meta/llama-3.1-8b-instruct')
+- `AI_MAX_OUTPUT_TOKENS` - Optional - Maximum output tokens (default: 1200)
+- `AI_ENABLE_OPENROUTER` - Optional - Enable OpenRouter provider (default: false)
+
+**Optional Logging:**
+
+- `LOG_LEVEL` - Optional - Logging level (e.g., "debug", "info", "warn", "error")
+
+**Not Required (but mentioned in original task):**
+
+- `OPENAI_API_KEY` - **Not used** - Codebase uses Google AI and Cloudflare/OpenRouter, not OpenAI
+- `CLERK_SECRET_KEY` - **Not required** - Workers use service-role DB client and don't need Clerk authentication
+- `NEON_SERVICE_ROLE_KEY` - **Not required** - Workers use `DATABASE_URL` directly with postgres-js
 
 3. Document which secrets each environment needs:
 
 **Staging Workers Need:**
 
-- All above secrets pointing to staging/test resources
-- `DATABASE_URL` → Neon staging branch URL
+- `DATABASE_URL` → Neon staging branch URL (must include `?sslmode=require`)
+- `NODE_ENV` → "production"
+- `GOOGLE_GENERATIVE_AI_API_KEY` → Staging/test Google AI key (or same as prod if using shared key)
+- `STRIPE_SECRET_KEY` → Stripe test mode secret key
+- `ENABLE_CURATION` → "false" (recommended for staging) or "true" if testing curation
+- `YOUTUBE_API_KEY` → Required only if `ENABLE_CURATION="true"`
+- Optional: `WORKER_POLL_INTERVAL_MS`, `WORKER_CONCURRENCY` for tuning
 
 **Production Workers Need:**
 
-- All above secrets pointing to production resources
-- `DATABASE_URL` → Neon production branch URL
+- `DATABASE_URL` → Neon production branch URL (must include `?sslmode=require`)
+- `NODE_ENV` → "production"
+- `GOOGLE_GENERATIVE_AI_API_KEY` → Production Google AI key
+- `STRIPE_SECRET_KEY` → Stripe production secret key
+- `ENABLE_CURATION` → "true" or "false" (explicit setting required in production)
+- `YOUTUBE_API_KEY` → Required only if `ENABLE_CURATION="true"`
+- Optional: `WORKER_POLL_INTERVAL_MS`, `WORKER_CONCURRENCY` for tuning
+- Optional: `OPENROUTER_API_KEY`, `CF_API_TOKEN`, etc. if using fallback providers
 
 **Verification:**
 
-- [ ] All required secrets documented
-- [ ] Staging vs production secret values identified
-- [ ] Optional secrets decision made (include or skip)
+- [x] All required secrets documented
+- [x] Staging vs production secret values identified
+- [x] Optional secrets decision made (include or skip)
 
 **Expected Output:**
 
@@ -91,19 +136,19 @@ Configure all required secrets and environment variables in Fly.io worker applic
      --app atlaris-worker-staging
    ```
 
-3. Set OpenAI API key:
-
-   ```bash
-   flyctl secrets set \
-     OPENAI_API_KEY="your-openai-api-key" \
-     --app atlaris-worker-staging
-   ```
-
-4. (Optional) Set Google AI key if using:
+3. Set Google AI API key (required):
 
    ```bash
    flyctl secrets set \
      GOOGLE_GENERATIVE_AI_API_KEY="your-google-ai-key" \
+     --app atlaris-worker-staging
+   ```
+
+4. Set Stripe secret key (required):
+
+   ```bash
+   flyctl secrets set \
+     STRIPE_SECRET_KEY="your-stripe-test-secret-key" \
      --app atlaris-worker-staging
    ```
 
@@ -115,25 +160,35 @@ Configure all required secrets and environment variables in Fly.io worker applic
      --app atlaris-worker-staging
    ```
 
-6. (Optional) Set other secrets as needed:
+6. (Optional) Set YouTube API key if curation is enabled:
 
    ```bash
    flyctl secrets set \
-     CLERK_SECRET_KEY="your-clerk-secret" \
-     STRIPE_SECRET_KEY="your-stripe-secret" \
+     YOUTUBE_API_KEY="your-youtube-api-key" \
      --app atlaris-worker-staging
    ```
 
-7. Verify secrets were set:
+7. (Optional) Set other optional secrets as needed:
+
+   ```bash
+   flyctl secrets set \
+     OPENROUTER_API_KEY="your-openrouter-key" \
+     CF_API_TOKEN="your-cloudflare-token" \
+     WORKER_POLL_INTERVAL_MS="2000" \
+     WORKER_CONCURRENCY="1" \
+     --app atlaris-worker-staging
+   ```
+
+8. Verify secrets were set:
    ```bash
    flyctl secrets list --app atlaris-worker-staging
    ```
 
 **Verification:**
 
-- [ ] All required secrets set for staging plan generator
-- [ ] `flyctl secrets list` shows all secrets (values are hidden)
-- [ ] No errors during secret setting
+- [x] All required secrets set for staging plan generator
+- [x] `flyctl secrets list` shows all secrets (values are hidden)
+- [x] No errors during secret setting
 
 **Expected Output:**
 
@@ -147,24 +202,27 @@ Configure all required secrets and environment variables in Fly.io worker applic
 
 **Steps:**
 
-1. Set all secrets (same as Task 5.2, but for regenerator app):
+1. Set all required secrets (same as Task 5.2, but for regenerator app):
 
    ```bash
    flyctl secrets set \
      DATABASE_URL="your-neon-staging-branch-connection-string" \
      NODE_ENV="production" \
-     OPENAI_API_KEY="your-openai-api-key" \
+     GOOGLE_GENERATIVE_AI_API_KEY="your-google-ai-key" \
+     STRIPE_SECRET_KEY="your-stripe-test-secret-key" \
      ENABLE_CURATION="false" \
      --app atlaris-worker-regenerator-staging
    ```
 
-2. (Optional) Set additional secrets:
+2. (Optional) Set additional secrets if needed:
 
    ```bash
    flyctl secrets set \
-     GOOGLE_GENERATIVE_AI_API_KEY="your-google-ai-key" \
-     CLERK_SECRET_KEY="your-clerk-secret" \
-     STRIPE_SECRET_KEY="your-stripe-secret" \
+     YOUTUBE_API_KEY="your-youtube-api-key" \
+     OPENROUTER_API_KEY="your-openrouter-key" \
+     CF_API_TOKEN="your-cloudflare-token" \
+     WORKER_POLL_INTERVAL_MS="2000" \
+     WORKER_CONCURRENCY="1" \
      --app atlaris-worker-regenerator-staging
    ```
 
@@ -175,9 +233,9 @@ Configure all required secrets and environment variables in Fly.io worker applic
 
 **Verification:**
 
-- [ ] All required secrets set for staging plan regenerator
-- [ ] Secrets match staging plan generator (same values)
-- [ ] `flyctl secrets list` shows all secrets
+- [x] All required secrets set for staging plan regenerator
+- [x] Secrets match staging plan generator (same values)
+- [x] `flyctl secrets list` shows all secrets
 
 **Expected Output:**
 
@@ -204,18 +262,21 @@ Configure all required secrets and environment variables in Fly.io worker applic
    ```bash
    flyctl secrets set \
      NODE_ENV="production" \
-     OPENAI_API_KEY="your-openai-api-key" \
+     GOOGLE_GENERATIVE_AI_API_KEY="your-google-ai-key" \
+     STRIPE_SECRET_KEY="your-stripe-production-secret-key" \
      ENABLE_CURATION="false" \
      --app atlaris-worker-prod
    ```
 
-3. (Optional) Set additional secrets:
+3. (Optional) Set additional secrets if needed:
 
    ```bash
    flyctl secrets set \
-     GOOGLE_GENERATIVE_AI_API_KEY="your-google-ai-key" \
-     CLERK_SECRET_KEY="your-clerk-secret" \
-     STRIPE_SECRET_KEY="your-stripe-secret" \
+     YOUTUBE_API_KEY="your-youtube-api-key" \
+     OPENROUTER_API_KEY="your-openrouter-key" \
+     CF_API_TOKEN="your-cloudflare-token" \
+     WORKER_POLL_INTERVAL_MS="2000" \
+     WORKER_CONCURRENCY="1" \
      --app atlaris-worker-prod
    ```
 
@@ -226,10 +287,10 @@ Configure all required secrets and environment variables in Fly.io worker applic
 
 **Verification:**
 
-- [ ] All required secrets set for production plan generator
-- [ ] DATABASE_URL points to PRODUCTION Neon branch
-- [ ] All other secrets are production values
-- [ ] `flyctl secrets list` shows all secrets
+- [x] All required secrets set for production plan generator
+- [x] DATABASE_URL points to PRODUCTION Neon branch
+- [x] All other secrets are production values
+- [x] `flyctl secrets list` shows all secrets
 
 **Expected Output:**
 
@@ -243,24 +304,27 @@ Configure all required secrets and environment variables in Fly.io worker applic
 
 **Steps:**
 
-1. Set all secrets (same as Task 5.4, but for regenerator app):
+1. Set all required secrets (same as Task 5.4, but for regenerator app):
 
    ```bash
    flyctl secrets set \
      DATABASE_URL="your-neon-production-branch-connection-string" \
      NODE_ENV="production" \
-     OPENAI_API_KEY="your-openai-api-key" \
+     GOOGLE_GENERATIVE_AI_API_KEY="your-google-ai-key" \
+     STRIPE_SECRET_KEY="your-stripe-production-secret-key" \
      ENABLE_CURATION="false" \
      --app atlaris-worker-regenerator-prod
    ```
 
-2. (Optional) Set additional secrets:
+2. (Optional) Set additional secrets if needed:
 
    ```bash
    flyctl secrets set \
-     GOOGLE_GENERATIVE_AI_API_KEY="your-google-ai-key" \
-     CLERK_SECRET_KEY="your-clerk-secret" \
-     STRIPE_SECRET_KEY="your-stripe-secret" \
+     YOUTUBE_API_KEY="your-youtube-api-key" \
+     OPENROUTER_API_KEY="your-openrouter-key" \
+     CF_API_TOKEN="your-cloudflare-token" \
+     WORKER_POLL_INTERVAL_MS="2000" \
+     WORKER_CONCURRENCY="1" \
      --app atlaris-worker-regenerator-prod
    ```
 
@@ -271,10 +335,10 @@ Configure all required secrets and environment variables in Fly.io worker applic
 
 **Verification:**
 
-- [ ] All required secrets set for production plan regenerator
-- [ ] DATABASE_URL points to PRODUCTION Neon branch
-- [ ] Secrets match production plan generator
-- [ ] `flyctl secrets list` shows all secrets
+- [x] All required secrets set for production plan regenerator
+- [x] DATABASE_URL points to PRODUCTION Neon branch
+- [x] Secrets match production plan generator
+- [x] `flyctl secrets list` shows all secrets
 
 **Expected Output:**
 
@@ -294,10 +358,10 @@ Configure all required secrets and environment variables in Fly.io worker applic
    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
    - `CLERK_SECRET_KEY`
    - `DATABASE_URL` (or equivalent Neon connection)
-   - `NEXT_PUBLIC_NEON_URL` (if still using neon)
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_PUBLISHABLE_KEY`
-   - `OPENAI_API_KEY`
+   - `STRIPE_SECRET_KEY` (test mode)
+   - `STRIPE_PUBLISHABLE_KEY` (test mode)
+   - `GOOGLE_GENERATIVE_AI_API_KEY`
+   - `YOUTUBE_API_KEY` (if curation enabled)
    - Any other app-specific variables
 
 3. Verify Production environment has:
@@ -313,9 +377,9 @@ Configure all required secrets and environment variables in Fly.io worker applic
 
 **Verification:**
 
-- [ ] All required env vars exist for Preview environment
-- [ ] All required env vars exist for Production environment
-- [ ] No errors or warnings in Vercel dashboard
+- [x] All required env vars exist for Preview environment
+- [x] All required env vars exist for Production environment
+- [x] No errors or warnings in Vercel dashboard
 
 **Expected Output:**
 
@@ -331,7 +395,7 @@ Configure all required secrets and environment variables in Fly.io worker applic
 
 1. Create a secrets management document at `docs/secrets-management.md`:
 
-```markdown
+````markdown
 # Secrets Management
 
 This document describes how to manage secrets across all environments.
@@ -355,10 +419,21 @@ This document describes how to manage secrets across all environments.
 
 ### Fly.io Secrets (for workers)
 
+**Required:**
+
 - `DATABASE_URL` - Neon connection string (staging or production)
-- `OPENAI_API_KEY` - OpenAI API key
-- `ENABLE_CURATION` - Feature flag for curation
-- Optional: Clerk, Stripe, Google AI keys
+- `NODE_ENV` - Set to "production"
+- `GOOGLE_GENERATIVE_AI_API_KEY` - Google AI API key (primary provider)
+- `STRIPE_SECRET_KEY` - Stripe secret key (test mode for staging, production for prod)
+- `ENABLE_CURATION` - Feature flag for curation ("true" or "false")
+
+**Optional:**
+
+- `YOUTUBE_API_KEY` - Required if curation enabled
+- `OPENROUTER_API_KEY` - For OpenRouter fallback provider
+- `CF_API_TOKEN` / `CF_API_KEY` - For Cloudflare Workers AI fallback
+- `WORKER_POLL_INTERVAL_MS` - Worker polling interval (default: 2000)
+- `WORKER_CONCURRENCY` - Worker concurrency (default: 1)
 
 **Rotation:** Use `flyctl secrets set` to update.
 
@@ -384,12 +459,27 @@ This document describes how to manage secrets across all environments.
 3. Update Fly.io secrets for all 4 worker apps
 4. Verify workers can connect
 
-### Rotate OpenAI API Key
+### Rotate Google AI API Key
 
-1. Generate new key in OpenAI dashboard
-2. Update Fly.io secrets for all 4 worker apps
+1. Generate new key in Google AI Studio dashboard
+2. Update Fly.io secrets for all 4 worker apps:
+   ```bash
+   flyctl secrets set GOOGLE_GENERATIVE_AI_API_KEY="new-key" --app <app-name>
+   ```
+````
+
 3. Update Vercel env vars if Next.js uses it
 4. Test plan generation
+
+### Rotate Stripe Secret Key
+
+1. Generate new key in Stripe dashboard (test mode for staging, production for prod)
+2. Update Fly.io secrets for all 4 worker apps:
+   ```bash
+   flyctl secrets set STRIPE_SECRET_KEY="new-key" --app <app-name>
+   ```
+3. Update Vercel env vars
+4. Test plan generation and usage tracking
 
 ## Security Best Practices
 
@@ -399,7 +489,8 @@ This document describes how to manage secrets across all environments.
 - Use least-privilege access (read-only where possible)
 - Audit secret access regularly
 - Store backup copies in password manager
-```
+
+````
 
 2. Save the file at `/Users/juansaldana/Projects/atlaris/docs/secrets-management.md`
 
@@ -408,14 +499,14 @@ This document describes how to manage secrets across all environments.
    git add docs/secrets-management.md
    git commit -m "docs: add secrets management guide"
    git push origin staging
-   ```
+````
 
 **Verification:**
 
-- [ ] Secrets management document created
-- [ ] Document covers all secret locations
-- [ ] Rotation procedures documented
-- [ ] File committed to repository
+- [x] Secrets management document created
+- [x] Document covers all secret locations
+- [x] Rotation procedures documented
+- [x] File committed to repository
 
 **Expected Output:**
 
@@ -425,13 +516,13 @@ This document describes how to manage secrets across all environments.
 
 ## Phase Completion Checklist
 
-- [ ] Task 5.1: Required secrets identified and documented
-- [ ] Task 5.2: Staging plan generator secrets set
-- [ ] Task 5.3: Staging plan regenerator secrets set
-- [ ] Task 5.4: Production plan generator secrets set
-- [ ] Task 5.5: Production plan regenerator secrets set
-- [ ] Task 5.6: Vercel environment variables verified
-- [ ] Task 5.7: Secrets management documentation created
+- [x] Task 5.1: Required secrets identified and documented
+- [x] Task 5.2: Staging plan generator secrets set
+- [x] Task 5.3: Staging plan regenerator secrets set
+- [x] Task 5.4: Production plan generator secrets set
+- [x] Task 5.5: Production plan regenerator secrets set
+- [x] Task 5.6: Vercel environment variables verified
+- [x] Task 5.7: Secrets management documentation created
 
 ## Next Phase
 
