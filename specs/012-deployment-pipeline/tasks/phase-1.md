@@ -34,9 +34,9 @@ Set up the foundational infrastructure for the deployment pipeline including Neo
 
 **Verification:**
 
-- [ ] Three branches visible in Neon console
-- [ ] Each branch has a unique connection string
-- [ ] Connection strings include `?sslmode=require` parameter
+- [x] Three branches visible in Neon console
+- [x] Each branch has a unique connection string
+- [x] Connection strings include `?sslmode=require` parameter
 
 **Expected Output:**
 
@@ -87,9 +87,9 @@ Set up the foundational infrastructure for the deployment pipeline including Neo
 
 **Verification:**
 
-- [ ] `flyctl version` shows installed version
-- [ ] `flyctl auth whoami` shows your email/username
-- [ ] You can access Fly.io dashboard at https://fly.io/dashboard
+- [x] `flyctl version` shows installed version
+- [x] `flyctl auth whoami` shows your email/username
+- [x] You can access Fly.io dashboard at https://fly.io/dashboard
 
 **Expected Output:**
 
@@ -134,9 +134,9 @@ Set up the foundational infrastructure for the deployment pipeline including Neo
 
 **Verification:**
 
-- [ ] 4 apps visible in `flyctl apps list`
-- [ ] Apps are in the correct organization
-- [ ] Each app has a unique name matching the pattern above
+- [x] 4 apps visible in `flyctl apps list`
+- [x] Apps are in the correct organization
+- [x] Each app has a unique name matching the pattern above
 
 **Expected Output:**
 
@@ -206,9 +206,9 @@ Set up the foundational infrastructure for the deployment pipeline including Neo
 
 **Verification:**
 
-- [ ] Navigate to Settings → Secrets and variables → Actions
-- [ ] Verify all 8 secrets are listed
-- [ ] No secrets show their values (GitHub hides them)
+- [x] Navigate to Settings → Secrets and variables → Actions
+- [x] Verify all 8 secrets are listed
+- [x] No secrets show their values (GitHub hides them)
 
 **Expected Output:**
 
@@ -246,9 +246,9 @@ Set up the foundational infrastructure for the deployment pipeline including Neo
 
 **Verification:**
 
-- [ ] All required Vercel env vars exist for Preview environment
-- [ ] All required Vercel env vars exist for Production environment
-- [ ] List of secrets needed for Fly.io workers documented
+- [x] All required Vercel env vars exist for Preview environment
+- [x] All required Vercel env vars exist for Production environment
+- [x] List of secrets needed for Fly.io workers documented
 
 **Expected Output:**
 
@@ -259,11 +259,11 @@ Set up the foundational infrastructure for the deployment pipeline including Neo
 
 ## Phase Completion Checklist
 
-- [ ] Task 1.1: Three Neon branches created with connection strings saved
-- [ ] Task 1.2: Fly.io CLI installed and authenticated
-- [ ] Task 1.3: Four Fly.io applications created
-- [ ] Task 1.4: Eight GitHub secrets configured
-- [ ] Task 1.5: Existing Vercel environment variables verified
+- [x] Task 1.1: Three Neon branches created with connection strings saved
+- [x] Task 1.2: Fly.io CLI installed and authenticated
+- [x] Task 1.3: Four Fly.io applications created
+- [x] Task 1.4: Eight GitHub secrets configured
+- [x] Task 1.5: Existing Vercel environment variables verified
 
 ## Next Phase
 
