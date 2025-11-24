@@ -186,17 +186,17 @@ jobs:
       #     vercel build --prod --token=$VERCEL_TOKEN
       #     vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
 
-  # Step 4: Optional production smoke tests
+  # Step 4: Run smoke tests (placeholder - not yet implemented)
   smoke-tests:
     name: Smoke Tests (Production)
     needs: [deploy-nextjs]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Production smoke tests placeholder
+      - name: Smoke tests placeholder
         run: |
-          echo "Production smoke tests are optional"
-          echo "Deployment completed successfully"
+          echo "Smoke tests will be implemented in a future phase"
+          echo "For now, deployment is considered successful"
 
   # Final: Report deployment status
   report-status:

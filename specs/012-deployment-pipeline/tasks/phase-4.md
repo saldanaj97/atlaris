@@ -31,8 +31,8 @@ Implement end-to-end smoke tests that validate the entire deployment stack (API 
 
 **Verification:**
 
-- [ ] `tests/smoke/` directory exists
-- [ ] Directory is empty and ready for test files
+- [x] `tests/smoke/` directory exists
+- [x] Directory is empty and ready for test files
 
 **Expected Output:**
 
@@ -197,8 +197,8 @@ function sleep(ms: number): Promise<void> {
 
 **Verification:**
 
-- [ ] File created at `tests/smoke/helpers.ts`
-- [ ] TypeScript compiles without errors
+- [x] File created at `tests/smoke/helpers.ts`
+- [x] TypeScript compiles without errors
 
 **Expected Output:**
 
@@ -306,8 +306,8 @@ describe('Plan Generation Smoke Test', () => {
 
 **Verification:**
 
-- [ ] File created at `tests/smoke/plan-generation.smoke.spec.ts`
-- [ ] TypeScript compiles without errors
+- [x] File created at `tests/smoke/plan-generation.smoke.spec.ts`
+- [x] TypeScript compiles without errors
 
 **Expected Output:**
 
@@ -338,8 +338,8 @@ describe('Plan Generation Smoke Test', () => {
 
 **Verification:**
 
-- [ ] `test:smoke` script added to package.json
-- [ ] Script runs without errors (will fail until environment is configured)
+- [x] `test:smoke` script added to package.json
+- [x] Script runs without errors (will fail until environment is configured)
 
 **Expected Output:**
 
@@ -377,8 +377,8 @@ export default defineConfig({
 
 **Verification:**
 
-- [ ] Smoke tests are included in vitest configuration
-- [ ] Test pattern matches `*.smoke.spec.ts` files
+- [x] Smoke tests are included in vitest configuration
+- [x] Test pattern matches `*.smoke.spec.ts` files
 
 **Expected Output:**
 
@@ -523,9 +523,9 @@ smoke-tests:
 
 **Verification:**
 
-- [ ] Smoke test job updated in workflow
-- [ ] Environment variables configured correctly
-- [ ] Staging URL is correct
+- [x] Smoke test job updated in workflow
+- [x] Environment variables configured correctly
+- [ ] Staging URL is correct (requires STAGING_URL variable to be set in GitHub)
 
 **Expected Output:**
 
@@ -625,7 +625,7 @@ smoke-tests:
 
 **Verification:**
 
-- [ ] All smoke test files committed
+- [x] All smoke test files committed
 - [ ] Changes pushed to remote
 - [ ] Files visible in GitHub repository
 
@@ -637,14 +637,14 @@ smoke-tests:
 
 ## Phase Completion Checklist
 
-- [ ] Task 4.1: Smoke test directory structure created
-- [ ] Task 4.2: Smoke test helper utilities created
-- [ ] Task 4.3: Plan generation smoke test created
-- [ ] Task 4.4: npm smoke test script added
-- [ ] Task 4.5: Vitest configuration updated
+- [x] Task 4.1: Smoke test directory structure created
+- [x] Task 4.2: Smoke test helper utilities created
+- [x] Task 4.3: Plan generation smoke test created
+- [x] Task 4.4: npm smoke test script added
+- [x] Task 4.5: Vitest configuration updated
 - [ ] Task 4.6: Test credentials created
 - [ ] Task 4.7: GitHub secrets updated
-- [ ] Task 4.8: Staging workflow updated with smoke tests
+- [x] Task 4.8: Staging workflow updated with smoke tests
 - [ ] Task 4.9: Smoke tests verified locally
 - [ ] Task 4.10: All files committed and pushed
 

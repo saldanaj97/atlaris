@@ -39,6 +39,7 @@
     "test:local:integration": "docker-compose -f docker-compose.test.yml up -d && sleep 3 && USE_LOCAL_NEON=true pnpm test:integration:full; docker-compose -f docker-compose.test.yml down",
     "test:local:e2e": "docker-compose -f docker-compose.test.yml up -d && sleep 3 && USE_LOCAL_NEON=true pnpm test:e2e:full; docker-compose -f docker-compose.test.yml down",
     "test:local": "docker-compose -f docker-compose.test.yml up -d && sleep 3 && USE_LOCAL_NEON=true pnpm test:suite:full; docker-compose -f docker-compose.test.yml down",
+    "test:smoke": "vitest run tests/smoke --reporter=verbose",
     "start": "next start",
     "type-check": "tsc --noEmit",
     "check:duplication": "jscpd --exitCode 0",

@@ -152,37 +152,17 @@ jobs:
       #     vercel build --token=$VERCEL_TOKEN
       #     vercel deploy --prebuilt --token=$VERCEL_TOKEN
 
-  # Step 4: Run smoke tests (will implement in Phase 4)
+  # Step 4: Run smoke tests (placeholder - not yet implemented)
   smoke-tests:
     name: Smoke Tests (Staging)
     needs: [deploy-nextjs]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Smoke tests placeholder
         run: |
-          echo "Smoke tests will be implemented in Phase 4"
+          echo "Smoke tests will be implemented in a future phase"
           echo "For now, deployment is considered successful"
-
-      # Will replace with actual smoke tests in Phase 4
-      # - name: Install pnpm
-      #   uses: pnpm/action-setup@v4
-      #
-      # - name: Setup Node.js
-      #   uses: actions/setup-node@v4
-      #
-      # - name: Install dependencies
-      #   run: pnpm install --frozen-lockfile
-      #
-      # - name: Run smoke tests
-      #   env:
-      #     SMOKE_TEST_API_URL: https://your-staging-url.vercel.app
-      #     SMOKE_TEST_DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
-      #     SMOKE_TEST_API_KEY: ${{ secrets.SMOKE_TEST_API_KEY }}
-      #   run: pnpm test:smoke
 
   # Final: Report deployment status
   report-status:
