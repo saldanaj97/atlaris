@@ -2,15 +2,15 @@ name: CI - PR (trunk)
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, staging]
     paths-ignore:
       - '**/*.md'
-      - '**/*.yaml'
-      - '**/*.yml'
+      - 'docs/**'
+      - 'specs/**'
       - '**/*.txt'
       - '**/*.csv'
       - '**/*.log'
-      - '**/*.lock'
+  workflow_dispatch: # Allow manual re-runs
 
 permissions:
   contents: read

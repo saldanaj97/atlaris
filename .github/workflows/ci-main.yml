@@ -2,17 +2,16 @@ name: CI - Main (trunk)
 
 on:
   push:
-    branches: [staging, main]
+    branches: [main]
     paths-ignore:
       - '**/*.md'
-      - '**/*.yaml'
-      - '**/*.yml'
+      - 'docs/**'
+      - 'specs/**'
       - '**/*.txt'
       - '**/*.csv'
       - '**/*.log'
-      - '**/*.lock'
   merge_group:
-    branches: [staging, main]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -532,13 +531,10 @@ jobs:
             psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
           fi
 
-  build-staging-env:
+  build:
     name: Build
     runs-on: ubuntu-latest
-    environment: staging
     timeout-minutes: 10
-    needs: [changes]
-    if: needs.changes.outputs.integration == 'true' || needs.changes.outputs.e2e == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -578,6 +574,16 @@ jobs:
         with:
           path: .next/cache
           key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: |
+            .next/
+            !.next/cache/
+          retention-days: 7
+          if-no-files-found: error
 
   migration-dry-run:
     name: DB Migration Dry-Run
@@ -685,7 +691,7 @@ jobs:
 
   all-checks-main:
     name: All Checks Passed (main)
-    needs: [lint, type-check, vulnerability-scan, integration-tests, e2e-tests, build-staging-env, migration-dry-run]
+    needs: [lint, type-check, vulnerability-scan, integration-tests, e2e-tests, build, migration-dry-run]
     if: always() && (github.event_name == 'push' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     steps:
@@ -696,14 +702,14 @@ jobs:
             [lint]="${{ needs.lint.result }}"
             [type-check]="${{ needs['type-check'].result }}"
             [vulnerability-scan]="${{ needs.vulnerability-scan.result }}"
-            [build-staging-env]="${{ needs['build-staging-env'].result }}"
+            [build]="${{ needs.build.result }}"
             [migration-dry-run]="${{ needs['migration-dry-run'].result }}"
             [integration-tests]="${{ needs['integration-tests'].result }}"
             [e2e-tests]="${{ needs['e2e-tests'].result }}"
           )
 
           failed=0
-          for job in lint type-check vulnerability-scan build-staging-env migration-dry-run integration-tests e2e-tests; do
+          for job in lint type-check vulnerability-scan build migration-dry-run integration-tests e2e-tests; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)
