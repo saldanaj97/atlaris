@@ -580,8 +580,8 @@ jobs:
         with:
           name: nextjs-build
           path: |
-            .next/
-            !.next/cache/
+            .next/**
+            !.next/cache/**
           retention-days: 7
           if-no-files-found: error
 
