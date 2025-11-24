@@ -557,8 +557,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Restore Next.js cache
-        uses: actions/cache/restore@v4
+      - name: Cache Next.js build
+        uses: actions/cache@v4
         with:
           path: .next/cache
           key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
@@ -568,12 +568,6 @@ jobs:
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         run: pnpm build
-      - name: Save Next.js cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: .next/cache
-          key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('next.config.ts') }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
