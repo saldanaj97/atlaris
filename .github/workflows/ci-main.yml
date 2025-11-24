@@ -2,7 +2,7 @@ name: CI - Main (trunk)
 
 on:
   push:
-    branches: [main]
+    branches: [staging, main]
     paths-ignore:
       - '**/*.md'
       - '**/*.yaml'
@@ -12,7 +12,7 @@ on:
       - '**/*.log'
       - '**/*.lock'
   merge_group:
-    branches: [main]
+    branches: [staging, main]
   workflow_dispatch:
 
 permissions:
