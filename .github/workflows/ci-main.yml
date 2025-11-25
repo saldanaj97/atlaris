@@ -28,6 +28,9 @@ jobs:
     outputs:
       integration: ${{ steps.filter.outputs.integration }}
       e2e: ${{ steps.filter.outputs.e2e }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+      workers: ${{ steps.filter.outputs.workers }}
+      regenerator: ${{ steps.filter.outputs.regenerator }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,6 +56,28 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
+            migrations:
+              - 'src/lib/db/migrations/*.sql'
+              - 'src/lib/db/migrations/meta/**'
+              - 'src/lib/db/schema/**'
+              - 'src/lib/db/enums.ts'
+              - 'drizzle.config.ts'
+            workers:
+              - 'src/workers/**'
+              - 'src/lib/db/**'
+              - 'Dockerfile.worker'
+              - 'fly.staging.worker.toml'
+              - 'fly.prod.worker.toml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+            regenerator:
+              - 'src/workers/**'
+              - 'src/lib/db/**'
+              - 'Dockerfile.worker'
+              - 'fly.staging.regenerator.toml'
+              - 'fly.prod.regenerator.toml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
 
 
 
@@ -611,3 +636,22 @@ jobs:
           fi
       - name: All checks passed (main)
         run: echo "✅ All checks passed (main)"
+
+  trigger-production-deploy:
+    name: Deploy to Production
+    needs: [all-checks-main, changes]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.all-checks-main.result == 'success' &&
+      (
+        needs.changes.outputs.migrations == 'true' ||
+        needs.changes.outputs.workers == 'true' ||
+        needs.changes.outputs.regenerator == 'true'
+      )
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      deploy_migrations: ${{ needs.changes.outputs.migrations == 'true' }}
+      deploy_workers: ${{ needs.changes.outputs.workers == 'true' }}
+      deploy_regenerator: ${{ needs.changes.outputs.regenerator == 'true' }}
+    secrets: inherit
