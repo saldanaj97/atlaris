@@ -130,22 +130,11 @@ jobs:
           echo "Waking up Neon database (may be scaled to zero)..."
           for i in 1 2 3 4 5 6; do
             echo "Attempt $i/6..."
-            if node -e "
-              const postgres = require('postgres');
-              const sql = postgres(process.env.DATABASE_URL, { connect_timeout: 30 });
-              sql\`SELECT 1\`.then(() => {
-                console.log('Database is ready');
-                return sql.end();
-              }).then(() => process.exit(0))
-              .catch(e => {
-                console.error('Not ready:', e.message);
-                sql.end().finally(() => process.exit(1));
-              });
-            "; then
+            if psql "$DATABASE_URL" -c "SELECT 1" > /dev/null 2>&1; then
               echo "Database awake and ready"
               exit 0
             fi
-            echo "Waiting 10 seconds before retry..."
+            echo "Not ready, waiting 10 seconds before retry..."
             sleep 10
           done
           echo "Failed to wake database after 6 attempts"
