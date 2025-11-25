@@ -8,8 +8,15 @@ if (!process.env.CI) {
   });
 }
 
-if (!process.env.DATABASE_URL_NON_POOLING) {
-  throw new Error('DATABASE_URL_NON_POOLING is not set');
+// Prefer DATABASE_URL_NON_POOLING for migrations (avoids connection pooler issues with DDL),
+// but fall back to DATABASE_URL if only that is provided (e.g., in CI environments).
+const databaseUrl =
+  process.env.DATABASE_URL_NON_POOLING || process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error(
+    'DATABASE_URL_NON_POOLING or DATABASE_URL must be set for migrations'
+  );
 }
 
 export default {
@@ -17,6 +24,6 @@ export default {
   out: './src/lib/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL_NON_POOLING,
+    url: databaseUrl,
   },
 } satisfies Config;

@@ -108,11 +108,13 @@ jobs:
       - name: Run migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_STAGING_NON_POOLING }}
         run: pnpm db:migrate
 
       - name: Verify migration success
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_STAGING_NON_POOLING }}
         run: |
           echo "Migration completed successfully"
           # Optional: Add a query to verify schema version
