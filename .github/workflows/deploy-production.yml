@@ -236,7 +236,7 @@ jobs:
 
   # Final: Report deployment status
   report-status:
-    name: Report Deployment Status
+    name: Report Deployment Status (Production)
     needs: [deploy-workers]
     if: always()
     runs-on: ubuntu-latest
