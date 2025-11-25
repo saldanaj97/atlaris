@@ -502,6 +502,8 @@ jobs:
 
   migration-dry-run:
     name: DB Migration Dry-Run
+    needs: [changes]
+    if: needs.changes.outputs.migrations == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
