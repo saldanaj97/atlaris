@@ -1,7 +1,15 @@
 #!/bin/sh
 
-# Check if only .md files are being pushed
-check_only_md_files() {
+# Check if only ignorable files are being pushed (matching CI paths-ignore)
+# Ignored patterns:
+#   - **/*.md (Markdown files)
+#   - docs/** (Documentation folder)
+#   - specs/** (Specs folder)
+#   - **/*.txt (Text files)
+#   - **/*.csv (CSV files)
+#   - **/*.log (Log files)
+#   - **/*.yaml, **/*.yml (YAML configuration files)
+check_only_ignorable_files() {
   local remote_sha=$1
 
   # Get the list of changed files
@@ -18,22 +26,31 @@ check_only_md_files() {
     return 1
   fi
 
-  # Check if all changed files are .md files
-  non_md_files=$(echo "$changed_files" | grep -v '\.md$' || true)
+  # Filter out all ignorable files (matching CI paths-ignore patterns)
+  # Remove: *.md, docs/**, specs/**, *.txt, *.csv, *.log, *.yaml, *.yml
+  code_files=$(echo "$changed_files" | \
+    grep -v '\.md$' | \
+    grep -v '^docs/' | \
+    grep -v '^specs/' | \
+    grep -v '\.txt$' | \
+    grep -v '\.csv$' | \
+    grep -v '\.log$' | \
+    grep -v '\.yaml$' | \
+    grep -v '\.yml$' || true)
 
-  if [ -z "$non_md_files" ]; then
-    return 0  # Only .md files
+  if [ -z "$code_files" ]; then
+    return 0  # Only ignorable files
   else
-    return 1  # Non-.md files exist
+    return 1  # Code files exist that need checking
   fi
 }
 
 # Read the remote and remote branch being pushed to
 while read local_ref local_sha remote_ref remote_sha
 do
-  # Check if only .md files are being pushed
-  if check_only_md_files "$remote_sha"; then
-    echo "Only .md files detected in push. Skipping CI checks."
+  # Check if only ignorable files are being pushed
+  if check_only_ignorable_files "$remote_sha"; then
+    echo "Only documentation/config files detected (md, docs/*, specs/*, txt, csv, log, yaml, yml). Skipping CI checks."
     continue
   fi
 

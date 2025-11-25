@@ -42,8 +42,8 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
 
-  lint:
-    name: Lint
+  lint-and-type-check:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -70,33 +70,6 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run ESLint
         run: pnpm lint
-
-  type-check:
-    name: Type Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Setup pnpm store cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
       - name: Run TypeScript type check
         run: pnpm type-check
 
@@ -170,20 +143,6 @@ jobs:
       matrix:
         shard: [1, 2]
         total: [2]
-    services:
-      postgres:
-        image: postgres:17
-        ports:
-          - '5432:5432'
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd="pg_isready -U postgres -d postgres"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -332,15 +291,6 @@ jobs:
             node_modules/.vite
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
-      - name: Cleanup ephemeral database
-        if: always()
-        env:
-          PGPASSWORD: postgres
-        run: |
-          if [ -n "${{ env.DB_NAME }}" ]; then
-            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
-            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
-          fi
 
   integration-light:
     name: Integration (related or light)
@@ -599,7 +549,7 @@ jobs:
 
   all-checks-pr:
     name: All Checks Passed (PR)
-    needs: [changes, lint, type-check, vulnerability-scan, build, unit-tests, integration-light]
+    needs: [changes, lint-and-type-check, vulnerability-scan, build, unit-tests, integration-light]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -608,8 +558,7 @@ jobs:
           # Populate results using GitHub Actions expressions at render time
           declare -A results=(
             [changes]="${{ needs.changes.result }}"
-            [lint]="${{ needs.lint.result }}"
-            [type-check]="${{ needs['type-check'].result }}"
+            [lint-and-type-check]="${{ needs['lint-and-type-check'].result }}"
             [vulnerability-scan]="${{ needs.vulnerability-scan.result }}"
             [build]="${{ needs.build.result }}"
             [unit-tests]="${{ needs['unit-tests'].result }}"
@@ -617,7 +566,7 @@ jobs:
           )
 
           failed=0
-          for job in changes lint type-check vulnerability-scan build unit-tests integration-light; do
+          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)
