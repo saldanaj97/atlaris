@@ -69,6 +69,8 @@ jobs:
 
   lint-and-type-check:
     name: Lint & Type Check
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -100,6 +102,8 @@ jobs:
 
   vulnerability-scan:
     name: Security Audit
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -115,6 +119,8 @@ jobs:
 
   build:
     name: Build
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

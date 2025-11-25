@@ -85,6 +85,7 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    needs: [changes]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
