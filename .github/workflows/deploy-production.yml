@@ -123,14 +123,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Wake up Neon database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Waking up Neon database (may be scaled to zero)..."
+          for i in 1 2 3 4 5 6; do
+            echo "Attempt $i/6..."
+            if psql "$DATABASE_URL" -c "SELECT 1" > /dev/null 2>&1; then
+              echo "Database awake and ready"
+              exit 0
+            fi
+            echo "Not ready, waiting 10 seconds before retry..."
+            sleep 10
+          done
+          echo "Failed to wake database after 6 attempts"
+          exit 1
+
       - name: Run migrations
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
         run: pnpm db:migrate
 
       - name: Verify migration success
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
         run: |
           echo "Production migration completed successfully"
           # Optional: Add a query to verify schema version
