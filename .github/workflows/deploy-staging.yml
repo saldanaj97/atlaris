@@ -14,10 +14,47 @@ concurrency:
   cancel-in-progress: false # Don't cancel in-progress deployments
 
 jobs:
+  # Gate: Check if this is a meaningful change (skip main sync merges)
+  check-changes:
+    name: Check for Meaningful Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if this is just a main sync
+        id: check
+        run: |
+          # For manual triggers, always deploy
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger - proceeding with deployment"
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get the commit message
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+
+          # Check if this is a merge from main (various patterns GitHub uses)
+          if echo "$COMMIT_MSG" | grep -qE "^Merge branch 'main' into staging|^Merge remote-tracking branch 'origin/main' into staging|^Merge branch 'main' into 'staging'"; then
+            echo "This is a main sync merge - skipping deployment"
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          else
+            echo "Regular push - proceeding with deployment"
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          fi
+
   # Step 1: Run database migrations
   # Note: CI checks (lint, type-check, build) are handled by ci-pr.yml before merge
   migrate-database:
     name: Migrate Database (Staging)
+    needs: [check-changes]
+    if: needs.check-changes.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -120,14 +157,20 @@ jobs:
   # Final: Report deployment status
   report-status:
     name: Report Deployment Status
-    needs: [deploy-workers]
+    needs: [check-changes, deploy-workers]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check deployment status
         run: |
-          if [ "${{ needs.deploy-workers.result }}" == "success" ]; then
+          if [ "${{ needs.check-changes.outputs.should_deploy }}" == "false" ]; then
+            echo "⏭️ Staging deployment skipped (main sync merge)"
+            exit 0
+          elif [ "${{ needs.deploy-workers.result }}" == "success" ]; then
             echo "✅ Staging deployment successful"
+            exit 0
+          elif [ "${{ needs.deploy-workers.result }}" == "skipped" ]; then
+            echo "⏭️ Staging deployment skipped"
             exit 0
           else
             echo "❌ Staging deployment failed"
