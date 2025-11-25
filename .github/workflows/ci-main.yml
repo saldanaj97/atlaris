@@ -569,15 +569,6 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         run: pnpm build
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nextjs-build
-          path: |
-            .next/**
-          retention-days: 7
-          if-no-files-found: error
-
   migration-dry-run:
     name: DB Migration Dry-Run
     runs-on: ubuntu-latest
