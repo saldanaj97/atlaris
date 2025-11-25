@@ -1,65 +1,78 @@
 name: Deploy - Staging
 
 on:
-  push:
-    branches: [staging]
-  workflow_dispatch: # Allow manual trigger
+  # Trigger automatically when CI-PR succeeds on PRs targeting main
+  workflow_run:
+    workflows: ['CI - PR (trunk)']
+    types: [completed]
+    branches: [main]
+  # Allow manual trigger
+  workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
   deployments: write
 
 concurrency:
-  group: deploy-staging-${{ github.ref }}
+  group: deploy-staging
   cancel-in-progress: false # Don't cancel in-progress deployments
 
 jobs:
-  # Gate: Check if this is a meaningful change (skip main sync merges)
-  check-changes:
-    name: Check for Meaningful Changes
+  # Gate: Verify CI passed (for workflow_run trigger) or skip (for manual trigger)
+  validate-trigger:
+    name: Validate Deployment Trigger
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       should_deploy: ${{ steps.check.outputs.should_deploy }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Check if this is just a main sync
+      - name: Check trigger conditions
         id: check
-        run: |
-          # For manual triggers, always deploy
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual trigger - proceeding with deployment"
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // For manual trigger, always proceed
+            if (context.eventName === 'workflow_dispatch') {
+              core.info('Manual trigger detected - proceeding with deployment');
+              core.setOutput('should_deploy', 'true');
+              return;
+            }
 
-          # Get the commit message
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "Commit message: $COMMIT_MSG"
+            // For workflow_run trigger, check if CI passed
+            const conclusion = context.payload.workflow_run?.conclusion;
+            const workflowName = context.payload.workflow_run?.name;
+            const headBranch = context.payload.workflow_run?.head_branch;
 
-          # Check if this is a merge from main (various patterns GitHub uses)
-          if echo "$COMMIT_MSG" | grep -qE "^Merge branch 'main' into staging|^Merge remote-tracking branch 'origin/main' into staging|^Merge branch 'main' into 'staging'"; then
-            echo "This is a main sync merge - skipping deployment"
-            echo "should_deploy=false" >> $GITHUB_OUTPUT
-          else
-            echo "Regular push - proceeding with deployment"
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-          fi
+            core.info(`Triggered by: ${workflowName}`);
+            core.info(`Head branch: ${headBranch}`);
+            core.info(`CI conclusion: ${conclusion}`);
+
+            // Only deploy if CI passed and it's from staging branch PR
+            if (conclusion === 'success' && headBranch === 'staging') {
+              core.info('CI passed for staging PR ✅ - proceeding with deployment');
+              core.setOutput('should_deploy', 'true');
+            } else if (conclusion === 'success') {
+              core.info(`CI passed but head branch is ${headBranch}, not staging - skipping deployment`);
+              core.setOutput('should_deploy', 'false');
+            } else {
+              core.info(`CI did not pass (${conclusion}) - skipping deployment`);
+              core.setOutput('should_deploy', 'false');
+            }
 
   # Step 1: Run database migrations
   # Note: CI checks (lint, type-check, build) are handled by ci-pr.yml before merge
   migrate-database:
     name: Migrate Database (Staging)
-    needs: [check-changes]
-    if: needs.check-changes.outputs.should_deploy == 'true'
+    needs: [validate-trigger]
+    if: needs.validate-trigger.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout code
+      - name: Checkout staging branch
         uses: actions/checkout@v4
+        with:
+          ref: staging
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -131,8 +144,10 @@ jobs:
             config: fly.staging.regenerator.toml
             name: Plan Regenerator
     steps:
-      - name: Checkout code
+      - name: Checkout staging branch
         uses: actions/checkout@v4
+        with:
+          ref: staging
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
@@ -157,14 +172,14 @@ jobs:
   # Final: Report deployment status
   report-status:
     name: Report Deployment Status
-    needs: [check-changes, deploy-workers]
+    needs: [validate-trigger, deploy-workers]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check deployment status
         run: |
-          if [ "${{ needs.check-changes.outputs.should_deploy }}" == "false" ]; then
-            echo "⏭️ Staging deployment skipped (main sync merge)"
+          if [ "${{ needs.validate-trigger.outputs.should_deploy }}" == "false" ]; then
+            echo "⏭️ Staging deployment skipped (CI did not pass or not from staging branch)"
             exit 0
           elif [ "${{ needs.deploy-workers.result }}" == "success" ]; then
             echo "✅ Staging deployment successful"
