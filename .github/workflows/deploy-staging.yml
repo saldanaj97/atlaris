@@ -60,26 +60,121 @@ jobs:
               core.setOutput('should_deploy', 'false');
             }
 
-  # Step 1: Run database migrations
-  # Note: CI checks (lint, type-check, build) are handled by ci-pr.yml before merge
-  migrate-database:
-    name: Migrate Database (Staging)
+  # NEW: Detect what actually changed
+  changes:
+    name: Detect Changes
     needs: [validate-trigger]
     if: needs.validate-trigger.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    outputs:
+      workers: ${{ steps.filter.outputs.workers }}
+      regenerator: ${{ steps.filter.outputs.regenerator }}
+      migrations: ${{ steps.filter.outputs.migrations }}
     steps:
       - name: Checkout staging branch
         uses: actions/checkout@v4
         with:
           ref: staging
 
+      - name: Get comparison base
+        id: get-base
+        run: |
+          # For workflow_run, compare against previous commit on staging
+          # For workflow_dispatch, we'll deploy everything (no base comparison)
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "base=" >> $GITHUB_OUTPUT
+            echo "Manual trigger - will deploy all components"
+          else
+            # Get the previous commit on staging branch
+            git log --oneline -5
+            PREV_SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+            echo "base=${PREV_SHA}" >> $GITHUB_OUTPUT
+            echo "Comparing against: ${PREV_SHA}"
+          fi
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ steps.get-base.outputs.base }}
+          filters: |
+            workers:
+              - 'src/workers/**'
+              - 'src/lib/db/**'
+              - 'Dockerfile.worker'
+              - 'fly.staging.worker.toml'
+              - 'fly.prod.worker.toml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+            regenerator:
+              - 'src/workers/**'
+              - 'src/lib/db/**'
+              - 'Dockerfile.worker'
+              - 'fly.staging.regenerator.toml'
+              - 'fly.prod.regenerator.toml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+            migrations:
+              - 'src/lib/db/migrations/*.sql'
+              - 'src/lib/db/migrations/meta/**'
+              - 'src/lib/db/schema/**'
+              - 'src/lib/db/enums.ts'
+              - 'drizzle.config.ts'
+
+      - name: Log detected changes
+        run: |
+          echo "## 📊 Change Detection Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Changes Detected |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|------------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Workers (Plan Generator) | ${{ steps.filter.outputs.workers }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Regenerator | ${{ steps.filter.outputs.regenerator }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Migrations | ${{ steps.filter.outputs.migrations }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "⚠️ **Manual trigger - deploying all components regardless of changes**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Step 1: Run database migrations (only if schema changed)
+  migrate-database:
+    name: Migrate Database (Staging)
+    needs: [validate-trigger, changes]
+    if: needs.validate-trigger.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      migration_status: ${{ steps.migration-result.outputs.status }}
+    steps:
+      # Handle skip case explicitly
+      - name: Skip - No migration changes detected
+        id: skip-check
+        if: needs.changes.outputs.migrations != 'true' && github.event_name != 'workflow_dispatch'
+        run: |
+          echo "## ⏭️ Database Migration Skipped" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No changes detected in:" >> $GITHUB_STEP_SUMMARY
+          echo "- `src/lib/db/migrations/*.sql`" >> $GITHUB_STEP_SUMMARY
+          echo "- `src/lib/db/schema/**`" >> $GITHUB_STEP_SUMMARY
+          echo "- `src/lib/db/enums.ts`" >> $GITHUB_STEP_SUMMARY
+          echo "- `drizzle.config.ts`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Skipping migration to save time and resources." >> $GITHUB_STEP_SUMMARY
+          echo "skipped=true" >> $GITHUB_OUTPUT
+
+      - name: Checkout staging branch
+        if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+
       - name: Install pnpm
+        if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
       - name: Setup pnpm store cache
+        if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/cache@v4
         with:
           path: ~/.local/share/pnpm/store
@@ -88,6 +183,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Setup Node.js
+        if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -95,9 +191,11 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
+        if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         run: pnpm install --frozen-lockfile
 
       - name: Wake up Neon database
+        if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
         run: |
@@ -115,79 +213,181 @@ jobs:
           exit 1
 
       - name: Run migrations
+        if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
           DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_STAGING_NON_POOLING }}
         run: pnpm db:migrate
 
       - name: Verify migration success
+        if: needs.changes.outputs.migrations == 'true' || github.event_name == 'workflow_dispatch'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
           DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_STAGING_NON_POOLING }}
         run: |
-          echo "Migration completed successfully"
-          # Optional: Add a query to verify schema version
+          echo "## ✅ Database Migration Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Migration applied successfully to staging database." >> $GITHUB_STEP_SUMMARY
 
-  # Step 2: Deploy workers to Fly.io
+      - name: Set migration result
+        id: migration-result
+        if: always()
+        run: |
+          if [ "${{ steps.skip-check.outputs.skipped }}" == "true" ]; then
+            echo "status=skipped" >> $GITHUB_OUTPUT
+          elif [ "${{ job.status }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+          fi
+
+  # Step 2: Deploy workers to Fly.io (only if worker code changed)
   deploy-workers:
     name: Deploy Workers (Staging)
-    needs: [migrate-database]
+    needs: [migrate-database, changes]
+    # Run if migrations succeeded OR were skipped (no changes)
+    if: always() && (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         include:
           - app: atlaris-worker-staging
             config: fly.staging.worker.toml
             name: Plan Generator
+            change_output: workers
           - app: atlaris-worker-regenerator-staging
             config: fly.staging.regenerator.toml
             name: Plan Regenerator
+            change_output: regenerator
     steps:
+      - name: Check if deployment needed
+        id: should-deploy
+        run: |
+          CHANGES_DETECTED="${{ needs.changes.outputs[matrix.change_output] }}"
+          IS_MANUAL="${{ github.event_name == 'workflow_dispatch' }}"
+
+          echo "Changes detected for ${{ matrix.name }}: ${CHANGES_DETECTED}"
+          echo "Manual trigger: ${IS_MANUAL}"
+
+          if [ "${CHANGES_DETECTED}" == "true" ] || [ "${IS_MANUAL}" == "true" ]; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+            echo "✅ Will deploy ${{ matrix.name }}"
+          else
+            echo "deploy=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Skipping ${{ matrix.name }} - no relevant changes"
+
+            echo "## ⏭️ ${{ matrix.name }} Deployment Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No changes detected in worker-related files." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Monitored paths:" >> $GITHUB_STEP_SUMMARY
+            echo "- `src/workers/**`" >> $GITHUB_STEP_SUMMARY
+            echo "- `src/lib/db/**`" >> $GITHUB_STEP_SUMMARY
+            echo "- `Dockerfile.worker`" >> $GITHUB_STEP_SUMMARY
+            echo "- `${{ matrix.config }}`" >> $GITHUB_STEP_SUMMARY
+            echo "- `package.json` / `pnpm-lock.yaml`" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Checkout staging branch
+        if: steps.should-deploy.outputs.deploy == 'true'
         uses: actions/checkout@v4
         with:
           ref: staging
 
       - name: Setup Fly.io CLI
+        if: steps.should-deploy.outputs.deploy == 'true'
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy ${{ matrix.name }} to Fly.io
+        if: steps.should-deploy.outputs.deploy == 'true'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
+          echo "🚀 Deploying ${{ matrix.name }}..."
           flyctl deploy \
             --config ${{ matrix.config }} \
             --app ${{ matrix.app }} \
             --wait-timeout 300
 
       - name: Verify deployment
+        if: steps.should-deploy.outputs.deploy == 'true'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
           flyctl status --app ${{ matrix.app }}
+
+          echo "## ✅ ${{ matrix.name }} Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Successfully deployed to `${{ matrix.app }}`" >> $GITHUB_STEP_SUMMARY
 
   # Note: Next.js deploys automatically via Vercel GitHub integration
 
   # Final: Report deployment status
   report-status:
     name: Report Deployment Status (Staging)
-    needs: [validate-trigger, deploy-workers]
+    needs: [validate-trigger, changes, migrate-database, deploy-workers]
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Generate deployment summary
+        run: |
+          echo "## 📋 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.validate-trigger.outputs.should_deploy }}" == "false" ]; then
+            echo "⏭️ **Deployment skipped** - CI did not pass or not from staging branch" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          MIGRATION_RESULT="${{ needs.migrate-database.result }}"
+          MIGRATION_CHANGES="${{ needs.changes.outputs.migrations }}"
+          if [ "${MIGRATION_CHANGES}" != "true" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "| Database Migration | ⏭️ Skipped (no changes) |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${MIGRATION_RESULT}" == "success" ]; then
+            echo "| Database Migration | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Database Migration | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          WORKER_RESULT="${{ needs.deploy-workers.result }}"
+          WORKER_CHANGES="${{ needs.changes.outputs.workers }}"
+          REGEN_CHANGES="${{ needs.changes.outputs.regenerator }}"
+          if [ "${WORKER_CHANGES}" != "true" ] && [ "${REGEN_CHANGES}" != "true" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "| Workers | ⏭️ Skipped (no changes) |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${WORKER_RESULT}" == "success" ]; then
+            echo "| Workers | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${WORKER_RESULT}" == "skipped" ]; then
+            echo "| Workers | ⏭️ Skipped |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Workers | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
       - name: Check deployment status
         run: |
-          if [ "${{ needs.validate-trigger.outputs.should_deploy }}" == "false" ]; then
+          SHOULD_DEPLOY="${{ needs.validate-trigger.outputs.should_deploy }}"
+          MIGRATE_RESULT="${{ needs.migrate-database.result }}"
+          WORKER_RESULT="${{ needs.deploy-workers.result }}"
+
+          if [ "${SHOULD_DEPLOY}" == "false" ]; then
             echo "⏭️ Staging deployment skipped (CI did not pass or not from staging branch)"
             exit 0
-          elif [ "${{ needs.deploy-workers.result }}" == "success" ]; then
+          fi
+
+          MIGRATE_OK=$( [ "${MIGRATE_RESULT}" == "success" ] || [ "${MIGRATE_RESULT}" == "skipped" ] && echo "true" || echo "false" )
+          WORKER_OK=$( [ "${WORKER_RESULT}" == "success" ] || [ "${WORKER_RESULT}" == "skipped" ] && echo "true" || echo "false" )
+
+          if [ "${MIGRATE_OK}" == "true" ] && [ "${WORKER_OK}" == "true" ]; then
             echo "✅ Staging deployment successful"
-            exit 0
-          elif [ "${{ needs.deploy-workers.result }}" == "skipped" ]; then
-            echo "⏭️ Staging deployment skipped"
             exit 0
           else
             echo "❌ Staging deployment failed"
+            echo "  Migration: ${MIGRATE_RESULT}"
+            echo "  Workers: ${WORKER_RESULT}"
             exit 1
           fi
