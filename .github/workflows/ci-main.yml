@@ -649,6 +649,10 @@ jobs:
         needs.changes.outputs.workers == 'true' ||
         needs.changes.outputs.regenerator == 'true'
       )
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
     uses: ./.github/workflows/deploy-production.yml
     with:
       deploy_migrations: ${{ needs.changes.outputs.migrations == 'true' }}
