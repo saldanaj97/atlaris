@@ -18,7 +18,9 @@ export const GET = withErrorBoundary(
 
     const user = await getUserByClerkId(userId);
     if (!user) {
-      throw new NotFoundError('User not found.');
+      throw new Error(
+        'Authenticated user record missing despite provisioning.'
+      );
     }
 
     const result = await getPlanAttemptsForUser(planId, user.id);

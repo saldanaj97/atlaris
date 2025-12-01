@@ -17,7 +17,7 @@ export default async function PlansPage() {
 
   const user = await getUserByClerkId(userId);
   if (!user) {
-    redirect('/plans/new');
+    throw new Error('Authenticated user record missing despite provisioning.');
   }
 
   const summaries: PlanSummary[] = await getPlanSummariesForUser(user.id);

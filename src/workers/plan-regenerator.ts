@@ -1,15 +1,15 @@
-import 'dotenv/config';
+import 'donv/config';
 
 import { client, isClientInitialized } from '@/lib/db/service-role';
-import { logger } from '@/lib/logging/logger';
 import {
   completeJob,
   failJob,
   getNextJob,
   type FailJobOptions,
 } from '@/lib/jobs/queue';
-import { processPlanRegenerationJob } from '@/lib/jobs/worker-service';
 import { JOB_TYPES } from '@/lib/jobs/types';
+import { processPlanRegenerationJob } from '@/lib/jobs/worker-service';
+import { logger } from '@/lib/logging/logger';
 import { normalizeError, sleep } from './utils';
 
 const DEFAULT_POLL_INTERVAL_MS = 2000;
@@ -125,6 +125,7 @@ async function main() {
         }
       }
     } catch (error) {
+      // TODO: Look into why this is failing in a loop
       const normalized = normalizeError(error);
       logger.error(
         {

@@ -41,7 +41,9 @@ export const POST = withErrorBoundary(
 
     const user = await getUserByClerkId(userId);
     if (!user) {
-      return jsonError('User not found', { status: 404 });
+      throw new Error(
+        'Authenticated user record missing despite provisioning.'
+      );
     }
 
     // Fetch and verify plan ownership (RLS-enforced via getDb)
