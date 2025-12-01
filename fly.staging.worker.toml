@@ -6,7 +6,7 @@ primary_region = "sjc"  # Change to region closest to your Neon database
   dockerfile = "Dockerfile.worker"
 
 [env]
-  NODE_ENV = "staging"
+  NODE_ENV = "test"
 
 [processes]
   app = "pnpm tsx src/workers/index.ts"
