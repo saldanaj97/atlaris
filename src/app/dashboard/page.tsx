@@ -25,7 +25,7 @@ export default async function DashboardPage() {
 
   const user = await getUserByClerkId(userId);
   if (!user) {
-    redirect('/plans/new');
+    throw new Error('Authenticated user record missing despite provisioning.');
   }
 
   const summaries = await getPlanSummariesForUser(user.id);

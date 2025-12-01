@@ -31,7 +31,9 @@ export const GET = withErrorBoundary(
   withAuth(async ({ userId }) => {
     const user = await getUserByClerkId(userId);
     if (!user) {
-      throw new ValidationError('User record not found.');
+      throw new Error(
+        'Authenticated user record missing despite provisioning.'
+      );
     }
 
     const summaries = await getPlanSummariesForUser(user.id);
@@ -104,7 +106,9 @@ export const POST = withErrorBoundary(
 
     const user = await getUserByClerkId(userId);
     if (!user) {
-      throw new ValidationError('User record not found. Cannot create plan.');
+      throw new Error(
+        'Authenticated user record missing despite provisioning.'
+      );
     }
 
     // Check rate limit before creating plan
