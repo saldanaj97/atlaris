@@ -1,6 +1,7 @@
 import { appEnv, devClerkEnv } from '@/lib/config/env';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
+import { createUser, getUserByClerkId } from '@/lib/db/queries/users';
 
 /**
  * Returns the effective Clerk user id for the current request.
@@ -19,8 +20,8 @@ export async function getEffectiveClerkUserId(): Promise<string | null> {
     return devUserId || null;
   }
 
-  // In non-production runtimes, prefer DEV_CLERK_USER_ID when present.
-  if (!appEnv.isProduction) {
+  // In local development, prefer DEV_CLERK_USER_ID when present.
+  if (appEnv.isDevelopment) {
     const devUserId = devClerkEnv.userId;
     if (devUserId !== undefined) {
       // Return the value as-is, converting empty string to null
@@ -50,6 +51,46 @@ export async function requireUser() {
   return userId;
 }
 
+async function ensureUserRecord(clerkUserId: string) {
+  const existing = await getUserByClerkId(clerkUserId);
+  if (existing) {
+    return existing;
+  }
+
+  const { currentUser } = await import('@clerk/nextjs/server');
+  const clerkUser = await currentUser();
+
+  if (!clerkUser) {
+    throw new AuthError('Clerk user data unavailable.');
+  }
+
+  const emailAddresses = clerkUser.emailAddresses ?? [];
+  const preferredEmail =
+    emailAddresses.find(
+      (address) => address.id === clerkUser.primaryEmailAddressId
+    )?.emailAddress ?? emailAddresses[0]?.emailAddress;
+
+  if (!preferredEmail) {
+    throw new AuthError('Clerk user must have an email address.');
+  }
+
+  const nameParts = [clerkUser.firstName, clerkUser.lastName].filter(Boolean);
+  const trimmedName = nameParts.join(' ').trim();
+  const displayName = trimmedName || clerkUser.fullName || undefined;
+
+  const created = await createUser({
+    clerkUserId,
+    email: preferredEmail,
+    name: displayName,
+  });
+
+  if (!created) {
+    throw new AuthError('Failed to provision user record.');
+  }
+
+  return created;
+}
+
 type RouteHandlerParams = Record<string, string | undefined>;
 
 type HandlerCtx = {
@@ -73,6 +114,7 @@ export type PlainHandler = (
 export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
     const userId = await requireUser();
+    await ensureUserRecord(userId);
 
     // Create RLS-enforced database client for this request
     // This client automatically scopes all queries to the authenticated user
