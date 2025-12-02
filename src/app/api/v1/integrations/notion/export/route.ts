@@ -57,12 +57,6 @@ export const POST = withErrorBoundary(
       return respondJson({ error: 'User not found' }, { status: 404 });
     }
 
-    // Temporarily disable Notion export until the feature is ready.
-    return respondJson(
-      { error: 'Notion export is currently disabled' },
-      { status: 503 }
-    );
-
     // Get Notion token
     const notionTokens = await getOAuthTokens(user.id, 'notion');
 
@@ -76,13 +70,14 @@ export const POST = withErrorBoundary(
     if (!parsed.success) {
       return respondJson({ error: 'Invalid planId' }, { status: 400 });
     }
+    const { planId } = parsed.data;
 
     // Ensure the plan exists and is owned by the authenticated user before exporting
     try {
       const [plan] = await db
         .select({ userId: learningPlans.userId })
         .from(learningPlans)
-        .where(eq(learningPlans.id, parsed.data.planId))
+        .where(eq(learningPlans.id, planId))
         .limit(1);
 
       if (!plan) {
@@ -96,12 +91,19 @@ export const POST = withErrorBoundary(
       logger.error(
         {
           userId: user.id,
-          planId: parsed.data.planId,
+          planId,
           error: e,
         },
         'Failed to load plan for Notion export'
       );
       return respondJson({ error: 'Failed to load plan' }, { status: 500 });
+    }
+
+    if (!notionTokens) {
+      return respondJson(
+        { error: 'Notion integration not found' },
+        { status: 404 }
+      );
     }
 
     try {
@@ -122,7 +124,7 @@ export const POST = withErrorBoundary(
       );
 
       const notionPageId = await exportPlanToNotion(
-        parsed.data.planId,
+        planId,
         user.id,
         notionClient
       );
@@ -145,7 +147,7 @@ export const POST = withErrorBoundary(
       logger.error(
         {
           userId: user.id,
-          planId: parsed.data.planId,
+          planId,
           error,
         },
         'Notion export failed'
