@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { AppError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { users, learningPlans } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { exportPlanToNotion } from '@/lib/integrations/notion/sync';
 import { createNotionIntegrationClient } from '@/lib/integrations/notion/factory';
-import { z } from 'zod';
 import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
 import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
+import { eq } from 'drizzle-orm';
 
 const exportRequestSchema = z.object({ planId: z.string().uuid() });
 
@@ -126,21 +128,30 @@ export const POST = withErrorBoundary(
         },
         'Notion export failed'
       );
-      let errorMessage = 'Unknown error occurred during export';
-      let status = 500;
-      if (error instanceof Error) {
-        const msg = error.message;
-        if (msg.includes('Plan not found')) {
-          errorMessage = 'Plan not found';
-          status = 404;
-        } else if (msg.includes('Access denied')) {
-          errorMessage = 'Forbidden';
-          status = 403;
-        } else {
-          errorMessage = msg;
+
+      if (error instanceof AppError) {
+        const body: Record<string, unknown> = {
+          error: error.message,
+          code: error.code(),
+        };
+
+        const classification = error.classification();
+        if (classification) {
+          body.classification = classification;
         }
+
+        const details = error.details();
+        if (details !== undefined) {
+          body.details = details;
+        }
+
+        return respondJson(body, { status: error.status() });
       }
-      return respondJson({ error: errorMessage }, { status });
+
+      return respondJson(
+        { error: 'Notion export failed', code: 'NOTION_EXPORT_FAILED' },
+        { status: 500 }
+      );
     }
   })
 );

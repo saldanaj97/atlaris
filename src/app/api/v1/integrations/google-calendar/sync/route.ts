@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { AppError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, users } from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
-import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import { createGoogleCalendarClient } from '@/lib/integrations/google-calendar/factory';
+import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
 import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
+import { and, eq } from 'drizzle-orm';
 
 const syncRequestSchema = z.object({
   planId: z.string().uuid('Invalid plan ID format'),
@@ -125,7 +127,33 @@ export const POST = withErrorBoundary(
         },
         'Google Calendar sync failed'
       );
-      return respondJson({ error: 'Sync failed' }, { status: 500 });
+
+      if (error instanceof AppError) {
+        const body: Record<string, unknown> = {
+          error: error.message,
+          code: error.code(),
+        };
+
+        const classification = error.classification();
+        if (classification) {
+          body.classification = classification;
+        }
+
+        const details = error.details();
+        if (details !== undefined) {
+          body.details = details;
+        }
+
+        return respondJson(body, { status: error.status() });
+      }
+
+      return respondJson(
+        {
+          error: 'Google Calendar sync failed',
+          code: 'GOOGLE_CALENDAR_SYNC_FAILED',
+        },
+        { status: 500 }
+      );
     }
   })
 );

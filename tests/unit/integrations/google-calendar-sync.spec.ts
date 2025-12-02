@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+import {
+  IntegrationSyncError,
+  NotFoundError,
+  ValidationError,
+} from '@/lib/api/errors';
+import { db } from '@/lib/db/service-role';
+import * as mapper from '@/lib/integrations/google-calendar/mapper';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import type { GoogleCalendarClient } from '@/lib/integrations/google-calendar/types';
-import * as mapper from '@/lib/integrations/google-calendar/mapper';
-import { db } from '@/lib/db/service-role';
 
 // Helper to create a mock Google Calendar client for unit tests
 // This function is called within each test to get a reference to the mock
@@ -77,10 +83,10 @@ describe('Google Calendar Sync', () => {
       const mockClient = createMockCalendarClient();
       await expect(
         syncPlanToGoogleCalendar(mockPlanId, mockClient)
-      ).rejects.toThrow('Plan not found');
+      ).rejects.toThrow(NotFoundError);
     });
 
-    it('should throw error when no modules found for plan', async () => {
+    it('should throw validation error when no modules found for plan', async () => {
       const mockPlan = {
         id: mockPlanId,
         userId: 'user-123',
@@ -96,7 +102,7 @@ describe('Google Calendar Sync', () => {
 
       await expect(
         syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
-      ).rejects.toThrow('No modules found for plan');
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should create calendar events for all tasks', async () => {
@@ -282,7 +288,7 @@ describe('Google Calendar Sync', () => {
       expect(mockCalendar.events.insert).not.toHaveBeenCalled();
     });
 
-    it('should throw error when event creation returns no ID', async () => {
+    it('should throw integration error when event creation returns no ID', async () => {
       const mockPlan = {
         id: mockPlanId,
         userId: 'user-123',
@@ -323,10 +329,10 @@ describe('Google Calendar Sync', () => {
 
       await expect(
         syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
-      ).rejects.toThrow('Failed to sync any events');
+      ).rejects.toThrow(IntegrationSyncError);
     });
 
-    it('should delete calendar event if DB insert fails', async () => {
+    it('should delete calendar event if DB insert fails and surface integration error', async () => {
       const mockPlan = {
         id: mockPlanId,
         userId: 'user-123',
@@ -369,7 +375,7 @@ describe('Google Calendar Sync', () => {
 
       await expect(
         syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
-      ).rejects.toThrow('Failed to sync any events');
+      ).rejects.toThrow(IntegrationSyncError);
 
       // Should attempt to delete the created event
       expect(mockCalendar.events.delete).toHaveBeenCalledWith({
@@ -648,7 +654,7 @@ describe('Google Calendar Sync', () => {
       expect(mockCalendar.events.insert).toHaveBeenCalledTimes(3);
     });
 
-    it('should return 0 events created when all tasks fail', async () => {
+    it('should surface integration error when all tasks fail', async () => {
       const mockPlan = {
         id: mockPlanId,
         userId: 'user-123',
@@ -687,7 +693,7 @@ describe('Google Calendar Sync', () => {
 
       await expect(
         syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
-      ).rejects.toThrow('Failed to sync any events');
+      ).rejects.toThrow(IntegrationSyncError);
     });
 
     it('should handle tasks with null descriptions', async () => {

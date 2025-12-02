@@ -1,22 +1,29 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { IntegrationSyncError } from '@/lib/api/errors';
 import { setTestUser } from '../../helpers/auth';
 
 // Shared logger mock to capture error logs
-const mockLogger = {
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-  debug: vi.fn(),
-  child: vi.fn(),
-} as any;
-mockLogger.child.mockReturnValue(mockLogger);
+// Use var to avoid temporal dead zone issues with hoisted vi.mock factories.
+var mockLogger: any;
 
 // Mock dependencies before importing the route
-vi.mock('@/lib/logging/logger', () => ({
-  logger: mockLogger,
-  createLogger: () => mockLogger,
-}));
+vi.mock('@/lib/logging/logger', () => {
+  mockLogger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(),
+  } as any;
+  mockLogger.child.mockReturnValue(mockLogger);
+
+  return {
+    logger: mockLogger,
+    createLogger: () => mockLogger,
+  };
+});
 
 // Mock getDb to return our mocked DB
 const mockDbInstance = {
@@ -334,7 +341,7 @@ describe('Google Calendar Sync Route', () => {
       );
     });
 
-    it('should return 500 when sync fails', async () => {
+    it('should return 500 with explicit error when sync fails with unexpected error', async () => {
       mockDb.limit.mockResolvedValue([
         { id: 'user-123', subscriptionTier: 'free' },
       ]);
@@ -363,7 +370,8 @@ describe('Google Calendar Sync Route', () => {
       const data = await response.json();
 
       expect(response.status).toBe(500);
-      expect(data.error).toBe('Sync failed');
+      expect(data.error).toBe('Google Calendar sync failed');
+      expect(data.code).toBe('GOOGLE_CALENDAR_SYNC_FAILED');
       expect(mockCheckExportQuota).toHaveBeenCalledWith('user-123', 'free');
       expect(mockIncrementExportUsage).not.toHaveBeenCalled();
     });
@@ -636,6 +644,46 @@ describe('Google Calendar Sync Route', () => {
 
       const response = await POST(request);
       expect(response.status).toBe(200);
+    });
+
+    it('should surface AppError details from sync service', async () => {
+      mockDb.limit.mockResolvedValue([
+        { id: 'user-123', subscriptionTier: 'free' },
+      ]);
+      mockGetOAuthTokens.mockResolvedValue({
+        accessToken: 'test-token',
+        refreshToken: 'test-refresh',
+      });
+
+      const appError = new IntegrationSyncError('Google Calendar sync failed', {
+        taskErrors: [{ taskId: 'task-1', error: 'Some failure' }],
+      });
+      mockSyncPlanToGoogleCalendar.mockRejectedValue(appError);
+
+      const { POST } = await import(
+        '@/app/api/v1/integrations/google-calendar/sync/route'
+      );
+
+      const request = new NextRequest(
+        'http://localhost:3000/api/v1/integrations/google-calendar/sync',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planId: '123e4567-e89b-12d3-a456-426614174000',
+          }),
+        }
+      );
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toBe('Google Calendar sync failed');
+      expect(data.code).toBe('GOOGLE_CALENDAR_SYNC_FAILED');
+      expect(data.details).toEqual({
+        taskErrors: [{ taskId: 'task-1', error: 'Some failure' }],
+      });
     });
   });
 });

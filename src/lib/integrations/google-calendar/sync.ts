@@ -7,7 +7,14 @@ import {
   googleCalendarSyncState,
 } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { mapTaskToCalendarEvent, generateSchedule } from './mapper';
+
+import {
+  IntegrationSyncError,
+  NotFoundError,
+  ValidationError,
+} from '@/lib/api/errors';
+
+import { generateSchedule, mapTaskToCalendarEvent } from './mapper';
 import type { GoogleCalendarClient } from './types';
 
 /**
@@ -29,7 +36,7 @@ export async function syncPlanToGoogleCalendar(
     .limit(1);
 
   if (!plan) {
-    throw new Error('Plan not found');
+    throw new NotFoundError('Plan not found');
   }
 
   // Fetch modules ordered by their order field
@@ -40,7 +47,7 @@ export async function syncPlanToGoogleCalendar(
     .orderBy(modules.order);
 
   if (planModules.length === 0) {
-    throw new Error('No modules found for plan');
+    throw new ValidationError('No modules found for plan');
   }
 
   // Fetch tasks for these modules using efficient DB filtering
@@ -180,7 +187,7 @@ export async function syncPlanToGoogleCalendar(
         throw dbError;
       }
     } catch (error) {
-      // Log error but continue with other tasks
+      // Record per-task error but continue syncing remaining tasks.
       errors.push({
         taskId: task.id,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -188,11 +195,11 @@ export async function syncPlanToGoogleCalendar(
     }
   }
 
-  // If all tasks failed, throw error
+  // If all tasks failed, surface a structured integration error with details.
   if (errors.length > 0 && eventsCreated === 0) {
-    throw new Error(
-      `Failed to sync any events. Errors: ${JSON.stringify(errors)}`
-    );
+    throw new IntegrationSyncError('Google Calendar sync failed', {
+      taskErrors: errors,
+    });
   }
 
   // Store sync state
