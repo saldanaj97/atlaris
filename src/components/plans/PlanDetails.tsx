@@ -69,6 +69,7 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
               statuses={statuses}
             />
 
+            {/* TODO: Re-enable once Notion/Calendar integrations are ready */}
             <ExportButtons planId={plan.id} />
 
             {!isPendingOrProcessing && (
