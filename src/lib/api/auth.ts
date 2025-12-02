@@ -1,7 +1,11 @@
 import { appEnv, devClerkEnv } from '@/lib/config/env';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
-import { createUser, getUserByClerkId } from '@/lib/db/queries/users';
+import {
+  createUser,
+  getUserByClerkId,
+  type DbUser,
+} from '@/lib/db/queries/users';
 
 /**
  * Returns the effective Clerk user id for the current request.
@@ -51,7 +55,7 @@ export async function requireUser() {
   return userId;
 }
 
-async function ensureUserRecord(clerkUserId: string) {
+async function ensureUserRecord(clerkUserId: string): Promise<DbUser> {
   const existing = await getUserByClerkId(clerkUserId);
   if (existing) {
     return existing;
@@ -91,6 +95,17 @@ async function ensureUserRecord(clerkUserId: string) {
   return created;
 }
 
+export async function getOrCreateCurrentUserRecord(): Promise<DbUser | null> {
+  const userId = await getEffectiveClerkUserId();
+  if (!userId) return null;
+  return ensureUserRecord(userId);
+}
+
+export async function requireCurrentUserRecord(): Promise<DbUser> {
+  const userId = await requireUser();
+  return ensureUserRecord(userId);
+}
+
 type RouteHandlerParams = Record<string, string | undefined>;
 
 type HandlerCtx = {
@@ -113,8 +128,25 @@ export type PlainHandler = (
 
 export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
-    const userId = await requireUser();
-    await ensureUserRecord(userId);
+    const params: RouteHandlerParams = routeContext?.params
+      ? await routeContext.params
+      : {};
+
+    // In Vitest/test environments, mirror production behavior by ensuring the user
+    // record exists, but avoid creating per-request RLS clients. Tests control DB
+    // state directly via the service-role client (see getDb/runtime and helpers).
+    if (appEnv.isTest) {
+      const user = await requireCurrentUserRecord();
+      const userId = user.clerkUserId;
+      const requestContext = createRequestContext(req, userId);
+
+      return await withRequestContext(requestContext, () =>
+        handler({ req, userId, params })
+      );
+    }
+
+    const user = await requireCurrentUserRecord();
+    const userId = user.clerkUserId;
 
     // Create RLS-enforced database client for this request
     // This client automatically scopes all queries to the authenticated user
@@ -123,10 +155,6 @@ export function withAuth(handler: Handler): PlainHandler {
 
     // Create request context with the RLS-enforced DB and cleanup function
     const requestContext = createRequestContext(req, userId, rlsDb, cleanup);
-
-    const params: RouteHandlerParams = routeContext?.params
-      ? await routeContext.params
-      : {};
 
     try {
       return await withRequestContext(requestContext, () =>

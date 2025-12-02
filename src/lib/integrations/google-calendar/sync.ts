@@ -7,8 +7,23 @@ import {
   googleCalendarSyncState,
 } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { mapTaskToCalendarEvent, generateSchedule } from './mapper';
+
+import {
+  AppError,
+  IntegrationSyncError,
+  NotFoundError,
+  ValidationError,
+} from '@/lib/api/errors';
+
+import { generateSchedule, mapTaskToCalendarEvent } from './mapper';
 import type { GoogleCalendarClient } from './types';
+
+type TaskSyncError = {
+  taskId: string;
+  message: string;
+  code?: string;
+  details?: unknown;
+};
 
 /**
  * Syncs plan tasks to Google Calendar using a pre-configured client.
@@ -29,7 +44,7 @@ export async function syncPlanToGoogleCalendar(
     .limit(1);
 
   if (!plan) {
-    throw new Error('Plan not found');
+    throw new NotFoundError('Plan not found');
   }
 
   // Fetch modules ordered by their order field
@@ -40,7 +55,7 @@ export async function syncPlanToGoogleCalendar(
     .orderBy(modules.order);
 
   if (planModules.length === 0) {
-    throw new Error('No modules found for plan');
+    throw new ValidationError('No modules found for plan');
   }
 
   // Fetch tasks for these modules using efficient DB filtering
@@ -49,6 +64,10 @@ export async function syncPlanToGoogleCalendar(
     .select()
     .from(tasks)
     .where(inArray(tasks.moduleId, moduleIds));
+
+  if (allTasks.length === 0) {
+    throw new ValidationError('No tasks found for plan');
+  }
 
   // Build module index map from planModules to preserve plan sequence
   const moduleIndex = new Map<string, number>();
@@ -101,8 +120,12 @@ export async function syncPlanToGoogleCalendar(
   // Generate schedule
   const schedule = generateSchedule(mappedTasks, plan.weeklyHours);
 
+  if (schedule.size === 0) {
+    throw new ValidationError('Unable to schedule tasks for plan');
+  }
+
   let eventsCreated = 0;
-  const errors: Array<{ taskId: string; error: string }> = [];
+  const taskErrors: TaskSyncError[] = [];
 
   for (const task of sortedTasks) {
     const startTime = schedule.get(task.id);
@@ -180,19 +203,31 @@ export async function syncPlanToGoogleCalendar(
         throw dbError;
       }
     } catch (error) {
-      // Log error but continue with other tasks
-      errors.push({
+      // Record per-task error but continue syncing remaining tasks.
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      const taskError: TaskSyncError = {
         taskId: task.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+        message,
+      };
+      if (error instanceof AppError) {
+        const code = error.code();
+        const details = error.details();
+        if (code) {
+          taskError.code = code;
+        }
+        if (details !== undefined) {
+          taskError.details = details;
+        }
+      }
+      taskErrors.push(taskError);
     }
   }
 
-  // If all tasks failed, throw error
-  if (errors.length > 0 && eventsCreated === 0) {
-    throw new Error(
-      `Failed to sync any events. Errors: ${JSON.stringify(errors)}`
-    );
+  // If all tasks failed, surface a structured integration error with details.
+  if (taskErrors.length > 0 && eventsCreated === 0) {
+    throw new IntegrationSyncError('Google Calendar sync failed', {
+      taskErrors,
+    });
   }
 
   // Store sync state

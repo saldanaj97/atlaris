@@ -3,21 +3,15 @@ import { redirect } from 'next/navigation';
 
 import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
+import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import { getUserByClerkId } from '@/lib/db/queries/users';
 import type { PlanSummary } from '@/lib/types/db';
 import { ArrowLeft } from 'lucide-react';
 
 export default async function PlansPage() {
-  const userId = await getEffectiveClerkUserId();
-  if (!userId) {
-    redirect('/sign-in?redirect_url=/plans');
-  }
-
-  const user = await getUserByClerkId(userId);
+  const user = await getOrCreateCurrentUserRecord();
   if (!user) {
-    throw new Error('Authenticated user record missing despite provisioning.');
+    redirect('/sign-in?redirect_url=/plans');
   }
 
   const summaries: PlanSummary[] = await getPlanSummariesForUser(user.id);

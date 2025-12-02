@@ -4,7 +4,7 @@ import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import type { InferSelectModel } from 'drizzle-orm';
 
-type DbUser = InferSelectModel<typeof users>;
+export type DbUser = InferSelectModel<typeof users>;
 
 export async function getUserByClerkId(
   clerkUserId: string
