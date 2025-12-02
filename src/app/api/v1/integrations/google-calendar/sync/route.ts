@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
-import { AppError } from '@/lib/api/errors';
+import { withAuth, type RouteHandlerContext } from '@/lib/api/auth';
+import { AppError, toErrorResponse } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, users } from '@/lib/db/schema';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
@@ -19,8 +19,8 @@ const syncRequestSchema = z.object({
   planId: z.string().uuid('Invalid plan ID format'),
 });
 
-export const POST = withErrorBoundary(
-  withAuth(async ({ req, userId: clerkUserId }) => {
+const handleAuthedGoogleCalendarSync = withAuth(
+  async ({ req, userId: clerkUserId }) => {
     const request = req as NextRequest;
     const { requestId, logger } = createRequestContext(req, {
       route: 'google_calendar_sync',
@@ -28,6 +28,22 @@ export const POST = withErrorBoundary(
     });
     const respondJson = (payload: unknown, init?: ResponseInit) =>
       attachRequestIdHeader(NextResponse.json(payload, init), requestId);
+
+    const respondAppError = (error: AppError) => {
+      const body: Record<string, unknown> = {
+        error: error.message,
+        code: error.code(),
+      };
+      const classification = error.classification();
+      if (classification) {
+        body.classification = classification;
+      }
+      const details = error.details();
+      if (details !== undefined) {
+        body.details = details;
+      }
+      return respondJson(body, { status: error.status() });
+    };
 
     const db = getDb();
     const [user] = await db
@@ -40,6 +56,12 @@ export const POST = withErrorBoundary(
       return respondJson({ error: 'User not found' }, { status: 404 });
     }
 
+    // Temporarily disable Google Calendar sync until the feature is ready.
+    return respondJson(
+      { error: 'Google Calendar sync is currently disabled' },
+      { status: 503 }
+    );
+
     const googleTokens = await getOAuthTokens(user.id, 'google_calendar');
     if (!googleTokens) {
       return respondJson(
@@ -49,16 +71,13 @@ export const POST = withErrorBoundary(
     }
 
     // Validate request body
-    let body;
+    let body: z.infer<typeof syncRequestSchema>;
     try {
       const rawBody: unknown = await request.json();
       body = syncRequestSchema.parse(rawBody);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return respondJson(
-          { error: 'Invalid request', details: error.issues },
-          { status: 400 }
-        );
+        return respondJson({ error: 'Invalid request' }, { status: 400 });
       }
       return respondJson({ error: 'Invalid request body' }, { status: 400 });
     }
@@ -95,8 +114,8 @@ export const POST = withErrorBoundary(
       }
 
       const calendarClient = createGoogleCalendarClient({
-        accessToken: googleTokens.accessToken,
-        refreshToken: googleTokens.refreshToken,
+        accessToken: googleTokens!.accessToken,
+        refreshToken: googleTokens!.refreshToken,
       });
 
       const eventsCreated = await syncPlanToGoogleCalendar(
@@ -123,28 +142,14 @@ export const POST = withErrorBoundary(
         {
           planId,
           userId: user.id,
+          provider: 'google_calendar',
           error,
         },
         'Google Calendar sync failed'
       );
 
       if (error instanceof AppError) {
-        const body: Record<string, unknown> = {
-          error: error.message,
-          code: error.code(),
-        };
-
-        const classification = error.classification();
-        if (classification) {
-          body.classification = classification;
-        }
-
-        const details = error.details();
-        if (details !== undefined) {
-          body.details = details;
-        }
-
-        return respondJson(body, { status: error.status() });
+        return respondAppError(error as AppError);
       }
 
       return respondJson(
@@ -155,5 +160,26 @@ export const POST = withErrorBoundary(
         { status: 500 }
       );
     }
-  })
+  }
 );
+
+export async function POST(
+  req: Request,
+  context?: RouteHandlerContext
+): Promise<Response> {
+  try {
+    return await handleAuthedGoogleCalendarSync(req, context);
+  } catch (error) {
+    if (error instanceof AppError) {
+      return toErrorResponse(error);
+    }
+
+    return Response.json(
+      {
+        error: 'Google Calendar sync failed',
+        code: 'GOOGLE_CALENDAR_SYNC_FAILED',
+      },
+      { status: 500 }
+    );
+  }
+}

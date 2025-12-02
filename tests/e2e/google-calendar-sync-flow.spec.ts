@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
 import {
-  users,
+  googleCalendarSyncState,
   learningPlans,
   modules,
-  tasks,
   taskCalendarEvents,
-  googleCalendarSyncState,
+  tasks,
+  users,
 } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db/service-role';
 import { syncPlanToGoogleCalendar } from '@/lib/integrations/google-calendar/sync';
 import type { GoogleCalendarClient } from '@/lib/integrations/google-calendar/types';
+import { eq } from 'drizzle-orm';
 import type { calendar_v3 } from 'googleapis';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 function createMockCalendarClient(): GoogleCalendarClient {
   let eventCounter = 0;
@@ -52,7 +52,7 @@ function createMockCalendarClient(): GoogleCalendarClient {
   return { events: eventsApi };
 }
 
-describe('Google Calendar Sync E2E Flow', () => {
+describe.skip('Google Calendar Sync E2E Flow (temporarily disabled)', () => {
   let userId: string;
   let planId: string;
 

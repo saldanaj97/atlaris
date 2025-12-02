@@ -27,6 +27,25 @@ export const POST = withErrorBoundary(
     const respondJson = (payload: unknown, init?: ResponseInit) =>
       attachRequestIdHeader(NextResponse.json(payload, init), requestId);
 
+    const respondAppError = (error: AppError) => {
+      const body: Record<string, unknown> = {
+        error: error.message,
+        code: error.code(),
+      };
+
+      const classification = error.classification();
+      if (classification) {
+        body.classification = classification;
+      }
+
+      const details = error.details();
+      if (details !== undefined) {
+        body.details = details;
+      }
+
+      return respondJson(body, { status: error.status() });
+    };
+
     const db = getDb();
     const [user] = await db
       .select()
@@ -38,11 +57,14 @@ export const POST = withErrorBoundary(
       return respondJson({ error: 'User not found' }, { status: 404 });
     }
 
+    // Temporarily disable Notion export until the feature is ready.
+    return respondJson(
+      { error: 'Notion export is currently disabled' },
+      { status: 503 }
+    );
+
     // Get Notion token
     const notionTokens = await getOAuthTokens(user.id, 'notion');
-    if (!notionTokens) {
-      return respondJson({ error: 'Notion not connected' }, { status: 401 });
-    }
 
     let json: unknown;
     try {
@@ -130,22 +152,7 @@ export const POST = withErrorBoundary(
       );
 
       if (error instanceof AppError) {
-        const body: Record<string, unknown> = {
-          error: error.message,
-          code: error.code(),
-        };
-
-        const classification = error.classification();
-        if (classification) {
-          body.classification = classification;
-        }
-
-        const details = error.details();
-        if (details !== undefined) {
-          body.details = details;
-        }
-
-        return respondJson(body, { status: error.status() });
+        return respondAppError(error);
       }
 
       return respondJson(

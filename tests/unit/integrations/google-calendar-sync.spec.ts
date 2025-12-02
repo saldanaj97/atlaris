@@ -539,7 +539,7 @@ describe('Google Calendar Sync', () => {
       });
     });
 
-    it('should map all tasks before generating schedule', async () => {
+    it('should surface a validation error when schedule generation returns nothing', async () => {
       const mockPlan = {
         id: mockPlanId,
         userId: 'user-123',
@@ -575,7 +575,9 @@ describe('Google Calendar Sync', () => {
 
       vi.mocked(mapper.generateSchedule).mockReturnValue(new Map());
 
-      await syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient());
+      await expect(
+        syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
+      ).rejects.toThrow(ValidationError);
 
       expect(mapper.generateSchedule).toHaveBeenCalledWith(
         [
@@ -594,6 +596,28 @@ describe('Google Calendar Sync', () => {
         ],
         10
       );
+    });
+
+    it('should throw validation error when no tasks exist for the plan', async () => {
+      const mockPlan = {
+        id: mockPlanId,
+        userId: 'user-123',
+        weeklyHours: 10,
+      };
+      const mockModules = [{ id: 'module-1', order: 1 }];
+
+      mockDbSelect.limit
+        .mockResolvedValueOnce([mockPlan])
+        .mockResolvedValue([]);
+      mockDbSelect.orderBy.mockResolvedValue(mockModules);
+      mockDbSelect.where
+        .mockReturnValueOnce(mockDbSelect)
+        .mockReturnValueOnce(mockDbSelect)
+        .mockResolvedValueOnce([]); // No tasks
+
+      await expect(
+        syncPlanToGoogleCalendar(mockPlanId, createMockCalendarClient())
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should handle exponential backoff correctly', async () => {

@@ -54,7 +54,12 @@ export class NotFoundError extends AppError {
 
 export class ValidationError extends AppError {
   constructor(message = 'Validation Failed', details?: unknown) {
-    super(message, { status: 400, code: 'VALIDATION_ERROR', details });
+    super(message, {
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      details,
+      classification: 'validation',
+    });
   }
 }
 
@@ -101,6 +106,17 @@ export class IntegrationSyncError extends AppError {
       status: 500,
       code: 'GOOGLE_CALENDAR_SYNC_FAILED',
       details,
+    });
+  }
+}
+
+export class ExportQuotaExceededError extends AppError {
+  constructor(message = 'Export quota exceeded', details?: unknown) {
+    super(message, {
+      status: 403,
+      code: 'EXPORT_QUOTA_EXCEEDED',
+      details,
+      classification: 'rate_limit',
     });
   }
 }

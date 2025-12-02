@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface ExportButtonsProps {
   planId: string;
@@ -19,10 +18,10 @@ interface CalendarSyncResponse {
 }
 
 export function ExportButtons({ planId }: ExportButtonsProps) {
-  const [isExportingNotion, setIsExportingNotion] = useState(false);
-  const [isExportingCalendar, setIsExportingCalendar] = useState(false);
+  const [_isExportingNotion, setIsExportingNotion] = useState(false);
+  const [_isExportingCalendar, setIsExportingCalendar] = useState(false);
 
-  async function handleNotionExport() {
+  async function _handleNotionExport() {
     setIsExportingNotion(true);
 
     try {
@@ -57,7 +56,7 @@ export function ExportButtons({ planId }: ExportButtonsProps) {
     }
   }
 
-  async function handleCalendarSync() {
+  async function _handleCalendarSync() {
     setIsExportingCalendar(true);
 
     try {
@@ -100,23 +99,6 @@ export function ExportButtons({ planId }: ExportButtonsProps) {
     }
   }
 
-  return (
-    <div className="flex gap-2">
-      <Button
-        variant="default"
-        onClick={() => void handleNotionExport()}
-        disabled={isExportingNotion}
-      >
-        {isExportingNotion ? 'Exporting…' : 'Export to Notion'}
-      </Button>
-
-      <Button
-        variant="default"
-        onClick={() => void handleCalendarSync()}
-        disabled={isExportingCalendar}
-      >
-        {isExportingCalendar ? 'Syncing…' : 'Add to Google Calendar'}
-      </Button>
-    </div>
-  );
+  // Temporarily hide export/sync controls until integrations are ready for production.
+  return null;
 }
