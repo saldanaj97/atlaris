@@ -4,24 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IntegrationSyncError } from '@/lib/api/errors';
 import { setTestUser } from '../../helpers/auth';
 
-// Shared logger mock to capture error logs
-// Use var to avoid temporal dead zone issues with hoisted vi.mock factories.
-let mockLogger: any;
-
 // Mock dependencies before importing the route
 vi.mock('@/lib/logging/logger', () => {
-  mockLogger = {
+  const logger = {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn(),
   } as any;
-  mockLogger.child.mockReturnValue(mockLogger);
+
+  logger.child.mockReturnValue(logger);
 
   return {
-    logger: mockLogger,
-    createLogger: () => mockLogger,
+    logger,
+    createLogger: () => logger,
   };
 });
 
@@ -609,10 +606,11 @@ describe('Google Calendar Sync Route', () => {
       );
 
       await POST(request);
+      const { logger: mockLogger } = await import('@/lib/logging/logger');
+      const errorSpy = vi.mocked(mockLogger.error);
 
-      expect(mockLogger.error).toHaveBeenCalled();
-      const lastCall =
-        mockLogger.error.mock.calls[mockLogger.error.mock.calls.length - 1];
+      expect(errorSpy).toHaveBeenCalled();
+      const lastCall = errorSpy.mock.calls[errorSpy.mock.calls.length - 1];
       expect(lastCall[1]).toBe('Google Calendar sync failed');
       expect(lastCall[0]).toMatchObject({ error });
     });
