@@ -132,11 +132,12 @@ export function withAuth(handler: Handler): PlainHandler {
       ? await routeContext.params
       : {};
 
-    // In Vitest/test environments, avoid provisioning user records or RLS clients.
-    // Tests explicitly control database state and typically mock DB access, so we
-    // only require an authenticated Clerk user id and let handlers manage DB usage.
+    // In Vitest/test environments, mirror production behavior by ensuring the user
+    // record exists, but avoid creating per-request RLS clients. Tests control DB
+    // state directly via the service-role client (see getDb/runtime and helpers).
     if (appEnv.isTest) {
-      const userId = await requireUser();
+      const user = await requireCurrentUserRecord();
+      const userId = user.clerkUserId;
       const requestContext = createRequestContext(req, userId);
 
       return await withRequestContext(requestContext, () =>
