@@ -298,6 +298,25 @@ export const aiEnv = {
   },
 } as const;
 
+export const aiTimeoutEnv = {
+  get baseMs() {
+    return toNumber(getServerOptional('AI_TIMEOUT_BASE_MS'), 30_000);
+  },
+  get extensionMs() {
+    return toNumber(getServerOptional('AI_TIMEOUT_EXTENSION_MS'), 15_000);
+  },
+  get extensionThresholdMs() {
+    const override = toNumber(
+      getServerOptional('AI_TIMEOUT_EXTENSION_THRESHOLD_MS')
+    );
+    if (override !== undefined) {
+      return override;
+    }
+    const base = this.baseMs;
+    return Math.max(0, base - 5_000);
+  },
+} as const;
+
 export const aiMicroExplanationEnv = {
   get googleApiKey() {
     return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
