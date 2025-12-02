@@ -16,8 +16,6 @@ const originalTimeoutEnv = TIMEOUT_ENV_KEYS.reduce(
   {} as Record<(typeof TIMEOUT_ENV_KEYS)[number], string | undefined>
 );
 
-const originalNodeEnv = process.env.NODE_ENV;
-
 function clearTimeoutEnv(): void {
   for (const key of TIMEOUT_ENV_KEYS) {
     delete process.env[key];
@@ -27,7 +25,6 @@ function clearTimeoutEnv(): void {
 describe('aiTimeoutEnv', () => {
   beforeEach(() => {
     clearTimeoutEnv();
-    process.env.NODE_ENV = 'test';
   });
 
   afterEach(() => {
@@ -39,11 +36,6 @@ describe('aiTimeoutEnv', () => {
       } else {
         process.env[key] = value;
       }
-    }
-    if (originalNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = originalNodeEnv;
     }
   });
 
