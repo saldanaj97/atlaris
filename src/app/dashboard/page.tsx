@@ -1,9 +1,8 @@
 import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
+import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import { getUserByClerkId } from '@/lib/db/queries/users';
 import { formatWeeklyHours } from '@/lib/formatters';
 import { getUsageSummary } from '@/lib/stripe/usage';
 import {
@@ -20,12 +19,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 export default async function DashboardPage() {
-  const userId = await getEffectiveClerkUserId();
-  if (!userId) redirect('/sign-in?redirect_url=/dashboard');
-
-  const user = await getUserByClerkId(userId);
+  const user = await getOrCreateCurrentUserRecord();
   if (!user) {
-    throw new Error('Authenticated user record missing despite provisioning.');
+    redirect('/sign-in?redirect_url=/dashboard');
   }
 
   const summaries = await getPlanSummariesForUser(user.id);
