@@ -101,7 +101,6 @@ export class IntegrationSyncError extends AppError {
       status: 500,
       code: 'GOOGLE_CALENDAR_SYNC_FAILED',
       details,
-      classification: 'integration',
     });
   }
 }

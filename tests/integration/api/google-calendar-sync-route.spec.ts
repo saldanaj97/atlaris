@@ -6,7 +6,7 @@ import { setTestUser } from '../../helpers/auth';
 
 // Shared logger mock to capture error logs
 // Use var to avoid temporal dead zone issues with hoisted vi.mock factories.
-var mockLogger: any;
+let mockLogger: any;
 
 // Mock dependencies before importing the route
 vi.mock('@/lib/logging/logger', () => {
