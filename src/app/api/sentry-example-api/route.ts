@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 
-// Sentry example API route stub used only for Next.js type validation.
-// This handler is not used by the application.
-
-export async function GET() {
-  return NextResponse.json({ ok: true });
+export const dynamic = 'force-dynamic';
+class SentryExampleAPIError extends Error {
+  constructor(message: string | undefined) {
+    super(message);
+    this.name = 'SentryExampleAPIError';
+  }
+}
+// A faulty API route to test Sentry's error monitoring
+export function GET() {
+  throw new SentryExampleAPIError(
+    'This error is raised on the backend called by the example page.'
+  );
+  return NextResponse.json({ data: 'Testing Sentry Error...' });
 }
