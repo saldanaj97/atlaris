@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+
 import { notionEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import {
@@ -8,8 +9,10 @@ import {
   notionSyncState,
 } from '@/lib/db/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
-import { mapFullPlanToBlocks } from './mapper';
+
+import { ForbiddenError, NotFoundError } from '@/lib/api/errors';
 import type { Task } from '@/lib/types/db';
+import { mapFullPlanToBlocks } from './mapper';
 import type { NotionIntegrationClient } from './types';
 
 // Deterministic JSON stringify: sorts object keys recursively
@@ -60,12 +63,12 @@ export async function exportPlanToNotion(
     .limit(1);
 
   if (!plan) {
-    throw new Error('Plan not found');
+    throw new NotFoundError('Plan not found');
   }
 
   // Ensure the plan belongs to the requesting user (double-check for safety)
   if (plan.userId !== userId) {
-    throw new Error("Access denied: plan doesn't belong to user");
+    throw new ForbiddenError("Access denied: plan doesn't belong to user");
   }
 
   const planModules = await db
@@ -175,7 +178,7 @@ export async function deltaSyncPlanToNotion(
     .limit(1);
 
   if (!plan) {
-    throw new Error('Plan not found');
+    throw new NotFoundError('Plan not found');
   }
 
   const planModules = await db

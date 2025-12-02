@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { AppError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { users, learningPlans } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
 import { exportPlanToNotion } from '@/lib/integrations/notion/sync';
 import { createNotionIntegrationClient } from '@/lib/integrations/notion/factory';
-import { z } from 'zod';
 import { checkExportQuota, incrementExportUsage } from '@/lib/db/usage';
 import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
+import { eq } from 'drizzle-orm';
 
 const exportRequestSchema = z.object({ planId: z.string().uuid() });
 
@@ -24,6 +26,25 @@ export const POST = withErrorBoundary(
     });
     const respondJson = (payload: unknown, init?: ResponseInit) =>
       attachRequestIdHeader(NextResponse.json(payload, init), requestId);
+
+    const respondAppError = (error: AppError) => {
+      const body: Record<string, unknown> = {
+        error: error.message,
+        code: error.code(),
+      };
+
+      const classification = error.classification();
+      if (classification) {
+        body.classification = classification;
+      }
+
+      const details = error.details();
+      if (details !== undefined) {
+        body.details = details;
+      }
+
+      return respondJson(body, { status: error.status() });
+    };
 
     const db = getDb();
     const [user] = await db
@@ -38,9 +59,6 @@ export const POST = withErrorBoundary(
 
     // Get Notion token
     const notionTokens = await getOAuthTokens(user.id, 'notion');
-    if (!notionTokens) {
-      return respondJson({ error: 'Notion not connected' }, { status: 401 });
-    }
 
     let json: unknown;
     try {
@@ -52,13 +70,14 @@ export const POST = withErrorBoundary(
     if (!parsed.success) {
       return respondJson({ error: 'Invalid planId' }, { status: 400 });
     }
+    const { planId } = parsed.data;
 
     // Ensure the plan exists and is owned by the authenticated user before exporting
     try {
       const [plan] = await db
         .select({ userId: learningPlans.userId })
         .from(learningPlans)
-        .where(eq(learningPlans.id, parsed.data.planId))
+        .where(eq(learningPlans.id, planId))
         .limit(1);
 
       if (!plan) {
@@ -72,12 +91,19 @@ export const POST = withErrorBoundary(
       logger.error(
         {
           userId: user.id,
-          planId: parsed.data.planId,
+          planId,
           error: e,
         },
         'Failed to load plan for Notion export'
       );
       return respondJson({ error: 'Failed to load plan' }, { status: 500 });
+    }
+
+    if (!notionTokens) {
+      return respondJson(
+        { error: 'Notion integration not found' },
+        { status: 404 }
+      );
     }
 
     try {
@@ -98,7 +124,7 @@ export const POST = withErrorBoundary(
       );
 
       const notionPageId = await exportPlanToNotion(
-        parsed.data.planId,
+        planId,
         user.id,
         notionClient
       );
@@ -121,26 +147,20 @@ export const POST = withErrorBoundary(
       logger.error(
         {
           userId: user.id,
-          planId: parsed.data.planId,
+          planId,
           error,
         },
         'Notion export failed'
       );
-      let errorMessage = 'Unknown error occurred during export';
-      let status = 500;
-      if (error instanceof Error) {
-        const msg = error.message;
-        if (msg.includes('Plan not found')) {
-          errorMessage = 'Plan not found';
-          status = 404;
-        } else if (msg.includes('Access denied')) {
-          errorMessage = 'Forbidden';
-          status = 403;
-        } else {
-          errorMessage = msg;
-        }
+
+      if (error instanceof AppError) {
+        return respondAppError(error);
       }
-      return respondJson({ error: errorMessage }, { status });
+
+      return respondJson(
+        { error: 'Notion export failed', code: 'NOTION_EXPORT_FAILED' },
+        { status: 500 }
+      );
     }
   })
 );

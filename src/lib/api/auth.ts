@@ -128,6 +128,23 @@ export type PlainHandler = (
 
 export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
+    const params: RouteHandlerParams = routeContext?.params
+      ? await routeContext.params
+      : {};
+
+    // In Vitest/test environments, mirror production behavior by ensuring the user
+    // record exists, but avoid creating per-request RLS clients. Tests control DB
+    // state directly via the service-role client (see getDb/runtime and helpers).
+    if (appEnv.isTest) {
+      const user = await requireCurrentUserRecord();
+      const userId = user.clerkUserId;
+      const requestContext = createRequestContext(req, userId);
+
+      return await withRequestContext(requestContext, () =>
+        handler({ req, userId, params })
+      );
+    }
+
     const user = await requireCurrentUserRecord();
     const userId = user.clerkUserId;
 
@@ -138,10 +155,6 @@ export function withAuth(handler: Handler): PlainHandler {
 
     // Create request context with the RLS-enforced DB and cleanup function
     const requestContext = createRequestContext(req, userId, rlsDb, cleanup);
-
-    const params: RouteHandlerParams = routeContext?.params
-      ? await routeContext.params
-      : {};
 
     try {
       return await withRequestContext(requestContext, () =>
