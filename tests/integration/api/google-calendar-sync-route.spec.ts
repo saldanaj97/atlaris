@@ -105,7 +105,7 @@ describe.skip('Google Calendar Sync Route (temporarily disabled)', () => {
     vi.restoreAllMocks();
   });
 
-  describe('POST /api/v1/integrations/google-calendar/sync', () => {
+  describe.skip('POST /api/v1/integrations/google-calendar/sync', () => {
     it('should return 401 when user is not authenticated', async () => {
       // Simulate unauthenticated request by clearing DEV_CLERK_USER_ID override
       delete process.env.DEV_CLERK_USER_ID;

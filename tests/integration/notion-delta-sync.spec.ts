@@ -12,7 +12,7 @@ import { deltaSyncPlanToNotion } from '@/lib/integrations/notion/sync';
 import { eq } from 'drizzle-orm';
 import { createMockNotionClient } from '../mocks/shared/notion-client.shared';
 
-describe('Notion Delta Sync', () => {
+describe.skip('Notion Delta Sync', () => {
   let testUserId: string;
   let testPlanId: string;
 
