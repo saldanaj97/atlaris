@@ -184,15 +184,6 @@ export const databaseEnv = {
   },
 } as const;
 
-export const supabaseEnv = {
-  get url() {
-    return requireEnv('NEXT_PUBLIC_SUPABASE_URL');
-  },
-  get anonKey() {
-    return requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
-  },
-} as const;
-
 export const notionEnv = {
   get clientId() {
     return getServerRequired('NOTION_CLIENT_ID');
