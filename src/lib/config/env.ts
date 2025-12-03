@@ -184,15 +184,6 @@ export const databaseEnv = {
   },
 } as const;
 
-export const supabaseEnv = {
-  get url() {
-    return requireEnv('NEXT_PUBLIC_SUPABASE_URL');
-  },
-  get anonKey() {
-    return requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
-  },
-} as const;
-
 export const notionEnv = {
   get clientId() {
     return getServerRequired('NOTION_CLIENT_ID');
@@ -295,6 +286,25 @@ export const aiEnv = {
   },
   get maxOutputTokens() {
     return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'));
+  },
+} as const;
+
+export const aiTimeoutEnv = {
+  get baseMs() {
+    return toNumber(getServerOptional('AI_TIMEOUT_BASE_MS'), 30_000);
+  },
+  get extensionMs() {
+    return toNumber(getServerOptional('AI_TIMEOUT_EXTENSION_MS'), 15_000);
+  },
+  get extensionThresholdMs() {
+    const override = toNumber(
+      getServerOptional('AI_TIMEOUT_EXTENSION_THRESHOLD_MS')
+    );
+    if (override !== undefined) {
+      return override;
+    }
+    const base = this.baseMs;
+    return Math.max(0, base - 5_000);
   },
 } as const;
 

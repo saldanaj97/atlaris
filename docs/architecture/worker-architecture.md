@@ -18,6 +18,7 @@ Services encapsulate specific business capabilities with no knowledge of jobs or
   - `generatePlan(input, context)`: Generates a learning plan using AI
 - **Returns**: Typed success/failure results with error classification
 - **LOC**: ~108
+- **Runtime tuning**: The service reads `AI_TIMEOUT_BASE_MS`, `AI_TIMEOUT_EXTENSION_MS`, and `AI_TIMEOUT_EXTENSION_THRESHOLD_MS` to adjust `runGenerationAttempt`’s adaptive timeout budget so long-running Gemini plans stay within the configured SLA.
 
 #### CurationService
 

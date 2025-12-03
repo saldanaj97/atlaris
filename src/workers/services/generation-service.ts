@@ -1,8 +1,9 @@
-import type {
-  ProviderMetadata,
-  AiPlanGenerationProvider,
-} from '@/lib/ai/provider';
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
+import type {
+  AiPlanGenerationProvider,
+  ProviderMetadata,
+} from '@/lib/ai/provider';
+import { aiTimeoutEnv } from '@/lib/config/env';
 import type { FailureClassification } from '@/lib/types/client';
 
 export interface GenerationInput {
@@ -73,7 +74,15 @@ export class GenerationService {
             deadlineDate: input.deadlineDate,
           },
         },
-        { provider: this.provider, signal: context.signal }
+        {
+          provider: this.provider,
+          signal: context.signal,
+          timeoutConfig: {
+            baseMs: aiTimeoutEnv.baseMs,
+            extensionMs: aiTimeoutEnv.extensionMs,
+            extensionThresholdMs: aiTimeoutEnv.extensionThresholdMs,
+          },
+        }
       );
 
       if (result.status === 'success') {
