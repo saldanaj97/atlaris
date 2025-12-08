@@ -968,7 +968,6 @@ adjust tests accordingly.
 ### 7. Quick Verification Checklist
 
 - [ ] neon provider configured with correct JWKS + Issuer
-- [ ] `.env.test` contains real neon JWT secret in `TEST_JWT_SECRET`
 - [ ] RLS tests pass locally (`pnpm exec vitest run tests/security`)
 - [ ] `auth.jwt()->>'sub'` returns expected Clerk user ID inside policies (can verify via a diagnostic SELECT during debugging)
 

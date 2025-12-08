@@ -400,7 +400,6 @@ jobs:
           ALLOW_DB_TRUNCATE: 'true'
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
-          TEST_JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
           ENABLE_CURATION: 'false'
         run: |
           set -e

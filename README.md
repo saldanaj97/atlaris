@@ -154,7 +154,6 @@ The test suite uses a **hosted neon test database** - no local Docker setup requ
    - `DATABASE_URL` - Hosted neon connection string
    - `NEXT_PUBLIC_NEON_URL` - neon project URL
    - `NEON_SERVICE_ROLE_KEY` - Service role key for admin operations
-   - `TEST_JWT_SECRET` - JWT secret for RLS testing
 
 ### Running Tests Locally
 
@@ -226,7 +225,6 @@ See `.github/workflows/ci.yml` and `.github/workflows/test.yml` for details.
 
 **Tests fail with "RLS policy" errors:**
 
-- Verify `TEST_JWT_SECRET` in `.env.test` matches your neon project's JWT secret
 - Check that `CLERK_ISSUER` in `.env.test` matches Clerk provider configuration in neon
 
 **Reset test database:**
