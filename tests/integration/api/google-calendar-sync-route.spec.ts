@@ -6,7 +6,7 @@ import {
   ValidationError,
   NotFoundError,
 } from '@/lib/api/errors';
-import { setTestUser } from '../../helpers/auth';
+import { setTestUser, clearTestUser } from '../../helpers/auth';
 
 // Mock dependencies before importing the route
 vi.mock('@/lib/logging/logger', () => {
@@ -107,8 +107,7 @@ describe.skip('Google Calendar Sync Route (temporarily disabled)', () => {
 
   describe.skip('POST /api/v1/integrations/google-calendar/sync', () => {
     it('should return 401 when user is not authenticated', async () => {
-      // Simulate unauthenticated request by clearing DEV_CLERK_USER_ID override
-      delete process.env.DEV_CLERK_USER_ID;
+      clearTestUser();
 
       const { POST } = await import(
         '@/app/api/v1/integrations/google-calendar/sync/route'

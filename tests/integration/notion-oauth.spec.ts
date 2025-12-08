@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/service-role';
 import { users, integrationTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { setTestUser } from '../helpers/auth';
+import { setTestUser, clearTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 
 // Mock Clerk auth before importing the route
@@ -71,8 +71,7 @@ describe('Notion OAuth Flow', () => {
         userId: null,
       } as Awaited<ReturnType<typeof auth>>);
 
-      // Ensure withAuth does not use DEV_CLERK_USER_ID fallback
-      delete process.env.DEV_CLERK_USER_ID;
+      clearTestUser();
 
       // Create test user
       await db.delete(integrationTokens);
@@ -120,8 +119,7 @@ describe('Notion OAuth Flow', () => {
         userId: 'attacker_clerk_user_id',
       } as Awaited<ReturnType<typeof auth>>);
 
-      // Ensure withAuth uses mocked auth userId
-      delete process.env.DEV_CLERK_USER_ID;
+      clearTestUser();
 
       // Create test user with different clerkUserId
       await db.delete(integrationTokens);

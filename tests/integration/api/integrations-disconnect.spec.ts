@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { setTestUser } from '../../helpers/auth';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
 // Mock Clerk auth before importing the route
@@ -27,6 +27,7 @@ describe('POST /api/v1/integrations/disconnect', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    clearTestUser();
   });
 
   it('should return 501 Not Implemented', async () => {
@@ -47,8 +48,7 @@ describe('POST /api/v1/integrations/disconnect', () => {
   });
 
   it('should require authentication', async () => {
-    // Ensure withAuth does not use DEV_CLERK_USER_ID fallback
-    delete process.env.DEV_CLERK_USER_ID;
+    clearTestUser();
 
     const { auth } = await import('@clerk/nextjs/server');
     vi.mocked(auth).mockResolvedValue({
