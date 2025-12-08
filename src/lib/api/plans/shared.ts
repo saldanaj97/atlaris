@@ -3,7 +3,7 @@ import { count, eq, inArray } from 'drizzle-orm';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+import { TIER_LIMITS, type SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { checkPlanDurationCap } from '@/lib/stripe/usage';
 import {
   DEFAULT_PLAN_DURATION_WEEKS,
@@ -51,6 +51,80 @@ export function ensurePlanDurationAllowed({
     weeklyHours,
     totalWeeks,
   });
+}
+
+export function normalizePlanDurationForTier({
+  tier,
+  weeklyHours,
+  startDate,
+  deadlineDate,
+  today = new Date(),
+}: {
+  tier: SubscriptionTier;
+  weeklyHours: number;
+  startDate?: string | null;
+  deadlineDate?: string | null;
+  today?: Date;
+}): {
+  startDate: string | null;
+  deadlineDate: string | null;
+  totalWeeks: number;
+} {
+  const normalizedToday = new Date(today);
+  normalizedToday.setUTCHours(0, 0, 0, 0);
+
+  const start = startDate ? new Date(startDate) : normalizedToday;
+  start.setUTCHours(0, 0, 0, 0);
+
+  const limits = TIER_LIMITS[tier];
+  let deadline =
+    deadlineDate !== null && deadlineDate !== undefined
+      ? new Date(deadlineDate)
+      : null;
+
+  if (deadline) {
+    deadline.setUTCHours(0, 0, 0, 0);
+
+    if (limits.maxWeeks !== null) {
+      const maxDeadline = new Date(
+        start.getTime() + limits.maxWeeks * MILLISECONDS_PER_WEEK
+      );
+      if (deadline > maxDeadline) {
+        deadline = maxDeadline;
+      }
+    }
+
+    if (limits.maxHours !== null) {
+      const weeksByHours = Math.max(
+        1,
+        Math.floor(limits.maxHours / Math.max(weeklyHours, 1))
+      );
+      const maxHoursDeadline = new Date(
+        start.getTime() + weeksByHours * MILLISECONDS_PER_WEEK
+      );
+      if (deadline > maxHoursDeadline) {
+        deadline = maxHoursDeadline;
+      }
+    }
+  }
+
+  const normalizedStartString = start.toISOString().slice(0, 10);
+  const normalizedDeadlineString = deadline
+    ? deadline.toISOString().slice(0, 10)
+    : (deadlineDate ?? null);
+
+  const totalWeeks = calculateTotalWeeks({
+    startDate: normalizedStartString,
+    deadlineDate: normalizedDeadlineString,
+    today: normalizedToday,
+    defaultWeeks: DEFAULT_PLAN_DURATION_WEEKS,
+  });
+
+  return {
+    startDate: startDate ? normalizedStartString : null,
+    deadlineDate: normalizedDeadlineString,
+    totalWeeks,
+  };
 }
 
 export async function findCappedPlanWithoutModules(

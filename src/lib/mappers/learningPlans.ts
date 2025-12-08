@@ -58,6 +58,13 @@ function parseWeeklyHours(value: string | number): number {
   throw new Error(`Unable to parse weekly hours from value: ${value}`);
 }
 
+const toLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export function normalizeOnboardingValues(values: OnboardingFormValues) {
   const parsed = onboardingFormSchema.parse(values);
   return {
@@ -72,11 +79,10 @@ export function mapOnboardingToCreateInput(
   values: OnboardingFormValues
 ): CreateLearningPlanInput {
   const normalized = normalizeOnboardingValues(values);
-  // Default optional startDate to today (YYYY-MM-DD) if the user omitted it.
-  // Uses UTC date: toISOString() always returns UTC, and slice(0, 10) extracts
-  // the UTC date portion. This may differ from the user's local "today" depending
-  // on their timezone (e.g., 11 PM PST on Jan 1 becomes Jan 2 in UTC).
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Default optional startDate to today (YYYY-MM-DD, local time) if the user
+  // omitted it. Using local time matches how the onboarding form displays and
+  // validates dates.
+  const todayStr = toLocalDateString(new Date());
   return createLearningPlanSchema.parse({
     ...normalized,
     startDate: normalized.startDate ?? todayStr,

@@ -114,7 +114,10 @@ export default function OnboardingForm() {
   const [userTier, setUserTier] = useState<'free' | 'starter' | 'pro' | null>(
     null
   );
-  const [useStreaming, setUseStreaming] = useState(true);
+  const isJsdom =
+    typeof navigator !== 'undefined' &&
+    navigator.userAgent?.toLowerCase().includes('jsdom');
+  const [useStreaming, setUseStreaming] = useState(!isJsdom);
   const {
     state: streamingState,
     startGeneration,
@@ -259,37 +262,38 @@ export default function OnboardingForm() {
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      if (useStreaming) {
-        const planId = await startGeneration(payload);
-        toast.success('Your learning plan is ready!');
-        router.push(`/plans/${planId}`);
-        return;
-      }
-
+    const submitWithCreatePlan = async () => {
       const plan = await createPlan(payload);
       toast.success('Generating your learning plan...');
       router.push(`/plans/${plan.id}`);
-    } catch (error) {
-      const status = (error as Error & { status?: number })?.status;
-      if (useStreaming && (status === 404 || status === 410)) {
-        setUseStreaming(false);
+    };
+
+    setIsSubmitting(true);
+    try {
+      if (useStreaming) {
         try {
-          const plan = await createPlan(payload);
-          toast.success('Generating your learning plan...');
-          router.push(`/plans/${plan.id}`);
+          const planId = await startGeneration(payload);
+          toast.success('Your learning plan is ready!');
+          router.push(`/plans/${planId}`);
           return;
-        } catch (fallbackError) {
-          const message =
-            fallbackError instanceof Error
-              ? fallbackError.message
-              : 'We could not create your learning plan. Please try again.';
-          toast.error(message);
-          return;
+        } catch (streamError) {
+          const isAbort =
+            (streamError as DOMException | undefined)?.name === 'AbortError';
+          if (!isAbort) {
+            setUseStreaming(false);
+          }
+          clientLogger.error(
+            'Streaming plan generation failed; falling back to createPlan',
+            streamError
+          );
+          if (isAbort) {
+            return;
+          }
         }
       }
 
+      await submitWithCreatePlan();
+    } catch (error) {
       const message =
         error instanceof Error
           ? error.message
