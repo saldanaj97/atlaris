@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import {
+  calculateTotalWeeks,
   ensurePlanDurationAllowed,
   findCappedPlanWithoutModules,
   normalizePlanDurationForTier,
@@ -61,8 +62,28 @@ export const POST = withErrorBoundary(
     // Check rate limit before creating plan
     await checkPlanGenerationRateLimit(user.id);
 
-    // Enforce plan duration cap based on user tier
+    // Enforce plan duration cap based on user tier using the requested window
     const userTier = await resolveUserTier(user.id);
+    const requestedWeeks = calculateTotalWeeks({
+      startDate: body.startDate ?? null,
+      deadlineDate: body.deadlineDate ?? null,
+    });
+    const requestedCap = ensurePlanDurationAllowed({
+      userTier,
+      weeklyHours: body.weeklyHours,
+      totalWeeks: requestedWeeks,
+    });
+
+    if (!requestedCap.allowed) {
+      return jsonError(
+        requestedCap.reason ?? 'Plan duration exceeds tier cap',
+        {
+          status: 403,
+        }
+      );
+    }
+
+    // Normalize persisted dates to tier limits while keeping requested cap validation strict
     const { startDate, deadlineDate, totalWeeks } =
       normalizePlanDurationForTier({
         tier: userTier,
