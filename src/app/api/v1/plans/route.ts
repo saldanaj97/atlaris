@@ -6,7 +6,6 @@ import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { json, jsonError } from '@/lib/api/response';
-import { featureFlagsEnv } from '@/lib/config/featureFlagsEnv';
 import { getDb } from '@/lib/db/runtime';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
@@ -68,13 +67,6 @@ export const POST = withErrorBoundary(
     if (!user) {
       throw new Error(
         'Authenticated user record missing despite provisioning.'
-      );
-    }
-
-    if (featureFlagsEnv.enableStreamingGeneration) {
-      return jsonError(
-        'Worker-based plan generation is disabled. Use /api/v1/plans/stream.',
-        { status: 410 }
       );
     }
 

@@ -17,7 +17,6 @@ import {
 } from '@/lib/api/plans/shared';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
-import { featureFlagsEnv } from '@/lib/config/featureFlagsEnv';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { recordUsage } from '@/lib/db/usage';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
@@ -58,10 +57,6 @@ function buildPlanStartEvent({
 
 export const POST = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
-    if (!featureFlagsEnv.enableStreamingGeneration) {
-      return jsonError('Streaming generation is disabled.', { status: 404 });
-    }
-
     let body: CreateLearningPlanInput;
     try {
       body = createLearningPlanSchema.parse(await req.json());
