@@ -2,7 +2,14 @@ import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['postgres'],
+  serverExternalPackages: [
+    'postgres',
+    'pino',
+    'pino-std-serializers',
+    'pino-abstract-transport',
+    'thread-stream',
+    'sonic-boom',
+  ],
 };
 
 export default withSentryConfig(nextConfig, {
