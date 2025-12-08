@@ -17,3 +17,11 @@
 export function setTestUser(clerkUserId: string) {
   process.env.DEV_CLERK_USER_ID = clerkUserId;
 }
+
+/**
+ * Clears the test user for unauthenticated test scenarios.
+ * Use this in tests that need to verify unauthenticated behavior.
+ */
+export function clearTestUser() {
+  delete process.env.DEV_CLERK_USER_ID;
+}

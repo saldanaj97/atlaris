@@ -1,9 +1,10 @@
 import { generateLearningPlan } from '@/app/plans/actions';
-import { db } from '@/lib/db/service-role';
 import { aiUsageEvents, modules, tasks, usageMetrics } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { eq, inArray } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
 
@@ -11,7 +12,6 @@ const ORIGINAL = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   AI_USE_MOCK: process.env.AI_USE_MOCK,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
-  DEV_CLERK_USER_ID: process.env.DEV_CLERK_USER_ID,
 };
 
 let clerkUserId: string;
@@ -23,7 +23,7 @@ describe('Server Action: generateLearningPlan', () => {
 
   beforeEach(() => {
     clerkUserId = buildTestClerkUserId('generate-learning-plan');
-    process.env.DEV_CLERK_USER_ID = clerkUserId;
+    setTestUser(clerkUserId);
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
     // Deflake: ensure mock provider does not randomly fail
@@ -31,11 +31,7 @@ describe('Server Action: generateLearningPlan', () => {
   });
 
   afterEach(() => {
-    if (ORIGINAL.DEV_CLERK_USER_ID === undefined) {
-      delete process.env.DEV_CLERK_USER_ID;
-    } else {
-      process.env.DEV_CLERK_USER_ID = ORIGINAL.DEV_CLERK_USER_ID;
-    }
+    clearTestUser();
     if (ORIGINAL.AI_PROVIDER === undefined) {
       delete process.env.AI_PROVIDER;
     } else {

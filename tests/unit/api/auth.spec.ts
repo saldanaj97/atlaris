@@ -5,6 +5,7 @@ import {
   getOrCreateCurrentUserRecord,
   requireCurrentUserRecord,
 } from '@/lib/api/auth';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 
 const mockGetUserByClerkId = vi.fn();
 const mockCreateUser = vi.fn();
@@ -24,16 +25,16 @@ describe('auth helpers', () => {
     mockGetUserByClerkId.mockReset();
     mockCreateUser.mockReset();
     mockCurrentUser.mockReset();
-    delete process.env.DEV_CLERK_USER_ID;
+    clearTestUser();
   });
 
   afterEach(() => {
-    delete process.env.DEV_CLERK_USER_ID;
+    clearTestUser();
   });
 
   it('creates a user when none exists yet', async () => {
     const clerkUserId = 'clerk-create';
-    process.env.DEV_CLERK_USER_ID = clerkUserId;
+    setTestUser(clerkUserId);
     mockGetUserByClerkId.mockResolvedValue(undefined);
 
     mockCurrentUser.mockResolvedValue({
@@ -66,7 +67,7 @@ describe('auth helpers', () => {
 
   it('returns the existing user without calling Clerk again', async () => {
     const clerkUserId = 'clerk-existing';
-    process.env.DEV_CLERK_USER_ID = clerkUserId;
+    setTestUser(clerkUserId);
     const existingRecord = {
       id: 'db-existing',
       clerkUserId,

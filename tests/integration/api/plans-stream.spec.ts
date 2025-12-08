@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/stream/route';
-import { db } from '@/lib/db/service-role';
 import { learningPlans, modules } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -11,22 +11,16 @@ import { ensureUser } from '../../helpers/db';
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
-  ENABLE_STREAMING_GENERATION: process.env.ENABLE_STREAMING_GENERATION,
-  DEV_CLERK_USER_ID: process.env.DEV_CLERK_USER_ID,
 };
 
 beforeAll(() => {
   process.env.AI_PROVIDER = 'mock';
   process.env.MOCK_GENERATION_DELAY_MS = '10';
-  process.env.ENABLE_STREAMING_GENERATION = '1';
 });
 
 afterAll(() => {
   process.env.AI_PROVIDER = ORIGINAL_ENV.AI_PROVIDER;
   process.env.MOCK_GENERATION_DELAY_MS = ORIGINAL_ENV.MOCK_GENERATION_DELAY_MS;
-  process.env.ENABLE_STREAMING_GENERATION =
-    ORIGINAL_ENV.ENABLE_STREAMING_GENERATION;
-  process.env.DEV_CLERK_USER_ID = ORIGINAL_ENV.DEV_CLERK_USER_ID;
 });
 
 describe('POST /api/v1/plans/stream', () => {
