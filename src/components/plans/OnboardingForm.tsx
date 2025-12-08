@@ -10,6 +10,7 @@ import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
+import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -26,6 +27,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { PlanDraftView } from '@/components/plans/PlanDraftView';
 
 const weeklyHourOptions = [
   { value: '1-2', label: '1-2 hours per week' },
@@ -112,6 +114,12 @@ export default function OnboardingForm() {
   const [userTier, setUserTier] = useState<'free' | 'starter' | 'pro' | null>(
     null
   );
+  const [useStreaming, setUseStreaming] = useState(true);
+  const {
+    state: streamingState,
+    startGeneration,
+    cancel: cancelStreaming,
+  } = useStreamingPlanGeneration();
 
   // Fetch user tier on mount
   useEffect(() => {
@@ -253,10 +261,35 @@ export default function OnboardingForm() {
 
     setIsSubmitting(true);
     try {
+      if (useStreaming) {
+        const planId = await startGeneration(payload);
+        toast.success('Your learning plan is ready!');
+        router.push(`/plans/${planId}`);
+        return;
+      }
+
       const plan = await createPlan(payload);
       toast.success('Generating your learning plan...');
       router.push(`/plans/${plan.id}`);
     } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      if (useStreaming && (status === 404 || status === 410)) {
+        setUseStreaming(false);
+        try {
+          const plan = await createPlan(payload);
+          toast.success('Generating your learning plan...');
+          router.push(`/plans/${plan.id}`);
+          return;
+        } catch (fallbackError) {
+          const message =
+            fallbackError instanceof Error
+              ? fallbackError.message
+              : 'We could not create your learning plan. Please try again.';
+          toast.error(message);
+          return;
+        }
+      }
+
       const message =
         error instanceof Error
           ? error.message
@@ -610,6 +643,18 @@ export default function OnboardingForm() {
           </div>
         </Card>
       </div>
+
+      {useStreaming && streamingState.status !== 'idle' ? (
+        <div className="container mx-auto max-w-2xl px-6 pb-12">
+          <PlanDraftView
+            state={streamingState}
+            onCancel={() => {
+              cancelStreaming();
+              setIsSubmitting(false);
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

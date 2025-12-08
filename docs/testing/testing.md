@@ -117,7 +117,7 @@ Quick reference of all tests in the suite, organized by category:
 
 - ✅ API endpoints and request/response contracts
 - ✅ Concurrency and race conditions
-- ✅ Background job processing and workers
+- ✅ Streaming plan generation
 - ✅ AI generation (success, failures, timeouts, validation)
 - ✅ Attempt tracking and limits
 - ✅ RLS and data isolation
@@ -205,7 +205,7 @@ it('anonymous users cannot read private learning plans', async () => {
 
 ### 4. E2E Tests (`tests/e2e/**`)
 
-**Purpose:** Test complete user flows including API routes and background workers.
+**Purpose:** Test complete user flows including API routes and streaming generation.
 
 **Coverage:**
 
