@@ -7,28 +7,10 @@ on:
         description: 'Whether to run database migrations'
         required: true
         type: boolean
-      deploy_workers:
-        description: 'Whether to deploy worker container'
-        required: true
-        type: boolean
-      deploy_regenerator:
-        description: 'Whether to deploy regenerator container'
-        required: true
-        type: boolean
   workflow_dispatch:
     inputs:
       deploy_migrations:
         description: 'Run database migrations'
-        required: false
-        type: boolean
-        default: true
-      deploy_workers:
-        description: 'Deploy worker container'
-        required: false
-        type: boolean
-        default: true
-      deploy_regenerator:
-        description: 'Deploy regenerator container'
         required: false
         type: boolean
         default: true
@@ -100,57 +82,9 @@ jobs:
         run: |
           echo "Migration completed successfully"
 
-  deploy-worker:
-    name: Deploy Plan Generator (Production)
-    needs: [migrate-database]
-    if: always() && inputs.deploy_workers && (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Fly.io CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy to Fly.io
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          flyctl deploy \
-            --config fly.prod.worker.toml \
-            --app atlaris-worker-prod \
-            --wait-timeout 300
-      - name: Verify deployment
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl status --app atlaris-worker-prod
-
-  deploy-regenerator:
-    name: Deploy Plan Regenerator (Production)
-    needs: [migrate-database]
-    if: always() && inputs.deploy_regenerator && (needs.migrate-database.result == 'success' || needs.migrate-database.result == 'skipped')
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Fly.io CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy to Fly.io
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          flyctl deploy \
-            --config fly.prod.regenerator.toml \
-            --app atlaris-worker-regenerator-prod \
-            --wait-timeout 300
-      - name: Verify deployment
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl status --app atlaris-worker-regenerator-prod
-
   report-status:
     name: Report Deployment Status (Production)
-    needs: [migrate-database, deploy-worker, deploy-regenerator]
+    needs: [migrate-database]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -170,27 +104,9 @@ jobs:
             echo "| Migrations | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          # Worker
-          if [ "${{ inputs.deploy_workers }}" != "true" ]; then
-            echo "| Plan Generator | ⏭️ Not requested |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.deploy-worker.result }}" == "success" ]; then
-            echo "| Plan Generator | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Plan Generator | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # Regenerator
-          if [ "${{ inputs.deploy_regenerator }}" != "true" ]; then
-            echo "| Plan Regenerator | ⏭️ Not requested |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.deploy-regenerator.result }}" == "success" ]; then
-            echo "| Plan Regenerator | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Plan Regenerator | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
-
           # Determine overall status
           FAILED=0
-          for result in "${{ needs.migrate-database.result }}" "${{ needs.deploy-worker.result }}" "${{ needs.deploy-regenerator.result }}"; do
+          for result in "${{ needs.migrate-database.result }}"; do
             if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
               FAILED=1
             fi
