@@ -1,15 +1,15 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   AppError,
+  AttemptCapExceededError,
   AuthError,
+  ConflictError,
   ForbiddenError,
   NotFoundError,
-  ValidationError,
-  ConflictError,
   RateLimitError,
-  AttemptCapExceededError,
   toErrorResponse,
+  ValidationError,
 } from '@/lib/api/errors';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('AppError', () => {
   it('should create error with message', () => {
@@ -344,6 +344,7 @@ describe('toErrorResponse', () => {
     expect(body).toEqual({
       error: 'Invalid input',
       code: 'VALIDATION_ERROR',
+      classification: 'validation',
     });
   });
 

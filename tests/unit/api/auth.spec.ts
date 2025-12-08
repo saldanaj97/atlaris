@@ -1,24 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthError } from '@/lib/api/errors';
 import {
   getOrCreateCurrentUserRecord,
   requireCurrentUserRecord,
 } from '@/lib/api/auth';
+import { AuthError } from '@/lib/api/errors';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 
-const mockGetUserByClerkId = vi.fn();
-const mockCreateUser = vi.fn();
-const mockCurrentUser = vi.fn();
+const mocks = vi.hoisted(() => ({
+  getUserByClerkId: vi.fn(),
+  createUser: vi.fn(),
+  currentUser: vi.fn(),
+}));
 
 vi.mock('@/lib/db/queries/users', () => ({
-  getUserByClerkId: mockGetUserByClerkId,
-  createUser: mockCreateUser,
+  getUserByClerkId: mocks.getUserByClerkId,
+  createUser: mocks.createUser,
 }));
 
 vi.mock('@clerk/nextjs/server', () => ({
-  currentUser: mockCurrentUser,
+  currentUser: mocks.currentUser,
 }));
+
+const mockGetUserByClerkId = mocks.getUserByClerkId;
+const mockCreateUser = mocks.createUser;
+const mockCurrentUser = mocks.currentUser;
 
 describe('auth helpers', () => {
   beforeEach(() => {
