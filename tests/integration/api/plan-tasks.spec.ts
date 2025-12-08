@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { setTestUser } from '../../helpers/auth';
+import { setTestUser, clearTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
@@ -82,6 +82,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    clearTestUser();
   });
 
   it('should return all tasks for the plan owner', async () => {
@@ -118,8 +119,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   });
 
   it('should return 401 for unauthenticated requests', async () => {
-    // Ensure withAuth does not use DEV_CLERK_USER_ID fallback
-    delete process.env.DEV_CLERK_USER_ID;
+    clearTestUser();
 
     const { auth } = await import('@clerk/nextjs/server');
     vi.mocked(auth).mockResolvedValue({

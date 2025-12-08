@@ -7,10 +7,7 @@ import { eq } from 'drizzle-orm';
 
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
-
-const ORIGINAL = {
-  DEV_CLERK_USER_ID: process.env.DEV_CLERK_USER_ID,
-};
+import { setTestUser, clearTestUser } from '../../helpers/auth';
 
 describe('Server Action: generateLearningPlan (dates parity)', () => {
   beforeEach(async () => {
@@ -27,11 +24,7 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
   });
 
   afterEach(() => {
-    if (ORIGINAL.DEV_CLERK_USER_ID === undefined) {
-      delete process.env.DEV_CLERK_USER_ID;
-    } else {
-      process.env.DEV_CLERK_USER_ID = ORIGINAL.DEV_CLERK_USER_ID;
-    }
+    clearTestUser();
   });
 
   it('persists startDate and deadlineDate when provided', async () => {
@@ -40,7 +33,7 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
       clerkUserId,
       email: buildTestEmail(clerkUserId),
     });
-    process.env.DEV_CLERK_USER_ID = clerkUserId;
+    setTestUser(clerkUserId);
 
     const startDate = '2025-11-01';
     const deadlineDate = '2025-12-15';
@@ -77,7 +70,7 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
       clerkUserId,
       email: buildTestEmail(clerkUserId),
     });
-    process.env.DEV_CLERK_USER_ID = clerkUserId;
+    setTestUser(clerkUserId);
 
     const deadlineDate = '2075-12-15';
 

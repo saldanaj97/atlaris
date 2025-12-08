@@ -1,8 +1,16 @@
 # Worker Service Architecture
 
-## Overview
+> **⚠️ DEPRECATED**: This document describes the legacy worker-based architecture that has been replaced by synchronous streaming generation. Plan generation now happens via the `/api/v1/plans/stream` endpoint, which streams results directly to the client without background workers.
+>
+> **Current architecture**: See the streaming route at `src/app/api/v1/plans/stream/route.ts` and the AI orchestrator at `src/lib/ai/orchestrator.ts`.
+>
+> This document is retained for historical reference only. The `src/workers/` directory has been removed.
 
-The worker system is responsible for processing background jobs asynchronously. The architecture separates concerns into layers: services (business logic), handlers (orchestration), and workers (job polling/dispatch).
+---
+
+## Overview (Legacy)
+
+The worker system was responsible for processing background jobs asynchronously. The architecture separated concerns into layers: services (business logic), handlers (orchestration), and workers (job polling/dispatch).
 
 ## Architecture Layers
 

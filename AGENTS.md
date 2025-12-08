@@ -16,8 +16,7 @@ This file provides guidance when working with code in this repository.
   - AI/LLM: @ai-sdk/google, @ai-sdk/openai, ai (Vercel AI SDK)
   - Payments: stripe
   - UI: @radix-ui/\*, lucide-react, next-themes, sonner, class-variance-authority, tailwind-merge
-  - Background workers: tsx (for worker execution), async-mutex (test coordination)
-  - Utilities: zod, nanoid, p-retry, dotenv, date-fns, lru-cache
+  - Utilities: zod, nanoid, p-retry, dotenv, date-fns, lru-cache, async-mutex
 
 ## General rules and references(read before coding or committing)
 
@@ -43,7 +42,6 @@ This file provides guidance when working with code in this repository.
 - **Logging**:
   - Use `@/lib/logging/logger` for structured logging; avoid `console.*` in application code.
   - For API routes, use helpers from `@/lib/logging/request-context` to obtain `{ requestId, logger }` and to attach the request ID to responses.
-  - In workers and background jobs, create child loggers with job-specific context instead of logging ad hoc.
   - If you think you need a direct `console.*` call, consider updating the centralized logging utilities instead.
 
 ### Dealing with specific github issues or tasks
@@ -90,15 +88,11 @@ Tests cover:
 
 - Dev server (do not auto-run; listed for reference)
   - pnpm dev (Next.js dev server)
-  - pnpm dev:worker (background worker for job processing)
-  - pnpm dev:regenerator (background worker for plan regeneration)
   - pnpm dev:stripe (Stripe webhook listener for local testing)
-  - pnpm dev:all (runs all four services concurrently)
 - Build (do not auto-run; listed for reference)
   - pnpm build
 - Start production server (do not auto-run; listed for reference)
   - pnpm start
-  - pnpm worker:start (start worker in production)
 - Local CI simulation (mirrors GitHub Actions workflows)
   - pnpm local-ci:pr - Mirrors PR CI jobs: lint, type-check, build, unit tests (sharded 1/2, 2/2), integration tests (light subset)
   - pnpm local-ci:main - Mirrors main branch CI jobs: lint, type-check, build (staging env), migration dry-run, integration tests (sharded 1/2, 2/2), e2e tests (sharded 1/2, 2/2)
@@ -155,14 +149,14 @@ Tests cover:
     - src/lib/db/index.ts - Main entry point exporting RLS-enforced clients (default/secure)
     - src/lib/db/schema/ - Database schema definitions and RLS policies
     - src/lib/db/enums.ts - PostgreSQL enum definitions
-    - src/lib/db/service-role.ts - Service-role Drizzle client (RLS bypassed; for workers/tests)
+    - src/lib/db/service-role.ts - Service-role Drizzle client (RLS bypassed; for tests and internal operations)
     - src/lib/db/rls.ts - RLS-enforced Drizzle client factory (for request handlers)
     - src/lib/db/runtime.ts - Runtime DB selector (getDb() returns RLS DB in requests, service-role elsewhere)
     - src/lib/db/queries/ - Modular query files (attempts.ts, modules.ts, plans.ts, resources.ts, schedules.ts, tasks.ts, users.ts, jobs.ts)
     - src/lib/db/seed.ts, src/lib/db/seed-cli.ts - Database seeding utilities
     - src/lib/db/usage.ts - Usage tracking queries
     - src/lib/db/migrations/ - Drizzle migrations output directory
-  - Background workers: src/workers/ (index.ts, plan-generator.ts, plan-regenerator.ts)
+  - AI/Streaming: src/lib/ai/ (provider-factory.ts, orchestrator.ts, streaming/)
   - Tests: tests/ directory with subdirectories (unit/, integration/, e2e/, security/)
   - Documentation: docs/ directory (project-info/, testing/, proposals/, etc.)
 
@@ -193,14 +187,13 @@ Tests cover:
   - **Database client usage rules (CRITICAL for security)**:
     - **Default import** (`@/lib/db`): RLS-enforced clients (secure, for request handlers)
     - **Request handlers (API routes, server actions)**: MUST use `getDb()` from `@/lib/db/runtime`. This returns an RLS-enforced client that respects tenant isolation.
-    - **Workers/background jobs**: Use `db` from `@/lib/db/service-role` directly (service-role, RLS bypassed).
     - **Tests**: Use `db` from `@/lib/db/service-role` for business logic tests (RLS bypassed intentionally). Use authenticated Neon clients for RLS policy tests.
     - **Transactional writes**: Functions like `atomicCheckAndInsertPlan` may use service-role DB for atomicity, but must validate all inputs are caller-scoped.
     - **ESLint enforcement**: Importing `@/lib/db/service-role` in request layers (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`) is blocked by lint rules.
     - See `src/lib/db/service-role.ts` and `src/lib/db/rls.ts` for detailed usage documentation.
   - Payments: Stripe integration for subscription billing
   - AI providers: Vercel AI SDK with Google Gemini, OpenAI, Cloudflare Workers AI, and OpenRouter providers for learning plan generation
-  - Background jobs: Worker infrastructure in src/workers/ for async plan generation
+  - Plan generation: Synchronous streaming via `/api/v1/plans/stream` (replaces background workers)
 
 ## Database schema overview (MVP)
 
@@ -210,7 +203,7 @@ Tests cover:
   - modules 1—\* tasks
   - tasks 1—\* task_resources, task_progress, task_calendar_events
   - task_resources — resources (many-to-many with ordering and notes)
-  - Background job queue for async plan generation/regeneration
+  - Job queue schema (retained for regeneration and rate limiting)
   - Integration sync states for Notion exports and Google Calendar sync
   - Usage tracking and quotas (monthly metrics, AI API usage)
   - Stripe webhook event storage
@@ -254,7 +247,7 @@ Tests cover:
   - Database clients: src/lib/db/index.ts (RLS clients), src/lib/db/service-role.ts (bypass client)
 - Implemented features
   - Stripe subscription billing with webhook handling
-  - Background job processing for AI plan generation/regeneration
+  - Streaming plan generation via `/api/v1/plans/stream`
   - Row Level Security (RLS) policies with Neon for multi-tenant isolation
   - Usage tracking and quotas (monthly limits, AI API usage monitoring)
   - Third-party integrations: Notion exports, Google Calendar sync
@@ -272,7 +265,7 @@ Tests cover:
 - Framework: Vitest with @testing-library/react and @testing-library/jest-dom
 - Test organization (tests/ directory):
   - tests/unit/ - Isolated component tests (AI providers, utilities, parsing, validation)
-  - tests/integration/ - Multi-component tests (API contracts, concurrency, workers, RLS)
+  - tests/integration/ - Multi-component tests (API contracts, concurrency, streaming generation, RLS)
   - tests/e2e/ - End-to-end user flows
   - tests/security/ - Row Level Security (RLS) policy tests
   - tests/setup.ts - Global test setup file

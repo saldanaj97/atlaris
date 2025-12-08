@@ -1,39 +1,46 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AuthError } from '@/lib/api/errors';
 import {
   getOrCreateCurrentUserRecord,
   requireCurrentUserRecord,
 } from '@/lib/api/auth';
+import { AuthError } from '@/lib/api/errors';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 
-const mockGetUserByClerkId = vi.fn();
-const mockCreateUser = vi.fn();
-const mockCurrentUser = vi.fn();
+const mocks = vi.hoisted(() => ({
+  getUserByClerkId: vi.fn(),
+  createUser: vi.fn(),
+  currentUser: vi.fn(),
+}));
 
 vi.mock('@/lib/db/queries/users', () => ({
-  getUserByClerkId: mockGetUserByClerkId,
-  createUser: mockCreateUser,
+  getUserByClerkId: mocks.getUserByClerkId,
+  createUser: mocks.createUser,
 }));
 
 vi.mock('@clerk/nextjs/server', () => ({
-  currentUser: mockCurrentUser,
+  currentUser: mocks.currentUser,
 }));
+
+const mockGetUserByClerkId = mocks.getUserByClerkId;
+const mockCreateUser = mocks.createUser;
+const mockCurrentUser = mocks.currentUser;
 
 describe('auth helpers', () => {
   beforeEach(() => {
     mockGetUserByClerkId.mockReset();
     mockCreateUser.mockReset();
     mockCurrentUser.mockReset();
-    delete process.env.DEV_CLERK_USER_ID;
+    clearTestUser();
   });
 
   afterEach(() => {
-    delete process.env.DEV_CLERK_USER_ID;
+    clearTestUser();
   });
 
   it('creates a user when none exists yet', async () => {
     const clerkUserId = 'clerk-create';
-    process.env.DEV_CLERK_USER_ID = clerkUserId;
+    setTestUser(clerkUserId);
     mockGetUserByClerkId.mockResolvedValue(undefined);
 
     mockCurrentUser.mockResolvedValue({
@@ -66,7 +73,7 @@ describe('auth helpers', () => {
 
   it('returns the existing user without calling Clerk again', async () => {
     const clerkUserId = 'clerk-existing';
-    process.env.DEV_CLERK_USER_ID = clerkUserId;
+    setTestUser(clerkUserId);
     const existingRecord = {
       id: 'db-existing',
       clerkUserId,

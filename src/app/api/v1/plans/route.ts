@@ -1,31 +1,39 @@
 import { ZodError } from 'zod';
 
-import { count, eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { json, jsonError } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
-import { enqueueJob } from '@/lib/jobs/queue';
-import { JOB_TYPES, type PlanGenerationJobData } from '@/lib/jobs/types';
-import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
+import { learningPlans } from '@/lib/db/schema';
+import { getGenerationProvider } from '@/lib/ai/provider-factory';
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import {
+  isRetryableClassification,
+  formatGenerationError,
+} from '@/lib/ai/failures';
 import {
   atomicCheckAndInsertPlan,
-  checkPlanDurationCap,
   resolveUserTier,
+  markPlanGenerationSuccess,
+  markPlanGenerationFailure,
 } from '@/lib/stripe/usage';
+import { recordUsage } from '@/lib/db/usage';
 import type { NewLearningPlan } from '@/lib/types/db';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
   DEFAULT_PLAN_DURATION_WEEKS,
-  MILLISECONDS_PER_WEEK,
 } from '@/lib/validation/learningPlans';
+import {
+  calculateTotalWeeks,
+  ensurePlanDurationAllowed,
+  findCappedPlanWithoutModules,
+} from '@/lib/api/plans/shared';
 
 export const GET = withErrorBoundary(
   withAuth(async ({ userId }) => {
@@ -40,55 +48,6 @@ export const GET = withErrorBoundary(
     return json(summaries);
   })
 );
-
-async function findCappedPlanWithoutModules(userDbId: string) {
-  const db = getDb();
-  const planRows = await db
-    .select({ id: learningPlans.id })
-    .from(learningPlans)
-    .where(eq(learningPlans.userId, userDbId));
-
-  if (!planRows.length) {
-    return null;
-  }
-
-  const planIds = planRows.map((row) => row.id);
-
-  const attemptAggregates = await db
-    .select({
-      planId: generationAttempts.planId,
-      count: count(generationAttempts.id).as('count'),
-    })
-    .from(generationAttempts)
-    .where(inArray(generationAttempts.planId, planIds))
-    .groupBy(generationAttempts.planId);
-
-  if (!attemptAggregates.length) {
-    return null;
-  }
-
-  const cappedPlanIds = attemptAggregates
-    .filter((row) => row.count >= ATTEMPT_CAP)
-    .map((row) => row.planId);
-
-  if (!cappedPlanIds.length) {
-    return null;
-  }
-
-  const plansWithModules = await db
-    .select({ planId: modules.planId })
-    .from(modules)
-    .where(inArray(modules.planId, cappedPlanIds))
-    .groupBy(modules.planId);
-
-  const plansWithModulesSet = new Set(
-    plansWithModules.map((row) => row.planId)
-  );
-
-  return (
-    cappedPlanIds.find((planId) => !plansWithModulesSet.has(planId)) ?? null
-  );
-}
 
 // Use shared validation constants to avoid duplication
 
@@ -118,22 +77,14 @@ export const POST = withErrorBoundary(
     const userTier = await resolveUserTier(user.id);
 
     // Always compute totalWeeks from dates with sensible fallbacks
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
+    const totalWeeks = calculateTotalWeeks({
+      startDate: body.startDate,
+      deadlineDate: body.deadlineDate,
+      defaultWeeks: DEFAULT_PLAN_DURATION_WEEKS,
+    });
 
-    const start = body.startDate ? new Date(body.startDate) : new Date(today);
-    start.setUTCHours(0, 0, 0, 0);
-
-    let totalWeeks = DEFAULT_PLAN_DURATION_WEEKS;
-    if (body.deadlineDate) {
-      const deadline = new Date(body.deadlineDate);
-      deadline.setUTCHours(0, 0, 0, 0);
-      const diffMs = deadline.getTime() - start.getTime();
-      totalWeeks = Math.max(1, Math.ceil(diffMs / MILLISECONDS_PER_WEEK));
-    }
-
-    const cap = checkPlanDurationCap({
-      tier: userTier,
+    const cap = ensurePlanDurationAllowed({
+      userTier,
       weeklyHours: body.weeklyHours,
       totalWeeks,
     });
@@ -194,41 +145,87 @@ export const POST = withErrorBoundary(
       throw new ValidationError('Failed to create learning plan.');
     }
 
-    const jobData: PlanGenerationJobData = {
-      topic: body.topic,
-      notes: body.notes ?? null,
-      skillLevel: body.skillLevel,
-      weeklyHours: body.weeklyHours,
-      learningStyle: body.learningStyle,
-      startDate: body.startDate ?? null,
-      deadlineDate: body.deadlineDate ?? null,
+    const provider = getGenerationProvider();
+    const result = await runGenerationAttempt(
+      {
+        planId: plan.id,
+        userId: user.id,
+        input: {
+          topic: body.topic,
+          notes: body.notes ?? null,
+          skillLevel: body.skillLevel,
+          weeklyHours: body.weeklyHours,
+          learningStyle: body.learningStyle,
+          startDate: body.startDate ?? null,
+          deadlineDate: body.deadlineDate ?? null,
+        },
+      },
+      { provider }
+    );
+
+    const usage = result.metadata?.usage;
+    const respondWithPlan = async (status: 'ready' | 'failed') => {
+      const [freshPlan] = await db
+        .select()
+        .from(learningPlans)
+        .where(eq(learningPlans.id, plan.id))
+        .limit(1);
+
+      return json(
+        {
+          id: freshPlan?.id ?? plan.id,
+          topic: plan.topic,
+          skillLevel: plan.skillLevel,
+          weeklyHours: plan.weeklyHours,
+          learningStyle: plan.learningStyle,
+          visibility: plan.visibility,
+          origin: plan.origin,
+          createdAt: (freshPlan?.createdAt ?? plan.createdAt)?.toISOString(),
+          status,
+        },
+        { status: status === 'ready' ? 201 : 400 }
+      );
     };
 
-    const priority = computeJobPriority({
-      tier: userTier,
-      isPriorityTopic: isPriorityTopic(body.topic),
-    });
-    await enqueueJob(
-      JOB_TYPES.PLAN_GENERATION,
-      plan.id,
-      user.id,
-      jobData,
-      priority
+    if (result.status === 'success') {
+      await markPlanGenerationSuccess(plan.id);
+      await recordUsage({
+        userId: user.id,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: result.metadata?.model ?? 'unknown',
+        inputTokens: usage?.promptTokens ?? undefined,
+        outputTokens: usage?.completionTokens ?? undefined,
+        costCents: 0,
+        kind: 'plan',
+      });
+
+      return respondWithPlan('ready');
+    }
+
+    const classification = result.classification ?? 'unknown';
+    const retryable = isRetryableClassification(classification);
+
+    if (!retryable) {
+      await markPlanGenerationFailure(plan.id);
+      await recordUsage({
+        userId: user.id,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: result.metadata?.model ?? 'unknown',
+        inputTokens: usage?.promptTokens ?? undefined,
+        outputTokens: usage?.completionTokens ?? undefined,
+        costCents: 0,
+        kind: 'plan',
+      });
+    }
+
+    const message = formatGenerationError(
+      result.error,
+      'Plan generation failed.'
     );
 
-    return json(
-      {
-        id: plan.id,
-        topic: plan.topic,
-        skillLevel: plan.skillLevel,
-        weeklyHours: plan.weeklyHours,
-        learningStyle: plan.learningStyle,
-        visibility: plan.visibility,
-        origin: plan.origin,
-        createdAt: plan.createdAt?.toISOString(),
-        status: 'pending' as const,
-      },
-      { status: 201 }
-    );
+    return jsonError(message, {
+      status: retryable ? 503 : 400,
+      classification,
+    });
   })
 );
