@@ -7,7 +7,11 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "rounded-base flex flex-col shadow-shadow border-2 gap-6 py-6 border-border bg-card-background text-foreground font-base",
+        "relative flex flex-col gap-6 py-6 text-foreground font-base bg-transparent z-0",
+        // Background + Scribbled Border
+        "before:absolute before:inset-0 before:border-3 before:border-border before:rounded-[inherit] before:bg-card-background before:filter-[url(#scribble)] before:-z-10",
+        // Hatched Shadow
+        "after:absolute after:top-1 after:left-1 after:w-full after:h-full after:rounded-[inherit] after:bg-[image:var(--pattern-hatch)] after:-z-20",
         className,
       )}
       {...props}

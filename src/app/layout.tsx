@@ -2,12 +2,20 @@ import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { ClerkProvider } from '@clerk/nextjs';
 import { type Metadata } from 'next';
-import { Work_Sans } from 'next/font/google';
+import { Work_Sans, Young_Serif } from 'next/font/google';
 import { Toaster } from 'sonner';
+import { PaperScribbleDesignSystem } from '@/components/shared/PaperScribbleDesignSystem';
 import './globals.css';
 
 const workSans = Work_Sans({
   subsets: ['latin'],
+  variable: '--font-work-sans',
+});
+
+const youngSerif = Young_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-young-serif',
 });
 
 export const metadata: Metadata = {
@@ -70,7 +78,10 @@ export default function RootLayout({
   return (
     <ClerkProvider afterSignOutUrl="/landing">
       <html lang="en">
-        <body className={`${workSans.className} mx-auto w-4/5 antialiased`}>
+        <body
+          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} mx-auto w-4/5 antialiased`}
+        >
+          <PaperScribbleDesignSystem />
           <SiteHeader />
           <main>{children}</main>
           <Toaster />

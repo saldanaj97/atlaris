@@ -7,12 +7,17 @@
   /* Dotted grid pattern for background */
   --pattern-dotted-grid: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='1' fill='%23000' opacity='0.3'/%3E%3C/svg%3E");
 
+  /* Hatched pattern for shadows */
+  --pattern-hatch: repeating-linear-gradient(
+    -45deg,
+    var(--border),
+    var(--border) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+
   --background: oklch(0.9427 0 0);
   --card-background: oklch(0.9702 0 0);
-  /*
-  --background: oklch(0.9427 0.0268 242.57 / 60.13%);
-  --background: oklch(0.9702 0 0);
-  --card-background: oklch(94.27% 0.0268 242.57); */
   --secondary-background: oklch(100% 0 0);
   --foreground: oklch(0% 0 0);
   --muted-foreground: oklch(0% 0 0 / 0.5);
@@ -74,13 +79,15 @@
   --shadow-shadow: var(--shadow);
   --font-weight-base: 500;
   --font-weight-heading: 700;
-  --font-heading: var(--font-young-serif), serif;
-  --font-base: var(--font-work-sans), sans-serif;
+  --font-family-heading:
+    var(--font-young-serif), Georgia, 'Times New Roman', serif;
+  --font-family-base: var(--font-work-sans), sans-serif;
 }
 
 @layer base {
   body {
-    @apply text-foreground font-base bg-background;
+    @apply text-foreground bg-background;
+    font-family: var(--font-family-base);
     background-image: var(--pattern-dotted-grid);
   }
 
@@ -90,6 +97,6 @@
   h4,
   h5,
   h6 {
-    @apply font-heading;
+    font-family: var(--font-family-heading);
   }
 }
