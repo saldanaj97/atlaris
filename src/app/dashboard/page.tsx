@@ -1,6 +1,7 @@
 import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Tape } from '@/components/ui/tape';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { formatWeeklyHours } from '@/lib/formatters';
@@ -9,14 +10,15 @@ import {
   ArrowRight,
   BookOpen,
   Clock,
+  Crown,
   Plus,
+  RefreshCcw,
   Target,
   TrendingUp,
-  RefreshCcw,
-  Crown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Highlighter } from '../../components/ui/highlighter';
 
 export default async function DashboardPage() {
   const user = await getOrCreateCurrentUserRecord();
@@ -68,6 +70,11 @@ export default async function DashboardPage() {
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
         <Card className="p-6">
+          <Tape
+            variant="lg"
+            angle="left"
+            className="absolute -top-3 left-1/2 -translate-x-1/2"
+          />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Total Plans</p>
@@ -116,12 +123,14 @@ export default async function DashboardPage() {
         <div className="space-y-6 lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Your Learning Plans</h2>
-            <Button asChild>
-              <Link href="/plans">
-                View All Plans
-                <ArrowRight className="h-4" />
-              </Link>
-            </Button>
+            <Highlighter>
+              <Button asChild>
+                <Link href="/plans">
+                  <span>View All Plans</span>
+                  <ArrowRight className="h-4" />
+                </Link>
+              </Button>
+            </Highlighter>
           </div>
 
           <div className="space-y-4">

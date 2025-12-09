@@ -17,6 +17,8 @@
   );
 
   --background: oklch(0.9427 0 0);
+  --highlighter: oklch(0.93 0.17 98.5); /* Vibrant yellow */
+  --tape: oklch(0.96 0.03 100); /* Masking tape */
   --card-background: oklch(0.9702 0 0);
   --secondary-background: oklch(100% 0 0);
   --foreground: oklch(0% 0 0);
@@ -62,6 +64,8 @@
   --color-foreground: var(--foreground);
   --color-main-foreground: var(--main-foreground);
   --color-muted-foreground: var(--muted-foreground);
+  --color-highlighter: var(--highlighter);
+  --color-tape: var(--tape);
   --color-border: var(--border);
   --color-overlay: var(--overlay);
   --color-ring: var(--ring);

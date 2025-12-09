@@ -10,7 +10,7 @@ const scribbleStyles = "before:absolute before:inset-0 before:border-2 before:bo
 const hatchedShadow = "after:absolute after:top-1 after:left-1 after:w-full after:h-full after:rounded-[inherit] after:bg-[image:var(--pattern-hatch)] after:-z-20"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-base ring-offset-white transition-all gap-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer relative z-0 bg-transparent",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-base ring-offset-white transition-all gap-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer relative  bg-transparent [&>*]:relative [&>*]:z-20",
   {
     variants: {
       variant: {
