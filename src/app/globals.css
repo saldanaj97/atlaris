@@ -4,6 +4,9 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Dotted grid pattern for background */
+  --pattern-dotted-grid: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='1' fill='%23000' opacity='0.3'/%3E%3C/svg%3E");
+
   --background: oklch(0.9427 0 0);
   --card-background: oklch(0.9702 0 0);
   /*
@@ -71,11 +74,14 @@
   --shadow-shadow: var(--shadow);
   --font-weight-base: 500;
   --font-weight-heading: 700;
+  --font-heading: var(--font-young-serif), serif;
+  --font-base: var(--font-work-sans), sans-serif;
 }
 
 @layer base {
   body {
     @apply text-foreground font-base bg-background;
+    background-image: var(--pattern-dotted-grid);
   }
 
   h1,
