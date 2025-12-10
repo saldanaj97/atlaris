@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function PaperScribbleDesignSystem() {
   return (
     <svg
@@ -7,6 +5,7 @@ export function PaperScribbleDesignSystem() {
       aria-hidden="true"
     >
       <defs>
+        {/* Original scribble filter for subtle hand-drawn effect */}
         <filter id="scribble">
           <feTurbulence
             type="fractalNoise"
@@ -22,6 +21,68 @@ export function PaperScribbleDesignSystem() {
             yChannelSelector="G"
           />
         </filter>
+
+        {/* Heavy sketch filter - more pronounced hand-drawn borders */}
+        {/* <filter id="sketch" x="-3%" y="-3%" width="106%" height="106%">
+          <feTurbulence
+            type="turbulence"
+            baseFrequency="0.015"
+            numOctaves="3"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="5"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter> */}
+
+        {/* Torn paper edge filter - creates fibrous, rough edges (single seed) */}
+        {/* <filter id="torn-edge" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.06"
+            numOctaves="4"
+            seed="3"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="12"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter> */}
+
+        {/* Torn paper edge filters - multiple seeds for varied edge shapes */}
+        {[1, 7, 19, 42].map((seed) => (
+          <filter
+            key={seed}
+            id={`torn-edge-${seed}`}
+            x="-10%"
+            y="-10%"
+            width="120%"
+            height="120%"
+          >
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.03"
+              numOctaves="2"
+              seed={seed}
+              result="noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale="12"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        ))}
       </defs>
     </svg>
   );

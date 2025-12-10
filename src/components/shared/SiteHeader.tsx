@@ -1,6 +1,7 @@
 import AuthControls from '@/components/shared/AuthControls';
 import MobileSiteHeader from '@/components/shared/MobileSiteHeader';
 import SiteHeaderClient from '@/components/shared/SiteHeaderClient';
+import { Paper } from '@/components/ui/paper';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
@@ -20,17 +21,7 @@ export default async function SiteHeader() {
 
   return (
     <header className="container mx-auto my-4 w-full">
-      <div className="relative z-0 flex items-center justify-between gap-4 p-4 lg:grid lg:grid-cols-3 lg:items-center">
-        {/* Paper background + scribbled border */}
-        <div
-          aria-hidden="true"
-          className="rounded-base pointer-events-none absolute inset-0 -z-10"
-        >
-          <div className="relative h-full w-full">
-            <div className="bg-card-background border-border absolute inset-0 -z-10 rounded-[inherit] border-3 [filter:url(#scribble)]" />
-            <div className="absolute top-1 left-1 -z-20 h-full w-full rounded-[inherit] bg-[image:var(--pattern-hatch)]" />
-          </div>
-        </div>
+      <Paper className="rounded-base flex items-center justify-between gap-4 p-4 lg:grid lg:grid-cols-3 lg:items-center">
         {/* Desktop brand (left) */}
         <Link href="/" className="hidden items-center space-x-2 lg:flex">
           <BookOpen className="text-main h-8 w-8" />
@@ -65,7 +56,7 @@ export default async function SiteHeader() {
         <div className="hidden lg:flex lg:justify-self-end">
           <AuthControls />
         </div>
-      </div>
+      </Paper>
     </header>
   );
 }

@@ -1,17 +1,35 @@
 import * as React from "react"
 
+import { tornPaperSurfaceClasses } from "@/components/shared/paper-surface"
 import { cn } from "@/lib/utils"
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+type CardVariant = "default" | "paper"
+
+type CardProps = React.ComponentProps<"div"> & {
+  variant?: CardVariant
+  tornSeed?: number | string
+}
+
+const variantStyles: Record<CardVariant, (seed: number | string) => string> = {
+  default: () =>
+    cn(
+      // Background + Scribbled Border
+      "before:absolute before:inset-0 before:border-3 before:border-border before:rounded-[inherit] before:bg-card-background before:filter-[url(#scribble)] before:-z-10",
+      // Hatched Shadow
+      "after:absolute after:top-1 after:left-1 after:w-full after:h-full after:rounded-[inherit] after:bg-[image:var(--pattern-hatch)] after:-z-20",
+    ),
+  paper: (seed) => tornPaperSurfaceClasses(seed),
+}
+
+function Card({ className, variant = "default", tornSeed, ...props }: CardProps) {
+  const renderSeed = tornSeed ?? React.useId()
+
   return (
     <div
       data-slot="card"
       className={cn(
         "relative flex flex-col gap-6 py-6 text-foreground font-base bg-transparent z-0",
-        // Background + Scribbled Border
-        "before:absolute before:inset-0 before:border-3 before:border-border before:rounded-[inherit] before:bg-card-background before:filter-[url(#scribble)] before:-z-10",
-        // Hatched Shadow
-        "after:absolute after:top-1 after:left-1 after:w-full after:h-full after:rounded-[inherit] after:bg-[image:var(--pattern-hatch)] after:-z-20",
+        variantStyles[variant](renderSeed),
         className,
       )}
       {...props}
@@ -86,11 +104,5 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 export {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardAction,
+  Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 }

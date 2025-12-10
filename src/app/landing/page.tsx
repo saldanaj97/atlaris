@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 import HeroImage from '@/assets/images/hero-learning.jpg';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { PaperCard } from '@/components/ui/paper-card';
 import { ArrowRight, Clock, Target, Zap } from 'lucide-react';
 
 const LandingPage = () => {
@@ -93,38 +93,38 @@ const LandingPage = () => {
         </div>
 
         <div className="grid gap-8 md:grid-cols-3">
-          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
-            <div className="bg-learning-primary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
-              <Target className="text-learning-primary h-6 w-6" />
+          <PaperCard className="space-y-4 p-8 text-center transition-all hover:-translate-y-1">
+            <div className="bg-main/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
+              <Target className="text-main h-6 w-6" />
             </div>
             <h3 className="text-xl font-semibold">Personalized Plans</h3>
             <p className="text-muted-foreground">
               Every learning path is tailored to your skill level, available
               time, and preferred learning style.
             </p>
-          </Card>
+          </PaperCard>
 
-          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
-            <div className="bg-learning-secondary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
-              <Clock className="text-learning-secondary h-6 w-6" />
+          <PaperCard className="space-y-4 p-8 text-center transition-all hover:-translate-y-1">
+            <div className="bg-main/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
+              <Clock className="text-main h-6 w-6" />
             </div>
             <h3 className="text-xl font-semibold">Time-Optimized</h3>
             <p className="text-muted-foreground">
               Plans adapt to your schedule, whether you have 2 hours or 20 hours
               per week to learn.
             </p>
-          </Card>
+          </PaperCard>
 
-          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
-            <div className="bg-learning-success/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
-              <ArrowRight className="text-learning-success h-6 w-6" />
+          <PaperCard className="space-y-4 p-8 text-center transition-all hover:-translate-y-1">
+            <div className="bg-main/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
+              <ArrowRight className="text-main h-6 w-6" />
             </div>
             <h3 className="text-xl font-semibold">Seamless Export</h3>
             <p className="text-muted-foreground">
               Export to Notion, Google Calendar, or download as CSV. Integrate
               with your existing workflow.
             </p>
-          </Card>
+          </PaperCard>
         </div>
       </section>
 

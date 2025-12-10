@@ -1,6 +1,6 @@
 import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { PaperCard } from '@/components/ui/paper-card';
 import { Tape } from '@/components/ui/tape';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-        <Card className="p-6">
+        <PaperCard className="p-6">
           <Tape
             variant="lg"
             angle="left"
@@ -82,9 +82,9 @@ export default async function DashboardPage() {
             </div>
             <BookOpen className="text-primary/50 h-8 w-8" />
           </div>
-        </Card>
+        </PaperCard>
 
-        <Card className="p-6">
+        <PaperCard className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Active Plans</p>
@@ -94,9 +94,9 @@ export default async function DashboardPage() {
             </div>
             <Target className="text-learning-primary/50 h-8 w-8" />
           </div>
-        </Card>
+        </PaperCard>
 
-        <Card className="p-6">
+        <PaperCard className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Completed</p>
@@ -106,9 +106,9 @@ export default async function DashboardPage() {
             </div>
             <TrendingUp className="text-learning-success/50 h-8 w-8" />
           </div>
-        </Card>
+        </PaperCard>
 
-        <Card className="p-6">
+        <PaperCard className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Hours Learned</p>
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
             </div>
             <Clock className="text-learning-secondary/50 h-8 w-8" />
           </div>
-        </Card>
+        </PaperCard>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -135,10 +135,10 @@ export default async function DashboardPage() {
 
           <div className="space-y-4">
             {summaries.length === 0 ? (
-              <Card className="text-muted-foreground p-6 text-center">
+              <PaperCard className="text-muted-foreground p-6 text-center">
                 You do not have any learning plans yet. Create one to get
                 started.
-              </Card>
+              </PaperCard>
             ) : (
               <PlansList summaries={summaries} />
             )}
@@ -146,7 +146,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-6">
-          <Card className="p-6">
+          <PaperCard className="p-6">
             <h3 className="mb-4 text-lg font-semibold">Subscription & Usage</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -181,9 +181,9 @@ export default async function DashboardPage() {
                 </div>
               </div>
             </div>
-          </Card>
+          </PaperCard>
           {limitsReached ? (
-            <Card className="p-6">
+            <PaperCard className="p-6">
               <h3 className="mb-2 text-lg font-semibold">Upgrade for more</h3>
               <p className="text-muted-foreground text-sm">
                 You've reached your current plan limits. Upgrade to unlock more
@@ -192,9 +192,9 @@ export default async function DashboardPage() {
               <Button asChild className="mt-4 w-full">
                 <Link href="/pricing">View Plans</Link>
               </Button>
-            </Card>
+            </PaperCard>
           ) : null}
-          <Card className="p-6">
+          <PaperCard className="p-6">
             <h3 className="mb-3 text-lg font-semibold">Keep Learning</h3>
             <p className="text-muted-foreground text-sm">
               Stay consistent by reserving time each week. Aim for at least{' '}
@@ -209,7 +209,7 @@ export default async function DashboardPage() {
                 Generate New Plan
               </Link>
             </Button>
-          </Card>
+          </PaperCard>
         </div>
       </div>
     </div>
