@@ -75,29 +75,55 @@ export function ScrapbookDesignFilters() {
         </filter> */}
 
         {/* Torn paper edge filters - multiple seeds for varied edge shapes */}
+        {/* Creates natural-looking torn edges with soft fibrous blending */}
         {[1, 7, 19, 42].map((seed) => (
           <filter
             key={seed}
             id={`torn-edge-${seed}`}
-            x="-10%"
-            y="-10%"
-            width="120%"
-            height="120%"
+            x="-8%"
+            y="-8%"
+            width="116%"
+            height="116%"
           >
+            {/* Generate noise for irregular tear pattern */}
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="0.03"
-              numOctaves="2"
+              baseFrequency="0.02"
+              numOctaves="4"
               seed={seed}
               result="noise"
             />
+            {/* Displace edges to create torn effect */}
             <feDisplacementMap
               in="SourceGraphic"
               in2="noise"
-              scale="12"
+              scale="24"
               xChannelSelector="R"
               yChannelSelector="G"
+              result="displaced"
             />
+            {/* Create expanded edge for fiber effect */}
+            <feMorphology
+              in="displaced"
+              operator="dilate"
+              radius="1.5"
+              result="expanded"
+            />
+            {/* Blur the expanded edge to create soft fibers */}
+            <feGaussianBlur in="expanded" stdDeviation="2" result="fibers" />
+            {/* Make the fiber layer white/off-white */}
+            <feFlood floodColor="#f8f8f6" floodOpacity="0.85" result="white" />
+            <feComposite
+              in="white"
+              in2="fibers"
+              operator="in"
+              result="coloredFibers"
+            />
+            {/* Stack: fibers underneath, then the crisp displaced paper on top */}
+            <feMerge>
+              <feMergeNode in="coloredFibers" />
+              <feMergeNode in="displaced" />
+            </feMerge>
           </filter>
         ))}
       </defs>

@@ -42,14 +42,12 @@ export const tornPaperSurfaceClasses = (seed?: number | string) => {
 
   return cn(
     'relative z-0',
-    // External paper shadow for lift
-    'paper-shadow',
-    // Sketchy border with torn edge effect and paper texture
-    'before:absolute before:inset-0 before:border-[3px] before:border-border',
+    // Torn edge with soft gray border for depth (creates natural paper edge look)
+    'before:absolute before:inset-0 before:border-t-[1.5px] before:border-l-[1.5px] before:border-r-[1px] before:border-b-[1px] before:border-[rgba(120,110,100,0.25)]',
     'before:rounded-[inherit] before:bg-card-background before:-z-10',
     filterClass,
-    // Paper texture overlay via box-shadow inset
-    'before:shadow-[inset_0_0_80px_rgba(0,0,0,0.05)]',
+    // Paper texture + inset shadow on all edges for 3D depth
+    'before:shadow-[inset_0_0_80px_rgba(0,0,0,0.05),inset_1px_1px_2px_rgba(100,90,80,0.12),inset_-1px_-1px_2px_rgba(100,90,80,0.12)]',
     // Heavy hatched shadow for depth
     'after:absolute after:top-[8px] after:left-[8px] after:w-full after:h-full',
     'after:rounded-[inherit] after:bg-[image:var(--pattern-hatch)]',
