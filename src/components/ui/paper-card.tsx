@@ -1,11 +1,12 @@
+'use client';
+
 import * as React from 'react';
 
 import { tornPaperSurfaceClasses } from '@/components/shared/TornPaperStyles';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
-type PaperCardProps = React.ComponentProps<'div'> & {
-  tornSeed?: number | string;
-};
+type PaperCardProps = React.ComponentProps<'div'>;
 
 /**
  * PaperCard - A card component with a realistic torn paper aesthetic
@@ -15,9 +16,18 @@ type PaperCardProps = React.ComponentProps<'div'> & {
  * - Subtle paper texture overlay
  * - Realistic depth shadows that simulate paper lifting
  * - Heavy hatched shadow for sketch effect
+ * - Random seed generated client-side for natural variation
  */
-function PaperCard({ className, tornSeed, ...props }: PaperCardProps) {
-  const renderSeed = tornSeed ?? React.useId();
+function PaperCard({ className, ...props }: PaperCardProps) {
+  // Generate seed only on client to avoid hydration mismatch
+  const [seed, setSeed] = useState<number | null>(null);
+
+  useEffect(() => {
+    setSeed(Math.floor(Math.random() * 10000));
+  }, []);
+
+  // Use seed 0 as fallback for SSR (first torn edge filter)
+  const renderSeed = seed ?? 0;
 
   return (
     <div

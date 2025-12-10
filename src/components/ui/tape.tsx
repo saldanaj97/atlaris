@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { useEffect, useId, useMemo, useState } from "react"
 
 type TapeVariant = "sm" | "md" | "lg"
 type TapeAngle = "straight" | "left" | "right"
@@ -92,14 +93,14 @@ export function Tape({
   const { width, height } = variantDimensions[variant]
 
   // Generate seed only on client to avoid hydration mismatch
-  const [seed, setSeed] = React.useState<number | null>(null)
+  const [seed, setSeed] = useState<number | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     setSeed(Math.floor(Math.random() * 10000))
   }, [])
 
   // Generate path only when we have a seed (client-side)
-  const tapePath = React.useMemo(() => {
+  const tapePath = useMemo(() => {
     if (seed === null) {
       // Simple rectangle fallback for SSR
       return `M 4 0 L ${width - 4} 0 L ${width - 4} ${height} L 4 ${height} Z`
@@ -107,7 +108,7 @@ export function Tape({
     return generateTapePath(width, height, seed)
   }, [width, height, seed])
 
-  const uniqueId = React.useId()
+  const uniqueId = useId()
   const noiseFilterId = `tape-noise-${uniqueId}`
   const fiberPatternId = `tape-fiber-${uniqueId}`
 
