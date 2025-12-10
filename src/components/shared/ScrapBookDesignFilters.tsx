@@ -1,4 +1,4 @@
-export function PaperScribbleDesignSystem() {
+export function ScrapbookDesignFilters() {
   return (
     <svg
       className="pointer-events-none absolute hidden h-0 w-0"
@@ -17,6 +17,23 @@ export function PaperScribbleDesignSystem() {
             in="SourceGraphic"
             in2="noise"
             scale="2"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+
+        {/* Marker bleed filter for highlighter - simulates ink bleeding into paper fibers */}
+        <filter id="marker-bleed" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.04"
+            numOctaves="3"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="4"
             xChannelSelector="R"
             yChannelSelector="G"
           />

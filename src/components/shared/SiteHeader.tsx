@@ -21,7 +21,7 @@ export default async function SiteHeader() {
 
   return (
     <header className="container mx-auto my-4 w-full">
-      <Paper className="rounded-base flex items-center justify-between gap-4 p-4 lg:grid lg:grid-cols-3 lg:items-center">
+      <Paper className="flex items-center justify-between gap-4 p-4 lg:grid lg:grid-cols-3 lg:items-center">
         {/* Desktop brand (left) */}
         <Link href="/" className="hidden items-center space-x-2 lg:flex">
           <BookOpen className="text-main h-8 w-8" />

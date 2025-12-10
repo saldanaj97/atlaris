@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { tornPaperSurfaceClasses } from '@/components/shared/paper-surface';
+import { tornPaperSurfaceClasses } from '@/components/shared/TornPaperStyles';
 import { cn } from '@/lib/utils';
 
 type PaperProps = React.ComponentProps<'div'> & {

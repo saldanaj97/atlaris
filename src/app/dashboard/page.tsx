@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Highlighter } from '../../components/ui/highlighter';
 
 export default async function DashboardPage() {
   const user = await getOrCreateCurrentUserRecord();
@@ -123,14 +122,12 @@ export default async function DashboardPage() {
         <div className="space-y-6 lg:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Your Learning Plans</h2>
-            <Highlighter>
-              <Button asChild>
-                <Link href="/plans">
-                  <span>View All Plans</span>
-                  <ArrowRight className="h-4" />
-                </Link>
-              </Button>
-            </Highlighter>
+            <Button asChild>
+              <Link href="/plans">
+                <span>View All Plans</span>
+                <ArrowRight className="h-4" />
+              </Link>
+            </Button>
           </div>
 
           <div className="space-y-4">

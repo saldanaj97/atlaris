@@ -1,10 +1,10 @@
+import { ScrapbookDesignFilters } from '@/components/shared/ScrapBookDesignFilters';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { ClerkProvider } from '@clerk/nextjs';
 import { type Metadata } from 'next';
 import { Work_Sans, Young_Serif } from 'next/font/google';
 import { Toaster } from 'sonner';
-import { PaperScribbleDesignSystem } from '@/components/shared/PaperScribbleDesignSystem';
 import './globals.css';
 
 const workSans = Work_Sans({
@@ -81,7 +81,7 @@ export default function RootLayout({
         <body
           className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} mx-auto w-4/5 antialiased`}
         >
-          <PaperScribbleDesignSystem />
+          <ScrapbookDesignFilters />
           <SiteHeader />
           <main>{children}</main>
           <Toaster />
