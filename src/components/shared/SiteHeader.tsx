@@ -1,7 +1,7 @@
 import AuthControls from '@/components/shared/AuthControls';
 import MobileSiteHeader from '@/components/shared/MobileSiteHeader';
+import { Paper } from '@/components/shared/Paper';
 import SiteHeaderClient from '@/components/shared/SiteHeaderClient';
-import { Paper } from '@/components/ui/paper';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { BookOpen } from 'lucide-react';
 import Link from 'next/link';

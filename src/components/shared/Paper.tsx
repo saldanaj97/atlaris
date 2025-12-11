@@ -1,4 +1,37 @@
 import { cn } from '@/lib/utils';
+import * as React from 'react';
+
+/**
+ * Paper - A generic component that provides a realistic torn paper aesthetic
+ *
+ * Features:
+ * - Rough, sketchy hand-drawn borders with torn edges
+ * - Subtle paper texture overlay
+ * - Realistic depth shadows that simulate paper lifting
+ * - Heavy hatched shadow for sketch effect
+ *
+ * Use this component for any element that needs the torn paper look
+ * but isn't necessarily a card (e.g., headers, containers, etc.)
+ */
+type PaperProps = React.ComponentProps<'div'> & {
+  /**
+   * Deterministic seed for the torn-edge filter selection.
+   *
+   * If omitted, a stable per-render seed is derived via `useId()` to avoid
+   * hydration mismatches while still varying between instances.
+   */
+  tornSeed?: number | string;
+};
+
+export function Paper({ className, tornSeed, ...props }: PaperProps) {
+  return (
+    <div
+      data-slot="paper"
+      className={cn('bg-transparent', tornPaperStyles(tornSeed), className)}
+      {...props}
+    />
+  );
+}
 
 const tornEdgeFilters = [
   'before:[filter:url(#torn-edge-1)]',
@@ -32,10 +65,8 @@ const normalizeSeed = (seed?: number | string): number => {
  *
  * Use this for any component that needs the realistic paper treatment on the
  * outer container (cards, headers, generic paper slips, etc.).
- *
- * Provide a seed (number or string) to vary the torn edge in a deterministic way.
  */
-export const tornPaperSurfaceClasses = (seed?: number | string) => {
+export const tornPaperStyles = (seed?: number | string) => {
   const normalizedSeed = normalizeSeed(seed);
   const filterClass =
     tornEdgeFilters[Math.abs(normalizedSeed) % tornEdgeFilters.length];
@@ -49,7 +80,7 @@ export const tornPaperSurfaceClasses = (seed?: number | string) => {
     // Paper texture + inset shadow on all edges for 3D depth
     'before:shadow-[inset_0_0_80px_rgba(0,0,0,0.05),inset_1px_1px_2px_rgba(100,90,80,0.12),inset_-1px_-1px_2px_rgba(100,90,80,0.12)]',
     // Heavy hatched shadow for depth
-    'after:absolute after:top-[8px] after:left-[8px] after:w-full after:h-full',
+    'after:absolute after:top-[12px] after:left-[12px] after:w-full after:h-full after:border-2 after:border-primary after:rounded-base',
     'after:rounded-[inherit] after:bg-[image:var(--pattern-hatch)]',
     'after:[filter:url(#scribble)] after:-z-20'
   );

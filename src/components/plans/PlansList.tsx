@@ -1,17 +1,18 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CardDescription, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Highlighter } from '@/components/ui/highlighter';
 import { Progress } from '@/components/ui/progress';
 import type { PlanSummary } from '@/lib/types/db';
 import { Play } from 'lucide-react';
 import Link from 'next/link';
-import {
-  PaperCard,
-  PaperCardContent,
-  PaperCardFooter,
-  PaperCardHeader,
-} from '../ui/paper-card';
 
 function formatWeeklyHours(hours?: number | null) {
   if (!Number.isFinite(hours) || !hours || hours <= 0) {
@@ -61,8 +62,8 @@ export default function PlansList({ summaries }: PlansListProps) {
         const createdAtLabel = formatDate(plan.createdAt);
 
         return (
-          <PaperCard key={plan.id}>
-            <PaperCardHeader>
+          <Card key={plan.id}>
+            <CardHeader>
               <div className="mb-1 flex items-center gap-3">
                 <CardTitle className="text-2xl font-semibold">
                   {plan.topic}
@@ -85,8 +86,8 @@ export default function PlansList({ summaries }: PlansListProps) {
                 <span aria-hidden="true">•</span>
                 <span>{createdAtLabel}</span>
               </CardDescription>
-            </PaperCardHeader>
-            <PaperCardContent className="text-muted-foreground text-sm">
+            </CardHeader>
+            <CardContent className="text-muted-foreground text-sm">
               <p className="capitalize">Learning style: {plan.learningStyle}</p>
 
               <div className="mt-4 space-y-3">
@@ -100,8 +101,8 @@ export default function PlansList({ summaries }: PlansListProps) {
                 </div>
                 <Progress value={progressPercent} className="h-2" />
               </div>
-            </PaperCardContent>
-            <PaperCardFooter className="text-muted-foreground flex items-center justify-between border-t pt-4 text-sm">
+            </CardContent>
+            <CardFooter className="text-muted-foreground flex items-center justify-between border-t pt-4 text-sm">
               <span>
                 Completed tasks: {summary.completedTasks} / {summary.totalTasks}
               </span>
@@ -111,8 +112,8 @@ export default function PlansList({ summaries }: PlansListProps) {
                   {isCompleted ? 'Review' : 'Continue'}
                 </Link>
               </Button>
-            </PaperCardFooter>
-          </PaperCard>
+            </CardFooter>
+          </Card>
         );
       })}
     </div>
