@@ -38,7 +38,7 @@ export default function SiteHeaderClient({
       return (
         <DropdownMenu key={item.href}>
           <DropdownMenuTrigger asChild>
-            <Button variant="neutral" className="gap-1">
+            <Button variant="nav-button" className="gap-1">
               <span className="text-sm sm:text-base">{item.label}</span>
               <ChevronDown className="h-4 w-4" />
             </Button>
@@ -66,7 +66,8 @@ export default function SiteHeaderClient({
       <Button
         asChild
         key={item.href}
-        variant={item.highlight ? 'default' : 'neutral'}
+        variant="nav-button"
+        className={item.highlight ? 'bg-main text-main-foreground' : undefined}
       >
         <Link href={item.href} className="text-sm sm:text-base">
           {item.label}

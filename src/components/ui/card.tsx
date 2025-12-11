@@ -23,7 +23,7 @@ function Card({ className, variant = "paper", tornSeed, ...props }: CardProps) {
     <div
       data-slot="card"
       className={cn(
-        "relative flex flex-col gap-6 py-6 text-foreground font-base bg-transparent z-0",
+        "relative z-0 flex flex-col gap-6 bg-transparent py-6 text-foreground font-base [&_[data-slot=button]]:after:hidden",
         variantStyles[variant](seed),
         className,
       )}
@@ -99,5 +99,5 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 export {
-  Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
+    Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 }

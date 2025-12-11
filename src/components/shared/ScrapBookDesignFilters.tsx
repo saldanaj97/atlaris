@@ -9,7 +9,7 @@ export function ScrapbookDesignFilters() {
         <filter id="scribble">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.05"
+            baseFrequency="0.1"
             numOctaves="2"
             result="noise"
           />
@@ -19,6 +19,7 @@ export function ScrapbookDesignFilters() {
             scale="2"
             xChannelSelector="R"
             yChannelSelector="G"
+            result="displaced"
           />
         </filter>
 
@@ -40,21 +41,21 @@ export function ScrapbookDesignFilters() {
         </filter>
 
         {/* Heavy sketch filter - more pronounced hand-drawn borders */}
-        {/* <filter id="sketch" x="-3%" y="-3%" width="106%" height="106%">
+        <filter id="sketch">
           <feTurbulence
-            type="turbulence"
+            type="fractalNoise"
             baseFrequency="0.015"
-            numOctaves="3"
+            numOctaves="2"
             result="noise"
           />
           <feDisplacementMap
             in="SourceGraphic"
             in2="noise"
-            scale="5"
+            scale="3"
             xChannelSelector="R"
             yChannelSelector="G"
           />
-        </filter> */}
+        </filter>
 
         {/* Torn paper edge filter - creates fibrous, rough edges (single seed) */}
         {/* <filter id="torn-edge" x="-10%" y="-10%" width="120%" height="120%">

@@ -11,7 +11,7 @@
   --pattern-hatch: repeating-linear-gradient(
     -45deg,
     var(--border),
-    var(--border) 1.5px,
+    var(--border) 3.5px,
     transparent 1px,
     transparent 4px
   );
@@ -113,12 +113,4 @@
 
 /* Torn paper effect utilities */
 @layer components {
-  /* Realistic paper shadow - mimics paper lifting/curling */
-  .paper-shadow {
-    box-shadow:
-      /* Close, sharp shadow on edges */
-      2px 3px 4px -1px rgba(0, 0, 0, 0.15),
-      /* Softer, diffuse shadow beneath */ 4px 6px 12px -2px rgba(0, 0, 0, 0.1),
-      /* Subtle lift effect */ 0 1px 3px rgba(0, 0, 0, 0.08);
-  }
 }
