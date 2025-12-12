@@ -1,8 +1,7 @@
-import React from 'react';
-import type { ScheduleJson } from '@/lib/scheduling/types';
-import { formatMinutes } from '@/lib/formatters';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { formatMinutes } from '@/lib/formatters';
+import type { ScheduleJson } from '@/lib/scheduling/types';
 
 interface ScheduleWeekListProps {
   schedule: ScheduleJson;
@@ -28,10 +27,10 @@ export default function ScheduleWeekList({ schedule }: ScheduleWeekListProps) {
   return (
     <div className="space-y-8">
       {schedule.weeks.map((week) => (
-        <Card key={week.weekNumber} className="border-0 p-6 shadow-sm">
+        <Card key={week.weekNumber} className="p-6">
           {/* Week Header */}
-          <div className="mb-4 border-b border-gray-200 pb-3">
-            <h3 className="text-lg font-semibold text-gray-900">
+          <div className="border-border mb-4 border-b pb-3">
+            <h3 className="text-foreground text-lg font-semibold">
               Week {week.weekNumber}
             </h3>
             <p className="text-muted-foreground text-sm">
@@ -42,7 +41,10 @@ export default function ScheduleWeekList({ schedule }: ScheduleWeekListProps) {
           {/* Days and Sessions */}
           <div className="space-y-4">
             {week.days.map((day) => (
-              <div key={day.dayNumber} className="rounded-md bg-gray-50 p-4">
+              <div
+                key={day.dayNumber}
+                className="bg-secondary-background rounded-md p-4"
+              >
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-muted-foreground text-sm font-medium">
                     Day {day.dayNumber} – {day.date}
@@ -57,10 +59,10 @@ export default function ScheduleWeekList({ schedule }: ScheduleWeekListProps) {
                   {day.sessions.map((session) => (
                     <div
                       key={session.taskId}
-                      className="flex items-start justify-between rounded border border-gray-200 bg-white p-3"
+                      className="border-border bg-card-background flex items-start justify-between rounded border p-3"
                     >
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900">
+                        <p className="text-foreground font-medium">
                           {session.taskTitle}
                         </p>
                         <Badge className="mt-1 bg-blue-500/10 px-2 py-1 text-blue-800">

@@ -102,7 +102,7 @@ export default function PlansList({ summaries }: PlansListProps) {
                 <Progress value={progressPercent} className="h-2" />
               </div>
             </CardContent>
-            <CardFooter className="text-muted-foreground flex items-center justify-between border-t pt-4 text-sm">
+            <CardFooter className="text-muted-foreground flex items-center justify-between border-t border-dashed pt-4 text-sm">
               <span>
                 Completed tasks: {summary.completedTasks} / {summary.totalTasks}
               </span>

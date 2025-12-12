@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
 export default function MaintenancePage() {
   return (
-    <div className="bg-background flex min-h-screen items-center justify-center p-5">
+    <div className="flex min-h-screen items-center justify-center p-5">
       <Card className="w-full max-w-2xl text-center">
         <CardContent className="space-y-6">
           {/* Icon */}
@@ -38,8 +38,8 @@ export default function MaintenancePage() {
           </p>
 
           {/* Message Box */}
-          <Card className="text-left">
-            <CardContent className="space-y-4">
+          <div className="border-border bg-secondary-background rounded-lg border p-6 text-left">
+            <div className="space-y-4">
               <p className="text-foreground leading-relaxed">
                 We sincerely apologize for any inconvenience this may cause. Our
                 team is actively working on critical fixes and system
@@ -55,8 +55,8 @@ export default function MaintenancePage() {
                 We appreciate your patience and understanding as we work to make
                 Atlaris better for you.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </CardContent>
 
         {/* Footer */}

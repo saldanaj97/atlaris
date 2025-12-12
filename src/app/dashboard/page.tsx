@@ -68,7 +68,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-        <Card className="p-6">
+        <Card className="relative p-6">
           <Tape
             variant="lg"
             angle="left"
@@ -83,7 +83,12 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="relative p-6">
+          <Tape
+            variant="lg"
+            angle="right"
+            className="absolute -top-3 left-1/2 -translate-x-1/2"
+          />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Active Plans</p>
@@ -95,7 +100,12 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="relative p-6">
+          <Tape
+            variant="lg"
+            angle="left"
+            className="absolute -top-3 left-1/2 -translate-x-1/2"
+          />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Completed</p>
@@ -107,7 +117,12 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="relative p-6">
+          <Tape
+            variant="lg"
+            angle="right"
+            className="absolute -top-3 left-1/2 -translate-x-1/2"
+          />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Hours Learned</p>
@@ -124,7 +139,7 @@ export default async function DashboardPage() {
             <h2 className="text-2xl font-bold">Your Learning Plans</h2>
             <Button asChild>
               <Link href="/plans">
-                <span>View All Plans</span>
+                View All Plans
                 <ArrowRight className="h-4" />
               </Link>
             </Button>

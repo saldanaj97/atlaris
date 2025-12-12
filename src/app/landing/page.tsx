@@ -8,7 +8,7 @@ import { ArrowRight, Clock, Target, Zap } from 'lucide-react';
 
 const LandingPage = () => {
   return (
-    <div className="bg-gradient-subtle min-h-screen">
+    <div className="min-h-screen">
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-16">
         <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -65,7 +65,7 @@ const LandingPage = () => {
               className="rounded-2xl shadow-lg"
               placeholder="blur"
             />
-            <div className="bg-card absolute -bottom-6 -left-6 rounded-xl border p-4 shadow-md">
+            <Card className="absolute -bottom-6 -left-6 p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full">
                   <Zap className="h-5 w-5" />
@@ -77,7 +77,7 @@ const LandingPage = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </section>

@@ -139,7 +139,7 @@ export const PlanModuleCard = ({
   }, [completedCount, moduleCompleted, totalTasks]);
 
   return (
-    <Card className="border-0 p-6 shadow-sm">
+    <Card className="p-6">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="text-muted-foreground text-sm font-medium">
@@ -169,7 +169,7 @@ export const PlanModuleCard = ({
           return (
             <div
               key={task.id}
-              className={`hover:border-primary/30 rounded-lg border p-4 transition-colors ${isCompleted ? 'border-green-200 bg-green-50/50' : 'bg-white dark:bg-gray-800'}`}
+              className={`hover:border-primary/30 rounded-lg border p-4 transition-colors ${isCompleted ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20' : 'bg-card-background'}`}
             >
               <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
