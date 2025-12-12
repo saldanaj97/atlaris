@@ -1,6 +1,7 @@
 import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Tape } from '@/components/ui/tape';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { formatWeeklyHours } from '@/lib/formatters';
@@ -9,11 +10,11 @@ import {
   ArrowRight,
   BookOpen,
   Clock,
+  Crown,
   Plus,
+  RefreshCcw,
   Target,
   TrendingUp,
-  RefreshCcw,
-  Crown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -67,7 +68,12 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-        <Card className="p-6">
+        <Card className="relative p-6">
+          <Tape
+            variant="lg"
+            angle="left"
+            className="absolute -top-3 left-1/2 -translate-x-1/2"
+          />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Total Plans</p>
@@ -77,7 +83,12 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="relative p-6">
+          <Tape
+            variant="lg"
+            angle="right"
+            className="absolute -top-3 left-1/2 -translate-x-1/2"
+          />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Active Plans</p>
@@ -89,7 +100,12 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="relative p-6">
+          <Tape
+            variant="lg"
+            angle="left"
+            className="absolute -top-3 left-1/2 -translate-x-1/2"
+          />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Completed</p>
@@ -101,7 +117,12 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="relative p-6">
+          <Tape
+            variant="lg"
+            angle="right"
+            className="absolute -top-3 left-1/2 -translate-x-1/2"
+          />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Hours Learned</p>

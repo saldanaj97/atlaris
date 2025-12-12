@@ -8,7 +8,7 @@ import { ArrowRight, Clock, Target, Zap } from 'lucide-react';
 
 const LandingPage = () => {
   return (
-    <div className="bg-gradient-subtle min-h-screen">
+    <div className="min-h-screen">
       {/* Hero Section */}
       <section className="container mx-auto px-6 py-16">
         <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -65,7 +65,7 @@ const LandingPage = () => {
               className="rounded-2xl shadow-lg"
               placeholder="blur"
             />
-            <div className="bg-card absolute -bottom-6 -left-6 rounded-xl border p-4 shadow-md">
+            <Card className="absolute -bottom-6 -left-6 p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full">
                   <Zap className="h-5 w-5" />
@@ -77,7 +77,7 @@ const LandingPage = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </section>
@@ -93,9 +93,12 @@ const LandingPage = () => {
         </div>
 
         <div className="grid gap-8 md:grid-cols-3">
-          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
-            <div className="bg-learning-primary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
-              <Target className="text-learning-primary h-6 w-6" />
+          <Card
+            data-slot="paper-card"
+            className="space-y-4 p-8 text-center transition-all hover:-translate-y-1"
+          >
+            <div className="bg-main/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
+              <Target className="text-main h-6 w-6" />
             </div>
             <h3 className="text-xl font-semibold">Personalized Plans</h3>
             <p className="text-muted-foreground">
@@ -104,9 +107,12 @@ const LandingPage = () => {
             </p>
           </Card>
 
-          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
-            <div className="bg-learning-secondary/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
-              <Clock className="text-learning-secondary h-6 w-6" />
+          <Card
+            data-slot="paper-card"
+            className="space-y-4 p-8 text-center transition-all hover:-translate-y-1"
+          >
+            <div className="bg-main/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
+              <Clock className="text-main h-6 w-6" />
             </div>
             <h3 className="text-xl font-semibold">Time-Optimized</h3>
             <p className="text-muted-foreground">
@@ -115,9 +121,12 @@ const LandingPage = () => {
             </p>
           </Card>
 
-          <Card className="space-y-4 border-0 p-8 text-center shadow-md transition-all hover:shadow-lg">
-            <div className="bg-learning-success/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
-              <ArrowRight className="text-learning-success h-6 w-6" />
+          <Card
+            data-slot="paper-card"
+            className="space-y-4 p-8 text-center transition-all hover:-translate-y-1"
+          >
+            <div className="bg-main/10 mx-auto flex h-12 w-12 items-center justify-center rounded-xl">
+              <ArrowRight className="text-main h-6 w-6" />
             </div>
             <h3 className="text-xl font-semibold">Seamless Export</h3>
             <p className="text-muted-foreground">

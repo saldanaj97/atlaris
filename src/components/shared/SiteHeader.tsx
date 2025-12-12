@@ -1,5 +1,6 @@
 import AuthControls from '@/components/shared/AuthControls';
 import MobileSiteHeader from '@/components/shared/MobileSiteHeader';
+import { Paper } from '@/components/shared/Paper';
 import SiteHeaderClient from '@/components/shared/SiteHeaderClient';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { BookOpen } from 'lucide-react';
@@ -20,7 +21,7 @@ export default async function SiteHeader() {
 
   return (
     <header className="container mx-auto my-4 w-full">
-      <div className="bg-card-background rounded-base shadow-shadow border-border relative flex items-center justify-between gap-4 border-2 p-4 lg:grid lg:grid-cols-3 lg:items-center">
+      <Paper className="flex items-center justify-between gap-4 p-4 lg:grid lg:grid-cols-3 lg:items-center">
         {/* Desktop brand (left) */}
         <Link href="/" className="hidden items-center space-x-2 lg:flex">
           <BookOpen className="text-main h-8 w-8" />
@@ -55,7 +56,7 @@ export default async function SiteHeader() {
         <div className="hidden lg:flex lg:justify-self-end">
           <AuthControls />
         </div>
-      </div>
+      </Paper>
     </header>
   );
 }

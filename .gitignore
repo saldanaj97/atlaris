@@ -50,6 +50,7 @@ CLAUDE.md
 
 # daily plan files
 docs/plans/*
+docs/designs/*
 
 # warp
 WARP.md
