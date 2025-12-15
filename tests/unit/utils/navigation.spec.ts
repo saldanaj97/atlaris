@@ -1,33 +1,61 @@
-import { describe, it, expect } from 'vitest';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/lib/navigation';
+import { describe, expect, it } from 'vitest';
 
 describe('Navigation', () => {
   describe('authenticatedNavItems', () => {
-    it('should contain Home nav item', () => {
-      const homeItem = authenticatedNavItems.find(
-        (item) => item.label === 'Home'
+    it('should contain Dashboard nav item', () => {
+      const dashboardItem = authenticatedNavItems.find(
+        (item) => item.label === 'Dashboard'
       );
-      expect(homeItem).toBeDefined();
-      expect(homeItem?.href).toBe('/');
+      expect(dashboardItem).toBeDefined();
+      expect(dashboardItem?.href).toBe('/dashboard');
     });
 
-    it('should contain Explore nav item', () => {
-      const exploreItem = authenticatedNavItems.find(
-        (item) => item.label === 'Explore'
+    it('should contain Analytics nav item with dropdown', () => {
+      const analyticsItem = authenticatedNavItems.find(
+        (item) => item.label === 'Analytics'
       );
-      expect(exploreItem).toBeDefined();
-      expect(exploreItem?.href).toBe('/explore');
+      expect(analyticsItem).toBeDefined();
+      expect(analyticsItem?.href).toBe('/analytics');
+      expect(analyticsItem?.dropdown).toBeDefined();
+      expect(analyticsItem?.dropdown?.length).toBe(2);
+      expect(analyticsItem?.dropdown?.[0]).toEqual({
+        label: 'Usage',
+        href: '/analytics/usage',
+      });
+      expect(analyticsItem?.dropdown?.[1]).toEqual({
+        label: 'Achievements',
+        href: '/analytics/achievements',
+      });
     });
 
-    it('should contain Integrations nav item', () => {
-      const integrationsItem = authenticatedNavItems.find(
-        (item) => item.label === 'Integrations'
+    it('should contain Settings nav item with dropdown', () => {
+      const settingsItem = authenticatedNavItems.find(
+        (item) => item.label === 'Settings'
       );
-      expect(integrationsItem).toBeDefined();
-      expect(integrationsItem?.href).toBe('/integrations');
+      expect(settingsItem).toBeDefined();
+      expect(settingsItem?.href).toBe('/settings');
+      expect(settingsItem?.dropdown).toBeDefined();
+      expect(settingsItem?.dropdown?.length).toBe(4);
+      expect(settingsItem?.dropdown).toContainEqual({
+        label: 'Profile',
+        href: '/settings/profile',
+      });
+      expect(settingsItem?.dropdown).toContainEqual({
+        label: 'Notifications',
+        href: '/settings/notifications',
+      });
+      expect(settingsItem?.dropdown).toContainEqual({
+        label: 'Integrations',
+        href: '/settings/integrations',
+      });
+      expect(settingsItem?.dropdown).toContainEqual({
+        label: 'Billing',
+        href: '/settings/billing',
+      });
     });
 
     it('should have correct number of nav items', () => {
@@ -41,11 +69,13 @@ describe('Navigation', () => {
       expect(highlightedItems.length).toBe(0);
     });
 
-    it('should not have dropdown on any items', () => {
+    it('should have dropdowns on Analytics and Settings items', () => {
       const dropdownItems = authenticatedNavItems.filter(
         (item) => item.dropdown
       );
-      expect(dropdownItems.length).toBe(0);
+      expect(dropdownItems.length).toBe(2);
+      expect(dropdownItems.map((item) => item.label)).toContain('Analytics');
+      expect(dropdownItems.map((item) => item.label)).toContain('Settings');
     });
 
     it('should have valid href for all items', () => {
@@ -103,11 +133,19 @@ describe('Navigation', () => {
       expect(unauthenticatedNavItems.length).toBe(4);
     });
 
-    it('should not have Integrations nav item', () => {
-      const integrationsItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'Integrations'
+    it('should not have Dashboard, Analytics, or Settings nav items', () => {
+      const dashboardItem = unauthenticatedNavItems.find(
+        (item) => item.label === 'Dashboard'
       );
-      expect(integrationsItem).toBeUndefined();
+      const analyticsItem = unauthenticatedNavItems.find(
+        (item) => item.label === 'Analytics'
+      );
+      const settingsItem = unauthenticatedNavItems.find(
+        (item) => item.label === 'Settings'
+      );
+      expect(dashboardItem).toBeUndefined();
+      expect(analyticsItem).toBeUndefined();
+      expect(settingsItem).toBeUndefined();
     });
 
     it('should not have highlight flag on any items', () => {
@@ -147,33 +185,48 @@ describe('Navigation', () => {
       expect(authenticatedNavItems).not.toEqual(unauthenticatedNavItems);
     });
 
-    it('should share Home and Explore items', () => {
-      const authHome = authenticatedNavItems.find(
-        (item) => item.label === 'Home'
-      );
-      const unauthHome = unauthenticatedNavItems.find(
-        (item) => item.label === 'Home'
-      );
-      expect(authHome?.href).toBe(unauthHome?.href);
+    it('should have completely different navigation structure', () => {
+      // Authenticated users have Dashboard, Analytics, Settings
+      const authLabels = authenticatedNavItems.map((item) => item.label);
+      expect(authLabels).toContain('Dashboard');
+      expect(authLabels).toContain('Analytics');
+      expect(authLabels).toContain('Settings');
 
-      const authExplore = authenticatedNavItems.find(
-        (item) => item.label === 'Explore'
-      );
-      const unauthExplore = unauthenticatedNavItems.find(
-        (item) => item.label === 'Explore'
-      );
-      expect(authExplore?.href).toBe(unauthExplore?.href);
+      // Unauthenticated users have Home, Explore, Pricing, About
+      const unauthLabels = unauthenticatedNavItems.map((item) => item.label);
+      expect(unauthLabels).toContain('Home');
+      expect(unauthLabels).toContain('Explore');
+      expect(unauthLabels).toContain('Pricing');
+      expect(unauthLabels).toContain('About');
     });
 
-    it('should have Integrations only for authenticated users', () => {
-      const authIntegrations = authenticatedNavItems.find(
-        (item) => item.label === 'Integrations'
+    it('should have authenticated-only navigation items', () => {
+      const authDashboard = authenticatedNavItems.find(
+        (item) => item.label === 'Dashboard'
       );
-      const unauthIntegrations = unauthenticatedNavItems.find(
-        (item) => item.label === 'Integrations'
+      const unauthDashboard = unauthenticatedNavItems.find(
+        (item) => item.label === 'Dashboard'
       );
-      expect(authIntegrations).toBeDefined();
-      expect(unauthIntegrations).toBeUndefined();
+      expect(authDashboard).toBeDefined();
+      expect(unauthDashboard).toBeUndefined();
+
+      const authAnalytics = authenticatedNavItems.find(
+        (item) => item.label === 'Analytics'
+      );
+      const unauthAnalytics = unauthenticatedNavItems.find(
+        (item) => item.label === 'Analytics'
+      );
+      expect(authAnalytics).toBeDefined();
+      expect(unauthAnalytics).toBeUndefined();
+
+      const authSettings = authenticatedNavItems.find(
+        (item) => item.label === 'Settings'
+      );
+      const unauthSettings = unauthenticatedNavItems.find(
+        (item) => item.label === 'Settings'
+      );
+      expect(authSettings).toBeDefined();
+      expect(unauthSettings).toBeUndefined();
     });
 
     it('should have Pricing and About only for unauthenticated users', () => {
