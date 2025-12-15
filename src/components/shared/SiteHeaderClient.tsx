@@ -38,24 +38,9 @@ export default function SiteHeaderClient({
       return (
         <DropdownMenu key={item.href}>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="neutral"
-              className="gap-1"
-              onClick={() => {
-                // Allow button click to navigate to dashboard
-                window.location.href = item.href;
-              }}
-            >
-              <Link href={item.href} className="text-sm sm:text-base">
-                {item.label}
-              </Link>
-              <ChevronDown
-                className="h-4 w-4"
-                onClick={(e) => {
-                  // Prevent navigation when clicking chevron
-                  e.stopPropagation();
-                }}
-              />
+            <Button variant="nav-button" className="gap-1">
+              <span className="text-sm sm:text-base">{item.label}</span>
+              <ChevronDown className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="min-w-[160px]">
@@ -81,7 +66,8 @@ export default function SiteHeaderClient({
       <Button
         asChild
         key={item.href}
-        variant={item.highlight ? 'default' : 'neutral'}
+        variant="nav-button"
+        className={item.highlight ? 'bg-main text-main-foreground' : undefined}
       >
         <Link href={item.href} className="text-sm sm:text-base">
           {item.label}

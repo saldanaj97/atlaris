@@ -58,7 +58,7 @@ export default function MobileSiteHeader({ isSignedIn }: Props) {
       <Sheet open={open} onOpenChange={setOpen}>
         {/* Hamburger trigger */}
         <Button
-          variant="neutral"
+          variant="nav-button"
           size="icon"
           onClick={() => setOpen(true)}
           aria-label="Open menu"
@@ -86,8 +86,8 @@ export default function MobileSiteHeader({ isSignedIn }: Props) {
               <Button
                 asChild
                 key={item.href}
-                variant={item.highlight ? 'default' : 'neutral'}
-                className="w-full justify-start"
+                variant="nav-button"
+                className={`w-full justify-start ${item.highlight ? 'bg-main text-main-foreground' : ''}`}
               >
                 <Link href={item.href} onClick={() => setOpen(false)}>
                   {item.label}

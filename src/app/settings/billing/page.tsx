@@ -4,8 +4,8 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getUserByClerkId } from '@/lib/db/queries/users';
-import { getUsageSummary } from '@/lib/stripe/usage';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
+import { getUsageSummary } from '@/lib/stripe/usage';
 import { redirect } from 'next/navigation';
 
 export default async function BillingSettingsPage() {
@@ -49,7 +49,7 @@ export default async function BillingSettingsPage() {
   );
 
   return (
-    <div className="bg-gradient-subtle min-h-screen">
+    <div className="min-h-screen">
       <div className="container mx-auto px-6 py-8">
         <h1 className="mb-6 text-3xl font-bold">Billing</h1>
 

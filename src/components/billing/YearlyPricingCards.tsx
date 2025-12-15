@@ -16,7 +16,7 @@ export default async function YearlyPricingCards() {
       });
 
   return (
-    <div className="bg-background container mx-auto px-6 py-8">
+    <div className="container mx-auto px-6 py-8">
       {missingPrices ? <PricingMissingStripeNotice /> : null}
       <PricingGrid
         configs={YEARLY_TIER_CONFIGS}

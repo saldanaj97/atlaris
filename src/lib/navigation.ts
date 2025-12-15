@@ -21,17 +21,33 @@ export type NavItem = {
  * Dashboard is clickable and has a dropdown with My Plans and Create a Plan.
  */
 export const authenticatedNavItems: NavItem[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Explore', href: '/explore' },
-  // {
-  //   label: 'Plans',
-  //   href: '',
-  //   dropdown: [
-  //     { label: 'My Plans', href: '/dashboard' },
-  //     { label: 'Create a Plan', href: '/plans/new', highlight: true },
-  //   ],
-  // },
-  { label: 'Integrations', href: '/integrations' },
+  {
+    label: 'Dashboard',
+    href: '/dashboard',
+    // dropdown: [
+    //   { label: 'Create a Plan', href: '/plans/new' },
+    //   { label: 'My Plans', href: '/plans' },
+    //   { label: 'Calendar', href: '/calendar' },
+    // ],
+  },
+  {
+    label: 'Analytics',
+    href: '/analytics',
+    dropdown: [
+      { label: 'Usage', href: '/analytics/usage' },
+      { label: 'Achievements', href: '/analytics/achievements' },
+    ],
+  },
+  {
+    label: 'Settings',
+    href: '/settings',
+    dropdown: [
+      { label: 'Profile', href: '/settings/profile' },
+      { label: 'Notifications', href: '/settings/notifications' },
+      { label: 'Integrations', href: '/settings/integrations' },
+      { label: 'Billing', href: '/settings/billing' },
+    ],
+  },
 ];
 
 /**

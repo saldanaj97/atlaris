@@ -1,13 +1,30 @@
 import * as React from "react"
 
+import { tornPaperStyles } from "@/components/shared/Paper"
 import { cn } from "@/lib/utils"
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+type CardVariant = "default" | "paper"
+
+type CardProps = React.ComponentProps<"div"> & {
+  variant?: CardVariant
+  tornSeed?: number | string
+}
+
+const variantStyles: Record<CardVariant, (seed: number | string) => string> = {
+  default: () =>
+    "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+  paper: (seed) => tornPaperStyles(seed),
+}
+
+function Card({ className, variant = "paper", tornSeed, ...props }: CardProps) {
+  const seed = tornSeed ?? React.useId()
+
   return (
     <div
       data-slot="card"
       className={cn(
-        "rounded-base flex flex-col shadow-shadow border-2 gap-6 py-6 border-border bg-card-background text-foreground font-base",
+        "relative z-0 flex flex-col gap-6 bg-transparent py-6 text-foreground font-base [&_[data-slot=button]]:after:hidden",
+        variantStyles[variant](seed),
         className,
       )}
       {...props}
@@ -82,11 +99,5 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 export {
-  Card,
-  CardHeader,
-  CardFooter,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardAction,
+    Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 }
