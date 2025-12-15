@@ -138,7 +138,7 @@ const LandingPage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-primary py-16 text-white">
+      <section className="bg-main text-main-foreground py-16">
         <div className="container mx-auto px-6 text-center">
           <h2 className="mb-4 text-3xl font-bold">Ready to Start Learning?</h2>
           <p className="mx-auto mb-8 max-w-2xl text-xl opacity-90">
@@ -148,7 +148,7 @@ const LandingPage = () => {
           <Button
             size="lg"
             variant="neutral"
-            className="text-primary bg-white hover:bg-white/90"
+            className="text-main bg-white hover:bg-white/90"
             asChild
           >
             <Link href="/plans/new">
