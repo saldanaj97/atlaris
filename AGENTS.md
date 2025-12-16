@@ -39,6 +39,7 @@ This file provides guidance when working with code in this repository.
   - All env access must go through `@/lib/config/env`. Do **not** read `process.env` directly outside that module.
   - Prefer the exported grouped configs (e.g., `databaseEnv`, `neonEnv`, `stripeEnv`, `aiEnv`, `loggingEnv`) instead of raw keys.
   - If you need a new variable, add it (and its validation) to `src/lib/config/env.ts` rather than inlining a `process.env` read.
+  - **CLERK_SESSION_TOKEN** (optional, for manual API testing only): Used by `scripts/test-plan-generation.sh` to authenticate curl requests. Not required for normal development—only for testing API endpoints directly without the UI.
 - **Logging**:
   - Use `@/lib/logging/logger` for structured logging; avoid `console.*` in application code.
   - For API routes, use helpers from `@/lib/logging/request-context` to obtain `{ requestId, logger }` and to attach the request ID to responses.
@@ -89,6 +90,12 @@ Tests cover:
 - Dev server (do not auto-run; listed for reference)
   - pnpm dev (Next.js dev server)
   - pnpm dev:stripe (Stripe webhook listener for local testing)
+- Manual API testing (manual plan generation without UI)
+  - pnpm test-plan-generation (stream generate a plan with default settings)
+  - ./scripts/test-plan-generation.sh stream --topic "Your topic" (custom topic)
+  - ./scripts/test-plan-generation.sh list (list all plans for authenticated user)
+  - ./scripts/test-plan-generation.sh status --plan-id UUID (check generation status)
+  - Requires CLERK_SESSION_TOKEN in .env.local (see "Manual API testing" section below)
 - Build (do not auto-run; listed for reference)
   - pnpm build
 - Start production server (do not auto-run; listed for reference)
@@ -292,4 +299,62 @@ Tests cover:
   - pnpm test:suite:all (complete suite including e2e)
   - pnpm test:watch (watch mode)
 
-## Notes for future tasks
+## Manual API testing
+
+For rapid iteration on plan generation without using the UI, use the `scripts/test-plan-generation.sh` helper script.
+
+### Setup (one-time)
+
+1. **Create a JWT template in Clerk Dashboard** for extended token lifetime:
+   - Go to Clerk Dashboard → JWT Templates → New Template → Blank
+   - Name it `testing` (or any name you prefer)
+   - Set Token Lifetime to 3600 (1 hour) or longer for convenience
+   - Leave claims as default `{}`
+
+2. **Get your session token** from browser console while logged into your local app:
+
+   ```javascript
+   await window.Clerk.session.getToken({ template: 'testing' });
+   ```
+
+3. **Add the token to `.env.local`**:
+   ```
+   CLERK_SESSION_TOKEN=eyJhbGciOi...
+   ```
+
+### Usage
+
+```bash
+# Stream generate a plan with defaults (recommended for most testing)
+./scripts/test-plan-generation.sh
+
+# Custom topic and settings
+./scripts/test-plan-generation.sh stream --topic "Learn React hooks" --skill intermediate --hours 8
+
+# List all your plans
+./scripts/test-plan-generation.sh list
+
+# Check a specific plan's generation status
+./scripts/test-plan-generation.sh status --plan-id "your-plan-uuid"
+
+# See all available options
+./scripts/test-plan-generation.sh --help
+```
+
+### Available options
+
+| Option      | Values                                  | Default                         |
+| ----------- | --------------------------------------- | ------------------------------- |
+| `--topic`   | Any string (3-200 chars)                | "Learn TypeScript fundamentals" |
+| `--skill`   | `beginner`, `intermediate`, `advanced`  | `beginner`                      |
+| `--hours`   | 0-80                                    | 10                              |
+| `--style`   | `reading`, `video`, `practice`, `mixed` | `mixed`                         |
+| `--notes`   | Any string (max 2000 chars)             | none                            |
+| `--plan-id` | UUID (required for `status` command)    | none                            |
+
+### API endpoints tested
+
+- `POST /api/v1/plans/stream` - Stream generates a complete learning plan with AI
+- `POST /api/v1/plans` - Creates a plan record only (no AI generation)
+- `GET /api/v1/plans` - Lists all plans for the authenticated user
+- `GET /api/v1/plans/:planId/status` - Returns generation status for a specific plan
