@@ -1,74 +1,46 @@
-import { ZodError } from 'zod';
+import { count, eq } from 'drizzle-orm';
 
 import {
   formatGenerationError,
   isRetryableClassification,
 } from '@/lib/ai/failures';
-import { DEFAULT_MODEL, isValidModelId } from '@/lib/ai/models';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import {
-  getGenerationProvider,
-  getGenerationProviderWithModel,
-} from '@/lib/ai/provider-factory';
+import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
-import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
-import {
-  ensurePlanDurationAllowed,
-  findCappedPlanWithoutModules,
-  normalizePlanDurationForTier,
-} from '@/lib/api/plans/shared';
-import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
+import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { jsonError } from '@/lib/api/response';
+import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
+import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
+import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { recordUsage } from '@/lib/db/usage';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import {
-  atomicCheckAndInsertPlan,
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
-  resolveUserTier,
 } from '@/lib/stripe/usage';
-import {
-  CreateLearningPlanInput,
-  createLearningPlanSchema,
-} from '@/lib/validation/learningPlans';
 
 export const maxDuration = 60;
 
-function buildPlanStartEvent({
-  planId,
-  input,
-}: {
-  planId: string;
-  input: CreateLearningPlanInput;
-}): StreamingEvent {
-  return {
-    type: 'plan_start',
-    data: {
-      planId,
-      topic: input.topic,
-      skillLevel: input.skillLevel,
-      learningStyle: input.learningStyle,
-      weeklyHours: input.weeklyHours,
-      startDate: input.startDate ?? null,
-      deadlineDate: input.deadlineDate ?? null,
-    },
-  };
-}
-
+/**
+ * POST /api/v1/plans/:planId/retry
+ *
+ * Retries generation for a failed plan. Returns a streaming response.
+ * Server-side rate limiting: max ATTEMPT_CAP (default 3) attempts per plan.
+ */
 export const POST = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
-    let body: CreateLearningPlanInput;
-    try {
-      body = createLearningPlanSchema.parse(await req.json());
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new ValidationError('Invalid request body.', error.flatten());
-      }
-      throw new ValidationError('Invalid request body.', error);
+    const rawPlanId = getPlanIdFromUrl(req, 'second-to-last');
+    if (!rawPlanId) {
+      throw new ValidationError('Plan id is required in the request path.');
     }
+    if (!isUuid(rawPlanId)) {
+      throw new ValidationError('Invalid plan id format.');
+    }
+    // Re-assign to a const to ensure TypeScript narrows the type for closures
+    const planId: string = rawPlanId;
 
     const user = await getUserByClerkId(userId);
     if (!user) {
@@ -77,85 +49,93 @@ export const POST = withErrorBoundary(
       );
     }
 
-    await checkPlanGenerationRateLimit(user.id);
+    const db = getDb();
 
-    const userTier: SubscriptionTier = await resolveUserTier(user.id);
-    const normalization = normalizePlanDurationForTier({
-      tier: userTier,
-      weeklyHours: body.weeklyHours,
-      startDate: body.startDate ?? null,
-      deadlineDate: body.deadlineDate ?? null,
-    });
-    const { startDate, deadlineDate, totalWeeks } = normalization;
-    const cap = ensurePlanDurationAllowed({
-      userTier,
-      weeklyHours: body.weeklyHours,
-      totalWeeks,
+    // Fetch the plan
+    const plan = await db.query.learningPlans.findFirst({
+      where: eq(learningPlans.id, planId),
     });
 
-    if (!cap.allowed) {
-      return jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
-        status: 403,
-      });
+    if (!plan) {
+      throw new NotFoundError('Learning plan not found.');
     }
 
-    const cappedPlanId = await findCappedPlanWithoutModules(user.id);
-    if (cappedPlanId) {
-      throw new AttemptCapExceededError('attempt cap reached', {
-        planId: cappedPlanId,
-      });
+    // Verify ownership
+    if (plan.userId !== user.id) {
+      throw new NotFoundError('Learning plan not found.');
     }
+
+    // Check if plan is in a failed state (only allow retry for failed plans)
+    if (plan.generationStatus !== 'failed') {
+      return jsonError(
+        'Plan is not in a failed state. Only failed plans can be retried.',
+        { status: 400 }
+      );
+    }
+
+    // Server-side rate limit: check existing attempt count
+    const [attemptCountResult] = await db
+      .select({ value: count(generationAttempts.id) })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId));
+
+    const attemptCount = attemptCountResult?.value ?? 0;
+
+    if (attemptCount >= ATTEMPT_CAP) {
+      return jsonError(
+        `Maximum retry attempts (${ATTEMPT_CAP}) reached for this plan. Please create a new plan.`,
+        { status: 429 }
+      );
+    }
+
+    // Reset plan status to generating before starting
+    await db
+      .update(learningPlans)
+      .set({
+        generationStatus: 'generating',
+        updatedAt: new Date(),
+      })
+      .where(eq(learningPlans.id, planId));
+
+    const provider = getGenerationProvider();
+
+    // Build generation input from existing plan data
+    // Capture plan properties in local constants to satisfy TypeScript
+    // Note: planId is already available from getPlanIdFromUrl and guaranteed non-null
+    const planTopic = plan.topic;
+    const planSkillLevel = plan.skillLevel;
+    const planWeeklyHours = plan.weeklyHours;
+    const planLearningStyle = plan.learningStyle;
+    const planStartDate = plan.startDate;
+    const planDeadlineDate = plan.deadlineDate;
 
     const generationInput = {
-      topic: body.topic,
-      notes: body.notes ?? null,
-      skillLevel: body.skillLevel,
-      weeklyHours: body.weeklyHours,
-      learningStyle: body.learningStyle,
-      startDate,
-      deadlineDate,
+      topic: planTopic,
+      notes: null, // Notes are not stored on the plan currently
+      skillLevel: planSkillLevel,
+      weeklyHours: planWeeklyHours,
+      learningStyle: planLearningStyle,
+      startDate: planStartDate,
+      deadlineDate: planDeadlineDate,
     };
 
-    const plan = await atomicCheckAndInsertPlan(user.id, {
-      topic: generationInput.topic,
-      skillLevel: generationInput.skillLevel,
-      weeklyHours: generationInput.weeklyHours,
-      learningStyle: generationInput.learningStyle,
-      visibility: body.visibility ?? 'private',
-      origin: 'ai',
-      startDate: generationInput.startDate,
-      deadlineDate: generationInput.deadlineDate,
-    });
-
-    // TODO: [OPENROUTER-MIGRATION] Once preferredAiModel column exists:
-    // const userPreferredModel = user.preferredAiModel;
-
-    // TODO: [OPENROUTER-MIGRATION] Implement tier-gating:
-    // const allowedModels = getModelsForTier(userTier);
-    // const model = userPreferredModel && allowedModels.some(m => m.id === userPreferredModel)
-    //   ? userPreferredModel
-    //   : DEFAULT_MODEL;
-
-    // Allow explicit model override via query param (useful for testing/future use)
-    const url = new URL(req.url);
-    const modelOverride = url.searchParams.get('model');
-    const model =
-      modelOverride && isValidModelId(modelOverride)
-        ? modelOverride
-        : DEFAULT_MODEL;
-
-    const provider =
-      model !== DEFAULT_MODEL
-        ? getGenerationProviderWithModel(model)
-        : getGenerationProvider();
-    const normalizedInput: CreateLearningPlanInput = {
-      ...body,
-      startDate: generationInput.startDate ?? undefined,
-      deadlineDate: generationInput.deadlineDate ?? undefined,
-    };
+    function buildPlanStartEvent(): StreamingEvent {
+      return {
+        type: 'plan_start',
+        data: {
+          planId,
+          topic: planTopic,
+          skillLevel: planSkillLevel,
+          learningStyle: planLearningStyle,
+          weeklyHours: planWeeklyHours,
+          startDate: planStartDate ?? null,
+          deadlineDate: planDeadlineDate ?? null,
+        },
+      };
+    }
 
     const stream = createEventStream(async (emit) => {
-      emit(buildPlanStartEvent({ planId: plan.id, input: normalizedInput }));
+      emit(buildPlanStartEvent());
 
       const startedAt = Date.now();
       let generationCompleted = false;
@@ -262,12 +242,11 @@ export const POST = withErrorBoundary(
         });
       } catch (error) {
         // Ensure plan is marked as failed if any uncaught error occurs
-        // This protects against timeout or unexpected errors
         if (!generationCompleted) {
           try {
             await markPlanGenerationFailure(plan.id);
           } catch {
-            // Ignore errors when marking failure - plan may already be in final state
+            // Ignore errors when marking failure
           }
         }
         throw error;

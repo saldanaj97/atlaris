@@ -272,15 +272,31 @@ export const aiEnv = {
       return toNumber(getServerOptional('MOCK_GENERATION_FAILURE_RATE'));
     },
   },
+  /**
+   * Default AI model to use when no user preference is specified.
+   * Should be an OpenRouter model ID (e.g., 'google/gemini-2.0-flash-exp:free').
+   */
+  get defaultModel() {
+    return (
+      getServerOptional('AI_DEFAULT_MODEL') ??
+      'google/gemini-2.0-flash-exp:free'
+    );
+  },
+  /**
+   * @deprecated Use defaultModel instead. Will be removed after OpenRouter migration.
+   */
   get deterministicOverflowModel() {
     return getServerOptional('AI_OVERFLOW');
   },
-  get enableOpenRouter() {
-    return toBoolean(getServerOptional('AI_ENABLE_OPENROUTER'), false);
-  },
+  /**
+   * @deprecated Use defaultModel instead. Will be removed after OpenRouter migration.
+   */
   get primaryModel() {
     return getServerOptional('AI_PRIMARY');
   },
+  /**
+   * @deprecated No longer used. Will be removed after OpenRouter migration.
+   */
   get fallbackModel() {
     return getServerOptional('AI_FALLBACK');
   },
@@ -335,15 +351,27 @@ export const aiMicroExplanationEnv = {
   get microExplanationTemperature() {
     return toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4);
   },
+  /**
+   * @deprecated Use AI_DEFAULT_MODEL instead. Will be removed after OpenRouter migration.
+   */
   get primaryModel() {
     return getServerOptional('AI_PRIMARY') ?? 'gemini-1.5-flash';
   },
+  /**
+   * @deprecated No longer used. Will be removed after OpenRouter migration.
+   */
   get fallbackModel() {
     return getServerOptional('AI_FALLBACK') ?? '@cf/meta/llama-3.1-8b-instruct';
   },
+  /**
+   * @deprecated Use AI_DEFAULT_MODEL instead. Will be removed after OpenRouter migration.
+   */
   get overflowModel() {
     return getServerOptional('AI_OVERFLOW') ?? 'google/gemini-2.0-pro-exp';
   },
+  /**
+   * @deprecated OpenRouter is now always enabled. Will be removed after OpenRouter migration.
+   */
   get enableOpenRouter() {
     return toBoolean(getServerOptional('AI_ENABLE_OPENROUTER'), false);
   },

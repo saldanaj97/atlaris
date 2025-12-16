@@ -8,9 +8,7 @@ interface StatusResponse {
   planId: string;
   status: PlanStatus;
   attempts: number;
-  latestJobId: string | null;
-  latestJobStatus: string | null;
-  latestJobError: string | null;
+  latestError: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -46,8 +44,8 @@ export function usePlanStatus(
       setStatus(data.status);
       setAttempts(data.attempts);
 
-      if (data.latestJobError) {
-        setError(data.latestJobError);
+      if (data.latestError) {
+        setError(data.latestError);
       }
 
       // Stop polling if terminal state reached

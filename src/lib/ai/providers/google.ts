@@ -1,4 +1,24 @@
-import { createGoogleGenerativeAI, google } from '@ai-sdk/google';
+/**
+ * Google AI Provider (DEPRECATED)
+ *
+ * @deprecated This provider is deprecated as of the OpenRouter migration.
+ * OpenRouter is now the primary and only provider for AI plan generation.
+ *
+ * This file is retained for emergency rollback purposes only and will be
+ * removed after a 30-day transition period. Do not use this provider for
+ * new implementations.
+ *
+ * Migration date: December 16, 2025
+ * Planned removal: January 15, 2026
+ *
+ * For new implementations, use:
+ * - getGenerationProvider() from @/lib/ai/provider-factory
+ * - getGenerationProviderWithModel(modelId) for specific models
+ *
+ * @see src/lib/ai/provider-factory.ts
+ * @see src/lib/ai/models.ts
+ */
+
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -10,6 +30,7 @@ import {
   generatePlanObject,
 } from '@/lib/ai/providers/base';
 import { googleAiEnv } from '@/lib/config/env';
+import { createGoogleGenerativeAI, google } from '@ai-sdk/google';
 
 export interface GoogleProviderConfig {
   apiKey?: string;

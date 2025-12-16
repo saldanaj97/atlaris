@@ -1,0 +1,164 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useCallback, useRef, useState } from 'react';
+
+import type { StreamingEvent } from '@/lib/ai/streaming/types';
+import { clientLogger } from '@/lib/logging/client';
+
+type RetryStatus = 'idle' | 'retrying' | 'success' | 'error';
+
+interface UseRetryGenerationReturn {
+  status: RetryStatus;
+  error: string | null;
+  isDisabled: boolean;
+  retryGeneration: () => Promise<void>;
+}
+
+// Client-side debounce: minimum seconds between retry attempts
+const RETRY_COOLDOWN_MS = 5000;
+
+const parseEventLine = (line: string): StreamingEvent | null => {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  const payload = trimmed.startsWith('data:')
+    ? trimmed.slice('data:'.length).trim()
+    : trimmed;
+  if (!payload) return null;
+  try {
+    return JSON.parse(payload) as StreamingEvent;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Hook for retrying failed plan generation.
+ *
+ * Features:
+ * - Client-side debounce (5s cooldown between retries)
+ * - Server-side attempt limit check (handled by /api/v1/plans/[planId]/retry)
+ * - Streaming response handling
+ * - Auto-refresh on success
+ *
+ * @param planId - The ID of the plan to retry
+ * @param maxAttempts - Maximum attempts allowed (for UI display, actual enforcement is server-side)
+ * @param currentAttempts - Current number of attempts made
+ */
+export function useRetryGeneration(
+  planId: string,
+  maxAttempts: number,
+  currentAttempts: number
+): UseRetryGenerationReturn {
+  const router = useRouter();
+  const [status, setStatus] = useState<RetryStatus>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const lastRetryRef = useRef<number>(0);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Disable if already at max attempts or currently retrying
+  const isDisabled =
+    status === 'retrying' ||
+    currentAttempts >= maxAttempts ||
+    // Client-side cooldown check
+    Date.now() - lastRetryRef.current < RETRY_COOLDOWN_MS;
+
+  const retryGeneration = useCallback(async () => {
+    // Client-side debounce check
+    const now = Date.now();
+    if (now - lastRetryRef.current < RETRY_COOLDOWN_MS) {
+      return;
+    }
+
+    // Abort any existing request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    lastRetryRef.current = now;
+    setStatus('retrying');
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/v1/plans/${planId}/retry`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      // Handle non-streaming error responses
+      if (!response.ok || !response.body) {
+        let message = 'Failed to retry generation.';
+        try {
+          const json = (await response.json()) as { error?: string };
+          if (json?.error) {
+            message = json.error;
+          }
+        } catch {
+          // Use default message
+        }
+        setStatus('error');
+        setError(message);
+        return;
+      }
+
+      // Process streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          const event = parseEventLine(line);
+          if (!event) continue;
+
+          if (event.type === 'complete') {
+            setStatus('success');
+            // Refresh the page to show the new content
+            router.refresh();
+            return;
+          }
+
+          if (event.type === 'error') {
+            setStatus('error');
+            setError(event.data.message ?? 'Generation failed.');
+            return;
+          }
+        }
+      }
+
+      // If we get here without a complete/error event, something went wrong
+      setStatus('error');
+      setError('Generation completed unexpectedly.');
+    } catch (err) {
+      if ((err as DOMException)?.name === 'AbortError') {
+        setStatus('idle');
+        return;
+      }
+
+      clientLogger.error('Retry generation failed:', err);
+      setStatus('error');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An unexpected error occurred. Please try again.'
+      );
+    }
+  }, [planId, router]);
+
+  return {
+    status,
+    error,
+    isDisabled,
+    retryGeneration,
+  };
+}

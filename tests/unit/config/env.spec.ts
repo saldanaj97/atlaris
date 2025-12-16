@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { optionalEnv, requireEnv, appEnv } from '@/lib/config/env';
+import { aiEnv, appEnv, optionalEnv, requireEnv } from '@/lib/config/env';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('Environment Configuration', () => {
   // Store original env values
@@ -165,6 +165,71 @@ describe('Environment Configuration', () => {
       it('should return undefined when not set', () => {
         delete process.env.VITEST_WORKER_ID;
         expect(appEnv.vitestWorkerId).toBeUndefined();
+      });
+    });
+  });
+
+  describe('aiEnv', () => {
+    describe('defaultModel', () => {
+      it('should return configured value when AI_DEFAULT_MODEL is set', () => {
+        process.env.AI_DEFAULT_MODEL = 'anthropic/claude-3-sonnet';
+        expect(aiEnv.defaultModel).toBe('anthropic/claude-3-sonnet');
+      });
+
+      it('should return fallback when AI_DEFAULT_MODEL is not set', () => {
+        delete process.env.AI_DEFAULT_MODEL;
+        expect(aiEnv.defaultModel).toBe('google/gemini-2.0-flash-exp:free');
+      });
+
+      it('should return fallback when AI_DEFAULT_MODEL is empty', () => {
+        process.env.AI_DEFAULT_MODEL = '';
+        expect(aiEnv.defaultModel).toBe('google/gemini-2.0-flash-exp:free');
+      });
+
+      it('should return fallback when AI_DEFAULT_MODEL is whitespace', () => {
+        process.env.AI_DEFAULT_MODEL = '   ';
+        expect(aiEnv.defaultModel).toBe('google/gemini-2.0-flash-exp:free');
+      });
+    });
+
+    describe('provider', () => {
+      it('should return normalized lowercase provider', () => {
+        process.env.AI_PROVIDER = 'OpenAI';
+        expect(aiEnv.provider).toBe('openai');
+      });
+
+      it('should return undefined when not set', () => {
+        delete process.env.AI_PROVIDER;
+        expect(aiEnv.provider).toBeUndefined();
+      });
+    });
+
+    describe('useMock', () => {
+      it('should return value when AI_USE_MOCK is set', () => {
+        process.env.AI_USE_MOCK = 'true';
+        expect(aiEnv.useMock).toBe('true');
+      });
+
+      it('should return undefined when not set', () => {
+        delete process.env.AI_USE_MOCK;
+        expect(aiEnv.useMock).toBeUndefined();
+      });
+    });
+
+    describe('deprecated properties', () => {
+      it('deterministicOverflowModel should return AI_OVERFLOW value', () => {
+        process.env.AI_OVERFLOW = 'test-overflow-model';
+        expect(aiEnv.deterministicOverflowModel).toBe('test-overflow-model');
+      });
+
+      it('primaryModel should return AI_PRIMARY value', () => {
+        process.env.AI_PRIMARY = 'test-primary-model';
+        expect(aiEnv.primaryModel).toBe('test-primary-model');
+      });
+
+      it('fallbackModel should return AI_FALLBACK value', () => {
+        process.env.AI_FALLBACK = 'test-fallback-model';
+        expect(aiEnv.fallbackModel).toBe('test-fallback-model');
       });
     });
   });

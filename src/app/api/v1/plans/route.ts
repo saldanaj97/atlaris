@@ -16,8 +16,6 @@ import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
-import { enqueueJob } from '@/lib/jobs/queue';
-import { JOB_TYPES } from '@/lib/jobs/types';
 import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
 import {
   CreateLearningPlanInput,
@@ -140,15 +138,9 @@ export const POST = withErrorBoundary(
       throw new ValidationError('Failed to create learning plan.');
     }
 
-    await enqueueJob(JOB_TYPES.PLAN_GENERATION, plan.id, user.id, {
-      topic: body.topic,
-      notes: body.notes ?? null,
-      skillLevel: body.skillLevel,
-      weeklyHours: body.weeklyHours,
-      learningStyle: body.learningStyle,
-      startDate: startDate ?? null,
-      deadlineDate: deadlineDate ?? null,
-    });
+    // Note: Plan generation now happens via the streaming endpoint (/api/v1/plans/stream).
+    // This endpoint only creates the plan record. The frontend should redirect to the
+    // streaming endpoint or the plan page where generation can be initiated.
 
     return json(
       {
@@ -160,7 +152,7 @@ export const POST = withErrorBoundary(
         visibility: plan.visibility,
         origin: plan.origin,
         createdAt: plan.createdAt?.toISOString(),
-        status: 'pending',
+        status: 'generating',
       },
       { status: 201 }
     );

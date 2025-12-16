@@ -1,12 +1,12 @@
 import pRetry from 'p-retry';
 
+import { DEFAULT_MODEL } from '@/lib/ai/models';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
-import { GoogleAiProvider } from '@/lib/ai/providers/google';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 import { OpenRouterProvider } from '@/lib/ai/providers/openrouter';
 import { aiEnv, appEnv } from '@/lib/config/env';
@@ -14,7 +14,11 @@ import { logger } from '@/lib/logging/logger';
 
 export interface RouterConfig {
   useMock?: boolean;
-  enableOpenRouter?: boolean;
+  /**
+   * OpenRouter model ID to use (e.g., 'google/gemini-2.0-flash-exp:free').
+   * If not provided, defaults to DEFAULT_MODEL or aiEnv.defaultModel.
+   */
+  model?: string;
 }
 
 export class RouterGenerationProvider implements AiPlanGenerationProvider {
@@ -24,34 +28,17 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     const useMock =
       cfg.useMock ?? (aiEnv.useMock === 'true' && !appEnv.isProduction);
 
-    const enableOpenRouter = cfg.enableOpenRouter ?? aiEnv.enableOpenRouter;
-
     if (useMock) {
       this.providers = [() => new MockGenerationProvider()];
       return;
     }
 
-    const chain: (() => AiPlanGenerationProvider)[] = [];
-    // Primary: OpenRouter (when enabled)
-    if (enableOpenRouter) {
-      chain.push(
-        () =>
-          new OpenRouterProvider({
-            model: (
-              aiEnv.deterministicOverflowModel ?? 'openai/gpt-oss-120b:free'
-            ).replace(/^openrouter\//, ''),
-          })
-      );
-    }
-    // Fallback: Google
-    chain.push(
-      () =>
-        new GoogleAiProvider({
-          model: aiEnv.primaryModel ?? 'gemini-1.5-flash',
-        })
-    );
+    // OpenRouter is now the only provider (Google AI deprecated)
+    const model = cfg.model ?? aiEnv.defaultModel ?? DEFAULT_MODEL;
+    this.providers = [() => new OpenRouterProvider({ model })];
 
-    this.providers = chain;
+    // TODO: Add Google AI as emergency fallback only if OpenRouter is completely down.
+    // For now, we rely on OpenRouter's internal model routing and fallbacks.
   }
 
   async generate(
