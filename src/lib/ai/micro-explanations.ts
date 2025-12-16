@@ -45,7 +45,7 @@ interface MicroExplanationProviderConfig {
  * Attempt micro-explanation generation with a specific provider
  */
 async function tryGenerateWithProvider(
-  providerName: 'google' | 'cloudflare' | 'openrouter',
+  providerName: 'google' | 'openrouter',
   config: MicroExplanationProviderConfig,
   systemPrompt: string,
   userPrompt: string
@@ -61,51 +61,6 @@ async function tryGenerateWithProvider(
 
     const { object } = await generateObject({
       model: provider(config.model),
-      schema: microExplanationSchema,
-      system: systemPrompt,
-      prompt: userPrompt,
-      ...modelConfig,
-    });
-
-    return object;
-  }
-
-  if (providerName === 'cloudflare') {
-    const { apiToken, apiKey, accountId, gatewayUrl } =
-      aiMicroExplanationEnv.cloudflare;
-    const resolvedToken = apiToken ?? apiKey;
-    if (!resolvedToken) {
-      throw new Error(
-        'Cloudflare AI requires either apiToken or apiKey to be configured'
-      );
-    }
-    if (!gatewayUrl && !accountId) {
-      throw new Error(
-        'Cloudflare AI requires a gatewayUrl or accountId to be configured'
-      );
-    }
-    let baseURL =
-      gatewayUrl ??
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/openai`;
-    // Normalize Workers AI gateway URLs to OpenAI-compatible endpoint
-    if (
-      /gateway\.ai\.cloudflare\.com\/v1\/[^/]+\/[^/]+\/workers-ai\/?$/.test(
-        baseURL
-      )
-    ) {
-      baseURL = baseURL.replace(/\/workers-ai\/?$/, '/openai');
-    }
-    // Normalize model id for OpenAI-compatible endpoints
-    const model = baseURL.includes('/openai')
-      ? config.model.replace(/^@cf\//, '')
-      : config.model;
-    const openai = createOpenAI({
-      apiKey: resolvedToken,
-      baseURL,
-    });
-
-    const { object } = await generateObject({
-      model: openai(model),
       schema: microExplanationSchema,
       system: systemPrompt,
       prompt: userPrompt,
@@ -176,18 +131,14 @@ export async function generateMicroExplanation(
     temperature,
   };
 
-  // Provider chain: Google -> Cloudflare -> OpenRouter (if enabled)
+  // Provider chain: Google -> OpenRouter (if enabled)
   const providers: Array<{
-    name: 'google' | 'cloudflare' | 'openrouter';
+    name: 'google' | 'openrouter';
     model: string;
   }> = [
     {
       name: 'google',
       model: aiMicroExplanationEnv.primaryModel,
-    },
-    {
-      name: 'cloudflare',
-      model: aiMicroExplanationEnv.fallbackModel,
     },
   ];
 

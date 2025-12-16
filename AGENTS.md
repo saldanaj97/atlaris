@@ -199,7 +199,7 @@ Tests cover:
     - **ESLint enforcement**: Importing `@/lib/db/service-role` in request layers (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`) is blocked by lint rules.
     - See `src/lib/db/service-role.ts` and `src/lib/db/rls.ts` for detailed usage documentation.
   - Payments: Stripe integration for subscription billing
-  - AI providers: Vercel AI SDK with Google Gemini, OpenAI, Cloudflare Workers AI, and OpenRouter providers for learning plan generation
+  - AI providers: Vercel AI SDK and OpenRouter providers for learning plan generation
   - Plan generation: Synchronous streaming via `/api/v1/plans/stream` (replaces background workers)
 
 ## Database schema overview (MVP)

@@ -6,7 +6,6 @@ import type {
   GenerationOptions,
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
-import { CloudflareAiProvider } from '@/lib/ai/providers/cloudflare';
 import { GoogleAiProvider } from '@/lib/ai/providers/google';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 import { OpenRouterProvider } from '@/lib/ai/providers/openrouter';
@@ -33,31 +32,24 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     }
 
     const chain: (() => AiPlanGenerationProvider)[] = [];
-    // Primary: Google
+    // Primary: OpenRouter (when enabled)
+    if (enableOpenRouter) {
+      chain.push(
+        () =>
+          new OpenRouterProvider({
+            model: (
+              aiEnv.deterministicOverflowModel ?? 'openai/gpt-oss-120b:free'
+            ).replace(/^openrouter\//, ''),
+          })
+      );
+    }
+    // Fallback: Google
     chain.push(
       () =>
         new GoogleAiProvider({
           model: aiEnv.primaryModel ?? 'gemini-1.5-flash',
         })
     );
-    // Fallback: Cloudflare Workers AI
-    chain.push(
-      () =>
-        new CloudflareAiProvider({
-          model: aiEnv.fallbackModel ?? '@cf/meta/llama-3.1-8b-instruct',
-        })
-    );
-    // Overflow: OpenRouter if enabled
-    if (enableOpenRouter) {
-      chain.push(
-        () =>
-          new OpenRouterProvider({
-            model: (
-              aiEnv.deterministicOverflowModel ?? 'google/gemini-2.0-pro-exp'
-            ).replace(/^openrouter\//, ''),
-          })
-      );
-    }
 
     this.providers = chain;
   }

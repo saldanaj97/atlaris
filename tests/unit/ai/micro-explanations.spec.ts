@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  generateMicroExplanation,
   formatMicroExplanation,
+  generateMicroExplanation,
 } from '@/lib/ai/micro-explanations';
 import {
   buildMicroExplanationSystemPrompt,
@@ -9,6 +8,7 @@ import {
 } from '@/lib/ai/prompts';
 import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
 import { generateObject } from 'ai';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the AI SDK
 vi.mock('ai', async () => {
@@ -82,10 +82,6 @@ describe('Micro-explanations', () => {
       // Set up environment variables for provider selection
       process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'test-key';
       process.env.AI_PRIMARY = 'gemini-1.5-flash';
-      // Set Cloudflare env vars to prevent errors when Cloudflare is attempted as fallback
-      process.env.CF_API_TOKEN = 'test-cf-token';
-      process.env.CF_ACCOUNT_ID = 'test-account';
-      process.env.AI_FALLBACK = '@cf/meta/llama-3.1-8b-instruct';
     });
 
     it('returns formatted markdown from structured response', async () => {
@@ -140,14 +136,16 @@ describe('Micro-explanations', () => {
       expect(result).not.toContain('**Practice:**');
     });
 
-    it('falls back to Cloudflare provider when Google fails', async () => {
-      // Cloudflare env vars are already set in beforeEach
+    it('falls back to OpenRouter provider when Google fails', async () => {
+      // Set OpenRouter env vars for fallback
+      process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+      process.env.AI_ENABLE_OPENROUTER = 'true';
       // First on Google (fails)
       vi.mocked(generateObject)
         .mockRejectedValueOnce(new Error('Google provider failed'))
         .mockResolvedValueOnce({
           object: {
-            explanation: 'Fallback explanation from Cloudflare.',
+            explanation: 'Fallback explanation from OpenRouter.',
           },
           usage: {
             inputTokens: 50,
@@ -163,7 +161,7 @@ describe('Micro-explanations', () => {
       });
 
       expect(generateObject).toHaveBeenCalledTimes(2);
-      expect(result).toContain('Fallback explanation from Cloudflare.');
+      expect(result).toContain('Fallback explanation from OpenRouter.');
     });
 
     it('formats micro-explanation with practice exercise', () => {

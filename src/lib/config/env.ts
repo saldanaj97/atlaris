@@ -312,20 +312,6 @@ export const aiMicroExplanationEnv = {
   get googleApiKey() {
     return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
   },
-  cloudflare: {
-    get apiToken() {
-      return getServerOptional('CF_API_TOKEN');
-    },
-    get apiKey() {
-      return getServerOptional('CF_API_KEY');
-    },
-    get accountId() {
-      return getServerOptional('CF_ACCOUNT_ID');
-    },
-    get gatewayUrl() {
-      return getServerOptional('CF_AI_GATEWAY');
-    },
-  },
   openRouter: {
     get apiKey() {
       return getServerOptional('OPENROUTER_API_KEY');
@@ -378,21 +364,6 @@ export const openRouterEnv = {
   },
   get maxOutputTokens() {
     return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'), 1200);
-  },
-} as const;
-
-export const cloudflareAiEnv = {
-  get apiToken() {
-    return getServerOptional('CF_API_TOKEN');
-  },
-  get apiKey() {
-    return getServerOptional('CF_API_KEY');
-  },
-  get accountId() {
-    return getServerOptional('CF_ACCOUNT_ID');
-  },
-  get gatewayUrl() {
-    return getServerOptional('CF_AI_GATEWAY');
   },
 } as const;
 
