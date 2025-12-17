@@ -11,10 +11,11 @@ import type {
   GenerationOptions,
   ProviderGenerateResult,
 } from '@/lib/ai/provider';
-import { ProviderInvalidResponseError } from '@/lib/ai/provider';
+import { ProviderError, ProviderInvalidResponseError } from '@/lib/ai/provider';
 import { buildPlanProviderResult } from '@/lib/ai/providers/base';
 import { PlanSchema } from '@/lib/ai/schema';
 import { openRouterEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 
 export interface OpenRouterProviderConfig {
   apiKey?: string; // OPENROUTER_API_KEY
@@ -71,16 +72,46 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       deadlineDate: input.deadlineDate,
     });
 
-    const response = await this.client.chat.send({
-      model: this.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      stream: false,
-      temperature: this.temperature,
-      responseFormat: { type: 'json_object' },
-    });
+    let response;
+    try {
+      response = await this.client.chat.send({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        stream: false,
+        temperature: this.temperature,
+        responseFormat: { type: 'json_object' },
+        // Ensure OpenRouter only routes to providers that support JSON response format
+        provider: { requireParameters: true },
+      });
+    } catch (err) {
+      // Log the full error details for debugging
+      const errorDetails = {
+        source: 'openrouter-provider',
+        event: 'api_error',
+        model: this.model,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        errorName: err instanceof Error ? err.name : 'Unknown',
+        // Capture OpenRouter-specific error details if available
+        ...(err && typeof err === 'object' && 'code' in err
+          ? { errorCode: (err as { code: unknown }).code }
+          : {}),
+        ...(err && typeof err === 'object' && 'status' in err
+          ? { httpStatus: (err as { status: unknown }).status }
+          : {}),
+        ...(err && typeof err === 'object' && 'body' in err
+          ? { responseBody: JSON.stringify((err as { body: unknown }).body) }
+          : {}),
+      };
+      logger.error(errorDetails, 'OpenRouter API call failed');
+
+      // Re-throw with more context
+      const message =
+        err instanceof Error ? err.message : 'OpenRouter API call failed';
+      throw new ProviderError('unknown', message);
+    }
 
     const rawContent = response.choices?.[0]?.message?.content;
 
