@@ -216,20 +216,15 @@ describe('Environment Configuration', () => {
       });
     });
 
-    describe('deprecated properties', () => {
-      it('deterministicOverflowModel should return AI_OVERFLOW value', () => {
-        process.env.AI_OVERFLOW = 'test-overflow-model';
-        expect(aiEnv.deterministicOverflowModel).toBe('test-overflow-model');
+    describe('defaultModel', () => {
+      it('should return AI_DEFAULT_MODEL value when set', () => {
+        process.env.AI_DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
+        expect(aiEnv.defaultModel).toBe('anthropic/claude-haiku-4.5');
       });
 
-      it('primaryModel should return AI_PRIMARY value', () => {
-        process.env.AI_PRIMARY = 'test-primary-model';
-        expect(aiEnv.primaryModel).toBe('test-primary-model');
-      });
-
-      it('fallbackModel should return AI_FALLBACK value', () => {
-        process.env.AI_FALLBACK = 'test-fallback-model';
-        expect(aiEnv.fallbackModel).toBe('test-fallback-model');
+      it('should return default OpenRouter model when not set', () => {
+        delete process.env.AI_DEFAULT_MODEL;
+        expect(aiEnv.defaultModel).toBe('google/gemini-2.0-flash-exp:free');
       });
     });
   });

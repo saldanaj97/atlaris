@@ -1,3 +1,5 @@
+import { AI_DEFAULT_MODEL } from '@/lib/ai/models';
+
 type NodeEnv = 'development' | 'production' | 'test';
 
 const normalize = (value: string | undefined | null): string | undefined => {
@@ -6,6 +8,7 @@ const normalize = (value: string | undefined | null): string | undefined => {
   return trimmed === '' ? undefined : trimmed;
 };
 
+// TODO: Consider using zod for parsing and validation of numeric env vars
 function toNumber(value: string | undefined): number | undefined;
 function toNumber(value: string | undefined, fallback: number): number;
 function toNumber(
@@ -16,11 +19,6 @@ function toNumber(
   const parsed = Number(value);
   return Number.isNaN(parsed) ? fallback : parsed;
 }
-
-const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
-  if (value === undefined) return fallback;
-  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
-};
 
 export function optionalEnv(key: string): string | undefined {
   return normalize(process.env[key]);
@@ -243,15 +241,6 @@ export const stripeEnv = {
   },
 } as const;
 
-export const workerEnv = {
-  get pollIntervalMs() {
-    return toNumber(getServerOptional('WORKER_POLL_INTERVAL_MS'), 2000);
-  },
-  get concurrency() {
-    return toNumber(getServerOptional('WORKER_CONCURRENCY'), 1);
-  },
-} as const;
-
 export const aiEnv = {
   get provider() {
     const raw = getServerOptional('AI_PROVIDER');
@@ -272,36 +261,8 @@ export const aiEnv = {
       return toNumber(getServerOptional('MOCK_GENERATION_FAILURE_RATE'));
     },
   },
-  /**
-   * Default AI model to use when no user preference is specified.
-   * Should be an OpenRouter model ID (e.g., 'google/gemini-2.0-flash-exp:free').
-   */
   get defaultModel() {
-    return (
-      getServerOptional('AI_DEFAULT_MODEL') ??
-      'google/gemini-2.0-flash-exp:free'
-    );
-  },
-  /**
-   * @deprecated Use defaultModel instead. Will be removed after OpenRouter migration.
-   */
-  get deterministicOverflowModel() {
-    return getServerOptional('AI_OVERFLOW');
-  },
-  /**
-   * @deprecated Use defaultModel instead. Will be removed after OpenRouter migration.
-   */
-  get primaryModel() {
-    return getServerOptional('AI_PRIMARY');
-  },
-  /**
-   * @deprecated No longer used. Will be removed after OpenRouter migration.
-   */
-  get fallbackModel() {
-    return getServerOptional('AI_FALLBACK');
-  },
-  get maxOutputTokens() {
-    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'));
+    return getServerOptional('AI_DEFAULT_MODEL') ?? AI_DEFAULT_MODEL;
   },
 } as const;
 
@@ -351,30 +312,6 @@ export const aiMicroExplanationEnv = {
   get microExplanationTemperature() {
     return toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4);
   },
-  /**
-   * @deprecated Use AI_DEFAULT_MODEL instead. Will be removed after OpenRouter migration.
-   */
-  get primaryModel() {
-    return getServerOptional('AI_PRIMARY') ?? 'gemini-1.5-flash';
-  },
-  /**
-   * @deprecated No longer used. Will be removed after OpenRouter migration.
-   */
-  get fallbackModel() {
-    return getServerOptional('AI_FALLBACK') ?? '@cf/meta/llama-3.1-8b-instruct';
-  },
-  /**
-   * @deprecated Use AI_DEFAULT_MODEL instead. Will be removed after OpenRouter migration.
-   */
-  get overflowModel() {
-    return getServerOptional('AI_OVERFLOW') ?? 'google/gemini-2.0-pro-exp';
-  },
-  /**
-   * @deprecated OpenRouter is now always enabled. Will be removed after OpenRouter migration.
-   */
-  get enableOpenRouter() {
-    return toBoolean(getServerOptional('AI_ENABLE_OPENROUTER'), false);
-  },
 } as const;
 
 export const openRouterEnv = {
@@ -390,17 +327,11 @@ export const openRouterEnv = {
   get baseUrl() {
     return getServerOptional('OPENROUTER_BASE_URL');
   },
-  get maxOutputTokens() {
-    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'), 1200);
-  },
 } as const;
 
 export const googleAiEnv = {
   get apiKey() {
     return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
-  },
-  get maxOutputTokens() {
-    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'), 1200);
   },
 } as const;
 
