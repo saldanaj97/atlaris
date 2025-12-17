@@ -93,13 +93,14 @@ export function isValidModelId(id: string): boolean
 | `openai/gpt-oss-20b:free`                  | gpt-oss-20b                 | OpenAI    | free | 131K tokens    | $0/M         | $0/M          |
 | `alibaba/tongyi-deepresearch-30b-a3b:free` | Tongyi DeepResearch 30B A3B | Alibaba   | free | 131K tokens    | $0/M         | $0/M          |
 | `anthropic/claude-haiku-4.5`               | Claude Haiku 4.5            | Anthropic | free | 200K tokens    | $1/M         | $5/M          |
-| `google/gemini-2.5-flash-lite`             | Gemini 2.5 Flash Lite       | Google    | pro  | 1.05M tokens   | TBD          | TBD           |
-| `google/gemini-3-pro-preview`              | Gemini 3 Pro Preview        | Google    | pro  | 1.05M tokens   | TBD          | TBD           |
+| `google/gemini-2.5-flash-lite`             | Gemini 2.5 Flash Lite       | Google    | pro  | 1.05M tokens   | $0.10/M      | $0.40/M       |
+| `google/gemini-3-flash-preview`            | Gemini 3 Flash Preview      | Google    | pro  | 1.05M tokens   | $0.50/M      | $1/M          |
+| `google/gemini-3-pro-preview`              | Gemini 3 Pro Preview        | Google    | pro  | 1.05M tokens   | $2/M         | $12/M         |
 | `anthropic/claude-sonnet-4.5`              | Claude Sonnet 4.5           | Anthropic | pro  | 1M tokens      | $3/M         | $15/M         |
 | `openai/gpt-4o-mini-2024-07-18`            | GPT-4o-mini 2024-07-18      | OpenAI    | pro  | 128K tokens    | $0.15/M      | $0.60/M       |
-| `openai/gpt-4o-mini-search-preview`        | GPT-4o-mini Search Preview  | OpenAI    | pro  | 128K tokens    | TBD          | TBD           |
-| `openai/gpt-4o-2024-05-13`                 | GPT-4o 2024-05-13           | OpenAI    | pro  | 128K tokens    | TBD          | TBD           |
-| `openai/gpt-5.1`                           | GPT-5.1                     | OpenAI    | pro  | 400K tokens    | TBD          | TBD           |
+| `openai/gpt-4o-mini-search-preview`        | GPT-4o-mini Search Preview  | OpenAI    | pro  | 128K tokens    | $0.15/M      | $0.60/M       |
+| `openai/gpt-4o`                            | GPT-4o                      | OpenAI    | pro  | 128K tokens    | $2.50/M      | $10/M         |
+| `openai/gpt-5.1`                           | GPT-5.1                     | OpenAI    | pro  | 400K tokens    | $1.25/M      | $10/M         |
 | `openai/gpt-5.2`                           | GPT-5.2                     | OpenAI    | pro  | 400K tokens    | $1.75/M      | $14/M         |
 
 ### Tests
