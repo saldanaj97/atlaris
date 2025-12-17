@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { clientLogger } from '@/lib/logging/client';
@@ -53,20 +53,30 @@ export function useRetryGeneration(
   const router = useRouter();
   const [status, setStatus] = useState<RetryStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [cooldownActive, setCooldownActive] = useState(false);
   const lastRetryRef = useRef<number>(0);
   const abortRef = useRef<AbortController | null>(null);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Disable if already at max attempts or currently retrying
+  // Cleanup cooldown timer and abort in-flight requests on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
+
+  // Disable if already at max attempts, currently retrying, or in cooldown
   const isDisabled =
-    status === 'retrying' ||
-    currentAttempts >= maxAttempts ||
-    // Client-side cooldown check
-    Date.now() - lastRetryRef.current < RETRY_COOLDOWN_MS;
+    status === 'retrying' || currentAttempts >= maxAttempts || cooldownActive;
 
   const retryGeneration = useCallback(async () => {
-    // Client-side debounce check
-    const now = Date.now();
-    if (now - lastRetryRef.current < RETRY_COOLDOWN_MS) {
+    // Prevent retry if cooldown is active
+    if (cooldownActive) {
       return;
     }
 
@@ -75,7 +85,21 @@ export function useRetryGeneration(
     const controller = new AbortController();
     abortRef.current = controller;
 
-    lastRetryRef.current = now;
+    // Start cooldown
+    lastRetryRef.current = Date.now();
+    setCooldownActive(true);
+
+    // Clear any existing cooldown timer
+    if (cooldownTimerRef.current) {
+      clearTimeout(cooldownTimerRef.current);
+    }
+
+    // Set timer to end cooldown
+    cooldownTimerRef.current = setTimeout(() => {
+      setCooldownActive(false);
+      cooldownTimerRef.current = null;
+    }, RETRY_COOLDOWN_MS);
+
     setStatus('retrying');
     setError(null);
 
@@ -153,7 +177,7 @@ export function useRetryGeneration(
           : 'An unexpected error occurred. Please try again.'
       );
     }
-  }, [planId, router]);
+  }, [planId, router, cooldownActive]);
 
   return {
     status,
