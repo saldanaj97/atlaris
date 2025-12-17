@@ -5,7 +5,7 @@
  * and tier-gating. Models are categorized by subscription tier (free/pro) and include
  * technical specifications for context windows and token limits.
  *
- * @module lib/ai/models
+ * @module lib/ai/ai-models
  */
 
 /**
@@ -33,7 +33,7 @@ export type SubscriptionTier = 'free' | 'starter' | 'pro';
 /**
  * Metadata for an available AI model.
  */
-export interface AvailableModel {
+export type AvailableModel = {
   /** OpenRouter model ID (e.g., 'google/gemini-1.5-flash') */
   id: string;
   /** Display name for UI (e.g., 'Gemini 1.5 Flash') */
@@ -50,13 +50,13 @@ export interface AvailableModel {
   inputCostPerMillion: number;
   /** Output cost per million tokens (USD) - 0 for free models */
   outputCostPerMillion: number;
-}
+};
 
 /**
  * Complete list of available OpenRouter models.
  * Models are listed in order of recommendation within their tier.
  */
-export const AVAILABLE_MODELS: AvailableModel[] = [
+export const AVAILABLE_MODELS = [
   // Free tier models - accessible to all users
   {
     id: 'google/gemini-2.0-flash-exp:free',
@@ -198,7 +198,7 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
     inputCostPerMillion: 1.75,
     outputCostPerMillion: 14,
   },
-];
+] satisfies AvailableModel[];
 
 /**
  * Get a model by its OpenRouter ID.

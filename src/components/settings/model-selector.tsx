@@ -1,7 +1,5 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -13,10 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { SubscriptionTier } from '@/lib/ai/models';
-import { AVAILABLE_MODELS } from '@/lib/ai/models';
+import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
+import type { SubscriptionTier } from '@/lib/ai/types';
 import { logger } from '@/lib/logging/logger';
 import { cn } from '@/lib/utils';
+import { useEffect, useRef, useState } from 'react';
 
 interface ModelSelectorProps {
   currentModel: string | null;
@@ -83,10 +82,7 @@ export function ModelSelector({
       setSaveStatus('success');
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      logger.error('Failed to save model preference', {
-        error,
-        selectedModel,
-      });
+      logger.error({ error, selectedModel }, 'Failed to save model preference');
       setSaveStatus('error');
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {

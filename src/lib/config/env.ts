@@ -1,4 +1,4 @@
-import { AI_DEFAULT_MODEL } from '@/lib/ai/models';
+import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
 
 type NodeEnv = 'development' | 'production' | 'test';
 

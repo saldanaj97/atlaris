@@ -8,7 +8,7 @@ import {
   getModelsForTier,
   isValidModelId,
   type SubscriptionTier,
-} from '@/lib/ai/models';
+} from '@/lib/ai/ai-models';
 
 describe('AI Models Configuration', () => {
   describe('AVAILABLE_MODELS', () => {

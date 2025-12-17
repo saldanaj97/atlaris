@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AI_DEFAULT_MODEL } from '@/lib/ai/models';
+import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
 import type { GenerationInput } from '@/lib/ai/provider';
 import {
   RouterGenerationProvider,

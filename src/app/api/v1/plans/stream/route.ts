@@ -1,10 +1,10 @@
 import { ZodError } from 'zod';
 
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
 import {
   formatGenerationError,
   isRetryableClassification,
 } from '@/lib/ai/failures';
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/models';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import {
   getGenerationProvider,

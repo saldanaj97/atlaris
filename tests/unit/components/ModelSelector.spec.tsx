@@ -4,7 +4,7 @@ import '../../mocks/unit/client-logger.unit';
 import '../../mocks/unit/sonner.unit';
 
 import { ModelSelector } from '@/components/settings/model-selector';
-import { AVAILABLE_MODELS } from '@/lib/ai/models';
+import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 
 // Get test data
 const FREE_MODELS = AVAILABLE_MODELS.filter((m) => m.tier === 'free');

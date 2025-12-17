@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
-import { AVAILABLE_MODELS } from '@/lib/ai/models';
+import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';

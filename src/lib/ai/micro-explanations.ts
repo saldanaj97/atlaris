@@ -5,7 +5,7 @@
  * Uses OpenRouter as the sole AI provider (Google AI deprecated as of December 2025).
  */
 
-import { AI_DEFAULT_MODEL } from '@/lib/ai/models';
+import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
 import {
   buildMicroExplanationSystemPrompt,
   buildMicroExplanationUserPrompt,

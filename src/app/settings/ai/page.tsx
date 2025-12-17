@@ -1,6 +1,6 @@
 import { ModelSelector } from '@/components/settings/model-selector';
 import { Card } from '@/components/ui/card';
-import type { SubscriptionTier } from '@/lib/ai/models';
+import { SubscriptionTier } from '@/lib/ai/types';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';

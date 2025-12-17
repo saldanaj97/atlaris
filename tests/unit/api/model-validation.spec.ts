@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/models';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
 
 /**
  * Unit tests for model validation logic used in API routes.

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AVAILABLE_MODELS, isValidModelId } from '@/lib/ai/models';
+import { AVAILABLE_MODELS, isValidModelId } from '@/lib/ai/ai-models';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
@@ -70,9 +70,10 @@ export const PATCH = withErrorBoundary(
     const parsed = updatePreferencesSchema.safeParse(body);
 
     if (!parsed.success) {
-      logger.warn('Invalid preferences payload', {
-        errors: parsed.error.flatten(),
-      });
+      logger.warn(
+        { errors: parsed.error.flatten() },
+        'Invalid preferences payload'
+      );
       throw new ValidationError('Invalid preferences', parsed.error.flatten());
     }
 
@@ -92,9 +93,10 @@ export const PATCH = withErrorBoundary(
     // TODO: [OPENROUTER-MIGRATION] Save preference when column exists:
     // await updateUserModelPreference(user.id, parsed.data.preferredAiModel);
 
-    logger.info('User preferences updated successfully', {
-      preferredAiModel: parsed.data.preferredAiModel,
-    });
+    logger.info(
+      { preferredAiModel: parsed.data.preferredAiModel },
+      'User preferences updated successfully'
+    );
 
     const response = json({
       message: 'Preferences updated',
