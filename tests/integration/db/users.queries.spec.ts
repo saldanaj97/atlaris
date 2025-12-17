@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { db } from '@/lib/db/service-role';
-import { getUserByClerkId, createUser } from '@/lib/db/queries/users';
+import { createUser, getUserByClerkId } from '@/lib/db/queries/users';
 import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 describe('User Queries', () => {
   beforeEach(async () => {
@@ -59,14 +59,16 @@ describe('User Queries', () => {
     });
 
     it('should set createdAt timestamp on user creation', async () => {
-      const before = new Date();
+      // Use a small tolerance (1 second) to account for clock drift between test runner and DB
+      const tolerance = 1000;
+      const before = new Date(Date.now() - tolerance);
 
       const user = await createUser({
         clerkUserId: 'clerk_timestamp_test',
         email: 'timestamp@example.com',
       });
 
-      const after = new Date();
+      const after = new Date(Date.now() + tolerance);
 
       expect(user?.createdAt).toBeInstanceOf(Date);
       expect(user!.createdAt.getTime()).toBeGreaterThanOrEqual(
