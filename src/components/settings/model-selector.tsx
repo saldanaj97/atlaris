@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import type { SubscriptionTier } from '@/lib/ai/models';
 import { AVAILABLE_MODELS } from '@/lib/ai/models';
+import { logger } from '@/lib/logging/logger';
 import { cn } from '@/lib/utils';
 
 interface ModelSelectorProps {
@@ -29,7 +30,7 @@ export function ModelSelector({
   onSave,
 }: ModelSelectorProps) {
   const [selectedModel, setSelectedModel] = useState<string>(
-    currentModel ?? AVAILABLE_MODELS[0].id
+    currentModel ?? AVAILABLE_MODELS[0]?.id ?? ''
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<
@@ -46,6 +47,18 @@ export function ModelSelector({
     (m) => m.id === selectedModel
   );
 
+  // Ref to track timeout for cleanup
+  const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleSave = async () => {
     if (!selectedModelData) return;
 
@@ -58,16 +71,24 @@ export function ModelSelector({
     setIsSaving(true);
     setSaveStatus('idle');
 
+    // Clear any existing timeout
+    if (statusTimeoutRef.current) {
+      clearTimeout(statusTimeoutRef.current);
+    }
+
     try {
       if (onSave) {
         await onSave(selectedModel);
       }
       setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch {
-      // Error already handled by parent component
+      statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (error) {
+      logger.error('Failed to save model preference', {
+        error,
+        selectedModel,
+      });
       setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -121,18 +142,11 @@ export function ModelSelector({
 
             <p className="text-sm">{selectedModelData.description}</p>
 
-            <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="grid grid-cols-3 gap-4 pt-2">
               <div>
                 <p className="text-muted-foreground text-xs">Context Window</p>
                 <p className="text-sm font-medium">
                   {(selectedModelData.contextWindow / 1000).toFixed(0)}K tokens
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Max Output</p>
-                <p className="text-sm font-medium">
-                  {(selectedModelData.maxOutputTokens / 1000).toFixed(1)}K
-                  tokens
                 </p>
               </div>
               <div>
