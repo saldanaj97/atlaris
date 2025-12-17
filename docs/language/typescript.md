@@ -1,8 +1,3 @@
----
-name: Production TypeScript Rules
-description: This file describes the TypeScript rules for production code in the project.
-applyTo: '**/*.ts, **/*.tsx'
----
 # Production TypeScript Rules (2025)
 
 These rules are written so a junior engineer can follow them without guessing. If a rule is unclear, fix the rule (not the code).
@@ -20,6 +15,7 @@ These rules are written so a junior engineer can follow them without guessing. I
 ## 1) Compiler Rules (tsconfig)
 
 ### Required
+
 - `"strict": true`
 - `"noImplicitReturns": true`
 - `"noFallthroughCasesInSwitch": true`
@@ -27,12 +23,14 @@ These rules are written so a junior engineer can follow them without guessing. I
 - `"noImplicitOverride": true`
 
 ### Strongly Recommended (turn on unless you have a real reason)
+
 - `"exactOptionalPropertyTypes": true`
 - `"noUncheckedIndexedAccess": true`
 - `"noPropertyAccessFromIndexSignature": true`
 - `"forceConsistentCasingInFileNames": true`
 
 ### Module/Import sanity (pick what matches your runtime)
+
 - Do not mix ESM/CJS rules casually.
 - If your build uses modern ESM/bundlers, enable:
   - `"verbatimModuleSyntax": true` (prevents type/value import confusion)
@@ -43,12 +41,14 @@ These rules are written so a junior engineer can follow them without guessing. I
 ## 2) Linting / Formatting Rules
 
 ### Required ESLint behaviors
+
 - No floating promises (unhandled async work).
 - No unsafe `any` propagation.
 - Enforce `import type` for type-only imports.
 - Prefer `const` and no unused vars/imports.
 
 ### Required formatting
+
 - Prettier (or equivalent) is enforced.
 - No “formatting debates” in PRs.
 
@@ -57,6 +57,7 @@ These rules are written so a junior engineer can follow them without guessing. I
 ## 3) File + Import Rules
 
 ### Type-only file rules (Hard Rules)
+
 Use these exactly.
 
 - Files named `*.types.ts`:
@@ -70,11 +71,13 @@ Use these exactly.
   - Disallow value imports from `*.types.ts`
 
 ### Naming standard
+
 - Default: `<feature>.types.ts` (e.g. `user.types.ts`)
 - Folder-scoped alternative (only if folder is clearly scoped): `types.ts`
 - Disallowed: `interfaces.ts`, `models.ts`, `types.d.ts` (unless ambient), `index.ts` as “types-only”.
 
 ### Import rules
+
 - Always use `import type { X } from "..."` when you only need types.
 - Do not rely on “it compiles” to justify messy imports—clean boundaries prevent circular deps and runtime surprises.
 
@@ -83,17 +86,20 @@ Use these exactly.
 ## 4) Type Safety Rules (Daily Coding)
 
 ### Never allow these in production PRs
+
 - `any` (except a documented containment zone; see below)
 - `as any`, `as unknown as T` (double assertion)
 - Non-null assertions: `value!` (fix the flow, don’t silence it)
 - `// @ts-ignore` (use `@ts-expect-error` with a comment, and treat it as tech debt)
 
 ### If you must use `any`
+
 - Isolate it in one file/function, document why, and immediately convert back to safe types at the boundary:
   - Use `unknown` + runtime parsing/validation
   - Or a narrow type guard
 
 ### Prefer `unknown` over `any`
+
 - Any external input is `unknown` until validated:
   - API responses
   - user input
@@ -108,10 +114,12 @@ Use these exactly.
 Types do not validate data at runtime.
 
 ### Required boundary pattern
+
 - Parse/validate at the edge.
 - Inside your app, use trusted typed objects.
 
 Examples of boundaries:
+
 - `fetch()` / axios responses
 - Next.js route handlers
 - webhooks
@@ -124,29 +132,35 @@ If you don’t validate, you are lying to the type system.
 ## 6) Modeling Rules (How to design types)
 
 ### Use unions + discriminants for state machines
+
 - Prefer:
   - `type State = { kind: "loading" } | { kind: "ready"; data: X } | { kind: "error"; error: E }`
 - Avoid “bags of optionals”:
   - `type State = { loading?: boolean; data?: X; error?: E }` (this creates impossible states)
 
 ### Exhaustiveness is mandatory
+
 When switching on a discriminant:
+
 - Add an exhaustive check:
   - `default: return assertNever(x);`
   - `function assertNever(x: never): never { throw new Error("Unexpected"); }`
 
 ### `interface` vs `type`
+
 - Use `type` by default.
 - Use `interface` only when you explicitly want extension/merging (library-like patterns).
 - Do not mix randomly.
 
 ### Avoid `enum`
+
 - Prefer string unions:
   - `type Role = "admin" | "user"`
 - Or `const` objects + `as const`:
   - `const Role = { Admin: "admin", User: "user" } as const; type Role = typeof Role[keyof typeof Role];`
 
 ### Prefer `satisfies` for config objects
+
 - Use `satisfies` to validate shapes without widening:
   - `const cfg = { ... } satisfies SomeType`
 
@@ -155,13 +169,16 @@ When switching on a discriminant:
 ## 7) Functions + APIs
 
 ### Exported functions must be explicit
+
 - All exported functions must have explicit parameter and return types.
 - Do not export “inferred mystery meat” from public modules.
 
 ### Never accept “wide” inputs without narrowing
+
 - If a function accepts user input or external data, take `unknown` and validate, or require a validated type.
 
 ### Avoid boolean parameters
+
 - Prefer an options object:
   - Bad: `doThing(data, true)`
   - Good: `doThing(data, { dryRun: true })`
