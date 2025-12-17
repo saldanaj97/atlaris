@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
@@ -118,6 +118,14 @@ export default function OnboardingForm() {
     startGeneration,
     cancel: cancelStreaming,
   } = useStreamingPlanGeneration();
+
+  // Ref to track the latest planId to avoid stale closure issues in error handlers
+  const planIdRef = useRef<string | undefined>(undefined);
+
+  // Sync planIdRef with streamingState.planId
+  useEffect(() => {
+    planIdRef.current = streamingState.planId;
+  }, [streamingState.planId]);
 
   // Fetch user tier on mount
   useEffect(() => {
@@ -272,17 +280,31 @@ export default function OnboardingForm() {
       clientLogger.error('Streaming plan generation failed', streamError);
 
       // Extract error message and status for user-friendly display
-      const errorWithStatus = streamError as Error & { status?: number };
+      const errorWithStatus = streamError as Error & {
+        status?: number;
+        planId?: string;
+        data?: { planId?: string };
+      };
       const message =
         streamError instanceof Error
           ? streamError.message
           : 'We could not create your learning plan. Please try again.';
 
+      // Attempt to extract planId: (1) from error payload, (2) from ref tracking latest state
+      const extractedPlanId =
+        errorWithStatus.planId ??
+        errorWithStatus.data?.planId ??
+        planIdRef.current;
+
       // If plan was created but generation failed, redirect to plan page
       // The plan page will show the failed state with a retry button
-      if (errorWithStatus.status === 200 || streamingState.planId) {
+      if (
+        (errorWithStatus.status === 200 || extractedPlanId) &&
+        typeof extractedPlanId === 'string' &&
+        extractedPlanId.length > 0
+      ) {
         toast.error('Generation failed. You can retry from the plan page.');
-        router.push(`/plans/${streamingState.planId}`);
+        router.push(`/plans/${extractedPlanId}`);
         return;
       }
 
