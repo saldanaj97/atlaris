@@ -9,11 +9,14 @@
  */
 
 /**
- * Default model used when no user preference is specified.
- * Uses Gemini 2.0 Flash as it offers a good balance of speed, quality,
- * and cost (free tier with large context window).
+ * Fallback default model used when no user preference is specified.
+ *
+ * Note: this file is imported by client components (e.g. model selector UI),
+ * so it must remain free of server-only env access.
  */
-export const DEFAULT_MODEL = 'google/gemini-2.0-flash-exp:free';
+export const AI_DEFAULT_MODEL = 'google/gemini-2.0-flash-exp:free';
+
+// (kept for backward compatibility) AI_DEFAULT_MODEL is defined above.
 
 /**
  * Subscription tier required to access a model.
@@ -43,8 +46,6 @@ export interface AvailableModel {
   tier: ModelTier;
   /** Context window size in tokens */
   contextWindow: number;
-  /** Maximum output tokens */
-  maxOutputTokens: number;
   /** Input cost per million tokens (USD) - 0 for free models */
   inputCostPerMillion: number;
   /** Output cost per million tokens (USD) - 0 for free models */
@@ -65,21 +66,19 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
       'Fast, high-quality model with massive context window. Best for complex learning plans.',
     tier: 'free',
     contextWindow: 1_050_000,
-    maxOutputTokens: 8192,
     inputCostPerMillion: 0,
     outputCostPerMillion: 0,
   },
   {
-    id: 'anthropic/claude-haiku-4.5',
+    id: 'anthropic/claude-haiku-4.5:free',
     name: 'Claude Haiku 4.5',
     provider: 'Anthropic',
     description:
       'Fast and efficient model from Anthropic with strong reasoning capabilities.',
     tier: 'free',
     contextWindow: 200_000,
-    maxOutputTokens: 8192,
-    inputCostPerMillion: 1,
-    outputCostPerMillion: 5,
+    inputCostPerMillion: 0,
+    outputCostPerMillion: 0,
   },
   {
     id: 'openai/gpt-oss-20b:free',
@@ -88,7 +87,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
     description: 'Open-source style model for general-purpose tasks.',
     tier: 'free',
     contextWindow: 131_000,
-    maxOutputTokens: 4096,
     inputCostPerMillion: 0,
     outputCostPerMillion: 0,
   },
@@ -99,7 +97,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
     description: 'Research-focused model with strong analytical capabilities.',
     tier: 'free',
     contextWindow: 131_000,
-    maxOutputTokens: 4096,
     inputCostPerMillion: 0,
     outputCostPerMillion: 0,
   },
@@ -113,7 +110,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
       'Premium model with exceptional reasoning and nuanced understanding.',
     tier: 'pro',
     contextWindow: 1_000_000,
-    maxOutputTokens: 8192,
     inputCostPerMillion: 3,
     outputCostPerMillion: 15,
   },
@@ -125,7 +121,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
       'Latest GPT model with advanced reasoning and extended context.',
     tier: 'pro',
     contextWindow: 400_000,
-    maxOutputTokens: 16384,
     inputCostPerMillion: 1.75,
     outputCostPerMillion: 14,
   },
@@ -137,7 +132,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
       'Advanced GPT model with strong performance across diverse tasks.',
     tier: 'pro',
     contextWindow: 400_000,
-    maxOutputTokens: 16384,
     inputCostPerMillion: 1.5,
     outputCostPerMillion: 12,
   },
@@ -149,7 +143,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
       'Preview of next-generation Gemini with enhanced capabilities.',
     tier: 'pro',
     contextWindow: 1_050_000,
-    maxOutputTokens: 8192,
     inputCostPerMillion: 2,
     outputCostPerMillion: 10,
   },
@@ -160,7 +153,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
     description: 'Optimized version of Gemini Flash for faster processing.',
     tier: 'pro',
     contextWindow: 1_050_000,
-    maxOutputTokens: 8192,
     inputCostPerMillion: 0.5,
     outputCostPerMillion: 2.5,
   },
@@ -172,7 +164,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
       'Omni model with multimodal capabilities and strong performance.',
     tier: 'pro',
     contextWindow: 128_000,
-    maxOutputTokens: 4096,
     inputCostPerMillion: 5,
     outputCostPerMillion: 15,
   },
@@ -183,7 +174,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
     description: 'Compact model with search enhancement capabilities.',
     tier: 'pro',
     contextWindow: 128_000,
-    maxOutputTokens: 4096,
     inputCostPerMillion: 0.2,
     outputCostPerMillion: 0.8,
   },
@@ -194,7 +184,6 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
     description: 'Efficient mini model for cost-effective quality generation.',
     tier: 'pro',
     contextWindow: 128_000,
-    maxOutputTokens: 4096,
     inputCostPerMillion: 0.15,
     outputCostPerMillion: 0.6,
   },
@@ -245,5 +234,5 @@ export function isValidModelId(id: string): boolean {
  */
 export function getDefaultModelForTier(tier: SubscriptionTier): string {
   const availableModels = getModelsForTier(tier);
-  return availableModels.length > 0 ? availableModels[0].id : DEFAULT_MODEL;
+  return availableModels.length > 0 ? availableModels[0].id : AI_DEFAULT_MODEL;
 }
