@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AI_DEFAULT_MODEL,
   AVAILABLE_MODELS,
-  DEFAULT_MODEL,
   getDefaultModelForTier,
   getModelById,
   getModelsForTier,
@@ -24,7 +24,6 @@ describe('AI Models Configuration', () => {
         expect(model).toHaveProperty('description');
         expect(model).toHaveProperty('tier');
         expect(model).toHaveProperty('contextWindow');
-        expect(model).toHaveProperty('maxOutputTokens');
         expect(model).toHaveProperty('inputCostPerMillion');
         expect(model).toHaveProperty('outputCostPerMillion');
       });
@@ -38,7 +37,6 @@ describe('AI Models Configuration', () => {
         expect(typeof model.description).toBe('string');
         expect(['free', 'pro']).toContain(model.tier);
         expect(typeof model.contextWindow).toBe('number');
-        expect(typeof model.maxOutputTokens).toBe('number');
         expect(typeof model.inputCostPerMillion).toBe('number');
         expect(typeof model.outputCostPerMillion).toBe('number');
       });
@@ -56,7 +54,6 @@ describe('AI Models Configuration', () => {
     it('has positive numeric values for token-related fields', () => {
       AVAILABLE_MODELS.forEach((model) => {
         expect(model.contextWindow).toBeGreaterThan(0);
-        expect(model.maxOutputTokens).toBeGreaterThan(0);
         expect(model.inputCostPerMillion).toBeGreaterThanOrEqual(0);
         expect(model.outputCostPerMillion).toBeGreaterThanOrEqual(0);
       });
@@ -79,21 +76,21 @@ describe('AI Models Configuration', () => {
 
   describe('DEFAULT_MODEL', () => {
     it('is a valid model ID', () => {
-      expect(isValidModelId(DEFAULT_MODEL)).toBe(true);
+      expect(isValidModelId(AI_DEFAULT_MODEL)).toBe(true);
     });
 
     it('exists in AVAILABLE_MODELS', () => {
-      const model = AVAILABLE_MODELS.find((m) => m.id === DEFAULT_MODEL);
+      const model = AVAILABLE_MODELS.find((m) => m.id === AI_DEFAULT_MODEL);
       expect(model).toBeDefined();
     });
 
     it('is a free tier model', () => {
-      const model = AVAILABLE_MODELS.find((m) => m.id === DEFAULT_MODEL);
+      const model = AVAILABLE_MODELS.find((m) => m.id === AI_DEFAULT_MODEL);
       expect(model?.tier).toBe('free');
     });
 
     it('has the expected value', () => {
-      expect(DEFAULT_MODEL).toBe('google/gemini-2.0-flash-exp:free');
+      expect(AI_DEFAULT_MODEL).toBe('google/gemini-2.0-flash-exp:free');
     });
   });
 
@@ -189,7 +186,7 @@ describe('AI Models Configuration', () => {
     });
 
     it('returns true for DEFAULT_MODEL', () => {
-      expect(isValidModelId(DEFAULT_MODEL)).toBe(true);
+      expect(isValidModelId(AI_DEFAULT_MODEL)).toBe(true);
     });
 
     it('returns false for invalid IDs', () => {
@@ -267,15 +264,6 @@ describe('AI Models Configuration', () => {
         expect(model.contextWindow).toBeGreaterThanOrEqual(1000);
         // And no more than 10M tokens (reasonable upper bound)
         expect(model.contextWindow).toBeLessThanOrEqual(10_000_000);
-      });
-    });
-
-    it('all models have reasonable max output tokens', () => {
-      AVAILABLE_MODELS.forEach((model) => {
-        // Max output should be at least 100 tokens
-        expect(model.maxOutputTokens).toBeGreaterThanOrEqual(100);
-        // And no more than 100K tokens (reasonable upper bound)
-        expect(model.maxOutputTokens).toBeLessThanOrEqual(100_000);
       });
     });
   });

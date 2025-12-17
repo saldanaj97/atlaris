@@ -158,7 +158,6 @@ describe('OpenRouterProvider', () => {
         siteUrl: 'https://myapp.com',
         appName: 'My App',
         model: 'anthropic/claude-3-sonnet',
-        maxOutputTokens: 2000,
         temperature: 0.5,
       };
 
@@ -173,12 +172,28 @@ describe('OpenRouterProvider', () => {
       );
     });
 
-    it('uses custom model when specified', () => {
+    it('uses custom model when specified', async () => {
+      mockSend.mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify(VALID_PLAN_RESPONSE),
+            },
+          },
+        ],
+      });
+
       const provider = new OpenRouterProvider({
         model: 'anthropic/claude-3-sonnet',
       });
 
-      expect((provider as any).model).toBe('anthropic/claude-3-sonnet');
+      await provider.generate(SAMPLE_INPUT);
+
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'anthropic/claude-3-sonnet',
+        })
+      );
     });
   });
 
@@ -299,7 +314,6 @@ describe('OpenRouterProvider', () => {
       const provider = new OpenRouterProvider({
         model: 'anthropic/claude-3-opus',
         temperature: 0.7,
-        maxOutputTokens: 3000,
       });
 
       await provider.generate(SAMPLE_INPUT);
@@ -308,7 +322,6 @@ describe('OpenRouterProvider', () => {
         expect.objectContaining({
           model: 'anthropic/claude-3-opus',
           temperature: 0.7,
-          maxTokens: 3000,
           stream: false,
           responseFormat: { type: 'json_object' },
           messages: expect.arrayContaining([

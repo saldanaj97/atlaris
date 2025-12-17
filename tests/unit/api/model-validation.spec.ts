@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { DEFAULT_MODEL, isValidModelId } from '@/lib/ai/models';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/models';
 
 /**
  * Unit tests for model validation logic used in API routes.
@@ -55,7 +55,7 @@ describe('Model Validation (API Layer)', () => {
       const model =
         modelOverride && isValidModelId(modelOverride)
           ? modelOverride
-          : DEFAULT_MODEL;
+          : AI_DEFAULT_MODEL;
       expect(model).toBe('google/gemini-2.0-flash-exp:free');
     });
 
@@ -64,8 +64,8 @@ describe('Model Validation (API Layer)', () => {
       const model =
         modelOverride && isValidModelId(modelOverride)
           ? modelOverride
-          : DEFAULT_MODEL;
-      expect(model).toBe(DEFAULT_MODEL);
+          : AI_DEFAULT_MODEL;
+      expect(model).toBe(AI_DEFAULT_MODEL);
     });
 
     it('falls back to DEFAULT_MODEL when empty string is provided', () => {
@@ -73,8 +73,8 @@ describe('Model Validation (API Layer)', () => {
       const model =
         modelOverride && isValidModelId(modelOverride)
           ? modelOverride
-          : DEFAULT_MODEL;
-      expect(model).toBe(DEFAULT_MODEL);
+          : AI_DEFAULT_MODEL;
+      expect(model).toBe(AI_DEFAULT_MODEL);
     });
 
     it('falls back to DEFAULT_MODEL when null is provided', () => {
@@ -82,8 +82,8 @@ describe('Model Validation (API Layer)', () => {
       const model =
         modelOverride && isValidModelId(modelOverride)
           ? modelOverride
-          : DEFAULT_MODEL;
-      expect(model).toBe(DEFAULT_MODEL);
+          : AI_DEFAULT_MODEL;
+      expect(model).toBe(AI_DEFAULT_MODEL);
     });
   });
 

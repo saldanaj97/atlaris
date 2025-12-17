@@ -25,14 +25,12 @@ export interface OpenRouterProviderConfig {
   model: string;
   siteUrl?: string;
   appName?: string;
-  maxOutputTokens?: number;
   temperature?: number;
 }
 
 export class OpenRouterProvider implements AiPlanGenerationProvider {
   private readonly client: OpenRouter;
   private readonly model: string;
-  private readonly maxOutputTokens: number;
   private readonly temperature: number;
 
   constructor(cfg: OpenRouterProviderConfig) {
@@ -55,7 +53,6 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       throw new Error('OpenRouterProvider requires a model to be specified');
     }
     this.model = cfg.model;
-    this.maxOutputTokens = cfg.maxOutputTokens ?? openRouterEnv.maxOutputTokens;
     this.temperature = cfg.temperature ?? 0.2;
   }
 
@@ -82,7 +79,6 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       ],
       stream: false,
       temperature: this.temperature,
-      maxTokens: this.maxOutputTokens,
       responseFormat: { type: 'json_object' },
     });
 

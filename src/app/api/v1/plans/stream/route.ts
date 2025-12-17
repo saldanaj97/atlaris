@@ -4,7 +4,7 @@ import {
   formatGenerationError,
   isRetryableClassification,
 } from '@/lib/ai/failures';
-import { DEFAULT_MODEL, isValidModelId } from '@/lib/ai/models';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/models';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import {
   getGenerationProvider,
@@ -142,10 +142,10 @@ export const POST = withErrorBoundary(
     const model =
       modelOverride && isValidModelId(modelOverride)
         ? modelOverride
-        : DEFAULT_MODEL;
+        : AI_DEFAULT_MODEL;
 
     const provider =
-      model !== DEFAULT_MODEL
+      model !== AI_DEFAULT_MODEL
         ? getGenerationProviderWithModel(model)
         : getGenerationProvider();
     const normalizedInput: CreateLearningPlanInput = {

@@ -1,5 +1,4 @@
 import { aiEnv, appEnv } from '@/lib/config/env';
-import { DEFAULT_MODEL } from './models';
 import type { AiPlanGenerationProvider } from './provider';
 import { MockGenerationProvider } from './providers/mock';
 import { RouterGenerationProvider } from './providers/router';
@@ -81,6 +80,6 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
   }
   // Default to router with default model for real usage
   return new RouterGenerationProvider({
-    model: aiEnv.defaultModel ?? DEFAULT_MODEL,
+    model: aiEnv.defaultModel,
   });
 }

@@ -1,6 +1,5 @@
 import pRetry from 'p-retry';
 
-import { DEFAULT_MODEL } from '@/lib/ai/models';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -34,7 +33,7 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     }
 
     // OpenRouter is now the only provider (Google AI deprecated)
-    const model = cfg.model ?? aiEnv.defaultModel ?? DEFAULT_MODEL;
+    const model = cfg.model ?? aiEnv.defaultModel;
     this.providers = [() => new OpenRouterProvider({ model })];
 
     // TODO: Add Google AI as emergency fallback only if OpenRouter is completely down.
