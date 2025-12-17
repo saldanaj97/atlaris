@@ -24,7 +24,7 @@ describe('usePlanStatus', () => {
           attempts: 1,
           latestJobId: 'job-123',
           latestJobStatus: 'processing',
-          latestJobError: null,
+          latestError: null,
         }),
       })
     );
@@ -46,7 +46,7 @@ describe('usePlanStatus', () => {
         attempts: 1,
         latestJobId: 'job-123',
         latestJobStatus: 'processing',
-        latestJobError: null,
+        latestError: null,
       }),
     });
 
@@ -71,7 +71,7 @@ describe('usePlanStatus', () => {
           attempts: 2,
           latestJobId: 'job-123',
           latestJobStatus: 'processing',
-          latestJobError: null,
+          latestError: null,
         }),
       })
     );
@@ -96,7 +96,7 @@ describe('usePlanStatus', () => {
           attempts: 3,
           latestJobId: 'job-123',
           latestJobStatus: 'completed',
-          latestJobError: null,
+          latestError: null,
         }),
       })
     );
@@ -120,7 +120,7 @@ describe('usePlanStatus', () => {
           attempts: 3,
           latestJobId: 'job-123',
           latestJobStatus: 'failed',
-          latestJobError: 'AI provider error',
+          latestError: 'AI provider error',
         }),
       })
     );
@@ -134,7 +134,7 @@ describe('usePlanStatus', () => {
     });
   });
 
-  it('should set error when latestJobError is present', async () => {
+  it('should set error when latestError is present', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -145,7 +145,7 @@ describe('usePlanStatus', () => {
           attempts: 1,
           latestJobId: 'job-123',
           latestJobStatus: 'failed',
-          latestJobError: 'Validation error: topic too short',
+          latestError: 'Validation error: topic too short',
         }),
       })
     );
@@ -166,7 +166,7 @@ describe('usePlanStatus', () => {
         attempts: 1,
         latestJobId: 'job-123',
         latestJobStatus: 'pending',
-        latestJobError: null,
+        latestError: null,
       }),
     });
 
@@ -195,7 +195,7 @@ describe('usePlanStatus', () => {
         attempts: 1,
         latestJobId: 'job-123',
         latestJobStatus: 'processing',
-        latestJobError: null,
+        latestError: null,
       }),
     });
 
@@ -248,7 +248,7 @@ describe('usePlanStatus', () => {
           attempts: 1,
           latestJobId: 'job-123',
           latestJobStatus: 'processing',
-          latestJobError: null,
+          latestError: null,
         }),
       });
 
@@ -282,7 +282,7 @@ describe('usePlanStatus', () => {
           attempts: 1,
           latestJobId: 'job-123',
           latestJobStatus: 'processing',
-          latestJobError: null,
+          latestError: null,
         }),
       });
 
@@ -313,7 +313,7 @@ describe('usePlanStatus', () => {
         attempts: 1,
         latestJobId: 'job-123',
         latestJobStatus: 'pending',
-        latestJobError: null,
+        latestError: null,
       }),
     });
 
@@ -345,7 +345,7 @@ describe('usePlanStatus', () => {
             attempts: 1,
             latestJobId: 'job-123',
             latestJobStatus: 'pending',
-            latestJobError: null,
+            latestError: null,
           }),
         };
       } else if (callCount === 2) {
@@ -357,7 +357,7 @@ describe('usePlanStatus', () => {
             attempts: 1,
             latestJobId: 'job-123',
             latestJobStatus: 'processing',
-            latestJobError: null,
+            latestError: null,
           }),
         };
       } else {
@@ -369,7 +369,7 @@ describe('usePlanStatus', () => {
             attempts: 1,
             latestJobId: 'job-123',
             latestJobStatus: 'completed',
-            latestJobError: null,
+            latestError: null,
           }),
         };
       }

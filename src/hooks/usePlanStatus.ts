@@ -44,9 +44,7 @@ export function usePlanStatus(
       setStatus(data.status);
       setAttempts(data.attempts);
 
-      if (data.latestError) {
-        setError(data.latestError);
-      }
+      setError(data.latestError);
 
       // Stop polling if terminal state reached
       if (data.status === 'ready' || data.status === 'failed') {
