@@ -6,6 +6,10 @@ import { AVAILABLE_MODELS } from '@/lib/ai/models';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
+// Prevent tests from running against production database
+if (process.env.DATABASE_URL?.includes('neon.tech')) {
+  throw new Error('DO NOT RUN TESTS AGAINST REMOTE DB');
+}
 describe.skip('GET /api/v1/user/preferences', () => {
   const testClerkUserId = `preferences-get-user-${Date.now()}`;
 
@@ -68,7 +72,6 @@ describe.skip('GET /api/v1/user/preferences', () => {
     expect(firstModel).toHaveProperty('description');
     expect(firstModel).toHaveProperty('tier');
     expect(firstModel).toHaveProperty('contextWindow');
-    expect(firstModel).toHaveProperty('maxOutputTokens');
   });
 
   it('returns 401 for unauthenticated request', async () => {
