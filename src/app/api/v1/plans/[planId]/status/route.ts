@@ -67,8 +67,8 @@ export const GET = withErrorBoundary(
 
     const attempts = attemptCountResult?.value ?? 0;
 
-    // Get the latest failed attempt to show error message
-    const [latestFailedAttempt] = await db
+    // Get the latest attempt to show error message if failed
+    const [latestAttempt] = await db
       .select({
         classification: generationAttempts.classification,
         createdAt: generationAttempts.createdAt,
@@ -97,10 +97,10 @@ export const GET = withErrorBoundary(
       status = 'pending';
     }
 
-    // Build error message from latest failed attempt classification
+    // Build error message from latest attempt classification
     let latestError: string | null = null;
-    if (status === 'failed' && latestFailedAttempt?.classification) {
-      const classification = latestFailedAttempt.classification;
+    if (status === 'failed' && latestAttempt?.classification) {
+      const classification = latestAttempt.classification;
       // Map classification to user-friendly message
       const errorMessages: Record<string, string> = {
         timeout: 'Generation timed out. Please try again.',
