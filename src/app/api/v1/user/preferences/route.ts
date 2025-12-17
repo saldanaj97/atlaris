@@ -5,6 +5,10 @@ import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import {
+  attachRequestIdHeader,
+  createRequestContext,
+} from '@/lib/logging/request-context';
 
 const updatePreferencesSchema = z.object({
   preferredAiModel: z.string().refine(isValidModelId, {
@@ -19,19 +23,31 @@ const updatePreferencesSchema = z.object({
  * Returns null for preferredAiModel until the database column is added.
  */
 export const GET = withErrorBoundary(
-  withAuth(async ({ userId }) => {
+  withAuth(async ({ req, userId }) => {
+    const { requestId, logger } = createRequestContext(req, {
+      route: 'GET /api/v1/user/preferences',
+      userId,
+    });
+
+    logger.info('Fetching user preferences');
+
     const user = await getUserByClerkId(userId);
     if (!user) {
+      logger.warn('User not found in database');
       throw new Error('User not found');
     }
+
+    logger.debug('User preferences retrieved successfully');
 
     // TODO: [OPENROUTER-MIGRATION] Return actual user preferences when column exists:
     // return json({ preferredAiModel: user.preferredAiModel ?? DEFAULT_MODEL });
 
-    return json({
+    const response = json({
       preferredAiModel: null, // Not yet implemented
       availableModels: AVAILABLE_MODELS,
     });
+
+    return attachRequestIdHeader(response, requestId);
   })
 );
 
@@ -43,15 +59,26 @@ export const GET = withErrorBoundary(
  */
 export const PATCH = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
+    const { requestId, logger } = createRequestContext(req, {
+      route: 'PATCH /api/v1/user/preferences',
+      userId,
+    });
+
+    logger.info('Updating user preferences');
+
     const body: unknown = await req.json();
     const parsed = updatePreferencesSchema.safeParse(body);
 
     if (!parsed.success) {
+      logger.warn('Invalid preferences payload', {
+        errors: parsed.error.flatten(),
+      });
       throw new ValidationError('Invalid preferences', parsed.error.flatten());
     }
 
     const user = await getUserByClerkId(userId);
     if (!user) {
+      logger.warn('User not found in database');
       throw new Error('User not found');
     }
 
@@ -65,10 +92,16 @@ export const PATCH = withErrorBoundary(
     // TODO: [OPENROUTER-MIGRATION] Save preference when column exists:
     // await updateUserModelPreference(user.id, parsed.data.preferredAiModel);
 
-    return json({
+    logger.info('User preferences updated successfully', {
+      preferredAiModel: parsed.data.preferredAiModel,
+    });
+
+    const response = json({
       message: 'Preferences updated',
       // TODO: Return actual saved preference
       preferredAiModel: parsed.data.preferredAiModel,
     });
+
+    return attachRequestIdHeader(response, requestId);
   })
 );
