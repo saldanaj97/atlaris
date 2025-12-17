@@ -13,7 +13,7 @@ This file provides guidance when working with code in this repository.
 - Notable deps:
   - Auth: @clerk/nextjs
   - Database: @neon/neon-js, @neon/ssr, drizzle-orm, drizzle-kit, drizzle-seed, postgres
-  - AI/LLM: @ai-sdk/google, @ai-sdk/openai, ai (Vercel AI SDK)
+  - AI/LLM: @ai-sdk/openai, @openrouter/sdk, ai (Vercel AI SDK) - OpenRouter is the sole AI provider
   - Payments: stripe
   - UI: @radix-ui/\*, lucide-react, next-themes, sonner, class-variance-authority, tailwind-merge
   - Utilities: zod, nanoid, p-retry, dotenv, date-fns, lru-cache, async-mutex

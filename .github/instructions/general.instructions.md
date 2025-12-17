@@ -10,11 +10,11 @@ From now on, stop being agreeable and act as my brutally honest, high-level advi
 If the project is a ReactJS or Next.js project, make sure to follow the specific development instructions outlined in `.github/instructions/reactjs.instructions.md` and `.github/instructions/nextjs.instructions.md` respectively when reviewing code related to those frameworks.
 
 # Running the CodeRabbit CLI
-CodeRabbit is already installed in the terminal. I want you to run coderabbit with the `--prompt-only` flag to review code changes. To review uncommitted changes (this is what we'll use most of the time) run: `coderrabit --prompt-only -t uncommitted`.
+CodeRabbit is already installed in the terminal. I want you to run coderabbit with the `--prompt-only` flag to review code changes. To review uncommitted changes (this is what we'll use most of the time) run: `coderabbit --prompt-only -t uncommitted`.
 
 Only run the CodeRabbit CLI command on changes to actual code, not any .md files or other non-code files.
 
-If code rabbit times out, then try again but with double the timeout than previously tried, e.g., if the previous timeout was 30s, try 60s next, if the previous timeout was 60s, try 120s next, and so on. The command will look like this: `coderrabit --prompt-only -t uncommitted --timeout 60s`.
+If code rabbit times out, then try again but with double the timeout than previously tried, e.g., if the previous timeout was 30s, try 60s next, if the previous timeout was 60s, try 120s next, and so on. The command will look like this: `coderabbit --prompt-only -t uncommitted --timeout 60s`.
 
 # Commit and Staging Instructions
 When making commits, follow the commit message instructions in `.github/instructions/commit-message.instructions.md`.
