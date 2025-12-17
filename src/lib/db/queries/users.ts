@@ -41,6 +41,7 @@ export async function createUser(userData: {
 
 // TODO: [OPENROUTER-MIGRATION] Add function to get user's preferred model:
 // export async function getUserPreferredModel(userId: string): Promise<string | null> {
+//   const db = getDb();
 //   const user = await db
 //     .select({ preferredAiModel: users.preferredAiModel })
 //     .from(users)
