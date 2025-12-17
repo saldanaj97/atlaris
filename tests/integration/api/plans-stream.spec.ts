@@ -8,6 +8,50 @@ import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
+/**
+ * Type for parsed streaming events
+ */
+type StreamingEvent = {
+  type: string;
+  data?: Record<string, unknown>;
+};
+
+/**
+ * Reads a streaming response and parses SSE events into an array.
+ * @param response - The Response object with a streaming body
+ * @returns Array of parsed streaming events
+ */
+async function readStreamingResponse(
+  response: Response
+): Promise<StreamingEvent[]> {
+  const reader = response.body?.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  if (!reader) {
+    throw new Error('Expected streaming response body');
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+  }
+
+  return buffer
+    .split('\n')
+    .map((line) => line.replace(/^data:\s*/, '').trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean) as StreamingEvent[];
+}
+
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
@@ -53,37 +97,8 @@ describe('POST /api/v1/plans/stream', () => {
     const response = await POST(request);
     expect(response.status).toBe(200);
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    if (!reader) {
-      throw new Error('Expected streaming response body');
-    }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-    }
-
-    const events = buffer
-      .split('\n')
-      .map((line) => line.replace(/^data:\s*/, '').trim())
-      .filter(Boolean)
-      .map((line) => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as Array<{
-      type: string;
-      data?: Record<string, unknown>;
-    }>;
-
-    const completeEvent = events.find((event) => event?.type === 'complete');
+    const events = await readStreamingResponse(response);
+    const completeEvent = events.find((event) => event.type === 'complete');
     expect(completeEvent?.data?.planId).toBeTruthy();
     const planId = completeEvent?.data?.planId as string;
 
@@ -136,37 +151,8 @@ describe('POST /api/v1/plans/stream', () => {
     const response = await POST(request);
     expect(response.status).toBe(200);
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    if (!reader) {
-      throw new Error('Expected streaming response body');
-    }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-    }
-
-    const events = buffer
-      .split('\n')
-      .map((line) => line.replace(/^data:\s*/, '').trim())
-      .filter(Boolean)
-      .map((line) => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as Array<{
-      type: string;
-      data?: Record<string, unknown>;
-    }>;
-
-    const completeEvent = events.find((event) => event?.type === 'complete');
+    const events = await readStreamingResponse(response);
+    const completeEvent = events.find((event) => event.type === 'complete');
     expect(completeEvent?.data?.planId).toBeTruthy();
   });
 
@@ -203,37 +189,8 @@ describe('POST /api/v1/plans/stream', () => {
     // Should succeed with default model fallback, not error
     expect(response.status).toBe(200);
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    if (!reader) {
-      throw new Error('Expected streaming response body');
-    }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-    }
-
-    const events = buffer
-      .split('\n')
-      .map((line) => line.replace(/^data:\s*/, '').trim())
-      .filter(Boolean)
-      .map((line) => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as Array<{
-      type: string;
-      data?: Record<string, unknown>;
-    }>;
-
-    const completeEvent = events.find((event) => event?.type === 'complete');
+    const events = await readStreamingResponse(response);
+    const completeEvent = events.find((event) => event.type === 'complete');
     expect(completeEvent?.data?.planId).toBeTruthy();
   });
 
@@ -266,37 +223,8 @@ describe('POST /api/v1/plans/stream', () => {
     const response = await POST(request);
     expect(response.status).toBe(200);
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    if (!reader) {
-      throw new Error('Expected streaming response body');
-    }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-    }
-
-    const events = buffer
-      .split('\n')
-      .map((line) => line.replace(/^data:\s*/, '').trim())
-      .filter(Boolean)
-      .map((line) => {
-        try {
-          return JSON.parse(line);
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as Array<{
-      type: string;
-      data?: Record<string, unknown>;
-    }>;
-
-    const completeEvent = events.find((event) => event?.type === 'complete');
+    const events = await readStreamingResponse(response);
+    const completeEvent = events.find((event) => event.type === 'complete');
     expect(completeEvent?.data?.planId).toBeTruthy();
   });
 });
