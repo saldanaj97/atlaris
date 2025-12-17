@@ -19,15 +19,7 @@ vi.mock('ai', async () => {
   };
 });
 
-// Mock provider factories
-vi.mock('@ai-sdk/google', () => {
-  const mockModel = vi.fn();
-  return {
-    createGoogleGenerativeAI: vi.fn(() => mockModel),
-    google: mockModel,
-  };
-});
-
+// Mock OpenAI provider (used by OpenRouter)
 vi.mock('@ai-sdk/openai', () => {
   const mockModel = vi.fn();
   return {
@@ -79,9 +71,8 @@ describe('Micro-explanations', () => {
         generate: vi.fn(),
       } as any;
 
-      // Set up environment variables for provider selection
-      process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'test-key';
-      process.env.AI_PRIMARY = 'gemini-1.5-flash';
+      // Set up environment variables for OpenRouter
+      process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     });
 
     it('returns formatted markdown from structured response', async () => {
@@ -136,32 +127,16 @@ describe('Micro-explanations', () => {
       expect(result).not.toContain('**Practice:**');
     });
 
-    it('falls back to OpenRouter provider when Google fails', async () => {
-      // Set OpenRouter env vars for fallback
-      process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-      process.env.AI_ENABLE_OPENROUTER = 'true';
-      // First on Google (fails)
-      vi.mocked(generateObject)
-        .mockRejectedValueOnce(new Error('Google provider failed'))
-        .mockResolvedValueOnce({
-          object: {
-            explanation: 'Fallback explanation from OpenRouter.',
-          },
-          usage: {
-            inputTokens: 50,
-            outputTokens: 20,
-            totalTokens: 70,
-          },
-        } as Awaited<ReturnType<typeof generateObject>>);
+    it('throws error when OpenRouter API key is not configured', async () => {
+      delete process.env.OPENROUTER_API_KEY;
 
-      const result = await generateMicroExplanation(mockProvider, {
-        topic: 'React Hooks',
-        taskTitle: 'Use useState',
-        skillLevel: 'beginner',
-      });
-
-      expect(generateObject).toHaveBeenCalledTimes(2);
-      expect(result).toContain('Fallback explanation from OpenRouter.');
+      await expect(
+        generateMicroExplanation(mockProvider, {
+          topic: 'React Hooks',
+          taskTitle: 'Use useState',
+          skillLevel: 'beginner',
+        })
+      ).rejects.toThrow('OpenRouter API key is not configured');
     });
 
     it('formats micro-explanation with practice exercise', () => {
