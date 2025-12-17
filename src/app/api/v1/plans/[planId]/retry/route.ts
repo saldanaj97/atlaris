@@ -17,6 +17,7 @@ import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { recordUsage } from '@/lib/db/usage';
+import { logger } from '@/lib/logging/logger';
 import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
@@ -184,7 +185,6 @@ export const POST = withErrorBoundary(
           await markPlanGenerationSuccess(plan.id);
           generationCompleted = true;
 
-          const usage = result.metadata?.usage;
           try {
             const usage = result.metadata?.usage;
             await recordUsage({
@@ -198,7 +198,8 @@ export const POST = withErrorBoundary(
             });
           } catch (usageError) {
             // Log but don't fail the stream - generation succeeded
-            console.error('Failed to record usage:', usageError);
+            logger.error('Failed to record usage after successful generation.');
+            logger.error(usageError);
           }
 
           emit({
@@ -233,7 +234,8 @@ export const POST = withErrorBoundary(
             });
           } catch (usageError) {
             // Log but don't fail the stream - generation already failed
-            console.error('Failed to record usage:', usageError);
+            logger.error('Failed to record usage after failed generation.');
+            logger.error(usageError);
           }
         }
 

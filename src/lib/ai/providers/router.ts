@@ -24,8 +24,7 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
   private readonly providers: (() => AiPlanGenerationProvider)[];
 
   constructor(cfg: RouterConfig = {}) {
-    const useMock =
-      cfg.useMock ?? (aiEnv.useMock === 'true' && !appEnv.isProduction);
+    const useMock = aiEnv.useMock === 'true' && !appEnv.isProduction;
 
     if (useMock) {
       this.providers = [() => new MockGenerationProvider()];
