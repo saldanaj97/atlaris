@@ -185,15 +185,21 @@ export const POST = withErrorBoundary(
           generationCompleted = true;
 
           const usage = result.metadata?.usage;
-          await recordUsage({
-            userId: user.id,
-            provider: result.metadata?.provider ?? 'unknown',
-            model: result.metadata?.model ?? 'unknown',
-            inputTokens: usage?.promptTokens ?? undefined,
-            outputTokens: usage?.completionTokens ?? undefined,
-            costCents: 0,
-            kind: 'plan',
-          });
+          try {
+            const usage = result.metadata?.usage;
+            await recordUsage({
+              userId: user.id,
+              provider: result.metadata?.provider ?? 'unknown',
+              model: result.metadata?.model ?? 'unknown',
+              inputTokens: usage?.promptTokens ?? undefined,
+              outputTokens: usage?.completionTokens ?? undefined,
+              costCents: 0,
+              kind: 'plan',
+            });
+          } catch (usageError) {
+            // Log but don't fail the stream - generation succeeded
+            console.error('Failed to record usage:', usageError);
+          }
 
           emit({
             type: 'complete',
@@ -214,16 +220,21 @@ export const POST = withErrorBoundary(
           await markPlanGenerationFailure(plan.id);
           generationCompleted = true;
 
-          const usage = result.metadata?.usage;
-          await recordUsage({
-            userId: user.id,
-            provider: result.metadata?.provider ?? 'unknown',
-            model: result.metadata?.model ?? 'unknown',
-            inputTokens: usage?.promptTokens ?? undefined,
-            outputTokens: usage?.completionTokens ?? undefined,
-            costCents: 0,
-            kind: 'plan',
-          });
+          try {
+            const usage = result.metadata?.usage;
+            await recordUsage({
+              userId: user.id,
+              provider: result.metadata?.provider ?? 'unknown',
+              model: result.metadata?.model ?? 'unknown',
+              inputTokens: usage?.promptTokens ?? undefined,
+              outputTokens: usage?.completionTokens ?? undefined,
+              costCents: 0,
+              kind: 'plan',
+            });
+          } catch (usageError) {
+            // Log but don't fail the stream - generation already failed
+            console.error('Failed to record usage:', usageError);
+          }
         }
 
         const message = formatGenerationError(
