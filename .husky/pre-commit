@@ -8,13 +8,12 @@ if [ -n "$STAGED_FILES" ]; then
   echo "$STAGED_FILES" | xargs git add
 fi
 
-# Skip ggshield when not configured
+# Skip ggshield when not installed
 echo "Running ggshield secret scan..."
 if ! command -v ggshield >/dev/null 2>&1; then
   echo "⚠️  ggshield not installed, skipping secret scan"
-elif [ -z "${GITGUARDIAN_API_KEY:-}" ]; then
-  echo "⚠️  GITGUARDIAN_API_KEY not set, skipping secret scan"
 else
+  # ggshield will use GITGUARDIAN_API_KEY if set, otherwise it uses local auth
   ggshield secret scan pre-commit
   if [ $? -ne 0 ]; then
     echo "❌ Secret scan failed, aborting commit"
