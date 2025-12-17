@@ -68,13 +68,20 @@ vi.mock('next/navigation', async (orig) => {
   };
 });
 
-// Mock createPlan API to avoid network/DB concerns in UI flow tests
-const createPlanMock = vi.fn();
-vi.mock('@/lib/api/plans', async (orig) => {
-  const actual: any = await (orig as any);
+// Mock the streaming hook to avoid network/DB concerns in UI flow tests
+const startGenerationMock = vi
+  .fn<(input: any) => Promise<string>>()
+  .mockResolvedValue('plan-test-id');
+vi.mock('@/hooks/useStreamingPlanGeneration', () => {
   return {
-    ...actual,
-    createPlan: (...args: any[]) => createPlanMock(...args),
+    useStreamingPlanGeneration: () => ({
+      state: {
+        status: 'idle',
+        modules: [],
+      },
+      startGeneration: startGenerationMock,
+      cancel: vi.fn(),
+    }),
   };
 });
 
@@ -115,7 +122,8 @@ describe('Onboarding date picker flow (E2E UI subset)', () => {
   beforeEach(() => {
     pushMock.mockReset();
     backMock.mockReset();
-    createPlanMock.mockReset();
+    startGenerationMock.mockReset();
+    startGenerationMock.mockResolvedValue('plan-test-id');
   });
 
   it('rejects a past deadline and does not submit', async () => {
@@ -159,7 +167,7 @@ describe('Onboarding date picker flow (E2E UI subset)', () => {
     fireEvent.click(submitBtn);
 
     // Expect no navigation and no API call on invalid dates
-    expect(createPlanMock).not.toHaveBeenCalled();
+    expect(startGenerationMock).not.toHaveBeenCalled();
     expect(pushMock).not.toHaveBeenCalled();
   });
 
@@ -200,20 +208,20 @@ describe('Onboarding date picker flow (E2E UI subset)', () => {
       target: { value: fmt(deadline) },
     });
 
-    createPlanMock.mockResolvedValueOnce({ id: 'plan-abc123' });
+    startGenerationMock.mockResolvedValueOnce('plan-abc123');
 
     const submitBtn = screen.getByRole('button', {
       name: /generate learning path/i,
     });
     fireEvent.click(submitBtn);
 
-    expect(createPlanMock).toHaveBeenCalledTimes(1);
+    expect(startGenerationMock).toHaveBeenCalledTimes(1);
     await waitFor(() =>
       expect(pushMock).toHaveBeenCalledWith('/plans/plan-abc123')
     );
 
     // Also assert the payload contained start/deadline
-    const payloadArg = createPlanMock.mock.calls[0]?.[0];
+    const payloadArg = startGenerationMock.mock.calls[0]?.[0];
     expect(payloadArg.startDate).toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(payloadArg.deadlineDate).toMatch(/\d{4}-\d{2}-\d{2}/);
   });
@@ -249,15 +257,15 @@ describe('Onboarding date picker flow (E2E UI subset)', () => {
       target: { value: deadlineStr },
     });
 
-    createPlanMock.mockResolvedValueOnce({ id: 'plan-def456' });
+    startGenerationMock.mockResolvedValueOnce('plan-def456');
 
     const submitBtn = screen.getByRole('button', {
       name: /generate learning path/i,
     });
     fireEvent.click(submitBtn);
 
-    expect(createPlanMock).toHaveBeenCalledTimes(1);
-    const payloadArg = createPlanMock.mock.calls[0]?.[0];
+    expect(startGenerationMock).toHaveBeenCalledTimes(1);
+    const payloadArg = startGenerationMock.mock.calls[0]?.[0];
     expect(payloadArg.startDate).toBe(todayStr);
     expect(payloadArg.deadlineDate).toBe(deadlineStr);
   });
