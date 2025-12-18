@@ -7,50 +7,10 @@ import { db } from '@/lib/db/service-role';
 
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
-
-/**
- * Type for parsed streaming events
- */
-type StreamingEvent = {
-  type: string;
-  data?: Record<string, unknown>;
-};
-
-/**
- * Reads a streaming response and parses SSE events into an array.
- * @param response - The Response object with a streaming body
- * @returns Array of parsed streaming events
- */
-async function readStreamingResponse(
-  response: Response
-): Promise<StreamingEvent[]> {
-  const reader = response.body?.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  if (!reader) {
-    throw new Error('Expected streaming response body');
-  }
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-  }
-
-  return buffer
-    .split('\n')
-    .map((line) => line.replace(/^data:\s*/, '').trim())
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean) as StreamingEvent[];
-}
+import {
+  readStreamingResponse,
+  type StreamingEvent,
+} from '../../helpers/streaming';
 
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -119,6 +79,62 @@ describe('POST /api/v1/plans/stream', () => {
     expect(moduleRows.length).toBeGreaterThan(0);
   });
 
+  it('marks plan failed on generation error', async () => {
+    const clerkUserId = `stream-failure-${Date.now()}`;
+    await ensureUser({ clerkUserId, email: `${clerkUserId}@example.com` });
+    setTestUser(clerkUserId);
+
+    // Mock the orchestrator to throw during generation
+    const orchestrator = await import('@/lib/ai/orchestrator');
+    vi.spyOn(orchestrator, 'runGenerationAttempt').mockImplementation(
+      async () => {
+        throw new Error('boom');
+      }
+    );
+
+    const payload = {
+      topic: 'Failing Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 1,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-01-01',
+      visibility: 'private',
+      origin: 'ai',
+    };
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+
+    let events: StreamingEvent[] = [];
+    try {
+      events = await readStreamingResponse(response);
+    } catch {
+      // Stream may error after marking failure; swallow the stream error
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    const startEvent = events.find((e) => e.type === 'plan_start');
+    expect(startEvent?.data?.planId).toBeTruthy();
+    const planId = startEvent?.data?.planId as string;
+
+    const [plan] = await db
+      .select()
+      .from(learningPlans)
+      .where(eq(learningPlans.id, planId))
+      .limit(1);
+
+    expect(plan?.generationStatus).toBe('failed');
+  });
+
   it('accepts valid model override via query param', async () => {
     const clerkUserId = `stream-model-override-${Date.now()}`;
     await ensureUser({
@@ -136,9 +152,10 @@ describe('POST /api/v1/plans/stream', () => {
       visibility: 'private',
     };
 
-    // Use a valid model override in the query param
+    // Use a different valid model to verify override is working
+    // (using a model different from the default AI_DEFAULT_MODEL)
     const request = new Request(
-      'http://localhost/api/v1/plans/stream?model=google/gemini-2.0-flash-exp:free',
+      'http://localhost/api/v1/plans/stream?model=openai/gpt-oss-20b:free',
       {
         method: 'POST',
         headers: {

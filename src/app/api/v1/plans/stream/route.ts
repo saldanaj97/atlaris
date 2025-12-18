@@ -129,7 +129,6 @@ export const POST = withErrorBoundary(
       emit(buildPlanStartEvent({ planId: plan.id, input: normalizedInput }));
 
       const startedAt = Date.now();
-      let generationCompleted = false;
 
       try {
         const result = await runGenerationAttempt(
@@ -144,19 +143,16 @@ export const POST = withErrorBoundary(
             startedAt,
             emit,
           });
-          generationCompleted = true;
           return;
         }
 
-        generationCompleted = await handleFailedGeneration(result, {
+        await handleFailedGeneration(result, {
           planId: plan.id,
           userId: user.id,
           emit,
         });
       } catch (error) {
-        if (!generationCompleted) {
-          await safeMarkPlanFailed(plan.id, user.id);
-        }
+        await safeMarkPlanFailed(plan.id, user.id);
         throw error;
       }
     });
