@@ -1,24 +1,19 @@
+import {
+  AI_DEFAULT_MODEL,
+  getModelsForTier,
+  isValidModelId,
+} from '@/lib/ai/ai-models';
+import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
 import { describe, expect, it } from 'vitest';
-import { z } from 'zod';
-
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
 
 /**
  * Unit tests for model validation logic used in API routes.
  * These tests verify the behavior of model ID validation and parsing
  * without requiring database or authentication.
+ *
+ * The schema is imported from the shared validation module to ensure
+ * tests stay in sync with production validation.
  */
-
-/**
- * Schema recreated here for isolated unit testing.
- * Note: This mirrors the schema in src/app/api/v1/user/preferences/route.ts.
- * If the production schema changes, this test schema should be updated to match.
- */
-const updatePreferencesSchema = z.object({
-  preferredAiModel: z.string().refine(isValidModelId, {
-    message: 'Invalid model ID',
-  }),
-});
 
 describe('Model Validation (API Layer)', () => {
   describe('Model override query param parsing', () => {
@@ -53,7 +48,7 @@ describe('Model Validation (API Layer)', () => {
     });
   });
 
-  describe('Model override validation logic', () => {
+  describe('Model override validation logic (without tier-gating)', () => {
     it('uses override when valid model ID is provided', () => {
       const modelOverride = 'google/gemini-2.0-flash-exp:free';
       const model =
@@ -87,6 +82,64 @@ describe('Model Validation (API Layer)', () => {
         modelOverride && isValidModelId(modelOverride)
           ? modelOverride
           : AI_DEFAULT_MODEL;
+      expect(model).toBe(AI_DEFAULT_MODEL);
+    });
+  });
+
+  describe('Tier-gated model override validation (production logic)', () => {
+    /**
+     * Helper that mirrors the production tier-gating logic from route.ts
+     */
+    function resolveModel(
+      modelOverride: string | null,
+      userTier: 'free' | 'starter' | 'pro'
+    ): string {
+      const allowedModels = getModelsForTier(userTier);
+      return modelOverride &&
+        isValidModelId(modelOverride) &&
+        allowedModels.some((m) => m.id === modelOverride)
+        ? modelOverride
+        : AI_DEFAULT_MODEL;
+    }
+
+    it('allows free-tier model for free user', () => {
+      const model = resolveModel('google/gemini-2.0-flash-exp:free', 'free');
+      expect(model).toBe('google/gemini-2.0-flash-exp:free');
+    });
+
+    it('allows free-tier model for pro user', () => {
+      const model = resolveModel('google/gemini-2.0-flash-exp:free', 'pro');
+      expect(model).toBe('google/gemini-2.0-flash-exp:free');
+    });
+
+    it('allows pro-tier model for pro user', () => {
+      const model = resolveModel('anthropic/claude-sonnet-4.5', 'pro');
+      expect(model).toBe('anthropic/claude-sonnet-4.5');
+    });
+
+    it('BLOCKS pro-tier model for free user - falls back to default', () => {
+      // This is the critical security test: free users cannot use expensive models
+      const model = resolveModel('anthropic/claude-sonnet-4.5', 'free');
+      expect(model).toBe(AI_DEFAULT_MODEL);
+    });
+
+    it('BLOCKS pro-tier model for starter user - falls back to default', () => {
+      const model = resolveModel('openai/gpt-5.2', 'starter');
+      expect(model).toBe(AI_DEFAULT_MODEL);
+    });
+
+    it('falls back to default when invalid model ID is provided', () => {
+      const model = resolveModel('invalid/model-id', 'pro');
+      expect(model).toBe(AI_DEFAULT_MODEL);
+    });
+
+    it('falls back to default when null is provided', () => {
+      const model = resolveModel(null, 'free');
+      expect(model).toBe(AI_DEFAULT_MODEL);
+    });
+
+    it('falls back to default when empty string is provided', () => {
+      const model = resolveModel('', 'pro');
       expect(model).toBe(AI_DEFAULT_MODEL);
     });
   });

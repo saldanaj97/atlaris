@@ -3,8 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { clientLogger } from '@/lib/logging/client';
+import { parseEventLine } from '@/lib/streaming/parse-event';
 
 type RetryStatus = 'idle' | 'retrying' | 'success' | 'error';
 
@@ -17,30 +17,6 @@ interface UseRetryGenerationReturn {
 
 // Client-side debounce: minimum seconds between retry attempts
 const RETRY_COOLDOWN_MS = 5000;
-
-const parseEventLine = (line: string): StreamingEvent | null => {
-  const trimmed = line.trim();
-  if (!trimmed) return null;
-  const payload = trimmed.startsWith('data:')
-    ? trimmed.slice('data:'.length).trim()
-    : trimmed;
-  if (!payload) return null;
-  try {
-    const parsed: unknown = JSON.parse(payload);
-    // Validate minimal event structure before casting
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'type' in parsed &&
-      typeof parsed.type === 'string'
-    ) {
-      return parsed as StreamingEvent;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
 
 /**
  * Hook for retrying failed plan generation.
@@ -64,7 +40,6 @@ export function useRetryGeneration(
   const [status, setStatus] = useState<RetryStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [cooldownActive, setCooldownActive] = useState(false);
-  const lastRetryRef = useRef<number>(0);
   const abortRef = useRef<AbortController | null>(null);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -96,7 +71,6 @@ export function useRetryGeneration(
     abortRef.current = controller;
 
     // Start cooldown
-    lastRetryRef.current = Date.now();
     setCooldownActive(true);
 
     // Clear any existing cooldown timer

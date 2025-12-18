@@ -1,4 +1,8 @@
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
+import {
+  AI_DEFAULT_MODEL,
+  getModelsForTier,
+  isValidModelId,
+} from '@/lib/ai/ai-models';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import {
   getGenerationProvider,
@@ -101,17 +105,17 @@ export const POST = withErrorBoundary(
     // TODO: [OPENROUTER-MIGRATION] Once preferredAiModel column exists:
     // const userPreferredModel = user.preferredAiModel;
 
-    // TODO: [OPENROUTER-MIGRATION] Implement tier-gating:
-    // const allowedModels = getModelsForTier(userTier);
-    // const model = userPreferredModel && allowedModels.some(m => m.id === userPreferredModel)
-    //   ? userPreferredModel
-    //   : DEFAULT_MODEL;
-
-    // Allow explicit model override via query param (useful for testing/future use)
+    // TODO: Verify passing model as query param is safe and does not open abuse vectors
+    // Tier-gated model selection: only allow models the user's tier permits
+    const allowedModels = getModelsForTier(userTier);
     const url = new URL(req.url);
     const modelOverride = url.searchParams.get('model');
+
+    // Validate model override against user's tier-allowed models
     const model =
-      modelOverride && isValidModelId(modelOverride)
+      modelOverride &&
+      isValidModelId(modelOverride) &&
+      allowedModels.some((m) => m.id === modelOverride)
         ? modelOverride
         : AI_DEFAULT_MODEL;
 

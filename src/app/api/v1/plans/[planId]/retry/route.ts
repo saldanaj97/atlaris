@@ -3,7 +3,6 @@ import { count, eq } from 'drizzle-orm';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { jsonError } from '@/lib/api/response';
@@ -14,6 +13,7 @@ import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 
 import {
+  buildPlanStartEvent,
   handleFailedGeneration,
   handleSuccessfulGeneration,
   safeMarkPlanFailed,
@@ -108,31 +108,22 @@ export const POST = withErrorBoundary(
 
     const generationInput = {
       topic: planTopic,
-      notes: null, // Notes are not stored on the plan currently
+      // Notes are not stored on the plan currently
+      notes: undefined as string | undefined,
       skillLevel: planSkillLevel,
       weeklyHours: planWeeklyHours,
       learningStyle: planLearningStyle,
-      startDate: planStartDate,
-      deadlineDate: planDeadlineDate,
+      startDate: planStartDate ?? undefined,
+      deadlineDate: planDeadlineDate ?? undefined,
     };
 
-    function buildPlanStartEvent(): StreamingEvent {
-      return {
-        type: 'plan_start',
-        data: {
-          planId,
-          topic: planTopic,
-          skillLevel: planSkillLevel,
-          learningStyle: planLearningStyle,
-          weeklyHours: planWeeklyHours,
-          startDate: planStartDate ?? null,
-          deadlineDate: planDeadlineDate ?? null,
-        },
-      };
-    }
-
     const stream = createEventStream(async (emit) => {
-      emit(buildPlanStartEvent());
+      emit(
+        buildPlanStartEvent({
+          planId,
+          input: { ...generationInput, visibility: 'private', origin: 'ai' },
+        })
+      );
 
       const startedAt = Date.now();
 

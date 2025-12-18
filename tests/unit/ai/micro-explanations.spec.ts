@@ -8,7 +8,7 @@ import {
 } from '@/lib/ai/prompts';
 import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
 import { generateObject } from 'ai';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the AI SDK
 vi.mock('ai', async () => {
@@ -76,7 +76,11 @@ describe('Micro-explanations', () => {
       } as any;
 
       // Set up environment variables for OpenRouter
-      process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+      vi.stubEnv('OPENROUTER_API_KEY', 'test-openrouter-key');
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
     });
 
     it('returns formatted markdown from structured response', async () => {

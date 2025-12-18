@@ -35,16 +35,46 @@ export async function readStreamingResponse(
     buffer += decoder.decode(value, { stream: true });
   }
 
-  return buffer
-    .split('\n')
-    .map((line) => line.replace(/^data:\s*/, '').trim())
-    .filter(Boolean)
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {
-        return null;
+  // Split events by blank lines (supports \r\n\r\n and \n\n)
+  const rawEvents = buffer
+    .split(/\r?\n\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const events: StreamingEvent[] = [];
+
+  for (const raw of rawEvents) {
+    let eventType = 'message';
+    const dataLines: string[] = [];
+    const lines = raw.split(/\r?\n/);
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventType = line.replace(/^event:\s*/, '').trim();
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.replace(/^data:\s*/, ''));
+      } else if (line.startsWith('id:')) {
+        // ignore id for now
+      } else {
+        // fallback: treat as data line
+        if (line.trim()) dataLines.push(line.trim());
       }
-    })
-    .filter(Boolean) as StreamingEvent[];
+    }
+
+    if (dataLines.length === 0) continue;
+
+    const dataPayload = dataLines.join('\n').trim();
+
+    try {
+      const parsed = JSON.parse(dataPayload);
+      events.push({
+        type: typeof parsed?.type === 'string' ? parsed.type : eventType,
+        data: parsed,
+      });
+    } catch {
+      // ignore unparsable event
+    }
+  }
+
+  return events;
 }

@@ -26,6 +26,8 @@ export type AvailableModel = {
   tier: ModelTier;
   /** Context window size in tokens */
   contextWindow: number;
+  /** Maximum output tokens the model will produce */
+  maxOutputTokens?: number;
   /** Input cost per million tokens (USD) - 0 for free models */
   inputCostPerMillion: number;
   /** Output cost per million tokens (USD) - 0 for free models */

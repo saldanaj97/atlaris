@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-// Maximum attempts allowed for retry (imported from shared constants, must match server-side ATTEMPT_CAP)
+// Maximum retry attempts (shared constant used by both client and server)
 const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;
 
 interface PlanPendingStateProps {

@@ -56,16 +56,21 @@ async function generateWithOpenRouter(
     throw new Error('OpenRouter API key is not configured');
   }
 
-  // baseUrl getter already provides default 'https://openrouter.ai/api/v1'
-  const headers: Record<string, string> = {};
-  if (siteUrl) headers['HTTP-Referer'] = siteUrl;
-  if (appName) headers['X-Title'] = appName;
+  const openai = createOpenRouterClient(apiKey, baseUrl, siteUrl, appName);
 
-  const openai = createOpenAI({
-    apiKey,
-    baseURL: baseUrl,
-    headers,
-  });
+  // Helper: create an OpenRouter-backed OpenAI client with standard headers
+  function createOpenRouterClient(
+    apiKey: string,
+    baseURL: string,
+    siteUrl?: string,
+    appName?: string
+  ) {
+    const headers: Record<string, string> = {};
+    if (siteUrl) headers['HTTP-Referer'] = siteUrl;
+    if (appName) headers['X-Title'] = appName;
+
+    return createOpenAI({ apiKey, baseURL, headers });
+  }
 
   const { object } = await generateObject({
     model: openai(config.model),

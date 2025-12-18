@@ -290,6 +290,8 @@ export const aiTimeoutEnv = {
   },
 } as const;
 
+const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
+
 /**
  * OpenRouter API configuration.
  * Provides API key, base URL, and HTTP headers for the OpenRouter service.
@@ -307,7 +309,7 @@ export const openRouterEnv = {
   /** Base URL for OpenRouter API, defaults to official endpoint */
   get baseUrl() {
     return (
-      getServerOptional('OPENROUTER_BASE_URL') ?? 'https://openrouter.ai/api/v1'
+      getServerOptional('OPENROUTER_BASE_URL') ?? OPENROUTER_DEFAULT_BASE_URL
     );
   },
 } as const;

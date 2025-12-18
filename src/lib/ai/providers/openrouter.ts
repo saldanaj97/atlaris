@@ -50,6 +50,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
   }
 
   // TODO: Implement streaming support in a follow-up for better UX with large plans
+  // NOTE: Track this improvement in an issue to follow up on streaming behavior.
   async generate(
     input: GenerationInput,
     _options?: GenerationOptions

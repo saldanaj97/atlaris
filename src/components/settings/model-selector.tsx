@@ -11,8 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AVAILABLE_MODELS, getModelsForTier } from '@/lib/ai/ai-models';
-import type { SubscriptionTier } from '@/lib/ai/types';
+import { getModelsForTier } from '@/lib/ai/ai-models';
+import type { AvailableModel, SubscriptionTier } from '@/lib/ai/types';
 import { logger } from '@/lib/logging/logger';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
@@ -23,30 +23,31 @@ interface ModelSelectorProps {
   onSave?: (modelId: string) => Promise<void>;
 }
 
-export function ModelSelector({
-  currentModel,
+interface ModelDropdownProps {
+  availableModels: AvailableModel[];
+  userTier: SubscriptionTier;
+  currentModel: string | null;
+  onSave?: (modelId: string) => Promise<void>;
+}
+
+const ModelDropdown = ({
+  availableModels,
   userTier,
+  currentModel,
   onSave,
-}: ModelSelectorProps) {
+}: ModelDropdownProps) => {
   const [selectedModel, setSelectedModel] = useState<string>(
-    currentModel ?? AVAILABLE_MODELS[0]?.id ?? ''
+    currentModel ?? availableModels[0]?.id ?? ''
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<
     'idle' | 'success' | 'error' | 'upgradeRequired'
   >('idle');
 
-  // Filter models by user's tier using centralized utility
-  const availableModels = getModelsForTier(userTier);
-
-  const selectedModelData = AVAILABLE_MODELS.find(
-    (m) => m.id === selectedModel
-  );
-
   // Ref to track timeout for cleanup
   const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup timeout on unmount
+  // Cleanup the timeout on unmount
   useEffect(() => {
     return () => {
       if (statusTimeoutRef.current) {
@@ -54,6 +55,8 @@ export function ModelSelector({
       }
     };
   }, []);
+
+  const selectedModelData = availableModels.find((m) => m.id === selectedModel);
 
   const handleSave = async () => {
     if (!selectedModelData) return;
@@ -145,8 +148,11 @@ export function ModelSelector({
               <div>
                 <p className="text-muted-foreground text-xs">Max Output</p>
                 <p className="text-sm font-medium">
-                  {(selectedModelData.contextWindow / 1000 / 2).toFixed(0)}K
-                  tokens
+                  {(
+                    (selectedModelData.maxOutputTokens ??
+                      selectedModelData.contextWindow / 2) / 1000
+                  ).toFixed(0)}
+                  K tokens
                 </p>
               </div>
               <div>
@@ -192,7 +198,7 @@ export function ModelSelector({
       <Button
         onClick={() => void handleSave()}
         disabled={!hasChanges || isSaving}
-        className={cn('w-full', !hasChanges && 'opacity-50')}
+        className={cn('w-full', { 'opacity-50': !hasChanges })}
       >
         {isSaving ? 'Saving...' : 'Save Preferences'}
       </Button>
@@ -211,5 +217,32 @@ export function ModelSelector({
         </div>
       )}
     </div>
+  );
+};
+
+export function ModelSelector({
+  userTier,
+  currentModel = null,
+  onSave,
+}: ModelSelectorProps) {
+  // Filter models by user's tier using centralized utility
+  const availableModels = getModelsForTier(userTier);
+
+  // Handle edge case with no available models
+  if (availableModels.length === 0) {
+    return (
+      <div className="text-muted-foreground">
+        No models available for your tier.
+      </div>
+    );
+  }
+
+  return (
+    <ModelDropdown
+      availableModels={availableModels}
+      userTier={userTier}
+      currentModel={currentModel ?? availableModels[0]?.id}
+      onSave={onSave}
+    />
   );
 }

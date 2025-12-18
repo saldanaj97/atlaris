@@ -178,7 +178,7 @@ export async function tryRecordUsage(
       model: result.metadata?.model ?? 'unknown',
       inputTokens: usage?.promptTokens ?? undefined,
       outputTokens: usage?.completionTokens ?? undefined,
-      costCents: 0,
+      costCents: 0, // TODO: Calculate actual cost based on model pricing
       kind: 'plan',
     });
   } catch (usageError) {

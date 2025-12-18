@@ -297,6 +297,10 @@ export default function OnboardingForm() {
         errorWithStatus.data?.planId ??
         planIdRef.current;
 
+      // Note: We may enter this catch even when HTTP status was 200 because
+      // streaming or parsing errors can occur after a successful response. In
+      // that case we still want to redirect to the created plan so users can
+      // retry from the plan page.
       // If plan was created but generation failed, redirect to plan page
       // The plan page will show the failed state with a retry button
       if (

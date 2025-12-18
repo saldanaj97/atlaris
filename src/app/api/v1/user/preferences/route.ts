@@ -1,6 +1,4 @@
-import { z } from 'zod';
-
-import { AVAILABLE_MODELS, isValidModelId } from '@/lib/ai/ai-models';
+import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
@@ -9,12 +7,7 @@ import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
-
-const updatePreferencesSchema = z.object({
-  preferredAiModel: z.string().refine(isValidModelId, {
-    message: 'Invalid model ID',
-  }),
-});
+import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
 
 /**
  * GET /api/v1/user/preferences

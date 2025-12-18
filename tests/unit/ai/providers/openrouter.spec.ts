@@ -17,6 +17,8 @@ vi.mock('@openrouter/sdk', () => ({
   })),
 }));
 
+import { OpenRouter } from '@openrouter/sdk';
+
 // Default test model for OpenRouter tests
 const TEST_MODEL = 'google/gemini-2.0-flash-exp:free';
 
@@ -111,16 +113,13 @@ async function collectStream(stream: AsyncIterable<string>): Promise<string> {
 }
 
 describe('OpenRouterProvider', () => {
-  let originalEnv: NodeJS.ProcessEnv;
-
   beforeEach(() => {
-    originalEnv = { ...process.env };
-    process.env.OPENROUTER_API_KEY = 'test-api-key';
     vi.clearAllMocks();
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   describe('constructor', () => {
@@ -138,20 +137,20 @@ describe('OpenRouterProvider', () => {
       );
     });
 
-    it('creates client with API key from environment', async () => {
-      const { OpenRouter } = vi.mocked(await import('@openrouter/sdk'));
+    it('creates client with API key from environment', () => {
+      const OpenRouterMock = vi.mocked(OpenRouter);
 
       new OpenRouterProvider({ model: TEST_MODEL });
 
-      expect(OpenRouter).toHaveBeenCalledWith(
+      expect(OpenRouterMock).toHaveBeenCalledWith(
         expect.objectContaining({
           apiKey: 'test-api-key',
         })
       );
     });
 
-    it('creates client with custom config', async () => {
-      const { OpenRouter } = vi.mocked(await import('@openrouter/sdk'));
+    it('creates client with custom config', () => {
+      const OpenRouterMock = vi.mocked(OpenRouter);
 
       const config: OpenRouterProviderConfig = {
         apiKey: 'custom-api-key',
@@ -163,7 +162,7 @@ describe('OpenRouterProvider', () => {
 
       new OpenRouterProvider(config);
 
-      expect(OpenRouter).toHaveBeenCalledWith(
+      expect(OpenRouterMock).toHaveBeenCalledWith(
         expect.objectContaining({
           apiKey: 'custom-api-key',
           siteUrl: 'https://myapp.com',

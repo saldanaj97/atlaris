@@ -41,13 +41,11 @@ export default async function AISettingsPage() {
               currentModel={userPreferredModel}
               userTier={userTier}
               // TODO: [OPENROUTER-MIGRATION] Implement onSave when API is ready
-              onSave={() => {
-                // Placeholder until DB column exists - will show error state in UI
-                return Promise.reject(
-                  new Error('Model preference saving is not yet implemented')
-                );
-              }}
+              onSave={undefined}
             />
+            <p className="text-muted-foreground mt-2 text-sm">
+              Model preference saving will be available soon.
+            </p>
           </Card>
 
           <Card className="p-6">

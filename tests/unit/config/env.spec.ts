@@ -1,3 +1,4 @@
+import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
 import { aiEnv, appEnv, optionalEnv, requireEnv } from '@/lib/config/env';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -178,17 +179,17 @@ describe('Environment Configuration', () => {
 
       it('should return fallback when AI_DEFAULT_MODEL is not set', () => {
         delete process.env.AI_DEFAULT_MODEL;
-        expect(aiEnv.defaultModel).toBe('google/gemini-2.0-flash-exp:free');
+        expect(aiEnv.defaultModel).toBe(AI_DEFAULT_MODEL);
       });
 
       it('should return fallback when AI_DEFAULT_MODEL is empty', () => {
         process.env.AI_DEFAULT_MODEL = '';
-        expect(aiEnv.defaultModel).toBe('google/gemini-2.0-flash-exp:free');
+        expect(aiEnv.defaultModel).toBe(AI_DEFAULT_MODEL);
       });
 
       it('should return fallback when AI_DEFAULT_MODEL is whitespace', () => {
         process.env.AI_DEFAULT_MODEL = '   ';
-        expect(aiEnv.defaultModel).toBe('google/gemini-2.0-flash-exp:free');
+        expect(aiEnv.defaultModel).toBe(AI_DEFAULT_MODEL);
       });
     });
 
