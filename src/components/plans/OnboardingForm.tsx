@@ -663,7 +663,7 @@ export default function OnboardingForm() {
         </Card>
       </div>
 
-      {streamingState.status !== 'idle' ? (
+      {streamingState.status !== 'idle' && (
         <div className="container mx-auto max-w-2xl px-6 pb-12">
           <PlanDraftView
             state={streamingState}
@@ -673,7 +673,7 @@ export default function OnboardingForm() {
             }}
           />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
