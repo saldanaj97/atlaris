@@ -1,3 +1,6 @@
+import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
+import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
+
 type NodeEnv = 'development' | 'production' | 'test';
 
 const normalize = (value: string | undefined | null): string | undefined => {
@@ -6,6 +9,7 @@ const normalize = (value: string | undefined | null): string | undefined => {
   return trimmed === '' ? undefined : trimmed;
 };
 
+// TODO: Consider using zod for parsing and validation of numeric env vars
 function toNumber(value: string | undefined): number | undefined;
 function toNumber(value: string | undefined, fallback: number): number;
 function toNumber(
@@ -16,11 +20,6 @@ function toNumber(
   const parsed = Number(value);
   return Number.isNaN(parsed) ? fallback : parsed;
 }
-
-const toBoolean = (value: string | undefined, fallback: boolean): boolean => {
-  if (value === undefined) return fallback;
-  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
-};
 
 export function optionalEnv(key: string): string | undefined {
   return normalize(process.env[key]);
@@ -243,15 +242,6 @@ export const stripeEnv = {
   },
 } as const;
 
-export const workerEnv = {
-  get pollIntervalMs() {
-    return toNumber(getServerOptional('WORKER_POLL_INTERVAL_MS'), 2000);
-  },
-  get concurrency() {
-    return toNumber(getServerOptional('WORKER_CONCURRENCY'), 1);
-  },
-} as const;
-
 export const aiEnv = {
   get provider() {
     const raw = getServerOptional('AI_PROVIDER');
@@ -272,20 +262,12 @@ export const aiEnv = {
       return toNumber(getServerOptional('MOCK_GENERATION_FAILURE_RATE'));
     },
   },
-  get deterministicOverflowModel() {
-    return getServerOptional('AI_OVERFLOW');
-  },
-  get enableOpenRouter() {
-    return toBoolean(getServerOptional('AI_ENABLE_OPENROUTER'), false);
-  },
-  get primaryModel() {
-    return getServerOptional('AI_PRIMARY');
-  },
-  get fallbackModel() {
-    return getServerOptional('AI_FALLBACK');
-  },
-  get maxOutputTokens() {
-    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'));
+  /**
+   * Default AI model for plan generation.
+   * AI_DEFAULT_MODEL env var overrides the hardcoded default from ai-models.ts.
+   */
+  get defaultModel() {
+    return getServerOptional('AI_DEFAULT_MODEL') ?? AI_DEFAULT_MODEL;
   },
 } as const;
 
@@ -308,61 +290,12 @@ export const aiTimeoutEnv = {
   },
 } as const;
 
-export const aiMicroExplanationEnv = {
-  get googleApiKey() {
-    return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
-  },
-  cloudflare: {
-    get apiToken() {
-      return getServerOptional('CF_API_TOKEN');
-    },
-    get apiKey() {
-      return getServerOptional('CF_API_KEY');
-    },
-    get accountId() {
-      return getServerOptional('CF_ACCOUNT_ID');
-    },
-    get gatewayUrl() {
-      return getServerOptional('CF_AI_GATEWAY');
-    },
-  },
-  openRouter: {
-    get apiKey() {
-      return getServerOptional('OPENROUTER_API_KEY');
-    },
-    get baseUrl() {
-      return (
-        getServerOptional('OPENROUTER_BASE_URL') ??
-        'https://openrouter.ai/api/v1'
-      );
-    },
-    get siteUrl() {
-      return getServerOptional('OPENROUTER_SITE_URL');
-    },
-    get appName() {
-      return getServerOptional('OPENROUTER_APP_NAME');
-    },
-  },
-  get microExplanationMaxTokens() {
-    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_MAX_TOKENS'), 200);
-  },
-  get microExplanationTemperature() {
-    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4);
-  },
-  get primaryModel() {
-    return getServerOptional('AI_PRIMARY') ?? 'gemini-1.5-flash';
-  },
-  get fallbackModel() {
-    return getServerOptional('AI_FALLBACK') ?? '@cf/meta/llama-3.1-8b-instruct';
-  },
-  get overflowModel() {
-    return getServerOptional('AI_OVERFLOW') ?? 'google/gemini-2.0-pro-exp';
-  },
-  get enableOpenRouter() {
-    return toBoolean(getServerOptional('AI_ENABLE_OPENROUTER'), false);
-  },
-} as const;
+const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 
+/**
+ * OpenRouter API configuration.
+ * Provides API key, base URL, and HTTP headers for the OpenRouter service.
+ */
 export const openRouterEnv = {
   get apiKey() {
     return getServerOptional('OPENROUTER_API_KEY');
@@ -373,35 +306,36 @@ export const openRouterEnv = {
   get appName() {
     return getServerOptional('OPENROUTER_APP_NAME');
   },
+  /** Base URL for OpenRouter API, defaults to official endpoint */
   get baseUrl() {
-    return getServerOptional('OPENROUTER_BASE_URL');
-  },
-  get maxOutputTokens() {
-    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'), 1200);
+    return (
+      getServerOptional('OPENROUTER_BASE_URL') ?? OPENROUTER_DEFAULT_BASE_URL
+    );
   },
 } as const;
 
-export const cloudflareAiEnv = {
-  get apiToken() {
-    return getServerOptional('CF_API_TOKEN');
+export const aiMicroExplanationEnv = {
+  get googleApiKey() {
+    return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
   },
-  get apiKey() {
-    return getServerOptional('CF_API_KEY');
+  /**
+   * OpenRouter configuration for micro-explanations.
+   * Reuses the shared openRouterEnv configuration.
+   */
+  get openRouter() {
+    return openRouterEnv;
   },
-  get accountId() {
-    return getServerOptional('CF_ACCOUNT_ID');
+  get microExplanationMaxTokens() {
+    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_MAX_TOKENS'), 200);
   },
-  get gatewayUrl() {
-    return getServerOptional('CF_AI_GATEWAY');
+  get microExplanationTemperature() {
+    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4);
   },
 } as const;
 
 export const googleAiEnv = {
   get apiKey() {
     return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
-  },
-  get maxOutputTokens() {
-    return toNumber(getServerOptional('AI_MAX_OUTPUT_TOKENS'), 1200);
   },
 } as const;
 
@@ -419,7 +353,7 @@ export const devClerkEnv = {
 
 export const attemptsEnv = {
   get cap() {
-    return toNumber(getServerOptional('ATTEMPT_CAP'), 3);
+    return toNumber(getServerOptional('ATTEMPT_CAP'), DEFAULT_ATTEMPT_CAP);
   },
 } as const;
 

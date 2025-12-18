@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   computeCapacity,
-  trimModulesToCapacity,
   pacePlan,
+  trimModulesToCapacity,
   type PacingParams,
 } from '@/lib/ai/pacing';
 import type { ParsedModule, ParsedTask } from '@/lib/ai/parser';
 import type { GenerationInput } from '@/lib/ai/provider';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('pacing module', () => {
   beforeEach(() => {
@@ -202,7 +202,7 @@ describe('pacing module', () => {
   describe('pacePlan', () => {
     const mockInput: GenerationInput = {
       topic: 'test',
-      learningStyle: 'visual',
+      learningStyle: 'video',
       skillLevel: 'intermediate',
       weeklyHours: 5,
       startDate: '2024-01-01',

@@ -1,10 +1,37 @@
 import { aiEnv, appEnv } from '@/lib/config/env';
-import type { AiPlanGenerationProvider } from './provider';
 import { MockGenerationProvider } from './providers/mock';
 import { RouterGenerationProvider } from './providers/router';
+import type { AiPlanGenerationProvider } from './types/provider.types';
+
+/**
+ * Creates a generation provider configured with a specific model.
+ * Used when a user has selected a preferred model or when explicitly specifying a model.
+ *
+ * @param modelId - OpenRouter model ID (e.g., 'google/gemini-2.0-flash-exp:free')
+ * @returns An instance implementing `AiPlanGenerationProvider`
+ */
+export function getGenerationProviderWithModel(
+  modelId: string
+): AiPlanGenerationProvider {
+  // In test environment, still respect mock settings
+  if (appEnv.isTest) {
+    const providerType = aiEnv.provider;
+    if (providerType === 'mock' || aiEnv.useMock !== 'false') {
+      return new MockGenerationProvider({
+        deterministicSeed:
+          typeof aiEnv.mockSeed === 'number' ? aiEnv.mockSeed : undefined,
+      });
+    }
+  }
+
+  // TODO: Validate modelId against AVAILABLE_MODELS and user's tier
+  // For now, pass through to RouterGenerationProvider
+  return new RouterGenerationProvider({ model: modelId });
+}
 
 /**
  * Selects and returns an AI generation provider implementation based on environment configuration.
+ * Uses the default model when no specific model is requested.
  *
  * Prioritizes an explicit `AI_PROVIDER`, prefers mock providers in development and most test scenarios
  * (unless `AI_USE_MOCK` is explicitly `"false"`), and defaults to a router-based provider for production.
@@ -51,6 +78,8 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
       deterministicSeed,
     });
   }
-  // Default to router for real usage with failover
-  return new RouterGenerationProvider();
+  // Default to router with default model for real usage
+  return new RouterGenerationProvider({
+    model: aiEnv.defaultModel,
+  });
 }

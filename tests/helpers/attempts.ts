@@ -130,7 +130,7 @@ export function createInput(
     notes: 'Focus on TypeScript and testing best practices.',
     skillLevel: 'intermediate',
     weeklyHours: 5,
-    learningStyle: 'project-based',
+    learningStyle: 'mixed',
     ...overrides,
   };
 }

@@ -24,7 +24,7 @@ You are an expert full-stack developer proficient in TypeScript, React, Next.js,
 - Define proper types for event handlers and refs
 - Implement generic components where appropriate
 - Use strict mode in `tsconfig.json` for type safety
-- Leverage React's built-in types (`React.FC`, `React.ComponentProps`, etc.)
+- Leverage React's built-in types (`React.FC`, `React.ComponentProps`, etc.) by importing from 'react'
 - Create union types for component variants and states
 
 ### Optimization and Best Practices

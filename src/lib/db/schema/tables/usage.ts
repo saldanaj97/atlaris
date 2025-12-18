@@ -71,6 +71,10 @@ export const aiUsageEvents = pgTable(
     inputTokens: integer('input_tokens').notNull().default(0),
     outputTokens: integer('output_tokens').notNull().default(0),
     costCents: integer('cost_cents').notNull().default(0),
+    // TODO: [OPENROUTER-MIGRATION] Consider adding these fields for better cost tracking:
+    // estimatedCostCents: integer('estimated_cost_cents'), // OpenRouter provides cost data in responses
+    // modelPricingSnapshot: jsonb('model_pricing_snapshot'), // Cache pricing at request time for historical accuracy
+    // This would help track actual costs vs. estimates and preserve pricing even if model costs change later
     requestId: text('request_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()

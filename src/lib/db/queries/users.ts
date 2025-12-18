@@ -26,3 +26,25 @@ export async function createUser(userData: {
   const result = await db.insert(users).values(userData).returning();
   return result[0];
 }
+
+// TODO: [OPENROUTER-MIGRATION] Add function when preferredAiModel column exists:
+// export async function updateUserModelPreference(
+//   userId: string,
+//   modelId: string
+// ): Promise<void> {
+//   const db = getDb();
+//   await db
+//     .update(users)
+//     .set({ preferredAiModel: modelId })
+//     .where(eq(users.id, userId));
+// }
+
+// TODO: [OPENROUTER-MIGRATION] Add function to get user's preferred model:
+// export async function getUserPreferredModel(userId: string): Promise<string | null> {
+//   const db = getDb();
+//   const user = await db
+//     .select({ preferredAiModel: users.preferredAiModel })
+//     .from(users)
+//     .where(eq(users.id, userId));
+//   return user[0]?.preferredAiModel ?? null;
+// }

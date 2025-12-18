@@ -1,16 +1,19 @@
+import { count, desc, eq } from 'drizzle-orm';
+
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
-import { getDb } from '@/lib/db/runtime';
 import { getUserByClerkId } from '@/lib/db/queries/users';
-import { learningPlans, modules } from '@/lib/db/schema';
-import { getJobsByPlanId } from '@/lib/jobs/queue';
-import { eq } from 'drizzle-orm';
+import { getDb } from '@/lib/db/runtime';
+import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 
 /**
  * GET /api/v1/plans/:planId/status
- * Returns the status of a learning plan's generation process
+ * Returns the status of a learning plan's generation process.
+ *
+ * Uses learning_plans.generationStatus column (updated by streaming route)
+ * instead of the legacy job_queue table.
  */
 
 type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
@@ -47,10 +50,7 @@ export const GET = withErrorBoundary(
       throw new NotFoundError('Learning plan not found.');
     }
 
-    // Fetch jobs for this plan
-    const jobs = await getJobsByPlanId(planId);
-
-    // Check if plan has modules
+    // Check if plan has modules (indicates successful generation)
     const planModules = await db
       .select({ id: modules.id })
       .from(modules)
@@ -59,29 +59,66 @@ export const GET = withErrorBoundary(
 
     const hasModules = planModules.length > 0;
 
-    // Determine status based on jobs and modules
-    let status: PlanStatus = 'pending';
-    const latestJob = jobs[0] ?? null;
-    const attempts = jobs.length;
+    // Get attempt count and latest attempt error from generation_attempts table
+    const [attemptCountResult] = await db
+      .select({ value: count(generationAttempts.id) })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId));
 
-    if (jobs.some((job) => job.status === 'processing')) {
-      status = 'processing';
-    } else if (hasModules && latestJob?.status === 'completed') {
+    const attempts = attemptCountResult?.value ?? 0;
+
+    // Get the latest attempt to show error message if failed
+    const [latestAttempt] = await db
+      .select({
+        classification: generationAttempts.classification,
+        createdAt: generationAttempts.createdAt,
+      })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId))
+      .orderBy(desc(generationAttempts.createdAt))
+      .limit(1);
+
+    // Determine status based on generationStatus column and modules
+    let status: PlanStatus;
+    const generationStatus = plan.generationStatus;
+
+    if (generationStatus === 'ready' && hasModules) {
       status = 'ready';
-    } else if (latestJob?.status === 'failed') {
+    } else if (generationStatus === 'failed') {
       status = 'failed';
-    } else if (latestJob?.status === 'completed' && !hasModules) {
-      // Job completed but no modules - something went wrong
-      status = 'failed';
+    } else if (generationStatus === 'generating') {
+      // 'generating' maps to 'processing' for the frontend
+      status = 'processing';
+    } else if (hasModules) {
+      // Has modules but status not 'ready' - treat as ready
+      status = 'ready';
+    } else {
+      // No modules and not failed - still pending/processing
+      status = 'pending';
+    }
+
+    // Build error message from latest attempt classification
+    let latestError: string | null = null;
+    if (status === 'failed' && latestAttempt?.classification) {
+      const classification = latestAttempt.classification;
+      // Map classification to user-friendly message
+      const errorMessages: Record<string, string> = {
+        timeout: 'Generation timed out. Please try again.',
+        rate_limit: 'Rate limit exceeded. Please wait and try again.',
+        validation: 'Invalid response from AI. Please try again.',
+        parse_error: 'Failed to parse AI response. Please try again.',
+        network: 'Network error occurred. Please try again.',
+        capped: 'Maximum generation attempts reached for this plan.',
+        unknown: 'An unexpected error occurred. Please try again.',
+      };
+      latestError = errorMessages[classification] ?? errorMessages.unknown;
     }
 
     return json({
       planId: plan.id,
       status,
       attempts,
-      latestJobId: latestJob?.id ?? null,
-      latestJobStatus: latestJob?.status ?? null,
-      latestJobError: latestJob?.error ?? null,
+      latestError,
       createdAt: plan.createdAt?.toISOString(),
       updatedAt: plan.updatedAt?.toISOString(),
     });

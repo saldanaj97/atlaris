@@ -1,65 +1,51 @@
 import pRetry from 'p-retry';
 
+import { MockGenerationProvider } from '@/lib/ai/providers/mock';
+import { OpenRouterProvider } from '@/lib/ai/providers/openrouter';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
-} from '@/lib/ai/provider';
-import { CloudflareAiProvider } from '@/lib/ai/providers/cloudflare';
-import { GoogleAiProvider } from '@/lib/ai/providers/google';
-import { MockGenerationProvider } from '@/lib/ai/providers/mock';
-import { OpenRouterProvider } from '@/lib/ai/providers/openrouter';
+} from '@/lib/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 
 export interface RouterConfig {
   useMock?: boolean;
-  enableOpenRouter?: boolean;
+  model?: string;
 }
 
 export class RouterGenerationProvider implements AiPlanGenerationProvider {
   private readonly providers: (() => AiPlanGenerationProvider)[];
 
   constructor(cfg: RouterConfig = {}) {
-    const useMock =
-      cfg.useMock ?? (aiEnv.useMock === 'true' && !appEnv.isProduction);
+    // Explicit config flag takes precedence over environment
+    if (cfg.useMock === true) {
+      this.providers = [() => new MockGenerationProvider()];
+      return;
+    }
 
-    const enableOpenRouter = cfg.enableOpenRouter ?? aiEnv.enableOpenRouter;
+    if (cfg.useMock === false) {
+      const model = cfg.model ?? aiEnv.defaultModel;
+      this.providers = [() => new OpenRouterProvider({ model })];
+      return;
+    }
+
+    // Fall back to environment-based mock behavior (only in non-production)
+    const useMock = aiEnv.useMock === 'true' && !appEnv.isProduction;
 
     if (useMock) {
       this.providers = [() => new MockGenerationProvider()];
       return;
     }
 
-    const chain: (() => AiPlanGenerationProvider)[] = [];
-    // Primary: Google
-    chain.push(
-      () =>
-        new GoogleAiProvider({
-          model: aiEnv.primaryModel ?? 'gemini-1.5-flash',
-        })
-    );
-    // Fallback: Cloudflare Workers AI
-    chain.push(
-      () =>
-        new CloudflareAiProvider({
-          model: aiEnv.fallbackModel ?? '@cf/meta/llama-3.1-8b-instruct',
-        })
-    );
-    // Overflow: OpenRouter if enabled
-    if (enableOpenRouter) {
-      chain.push(
-        () =>
-          new OpenRouterProvider({
-            model: (
-              aiEnv.deterministicOverflowModel ?? 'google/gemini-2.0-pro-exp'
-            ).replace(/^openrouter\//, ''),
-          })
-      );
-    }
+    // OpenRouter is now the only provider (Google AI deprecated)
+    const model = cfg.model ?? aiEnv.defaultModel;
+    this.providers = [() => new OpenRouterProvider({ model })];
 
-    this.providers = chain;
+    // TODO: Add Google AI as emergency fallback only if OpenRouter is completely down.
+    // For now, we rely on OpenRouter's internal model routing and fallbacks.
   }
 
   async generate(

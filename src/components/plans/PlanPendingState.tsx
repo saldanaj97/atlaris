@@ -1,13 +1,20 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePlanStatus } from '@/hooks/usePlanStatus';
+import { useRetryGeneration } from '@/hooks/useRetryGeneration';
+import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
 import { formatSkillLevel } from '@/lib/formatters';
 import type { ClientPlanDetail } from '@/lib/types/client';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+
+// Maximum retry attempts (shared constant used by both client and server)
+const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;
 
 interface PlanPendingStateProps {
   plan: ClientPlanDetail;
@@ -20,6 +27,13 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
     plan.status ?? 'pending'
   );
 
+  const {
+    status: retryStatus,
+    error: retryError,
+    isDisabled: isRetryDisabled,
+    retryGeneration,
+  } = useRetryGeneration(plan.id, MAX_RETRY_ATTEMPTS, attempts);
+
   // Auto-refresh when status becomes ready
   useEffect(() => {
     if (status === 'ready') {
@@ -28,8 +42,17 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   }, [status, router]);
 
   const isPending = status === 'pending';
-  const isProcessing = status === 'processing';
+  const isProcessing = status === 'processing' || retryStatus === 'retrying';
+  // Check if plan generation has failed (we keep this block visible during retry to show progress)
   const isFailed = status === 'failed';
+  // Check if currently attempting a retry
+  const isRetrying = retryStatus === 'retrying';
+
+  // Use retry error if available, otherwise use status error
+  const displayError = retryError ?? error;
+
+  // Check if user has exhausted all retry attempts
+  const hasExhaustedRetries = attempts >= MAX_RETRY_ATTEMPTS;
 
   return (
     <div className="space-y-6">
@@ -57,20 +80,56 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {isFailed && error ? (
-            <div className="bg-destructive/10 border-destructive/20 flex items-start gap-3 rounded-lg border p-4">
-              <AlertCircle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
-              <div className="space-y-1">
-                <p className="text-destructive font-semibold">
-                  Generation Failed
-                </p>
-                <p className="text-muted-foreground text-sm">{error}</p>
-                {attempts > 0 && (
-                  <p className="text-muted-foreground text-sm">
-                    Failed after {attempts} attempt{attempts !== 1 ? 's' : ''}
+          {isFailed && displayError ? (
+            <div className="space-y-4">
+              <div className="bg-destructive/10 border-destructive/20 flex items-start gap-3 rounded-lg border p-4">
+                <AlertCircle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-destructive font-semibold">
+                    Generation Failed
                   </p>
-                )}
+                  <p className="text-muted-foreground text-sm">
+                    {displayError}
+                  </p>
+                  {attempts > 0 && (
+                    <p className="text-muted-foreground text-sm">
+                      Attempt {attempts} of {MAX_RETRY_ATTEMPTS}
+                    </p>
+                  )}
+                </div>
               </div>
+
+              {/* Retry button */}
+              {!hasExhaustedRetries ? (
+                <Button
+                  onClick={() => void retryGeneration()}
+                  disabled={isRetryDisabled}
+                  className="w-full"
+                >
+                  {isRetrying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Retrying...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Retry Generation ({MAX_RETRY_ATTEMPTS - attempts} attempts
+                      remaining)
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <div className="bg-muted rounded-lg p-4 text-center">
+                  <p className="text-muted-foreground text-sm">
+                    Maximum retry attempts reached. Please{' '}
+                    <Link href="/plans/new" className="text-primary underline">
+                      create a new plan
+                    </Link>{' '}
+                    to try again.
+                  </p>
+                </div>
+              )}
             </div>
           ) : isProcessing ? (
             <div className="bg-primary/5 flex items-start gap-3 rounded-lg p-4">

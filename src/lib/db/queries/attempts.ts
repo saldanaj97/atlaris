@@ -24,8 +24,8 @@ import {
 } from '@/lib/validation/learningPlans';
 
 import type { GenerationInput } from '@/lib/ai/provider';
-import { db } from '../service-role';
 import { generationAttempts, learningPlans, modules, tasks } from '../schema';
+import { db } from '../service-role';
 
 const ATTEMPT_CAP = attemptsEnv.cap;
 

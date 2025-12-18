@@ -1,7 +1,10 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { getGenerationProvider } from '@/lib/ai/provider-factory';
+import {
+  getGenerationProvider,
+  getGenerationProviderWithModel,
+} from '@/lib/ai/provider-factory';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 import { RouterGenerationProvider } from '@/lib/ai/providers/router';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('AI Provider Factory', () => {
   let originalEnv: NodeJS.ProcessEnv;
@@ -231,6 +234,73 @@ describe('AI Provider Factory', () => {
       process.env.MOCK_GENERATION_SEED = '-100';
 
       const provider = getGenerationProvider();
+
+      expect(provider).toBeInstanceOf(MockGenerationProvider);
+    });
+  });
+
+  describe('getGenerationProviderWithModel', () => {
+    it('should return MockGenerationProvider in test environment by default', () => {
+      delete process.env.AI_PROVIDER;
+      delete process.env.AI_USE_MOCK;
+
+      const provider = getGenerationProviderWithModel(
+        'google/gemini-2.0-flash-exp:free'
+      );
+
+      expect(provider).toBeInstanceOf(MockGenerationProvider);
+    });
+
+    it('should return MockGenerationProvider when AI_PROVIDER is "mock"', () => {
+      process.env.AI_PROVIDER = 'mock';
+
+      const provider = getGenerationProviderWithModel(
+        'anthropic/claude-haiku-4.5'
+      );
+
+      expect(provider).toBeInstanceOf(MockGenerationProvider);
+    });
+
+    it('should return RouterGenerationProvider when AI_USE_MOCK is "false"', () => {
+      delete process.env.AI_PROVIDER;
+      process.env.AI_USE_MOCK = 'false';
+
+      const provider = getGenerationProviderWithModel(
+        'google/gemini-2.0-flash-exp:free'
+      );
+
+      expect(provider).toBeInstanceOf(RouterGenerationProvider);
+    });
+
+    it('should accept any model ID string', () => {
+      // In test environment with AI_USE_MOCK=false, still verify different model IDs work
+      process.env.AI_USE_MOCK = 'false';
+      delete process.env.AI_PROVIDER;
+
+      // Valid model ID
+      const provider1 = getGenerationProviderWithModel(
+        'google/gemini-2.0-flash-exp:free'
+      );
+      expect(provider1).toBeInstanceOf(RouterGenerationProvider);
+
+      // Even invalid model IDs are passed through (validation happens elsewhere)
+      const provider2 = getGenerationProviderWithModel('invalid/model-id');
+      expect(provider2).toBeInstanceOf(RouterGenerationProvider);
+
+      // Different valid model
+      const provider3 = getGenerationProviderWithModel(
+        'anthropic/claude-haiku-4.5'
+      );
+      expect(provider3).toBeInstanceOf(RouterGenerationProvider);
+    });
+
+    it('should respect MOCK_GENERATION_SEED in test environment', () => {
+      process.env.AI_PROVIDER = 'mock';
+      process.env.MOCK_GENERATION_SEED = '42';
+
+      const provider = getGenerationProviderWithModel(
+        'google/gemini-2.0-flash-exp:free'
+      );
 
       expect(provider).toBeInstanceOf(MockGenerationProvider);
     });

@@ -1,14 +1,11 @@
 /**
  * Micro-explanations generation for learning plan tasks
  * Generates concise explanations and practice exercises
+ *
+ * Uses OpenRouter as the sole AI provider (Google AI deprecated as of December 2025).
  */
 
-import { createGoogleGenerativeAI, google } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
-import { generateObject } from 'ai';
-import pRetry from 'p-retry';
-import { z } from 'zod';
-
+import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
 import {
   buildMicroExplanationSystemPrompt,
   buildMicroExplanationUserPrompt,
@@ -16,6 +13,10 @@ import {
 import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
 import { aiMicroExplanationEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
+import { createOpenAI } from '@ai-sdk/openai';
+import { generateObject } from 'ai';
+import pRetry from 'p-retry';
+import { z } from 'zod';
 
 /**
  * Schema for micro-explanation response
@@ -42,115 +43,55 @@ interface MicroExplanationProviderConfig {
 }
 
 /**
- * Attempt micro-explanation generation with a specific provider
+ * Generate micro-explanation using OpenRouter
  */
-async function tryGenerateWithProvider(
-  providerName: 'google' | 'cloudflare' | 'openrouter',
+async function generateWithOpenRouter(
   config: MicroExplanationProviderConfig,
   systemPrompt: string,
   userPrompt: string
 ): Promise<MicroExplanation> {
-  const modelConfig = {
-    maxOutputTokens: config.maxOutputTokens,
-    temperature: config.temperature,
-  };
-
-  if (providerName === 'google') {
-    const apiKey = aiMicroExplanationEnv.googleApiKey;
-    const provider = apiKey ? createGoogleGenerativeAI({ apiKey }) : google;
-
-    const { object } = await generateObject({
-      model: provider(config.model),
-      schema: microExplanationSchema,
-      system: systemPrompt,
-      prompt: userPrompt,
-      ...modelConfig,
-    });
-
-    return object;
+  const { apiKey, baseUrl, siteUrl, appName } =
+    aiMicroExplanationEnv.openRouter;
+  if (!apiKey) {
+    throw new Error('OpenRouter API key is not configured');
   }
 
-  if (providerName === 'cloudflare') {
-    const { apiToken, apiKey, accountId, gatewayUrl } =
-      aiMicroExplanationEnv.cloudflare;
-    const resolvedToken = apiToken ?? apiKey;
-    if (!resolvedToken) {
-      throw new Error(
-        'Cloudflare AI requires either apiToken or apiKey to be configured'
-      );
-    }
-    if (!gatewayUrl && !accountId) {
-      throw new Error(
-        'Cloudflare AI requires a gatewayUrl or accountId to be configured'
-      );
-    }
-    let baseURL =
-      gatewayUrl ??
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/openai`;
-    // Normalize Workers AI gateway URLs to OpenAI-compatible endpoint
-    if (
-      /gateway\.ai\.cloudflare\.com\/v1\/[^/]+\/[^/]+\/workers-ai\/?$/.test(
-        baseURL
-      )
-    ) {
-      baseURL = baseURL.replace(/\/workers-ai\/?$/, '/openai');
-    }
-    // Normalize model id for OpenAI-compatible endpoints
-    const model = baseURL.includes('/openai')
-      ? config.model.replace(/^@cf\//, '')
-      : config.model;
-    const openai = createOpenAI({
-      apiKey: resolvedToken,
-      baseURL,
-    });
+  const openai = createOpenRouterClient(apiKey, baseUrl, siteUrl, appName);
 
-    const { object } = await generateObject({
-      model: openai(model),
-      schema: microExplanationSchema,
-      system: systemPrompt,
-      prompt: userPrompt,
-      ...modelConfig,
-    });
-
-    return object;
-  }
-
-  if (providerName === 'openrouter') {
-    const { apiKey, baseUrl, siteUrl, appName } =
-      aiMicroExplanationEnv.openRouter;
-    if (!apiKey) {
-      throw new Error('OpenRouter API key is not configured');
-    }
-
-    const baseURL = baseUrl ?? 'https://openrouter.ai/api/v1';
+  // Helper: create an OpenRouter-backed OpenAI client with standard headers
+  function createOpenRouterClient(
+    apiKey: string,
+    baseURL: string,
+    siteUrl?: string,
+    appName?: string
+  ) {
     const headers: Record<string, string> = {};
     if (siteUrl) headers['HTTP-Referer'] = siteUrl;
     if (appName) headers['X-Title'] = appName;
 
-    const openai = createOpenAI({
-      apiKey,
-      baseURL,
-      headers,
-    });
-
-    const { object } = await generateObject({
-      model: openai(config.model),
-      schema: microExplanationSchema,
-      system: systemPrompt,
-      prompt: userPrompt,
-      ...modelConfig,
-    });
-
-    return object;
+    return createOpenAI({ apiKey, baseURL, headers });
   }
 
-  throw new Error(`Unknown provider: ${String(providerName)}`);
+  const { object } = await generateObject({
+    model: openai(config.model),
+    schema: microExplanationSchema,
+    system: systemPrompt,
+    prompt: userPrompt,
+    maxOutputTokens: config.maxOutputTokens,
+    temperature: config.temperature,
+  });
+
+  return object;
 }
 
 /**
  * Generate a micro-explanation for a task
- * Uses provider fallback logic similar to RouterGenerationProvider
- * @param _provider AI provider instance (kept for backwards compatibility, but not used)
+ * Uses OpenRouter as the sole AI provider.
+ *
+ * @param _provider AI provider instance - UNUSED but kept for backwards compatibility.
+ *   This parameter exists to maintain API compatibility with older code that passed
+ *   a provider instance. The function internally uses OpenRouter directly.
+ *   TODO: Remove this parameter in the next major version.
  * @param args Task details for explanation generation
  * @returns Micro-explanation markdown with explanation and optional practice
  */
@@ -170,93 +111,55 @@ export async function generateMicroExplanation(
   const maxOutputTokens = aiMicroExplanationEnv.microExplanationMaxTokens;
   const temperature = aiMicroExplanationEnv.microExplanationTemperature;
 
+  // Use DEFAULT_MODEL for micro-explanations (fast, free tier model)
   const config: MicroExplanationProviderConfig = {
-    model: '', // Will be set per provider
+    model: AI_DEFAULT_MODEL,
     maxOutputTokens,
     temperature,
   };
 
-  // Provider chain: Google -> Cloudflare -> OpenRouter (if enabled)
-  const providers: Array<{
-    name: 'google' | 'cloudflare' | 'openrouter';
-    model: string;
-  }> = [
-    {
-      name: 'google',
-      model: aiMicroExplanationEnv.primaryModel,
-    },
-    {
-      name: 'cloudflare',
-      model: aiMicroExplanationEnv.fallbackModel,
-    },
-  ];
-
-  if (aiMicroExplanationEnv.enableOpenRouter) {
-    providers.push({
-      name: 'openrouter',
-      model: aiMicroExplanationEnv.overflowModel.replace(/^openrouter\//, ''),
-    });
+  if (!appEnv.isProduction) {
+    logger.debug(
+      {
+        source: 'micro-explanation',
+        event: 'provider_attempt',
+        provider: 'openrouter',
+        model: config.model,
+      },
+      'Attempting micro-explanation with OpenRouter'
+    );
   }
 
-  let lastError: unknown;
-
-  for (const providerInfo of providers) {
-    const providerName = providerInfo.name;
-    config.model = providerInfo.model;
-
-    if (!appEnv.isProduction) {
-      logger.debug(
-        {
-          source: 'micro-explanation',
-          event: 'provider_attempt',
-          provider: providerName,
-        },
-        'Attempting micro-explanation provider'
-      );
-    }
-
-    try {
-      // Light retry on transient failures
-      const explanation = await pRetry(
-        () =>
-          tryGenerateWithProvider(
-            providerName,
-            config,
-            systemPrompt,
-            userPrompt
-          ),
-        {
-          retries: 1,
-          minTimeout: 300,
-          maxTimeout: 700,
-          randomize: true,
-        }
-      );
-
-      return formatMicroExplanation(explanation);
-    } catch (err) {
-      lastError = err;
-      if (!appEnv.isProduction) {
-        const message = err instanceof Error ? err.message : 'unknown error';
-        logger.warn(
-          {
-            source: 'micro-explanation',
-            event: 'provider_failed',
-            provider: providerName,
-            message,
-          },
-          'Micro-explanation provider failed'
-        );
+  try {
+    // Light retry on transient failures
+    const explanation = await pRetry(
+      () => generateWithOpenRouter(config, systemPrompt, userPrompt),
+      {
+        retries: 1,
+        minTimeout: 300,
+        maxTimeout: 700,
+        randomize: true,
       }
-      continue; // try next provider
-    }
-  }
+    );
 
-  // Ensure we throw an Error object
-  if (lastError instanceof Error) {
-    throw lastError;
+    return formatMicroExplanation(explanation);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    logger.warn(
+      {
+        source: 'micro-explanation',
+        event: 'provider_failed',
+        provider: 'openrouter',
+        message,
+      },
+      'Micro-explanation provider failed'
+    );
+
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error('Failed to generate micro-explanation');
   }
-  throw new Error('All AI providers failed to generate micro-explanation');
 }
 
 /**

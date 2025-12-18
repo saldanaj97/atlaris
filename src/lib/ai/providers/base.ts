@@ -4,11 +4,7 @@ import {
   type LanguageModel,
 } from 'ai';
 
-import {
-  buildSystemPrompt,
-  buildUserPrompt,
-  type PromptParams,
-} from '@/lib/ai/prompts';
+import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
 import type { GenerationInput } from '@/lib/ai/provider';
 import { PlanSchema, type PlanOutput } from '@/lib/ai/schema';
 import { toStream } from '@/lib/ai/utils';
@@ -37,8 +33,8 @@ export async function generatePlanObject({
     system: buildSystemPrompt(),
     prompt: buildUserPrompt({
       topic: input.topic,
-      skillLevel: input.skillLevel as PromptParams['skillLevel'],
-      learningStyle: input.learningStyle as PromptParams['learningStyle'],
+      skillLevel: input.skillLevel,
+      learningStyle: input.learningStyle,
       weeklyHours: input.weeklyHours,
       startDate: input.startDate,
       deadlineDate: input.deadlineDate,

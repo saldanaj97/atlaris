@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@ai-sdk/google':
-        specifier: ^2.0.20
-        version: 2.0.20(zod@4.1.9)
       '@ai-sdk/openai':
         specifier: ^2.0.48
         version: 2.0.48(zod@4.1.9)
@@ -26,6 +23,9 @@ importers:
       '@notionhq/client':
         specifier: ^5.3.0
         version: 5.3.0
+      '@openrouter/sdk':
+        specifier: ^0.2.11
+        version: 0.2.11
       '@radix-ui/react-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.1.9(@types/react@19.1.12))(@types/react@19.1.12)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -254,12 +254,6 @@ packages:
 
   '@ai-sdk/gateway@1.0.39':
     resolution: {integrity: sha512-ijYCKG2sbn2RBVfIgaXNXvzHAf2HpFXxQODtjMI+T7Z4CLryflytchsZZ9qrGtsjiQVopKOV6m6kj4lq5fnbsg==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/google@2.0.20':
-    resolution: {integrity: sha512-+pVkl1GSnORRJEKnjscQEdfW4RR2csVVY8F3QkCHdWjbeSIqrEQw8MWQ4SrtsVLJdAvqyG9WMdiDR7WXSXpn4Q==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1413,6 +1407,9 @@ packages:
   '@notionhq/client@5.3.0':
     resolution: {integrity: sha512-pISuJLrP6XwxnmMZ79jT2XkMHFtbQvslfs6Rqdd29ge0KAmJOuhtWZxE1WXO7h03cj/gVAL2PiAjpFuIWrWJ3w==}
     engines: {node: '>=18'}
+
+  '@openrouter/sdk@0.2.11':
+    resolution: {integrity: sha512-W6ji4J2O08RUkDmCBqDgiHkoH5ARb4xBZL/xTM98cDzes2iLBuGaF3z2PXMCC27UYTas2pyz+nn62iXjO+yQvg==}
 
   '@opentelemetry/api-logs@0.208.0':
     resolution: {integrity: sha512-CjruKY9V6NMssL/T1kAFgzosF1v9o6oeN+aX5JB/C/xPNtmgIJqcXHG7fA82Ou1zCpWGl4lROQUKwUNE1pMCyg==}
@@ -5653,12 +5650,6 @@ snapshots:
       '@vercel/oidc': 3.0.2
       zod: 4.1.9
 
-  '@ai-sdk/google@2.0.20(zod@4.1.9)':
-    dependencies:
-      '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.12(zod@4.1.9)
-      zod: 4.1.9
-
   '@ai-sdk/openai@2.0.48(zod@4.1.9)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
@@ -6560,6 +6551,10 @@ snapshots:
       fastq: 1.19.1
 
   '@notionhq/client@5.3.0': {}
+
+  '@openrouter/sdk@0.2.11':
+    dependencies:
+      zod: 4.1.9
 
   '@opentelemetry/api-logs@0.208.0':
     dependencies:

@@ -3,8 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { POST } from '@/app/api/v1/plans/route';
+import {
+  generationAttempts,
+  jobQueue,
+  learningPlans,
+  modules,
+} from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { jobQueue, learningPlans, modules } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
@@ -30,15 +35,17 @@ describe('Phase 4: API Integration', () => {
   const clerkEmail = 'phase4-test@example.com';
 
   afterEach(async () => {
-    // Clean up test data
+    // Clean up test data (order matters due to foreign key constraints)
+    await db.delete(generationAttempts);
+    await db.delete(modules);
     await db.delete(jobQueue);
     await db.delete(learningPlans);
   });
 
-  describe('T040: Plan creation enqueues job test', () => {
-    it('POST /api/v1/plans returns 201 with status pending and a job row exists with matching planId', async () => {
+  describe('T040: Plan creation creates plan record', () => {
+    it('POST /api/v1/plans returns 201 with status generating and creates plan record', async () => {
       setTestUser(clerkUserId);
-      const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+      await ensureUser({ clerkUserId, email: clerkEmail });
 
       const request = await createPlanRequest({
         topic: 'Applied Machine Learning',
@@ -57,31 +64,29 @@ describe('Phase 4: API Integration', () => {
       expect(payload).toMatchObject({
         topic: 'Applied Machine Learning',
         skillLevel: 'intermediate',
-        status: 'pending',
+        status: 'generating',
       });
       expect(payload).toHaveProperty('id');
 
-      // Verify a job was created
-      const jobs = await db.query.jobQueue.findMany({
-        where: (fields, operators) => operators.eq(fields.planId, payload.id),
+      // Verify a plan was created in the database
+      const plan = await db.query.learningPlans.findFirst({
+        where: (fields, operators) => operators.eq(fields.id, payload.id),
       });
 
-      expect(jobs).toHaveLength(1);
-      expect(jobs[0]).toMatchObject({
-        planId: payload.id,
-        userId,
-        jobType: 'plan_generation',
-        status: 'pending',
-      });
+      expect(plan).toBeDefined();
+      expect(plan!.topic).toBe('Applied Machine Learning');
+      expect(plan!.skillLevel).toBe('intermediate');
+      expect(plan!.generationStatus).toBe('generating');
     });
   });
 
   describe('T041: Status endpoint state transition test', () => {
-    it('maps job status to plan status correctly: pending -> processing -> ready', async () => {
+    it('maps generationStatus to plan status correctly: generating -> ready', async () => {
       setTestUser(clerkUserId);
       const userId = await ensureUser({ clerkUserId, email: clerkEmail });
 
-      // Create a plan
+      // Create a plan with default generationStatus (generating)
+      // Note: The API maps 'generating' -> 'processing' for the frontend
       const [plan] = await db
         .insert(learningPlans)
         .values({
@@ -92,52 +97,23 @@ describe('Phase 4: API Integration', () => {
           learningStyle: 'reading',
           visibility: 'private',
           origin: 'ai',
+          generationStatus: 'generating',
         })
         .returning();
 
-      // Create a pending job
-      const [job] = await db
-        .insert(jobQueue)
-        .values({
-          planId: plan.id,
-          userId,
-          jobType: 'plan_generation',
-          status: 'pending',
-          payload: {
-            topic: 'Status Test Plan',
-            notes: null,
-            skillLevel: 'beginner',
-            weeklyHours: 4,
-            learningStyle: 'reading',
-          },
-        })
-        .returning();
-
-      // Test pending status
+      // Test processing status (generationStatus = 'generating' maps to 'processing')
       let statusRequest = await createStatusRequest(plan.id);
       let statusResponse = await GET_STATUS(statusRequest);
       expect(statusResponse.status).toBe(200);
       let statusPayload = await statusResponse.json();
-      expect(statusPayload.status).toBe('pending');
+      expect(statusPayload.status).toBe('processing');
       expect(statusPayload.planId).toBe(plan.id);
 
-      // Update job to processing
+      // Complete generation: set generationStatus to ready and add modules
       await db
-        .update(jobQueue)
-        .set({ status: 'processing', startedAt: new Date() })
-        .where(eq(jobQueue.id, job.id));
-
-      // Test processing status
-      statusRequest = await createStatusRequest(plan.id);
-      statusResponse = await GET_STATUS(statusRequest);
-      statusPayload = await statusResponse.json();
-      expect(statusPayload.status).toBe('processing');
-
-      // Complete job and add modules
-      await db
-        .update(jobQueue)
-        .set({ status: 'completed', completedAt: new Date() })
-        .where(eq(jobQueue.id, job.id));
+        .update(learningPlans)
+        .set({ generationStatus: 'ready' })
+        .where(eq(learningPlans.id, plan.id));
 
       await db.insert(modules).values({
         planId: plan.id,
@@ -158,7 +134,7 @@ describe('Phase 4: API Integration', () => {
       setTestUser(clerkUserId);
       const userId = await ensureUser({ clerkUserId, email: clerkEmail });
 
-      // Create a plan
+      // Create a plan with failed status
       const [plan] = await db
         .insert(learningPlans)
         .values({
@@ -169,23 +145,18 @@ describe('Phase 4: API Integration', () => {
           learningStyle: 'reading',
           visibility: 'private',
           origin: 'ai',
+          generationStatus: 'failed',
         })
         .returning();
 
-      // Create a failed job
-      await db.insert(jobQueue).values({
+      // Create a generation attempt with error classification
+      await db.insert(generationAttempts).values({
         planId: plan.id,
-        userId,
-        jobType: 'plan_generation',
-        status: 'failed',
-        error: 'Test error',
-        payload: {
-          topic: 'Failed Plan',
-          notes: null,
-          skillLevel: 'beginner',
-          weeklyHours: 4,
-          learningStyle: 'reading',
-        },
+        status: 'failure',
+        classification: 'timeout',
+        durationMs: 5000,
+        modulesCount: 0,
+        tasksCount: 0,
       });
 
       // Test failed status
@@ -193,7 +164,9 @@ describe('Phase 4: API Integration', () => {
       const statusResponse = await GET_STATUS(statusRequest);
       const statusPayload = await statusResponse.json();
       expect(statusPayload.status).toBe('failed');
-      expect(statusPayload.latestJobError).toBe('Test error');
+      expect(statusPayload.latestError).toBe(
+        'Generation timed out. Please try again.'
+      );
     });
   });
 

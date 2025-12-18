@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  generateMicroExplanation,
   formatMicroExplanation,
+  generateMicroExplanation,
 } from '@/lib/ai/micro-explanations';
 import {
   buildMicroExplanationSystemPrompt,
@@ -9,6 +8,7 @@ import {
 } from '@/lib/ai/prompts';
 import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
 import { generateObject } from 'ai';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the AI SDK
 vi.mock('ai', async () => {
@@ -19,15 +19,7 @@ vi.mock('ai', async () => {
   };
 });
 
-// Mock provider factories
-vi.mock('@ai-sdk/google', () => {
-  const mockModel = vi.fn();
-  return {
-    createGoogleGenerativeAI: vi.fn(() => mockModel),
-    google: mockModel,
-  };
-});
-
+// Mock OpenAI provider (used by OpenRouter)
 vi.mock('@ai-sdk/openai', () => {
   const mockModel = vi.fn();
   return {
@@ -71,6 +63,10 @@ describe('Micro-explanations', () => {
   });
 
   describe('generateMicroExplanation', () => {
+    // Note: mockProvider is passed to generateMicroExplanation but is NOT used internally.
+    // The function uses OpenRouter directly regardless of this parameter.
+    // The parameter exists for backwards compatibility (see JSDoc in micro-explanations.ts).
+    // TODO: Remove this unused parameter in the next major version.
     let mockProvider: AiPlanGenerationProvider;
 
     beforeEach(() => {
@@ -79,13 +75,12 @@ describe('Micro-explanations', () => {
         generate: vi.fn(),
       } as any;
 
-      // Set up environment variables for provider selection
-      process.env.GOOGLE_GENERATIVE_AI_API_KEY = 'test-key';
-      process.env.AI_PRIMARY = 'gemini-1.5-flash';
-      // Set Cloudflare env vars to prevent errors when Cloudflare is attempted as fallback
-      process.env.CF_API_TOKEN = 'test-cf-token';
-      process.env.CF_ACCOUNT_ID = 'test-account';
-      process.env.AI_FALLBACK = '@cf/meta/llama-3.1-8b-instruct';
+      // Set up environment variables for OpenRouter
+      vi.stubEnv('OPENROUTER_API_KEY', 'test-openrouter-key');
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
     });
 
     it('returns formatted markdown from structured response', async () => {
@@ -140,30 +135,16 @@ describe('Micro-explanations', () => {
       expect(result).not.toContain('**Practice:**');
     });
 
-    it('falls back to Cloudflare provider when Google fails', async () => {
-      // Cloudflare env vars are already set in beforeEach
-      // First on Google (fails)
-      vi.mocked(generateObject)
-        .mockRejectedValueOnce(new Error('Google provider failed'))
-        .mockResolvedValueOnce({
-          object: {
-            explanation: 'Fallback explanation from Cloudflare.',
-          },
-          usage: {
-            inputTokens: 50,
-            outputTokens: 20,
-            totalTokens: 70,
-          },
-        } as Awaited<ReturnType<typeof generateObject>>);
+    it('throws error when OpenRouter API key is not configured', async () => {
+      delete process.env.OPENROUTER_API_KEY;
 
-      const result = await generateMicroExplanation(mockProvider, {
-        topic: 'React Hooks',
-        taskTitle: 'Use useState',
-        skillLevel: 'beginner',
-      });
-
-      expect(generateObject).toHaveBeenCalledTimes(2);
-      expect(result).toContain('Fallback explanation from Cloudflare.');
+      await expect(
+        generateMicroExplanation(mockProvider, {
+          topic: 'React Hooks',
+          taskTitle: 'Use useState',
+          skillLevel: 'beginner',
+        })
+      ).rejects.toThrow('OpenRouter API key is not configured');
     });
 
     it('formats micro-explanation with practice exercise', () => {

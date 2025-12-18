@@ -1,21 +1,22 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-import { createPlan } from '@/lib/api/plans';
+import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 
+import { PlanDraftView } from '@/components/plans/PlanDraftView';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
@@ -26,8 +27,22 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { PlanDraftView } from '@/components/plans/PlanDraftView';
+
+type FormState = {
+  topic: string;
+  skillLevel: (typeof skillLevelOptions)[number]['value'] | '';
+  weeklyHours: (typeof weeklyHourOptions)[number]['value'] | '';
+  learningStyle: (typeof learningStyleOptions)[number]['value'] | '';
+  notes: string;
+  startDate?: string;
+  deadlineDate: string;
+};
+
+interface StreamingError extends Error {
+  status?: number;
+  planId?: string;
+  data?: { planId?: string };
+}
 
 const weeklyHourOptions = [
   { value: '1-2', label: '1-2 hours per week' },
@@ -80,16 +95,6 @@ const learningStyleOptions = [
   },
 ] as const;
 
-type FormState = {
-  topic: string;
-  skillLevel: (typeof skillLevelOptions)[number]['value'] | '';
-  weeklyHours: (typeof weeklyHourOptions)[number]['value'] | '';
-  learningStyle: (typeof learningStyleOptions)[number]['value'] | '';
-  notes: string;
-  startDate?: string;
-  deadlineDate: string;
-};
-
 const initialState: FormState = {
   topic: '',
   skillLevel: '',
@@ -114,15 +119,19 @@ export default function OnboardingForm() {
   const [userTier, setUserTier] = useState<'free' | 'starter' | 'pro' | null>(
     null
   );
-  const isJsdom =
-    typeof navigator !== 'undefined' &&
-    navigator.userAgent?.toLowerCase().includes('jsdom');
-  const [useStreaming, setUseStreaming] = useState(!isJsdom);
   const {
     state: streamingState,
     startGeneration,
     cancel: cancelStreaming,
   } = useStreamingPlanGeneration();
+
+  // Ref to track the latest planId to avoid stale closure issues in error handlers
+  const planIdRef = useRef<string | undefined>(undefined);
+
+  // Sync planIdRef with streamingState.planId
+  useEffect(() => {
+    planIdRef.current = streamingState.planId;
+  }, [streamingState.planId]);
 
   // Fetch user tier on mount
   useEffect(() => {
@@ -262,42 +271,48 @@ export default function OnboardingForm() {
       return;
     }
 
-    const submitWithCreatePlan = async () => {
-      const plan = await createPlan(payload);
-      toast.success('Generating your learning plan...');
-      router.push(`/plans/${plan.id}`);
-    };
-
     setIsSubmitting(true);
     try {
-      if (useStreaming) {
-        try {
-          const planId = await startGeneration(payload);
-          toast.success('Your learning plan is ready!');
-          router.push(`/plans/${planId}`);
-          return;
-        } catch (streamError) {
-          const isAbort =
-            (streamError as DOMException | undefined)?.name === 'AbortError';
-          if (!isAbort) {
-            setUseStreaming(false);
-          }
-          clientLogger.error(
-            'Streaming plan generation failed; falling back to createPlan',
-            streamError
-          );
-          if (isAbort) {
-            return;
-          }
-        }
+      const planId = await startGeneration(payload);
+      toast.success('Your learning plan is ready!');
+      router.push(`/plans/${planId}`);
+    } catch (streamError) {
+      const isAbort =
+        (streamError as DOMException | undefined)?.name === 'AbortError';
+      if (isAbort) {
+        return;
       }
 
-      await submitWithCreatePlan();
-    } catch (error) {
+      clientLogger.error('Streaming plan generation failed', streamError);
+
+      const errorWithStatus = streamError as StreamingError;
       const message =
-        error instanceof Error
-          ? error.message
+        streamError instanceof Error
+          ? streamError.message
           : 'We could not create your learning plan. Please try again.';
+
+      // Attempt to extract planId: (1) from error payload, (2) from ref tracking latest state
+      const extractedPlanId =
+        errorWithStatus.planId ??
+        errorWithStatus.data?.planId ??
+        planIdRef.current;
+
+      // Note: We may enter this catch even when HTTP status was 200 because
+      // streaming or parsing errors can occur after a successful response. In
+      // that case we still want to redirect to the created plan so users can
+      // retry from the plan page.
+      // If plan was created but generation failed, redirect to plan page
+      // The plan page will show the failed state with a retry button
+      if (
+        (errorWithStatus.status === 200 || extractedPlanId) &&
+        typeof extractedPlanId === 'string' &&
+        extractedPlanId.length > 0
+      ) {
+        toast.error('Generation failed. You can retry from the plan page.');
+        router.push(`/plans/${extractedPlanId}`);
+        return;
+      }
+
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -648,7 +663,7 @@ export default function OnboardingForm() {
         </Card>
       </div>
 
-      {useStreaming && streamingState.status !== 'idle' ? (
+      {streamingState.status !== 'idle' && (
         <div className="container mx-auto max-w-2xl px-6 pb-12">
           <PlanDraftView
             state={streamingState}
@@ -658,7 +673,7 @@ export default function OnboardingForm() {
             }}
           />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

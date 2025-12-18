@@ -71,8 +71,8 @@ describe('usePlanStatus', () => {
 
   it('T051 sets error and stops when failed', async () => {
     const responses = [
-      { status: 'processing', attempts: 1, latestJobError: null },
-      { status: 'failed', attempts: 2, latestJobError: 'Provider timeout' },
+      { status: 'processing', attempts: 1, latestError: null },
+      { status: 'failed', attempts: 2, latestError: 'Provider timeout' },
     ];
     (global.fetch as unknown as Mock).mockImplementation(() => {
       const next = responses.shift() ?? responses[responses.length - 1];
