@@ -56,14 +56,14 @@ async function generateWithOpenRouter(
     throw new Error('OpenRouter API key is not configured');
   }
 
-  const baseURL = baseUrl ?? 'https://openrouter.ai/api/v1';
+  // baseUrl getter already provides default 'https://openrouter.ai/api/v1'
   const headers: Record<string, string> = {};
   if (siteUrl) headers['HTTP-Referer'] = siteUrl;
   if (appName) headers['X-Title'] = appName;
 
   const openai = createOpenAI({
     apiKey,
-    baseURL,
+    baseURL: baseUrl,
     headers,
   });
 
@@ -82,7 +82,11 @@ async function generateWithOpenRouter(
 /**
  * Generate a micro-explanation for a task
  * Uses OpenRouter as the sole AI provider.
- * @param _provider AI provider instance (kept for backwards compatibility, but not used)
+ *
+ * @param _provider AI provider instance - UNUSED but kept for backwards compatibility.
+ *   This parameter exists to maintain API compatibility with older code that passed
+ *   a provider instance. The function internally uses OpenRouter directly.
+ *   TODO: Remove this parameter in the next major version.
  * @param args Task details for explanation generation
  * @returns Micro-explanation markdown with explanation and optional practice
  */

@@ -1,4 +1,5 @@
 import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
+import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
 
 type NodeEnv = 'development' | 'production' | 'test';
 
@@ -261,6 +262,10 @@ export const aiEnv = {
       return toNumber(getServerOptional('MOCK_GENERATION_FAILURE_RATE'));
     },
   },
+  /**
+   * Default AI model for plan generation.
+   * AI_DEFAULT_MODEL env var overrides the hardcoded default from ai-models.ts.
+   */
   get defaultModel() {
     return getServerOptional('AI_DEFAULT_MODEL') ?? AI_DEFAULT_MODEL;
   },
@@ -285,35 +290,10 @@ export const aiTimeoutEnv = {
   },
 } as const;
 
-export const aiMicroExplanationEnv = {
-  get googleApiKey() {
-    return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
-  },
-  openRouter: {
-    get apiKey() {
-      return getServerOptional('OPENROUTER_API_KEY');
-    },
-    get baseUrl() {
-      return (
-        getServerOptional('OPENROUTER_BASE_URL') ??
-        'https://openrouter.ai/api/v1'
-      );
-    },
-    get siteUrl() {
-      return getServerOptional('OPENROUTER_SITE_URL');
-    },
-    get appName() {
-      return getServerOptional('OPENROUTER_APP_NAME');
-    },
-  },
-  get microExplanationMaxTokens() {
-    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_MAX_TOKENS'), 200);
-  },
-  get microExplanationTemperature() {
-    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4);
-  },
-} as const;
-
+/**
+ * OpenRouter API configuration.
+ * Provides API key, base URL, and HTTP headers for the OpenRouter service.
+ */
 export const openRouterEnv = {
   get apiKey() {
     return getServerOptional('OPENROUTER_API_KEY');
@@ -324,8 +304,30 @@ export const openRouterEnv = {
   get appName() {
     return getServerOptional('OPENROUTER_APP_NAME');
   },
+  /** Base URL for OpenRouter API, defaults to official endpoint */
   get baseUrl() {
-    return getServerOptional('OPENROUTER_BASE_URL');
+    return (
+      getServerOptional('OPENROUTER_BASE_URL') ?? 'https://openrouter.ai/api/v1'
+    );
+  },
+} as const;
+
+export const aiMicroExplanationEnv = {
+  get googleApiKey() {
+    return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
+  },
+  /**
+   * OpenRouter configuration for micro-explanations.
+   * Reuses the shared openRouterEnv configuration.
+   */
+  get openRouter() {
+    return openRouterEnv;
+  },
+  get microExplanationMaxTokens() {
+    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_MAX_TOKENS'), 200);
+  },
+  get microExplanationTemperature() {
+    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4);
   },
 } as const;
 
@@ -349,7 +351,7 @@ export const devClerkEnv = {
 
 export const attemptsEnv = {
   get cap() {
-    return toNumber(getServerOptional('ATTEMPT_CAP'), 3);
+    return toNumber(getServerOptional('ATTEMPT_CAP'), DEFAULT_ATTEMPT_CAP);
   },
 } as const;
 

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/stream/route';
 import { learningPlans, modules } from '@/lib/db/schema';

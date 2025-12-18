@@ -67,7 +67,12 @@ export const PATCH = withErrorBoundary(
 
     logger.info('Updating user preferences');
 
-    const body: unknown = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      throw new ValidationError('Invalid JSON in request body');
+    }
     const parsed = updatePreferencesSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -81,7 +86,7 @@ export const PATCH = withErrorBoundary(
     const user = await getUserByClerkId(userId);
     if (!user) {
       logger.warn('User not found in database');
-      throw new Error('User not found');
+      throw new NotFoundError('User not found');
     }
 
     // TODO: [OPENROUTER-MIGRATION] Implement tier-gating check:

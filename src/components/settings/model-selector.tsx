@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
+import { AVAILABLE_MODELS, getModelsForTier } from '@/lib/ai/ai-models';
 import type { SubscriptionTier } from '@/lib/ai/types';
 import { logger } from '@/lib/logging/logger';
 import { cn } from '@/lib/utils';
@@ -36,11 +36,8 @@ export function ModelSelector({
     'idle' | 'success' | 'error' | 'upgradeRequired'
   >('idle');
 
-  // Filter models by user's tier
-  const availableModels =
-    userTier === 'pro'
-      ? AVAILABLE_MODELS
-      : AVAILABLE_MODELS.filter((m) => m.tier === 'free');
+  // Filter models by user's tier using centralized utility
+  const availableModels = getModelsForTier(userTier);
 
   const selectedModelData = AVAILABLE_MODELS.find(
     (m) => m.id === selectedModel

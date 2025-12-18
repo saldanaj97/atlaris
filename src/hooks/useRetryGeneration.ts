@@ -26,7 +26,17 @@ const parseEventLine = (line: string): StreamingEvent | null => {
     : trimmed;
   if (!payload) return null;
   try {
-    return JSON.parse(payload) as StreamingEvent;
+    const parsed: unknown = JSON.parse(payload);
+    // Validate minimal event structure before casting
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'type' in parsed &&
+      typeof parsed.type === 'string'
+    ) {
+      return parsed as StreamingEvent;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -154,7 +164,9 @@ export function useRetryGeneration(
 
           if (event.type === 'error') {
             setStatus('error');
-            setError(event.data.message ?? 'Generation failed.');
+            // Defensive access for runtime safety
+            const errorData = event.data as { message?: string } | undefined;
+            setError(errorData?.message ?? 'Generation failed.');
             return;
           }
         }

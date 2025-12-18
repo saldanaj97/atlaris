@@ -99,10 +99,24 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       };
       logger.error(errorDetails, 'OpenRouter API call failed');
 
-      // Re-throw with more context
+      // Classify error based on HTTP status code for better retry handling
       const message =
         err instanceof Error ? err.message : 'OpenRouter API call failed';
-      throw new ProviderError('unknown', message);
+
+      const status =
+        err && typeof err === 'object' && 'status' in err
+          ? (err as { status: number }).status
+          : undefined;
+
+      // Map HTTP status codes to provider error kinds
+      const kind =
+        status === 429
+          ? 'rate_limit'
+          : status === 408 || message.toLowerCase().includes('timeout')
+            ? 'timeout'
+            : 'unknown';
+
+      throw new ProviderError(kind, message);
     }
 
     const rawContent = response.choices?.[0]?.message?.content;

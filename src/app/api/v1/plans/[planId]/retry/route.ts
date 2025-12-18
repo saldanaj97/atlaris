@@ -1,9 +1,5 @@
 import { count, eq } from 'drizzle-orm';
 
-import {
-  formatGenerationError,
-  isRetryableClassification,
-} from '@/lib/ai/failures';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
@@ -16,12 +12,12 @@ import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { recordUsage } from '@/lib/db/usage';
-import { logger } from '@/lib/logging/logger';
+
 import {
-  markPlanGenerationFailure,
-  markPlanGenerationSuccess,
-} from '@/lib/stripe/usage';
+  handleFailedGeneration,
+  handleSuccessfulGeneration,
+  safeMarkPlanFailed,
+} from '../../stream/helpers';
 
 export const maxDuration = 60;
 
@@ -139,7 +135,6 @@ export const POST = withErrorBoundary(
       emit(buildPlanStartEvent());
 
       const startedAt = Date.now();
-      let generationCompleted = false;
 
       try {
         const result = await runGenerationAttempt(
@@ -152,116 +147,22 @@ export const POST = withErrorBoundary(
         );
 
         if (result.status === 'success') {
-          const modules = result.modules;
-          const modulesCount = modules.length;
-          const tasksCount = modules.reduce(
-            (sum, module) => sum + module.tasks.length,
-            0
-          );
-
-          modules.forEach((module, index) => {
-            emit({
-              type: 'module_summary',
-              data: {
-                planId: plan.id,
-                index,
-                title: module.title,
-                description: module.description ?? null,
-                estimatedMinutes: module.estimatedMinutes,
-                tasksCount: module.tasks.length,
-              },
-            });
-
-            emit({
-              type: 'progress',
-              data: {
-                planId: plan.id,
-                modulesParsed: index + 1,
-                modulesTotalHint: modulesCount,
-              },
-            });
-          });
-
-          await markPlanGenerationSuccess(plan.id);
-          generationCompleted = true;
-
-          try {
-            const usage = result.metadata?.usage;
-            await recordUsage({
-              userId: user.id,
-              provider: result.metadata?.provider ?? 'unknown',
-              model: result.metadata?.model ?? 'unknown',
-              inputTokens: usage?.promptTokens ?? undefined,
-              outputTokens: usage?.completionTokens ?? undefined,
-              costCents: 0,
-              kind: 'plan',
-            });
-          } catch (usageError) {
-            // Log but don't fail the stream - generation succeeded
-            logger.error('Failed to record usage after successful generation.');
-            logger.error(usageError);
-          }
-
-          emit({
-            type: 'complete',
-            data: {
-              planId: plan.id,
-              modulesCount,
-              tasksCount,
-              durationMs: Math.max(0, Date.now() - startedAt),
-            },
+          await handleSuccessfulGeneration(result, {
+            planId: plan.id,
+            userId: user.id,
+            startedAt,
+            emit,
           });
           return;
         }
 
-        const classification = result.classification ?? 'unknown';
-        const retryable = isRetryableClassification(classification);
-
-        if (!retryable) {
-          await markPlanGenerationFailure(plan.id);
-          generationCompleted = true;
-
-          try {
-            const usage = result.metadata?.usage;
-            await recordUsage({
-              userId: user.id,
-              provider: result.metadata?.provider ?? 'unknown',
-              model: result.metadata?.model ?? 'unknown',
-              inputTokens: usage?.promptTokens ?? undefined,
-              outputTokens: usage?.completionTokens ?? undefined,
-              costCents: 0,
-              kind: 'plan',
-            });
-          } catch (usageError) {
-            // Log but don't fail the stream - generation already failed
-            logger.error('Failed to record usage after failed generation.');
-            logger.error(usageError);
-          }
-        }
-
-        const message = formatGenerationError(
-          result.error,
-          'Plan generation failed.'
-        );
-
-        emit({
-          type: 'error',
-          data: {
-            planId: plan.id,
-            message,
-            classification,
-            retryable,
-          },
+        await handleFailedGeneration(result, {
+          planId: plan.id,
+          userId: user.id,
+          emit,
         });
       } catch (error) {
-        // Ensure plan is marked as failed if any uncaught error occurs
-        if (!generationCompleted) {
-          try {
-            await markPlanGenerationFailure(plan.id);
-          } catch {
-            // Ignore errors when marking failure
-          }
-        }
+        await safeMarkPlanFailed(plan.id, user.id);
         throw error;
       }
     });

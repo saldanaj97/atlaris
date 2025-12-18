@@ -9,7 +9,11 @@ import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
  * without requiring database or authentication.
  */
 
-// Recreate the schema from the preferences route for isolated testing
+/**
+ * Schema recreated here for isolated unit testing.
+ * Note: This mirrors the schema in src/app/api/v1/user/preferences/route.ts.
+ * If the production schema changes, this test schema should be updated to match.
+ */
 const updatePreferencesSchema = z.object({
   preferredAiModel: z.string().refine(isValidModelId, {
     message: 'Invalid model ID',

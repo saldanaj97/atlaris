@@ -83,14 +83,14 @@ describe('Phase 4: API Integration', () => {
   describe('T041: Status endpoint state transition test', () => {
     it('maps generationStatus to plan status correctly: generating -> ready', async () => {
       setTestUser(clerkUserId);
-      await ensureUser({ clerkUserId, email: clerkEmail });
+      const userId = await ensureUser({ clerkUserId, email: clerkEmail });
 
       // Create a plan with default generationStatus (generating)
       // Note: The API maps 'generating' -> 'processing' for the frontend
       const [plan] = await db
         .insert(learningPlans)
         .values({
-          userId: await ensureUser({ clerkUserId, email: clerkEmail }),
+          userId,
           topic: 'Status Test Plan',
           skillLevel: 'beginner',
           weeklyHours: 4,

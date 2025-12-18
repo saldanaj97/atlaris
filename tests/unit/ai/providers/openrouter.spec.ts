@@ -358,9 +358,14 @@ describe('OpenRouterProvider', () => {
 
   describe('error handling', () => {
     it('throws ProviderInvalidResponseError when response is empty', async () => {
-      mockSend.mockResolvedValue({
-        choices: [],
-      });
+      // Use mockResolvedValueOnce for each assertion to make expectations explicit
+      mockSend
+        .mockResolvedValueOnce({
+          choices: [],
+        })
+        .mockResolvedValueOnce({
+          choices: [],
+        });
 
       const provider = new OpenRouterProvider({ model: TEST_MODEL });
 
@@ -391,15 +396,26 @@ describe('OpenRouterProvider', () => {
     });
 
     it('throws ProviderInvalidResponseError when JSON is invalid', async () => {
-      mockSend.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: 'not valid json { broken',
+      // Use mockResolvedValueOnce for each assertion to make expectations explicit
+      mockSend
+        .mockResolvedValueOnce({
+          choices: [
+            {
+              message: {
+                content: 'not valid json { broken',
+              },
             },
-          },
-        ],
-      });
+          ],
+        })
+        .mockResolvedValueOnce({
+          choices: [
+            {
+              message: {
+                content: 'not valid json { broken',
+              },
+            },
+          ],
+        });
 
       const provider = new OpenRouterProvider({ model: TEST_MODEL });
 
@@ -412,15 +428,26 @@ describe('OpenRouterProvider', () => {
     });
 
     it('throws ProviderInvalidResponseError when schema validation fails', async () => {
-      mockSend.mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: JSON.stringify({ modules: 'not an array' }),
+      // Use mockResolvedValueOnce for each assertion to make expectations explicit
+      mockSend
+        .mockResolvedValueOnce({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({ modules: 'not an array' }),
+              },
             },
-          },
-        ],
-      });
+          ],
+        })
+        .mockResolvedValueOnce({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({ modules: 'not an array' }),
+              },
+            },
+          ],
+        });
 
       const provider = new OpenRouterProvider({ model: TEST_MODEL });
 
@@ -451,7 +478,8 @@ describe('OpenRouterProvider', () => {
     });
 
     it('throws ProviderInvalidResponseError when array content has no text items', async () => {
-      mockSend.mockResolvedValue({
+      // Use mockResolvedValueOnce for each assertion to make expectations explicit
+      const noTextContent = {
         choices: [
           {
             message: {
@@ -461,7 +489,10 @@ describe('OpenRouterProvider', () => {
             },
           },
         ],
-      });
+      };
+      mockSend
+        .mockResolvedValueOnce(noTextContent)
+        .mockResolvedValueOnce(noTextContent);
 
       const provider = new OpenRouterProvider({ model: TEST_MODEL });
 

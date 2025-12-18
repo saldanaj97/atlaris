@@ -28,6 +28,22 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 
+type FormState = {
+  topic: string;
+  skillLevel: (typeof skillLevelOptions)[number]['value'] | '';
+  weeklyHours: (typeof weeklyHourOptions)[number]['value'] | '';
+  learningStyle: (typeof learningStyleOptions)[number]['value'] | '';
+  notes: string;
+  startDate?: string;
+  deadlineDate: string;
+};
+
+interface StreamingError extends Error {
+  status?: number;
+  planId?: string;
+  data?: { planId?: string };
+}
+
 const weeklyHourOptions = [
   { value: '1-2', label: '1-2 hours per week' },
   { value: '3-5', label: '3-5 hours per week' },
@@ -78,16 +94,6 @@ const learningStyleOptions = [
     description: 'Combination of reading, videos, and practical exercises',
   },
 ] as const;
-
-type FormState = {
-  topic: string;
-  skillLevel: (typeof skillLevelOptions)[number]['value'] | '';
-  weeklyHours: (typeof weeklyHourOptions)[number]['value'] | '';
-  learningStyle: (typeof learningStyleOptions)[number]['value'] | '';
-  notes: string;
-  startDate?: string;
-  deadlineDate: string;
-};
 
 const initialState: FormState = {
   topic: '',
@@ -279,12 +285,7 @@ export default function OnboardingForm() {
 
       clientLogger.error('Streaming plan generation failed', streamError);
 
-      // Extract error message and status for user-friendly display
-      const errorWithStatus = streamError as Error & {
-        status?: number;
-        planId?: string;
-        data?: { planId?: string };
-      };
+      const errorWithStatus = streamError as StreamingError;
       const message =
         streamError instanceof Error
           ? streamError.message

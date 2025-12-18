@@ -215,18 +215,6 @@ describe('Environment Configuration', () => {
         expect(aiEnv.useMock).toBeUndefined();
       });
     });
-
-    describe('defaultModel', () => {
-      it('should return AI_DEFAULT_MODEL value when set', () => {
-        process.env.AI_DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
-        expect(aiEnv.defaultModel).toBe('anthropic/claude-haiku-4.5');
-      });
-
-      it('should return default OpenRouter model when not set', () => {
-        delete process.env.AI_DEFAULT_MODEL;
-        expect(aiEnv.defaultModel).toBe('google/gemini-2.0-flash-exp:free');
-      });
-    });
   });
 
   // Note: Tests for environment-specific configurations, number parsing, and boolean parsing

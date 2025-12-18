@@ -17,8 +17,6 @@ import type { AvailableModel, SubscriptionTier } from './types/model.types';
  */
 export const AI_DEFAULT_MODEL = 'google/gemini-2.0-flash-exp:free';
 
-// (kept for backward compatibility) AI_DEFAULT_MODEL is defined above.
-
 /**
  * Complete list of available OpenRouter models.
  * Models are listed in order of recommendation within their tier.

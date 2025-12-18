@@ -1,6 +1,6 @@
 import { ModelSelector } from '@/components/settings/model-selector';
 import { Card } from '@/components/ui/card';
-import { SubscriptionTier } from '@/lib/ai/types';
+import { SubscriptionTier } from '@/lib/ai/types/model.types';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
@@ -40,11 +40,13 @@ export default async function AISettingsPage() {
             <ModelSelector
               currentModel={userPreferredModel}
               userTier={userTier}
-              // TODO: [OPENROUTER-MIGRATION] Implement onSave when API is ready:
-              // onSave={async (modelId) => {
-              //   'use server';
-              //   await updateUserModelPreference(dbUser.id, modelId);
-              // }}
+              // TODO: [OPENROUTER-MIGRATION] Implement onSave when API is ready
+              onSave={() => {
+                // Placeholder until DB column exists - will show error state in UI
+                return Promise.reject(
+                  new Error('Model preference saving is not yet implemented')
+                );
+              }}
             />
           </Card>
 

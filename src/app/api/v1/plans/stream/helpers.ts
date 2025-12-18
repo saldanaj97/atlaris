@@ -65,26 +65,23 @@ export async function handleSuccessfulGeneration(
 /**
  * Handle a failed plan generation result.
  * Determines if the failure is retryable, marks the plan as failed and records usage when not retryable,
- * emits an 'error' event with classification and retryable flag, and returns whether generation completed (non-retryable).
+ * and emits an 'error' event with classification and retryable flag.
  *
  * @param result - Generation result (status 'failure')
  * @param ctx - Context containing planId, userId and emit function
- * @returns boolean - true if generation completed (non-retryable), false otherwise
  */
 export async function handleFailedGeneration(
   result: Extract<GenerationResult, { status: 'failure' }>,
   ctx: GenerationContext
-): Promise<boolean> {
+): Promise<void> {
   const { planId, userId, emit } = ctx;
 
   const classification = result.classification ?? 'unknown';
   const retryable = isRetryableClassification(classification);
-  let generationCompleted = false;
 
   if (!retryable) {
     await markPlanGenerationFailure(planId);
     await tryRecordUsage(userId, result);
-    generationCompleted = true;
   }
 
   const message = formatGenerationError(
@@ -96,8 +93,6 @@ export async function handleFailedGeneration(
     type: 'error',
     data: { planId, message, classification, retryable },
   });
-
-  return generationCompleted;
 }
 
 /**

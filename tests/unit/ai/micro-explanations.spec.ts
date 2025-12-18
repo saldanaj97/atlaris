@@ -63,6 +63,10 @@ describe('Micro-explanations', () => {
   });
 
   describe('generateMicroExplanation', () => {
+    // Note: mockProvider is passed to generateMicroExplanation but is NOT used internally.
+    // The function uses OpenRouter directly regardless of this parameter.
+    // The parameter exists for backwards compatibility (see JSDoc in micro-explanations.ts).
+    // TODO: Remove this unused parameter in the next major version.
     let mockProvider: AiPlanGenerationProvider;
 
     beforeEach(() => {

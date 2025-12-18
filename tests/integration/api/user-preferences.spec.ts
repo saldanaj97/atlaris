@@ -10,6 +10,8 @@ import { ensureUser } from '../../helpers/db';
 if (process.env.DATABASE_URL?.includes('neon.tech')) {
   throw new Error('DO NOT RUN TESTS AGAINST REMOTE DB');
 }
+
+// TODO: [OPENROUTER-MIGRATION] Enable when preferredAiModel column is added to users table
 describe.skip('GET /api/v1/user/preferences', () => {
   const testClerkUserId = `preferences-get-user-${Date.now()}`;
 
@@ -86,6 +88,7 @@ describe.skip('GET /api/v1/user/preferences', () => {
   });
 });
 
+// TODO: [OPENROUTER-MIGRATION] Enable when preferredAiModel column is added to users table
 describe.skip('PATCH /api/v1/user/preferences', () => {
   const testClerkUserId = `preferences-patch-user-${Date.now()}`;
 
