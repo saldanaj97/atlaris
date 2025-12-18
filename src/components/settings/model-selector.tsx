@@ -138,11 +138,18 @@ export function ModelSelector({
 
             <p className="text-sm">{selectedModelData.description}</p>
 
-            <div className="grid grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-4 gap-4 pt-2">
               <div>
                 <p className="text-muted-foreground text-xs">Context Window</p>
                 <p className="text-sm font-medium">
                   {(selectedModelData.contextWindow / 1000).toFixed(0)}K tokens
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Max Output</p>
+                <p className="text-sm font-medium">
+                  {(selectedModelData.contextWindow / 1000 / 2).toFixed(0)}K
+                  tokens
                 </p>
               </div>
               <div>

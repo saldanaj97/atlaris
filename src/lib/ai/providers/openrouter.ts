@@ -1,28 +1,20 @@
 import { OpenRouter } from '@openrouter/sdk';
 
-import {
-  buildSystemPrompt,
-  buildUserPrompt,
-  type PromptParams,
-} from '@/lib/ai/prompts';
+import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
+import { ProviderError, ProviderInvalidResponseError } from '@/lib/ai/provider';
+import { buildPlanProviderResult } from '@/lib/ai/providers/base';
+import { PlanSchema } from '@/lib/ai/schema';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
-} from '@/lib/ai/provider';
-import { ProviderError, ProviderInvalidResponseError } from '@/lib/ai/provider';
-import { buildPlanProviderResult } from '@/lib/ai/providers/base';
-import { PlanSchema } from '@/lib/ai/schema';
+} from '@/lib/ai/types/provider.types';
 import { openRouterEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 
 export interface OpenRouterProviderConfig {
-  apiKey?: string; // OPENROUTER_API_KEY
-  /**
-   * OpenRouter model ID (e.g., 'google/gemini-2.0-flash-exp:free').
-   * Required - no default fallback. Use getGenerationProviderWithModel() to specify.
-   */
+  apiKey?: string;
   model: string;
   siteUrl?: string;
   appName?: string;
@@ -65,8 +57,8 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt({
       topic: input.topic,
-      skillLevel: input.skillLevel as PromptParams['skillLevel'],
-      learningStyle: input.learningStyle as PromptParams['learningStyle'],
+      skillLevel: input.skillLevel,
+      learningStyle: input.learningStyle,
       weeklyHours: input.weeklyHours,
       startDate: input.startDate,
       deadlineDate: input.deadlineDate,

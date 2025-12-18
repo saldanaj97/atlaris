@@ -7,7 +7,7 @@
  *
  * @module lib/ai/ai-models
  */
-import type { AvailableModel, SubscriptionTier } from './types';
+import type { AvailableModel, SubscriptionTier } from './types/model.types';
 
 /**
  * Fallback default model used when no user preference is specified.

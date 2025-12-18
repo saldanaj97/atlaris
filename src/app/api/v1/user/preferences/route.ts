@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { AVAILABLE_MODELS, isValidModelId } from '@/lib/ai/ai-models';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
-import { ValidationError } from '@/lib/api/errors';
+import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import {
@@ -32,9 +32,10 @@ export const GET = withErrorBoundary(
     logger.info('Fetching user preferences');
 
     const user = await getUserByClerkId(userId);
+
     if (!user) {
       logger.warn('User not found in database');
-      throw new Error('User not found');
+      throw new NotFoundError('User not found');
     }
 
     logger.debug('User preferences retrieved successfully');

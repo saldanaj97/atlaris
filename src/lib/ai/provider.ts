@@ -1,47 +1,15 @@
-export interface GenerationInput {
-  topic: string;
-  notes?: string | null;
-  skillLevel: string;
-  weeklyHours: number;
-  learningStyle: string;
-  startDate?: string | null;
-  deadlineDate?: string | null;
-}
+import type { ProviderErrorKind } from './types/provider.types';
 
-export interface ProviderUsage {
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
-}
-
-export interface ProviderMetadata {
-  model?: string;
-  provider?: string;
-  usage?: ProviderUsage;
-}
-
-export interface ProviderGenerateResult {
-  stream: AsyncIterable<string>;
-  metadata: ProviderMetadata;
-}
-
-export interface GenerationOptions {
-  signal?: AbortSignal;
-  timeoutMs?: number;
-}
-
-export interface AiPlanGenerationProvider {
-  generate(
-    input: GenerationInput,
-    options?: GenerationOptions
-  ): Promise<ProviderGenerateResult>;
-}
-
-export type ProviderErrorKind =
-  | 'rate_limit'
-  | 'timeout'
-  | 'invalid_response'
-  | 'unknown';
+// Re-export types from provider.types for backwards compatibility
+export type {
+  AiPlanGenerationProvider,
+  GenerationInput,
+  GenerationOptions,
+  ProviderErrorKind,
+  ProviderGenerateResult,
+  ProviderMetadata,
+  ProviderUsage,
+} from './types/provider.types';
 
 export class ProviderError extends Error {
   constructor(

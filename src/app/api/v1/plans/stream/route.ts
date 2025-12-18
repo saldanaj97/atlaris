@@ -1,17 +1,10 @@
-import { ZodError } from 'zod';
-
 import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
-import {
-  formatGenerationError,
-  isRetryableClassification,
-} from '@/lib/ai/failures';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import {
   getGenerationProvider,
   getGenerationProviderWithModel,
 } from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { withAuth, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import {
@@ -22,41 +15,19 @@ import {
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
-import { recordUsage } from '@/lib/db/usage';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-import {
-  atomicCheckAndInsertPlan,
-  markPlanGenerationFailure,
-  markPlanGenerationSuccess,
-  resolveUserTier,
-} from '@/lib/stripe/usage';
+import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
 } from '@/lib/validation/learningPlans';
-
-export const maxDuration = 60;
-
-function buildPlanStartEvent({
-  planId,
-  input,
-}: {
-  planId: string;
-  input: CreateLearningPlanInput;
-}): StreamingEvent {
-  return {
-    type: 'plan_start',
-    data: {
-      planId,
-      topic: input.topic,
-      skillLevel: input.skillLevel,
-      learningStyle: input.learningStyle,
-      weeklyHours: input.weeklyHours,
-      startDate: input.startDate ?? null,
-      deadlineDate: input.deadlineDate ?? null,
-    },
-  };
-}
+import { ZodError } from 'zod';
+import {
+  buildPlanStartEvent,
+  handleFailedGeneration,
+  handleSuccessfulGeneration,
+  safeMarkPlanFailed,
+} from './helpers';
 
 export const POST = withErrorBoundary(
   withAuth(async ({ req, userId }) => {
@@ -162,113 +133,29 @@ export const POST = withErrorBoundary(
 
       try {
         const result = await runGenerationAttempt(
-          {
-            planId: plan.id,
-            userId: user.id,
-            input: generationInput,
-          },
+          { planId: plan.id, userId: user.id, input: generationInput },
           { provider, signal: req.signal }
         );
 
         if (result.status === 'success') {
-          const modules = result.modules;
-          const modulesCount = modules.length;
-          const tasksCount = modules.reduce(
-            (sum, module) => sum + module.tasks.length,
-            0
-          );
-
-          modules.forEach((module, index) => {
-            emit({
-              type: 'module_summary',
-              data: {
-                planId: plan.id,
-                index,
-                title: module.title,
-                description: module.description ?? null,
-                estimatedMinutes: module.estimatedMinutes,
-                tasksCount: module.tasks.length,
-              },
-            });
-
-            emit({
-              type: 'progress',
-              data: {
-                planId: plan.id,
-                modulesParsed: index + 1,
-                modulesTotalHint: modulesCount,
-              },
-            });
-          });
-
-          await markPlanGenerationSuccess(plan.id);
-          generationCompleted = true;
-
-          const usage = result.metadata?.usage;
-          await recordUsage({
+          await handleSuccessfulGeneration(result, {
+            planId: plan.id,
             userId: user.id,
-            provider: result.metadata?.provider ?? 'unknown',
-            model: result.metadata?.model ?? 'unknown',
-            inputTokens: usage?.promptTokens ?? undefined,
-            outputTokens: usage?.completionTokens ?? undefined,
-            costCents: 0,
-            kind: 'plan',
+            startedAt,
+            emit,
           });
-
-          emit({
-            type: 'complete',
-            data: {
-              planId: plan.id,
-              modulesCount,
-              tasksCount,
-              durationMs: Math.max(0, Date.now() - startedAt),
-            },
-          });
+          generationCompleted = true;
           return;
         }
 
-        const classification = result.classification ?? 'unknown';
-        const retryable = isRetryableClassification(classification);
-
-        if (!retryable) {
-          await markPlanGenerationFailure(plan.id);
-          generationCompleted = true;
-
-          const usage = result.metadata?.usage;
-          await recordUsage({
-            userId: user.id,
-            provider: result.metadata?.provider ?? 'unknown',
-            model: result.metadata?.model ?? 'unknown',
-            inputTokens: usage?.promptTokens ?? undefined,
-            outputTokens: usage?.completionTokens ?? undefined,
-            costCents: 0,
-            kind: 'plan',
-          });
-        }
-
-        const message = formatGenerationError(
-          result.error,
-          'Plan generation failed.'
-        );
-
-        emit({
-          type: 'error',
-          data: {
-            planId: plan.id,
-            message,
-            classification,
-            retryable,
-          },
+        generationCompleted = await handleFailedGeneration(result, {
+          planId: plan.id,
+          userId: user.id,
+          emit,
         });
       } catch (error) {
-        // Ensure plan is marked as failed if any uncaught error occurs
-        // This protects against timeout or unexpected errors
         if (!generationCompleted) {
-          try {
-            await markPlanGenerationFailure(plan.id);
-          } catch {
-            // Ignore errors when marking failure - plan may already be in final state
-          }
+          await safeMarkPlanFailed(plan.id, user.id);
         }
         throw error;
       }

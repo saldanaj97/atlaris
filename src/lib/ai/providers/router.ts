@@ -1,22 +1,18 @@
 import pRetry from 'p-retry';
 
+import { MockGenerationProvider } from '@/lib/ai/providers/mock';
+import { OpenRouterProvider } from '@/lib/ai/providers/openrouter';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
-} from '@/lib/ai/provider';
-import { MockGenerationProvider } from '@/lib/ai/providers/mock';
-import { OpenRouterProvider } from '@/lib/ai/providers/openrouter';
+} from '@/lib/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 
 export interface RouterConfig {
   useMock?: boolean;
-  /**
-   * OpenRouter model ID to use (e.g., 'google/gemini-2.0-flash-exp:free').
-   * If not provided, defaults to DEFAULT_MODEL or aiEnv.defaultModel.
-   */
   model?: string;
 }
 
@@ -24,6 +20,19 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
   private readonly providers: (() => AiPlanGenerationProvider)[];
 
   constructor(cfg: RouterConfig = {}) {
+    // Explicit config flag takes precedence over environment
+    if (cfg.useMock === true) {
+      this.providers = [() => new MockGenerationProvider()];
+      return;
+    }
+
+    if (cfg.useMock === false) {
+      const model = cfg.model ?? aiEnv.defaultModel;
+      this.providers = [() => new OpenRouterProvider({ model })];
+      return;
+    }
+
+    // Fall back to environment-based mock behavior (only in non-production)
     const useMock = aiEnv.useMock === 'true' && !appEnv.isProduction;
 
     if (useMock) {

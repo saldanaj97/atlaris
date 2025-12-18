@@ -1,7 +1,7 @@
 import { aiEnv, appEnv } from '@/lib/config/env';
-import type { AiPlanGenerationProvider } from './provider';
 import { MockGenerationProvider } from './providers/mock';
 import { RouterGenerationProvider } from './providers/router';
+import type { AiPlanGenerationProvider } from './types/provider.types';
 
 /**
  * Creates a generation provider configured with a specific model.
