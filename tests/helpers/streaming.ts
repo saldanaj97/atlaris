@@ -69,7 +69,7 @@ export async function readStreamingResponse(
       const parsed = JSON.parse(dataPayload);
       events.push({
         type: typeof parsed?.type === 'string' ? parsed.type : eventType,
-        data: parsed,
+        data: parsed?.data ?? parsed,
       });
     } catch {
       // ignore unparsable event
