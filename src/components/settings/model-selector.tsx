@@ -241,7 +241,7 @@ export function ModelSelector({
     <ModelDropdown
       availableModels={availableModels}
       userTier={userTier}
-      currentModel={currentModel ?? availableModels[0]?.id}
+      currentModel={currentModel}
       onSave={onSave}
     />
   );
