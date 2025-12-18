@@ -202,7 +202,7 @@ describe('pacing module', () => {
   describe('pacePlan', () => {
     const mockInput: GenerationInput = {
       topic: 'test',
-      learningStyle: 'visual',
+      learningStyle: 'video',
       skillLevel: 'intermediate',
       weeklyHours: 5,
       startDate: '2024-01-01',
