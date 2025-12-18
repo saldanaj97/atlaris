@@ -113,6 +113,28 @@ describe('RouterGenerationProvider', () => {
       expect(result.metadata.provider).toBe('mock');
     });
 
+    it('config.useMock=true overrides AI_USE_MOCK env when set to false', async () => {
+      process.env.AI_USE_MOCK = 'false';
+
+      const provider = new RouterGenerationProvider({ useMock: true });
+      const result = await provider.generate(mockInput);
+
+      expect(result.metadata.provider).toBe('mock');
+    });
+
+    it('config.useMock=false overrides AI_USE_MOCK env when set to true', async () => {
+      process.env.AI_USE_MOCK = 'true';
+      (process.env as any).NODE_ENV = 'development';
+
+      const provider = new RouterGenerationProvider({
+        useMock: false,
+        model: 'test/model',
+      });
+      const result = await provider.generate(mockInput);
+
+      expect(result.metadata.provider).toBe('openrouter');
+    });
+
     it('uses MockGenerationProvider when AI_USE_MOCK is "true" in non-production', async () => {
       process.env.AI_USE_MOCK = 'true';
       (process.env as any).NODE_ENV = 'development';
