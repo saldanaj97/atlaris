@@ -29,10 +29,16 @@ export async function readStreamingResponse(
     throw new Error('Expected streaming response body');
   }
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  // Read stream, handling errors gracefully to capture any events before error
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+    }
+  } catch {
+    // Stream may error (e.g., on generation failure) - continue to parse
+    // any events that were successfully read before the error
   }
 
   // Split events by blank lines (supports \r\n\r\n and \n\n)
