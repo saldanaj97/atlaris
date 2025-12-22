@@ -37,8 +37,6 @@
     "test-plan-generation": "./scripts/test-plan-generation.sh",
     "start": "next start",
     "type-check": "tsc --noEmit",
-    "check:duplication": "jscpd --exitCode 0",
-    "check:quality": "pnpm check:duplication",
     "prepare": "husky"
   },
   "dependencies": {
