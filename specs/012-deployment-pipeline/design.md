@@ -149,7 +149,7 @@ This document describes the complete CI/CD and deployment pipeline architecture 
 
 - Never drop columns/tables in same release as code changes (two-phase: deprecate → remove later)
 - Test migrations in staging before production
-- Use existing `db:migrate:test-db` script for local validation
+- Use existing `db:migrate:test` script for local validation
 - All migrations should be reversible or have documented rollback procedures
 
 ### Environment Variables

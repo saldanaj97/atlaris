@@ -35,7 +35,7 @@ These apply automatically based on file patterns:
 ### Testing
 
 - **NEVER run the full test suite.** Only run tests relevant to the task at hand.
-- Use `vitest` command with appropriate flags, NOT `pnpm test`.
+- Use `pnpm test:changed` or `pnpm test:watch` for development.
 - See [docs/testing/test-standards.md](docs/testing/test-standards.md) for comprehensive guidance.
 
 ### GitHub Issues & Tasks
@@ -66,7 +66,7 @@ When clarifying questions arise, use Context7 MCP to grab up-to-date documentati
 
 | Category    | Technology                               |
 | ----------- | ---------------------------------------- |
-| Framework   | Next.js 15 (React 19, Turbopack)         |
+| Framework   | Next.js 16 (React 19, Turbopack)         |
 | Language    | TypeScript                               |
 | Package Mgr | pnpm                                     |
 | Styling     | Tailwind CSS v4                          |
