@@ -159,7 +159,7 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
-        run: pnpm db:push:test-db
+        run: pnpm db:push
       - name: Grant RLS bypass and role permissions
         env:
           PGPASSWORD: postgres
@@ -360,7 +360,7 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
-        run: pnpm db:push:test-db
+        run: pnpm db:push
       - name: Grant RLS bypass and role permissions
         env:
           PGPASSWORD: postgres
