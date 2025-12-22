@@ -45,6 +45,20 @@ check_only_ignorable_files() {
   fi
 }
 
+# Check if specific directories have changes
+has_changes_in() {
+  local dir=$1
+  local remote_sha=$2
+
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    changed_files=$(git diff --name-only origin/main 2>/dev/null || git diff --name-only --cached)
+  else
+    changed_files=$(git diff --name-only "$remote_sha" HEAD)
+  fi
+
+  echo "$changed_files" | grep -q "^${dir}/" && return 0 || return 1
+}
+
 # Read the remote and remote branch being pushed to
 while read local_ref local_sha remote_ref remote_sha
 do
@@ -54,10 +68,60 @@ do
     continue
   fi
 
-  # Run lint and type-check for all pushes
-  echo "Running pre-push checks (lint and type-check)..."
-  pnpm lint:fix || exit 1
-  pnpm type-check || exit 1
+  echo "Running pre-push checks in parallel..."
 
-  echo "Pre-push checks passed!"
+  # Track PIDs and their descriptions
+  PIDS=""
+  FAILED=0
+
+  # Always run lint and type-check
+  (pnpm lint:fix) &
+  LINT_PID=$!
+  PIDS="$PIDS $LINT_PID"
+
+  (pnpm type-check) &
+  TC_PID=$!
+  PIDS="$PIDS $TC_PID"
+
+  # Run unit tests if tests/unit has changes
+  UNIT_PID=""
+  if has_changes_in "tests/unit" "$remote_sha"; then
+    echo "  → Unit tests (tests/unit has changes)"
+    (pnpm test:changed) &
+    UNIT_PID=$!
+    PIDS="$PIDS $UNIT_PID"
+  fi
+
+  # Run integration tests if tests/integration has changes
+  INT_PID=""
+  if has_changes_in "tests/integration" "$remote_sha"; then
+    echo "  → Integration tests (tests/integration has changes)"
+    (pnpm test:integration:changed) &
+    INT_PID=$!
+    PIDS="$PIDS $INT_PID"
+  fi
+
+  echo "  → Lint"
+  echo "  → Type-check"
+  echo ""
+
+  # Wait for each process and check exit codes
+  wait $LINT_PID || { echo "❌ Lint failed"; FAILED=1; }
+  wait $TC_PID || { echo "❌ Type-check failed"; FAILED=1; }
+
+  if [ -n "$UNIT_PID" ]; then
+    wait $UNIT_PID || { echo "❌ Unit tests failed"; FAILED=1; }
+  fi
+
+  if [ -n "$INT_PID" ]; then
+    wait $INT_PID || { echo "❌ Integration tests failed"; FAILED=1; }
+  fi
+
+  if [ $FAILED -ne 0 ]; then
+    echo ""
+    echo "❌ Pre-push checks failed!"
+    exit 1
+  fi
+
+  echo "✅ Pre-push checks passed!"
 done

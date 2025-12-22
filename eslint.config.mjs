@@ -104,7 +104,6 @@ export default [
   {
     files: [
       'drizzle.config.ts',
-      'drizzle-test.config.ts',
       'vitest.config.ts',
       'sentry.edge.config.ts',
       'sentry.server.config.ts',

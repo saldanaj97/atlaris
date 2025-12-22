@@ -445,7 +445,6 @@ jobs:
           ^(
             pnpm-lock\.yaml|
             drizzle(.*)\.config\.ts|
-            drizzle-test\.config\.ts|
             vitest(\.integration)?\.config\.ts|
             vitest\.config\.ts|
             tsconfig\.json|
