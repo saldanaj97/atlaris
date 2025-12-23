@@ -1,4 +1,6 @@
 'use client';
+import { ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -6,34 +8,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  authenticatedNavItems,
-  unauthenticatedNavItems,
-  type NavItem,
-} from '@/lib/navigation';
-import { ChevronDown } from 'lucide-react';
-import Link from 'next/link';
+import type { NavItem } from '@/lib/navigation';
 
-/**
- * Desktop navigation and auth controls for the site header.
- *
- * Features:
- * - Center-aligned navigation with different items based on auth state
- * - Authenticated: Explore, Dashboard (dropdown), Integrations
- * - Unauthenticated: Explore, Pricing, About
- * - Dashboard is clickable and has a dropdown menu
- * - Right-aligned auth controls (Sign In/Sign Up or UserButton)
- * - Mobile navigation is delegated to MobileSiteHeader component
- */
-export default function SiteHeaderClient({
-  isSignedIn,
-}: {
-  isSignedIn: boolean;
-}) {
-  const navItems = isSignedIn ? authenticatedNavItems : unauthenticatedNavItems;
+interface DesktopNavigationProps {
+  navItems: NavItem[];
+}
 
+export default function DesktopNavigation({
+  navItems,
+}: DesktopNavigationProps) {
   const renderNavItem = (item: NavItem) => {
-    // Item with dropdown (Dashboard)
     if (item.dropdown) {
       return (
         <DropdownMenu key={item.href}>
@@ -77,9 +61,9 @@ export default function SiteHeaderClient({
   };
 
   return (
-    <nav className="hidden items-center lg:flex">
+    <nav className="flex items-center">
       <div className="flex items-center gap-2">
-        {navItems.map(renderNavItem)}
+        {navItems.map((item) => renderNavItem(item))}
       </div>
     </nav>
   );

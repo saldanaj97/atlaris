@@ -1,20 +1,28 @@
-import { describe, it, expect, vi } from 'vitest';
+import ClerkAuthControls from '@/components/shared/ClerkAuthControls';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import AuthControls from '@/components/shared/AuthControls';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock Clerk components
 vi.mock('@clerk/nextjs', () => ({
-  SignedIn: ({ children }: { children: React.ReactNode }) => <div data-testid="signed-in">{children}</div>,
-  SignedOut: ({ children }: { children: React.ReactNode }) => <div data-testid="signed-out">{children}</div>,
-  SignInButton: ({ children }: { children: React.ReactNode }) => <div data-testid="sign-in-button">{children}</div>,
-  SignUpButton: ({ children }: { children: React.ReactNode }) => <div data-testid="sign-up-button">{children}</div>,
+  SignedIn: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="signed-in">{children}</div>
+  ),
+  SignedOut: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="signed-out">{children}</div>
+  ),
+  SignInButton: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sign-in-button">{children}</div>
+  ),
+  SignUpButton: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sign-up-button">{children}</div>
+  ),
   UserButton: () => <div data-testid="user-button">User Button</div>,
 }));
 
 describe('AuthControls', () => {
   it('should render both signed in and signed out states', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     // Both states are rendered (Clerk handles conditional display)
     expect(screen.getByTestId('signed-in')).toBeInTheDocument();
@@ -22,7 +30,7 @@ describe('AuthControls', () => {
   });
 
   it('should render sign in button when signed out', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     const signedOutSection = screen.getByTestId('signed-out');
     expect(signedOutSection).toBeInTheDocument();
@@ -32,7 +40,7 @@ describe('AuthControls', () => {
   });
 
   it('should render sign up button when signed out', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     const signedOutSection = screen.getByTestId('signed-out');
     expect(signedOutSection).toBeInTheDocument();
@@ -42,19 +50,19 @@ describe('AuthControls', () => {
   });
 
   it('should display "Sign In" text in sign in button', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     expect(screen.getByText('Sign In')).toBeInTheDocument();
   });
 
   it('should display "Sign Up" text in sign up button', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     expect(screen.getByText('Sign Up')).toBeInTheDocument();
   });
 
   it('should render user button when signed in', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     const signedInSection = screen.getByTestId('signed-in');
     expect(signedInSection).toBeInTheDocument();
@@ -64,14 +72,14 @@ describe('AuthControls', () => {
   });
 
   it('should have proper layout classes', () => {
-    const { container } = render(<AuthControls />);
+    const { container } = render(<ClerkAuthControls />);
 
     const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
     expect(wrapper).toBeInTheDocument();
   });
 
   it('should apply responsive gap classes', () => {
-    const { container } = render(<AuthControls />);
+    const { container } = render(<ClerkAuthControls />);
 
     const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
     expect(wrapper).toHaveClass('gap-2');
@@ -79,7 +87,7 @@ describe('AuthControls', () => {
   });
 
   it('should apply proper margin classes', () => {
-    const { container } = render(<AuthControls />);
+    const { container } = render(<ClerkAuthControls />);
 
     const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
     expect(wrapper).toHaveClass('ml-auto');
@@ -87,7 +95,7 @@ describe('AuthControls', () => {
   });
 
   it('should use neutral variant for sign in button', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     // The sign in button should have neutral variant
     const signInButton = screen.getByText('Sign In').closest('button');
@@ -95,7 +103,7 @@ describe('AuthControls', () => {
   });
 
   it('should use default variant for sign up button', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     // The sign up button should have default styling (no explicit variant means default)
     const signUpButton = screen.getByText('Sign Up').closest('button');
@@ -103,7 +111,7 @@ describe('AuthControls', () => {
   });
 
   it('should wrap buttons in appropriate Clerk components', () => {
-    render(<AuthControls />);
+    render(<ClerkAuthControls />);
 
     // SignInButton should wrap the "Sign In" button
     const signInWrapper = screen.getByTestId('sign-in-button');
