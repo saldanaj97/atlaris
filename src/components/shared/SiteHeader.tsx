@@ -1,32 +1,44 @@
-import { Paper } from '@/components/shared/Paper';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/lib/navigation';
-
+import { auth } from '@clerk/nextjs/server';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
 
 /**
  * Server component wrapper for the site header.
  *
- * Responsibilities:
+ * **Responsibilities:**
  * - Resolve whether a user is signed in (server-side)
  * - Select appropriate nav items based on auth state
  * - Render MobileHeader (mobile/tablet) and DesktopHeader (desktop)
+ *
+ *
+ * **Architecture:**
+ *
+ * Header -> Navigation separation
+ *
+ * We maintain separate Header and Navigation components because they serve
+ * distinct purposes:
+ *
+ * - **Header components** (DesktopHeader, MobileHeader): Layout containers that
+ *   position brand, navigation, and auth controls. Handle responsive visibility.
+ *
+ * - **Navigation components** (DesktopNavigation, MobileNavigation): Render the
+ *   actual nav links with their specific interaction patterns (dropdowns vs sheets).
+ *
  */
 export default async function SiteHeader() {
-  const clerkUserId = await getEffectiveClerkUserId();
-  const isSignedIn = Boolean(clerkUserId);
-  const navItems = isSignedIn ? authenticatedNavItems : unauthenticatedNavItems;
+  const { userId } = await auth();
+  const navItems = userId ? authenticatedNavItems : unauthenticatedNavItems;
 
   return (
-    <header className="container mx-auto my-4 w-full">
-      <Paper className="flex items-center justify-between gap-4 p-4">
+    <header className="fixed top-0 left-0 z-50 w-full">
+      <div className="mx-auto max-w-screen-xl px-6 py-4">
         <MobileHeader navItems={navItems} />
         <DesktopHeader navItems={navItems} />
-      </Paper>
+      </div>
     </header>
   );
 }

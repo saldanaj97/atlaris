@@ -2,9 +2,8 @@
 
 import ClerkAuthControls from '@/components/shared/ClerkAuthControls';
 import type { NavItem } from '@/lib/navigation';
-import { BookOpen } from 'lucide-react';
-import Link from 'next/link';
 
+import BrandLogo from '../BrandLogo';
 import DesktopNavigation from './DesktopNavigation';
 
 interface DesktopHeaderProps {
@@ -15,24 +14,18 @@ interface DesktopHeaderProps {
  * Desktop header component (hidden on mobile/tablet, visible on desktop).
  *
  * Layout: brand (left) | navigation (center) | auth controls (right)
- * Uses CSS grid with 3 columns for proper alignment.
  */
 export default function DesktopHeader({ navItems }: DesktopHeaderProps) {
   return (
-    <div className="hidden lg:grid lg:grid-cols-3 lg:items-center">
+    <div className="hidden w-full items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl lg:flex">
       {/* Brand (left) */}
-      <Link href="/" className="flex items-center space-x-2">
-        <BookOpen className="text-main h-8 w-8" />
-        <span className="text-main-foreground text-2xl font-bold">Atlaris</span>
-      </Link>
+      <BrandLogo />
 
       {/* Navigation (center) */}
-      <div className="justify-self-center">
-        <DesktopNavigation navItems={navItems} />
-      </div>
+      <DesktopNavigation navItems={navItems} />
 
       {/* Auth controls (right) */}
-      <div className="justify-self-end">
+      <div className="flex items-center space-x-4">
         <ClerkAuthControls />
       </div>
     </div>

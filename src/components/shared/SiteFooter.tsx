@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+// TODO: Make sure the styling matches the design system
 export default function SiteFooter() {
   return (
     <footer

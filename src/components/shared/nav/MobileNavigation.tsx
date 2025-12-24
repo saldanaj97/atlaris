@@ -1,23 +1,18 @@
 'use client';
 
 import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from '@clerk/nextjs';
-import { Menu } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
 import type { NavItem } from '@/lib/navigation';
+import { Menu } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+
+import BrandLogo from '../BrandLogo';
 
 interface MobileNavigationProps {
   navItems: NavItem[];
@@ -25,87 +20,71 @@ interface MobileNavigationProps {
 
 /**
  * Mobile navigation component with left-sliding sheet.
- *
- * Features:
- * - Hamburger trigger button (visible only on mobile/tablet)
- * - Sheet slides from left with nav items based on auth state
- * - For authenticated users, Dashboard dropdown items are shown as separate links
- * - Auto-closes when a link is clicked
- * - Shows Sign In / Sign Up buttons or UserButton based on auth state
  */
 export default function MobileNavigation({ navItems }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {/* Hamburger trigger */}
-      <Button
-        variant="nav-button"
-        size="icon"
+      <button
         onClick={() => setOpen(true)}
+        className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/40 text-gray-600 shadow-sm backdrop-blur-sm transition hover:bg-white/60"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
-      </Button>
+      </button>
 
       {/* Sheet content sliding from left */}
-      <SheetContent side="left" className="w-72 p-0">
-        <SheetHeader className="p-4">
+      <SheetContent
+        side="left"
+        className="w-72 border-r border-white/40 bg-white/80 p-0 backdrop-blur-xl"
+      >
+        <SheetHeader className="p-6">
           <SheetTitle>
-            <Link
-              href="/"
-              onClick={() => setOpen(false)}
-              className="text-main-foreground text-xl font-bold"
-            >
-              Atlaris
-            </Link>
+            <BrandLogo size="sm" onClick={() => setOpen(false)} />
           </SheetTitle>
         </SheetHeader>
 
         {/* Navigation items */}
-        <div className="flex flex-1 flex-col gap-3 px-4">
-          {navItems.map((item) => (
-            <Button
-              asChild
-              key={item.href}
-              variant="nav-button"
-              className={`w-full justify-start ${item.highlight ? 'bg-main text-main-foreground' : ''}`}
-            >
-              <Link href={item.href} onClick={() => setOpen(false)}>
-                {item.label}
-              </Link>
-            </Button>
-          ))}
-        </div>
-
-        {/* Auth controls at bottom */}
-        <div className="border-border mt-auto border-t-2 p-4">
-          <SignedOut>
-            <div className="flex flex-col gap-2">
-              <SignInButton>
-                <button
-                  type="button"
-                  className="text-ceramic-white bg-ceramic-black/50 hover:bg-ceramic-black/70 h-10 w-full cursor-pointer rounded-full px-4 text-sm font-medium"
+        <div className="flex flex-1 flex-col gap-2 px-4">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <div key={item.href} className="flex flex-col gap-1">
+                <Link
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={`rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                      : 'text-gray-600 hover:bg-white/60 hover:text-purple-600'
+                  }`}
                 >
-                  Sign In
-                </button>
-              </SignInButton>
-              <SignUpButton>
-                <button
-                  type="button"
-                  className="text-ceramic-white h-10 w-full cursor-pointer rounded-full bg-[#6c47ff] px-4 text-sm font-medium"
-                >
-                  Sign Up
-                </button>
-              </SignUpButton>
-            </div>
-          </SignedOut>
-
-          <SignedIn>
-            <div className="flex items-center justify-center">
-              <UserButton />
-            </div>
-          </SignedIn>
+                  {item.label}
+                </Link>
+                {item.dropdown && (
+                  <div className="ml-4 flex flex-col gap-1 border-l border-purple-100 pl-4">
+                    {item.dropdown.map((subItem) => (
+                      <Link
+                        key={subItem.href}
+                        href={subItem.href}
+                        onClick={() => setOpen(false)}
+                        className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                          pathname === subItem.href
+                            ? 'text-purple-600'
+                            : 'text-gray-500 hover:text-purple-600'
+                        }`}
+                      >
+                        {subItem.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </SheetContent>
     </Sheet>
