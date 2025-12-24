@@ -160,18 +160,22 @@ async function* createMockStream(
 ): AsyncIterable<string> {
   const serialized = JSON.stringify(payload);
   const chunkSize = 80;
+  // Skip inter-chunk delays in fast test mode (delayMs < 100)
+  const chunkDelay = delayMs < 100 ? 0 : 50;
 
   // Simulate streaming with realistic delay
   for (let i = 0; i < serialized.length; i += chunkSize) {
-    if (i > 0) {
+    if (i > 0 && chunkDelay > 0) {
       // Add small delay between chunks to simulate network
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, chunkDelay));
     }
     yield serialized.slice(i, i + chunkSize);
   }
 
   // Final delay to simulate total generation time
-  await new Promise((resolve) => setTimeout(resolve, delayMs));
+  if (delayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
 }
 
 export class MockGenerationProvider implements AiPlanGenerationProvider {
@@ -212,8 +216,16 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
 
     // Random delay (configurable via env, or deterministic if seeded)
     const baseDelay = this.config.delayMs;
-    const variance = rng ? rng.nextInt(-2000, 2000) : getRandomInt(-2000, 2000);
-    const actualDelay = Math.max(1000, baseDelay + variance);
+    // Only apply variance if delay is large enough (>= 1000ms)
+    // For fast test mode (delay < 1000ms), use exact delay with no minimum floor
+    const variance =
+      baseDelay >= 1000
+        ? rng
+          ? rng.nextInt(-2000, 2000)
+          : getRandomInt(-2000, 2000)
+        : 0;
+    const actualDelay =
+      baseDelay >= 1000 ? Math.max(1000, baseDelay + variance) : baseDelay;
 
     return {
       stream: createMockStream(payload, actualDelay),
