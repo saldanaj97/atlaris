@@ -130,7 +130,7 @@ export const PlanModuleCard = ({
 
     return (
       <Badge
-        variant="neutral"
+        variant="default"
         className="border-muted-foreground/20 text-muted-foreground"
       >
         {completedCount}/{totalTasks}
@@ -155,7 +155,7 @@ export const PlanModuleCard = ({
             </p>
           ) : null}
         </div>
-        <Badge variant="neutral">
+        <Badge variant="default">
           {formatMinutes(module.estimatedMinutes)}
         </Badge>
       </div>

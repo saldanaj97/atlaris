@@ -6,22 +6,8 @@
 :root {
   /* Dotted grid pattern for background */
   --pattern-dotted-grid: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='1' fill='%23000' opacity='0.3'/%3E%3C/svg%3E");
-
-  /* Hatched pattern for shadows */
-  --pattern-hatch: repeating-linear-gradient(
-    -45deg,
-    var(--border),
-    var(--border) 3.5px,
-    transparent 1px,
-    transparent 4px
-  );
-
-  /* Paper texture - subtle noise pattern for realistic paper feel */
-  --pattern-paper-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-
-  /* Pencil sketch border pattern */
-  --pencil-border: url("data:image/svg+xml,%3Csvg width='100' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 2 Q10 0.5, 20 2 T40 2 T60 2 T80 2 T100 2' stroke='%23000' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-
+  --primary: oklch(66.9% 0.18368 248.8066);
+  --secondary: oklch(62.9% 0.1 250);
   --background: oklch(0.9427 0 0);
   --highlighter: oklch(0.93 0.17 98.5); /* Vibrant yellow */
   --tape: oklch(0.96 0.03 100); /* Masking tape */
@@ -64,6 +50,8 @@
 
 @theme inline {
   --color-main: var(--main);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
   --color-background: var(--background);
   --color-card-background: var(--card-background);
   --color-secondary-background: var(--secondary-background);

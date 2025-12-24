@@ -52,7 +52,7 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
     <div className="min-h-screen">
       <div className="container mx-auto">
         <Button
-          variant="neutral"
+          variant="default"
           onClick={() => router.push('/dashboard')}
           className="mb-4 space-x-2"
         >
