@@ -30,12 +30,12 @@ export const metadata: Metadata = {
 
 /**
  * Note: This is a nested layout - the root layout already provides <html>, <body>,
- * ClerkProvider, fonts, Toaster, and ScrapbookDesignFilters.
+ * ClerkProvider, fonts, and Toaster
  */
 export default function LandingLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <>{children}</>;
+  return <main className="container mx-auto min-w-full">{children}</main>;
 }

@@ -1,7 +1,7 @@
 import { CalendarCheck, Check, ExternalLink, FileText } from 'lucide-react';
 
 /**
- * How it Works section with 3 steps showing the Pathfinder process.
+ * How it Works section with 3 steps showing the Atlaris process.
  * Each step includes a UI-style visual.
  */
 export function HowItWorksSection() {
@@ -17,7 +17,7 @@ export function HowItWorksSection() {
             id="how-it-works-heading"
             className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl"
           >
-            How Pathfinder forces progress
+            How Atlaris forces progress
           </h2>
           <p className="mt-4 text-lg text-slate-600">
             A three-step system that turns intention into action
@@ -72,28 +72,31 @@ function StepCard({
 }: StepCardProps) {
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border p-6 transition-shadow hover:shadow-md ${
+      className={`group relative overflow-hidden rounded-3xl border p-8 backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl ${
         emphasized
-          ? 'border-slate-300 bg-gradient-to-br from-slate-50 to-white'
-          : 'border-slate-200 bg-white'
+          ? 'border-purple-200/50 bg-gradient-to-br from-purple-50/80 to-white/60 shadow-xl'
+          : 'border-white/50 bg-white/40 shadow-lg'
       }`}
       role="article"
     >
+      {/* Decorative glow */}
+      <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-20 blur-2xl transition group-hover:opacity-40"></div>
+
       <div className="mb-4 flex items-center gap-3">
         <span
-          className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+          className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold shadow-lg ${
             emphasized
-              ? 'bg-slate-700 text-white'
-              : 'bg-slate-100 text-slate-600'
+              ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
+              : 'bg-gradient-to-br from-gray-100 to-white text-gray-600'
           }`}
           aria-hidden="true"
         >
           {stepNumber}
         </span>
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+        <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
       </div>
 
-      <p className="mb-6 text-slate-600">{description}</p>
+      <p className="mb-6 leading-relaxed text-gray-600">{description}</p>
 
       {/* Visual mockup */}
       <div className="relative" aria-hidden="true">
@@ -112,28 +115,28 @@ function CurriculumVisual() {
   ];
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-      <div className="border-b border-slate-200 bg-white px-3 py-2">
+    <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm">
+      <div className="border-b border-purple-100 bg-gradient-to-r from-purple-50/80 to-pink-50/80 px-4 py-3">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-slate-400" />
-          <span className="text-xs font-medium text-slate-600">
+          <FileText className="h-4 w-4 text-purple-500" />
+          <span className="text-sm font-medium text-gray-700">
             TypeScript Roadmap
           </span>
         </div>
       </div>
-      <div className="space-y-2 p-3">
+      <div className="space-y-3 p-4">
         {modules.map((module, idx) => (
-          <div key={idx} className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-700">
-              <span className="text-slate-400">▼</span>
+          <div key={idx} className="space-y-1.5">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+              <span className="text-purple-400">▼</span>
               {module.title}
             </div>
             {module.items.map((item, itemIdx) => (
               <div
                 key={itemIdx}
-                className="ml-4 flex items-center gap-2 text-xs text-slate-500"
+                className="ml-5 flex items-center gap-2 text-sm text-gray-500"
               >
-                <div className="h-1 w-1 rounded-full bg-slate-300" />
+                <div className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
                 {item}
               </div>
             ))}
@@ -147,29 +150,29 @@ function CurriculumVisual() {
 /** Visual 2: Calendar event with resource link */
 function ResourcesVisual() {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm">
       {/* Event header */}
-      <div className="border-b border-slate-100 bg-slate-700 px-3 py-2">
+      <div className="border-b border-purple-100 bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-white">
+          <span className="text-sm font-medium text-white">
             TypeScript Generics
           </span>
-          <span className="text-[10px] text-slate-300">Tue 9:00 AM</span>
+          <span className="text-xs text-white/80">Tue 9:00 AM</span>
         </div>
       </div>
 
       {/* Event details */}
-      <div className="space-y-3 p-3">
-        <div className="flex items-center gap-2 text-xs text-slate-600">
-          <CalendarCheck className="h-3.5 w-3.5 text-slate-400" />
+      <div className="space-y-3 p-4">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <CalendarCheck className="h-4 w-4 text-purple-500" />
           <span>1 hour · Focus time</span>
         </div>
 
-        <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
-          <p className="mb-1 text-[10px] font-medium text-slate-400 uppercase">
+        <div className="rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50/50 to-pink-50/50 p-3">
+          <p className="mb-2 text-xs font-medium text-purple-600 uppercase">
             Resources
           </p>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <ResourceLink label="Official TS Docs: Generics" type="article" />
             <ResourceLink label="Generics in 10 mins" type="video" />
             <ResourceLink label="Practice exercises" type="exercise" />
@@ -188,10 +191,10 @@ function ResourceLink({ label, type }: { label: string; type: string }) {
   };
 
   return (
-    <div className="flex items-center gap-2 text-xs text-slate-600 hover:text-slate-900">
+    <div className="flex items-center gap-2 text-sm text-gray-600 transition hover:text-purple-600">
       <span>{icons[type]}</span>
       <span className="truncate">{label}</span>
-      <ExternalLink className="ml-auto h-3 w-3 flex-shrink-0 text-slate-400" />
+      <ExternalLink className="ml-auto h-3.5 w-3.5 flex-shrink-0 text-purple-400" />
     </div>
   );
 }
@@ -199,25 +202,34 @@ function ResourceLink({ label, type }: { label: string; type: string }) {
 /** Visual 3: Integrations + sync toast */
 function SyncVisual() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Integrations row */}
-      <div className="flex items-center justify-center gap-3">
-        <IntegrationIcon name="Google Calendar" color="bg-blue-500" />
-        <IntegrationIcon name="Notion" color="bg-slate-900" />
-        <IntegrationIcon name="Outlook" color="bg-sky-600" />
+      <div className="flex items-center justify-center gap-4">
+        <IntegrationIcon
+          name="Google Calendar"
+          color="bg-gradient-to-br from-blue-400 to-blue-600"
+        />
+        <IntegrationIcon
+          name="Notion"
+          color="bg-gradient-to-br from-gray-700 to-gray-900"
+        />
+        <IntegrationIcon
+          name="Outlook"
+          color="bg-gradient-to-br from-sky-400 to-sky-600"
+        />
       </div>
 
       {/* Sync toast notification */}
-      <div className="mx-auto max-w-[200px] overflow-hidden rounded-lg border border-emerald-200 bg-emerald-50 shadow-sm">
-        <div className="flex items-center gap-2 px-3 py-2">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-200">
-            <Check className="h-3 w-3 text-emerald-700" />
+      <div className="mx-auto max-w-[220px] overflow-hidden rounded-2xl border border-emerald-200/50 bg-gradient-to-r from-emerald-50/80 to-green-50/80 shadow-lg backdrop-blur-sm">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 shadow-md">
+            <Check className="h-4 w-4 text-white" />
           </div>
           <div>
-            <p className="text-xs font-medium text-emerald-800">
+            <p className="text-sm font-medium text-emerald-800">
               Schedule synced
             </p>
-            <p className="text-[10px] text-emerald-600">
+            <p className="text-xs text-emerald-600">
               24 events added to calendar
             </p>
           </div>
@@ -225,19 +237,19 @@ function SyncVisual() {
       </div>
 
       {/* Lock screen preview */}
-      <div className="mx-auto max-w-[140px] overflow-hidden rounded-xl border-2 border-slate-300 bg-slate-100">
-        <div className="bg-slate-200 px-2 py-1 text-center">
-          <span className="text-[8px] font-medium text-slate-500">9:41 AM</span>
+      <div className="mx-auto max-w-[160px] overflow-hidden rounded-2xl border-2 border-white/60 bg-gradient-to-b from-gray-100 to-gray-200 shadow-xl">
+        <div className="bg-gradient-to-r from-purple-100/80 to-pink-100/80 px-3 py-1.5 text-center">
+          <span className="text-[10px] font-medium text-gray-600">9:41 AM</span>
         </div>
-        <div className="p-2">
-          <div className="rounded-md bg-white p-2 shadow-sm">
-            <div className="flex items-center gap-1.5">
-              <CalendarCheck className="h-3 w-3 text-slate-600" />
-              <span className="text-[9px] font-medium text-slate-700">
+        <div className="p-3">
+          <div className="rounded-xl border border-white/60 bg-white/80 p-3 shadow-md backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="h-4 w-4 text-purple-500" />
+              <span className="text-xs font-medium text-gray-700">
                 Coming up
               </span>
             </div>
-            <p className="mt-1 text-[8px] text-slate-500">
+            <p className="mt-1 text-[10px] text-gray-500">
               TypeScript: Types • 9am
             </p>
           </div>
@@ -250,10 +262,10 @@ function SyncVisual() {
 function IntegrationIcon({ name, color }: { name: string; color: string }) {
   return (
     <div
-      className={`flex h-10 w-10 items-center justify-center rounded-lg ${color} shadow-sm`}
+      className={`flex h-12 w-12 items-center justify-center rounded-xl ${color} shadow-lg transition hover:scale-105 hover:shadow-xl`}
       title={name}
     >
-      <span className="text-base text-white">
+      <span className="text-lg font-semibold text-white">
         {name === 'Google Calendar' ? 'G' : name === 'Notion' ? 'N' : 'O'}
       </span>
     </div>

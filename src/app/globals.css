@@ -98,7 +98,7 @@
   body {
     @apply text-foreground bg-background;
     font-family: var(--font-family-base);
-    background-image: var(--pattern-dotted-grid);
+    /* background-image: var(--pattern-dotted-grid); */
   }
 
   h1,
