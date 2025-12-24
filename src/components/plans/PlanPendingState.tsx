@@ -65,7 +65,11 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
               </Badge>
               <Badge
                 variant={
-                  isFailed ? 'default' : isProcessing ? 'default' : 'neutral'
+                  isFailed
+                    ? 'destructive'
+                    : isProcessing
+                      ? 'default'
+                      : 'secondary'
                 }
                 className="ml-2 uppercase"
               >

@@ -70,8 +70,8 @@ export const PlanDetailsCard = ({
                   plan.status === 'ready'
                     ? 'default'
                     : plan.status === 'failed'
-                      ? 'default'
-                      : 'neutral'
+                      ? 'destructive'
+                      : 'secondary'
                 }
                 className="uppercase"
               >

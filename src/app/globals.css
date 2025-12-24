@@ -98,7 +98,3 @@
     font-family: var(--font-family-heading);
   }
 }
-
-/* Torn paper effect utilities */
-@layer components {
-}

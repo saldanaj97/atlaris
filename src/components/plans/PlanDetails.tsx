@@ -11,7 +11,6 @@ import { PlanModuleCard } from '@/components/plans/PlanModuleCard';
 import ScheduleWeekList from '@/components/plans/ScheduleWeekList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Highlighter } from '@/components/ui/highlighter';
 import { ArrowLeft } from 'lucide-react';
 import { ExportButtons } from './ExportButtons';
 import { PlanDetailsCard } from './PlanDetailsCard';
@@ -94,11 +93,7 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
                       : 'text-muted-foreground hover:border-border hover:text-foreground border-transparent'
                   }`}
                 >
-                  {activeView === 'modules' ? (
-                    <Highlighter>Modules</Highlighter>
-                  ) : (
-                    'Modules'
-                  )}
+                  Modules
                 </Button>
                 <Button
                   type="button"
@@ -112,11 +107,7 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
                       : 'text-muted-foreground hover:border-border hover:text-foreground border-transparent'
                   }`}
                 >
-                  {activeView === 'schedule' ? (
-                    <Highlighter>Schedule</Highlighter>
-                  ) : (
-                    'Schedule'
-                  )}
+                  Schedule
                 </Button>
               </nav>
             </div>

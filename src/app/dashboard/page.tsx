@@ -1,7 +1,6 @@
 import PlansList from '@/components/plans/PlansList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Tape } from '@/components/ui/tape';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { formatWeeklyHours } from '@/lib/formatters';
@@ -68,12 +67,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-        <Card className="relative p-6">
-          <Tape
-            variant="lg"
-            angle="left"
-            className="absolute -top-3 left-1/2 -translate-x-1/2"
-          />
+        <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Total Plans</p>
@@ -83,46 +77,29 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="relative p-6">
-          <Tape
-            variant="lg"
-            angle="right"
-            className="absolute -top-3 left-1/2 -translate-x-1/2"
-          />
+        <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Active Plans</p>
-              <p className="text-learning-primary text-2xl font-bold">
-                {activePlans}
-              </p>
+              <p className="text-primary text-2xl font-bold">{activePlans}</p>
             </div>
-            <Target className="text-learning-primary/50 h-8 w-8" />
+            <Target className="text-primary/50 h-8 w-8" />
           </div>
         </Card>
 
-        <Card className="relative p-6">
-          <Tape
-            variant="lg"
-            angle="left"
-            className="absolute -top-3 left-1/2 -translate-x-1/2"
-          />
+        <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Completed</p>
-              <p className="text-learning-success text-2xl font-bold">
+              <p className="text-2xl font-bold text-green-600">
                 {completedPlans.length}
               </p>
             </div>
-            <TrendingUp className="text-learning-success/50 h-8 w-8" />
+            <TrendingUp className="h-8 w-8 text-green-600/50" />
           </div>
         </Card>
 
-        <Card className="relative p-6">
-          <Tape
-            variant="lg"
-            angle="right"
-            className="absolute -top-3 left-1/2 -translate-x-1/2"
-          />
+        <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Hours Learned</p>
