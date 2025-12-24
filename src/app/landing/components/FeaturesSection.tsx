@@ -1,31 +1,39 @@
 /**
  * Features section with glassmorphism cards and AI-powered insights.
  */
-export function FeaturesSection() {
-  const features = [
-    {
-      gradient: 'from-purple-400 to-purple-500',
-      icon: '✨',
-      title: 'AI-Powered Learning',
-      description:
-        'Smart algorithms that understand your learning style and adapt in real-time.',
-    },
-    {
-      gradient: 'from-pink-400 to-rose-500',
-      icon: '🎯',
-      title: 'Goal Tracking',
-      description:
-        'Set milestones and watch your progress through beautiful visualizations.',
-    },
-    {
-      gradient: 'from-cyan-400 to-blue-500',
-      icon: '🔮',
-      title: 'Predictive Insights',
-      description:
-        'Know exactly what to learn next based on your goals and industry trends.',
-    },
-  ];
 
+interface Feature {
+  gradient: string;
+  icon: string;
+  title: string;
+  description: string;
+}
+
+const FEATURES: Feature[] = [
+  {
+    gradient: 'from-purple-400 to-purple-500',
+    icon: '✨',
+    title: 'AI-Powered Learning',
+    description:
+      'Smart algorithms that understand your learning style and adapt in real-time.',
+  },
+  {
+    gradient: 'from-pink-400 to-rose-500',
+    icon: '🎯',
+    title: 'Goal Tracking',
+    description:
+      'Set milestones and watch your progress through beautiful visualizations.',
+  },
+  {
+    gradient: 'from-cyan-400 to-blue-500',
+    icon: '🔮',
+    title: 'Predictive Insights',
+    description:
+      'Know exactly what to learn next based on your goals and industry trends.',
+  },
+];
+
+export function FeaturesSection() {
   return (
     <section
       className="relative py-24 lg:py-32"
@@ -52,16 +60,14 @@ export function FeaturesSection() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
-          {features.map((feature, i) => (
+          {FEATURES.map((feature) => (
             <div
-              key={i}
+              key={feature.title}
               className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
             >
               <div
-                className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-30 blur-2xl"
-                style={{
-                  backgroundImage: `linear-gradient(to bottom right, var(--tw-gradient-stops))`,
-                }}
+                className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${feature.gradient} opacity-30 blur-2xl`}
+                aria-hidden="true"
               ></div>
 
               <div

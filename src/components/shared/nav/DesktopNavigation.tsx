@@ -30,7 +30,7 @@ export default function DesktopNavigation({
       return (
         <DropdownMenu key={item.href}>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center space-x-1 text-sm font-medium text-gray-600 transition hover:text-purple-600 focus:outline-none">
+            <button className="flex items-center space-x-1 text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:outline-none">
               <span>{item.label}</span>
               <ChevronDown className="h-4 w-4" />
             </button>

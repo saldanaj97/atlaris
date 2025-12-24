@@ -11,8 +11,14 @@ export function UseCasesSection() {
       aria-labelledby="use-cases-heading"
     >
       {/* Background decorations */}
-      <div className="absolute top-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-gradient-to-br from-purple-200 to-pink-200 opacity-50 blur-3xl"></div>
-      <div className="absolute right-10 bottom-20 h-48 w-48 rounded-full bg-gradient-to-br from-cyan-200 to-blue-200 opacity-40 blur-3xl"></div>
+      <div
+        className="absolute top-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-gradient-to-br from-purple-200 to-pink-200 opacity-50 blur-3xl"
+        aria-hidden="true"
+      ></div>
+      <div
+        className="absolute right-10 bottom-20 h-48 w-48 rounded-full bg-gradient-to-br from-cyan-200 to-blue-200 opacity-40 blur-3xl"
+        aria-hidden="true"
+      ></div>
 
       <div className="relative z-10 mx-auto max-w-screen-xl px-6">
         <div className="mb-16 text-center">
@@ -79,12 +85,12 @@ function QuoteCard({
   gradient,
 }: QuoteCardProps) {
   return (
-    <figure
-      className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
-      role="blockquote"
-    >
+    <figure className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl">
       {/* Decorative glow */}
-      <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-purple-200 to-pink-200 opacity-20 blur-2xl transition group-hover:opacity-40"></div>
+      <div
+        className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-purple-200 to-pink-200 opacity-20 blur-2xl transition group-hover:opacity-40"
+        aria-hidden="true"
+      ></div>
 
       {/* Quote icon */}
       <Quote
@@ -93,7 +99,7 @@ function QuoteCard({
       />
 
       {/* Star rating */}
-      <div className="mb-4 flex">
+      <div className="mb-4 flex" aria-hidden="true">
         {[1, 2, 3, 4, 5].map((star) => (
           <svg
             key={star}

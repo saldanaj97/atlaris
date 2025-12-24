@@ -213,7 +213,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       });
 
       // Try multiple times to ensure no failures
-      for (let i = 0; i < 1; i++) {
+      for (let i = 0; i < 5; i++) {
         const result = await provider.generate(SAMPLE_INPUT);
         const rawText = await collectStream(result.stream);
         expect(rawText).toBeTruthy();

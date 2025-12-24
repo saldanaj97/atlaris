@@ -20,7 +20,12 @@ export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
   const textSize = size === 'sm' ? 'text-lg' : 'text-xl';
 
   return (
-    <Link href="/" onClick={onClick} className="flex items-center space-x-2">
+    <Link
+      href="/"
+      onClick={onClick}
+      className="flex items-center space-x-2"
+      aria-label="Atlaris - Go to homepage"
+    >
       <div
         className={`flex ${iconSize} items-center justify-center ${iconRounding} bg-gradient-to-br from-purple-400 to-pink-400 text-white shadow-lg`}
       >
@@ -29,6 +34,7 @@ export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
+          aria-hidden="true"
         >
           <path
             strokeLinecap="round"

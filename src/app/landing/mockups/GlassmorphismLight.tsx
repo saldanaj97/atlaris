@@ -5,13 +5,14 @@ export default function GlassmorphismLight() {
       <nav className="fixed start-0 top-0 z-50 w-full">
         <div className="mx-auto max-w-screen-xl px-6 py-4">
           <div className="flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl">
-            <a href="#" className="flex items-center space-x-2">
+            <button type="button" className="flex items-center space-x-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 text-white shadow-lg">
                 <svg
                   className="h-5 w-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -24,27 +25,30 @@ export default function GlassmorphismLight() {
               <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-xl font-semibold text-transparent">
                 Atlaris
               </span>
-            </a>
+            </button>
             <div className="hidden items-center space-x-8 md:flex">
-              <a
-                href="#"
+              <button
+                type="button"
                 className="text-sm font-medium text-gray-600 transition hover:text-purple-600"
               >
                 Features
-              </a>
-              <a
-                href="#"
+              </button>
+              <button
+                type="button"
                 className="text-sm font-medium text-gray-600 transition hover:text-purple-600"
               >
                 About
-              </a>
-              <a
-                href="#"
+              </button>
+              <button
+                type="button"
                 className="text-sm font-medium text-gray-600 transition hover:text-purple-600"
               >
                 Pricing
-              </a>
-              <button className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30">
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30"
+              >
                 Get Started
               </button>
             </div>
@@ -81,7 +85,10 @@ export default function GlassmorphismLight() {
           </p>
 
           <div className="flex flex-col gap-4 sm:flex-row">
-            <button className="group flex items-center justify-center rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 px-8 py-4 text-white shadow-xl shadow-purple-500/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30">
+            <button
+              type="button"
+              className="group flex items-center justify-center rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 px-8 py-4 text-white shadow-xl shadow-purple-500/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30"
+            >
               <span className="font-medium">Start Free Trial</span>
               <svg
                 className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"
@@ -97,7 +104,10 @@ export default function GlassmorphismLight() {
                 />
               </svg>
             </button>
-            <button className="rounded-2xl border border-white/60 bg-white/40 px-8 py-4 font-medium text-gray-700 shadow-lg backdrop-blur-sm transition hover:bg-white/60">
+            <button
+              type="button"
+              className="rounded-2xl border border-white/60 bg-white/40 px-8 py-4 font-medium text-gray-700 shadow-lg backdrop-blur-sm transition hover:bg-white/60"
+            >
               Watch Demo
             </button>
           </div>
@@ -311,10 +321,16 @@ export default function GlassmorphismLight() {
               Start your journey today—for free.
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-              <button className="rounded-2xl bg-white px-8 py-4 font-semibold text-purple-600 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl">
+              <button
+                type="button"
+                className="rounded-2xl bg-white px-8 py-4 font-semibold text-purple-600 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+              >
                 Start Free Trial
               </button>
-              <button className="rounded-2xl border border-white/40 bg-white/10 px-8 py-4 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20">
+              <button
+                type="button"
+                className="rounded-2xl border border-white/40 bg-white/10 px-8 py-4 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+              >
                 Schedule Demo
               </button>
             </div>

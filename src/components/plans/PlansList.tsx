@@ -71,9 +71,7 @@ export default function PlansList({ summaries }: PlansListProps) {
                   variant={isCompleted ? 'default' : 'secondary'}
                   className="capitalize"
                 >
-                  <span aria-hidden="true">
-                    {isCompleted ? 'completed' : 'active'}
-                  </span>
+                  <span>{isCompleted ? 'completed' : 'active'}</span>
                 </Badge>
               </div>
               <CardDescription className="flex flex-wrap items-center gap-3 text-sm">

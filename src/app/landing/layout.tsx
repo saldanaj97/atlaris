@@ -3,11 +3,11 @@ import { type Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Atlaris - Turn Learning Goals into Scheduled Action',
   description:
-    'Pathfinder turns what you want to learn into a time-blocked, resource-linked schedule that syncs directly to Google Calendar, Notion, or Outlook.',
+    'Atlaris turns what you want to learn into a time-blocked, resource-linked schedule that syncs directly to Google Calendar, Notion, or Outlook.',
   openGraph: {
     title: "Atlaris - Your learning plan isn't the problem. Your calendar is.",
     description:
-      'Pathfinder turns what you want to learn into a time-blocked, resource-linked schedule that syncs directly to Google Calendar, Notion, or Outlook.',
+      'Atlaris turns what you want to learn into a time-blocked, resource-linked schedule that syncs directly to Google Calendar, Notion, or Outlook.',
     images: [
       {
         url: '/og-landing.jpg',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Atlaris - Turn Learning Goals into Scheduled Action',
     description:
-      'Pathfinder turns what you want to learn into a time-blocked schedule that syncs to your calendar.',
+      'Atlaris turns what you want to learn into a time-blocked schedule that syncs to your calendar.',
     images: ['/og-landing.jpg'],
   },
 };
@@ -37,5 +37,5 @@ export default function LandingLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <main className="container mx-auto min-w-full">{children}</main>;
+  return <main className="w-full">{children}</main>;
 }

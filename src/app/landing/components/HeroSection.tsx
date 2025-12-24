@@ -17,9 +17,18 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
       aria-labelledby="hero-heading"
     >
       {/* Floating gradient orbs */}
-      <div className="absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-60 blur-3xl"></div>
-      <div className="absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br from-cyan-200 to-blue-200 opacity-60 blur-3xl"></div>
-      <div className="absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl"></div>
+      <div
+        className="absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-60 blur-3xl"
+        aria-hidden="true"
+      ></div>
+      <div
+        className="absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br from-cyan-200 to-blue-200 opacity-60 blur-3xl"
+        aria-hidden="true"
+      ></div>
+      <div
+        className="absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl"
+        aria-hidden="true"
+      ></div>
 
       <div className="relative z-10 mx-auto flex flex-col items-center px-6 pt-16 text-center lg:pt-24">
         <div className="mb-8 inline-flex items-center rounded-full border border-purple-200/50 bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
@@ -50,14 +59,16 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
           <Button
             asChild
             className="group h-auto rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 px-8 py-4 text-white shadow-xl shadow-purple-500/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30"
-            onClick={onCtaClick}
           >
-            <Link href="/plans/new">
+            <Link href="/plans/new" onClick={onCtaClick}>
               <span className="font-medium">Start Free Trial</span>
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
-          <button className="rounded-2xl border border-white/60 bg-white/40 px-8 py-4 font-medium text-gray-700 shadow-lg backdrop-blur-sm transition hover:bg-white/60">
+          <button
+            type="button"
+            className="rounded-2xl border border-white/60 bg-white/40 px-8 py-4 font-medium text-gray-700 shadow-lg backdrop-blur-sm transition hover:bg-white/60"
+          >
             Watch Demo
           </button>
         </div>
@@ -78,6 +89,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
+                        aria-hidden="true"
                       >
                         <path
                           strokeLinecap="round"

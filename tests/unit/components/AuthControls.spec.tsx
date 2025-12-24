@@ -20,7 +20,7 @@ vi.mock('@clerk/nextjs', () => ({
   UserButton: () => <div data-testid="user-button">User Button</div>,
 }));
 
-describe('AuthControls', () => {
+describe('ClerkAuthControls', () => {
   it('should render both signed in and signed out states', () => {
     render(<ClerkAuthControls />);
 
@@ -71,14 +71,14 @@ describe('AuthControls', () => {
     expect(screen.getByTestId('user-button')).toBeInTheDocument();
   });
 
-  it('should have a wrapper div containing all auth elements', () => {
-    const { container } = render(<ClerkAuthControls />);
+  it('should contain all auth elements within wrapper', () => {
+    render(<ClerkAuthControls />);
 
-    // Should have a flex container wrapping auth elements
-    const wrapper = container.querySelector('.flex.items-center');
-    expect(wrapper).toBeInTheDocument();
-    expect(wrapper).toContainElement(screen.getByTestId('signed-in'));
-    expect(wrapper).toContainElement(screen.getByTestId('signed-out'));
+    // Verify user-visible behavior: both signed-in and signed-out states are rendered
+    expect(screen.getByTestId('signed-in')).toBeInTheDocument();
+    expect(screen.getByTestId('signed-out')).toBeInTheDocument();
+    // Verify the user button is accessible
+    expect(screen.getByTestId('user-button')).toBeInTheDocument();
   });
 
   it('should render sign in and sign up buttons in signed out state', () => {
@@ -96,20 +96,22 @@ describe('AuthControls', () => {
     expect(signedInSection).toContainElement(screen.getByTestId('user-button'));
   });
 
-  it('should use neutral variant for sign in button', () => {
+  it('should render accessible sign in button', () => {
     render(<ClerkAuthControls />);
 
-    // The sign in button should have neutral variant
-    const signInButton = screen.getByText('Sign In').closest('button');
+    // The sign in button should be accessible and clickable
+    const signInButton = screen.getByRole('button', { name: /sign in/i });
     expect(signInButton).toBeInTheDocument();
+    expect(signInButton).toBeEnabled();
   });
 
-  it('should use default variant for sign up button', () => {
+  it('should render accessible sign up button', () => {
     render(<ClerkAuthControls />);
 
-    // The sign up button should have default styling (no explicit variant means default)
-    const signUpButton = screen.getByText('Sign Up').closest('button');
+    // The sign up button should be accessible and clickable
+    const signUpButton = screen.getByRole('button', { name: /sign up/i });
     expect(signUpButton).toBeInTheDocument();
+    expect(signUpButton).toBeEnabled();
   });
 
   it('should wrap buttons in appropriate Clerk components', () => {

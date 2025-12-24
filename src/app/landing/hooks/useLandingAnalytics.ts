@@ -14,6 +14,9 @@ interface CtaClickEvent {
   timestamp: number;
 }
 
+const BUILD_MY_SCHEDULE = 'Build My Schedule';
+const GENERATE_SCHEDULE_NOW = 'Generate My Schedule Now';
+
 /**
  * Hook for tracking CTA interactions on the landing page.
  * Returns a function to track CTA clicks with location context.
@@ -21,7 +24,7 @@ interface CtaClickEvent {
 export function useLandingAnalytics() {
   const trackCtaClick = (
     location: CtaLocation,
-    label: string = 'Build My Schedule'
+    label: string = BUILD_MY_SCHEDULE
   ) => {
     const event: CtaClickEvent = {
       location,
@@ -36,25 +39,41 @@ export function useLandingAnalytics() {
     }
 
     // Track with Google Analytics if available
-    if (typeof window !== 'undefined' && 'gtag' in window) {
-      (window as typeof window & { gtag: (...args: unknown[]) => void }).gtag(
-        'event',
-        'cta_click',
-        {
-          event_category: 'engagement',
-          event_label: label,
-          cta_location: location,
-        }
-      );
+    try {
+      if (typeof window !== 'undefined' && 'gtag' in window) {
+        (window as typeof window & { gtag: (...args: unknown[]) => void }).gtag(
+          'event',
+          'cta_click',
+          {
+            event_category: 'engagement',
+            event_label: label,
+            cta_location: location,
+          }
+        );
+      }
+    } catch (error) {
+      // Silently handle analytics errors to not affect app flow
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.warn('[Analytics] Failed to track with gtag:', error);
+      }
     }
 
     // Track with generic dataLayer push (GTM compatible)
-    if (typeof window !== 'undefined' && 'dataLayer' in window) {
-      (window as typeof window & { dataLayer: unknown[] }).dataLayer.push({
-        event: 'cta_click',
-        ctaLocation: location,
-        ctaLabel: label,
-      });
+    try {
+      if (typeof window !== 'undefined' && 'dataLayer' in window) {
+        (window as typeof window & { dataLayer: unknown[] }).dataLayer.push({
+          event: 'cta_click',
+          ctaLocation: location,
+          ctaLabel: label,
+        });
+      }
+    } catch (error) {
+      // Silently handle analytics errors to not affect app flow
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.warn('[Analytics] Failed to track with dataLayer:', error);
+      }
     }
 
     // Could add additional analytics providers here:
@@ -65,8 +84,8 @@ export function useLandingAnalytics() {
   };
 
   return {
-    trackNavCta: () => trackCtaClick('nav', 'Build My Schedule'),
-    trackHeroCta: () => trackCtaClick('hero', 'Build My Schedule'),
-    trackFooterCta: () => trackCtaClick('footer', 'Generate My Schedule Now'),
+    trackNavCta: () => trackCtaClick('nav', BUILD_MY_SCHEDULE),
+    trackHeroCta: () => trackCtaClick('hero', BUILD_MY_SCHEDULE),
+    trackFooterCta: () => trackCtaClick('footer', GENERATE_SCHEDULE_NOW),
   };
 }

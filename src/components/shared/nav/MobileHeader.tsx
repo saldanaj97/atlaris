@@ -17,7 +17,7 @@ interface MobileHeaderProps {
  */
 export default function MobileHeader({ navItems }: MobileHeaderProps) {
   return (
-    <div className="flex w-full items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-4 py-3 shadow-lg backdrop-blur-xl lg:hidden">
+    <header className="flex w-full items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-4 py-3 shadow-lg backdrop-blur-xl lg:hidden">
       {/* Left: hamburger */}
       <MobileNavigation navItems={navItems} />
 
@@ -26,6 +26,6 @@ export default function MobileHeader({ navItems }: MobileHeaderProps) {
 
       {/* Right: user/auth */}
       <ClerkAuthControls />
-    </div>
+    </header>
   );
 }

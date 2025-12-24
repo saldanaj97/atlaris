@@ -39,11 +39,15 @@ export function FinalCtaSection({ onCtaClick }: FinalCtaSectionProps) {
             <Button
               asChild
               className="h-auto rounded-2xl bg-white px-8 py-4 font-semibold text-purple-600 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
-              onClick={onCtaClick}
             >
-              <Link href="/plans/new">Start Free Trial</Link>
+              <Link href="/plans/new" onClick={onCtaClick}>
+                Start Free Trial
+              </Link>
             </Button>
-            <button className="rounded-2xl border border-white/40 bg-white/10 px-8 py-4 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20">
+            <button
+              type="button"
+              className="rounded-2xl border border-white/40 bg-white/10 px-8 py-4 font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+            >
               Schedule Demo
             </button>
           </div>

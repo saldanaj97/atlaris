@@ -1,8 +1,13 @@
 import SiteFooter from '@/components/shared/SiteFooter';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('SiteFooter', () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
   it('should render footer element', () => {
     const { container } = render(<SiteFooter />);
 
