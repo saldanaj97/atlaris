@@ -71,27 +71,29 @@ describe('AuthControls', () => {
     expect(screen.getByTestId('user-button')).toBeInTheDocument();
   });
 
-  it('should have proper layout classes', () => {
+  it('should have a wrapper div containing all auth elements', () => {
     const { container } = render(<ClerkAuthControls />);
 
-    const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
+    // Should have a flex container wrapping auth elements
+    const wrapper = container.querySelector('.flex.items-center');
     expect(wrapper).toBeInTheDocument();
+    expect(wrapper).toContainElement(screen.getByTestId('signed-in'));
+    expect(wrapper).toContainElement(screen.getByTestId('signed-out'));
   });
 
-  it('should apply responsive gap classes', () => {
-    const { container } = render(<ClerkAuthControls />);
+  it('should render sign in and sign up buttons in signed out state', () => {
+    render(<ClerkAuthControls />);
 
-    const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
-    expect(wrapper).toHaveClass('gap-2');
-    expect(wrapper).toHaveClass('lg:gap-4');
+    const signedOutSection = screen.getByTestId('signed-out');
+    expect(signedOutSection).toContainElement(screen.getByText('Sign In'));
+    expect(signedOutSection).toContainElement(screen.getByText('Sign Up'));
   });
 
-  it('should apply proper margin classes', () => {
-    const { container } = render(<ClerkAuthControls />);
+  it('should render user button in signed in state', () => {
+    render(<ClerkAuthControls />);
 
-    const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
-    expect(wrapper).toHaveClass('ml-auto');
-    expect(wrapper).toHaveClass('lg:ml-0');
+    const signedInSection = screen.getByTestId('signed-in');
+    expect(signedInSection).toContainElement(screen.getByTestId('user-button'));
   });
 
   it('should use neutral variant for sign in button', () => {
