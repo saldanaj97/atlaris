@@ -35,10 +35,8 @@ export default async function SiteHeader() {
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full">
-      <div className="mx-auto max-w-screen-xl px-6 py-4">
-        <MobileHeader navItems={navItems} />
-        <DesktopHeader navItems={navItems} />
-      </div>
+      <MobileHeader navItems={navItems} />
+      <DesktopHeader navItems={navItems} />
     </header>
   );
 }

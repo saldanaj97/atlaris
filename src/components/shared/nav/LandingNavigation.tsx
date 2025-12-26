@@ -94,21 +94,21 @@ export default function LandingNavigation({
           <div className="flex flex-col space-y-4 p-6">
             <Link
               href="#features"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600"
+              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Features
             </Link>
             <Link
               href="/about"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600"
+              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               About
             </Link>
             <Link
               href="/pricing"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600"
+              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Pricing

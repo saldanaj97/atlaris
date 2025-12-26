@@ -37,6 +37,46 @@ const TESTIMONIALS: Testimonial[] = [
   },
 ];
 
+interface TestimonialCardProps {
+  testimonial: Testimonial;
+}
+
+function TestimonialCard({ testimonial }: TestimonialCardProps) {
+  return (
+    <div className="rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm">
+      <div className="mb-6 flex">
+        <span className="sr-only">5 out of 5 stars</span>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <svg
+            key={star}
+            className="h-5 w-5 text-amber-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+          >
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          </svg>
+        ))}
+      </div>
+      <p className="mb-6 text-lg leading-relaxed text-gray-700">
+        &quot;{testimonial.quote}&quot;
+      </p>
+      <div className="flex items-center">
+        <div
+          className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-pink-100 text-2xl"
+          aria-hidden="true"
+        >
+          {testimonial.avatar}
+        </div>
+        <div>
+          <div className="font-semibold text-gray-900">{testimonial.name}</div>
+          <div className="text-sm text-purple-600">{testimonial.role}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TestimonialsSection() {
   return (
     <section
@@ -61,44 +101,7 @@ export function TestimonialsSection() {
 
         <div className="grid gap-6 md:grid-cols-3">
           {TESTIMONIALS.map((testimonial) => (
-            <div
-              key={testimonial.id}
-              className="rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm"
-            >
-              <div className="mb-6 flex">
-                <span className="sr-only">5 out of 5 stars</span>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <svg
-                    key={star}
-                    className="h-5 w-5 text-amber-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                    aria-hidden="true"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <p className="mb-6 text-lg leading-relaxed text-gray-700">
-                &quot;{testimonial.quote}&quot;
-              </p>
-              <div className="flex items-center">
-                <div
-                  className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-pink-100 text-2xl"
-                  aria-hidden="true"
-                >
-                  {testimonial.avatar}
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">
-                    {testimonial.name}
-                  </div>
-                  <div className="text-sm text-purple-600">
-                    {testimonial.role}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <TestimonialCard key={testimonial.id} testimonial={testimonial} />
           ))}
         </div>
       </div>
