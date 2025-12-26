@@ -17,7 +17,7 @@ interface DesktopHeaderProps {
  */
 export default function DesktopHeader({ navItems }: DesktopHeaderProps) {
   return (
-    <header className="hidden w-full items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl lg:flex">
+    <div className="hidden w-full items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl lg:flex">
       {/* Brand (left) */}
       <BrandLogo />
 
@@ -25,9 +25,7 @@ export default function DesktopHeader({ navItems }: DesktopHeaderProps) {
       <DesktopNavigation navItems={navItems} />
 
       {/* Auth controls (right) */}
-      <div className="flex items-center space-x-4">
-        <ClerkAuthControls />
-      </div>
-    </header>
+      <ClerkAuthControls />
+    </div>
   );
 }

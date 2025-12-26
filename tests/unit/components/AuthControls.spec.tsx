@@ -1,7 +1,7 @@
 import ClerkAuthControls from '@/components/shared/ClerkAuthControls';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // Mock Clerk components
 vi.mock('@clerk/nextjs', () => ({
@@ -19,6 +19,11 @@ vi.mock('@clerk/nextjs', () => ({
   ),
   UserButton: () => <div data-testid="user-button">User Button</div>,
 }));
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('ClerkAuthControls', () => {
   it('should render both signed in and signed out states', () => {

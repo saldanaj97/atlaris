@@ -105,7 +105,7 @@ export default async function DashboardPage() {
               <p className="text-muted-foreground text-sm">Hours Learned</p>
               <p className="text-2xl font-bold">{totalHoursLearned}h</p>
             </div>
-            <Clock className="text-learning-secondary/50 h-8 w-8" />
+            <Clock className="text-secondary/50 h-8 w-8" />
           </div>
         </Card>
       </div>

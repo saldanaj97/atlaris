@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 
+import BrandLogo from '@/components/shared/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Menu, X } from 'lucide-react';
@@ -33,29 +34,7 @@ export default function LandingNavigation({
       <div className="mx-auto max-w-screen-xl px-6 py-4">
         <div className="flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl">
           {/* Logo + Brand */}
-          <Link
-            href="/"
-            className="flex items-center space-x-2 rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 text-white shadow-lg">
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            </div>
-            <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-xl font-semibold text-transparent">
-              Atlaris
-            </span>
-          </Link>
+          <BrandLogo />
 
           {/* Desktop Navigation Links */}
           <div className="hidden items-center space-x-8 md:flex">
@@ -80,9 +59,10 @@ export default function LandingNavigation({
             <Button
               asChild
               className="h-auto rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2"
-              onClick={handleCtaClick}
             >
-              <Link href="/plans/new">Get Started</Link>
+              <Link href="/plans/new" onClick={handleCtaClick}>
+                Get Started
+              </Link>
             </Button>
           </div>
 
@@ -136,12 +116,16 @@ export default function LandingNavigation({
             <Button
               asChild
               className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30"
-              onClick={() => {
-                handleCtaClick();
-                setIsMobileMenuOpen(false);
-              }}
             >
-              <Link href="/plans/new">Get Started</Link>
+              <Link
+                href="/plans/new"
+                onClick={() => {
+                  handleCtaClick();
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                Get Started
+              </Link>
             </Button>
           </div>
         </div>
