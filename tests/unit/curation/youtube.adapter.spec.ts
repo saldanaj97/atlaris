@@ -11,7 +11,7 @@ import {
   searchYouTube,
 } from '@/lib/curation/youtube';
 import * as rateLimiterModule from '@/lib/utils/google-api-rate-limiter';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('YouTube Adapter', () => {
   afterEach(() => {
