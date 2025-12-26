@@ -41,6 +41,34 @@ Instructions for building high-quality ReactJS applications with modern patterns
 - Implement proper state normalization and data structures
 - Use React Query or SWR for server state management
 
+### React 19 Activity Component
+The `<Activity>` component (React 19.2+) provides state-preserving visibility control as an alternative to conditional rendering.
+
+**When to use `<Activity>`:**
+- Tab interfaces with complex content where state should persist between tab switches
+- Sidebars with forms/inputs where user state should be preserved when hidden
+- Pre-rendering expensive components in the background before they become visible
+- Routes where previous page state should be retained during navigation
+- Components that fetch data you want to pre-load while hidden
+
+**When NOT to use `<Activity>`:**
+- Simple show/hide toggles with CSS transitions (Activity uses `display: none`)
+- Lightweight components with no meaningful internal state to preserve
+- Menus or dropdowns where CSS animations are desired
+- Components with trivial render cost
+
+**Usage pattern:**
+```jsx
+<Activity mode={isVisible ? 'visible' : 'hidden'}>
+  <ExpensiveComponent />
+</Activity>
+```
+
+**Key behaviors:**
+- Hidden components render at lower priority without blocking visible UI
+- Effects are destroyed when hidden and re-created when visible
+- State is preserved across visibility changes (unlike unmounting)
+
 ### Hooks and Effects
 - Use `useEffect` with proper dependency arrays to avoid infinite loops
 - Implement cleanup functions in effects to prevent memory leaks

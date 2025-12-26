@@ -1,4 +1,3 @@
-import { ScrapbookDesignFilters } from '@/components/shared/ScrapBookDesignFilters';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { ClerkProvider } from '@clerk/nextjs';
@@ -79,9 +78,8 @@ export default function RootLayout({
     <ClerkProvider afterSignOutUrl="/landing">
       <html lang="en">
         <body
-          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} mx-auto w-4/5 antialiased`}
+          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} mx-auto w-full antialiased`}
         >
-          <ScrapbookDesignFilters />
           <SiteHeader />
           <main>{children}</main>
           <Toaster />

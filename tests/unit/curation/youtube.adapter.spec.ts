@@ -3,51 +3,39 @@
  * Tests: param shaping, batching, cutoff, early-stop, cache hits
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as rankingModule from '@/lib/curation/ranking';
+import * as validateModule from '@/lib/curation/validate';
 import {
+  curateYouTube,
   getVideoStats,
   searchYouTube,
-  curateYouTube,
 } from '@/lib/curation/youtube';
-import * as validateModule from '@/lib/curation/validate';
-import * as rankingModule from '@/lib/curation/ranking';
-import { googleApiRateLimiter } from '@/lib/utils/google-api-rate-limiter';
-
-// Capture original fetch before any tests run
-const originalFetch = global.fetch;
+import * as rateLimiterModule from '@/lib/utils/google-api-rate-limiter';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('YouTube Adapter', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    googleApiRateLimiter.clearCache();
-  });
-
   afterEach(() => {
-    // Restore original fetch even if tests throw
-    global.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
   describe('searchYouTube', () => {
     it('should search with minimal fields projection', async () => {
-      const mockFetch = vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({
-              items: [
-                {
-                  id: { videoId: 'abc123' },
-                  snippet: {
-                    title: 'Test Video',
-                    channelTitle: 'Test Channel',
-                  },
+      vi.spyOn(rateLimiterModule, 'fetchGoogleApi').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: { videoId: 'abc123' },
+                snippet: {
+                  title: 'Test Video',
+                  channelTitle: 'Test Channel',
                 },
-              ],
-            }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          )
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
       );
-      global.fetch = mockFetch as unknown as typeof fetch;
 
       const results = await searchYouTube('react hooks', {
         query: 'react hooks',
@@ -63,14 +51,12 @@ describe('YouTube Adapter', () => {
     });
 
     it('should handle empty API responses', async () => {
-      const mockFetch = vi.fn(
-        async () =>
-          new Response(JSON.stringify({ items: [] }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          })
+      vi.spyOn(rateLimiterModule, 'fetchGoogleApi').mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
       );
-      global.fetch = mockFetch as unknown as typeof fetch;
 
       const results = await searchYouTube('test', {
         query: 'test',
@@ -98,14 +84,12 @@ describe('YouTube Adapter', () => {
         ],
       };
 
-      const mockFetch = vi.fn(
-        async () =>
-          new Response(JSON.stringify(mockResponse), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          })
+      vi.spyOn(rateLimiterModule, 'fetchGoogleApi').mockResolvedValueOnce(
+        new Response(JSON.stringify(mockResponse), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
       );
-      global.fetch = mockFetch as unknown as typeof fetch;
 
       const stats = await getVideoStats(['video1']);
 
@@ -128,8 +112,9 @@ describe('YouTube Adapter', () => {
     });
 
     it('should handle API failures', async () => {
-      const mockFetch = vi.fn(async () => new Response(null, { status: 400 }));
-      global.fetch = mockFetch as unknown as typeof fetch;
+      vi.spyOn(rateLimiterModule, 'fetchGoogleApi').mockResolvedValueOnce(
+        new Response(null, { status: 400 })
+      );
 
       const stats = await getVideoStats(['video1']);
       expect(stats).toEqual([]);
@@ -139,8 +124,7 @@ describe('YouTube Adapter', () => {
   describe('curateYouTube', () => {
     it('should apply minScore cutoff', async () => {
       // Mock search endpoint then stats endpoint
-      const mockFetch = vi
-        .fn()
+      vi.spyOn(rateLimiterModule, 'fetchGoogleApi')
         // search
         .mockResolvedValueOnce(
           new Response(
@@ -175,7 +159,6 @@ describe('YouTube Adapter', () => {
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           )
         );
-      global.fetch = mockFetch as unknown as typeof fetch;
 
       vi.spyOn(validateModule, 'isYouTubeEmbeddable').mockReturnValue(true);
       vi.spyOn(rankingModule, 'scoreYouTube').mockReturnValue({
@@ -208,8 +191,7 @@ describe('YouTube Adapter', () => {
     });
 
     it('should respect maxResults limit', async () => {
-      const mockFetch = vi
-        .fn()
+      vi.spyOn(rateLimiterModule, 'fetchGoogleApi')
         // search
         .mockResolvedValueOnce(
           new Response(
@@ -247,7 +229,6 @@ describe('YouTube Adapter', () => {
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           )
         );
-      global.fetch = mockFetch as unknown as typeof fetch;
       vi.spyOn(rankingModule, 'selectTop').mockImplementation(
         (candidates, opts) => candidates.slice(0, opts.maxItems)
       );

@@ -1,10 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { PricingGrid } from '@/components/billing/PricingGrid';
 import type { TierConfig } from '@/components/billing/pricing-config';
+import { PricingGrid } from '@/components/billing/PricingGrid';
 import type { TierKey } from '@/components/billing/PricingTiers';
 import type { StripeTierData } from '@/components/billing/stripe-pricing';
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock SubscribeButton
 vi.mock('@/components/billing/SubscribeButton', () => ({
@@ -29,7 +29,7 @@ describe('PricingGrid', () => {
     {
       key: 'free' as TierKey,
       priceId: null,
-      badgeVariant: 'neutral',
+      badgeVariant: 'secondary',
     },
     {
       key: 'starter' as TierKey,

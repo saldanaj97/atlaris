@@ -76,15 +76,14 @@ tests/
 
 ## Configuration Files
 
-| File                     | Purpose                                    |
-| ------------------------ | ------------------------------------------ |
-| `next.config.ts`         | Next.js configuration (minimal, Turbopack) |
-| `eslint.config.mjs`      | ESLint flat config (type-aware)            |
-| `.prettierrc`            | Prettier configuration                     |
-| `tsconfig.json`          | TypeScript configuration                   |
-| `drizzle.config.ts`      | Drizzle ORM config (main)                  |
-| `drizzle-test.config.ts` | Drizzle ORM config (test)                  |
-| `vitest.config.ts`       | Vitest multi-project config                |
+| File                | Purpose                                    |
+| ------------------- | ------------------------------------------ |
+| `next.config.ts`    | Next.js configuration (minimal, Turbopack) |
+| `eslint.config.mjs` | ESLint flat config (type-aware)            |
+| `.prettierrc`       | Prettier configuration                     |
+| `tsconfig.json`     | TypeScript configuration                   |
+| `drizzle.config.ts` | Drizzle ORM config (main)                  |
+| `vitest.config.ts`  | Vitest multi-project config                |
 
 ## ESLint Configuration
 

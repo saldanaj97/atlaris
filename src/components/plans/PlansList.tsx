@@ -8,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Highlighter } from '@/components/ui/highlighter';
 import { Progress } from '@/components/ui/progress';
 import type { PlanSummary } from '@/lib/types/db';
 import { Play } from 'lucide-react';
@@ -68,16 +67,12 @@ export default function PlansList({ summaries }: PlansListProps) {
                 <CardTitle className="text-2xl font-semibold">
                   {plan.topic}
                 </CardTitle>
-                <Highlighter>
-                  <Badge
-                    variant={isCompleted ? 'default' : 'neutral'}
-                    className="capitalize"
-                  >
-                    <span aria-hidden="true">
-                      {isCompleted ? 'completed' : 'active'}
-                    </span>
-                  </Badge>
-                </Highlighter>
+                <Badge
+                  variant={isCompleted ? 'default' : 'secondary'}
+                  className="capitalize"
+                >
+                  <span>{isCompleted ? 'completed' : 'active'}</span>
+                </Badge>
               </div>
               <CardDescription className="flex flex-wrap items-center gap-3 text-sm">
                 <span className="capitalize">{skillLevelLabel}</span>
