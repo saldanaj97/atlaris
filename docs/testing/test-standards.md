@@ -252,6 +252,50 @@ E2E tests are expensive and flaky by default. Keep them few and meaningful.
   - `getByRole('button', { name: /save/i })`
   - `getByLabelText(/email/i)`
 
+### Test behavior, not styling
+
+**Never assert on CSS class names.** Class names are implementation details that change frequently during design iterations, refactors, or Tailwind updates. Tests that check for specific classes will break whenever styling changes, even if the component still works correctly.
+
+**❌ Don't do this:**
+
+```tsx
+// Brittle - breaks when any class name changes
+const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
+expect(wrapper).toBeInTheDocument();
+expect(footer).toHaveClass('container');
+expect(footer).toHaveClass('text-muted-foreground');
+```
+
+**✅ Do this instead:**
+
+```tsx
+// Test presence - does the element exist?
+expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+
+// Test structure - are the right elements present?
+expect(screen.getByText('Atlaris')).toBeInTheDocument();
+expect(screen.getByRole('link', { name: /privacy/i })).toBeInTheDocument();
+
+// Test accessibility - can users interact with it?
+expect(screen.getByRole('navigation', { name: /footer/i })).toBeInTheDocument();
+
+// Test behavior - does it do what it should?
+expect(screen.getByRole('link', { name: /privacy/i })).toHaveAttribute(
+  'href',
+  '/privacy'
+);
+```
+
+**What to test in component unit tests:**
+
+| Test This                              | Not This                                        |
+| -------------------------------------- | ----------------------------------------------- |
+| Element presence (`toBeInTheDocument`) | CSS classes (`toHaveClass`)                     |
+| Semantic structure (roles, labels)     | Layout classes (`flex`, `grid`, `gap-*`)        |
+| Content/text (`toHaveTextContent`)     | Color/spacing classes (`text-gray-500`, `px-4`) |
+| Attributes (`toHaveAttribute`)         | Responsive classes (`md:flex-row`, `lg:gap-4`)  |
+| Accessibility (ARIA roles/labels)      | Tailwind utility classes                        |
+
 ### Query priority
 
 1. `getByRole` / `findByRole`
@@ -336,7 +380,7 @@ Recommended:
 - Snapshot tests for dynamic content or large DOM trees.
 - Arbitrary `setTimeout`/sleep to “fix flake”.
 - Tests that hit real external services.
-- Tests that require editing unrelated tests to add a new one.
+- Tests that require editing unrelated tests to add a new one.- **Tests that assert CSS class names** (use semantic queries and behavior assertions instead).
 
 ---
 

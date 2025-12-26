@@ -41,7 +41,7 @@ export default async function PlansPage() {
   return (
     <div className="container mx-auto py-8">
       <Link href="/dashboard">
-        <Button variant="neutral" className="mb-4 space-x-2">
+        <Button variant="default" className="mb-4 space-x-2">
           <ArrowLeft className="h-4" />
           <p>Back to Dashboard</p>
         </Button>
