@@ -6,6 +6,7 @@
 :root {
   /* Dotted grid pattern for background */
   --pattern-dotted-grid: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='1' fill='%23000' opacity='0.3'/%3E%3C/svg%3E");
+  /* Brand colors - intentionally theme-invariant (no dark mode override) */
   --primary: oklch(66.9% 0.18368 248.8066);
   --secondary: oklch(62.9% 0.1 250);
   --background: oklch(0.9427 0 0);
@@ -17,6 +18,7 @@
   --muted-foreground: oklch(0% 0 0 / 0.5);
   --main-foreground: oklch(0% 0 0);
   --main: oklch(66.9% 0.18368 248.8066);
+  --success: oklch(55% 0.16 145); /* Green for success states */
   --border: oklch(0% 0 0);
   --ring: oklch(0% 0 0);
   --overlay: oklch(0% 0 0 / 0.8);
@@ -60,6 +62,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-highlighter: var(--highlighter);
   --color-tape: var(--tape);
+  --color-success: var(--success);
   --color-border: var(--border);
   --color-overlay: var(--overlay);
   --color-ring: var(--ring);

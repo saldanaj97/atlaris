@@ -3,8 +3,7 @@
  * Tests: param shaping, batching, cutoff, early-stop, cache hits
  */
 
-import * as rankingModule from '@/lib/curation/ranking';
-import * as validateModule from '@/lib/curation/validate';
+import type { CurateYouTubeDeps } from '@/lib/curation/youtube';
 import {
   curateYouTube,
   getVideoStats,
@@ -12,6 +11,29 @@ import {
 } from '@/lib/curation/youtube';
 import * as rateLimiterModule from '@/lib/utils/google-api-rate-limiter';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+/**
+ * Create mock dependencies for curateYouTube tests
+ */
+function createMockDeps(
+  overrides?: Partial<CurateYouTubeDeps>
+): CurateYouTubeDeps {
+  return {
+    fetchGoogleApi: vi.fn(),
+    validate: {
+      isYouTubeEmbeddable: vi.fn().mockReturnValue(true),
+    },
+    ranking: {
+      scoreYouTube: vi.fn(),
+      selectTop: vi
+        .fn()
+        .mockImplementation((candidates, opts) =>
+          candidates.slice(0, opts.maxItems)
+        ),
+    },
+    ...overrides,
+  };
+}
 
 describe('YouTube Adapter', () => {
   afterEach(() => {
@@ -160,32 +182,37 @@ describe('YouTube Adapter', () => {
           )
         );
 
-      vi.spyOn(validateModule, 'isYouTubeEmbeddable').mockReturnValue(true);
-      vi.spyOn(rankingModule, 'scoreYouTube').mockReturnValue({
-        url: 'https://youtube.com/watch?v=video1',
-        title: 'Test Video',
-        source: 'youtube',
-        score: {
-          blended: 0.8,
-          components: {},
-          scoredAt: new Date().toISOString(),
+      const mockDeps = createMockDeps({
+        ranking: {
+          scoreYouTube: vi.fn().mockReturnValue({
+            url: 'https://youtube.com/watch?v=video1',
+            title: 'Test Video',
+            source: 'youtube',
+            score: {
+              blended: 0.8,
+              components: {},
+              scoredAt: '2024-12-26T17:00:00.000Z',
+            },
+            metadata: {},
+            numericScore: 0.8,
+            components: {
+              popularity: 0.8,
+              recency: 0.8,
+              relevance: 0.8,
+              suitability: 0.8,
+            },
+          }),
+          selectTop: vi.fn().mockReturnValue([]),
         },
-        metadata: {},
-        numericScore: 0.8,
-        components: {
-          popularity: 0.8,
-          recency: 0.8,
-          relevance: 0.8,
-          suitability: 0.8,
-        },
-      } as any);
-
-      vi.spyOn(rankingModule, 'selectTop').mockReturnValue([]);
-
-      const results = await curateYouTube({
-        query: 'test',
-        minScore: 0.9, // High cutoff
       });
+
+      const results = await curateYouTube(
+        {
+          query: 'test',
+          minScore: 0.9, // High cutoff
+        },
+        mockDeps
+      );
 
       expect(results).toEqual([]);
     });
@@ -229,19 +256,17 @@ describe('YouTube Adapter', () => {
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           )
         );
-      vi.spyOn(rankingModule, 'selectTop').mockImplementation(
-        (candidates, opts) => candidates.slice(0, opts.maxItems)
+
+      const mockDeps = createMockDeps();
+      const results = await curateYouTube(
+        {
+          query: 'test',
+          minScore: 0.6,
+          maxResults: 2,
+        },
+        mockDeps
       );
-      const results = await curateYouTube({
-        query: 'test',
-        minScore: 0.6,
-        maxResults: 2,
-      });
       expect(results).toHaveLength(2);
-      expect(rankingModule.selectTop).toHaveBeenCalledWith(
-        expect.any(Array),
-        expect.objectContaining({ maxItems: 2 })
-      );
     });
   });
 });

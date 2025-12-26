@@ -25,6 +25,8 @@ export const metadata: Metadata = {
     description:
       'Atlaris turns what you want to learn into a time-blocked schedule that syncs to your calendar.',
     images: ['/og-landing.jpg'],
+    site: '@atlarisapp',
+    creator: '@atlarisapp',
   },
 };
 

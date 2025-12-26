@@ -16,26 +16,18 @@ export default function SiteFooter() {
           <ul className="flex items-center gap-6">
             <li>
               <Link
-                href="/privacy"
+                href="/about"
                 className="text-sm text-slate-500 transition-colors hover:text-slate-700 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
-                Privacy
+                About
               </Link>
             </li>
             <li>
               <Link
-                href="/terms"
+                href="/pricing"
                 className="text-sm text-slate-500 transition-colors hover:text-slate-700 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
-                Terms
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/contact"
-                className="text-sm text-slate-500 transition-colors hover:text-slate-700 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
-                Contact
+                Pricing
               </Link>
             </li>
           </ul>
@@ -65,8 +57,7 @@ function AtlarisLogoSmall() {
         width="21"
         height="21"
         rx="4.5"
-        fill="#334155"
-        stroke="#1e293b"
+        className="fill-slate-700 stroke-slate-800"
         strokeWidth="1"
       />
       <path
