@@ -7,6 +7,11 @@ import type {
 } from '../provider';
 import { ProviderError } from '../provider';
 
+// Timing thresholds for test mode behavior
+const FAST_TEST_THRESHOLD_MS = 100;
+const CHUNK_DELAY_MS = 50;
+const VARIANCE_THRESHOLD_MS = 1000;
+
 export interface MockGenerationConfig {
   delayMs?: number;
   failureRate?: number;
@@ -160,8 +165,8 @@ async function* createMockStream(
 ): AsyncIterable<string> {
   const serialized = JSON.stringify(payload);
   const chunkSize = 80;
-  // Skip inter-chunk delays in fast test mode (delayMs < 100)
-  const chunkDelay = delayMs < 100 ? 0 : 50;
+  // Skip inter-chunk delays in fast test mode
+  const chunkDelay = delayMs < FAST_TEST_THRESHOLD_MS ? 0 : CHUNK_DELAY_MS;
 
   // Simulate streaming with realistic delay
   for (let i = 0; i < serialized.length; i += chunkSize) {
@@ -216,16 +221,18 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
 
     // Random delay (configurable via env, or deterministic if seeded)
     const baseDelay = this.config.delayMs;
-    // Only apply variance if delay is large enough (>= 1000ms)
-    // For fast test mode (delay < 1000ms), use exact delay with no minimum floor
+    // Only apply variance if delay is large enough
+    // For fast test mode (below threshold), use exact delay with no minimum floor
     const variance =
-      baseDelay >= 1000
+      baseDelay >= VARIANCE_THRESHOLD_MS
         ? rng
           ? rng.nextInt(-2000, 2000)
           : getRandomInt(-2000, 2000)
         : 0;
     const actualDelay =
-      baseDelay >= 1000 ? Math.max(1000, baseDelay + variance) : baseDelay;
+      baseDelay >= VARIANCE_THRESHOLD_MS
+        ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
+        : baseDelay;
 
     return {
       stream: createMockStream(payload, actualDelay),

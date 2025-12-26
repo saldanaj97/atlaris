@@ -84,7 +84,6 @@ export function useLandingAnalytics() {
   };
 
   return {
-    trackNavCta: () => trackCtaClick('nav', BUILD_MY_SCHEDULE),
     trackHeroCta: () => trackCtaClick('hero', BUILD_MY_SCHEDULE),
     trackFooterCta: () => trackCtaClick('footer', GENERATE_SCHEDULE_NOW),
   };
