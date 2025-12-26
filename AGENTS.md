@@ -28,13 +28,6 @@ These apply automatically based on file patterns:
 | `commit-message.instructions.md`          | Commit messages            |
 | `test-writing-guidelines.instructions.md` | `tests/**/*`               |
 
-## Skills (for agents that do not support them natively)
-
-| Skill Name              | Agent Name            | Path to skill                        |
-| ----------------------- | --------------------- | ------------------------------------ |
-| **GH Address Comments** | `gh-address-comments` | `.github/skills/gh-address-comments` |
-| **GH Fix CI**           | `gh-fix-ci`           | `.github/skills/gh-fix-ci`           |
-
 ---
 
 ## Core Rules (Always Follow)

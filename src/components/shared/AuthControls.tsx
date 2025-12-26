@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import {
   SignedIn,
   SignedOut,
@@ -8,16 +7,17 @@ import {
   SignUpButton,
   UserButton,
 } from '@clerk/nextjs';
+import { Button } from '../ui/button';
 
-export default function ClerkAuthControls() {
+export default function AuthControls() {
   return (
-    <div className="flex items-center gap-2 lg:gap-4">
+    <div className="ml-auto flex items-center gap-2 lg:ml-0 lg:gap-4">
       <SignedOut>
         <SignInButton>
-          <Button variant="secondary">Sign In</Button>
+          <Button variant={'neutral'}>Sign In</Button>
         </SignInButton>
         <SignUpButton>
-          <Button variant="default">Sign Up</Button>
+          <Button>Sign Up</Button>
         </SignUpButton>
       </SignedOut>
 

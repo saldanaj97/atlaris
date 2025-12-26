@@ -1,3 +1,4 @@
+import { ScrapbookDesignFilters } from '@/components/shared/ScrapBookDesignFilters';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { ClerkProvider } from '@clerk/nextjs';
@@ -63,7 +64,7 @@ export const metadata: Metadata = {
     description:
       'Create personalized learning plans with AI-generated modules and tasks.',
     images: ['/og-default.jpg'],
-    site: '@atlarisapp',
+    site: '@atlarisapp', // Update with actual Twitter handle if available
     creator: '@atlarisapp',
   },
   metadataBase: new URL('https://atlaris.com'), // Replace with production URL
@@ -78,8 +79,9 @@ export default function RootLayout({
     <ClerkProvider afterSignOutUrl="/landing">
       <html lang="en">
         <body
-          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} w-full antialiased`}
+          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} mx-auto w-4/5 antialiased`}
         >
+          <ScrapbookDesignFilters />
           <SiteHeader />
           <main>{children}</main>
           <Toaster />

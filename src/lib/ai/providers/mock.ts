@@ -7,13 +7,6 @@ import type {
 } from '../provider';
 import { ProviderError } from '../provider';
 
-// Timing thresholds for test mode behavior
-const FAST_TEST_THRESHOLD_MS = 100;
-const CHUNK_DELAY_MS = 50;
-// Variance is only applied when delay >= 1000ms to ensure fast test runs
-// are deterministic. Below this threshold, exact delay is used with no random variance.
-const VARIANCE_THRESHOLD_MS = 1000;
-
 export interface MockGenerationConfig {
   delayMs?: number;
   failureRate?: number;
@@ -167,22 +160,18 @@ async function* createMockStream(
 ): AsyncIterable<string> {
   const serialized = JSON.stringify(payload);
   const chunkSize = 80;
-  // Skip inter-chunk delays in fast test mode
-  const chunkDelay = delayMs < FAST_TEST_THRESHOLD_MS ? 0 : CHUNK_DELAY_MS;
 
   // Simulate streaming with realistic delay
   for (let i = 0; i < serialized.length; i += chunkSize) {
-    if (i > 0 && chunkDelay > 0) {
+    if (i > 0) {
       // Add small delay between chunks to simulate network
-      await new Promise((resolve) => setTimeout(resolve, chunkDelay));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
     yield serialized.slice(i, i + chunkSize);
   }
 
   // Final delay to simulate total generation time
-  if (delayMs > 0) {
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-  }
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 export class MockGenerationProvider implements AiPlanGenerationProvider {
@@ -223,18 +212,8 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
 
     // Random delay (configurable via env, or deterministic if seeded)
     const baseDelay = this.config.delayMs;
-    // Only apply variance if delay is large enough
-    // For fast test mode (below threshold), use exact delay with no minimum floor
-    const variance =
-      baseDelay >= VARIANCE_THRESHOLD_MS
-        ? rng
-          ? rng.nextInt(-2000, 2000)
-          : getRandomInt(-2000, 2000)
-        : 0;
-    const actualDelay =
-      baseDelay >= VARIANCE_THRESHOLD_MS
-        ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
-        : baseDelay;
+    const variance = rng ? rng.nextInt(-2000, 2000) : getRandomInt(-2000, 2000);
+    const actualDelay = Math.max(1000, baseDelay + variance);
 
     return {
       stream: createMockStream(payload, actualDelay),

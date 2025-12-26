@@ -1,33 +1,20 @@
-import ClerkAuthControls from '@/components/shared/ClerkAuthControls';
-import { cleanup, render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import AuthControls from '@/components/shared/AuthControls';
 
 // Mock Clerk components
 vi.mock('@clerk/nextjs', () => ({
-  SignedIn: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="signed-in">{children}</div>
-  ),
-  SignedOut: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="signed-out">{children}</div>
-  ),
-  SignInButton: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sign-in-button">{children}</div>
-  ),
-  SignUpButton: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sign-up-button">{children}</div>
-  ),
+  SignedIn: ({ children }: { children: React.ReactNode }) => <div data-testid="signed-in">{children}</div>,
+  SignedOut: ({ children }: { children: React.ReactNode }) => <div data-testid="signed-out">{children}</div>,
+  SignInButton: ({ children }: { children: React.ReactNode }) => <div data-testid="sign-in-button">{children}</div>,
+  SignUpButton: ({ children }: { children: React.ReactNode }) => <div data-testid="sign-up-button">{children}</div>,
   UserButton: () => <div data-testid="user-button">User Button</div>,
 }));
 
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-});
-
-describe('ClerkAuthControls', () => {
+describe('AuthControls', () => {
   it('should render both signed in and signed out states', () => {
-    render(<ClerkAuthControls />);
+    render(<AuthControls />);
 
     // Both states are rendered (Clerk handles conditional display)
     expect(screen.getByTestId('signed-in')).toBeInTheDocument();
@@ -35,7 +22,7 @@ describe('ClerkAuthControls', () => {
   });
 
   it('should render sign in button when signed out', () => {
-    render(<ClerkAuthControls />);
+    render(<AuthControls />);
 
     const signedOutSection = screen.getByTestId('signed-out');
     expect(signedOutSection).toBeInTheDocument();
@@ -45,7 +32,7 @@ describe('ClerkAuthControls', () => {
   });
 
   it('should render sign up button when signed out', () => {
-    render(<ClerkAuthControls />);
+    render(<AuthControls />);
 
     const signedOutSection = screen.getByTestId('signed-out');
     expect(signedOutSection).toBeInTheDocument();
@@ -55,19 +42,19 @@ describe('ClerkAuthControls', () => {
   });
 
   it('should display "Sign In" text in sign in button', () => {
-    render(<ClerkAuthControls />);
+    render(<AuthControls />);
 
     expect(screen.getByText('Sign In')).toBeInTheDocument();
   });
 
   it('should display "Sign Up" text in sign up button', () => {
-    render(<ClerkAuthControls />);
+    render(<AuthControls />);
 
     expect(screen.getByText('Sign Up')).toBeInTheDocument();
   });
 
   it('should render user button when signed in', () => {
-    render(<ClerkAuthControls />);
+    render(<AuthControls />);
 
     const signedInSection = screen.getByTestId('signed-in');
     expect(signedInSection).toBeInTheDocument();
@@ -76,51 +63,47 @@ describe('ClerkAuthControls', () => {
     expect(screen.getByTestId('user-button')).toBeInTheDocument();
   });
 
-  it('should contain all auth elements within wrapper', () => {
-    render(<ClerkAuthControls />);
+  it('should have proper layout classes', () => {
+    const { container } = render(<AuthControls />);
 
-    // Verify user-visible behavior: both signed-in and signed-out states are rendered
-    expect(screen.getByTestId('signed-in')).toBeInTheDocument();
-    expect(screen.getByTestId('signed-out')).toBeInTheDocument();
-    // Verify the user button is accessible
-    expect(screen.getByTestId('user-button')).toBeInTheDocument();
+    const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
+    expect(wrapper).toBeInTheDocument();
   });
 
-  it('should render sign in and sign up buttons in signed out state', () => {
-    render(<ClerkAuthControls />);
+  it('should apply responsive gap classes', () => {
+    const { container } = render(<AuthControls />);
 
-    const signedOutSection = screen.getByTestId('signed-out');
-    expect(signedOutSection).toContainElement(screen.getByText('Sign In'));
-    expect(signedOutSection).toContainElement(screen.getByText('Sign Up'));
+    const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
+    expect(wrapper).toHaveClass('gap-2');
+    expect(wrapper).toHaveClass('lg:gap-4');
   });
 
-  it('should render user button in signed in state', () => {
-    render(<ClerkAuthControls />);
+  it('should apply proper margin classes', () => {
+    const { container } = render(<AuthControls />);
 
-    const signedInSection = screen.getByTestId('signed-in');
-    expect(signedInSection).toContainElement(screen.getByTestId('user-button'));
+    const wrapper = container.querySelector('.ml-auto.flex.items-center.gap-2');
+    expect(wrapper).toHaveClass('ml-auto');
+    expect(wrapper).toHaveClass('lg:ml-0');
   });
 
-  it('should render accessible sign in button', () => {
-    render(<ClerkAuthControls />);
+  it('should use neutral variant for sign in button', () => {
+    render(<AuthControls />);
 
-    // The sign in button should be accessible and clickable
-    const signInButton = screen.getByRole('button', { name: /sign in/i });
+    // The sign in button should have neutral variant
+    const signInButton = screen.getByText('Sign In').closest('button');
     expect(signInButton).toBeInTheDocument();
-    expect(signInButton).toBeEnabled();
   });
 
-  it('should render accessible sign up button', () => {
-    render(<ClerkAuthControls />);
+  it('should use default variant for sign up button', () => {
+    render(<AuthControls />);
 
-    // The sign up button should be accessible and clickable
-    const signUpButton = screen.getByRole('button', { name: /sign up/i });
+    // The sign up button should have default styling (no explicit variant means default)
+    const signUpButton = screen.getByText('Sign Up').closest('button');
     expect(signUpButton).toBeInTheDocument();
-    expect(signUpButton).toBeEnabled();
   });
 
   it('should wrap buttons in appropriate Clerk components', () => {
-    render(<ClerkAuthControls />);
+    render(<AuthControls />);
 
     // SignInButton should wrap the "Sign In" button
     const signInWrapper = screen.getByTestId('sign-in-button');

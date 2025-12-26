@@ -4,7 +4,7 @@ import { type TierKey } from './PricingTiers';
 export interface TierConfig {
   key: TierKey;
   priceId?: string | null;
-  badgeVariant?: 'default' | 'secondary';
+  badgeVariant?: 'default' | 'neutral';
 }
 
 export const MONTHLY_TIER_CONFIGS: TierConfig[] = [
@@ -17,7 +17,7 @@ export const MONTHLY_TIER_CONFIGS: TierConfig[] = [
   {
     key: 'pro',
     priceId: stripeEnv.pricing.proMonthly,
-    badgeVariant: 'secondary',
+    badgeVariant: 'neutral',
   },
 ];
 
@@ -31,6 +31,6 @@ export const YEARLY_TIER_CONFIGS: TierConfig[] = [
   {
     key: 'pro',
     priceId: stripeEnv.pricing.proYearly,
-    badgeVariant: 'secondary',
+    badgeVariant: 'neutral',
   },
 ];

@@ -57,10 +57,10 @@ export function DatePicker({ id, placeholder = "Pick a date", value, onChange, r
       <PopoverTrigger asChild>
         <Button
           id={id}
-          variant="outline"
+          variant="noShadow"
           disabled={disabled}
           className={cn(
-            "w-full h-12 justify-start text-left font-base",
+            "w-full h-12 justify-start text-left font-base neobrutalism-shadow border-foreground border-2",
             className
           )}
         >

@@ -10,7 +10,7 @@ export interface PricingCardProps {
   features: string[];
   badge?: {
     label: string;
-    variant?: 'default' | 'secondary';
+    variant?: 'default' | 'neutral';
   };
   cta: ReactNode;
   isPopular?: boolean;

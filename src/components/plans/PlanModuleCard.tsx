@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, type ElementType } from 'react';
+import { useCallback, useMemo, type ElementType } from 'react';
 
 import { formatMinutes } from '@/lib/formatters';
 
@@ -75,49 +75,68 @@ export const PlanModuleCard = ({
 }: PlanModuleCardProps) => {
   const moduleTasks = useMemo(() => module.tasks ?? [], [module.tasks]);
 
-  // Handle status changes - React Compiler auto-memoizes this callback
-  const handleStatusChange = (taskId: string, nextStatus: ProgressStatus) => {
-    setStatuses((prev) => {
-      if (prev[taskId] === nextStatus) {
-        return prev;
-      }
+  // Memoized callback to handle status changes
+  const handleStatusChange = useCallback(
+    (taskId: string, nextStatus: ProgressStatus) => {
+      setStatuses((prev) => {
+        if (prev[taskId] === nextStatus) {
+          return prev;
+        }
 
-      return {
-        ...prev,
-        [taskId]: nextStatus,
-      };
-    });
-  };
+        return {
+          ...prev,
+          [taskId]: nextStatus,
+        };
+      });
+    },
+    [setStatuses]
+  );
 
-  // Memoize task metric calculations to avoid O(n) on every render
   const { totalTasks, completedCount, moduleCompleted } = useMemo(() => {
     const total = moduleTasks.length;
+    if (total === 0) {
+      return {
+        totalTasks: 0,
+        completedCount: 0,
+        moduleCompleted: false,
+      };
+    }
+
     const completed = moduleTasks.reduce((count, task) => {
       return statuses[task.id] === 'completed' ? count + 1 : count;
     }, 0);
+
     return {
       totalTasks: total,
       completedCount: completed,
-      moduleCompleted: total > 0 && completed === total,
+      moduleCompleted: completed === total,
     };
   }, [moduleTasks, statuses]);
 
-  // Progress badge JSX - React Compiler handles this automatically
-  const progressBadge =
-    totalTasks === 0 ? null : moduleCompleted ? (
-      <Badge className="flex items-center gap-1 border border-green-200 bg-green-500/10 px-2.5 py-0.5 text-green-700">
-        <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
-        <span>Completed</span>
-        <span className="sr-only">Module completed</span>
-      </Badge>
-    ) : (
+  const progressBadge = useMemo(() => {
+    if (totalTasks === 0) {
+      return null;
+    }
+
+    if (moduleCompleted) {
+      return (
+        <Badge className="flex items-center gap-1 border border-green-200 bg-green-500/10 px-2.5 py-0.5 text-green-700">
+          <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
+          <span>Completed</span>
+          <span className="sr-only">Module completed</span>
+        </Badge>
+      );
+    }
+
+    return (
       <Badge
-        variant="default"
+        variant="neutral"
         className="border-muted-foreground/20 text-muted-foreground"
       >
         {completedCount}/{totalTasks}
       </Badge>
     );
+  }, [completedCount, moduleCompleted, totalTasks]);
 
   return (
     <Card className="p-6">
@@ -136,7 +155,7 @@ export const PlanModuleCard = ({
             </p>
           ) : null}
         </div>
-        <Badge variant="default">
+        <Badge variant="neutral">
           {formatMinutes(module.estimatedMinutes)}
         </Badge>
       </div>

@@ -106,7 +106,7 @@ const ModelDropdown = ({
                 <div className="flex items-center gap-2">
                   <span>{model.name}</span>
                   <Badge
-                    variant={model.tier === 'free' ? 'default' : 'secondary'}
+                    variant={model.tier === 'free' ? 'default' : 'neutral'}
                   >
                     {model.tier.toUpperCase()}
                   </Badge>
@@ -129,7 +129,7 @@ const ModelDropdown = ({
               </div>
               <Badge
                 variant={
-                  selectedModelData.tier === 'free' ? 'default' : 'secondary'
+                  selectedModelData.tier === 'free' ? 'default' : 'neutral'
                 }
               >
                 {selectedModelData.tier.toUpperCase()}

@@ -46,8 +46,6 @@ next-env.d.ts
 # ide rules
 .cursor/*
 .claude/*
-.opencode/*
-.clavix/*
 CLAUDE.md
 
 # daily plan files
