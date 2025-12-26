@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
+const NAV_LINK_CLASSES =
+  'text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none';
+
 interface LandingNavigationProps {
   onCtaClick?: () => void;
 }
@@ -20,10 +23,6 @@ export default function LandingNavigation({
   onCtaClick,
 }: LandingNavigationProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleCtaClick = () => {
-    onCtaClick?.();
-  };
 
   return (
     <nav
@@ -38,29 +37,20 @@ export default function LandingNavigation({
 
           {/* Desktop Navigation Links */}
           <div className="hidden items-center space-x-8 md:flex">
-            <Link
-              href="#features"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
+            <Link href="#features" className={NAV_LINK_CLASSES}>
               Features
             </Link>
-            <Link
-              href="/about"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
+            <Link href="/about" className={NAV_LINK_CLASSES}>
               About
             </Link>
-            <Link
-              href="/pricing"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
+            <Link href="/pricing" className={NAV_LINK_CLASSES}>
               Pricing
             </Link>
             <Button
               asChild
               className="h-auto rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2"
             >
-              <Link href="/plans/new" onClick={handleCtaClick}>
+              <Link href="/plans/new" onClick={onCtaClick}>
                 Get Started
               </Link>
             </Button>
@@ -120,7 +110,7 @@ export default function LandingNavigation({
               <Link
                 href="/plans/new"
                 onClick={() => {
-                  handleCtaClick();
+                  onCtaClick?.();
                   setIsMobileMenuOpen(false);
                 }}
               >

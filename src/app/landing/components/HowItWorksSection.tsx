@@ -77,7 +77,6 @@ function StepCard({
           ? 'border-purple-200/50 bg-gradient-to-br from-purple-50/80 to-white/60 shadow-xl'
           : 'border-white/50 bg-white/40 shadow-lg'
       }`}
-      role="article"
     >
       {/* Decorative glow */}
       <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-20 blur-2xl transition group-hover:opacity-40"></div>
@@ -264,8 +263,10 @@ function IntegrationIcon({ name, color }: { name: string; color: string }) {
     <div
       className={`flex h-12 w-12 items-center justify-center rounded-xl ${color} shadow-lg transition hover:scale-105 hover:shadow-xl`}
       title={name}
+      role="img"
+      aria-label={name}
     >
-      <span className="text-lg font-semibold text-white">
+      <span className="text-lg font-semibold text-white" aria-hidden="true">
         {name === 'Google Calendar' ? 'G' : name === 'Notion' ? 'N' : 'O'}
       </span>
     </div>

@@ -28,7 +28,7 @@ export function ProblemSolutionSection() {
           </span>
           <h2
             id="problem-solution-heading"
-            className="mb-4 text-4xl font-bold text-gray-900 md:text-5xl"
+            className="text-foreground mb-4 text-4xl font-bold md:text-5xl"
           >
             Most people don&apos;t fail to learn.{' '}
             <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
@@ -56,7 +56,7 @@ export function ProblemSolutionSection() {
               </div>
               <h3
                 id="problem-card-heading"
-                className="text-2xl font-bold text-gray-900"
+                className="text-foreground text-2xl font-bold"
               >
                 The Manual Spiral
               </h3>
@@ -91,7 +91,7 @@ export function ProblemSolutionSection() {
               </div>
               <h3
                 id="solution-card-heading"
-                className="text-2xl font-bold text-gray-900"
+                className="text-foreground text-2xl font-bold"
               >
                 Execution, Scheduled
               </h3>
@@ -116,7 +116,7 @@ function ProblemItem({ children }: { children: React.ReactNode }) {
       <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-rose-100 to-red-100 shadow-sm">
         <X className="h-3.5 w-3.5 text-rose-500" aria-hidden="true" />
       </div>
-      <span className="leading-relaxed text-gray-600">{children}</span>
+      <span className="text-muted-foreground leading-relaxed">{children}</span>
     </li>
   );
 }
@@ -127,7 +127,7 @@ function SolutionItem({ children }: { children: React.ReactNode }) {
       <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-green-100 shadow-sm">
         <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
       </div>
-      <span className="leading-relaxed text-gray-700">{children}</span>
+      <span className="text-muted-foreground leading-relaxed">{children}</span>
     </li>
   );
 }

@@ -10,6 +10,8 @@ import { ProviderError } from '../provider';
 // Timing thresholds for test mode behavior
 const FAST_TEST_THRESHOLD_MS = 100;
 const CHUNK_DELAY_MS = 50;
+// Variance is only applied when delay >= 1000ms to ensure fast test runs
+// are deterministic. Below this threshold, exact delay is used with no random variance.
 const VARIANCE_THRESHOLD_MS = 1000;
 
 export interface MockGenerationConfig {

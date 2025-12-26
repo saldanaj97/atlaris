@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 
 interface BrandLogoProps {
@@ -14,10 +12,7 @@ interface BrandLogoProps {
  * Consolidates the logo mark + gradient text to ensure consistency.
  */
 export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
-  const iconSize = size === 'sm' ? 'h-8 w-8' : 'h-9 w-9';
-  const iconInnerSize = size === 'sm' ? 'h-4 w-4' : 'h-5 w-5';
-  const iconRounding = size === 'sm' ? 'rounded-lg' : 'rounded-xl';
-  const textSize = size === 'sm' ? 'text-lg' : 'text-xl';
+  const isSmall = size === 'sm';
 
   return (
     <Link
@@ -27,10 +22,12 @@ export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
       aria-label="Atlaris - Go to homepage"
     >
       <div
-        className={`flex ${iconSize} items-center justify-center ${iconRounding} bg-gradient-to-br from-purple-400 to-pink-400 text-white shadow-lg`}
+        className={`flex items-center justify-center bg-gradient-to-br from-purple-400 to-pink-400 text-white shadow-lg ${
+          isSmall ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
+        }`}
       >
         <svg
-          className={iconInnerSize}
+          className={isSmall ? 'h-4 w-4' : 'h-5 w-5'}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -45,7 +42,9 @@ export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
         </svg>
       </div>
       <span
-        className={`bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text ${textSize} font-semibold text-transparent`}
+        className={`bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text font-semibold text-transparent ${
+          isSmall ? 'text-lg' : 'text-xl'
+        }`}
       >
         Atlaris
       </span>

@@ -78,7 +78,7 @@ export default function RootLayout({
     <ClerkProvider afterSignOutUrl="/landing">
       <html lang="en">
         <body
-          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} mx-auto w-full antialiased`}
+          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} w-full antialiased`}
         >
           <SiteHeader />
           <main>{children}</main>

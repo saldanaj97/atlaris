@@ -1,6 +1,6 @@
 'use client';
 
-import type { ElementType } from 'react';
+import { useMemo, type ElementType } from 'react';
 
 import { formatMinutes } from '@/lib/formatters';
 
@@ -89,12 +89,18 @@ export const PlanModuleCard = ({
     });
   };
 
-  // Calculate progress stats - React Compiler auto-memoizes derived values
-  const totalTasks = moduleTasks.length;
-  const completedCount = moduleTasks.reduce((count, task) => {
-    return statuses[task.id] === 'completed' ? count + 1 : count;
-  }, 0);
-  const moduleCompleted = totalTasks > 0 && completedCount === totalTasks;
+  // Memoize task metric calculations to avoid O(n) on every render
+  const { totalTasks, completedCount, moduleCompleted } = useMemo(() => {
+    const total = moduleTasks.length;
+    const completed = moduleTasks.reduce((count, task) => {
+      return statuses[task.id] === 'completed' ? count + 1 : count;
+    }, 0);
+    return {
+      totalTasks: total,
+      completedCount: completed,
+      moduleCompleted: total > 0 && completed === total,
+    };
+  }, [moduleTasks, statuses]);
 
   // Progress badge JSX - React Compiler handles this automatically
   const progressBadge =

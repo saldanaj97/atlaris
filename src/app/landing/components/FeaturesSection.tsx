@@ -36,6 +36,7 @@ const FEATURES: Feature[] = [
 export function FeaturesSection() {
   return (
     <section
+      id="features"
       className="relative py-24 lg:py-32"
       aria-labelledby="features-heading"
     >

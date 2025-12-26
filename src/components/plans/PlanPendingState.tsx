@@ -54,6 +54,15 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   // Check if user has exhausted all retry attempts
   const hasExhaustedRetries = attempts >= MAX_RETRY_ATTEMPTS;
 
+  const getStatusBadgeVariant = (
+    failed: boolean,
+    processing: boolean
+  ): 'destructive' | 'default' | 'secondary' => {
+    if (failed) return 'destructive';
+    if (processing) return 'default';
+    return 'secondary';
+  };
+
   return (
     <div className="space-y-6">
       <Card className="p-8">
@@ -64,13 +73,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                 {formatSkillLevel(plan.skillLevel)}
               </Badge>
               <Badge
-                variant={
-                  isFailed
-                    ? 'destructive'
-                    : isProcessing
-                      ? 'default'
-                      : 'secondary'
-                }
+                variant={getStatusBadgeVariant(isFailed, isProcessing)}
                 className="ml-2 uppercase"
               >
                 {status}

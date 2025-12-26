@@ -91,11 +91,11 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm">Completed</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-success text-2xl font-bold">
                 {completedPlans.length}
               </p>
             </div>
-            <TrendingUp className="h-8 w-8 text-green-600/50" />
+            <TrendingUp className="text-success/50 h-8 w-8" />
           </div>
         </Card>
 

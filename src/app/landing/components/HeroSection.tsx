@@ -55,23 +55,15 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
           it.
         </p>
 
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <Button
-            asChild
-            className="group h-auto rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 px-8 py-4 text-white shadow-xl shadow-purple-500/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30"
-          >
-            <Link href="/plans/new" onClick={onCtaClick}>
-              <span className="font-medium">Start Free Trial</span>
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </Button>
-          <button
-            type="button"
-            className="rounded-2xl border border-white/60 bg-white/40 px-8 py-4 font-medium text-gray-700 shadow-lg backdrop-blur-sm transition hover:bg-white/60"
-          >
-            Watch Demo
-          </button>
-        </div>
+        <Button
+          asChild
+          className="group h-auto rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 px-8 py-4 text-white shadow-xl shadow-purple-500/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30"
+        >
+          <Link href="/plans/new" onClick={onCtaClick}>
+            <span className="font-medium">Start Free Trial</span>
+            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </Button>
 
         {/* Glassmorphism card preview */}
         <div className="relative mt-20 w-full max-w-5xl">
@@ -106,7 +98,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
                       </svg>
                     </div>
                     <p className="text-gray-500">
-                      [Interactive Dashboard Preview]
+                      See your personalized dashboard in action
                     </p>
                   </div>
                 </div>
