@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     description:
       'Create personalized learning plans with AI-generated modules and tasks.',
     images: ['/og-default.jpg'],
-    site: '@atlarisapp', // Update with actual Twitter handle if available
+    site: '@atlarisapp',
     creator: '@atlarisapp',
   },
   metadataBase: new URL('https://atlaris.com'), // Replace with production URL

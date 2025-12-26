@@ -73,7 +73,7 @@ export const PlanModuleCard = ({
   statuses,
   setStatuses,
 }: PlanModuleCardProps) => {
-  const moduleTasks = module.tasks ?? [];
+  const moduleTasks = useMemo(() => module.tasks ?? [], [module.tasks]);
 
   // Handle status changes - React Compiler auto-memoizes this callback
   const handleStatusChange = (taskId: string, nextStatus: ProgressStatus) => {

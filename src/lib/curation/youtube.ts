@@ -3,13 +3,36 @@
  * Handles search, stats retrieval, and curation with caching
  */
 
+import { appEnv } from '@/lib/config/env';
 import { curationConfig } from '@/lib/curation/config';
 import { scoreYouTube, selectTop, type Scored } from '@/lib/curation/ranking';
 import type { CurationParams, ResourceCandidate } from '@/lib/curation/types';
 import { isYouTubeEmbeddable } from '@/lib/curation/validate';
 import { logger } from '@/lib/logging/logger';
 import { fetchGoogleApi } from '@/lib/utils/google-api-rate-limiter';
-import { appEnv } from '@/lib/config/env';
+
+/**
+ * Dependencies for curateYouTube - enables testing without module mocking
+ */
+export interface CurateYouTubeDeps {
+  fetchGoogleApi: typeof fetchGoogleApi;
+  validate: {
+    isYouTubeEmbeddable: typeof isYouTubeEmbeddable;
+  };
+  ranking: {
+    scoreYouTube: typeof scoreYouTube;
+    selectTop: typeof selectTop;
+  };
+}
+
+/**
+ * Default dependencies for curateYouTube
+ */
+export const defaultCurateYouTubeDeps: CurateYouTubeDeps = {
+  fetchGoogleApi,
+  validate: { isYouTubeEmbeddable },
+  ranking: { scoreYouTube, selectTop },
+};
 
 /**
  * YouTube API search result from search.list
@@ -220,9 +243,13 @@ function parseDurationToMinutes(duration: string): number {
  * Curate YouTube resources for a given query
  * Searches, fetches stats, scores, filters, and returns top candidates
  * @param params Curation parameters
+ * @param deps Optional dependencies for testing
  * @returns Array of scored resource candidates (Scored[])
  */
-export async function curateYouTube(params: CurationParams): Promise<Scored[]> {
+export async function curateYouTube(
+  params: CurationParams,
+  deps: CurateYouTubeDeps = defaultCurateYouTubeDeps
+): Promise<Scored[]> {
   // Skip YouTube curation if API key is not available
   if (!curationConfig.youtubeApiKey && !appEnv.isTest) {
     return [];
@@ -251,7 +278,7 @@ export async function curateYouTube(params: CurationParams): Promise<Scored[]> {
     }
 
     // Validate embeddability
-    if (!isYouTubeEmbeddable(stat.status)) {
+    if (!deps.validate.isYouTubeEmbeddable(stat.status)) {
       continue;
     }
 
@@ -281,10 +308,10 @@ export async function curateYouTube(params: CurationParams): Promise<Scored[]> {
   }
 
   // Score all candidates
-  const scored = candidates.map((c) => scoreYouTube(c));
+  const scored = candidates.map((c) => deps.ranking.scoreYouTube(c));
 
   // Select top candidates with cutoff and diversity
-  const top = selectTop(scored, {
+  const top = deps.ranking.selectTop(scored, {
     minScore: params.minScore,
     maxItems: params.maxResults || 3,
     preferDiversity: false, // YouTube only, no diversity needed
