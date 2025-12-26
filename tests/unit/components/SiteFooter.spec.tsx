@@ -54,9 +54,8 @@ describe('SiteFooter', () => {
     expect(
       screen.getByRole('navigation', { name: /footer/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /privacy/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /terms/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /contact/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /pricing/i })).toBeInTheDocument();
 
     // Copyright
     expect(screen.getByText(/© \d{4} Atlaris/i)).toBeInTheDocument();
@@ -65,17 +64,13 @@ describe('SiteFooter', () => {
   it('should have navigation links with correct hrefs', () => {
     render(<SiteFooter />);
 
-    expect(screen.getByRole('link', { name: /privacy/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /about/i })).toHaveAttribute(
       'href',
-      '/privacy'
+      '/about'
     );
-    expect(screen.getByRole('link', { name: /terms/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute(
       'href',
-      '/terms'
-    );
-    expect(screen.getByRole('link', { name: /contact/i })).toHaveAttribute(
-      'href',
-      '/contact'
+      '/pricing'
     );
   });
 
