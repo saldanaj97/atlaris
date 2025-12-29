@@ -78,10 +78,10 @@ export default function RootLayout({
     <ClerkProvider afterSignOutUrl="/landing">
       <html lang="en">
         <body
-          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} w-full antialiased`}
+          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
         >
           <SiteHeader />
-          <main>{children}</main>
+          <main className="flex-1 pt-16">{children}</main>
           <Toaster />
           <SiteFooter />
         </body>
