@@ -1,11 +1,15 @@
 {
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "prettier.resolveGlobalModules": false,
-  "editor.formatOnSave": true,
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
-  },
   "typescript.tsdk": "node_modules/typescript/lib",
-  "Prettier-SQL.SQLFlavourOverride": "postgresql",
-  "markdown.validate.enabled": true
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.preferences.importModuleSpecifierEnding": "minimal",
+  "eslint.validate": [
+    "javascript",
+    "typescript",
+    "typescriptreact"
+  ],
+  "files.exclude": {
+    "**/.turbo": true,
+    "**/.next": true,
+    "**/dist": true
+  }
 }
