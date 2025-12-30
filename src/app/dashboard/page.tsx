@@ -1,4 +1,4 @@
-import PlansList from '@/components/plans/PlansList';
+import PlansList from '@/app/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
