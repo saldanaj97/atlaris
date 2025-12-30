@@ -4,6 +4,7 @@ import {
   eq,
   gte,
   inArray,
+  type InferSelectModel,
   isNotNull,
   lt,
   lte,
@@ -20,31 +21,34 @@ import {
   type JobType,
 } from '@/lib/jobs/types';
 
-interface JobRow {
-  id: string;
-  jobType: string;
-  planId: string | null;
-  userId: string;
-  status: JobStatus;
-  priority: number;
-  attempts: number;
-  maxAttempts: number;
-  payload: unknown;
-  result: unknown;
-  error: string | null;
-  lockedAt: Date | null;
-  lockedBy: string | null;
-  scheduledFor: Date;
-  startedAt: Date | null;
-  completedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+/**
+ * Database row type inferred from Drizzle schema.
+ * Using InferSelectModel ensures type safety without manual interface maintenance.
+ */
+type JobQueueRow = InferSelectModel<typeof jobQueue>;
+
+/**
+ * Type guard to validate job type values at runtime.
+ * Returns true if the value is a valid JobType.
+ */
+function isValidJobType(value: string): value is JobType {
+  return Object.values(JOB_TYPES).includes(value as JobType);
 }
 
-function mapRowToJob(row: JobRow): Job {
+/**
+ * Maps a database row to the domain Job model.
+ * Uses type inference from Drizzle schema for the input type.
+ */
+function mapRowToJob(row: JobQueueRow): Job {
+  // Validate jobType at runtime since DB stores as string
+  const jobType = row.jobType;
+  if (!isValidJobType(jobType)) {
+    throw new Error(`Invalid job type in database: ${String(jobType)}`);
+  }
+
   return {
     id: row.id,
-    type: row.jobType as Job['type'],
+    type: jobType,
     planId: row.planId ?? null,
     userId: row.userId,
     status: row.status,
@@ -168,16 +172,15 @@ export async function cleanupOldJobs(olderThan: Date): Promise<number> {
   return result.count ?? 0;
 }
 
-const ALLOWED_JOB_TYPES = new Set(Object.values(JOB_TYPES));
+const ALLOWED_JOB_TYPES = new Set<string>(Object.values(JOB_TYPES));
 
 function assertValidJobTypes(
   values: readonly unknown[]
 ): asserts values is JobType[] {
-  if (
-    !values.every(
-      (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v as JobType)
-    )
-  ) {
+  const allValid = values.every(
+    (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v)
+  );
+  if (!allValid) {
     throw new Error('Invalid job type(s) received');
   }
 }
@@ -254,7 +257,7 @@ export async function claimNextPendingJob(
       .where(eq(jobQueue.id, selectedId))
       .returning();
 
-    return updated ? mapRowToJob(updated as JobRow) : null;
+    return updated ? mapRowToJob(updated) : null;
   });
 
   return result;
@@ -276,7 +279,7 @@ export async function completeJobRecord(
     }
 
     if (current.status === 'completed' || current.status === 'failed') {
-      return mapRowToJob(current as JobRow);
+      return mapRowToJob(current);
     }
 
     const completedAt = new Date();
@@ -293,7 +296,7 @@ export async function completeJobRecord(
       .where(eq(jobQueue.id, jobId))
       .returning();
 
-    return updated ? mapRowToJob(updated as JobRow) : null;
+    return updated ? mapRowToJob(updated) : null;
   });
 }
 
@@ -324,7 +327,7 @@ export async function failJobRecord(
     }
 
     if (current.status === 'completed' || current.status === 'failed') {
-      return mapRowToJob(current as JobRow);
+      return mapRowToJob(current);
     }
 
     const nextAttempts = current.attempts + 1;
@@ -372,23 +375,47 @@ export async function failJobRecord(
       .where(eq(jobQueue.id, jobId))
       .returning();
 
-    return updated ? mapRowToJob(updated as JobRow) : null;
+    return updated ? mapRowToJob(updated) : null;
   });
 }
 
+/**
+ * Type guard to check if a value is a record object (not null, not array).
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Type guard to check if an array contains ErrorHistoryEntry objects.
+ */
+function isErrorHistoryArray(value: unknown): value is ErrorHistoryEntry[] {
+  if (!Array.isArray(value)) return false;
+  return value.every(
+    (item) =>
+      isRecord(item) &&
+      typeof item.attempt === 'number' &&
+      typeof item.error === 'string' &&
+      typeof item.timestamp === 'string'
+  );
+}
+
+/**
+ * Appends an error entry to the payload's error history.
+ * Preserves existing payload structure while adding error tracking.
+ */
 function appendErrorHistoryEntry(
   payload: unknown,
   entry: ErrorHistoryEntry
 ): Record<string, unknown> {
-  const base =
-    payload && typeof payload === 'object' && !Array.isArray(payload)
-      ? (payload as Record<string, unknown>)
-      : {};
-  const baseWithHistory = base as { errorHistory?: unknown };
-  const existingHistory = Array.isArray(baseWithHistory.errorHistory)
-    ? [...(baseWithHistory.errorHistory as ErrorHistoryEntry[])]
+  const base = isRecord(payload) ? payload : {};
+
+  const existingHistory = isErrorHistoryArray(base.errorHistory)
+    ? [...base.errorHistory]
     : [];
+
   existingHistory.push(entry);
+
   return {
     ...base,
     errorHistory: existingHistory,
