@@ -35,7 +35,10 @@ function formatDate(value?: Date | null) {
   }
 }
 
-function formatSkillLevel(level: PlanSummary['plan']['skillLevel']) {
+function formatSkillLevel(
+  level: PlanSummary['plan']['skillLevel'] | null | undefined
+) {
+  if (!level) return 'Unknown';
   const [first = '', ...rest] = level.split('');
   return `${first.toUpperCase()}${rest.join('').toLowerCase()}`;
 }

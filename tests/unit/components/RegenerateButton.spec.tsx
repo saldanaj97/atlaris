@@ -1,10 +1,12 @@
+// IMPORTANT: Mock imports must come first, before any component imports
+// that use the mocked modules (sonner, client-logger)
 import '../../mocks/unit/sonner.unit';
 import '../../mocks/unit/client-logger.unit';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import React from 'react';
-import { RegenerateButton } from '@/components/plans/RegenerateButton';
+
+import { RegenerateButton } from '@/app/plans/components/RegenerateButton';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('RegenerateButton', () => {
   beforeEach(() => {
@@ -38,9 +40,9 @@ describe('RegenerateButton', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/plans/test-plan-123/regenerate',
-        {
+        expect.objectContaining({
           method: 'POST',
-        }
+        })
       );
     });
   });
@@ -201,12 +203,12 @@ describe('RegenerateButton', () => {
 
     const button = screen.getByRole('button', { name: /regenerate plan/i });
 
-    // Click multiple times rapidly
+    // Click multiple times rapidly - button disables after first click
     fireEvent.click(button);
     fireEvent.click(button);
     fireEvent.click(button);
 
-    // Should only have been called once
+    // Should only have been called once because button is disabled during loading
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });

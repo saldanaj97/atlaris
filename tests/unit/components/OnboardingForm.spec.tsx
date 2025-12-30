@@ -1,9 +1,8 @@
-import '../../mocks/unit/sonner.unit';
+import OnboardingForm from '@/app/plans/components/OnboardingForm';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../mocks/unit/client-logger.unit';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import React from 'react';
-import OnboardingForm from '@/components/plans/OnboardingForm';
+import '../../mocks/unit/sonner.unit';
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -243,7 +242,10 @@ describe('OnboardingForm', () => {
     render(<OnboardingForm />);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/user/subscription');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/user/subscription',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
     });
   });
 
@@ -256,7 +258,10 @@ describe('OnboardingForm', () => {
     render(<OnboardingForm />);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/user/subscription');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/user/subscription',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      );
     });
 
     // Component should still render (defaults to free)

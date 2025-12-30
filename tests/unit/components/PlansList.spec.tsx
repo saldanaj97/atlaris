@@ -1,4 +1,4 @@
-import PlansList from '@/components/plans/PlansList';
+import PlansList from '@/app/plans/components/PlansList';
 import type { PlanSummary } from '@/lib/types/db';
 import { render, screen } from '@testing-library/react';
 import React from 'react';

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
@@ -11,7 +11,7 @@ import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 
-import { PlanDraftView } from '@/components/plans/PlanDraftView';
+import { PlanDraftView } from '@/app/plans/components/PlanDraftView';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -110,7 +110,8 @@ const TOTAL_STEPS = 5;
 // Define once to avoid re-creating on every render
 
 export default function OnboardingForm() {
-  const today = new Date();
+  // Stabilize today's date to avoid re-creating on every render
+  const today = useMemo(() => new Date(), []);
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,11 +134,14 @@ export default function OnboardingForm() {
     planIdRef.current = streamingState.planId;
   }, [streamingState.planId]);
 
-  // Fetch user tier on mount
+  // Fetch user tier on mount with AbortController to prevent state updates after unmount
   useEffect(() => {
+    const controller = new AbortController();
     const fetchUserTier = async () => {
       try {
-        const res = await fetch('/api/v1/user/subscription');
+        const res = await fetch('/api/v1/user/subscription', {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = (await res.json()) as {
             tier?: 'free' | 'starter' | 'pro';
@@ -147,11 +151,14 @@ export default function OnboardingForm() {
           setUserTier('free');
         }
       } catch (error) {
+        // Ignore abort errors
+        if ((error as Error).name === 'AbortError') return;
         clientLogger.error('Failed to fetch user tier:', error);
         setUserTier('free');
       }
     };
     void fetchUserTier();
+    return () => controller.abort();
   }, []);
 
   const updateField = <Key extends keyof FormState>(
@@ -342,11 +349,7 @@ export default function OnboardingForm() {
           </div>
         </div>
 
-        <Card
-          className="p-8"
-          role="form"
-          aria-labelledby="onboarding-form-heading"
-        >
+        <Card className="p-8" role="form">
           {currentStep === 1 && (
             <div className="space-y-6">
               <div className="space-y-2 text-center">

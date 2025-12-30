@@ -1,10 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ScheduleJson } from '@/lib/scheduling/types';
+import type { ClientPlanDetail } from '@/lib/types/client';
 
 // Mock next/navigation useRouter
 const pushMock = vi.fn();
@@ -45,7 +45,7 @@ async function renderPlanDetails(
 ) {
   (globalThis as any).React = React;
   const { default: PlanDetails } = await import(
-    '@/components/plans/PlanDetails'
+    '@/app/plans/components/PlanDetails'
   );
   return render(<PlanDetails plan={plan} schedule={schedule} />);
 }

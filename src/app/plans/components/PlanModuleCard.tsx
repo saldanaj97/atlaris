@@ -164,7 +164,7 @@ export const PlanModuleCard = ({
                         isCompleted
                           ? 'fill-white text-green-600'
                           : 'text-muted-foreground'
-                      } ${isCompleted ? 'animate-pulse' : ''}`}
+                      }`}
                     />
                     {task.title}
                   </CardTitle>
@@ -182,8 +182,8 @@ export const PlanModuleCard = ({
                 </div>
               </CardHeader>
 
-              {resources.length ? (
-                <CardContent className="mt-4 flex space-y-2">
+              {resources.length > 0 && (
+                <CardContent className="mt-4 flex flex-col space-y-2">
                   <div className="flex w-full flex-col">
                     <div className="text-muted-foreground text-xs font-semibold uppercase">
                       Recommended Resources
@@ -222,18 +222,19 @@ export const PlanModuleCard = ({
                       })}
                     </div>
                   </div>
-                  <div className="flex flex-col justify-end">
-                    <CardAction>
-                      <UpdateTaskStatusButton
-                        planId={planId}
-                        taskId={task.id}
-                        status={status}
-                        onStatusChange={handleStatusChange}
-                      />
-                    </CardAction>
-                  </div>
                 </CardContent>
-              ) : null}
+              )}
+
+              <div className="mt-4 flex justify-end px-4">
+                <CardAction>
+                  <UpdateTaskStatusButton
+                    planId={planId}
+                    taskId={task.id}
+                    status={status}
+                    onStatusChange={handleStatusChange}
+                  />
+                </CardAction>
+              </div>
             </div>
           );
         })}

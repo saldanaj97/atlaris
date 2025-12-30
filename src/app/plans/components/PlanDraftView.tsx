@@ -38,7 +38,11 @@ export function PlanDraftView({ state, onCancel }: PlanDraftViewProps) {
       </div>
 
       {progress ? (
-        <div className="text-muted-foreground flex items-center justify-between text-sm">
+        <div
+          className="text-muted-foreground flex items-center justify-between text-sm"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           <span>
             {progress.modulesParsed} of {progress.modulesTotalHint ?? '...'}{' '}
             modules planned
@@ -82,7 +86,10 @@ export function PlanDraftView({ state, onCancel }: PlanDraftViewProps) {
       </div>
 
       {error ? (
-        <div className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm">
+        <div
+          role="alert"
+          className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+        >
           {error.message}
           {error.retryable ? ' You can try again.' : null}
         </div>

@@ -1,34 +1,85 @@
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { logger } from '@/lib/logging/logger';
 import {
+  type AttemptStatus,
   ClientGenerationAttempt,
   ClientPlanDetail,
+  type FailureClassification,
   PlanStatus,
 } from '@/lib/types/client';
 import { GenerationAttempt, LearningPlanDetail } from '../types/db';
 
+const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set([
+  'success',
+  'failure',
+]);
+
+const VALID_CLASSIFICATIONS: ReadonlySet<FailureClassification> = new Set([
+  'validation',
+  'provider_error',
+  'rate_limit',
+  'timeout',
+  'capped',
+]);
+
+/**
+ * Type guard to check if a value is a record object.
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Validates and converts a string to AttemptStatus.
+ * Logs a warning for unknown values in development and returns 'failure' as fallback.
+ */
+function toAttemptStatus(status: string): AttemptStatus {
+  if (VALID_ATTEMPT_STATUSES.has(status as AttemptStatus)) {
+    return status as AttemptStatus;
+  }
+
+  // Log unknown status values to aid debugging data corruption or schema mismatches
+  if (process.env.NODE_ENV === 'development') {
+    logger.warn(
+      { status },
+      `[detailToClient] Unknown attempt status "${status}", falling back to "failure"`
+    );
+  }
+
+  return 'failure';
+}
+
+/**
+ * Validates and converts a string to FailureClassification.
+ * Returns null for invalid or missing values.
+ */
+function toClassification(
+  classification: string | null | undefined
+): FailureClassification | null {
+  if (!classification) return null;
+  return VALID_CLASSIFICATIONS.has(classification as FailureClassification)
+    ? (classification as FailureClassification)
+    : null;
+}
+
 function toClientAttempt(attempt: GenerationAttempt): ClientGenerationAttempt {
-  const metadata =
-    attempt.metadata && typeof attempt.metadata === 'object'
-      ? (attempt.metadata as Record<string, unknown>)
-      : null;
+  const metadata = isRecord(attempt.metadata) ? attempt.metadata : null;
 
   let model: string | null = null;
-  const provider =
-    metadata && typeof metadata.provider === 'object'
-      ? (metadata.provider as Record<string, unknown>)
-      : null;
-  if (provider && typeof provider.model === 'string') {
-    model = provider.model;
+  if (metadata && isRecord(metadata.provider)) {
+    const provider = metadata.provider;
+    if (typeof provider.model === 'string') {
+      model = provider.model;
+    }
   }
+
+  const status = toAttemptStatus(attempt.status);
 
   return {
     id: attempt.id,
-    status: attempt.status as ClientGenerationAttempt['status'],
+    status,
     classification:
-      attempt.status === 'success'
-        ? null
-        : ((attempt.classification as ClientGenerationAttempt['classification']) ??
-          null),
+      status === 'success' ? null : toClassification(attempt.classification),
     durationMs: attempt.durationMs,
     modulesCount: attempt.modulesCount,
     tasksCount: attempt.tasksCount,

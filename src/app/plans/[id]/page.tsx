@@ -1,15 +1,22 @@
-import PlanDetailPageError from '@/components/plans/Error';
-import PlanDetails from '@/components/plans/PlanDetails';
 import {
   getPlanForPage,
   getPlanScheduleForPage,
 } from '@/app/plans/[id]/actions';
-import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import {
+  getPlanError,
+  getScheduleError,
+  isPlanSuccess,
+  isScheduleSuccess,
+} from '@/app/plans/[id]/helpers';
+import PlanDetailPageError from '@/app/plans/components/Error';
+import PlanDetails from '@/app/plans/components/PlanDetails';
 import { logger } from '@/lib/logging/logger';
+import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import type { ScheduleJson } from '@/lib/scheduling/types';
 import { redirect } from 'next/navigation';
 
 interface PlanPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -22,41 +29,90 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
   const { id } = await params;
   if (!id) return <PlanDetailPageError />;
 
-  // Fetch plan data using server action (RLS-enforced via getDb())
-  let plan;
-  try {
-    plan = await getPlanForPage(id);
-  } catch (error) {
-    logger.error(
-      {
-        planId: id,
-        error,
-      },
-      'Failed to fetch plan'
+  // Fetch plan and schedule in parallel to avoid waterfalls
+  const [planResult, scheduleResult] = await Promise.all([
+    getPlanForPage(id),
+    getPlanScheduleForPage(id),
+  ]);
+
+  // Handle plan access errors with explicit error codes
+  if (!isPlanSuccess(planResult)) {
+    const error = getPlanError(planResult);
+    const code = error.code;
+    const message = error.message;
+
+    logger.warn(
+      { planId: id, errorCode: code },
+      `Plan access denied: ${message}`
     );
-    redirect(`/sign-in?redirect_url=/plans/${id}`);
+
+    switch (code) {
+      case 'UNAUTHORIZED':
+        // User needs to authenticate - redirect to sign-in
+        // redirect() throws and never returns, so break is unreachable
+        redirect(`/sign-in?redirect_url=/plans/${id}`);
+        break;
+
+      case 'NOT_FOUND':
+        // Plan doesn't exist or user doesn't have access
+        return (
+          <PlanDetailPageError message="This plan does not exist or you do not have access to it." />
+        );
+
+      case 'FORBIDDEN':
+        // User is authenticated but explicitly not allowed
+        return (
+          <PlanDetailPageError message="You do not have permission to view this plan." />
+        );
+
+      case 'INTERNAL_ERROR':
+      default:
+        // Unexpected error - show generic message
+        return (
+          <PlanDetailPageError message="Something went wrong. Please try again later." />
+        );
+    }
   }
 
-  if (!plan) redirect(`/sign-in?redirect_url=/plans/${id}`);
-
-  const formattedPlanDetails = mapDetailToClient(plan);
-  if (!formattedPlanDetails) return <PlanDetailPageError />;
-
-  // Fetch schedule with error handling using server action
-  let schedule;
-  try {
-    schedule = await getPlanScheduleForPage(id);
-  } catch (error) {
-    logger.error(
-      {
-        planId: id,
-        error,
-      },
-      'Failed to fetch plan schedule'
-    );
-    // Show error UI to inform the user that schedule failed to load
-    return <PlanDetailPageError message="Failed to load schedule." />;
+  // TypeScript now knows planResult.success is true, so data exists
+  const planData = planResult.data;
+  const formattedPlanDetails = mapDetailToClient(planData);
+  if (!formattedPlanDetails) {
+    logger.error({ planId: id }, 'Failed to map plan details to client format');
+    return <PlanDetailPageError message="Failed to load plan details." />;
   }
 
-  return <PlanDetails plan={formattedPlanDetails} schedule={schedule} />;
+  // Handle schedule access errors - show plan with degraded schedule
+  let scheduleData: ScheduleJson | null = null;
+  let scheduleErrorMsg: string | undefined;
+
+  if (!isScheduleSuccess(scheduleResult)) {
+    const error = getScheduleError(scheduleResult);
+    const code = error.code;
+    const message = error.message;
+
+    logger.warn(
+      { planId: id, errorCode: code },
+      `Schedule access denied: ${message}`
+    );
+
+    // For schedule errors, if it's an auth error we should redirect
+    // (shouldn't happen if plan succeeded, but handle it anyway)
+    if (code === 'UNAUTHORIZED') {
+      redirect(`/sign-in?redirect_url=/plans/${id}`);
+    }
+
+    // Set error message for degraded display
+    scheduleErrorMsg = 'Failed to load schedule. Please try again later.';
+  } else {
+    scheduleData = scheduleResult.data;
+  }
+
+  return (
+    <PlanDetails
+      plan={formattedPlanDetails}
+      schedule={scheduleData}
+      scheduleError={scheduleErrorMsg}
+    />
+  );
 }

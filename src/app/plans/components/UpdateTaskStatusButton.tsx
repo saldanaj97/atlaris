@@ -66,9 +66,8 @@ export const UpdateTaskStatusButton = (props: UpdateTaskStatusButtonProps) => {
       onClick={handleClick}
       disabled={isPending}
       aria-pressed={isCompleted}
-      aria-disabled={isPending || undefined}
       aria-label={
-        isCompleted ? 'Mark task as not started' : 'Mark task as completed'
+        isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'
       }
       className={`flex items-center rounded-xl px-4 py-2 text-left text-sm font-medium ${
         isCompleted
@@ -84,7 +83,7 @@ export const UpdateTaskStatusButton = (props: UpdateTaskStatusButtonProps) => {
         ) : (
           <CircleX className="h-5 w-5" />
         )}
-        Completed
+        {isCompleted ? 'Completed' : 'Mark Complete'}
       </div>
     </Button>
   );

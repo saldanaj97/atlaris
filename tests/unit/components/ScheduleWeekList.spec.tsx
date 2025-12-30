@@ -1,8 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import ScheduleWeekList from '@/components/plans/ScheduleWeekList';
+import ScheduleWeekList from '@/app/plans/components/ScheduleWeekList';
 import type { ScheduleJson } from '@/lib/scheduling/types';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 describe('ScheduleWeekList', () => {
   it('should render week headings', () => {

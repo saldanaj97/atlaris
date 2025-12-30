@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import PlansList from '@/components/plans/PlansList';
+import PlansList from '@/app/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
@@ -41,13 +41,13 @@ export default async function PlansPage() {
   return (
     <div className="container mx-auto py-8">
       <Link href="/dashboard">
-        <Button variant="default" className="mb-4 space-x-2">
+        <Button variant="default" className="mb-4 gap-2">
           <ArrowLeft className="h-4" />
-          <p>Back to Dashboard</p>
+          Back to Dashboard
         </Button>
       </Link>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-main-foreground text-3xl font-bold">Your Plans</h1>
+        <h1 className="text-3xl font-semibold">Your Plans</h1>
         <Button asChild>
           <Link href="/plans/new">Create New Plan</Link>
         </Button>

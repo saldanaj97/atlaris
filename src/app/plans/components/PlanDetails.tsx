@@ -7,8 +7,8 @@ import type { ScheduleJson } from '@/lib/scheduling/types';
 import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ProgressStatus } from '@/lib/types/db';
 
-import { PlanModuleCard } from '@/components/plans/PlanModuleCard';
-import ScheduleWeekList from '@/components/plans/ScheduleWeekList';
+import { PlanModuleCard } from '@/app/plans/components/PlanModuleCard';
+import ScheduleWeekList from '@/app/plans/components/ScheduleWeekList';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
@@ -19,17 +19,23 @@ import { RegenerateButton } from './RegenerateButton';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
-  schedule: ScheduleJson;
+  schedule: ScheduleJson | null;
+  scheduleError?: string;
 }
 
 /**
  * Renders the plan details view with modules and an optional learning schedule.
  *
  * @param plan - The client-facing plan data to display, including modules and overall status.
- * @param schedule - The schedule data used to render the learning schedule tab.
+ * @param schedule - The schedule data used to render the learning schedule tab, or null if unavailable.
+ * @param scheduleError - Optional error message to display when schedule failed to load.
  * @returns The rendered PlanDetails UI containing navigation, plan summary, export controls, and tabbed Modules/Schedule content.
  */
-export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
+export default function PlanDetails({
+  plan,
+  schedule,
+  scheduleError,
+}: PlanDetailClientProps) {
   const router = useRouter();
   const modules = plan.modules ?? [];
   const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
@@ -50,14 +56,24 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
   return (
     <div className="min-h-screen">
       <div className="container mx-auto">
-        <Button
-          variant="default"
-          onClick={() => router.push('/dashboard')}
-          className="mb-4 space-x-2"
-        >
-          <ArrowLeft className="m-4 h-4" />
-          <p>Back to Dashboard</p>
-        </Button>
+        {/* Navigation & Actions Bar */}
+        <div className="mb-6 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            onClick={() => router.push('/dashboard')}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+
+          {!isPendingOrProcessing && (
+            <div className="flex items-center gap-2">
+              <ExportButtons planId={plan.id} />
+              <RegenerateButton planId={plan.id} />
+            </div>
+          )}
+        </div>
 
         {isPendingOrProcessing ? (
           <PlanPendingState plan={plan} />
@@ -69,47 +85,36 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
               statuses={statuses}
             />
 
-            {/* TODO: Re-enable once Notion/Calendar integrations are ready */}
-            <ExportButtons planId={plan.id} />
-
-            {!isPendingOrProcessing && (
-              <div className="mb-6">
-                <RegenerateButton planId={plan.id} />
-              </div>
-            )}
-
             {/* View Toggle */}
-            <div className="border-foreground mb-6 border-b">
-              <nav className="flex space-x-8" role="tablist">
-                <Button
+            <div className="border-border mb-6 border-b">
+              <div className="-mb-px flex gap-6" role="tablist">
+                <button
                   type="button"
                   role="tab"
                   aria-selected={activeView === 'modules'}
                   onClick={() => setActiveView('modules')}
-                  data-slot="tab"
-                  className={`border-b-2 px-1 py-4 text-sm font-medium ${
+                  className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                     activeView === 'modules'
                       ? 'border-primary text-primary'
                       : 'text-muted-foreground hover:border-border hover:text-foreground border-transparent'
                   }`}
                 >
                   Modules
-                </Button>
-                <Button
+                </button>
+                <button
                   type="button"
                   role="tab"
                   aria-selected={activeView === 'schedule'}
                   onClick={() => setActiveView('schedule')}
-                  data-slot="tab"
-                  className={`border-b-2 px-1 py-4 text-sm font-medium ${
+                  className={`border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                     activeView === 'schedule'
                       ? 'border-primary text-primary'
                       : 'text-muted-foreground hover:border-border hover:text-foreground border-transparent'
                   }`}
                 >
                   Schedule
-                </Button>
-              </nav>
+                </button>
+              </div>
             </div>
 
             {/* Content */}
@@ -137,7 +142,17 @@ export default function PlanDetails({ plan, schedule }: PlanDetailClientProps) {
             {activeView === 'schedule' && (
               <section className="space-y-6">
                 <h2 className="text-2xl font-bold">Learning Schedule</h2>
-                <ScheduleWeekList schedule={schedule} />
+                {scheduleError ? (
+                  <Card className="border-destructive/50 bg-destructive/10 p-6 text-center">
+                    <p className="text-destructive">{scheduleError}</p>
+                  </Card>
+                ) : schedule ? (
+                  <ScheduleWeekList schedule={schedule} />
+                ) : (
+                  <Card className="text-muted-foreground p-6 text-center">
+                    <p>No schedule available yet.</p>
+                  </Card>
+                )}
               </section>
             )}
           </>

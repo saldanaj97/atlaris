@@ -1,12 +1,12 @@
-import '../mocks/e2e/sonner.e2e';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '../mocks/e2e/sonner.e2e';
 
 import type { DatePickerProps } from '@/components/ui/date-picker';
-import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ScheduleJson } from '@/lib/scheduling/types';
+import type { ClientPlanDetail } from '@/lib/types/client';
 
 // Mock next/navigation useRouter
 const pushMock = vi.fn();
@@ -160,7 +160,7 @@ function selectWeeklyHoursLabel(label: string) {
 async function renderOnboardingForm() {
   (globalThis as any).React = React;
   const { default: OnboardingForm } = await import(
-    '@/components/plans/OnboardingForm'
+    '@/app/plans/components/OnboardingForm'
   );
   return render(<OnboardingForm />);
 }
@@ -171,7 +171,7 @@ async function renderPlanDetails(
 ) {
   (globalThis as any).React = React;
   const { default: PlanDetails } = await import(
-    '@/components/plans/PlanDetails'
+    '@/app/plans/components/PlanDetails'
   );
   return render(<PlanDetails plan={plan} schedule={schedule} />);
 }
@@ -216,6 +216,8 @@ describe('Regeneration UI', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    // Restore globalThis.React to prevent test pollution
+    delete (globalThis as Record<string, unknown>).React;
   });
 
   describe('Free-tier cap prompt', () => {

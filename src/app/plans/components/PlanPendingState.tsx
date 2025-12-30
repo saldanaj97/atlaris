@@ -86,7 +86,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
           <CardTitle className="text-3xl font-bold">{plan.topic}</CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6" aria-live="polite">
           {isFailed && displayError ? (
             <div className="space-y-4">
               <div className="bg-destructive/10 border-destructive/20 flex items-start gap-3 rounded-lg border p-4">
@@ -163,11 +163,6 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                   Your learning plan is queued and will begin generation
                   shortly.
                 </p>
-                {attempts > 0 && (
-                  <p className="text-muted-foreground text-sm">
-                    Position in queue: processing
-                  </p>
-                )}
               </div>
             </div>
           ) : null}
