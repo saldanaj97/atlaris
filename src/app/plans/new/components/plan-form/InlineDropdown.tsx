@@ -1,7 +1,9 @@
 'use client';
 
+import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown } from 'lucide-react';
-import { useEffect, useId, useRef } from 'react';
+import { useId } from 'react';
+import { cn } from '@/lib/utils';
 import type { DropdownOption } from './types';
 
 type DropdownVariant = 'purple' | 'pink' | 'cyan' | 'rose';
@@ -11,8 +13,6 @@ interface InlineDropdownProps {
   options: DropdownOption[];
   value: string;
   onChange: (value: string) => void;
-  isOpen: boolean;
-  onToggle: () => void;
   icon?: React.ReactNode;
   variant?: DropdownVariant;
 }
@@ -22,142 +22,113 @@ const VARIANT_STYLES: Record<
   {
     pill: string;
     dropdown: string;
-    active: string;
-    hover: string;
+    item: string;
   }
 > = {
   purple: {
-    pill: 'border-purple-200/60 bg-purple-50/80 text-purple-700 hover:bg-purple-100/80',
+    pill: 'border-purple-200/60 bg-purple-50/80 text-purple-700 hover:bg-purple-100/80 data-[state=open]:bg-purple-100/80',
     dropdown: 'border-purple-200/60 bg-white/95',
-    active: 'bg-purple-100 text-purple-800',
-    hover: 'hover:bg-purple-50',
+    item: 'text-gray-700 hover:bg-purple-50 data-[highlighted]:bg-purple-100 data-[highlighted]:text-purple-800 data-[state=checked]:bg-purple-100 data-[state=checked]:text-purple-800',
   },
   pink: {
-    pill: 'border-pink-200/60 bg-pink-50/80 text-pink-700 hover:bg-pink-100/80',
+    pill: 'border-pink-200/60 bg-pink-50/80 text-pink-700 hover:bg-pink-100/80 data-[state=open]:bg-pink-100/80',
     dropdown: 'border-pink-200/60 bg-white/95',
-    active: 'bg-pink-100 text-pink-800',
-    hover: 'hover:bg-pink-50',
+    item: 'text-gray-700 hover:bg-pink-50 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-800 data-[state=checked]:bg-pink-100 data-[state=checked]:text-pink-800',
   },
   cyan: {
-    pill: 'border-cyan-200/60 bg-cyan-50/80 text-cyan-700 hover:bg-cyan-100/80',
+    pill: 'border-cyan-200/60 bg-cyan-50/80 text-cyan-700 hover:bg-cyan-100/80 data-[state=open]:bg-cyan-100/80',
     dropdown: 'border-cyan-200/60 bg-white/95',
-    active: 'bg-cyan-100 text-cyan-800',
-    hover: 'hover:bg-cyan-50',
+    item: 'text-gray-700 hover:bg-cyan-50 data-[highlighted]:bg-cyan-100 data-[highlighted]:text-cyan-800 data-[state=checked]:bg-cyan-100 data-[state=checked]:text-cyan-800',
   },
   rose: {
-    pill: 'border-rose-200/60 bg-rose-50/80 text-rose-700 hover:bg-rose-100/80',
+    pill: 'border-rose-200/60 bg-rose-50/80 text-rose-700 hover:bg-rose-100/80 data-[state=open]:bg-rose-100/80',
     dropdown: 'border-rose-200/60 bg-white/95',
-    active: 'bg-rose-100 text-rose-800',
-    hover: 'hover:bg-rose-50',
+    item: 'text-gray-700 hover:bg-rose-50 data-[highlighted]:bg-rose-100 data-[highlighted]:text-rose-800 data-[state=checked]:bg-rose-100 data-[state=checked]:text-rose-800',
   },
 };
 
 /**
  * Inline dropdown component that appears as a styled pill within text.
  * Used in the unified plan generation form for natural language-style input.
+ *
+ * Built on Radix Select primitives for proper accessibility:
+ * - Keyboard navigation (arrow keys, typeahead)
+ * - Automatic focus on selected item when opened
+ * - Focus management and trapping
+ * - Proper ARIA attributes
+ * - Outside click and escape key handling
  */
 export function InlineDropdown({
   id,
   options,
   value,
-  isOpen,
   icon,
   onChange,
-  onToggle,
   variant = 'purple',
 }: InlineDropdownProps) {
-  const baseId = useId();
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const generatedId = useId();
+  const componentId = id ?? generatedId;
   const styles = VARIANT_STYLES[variant];
   const selectedOption = options.find((opt) => opt.value === value);
-  const buttonId = id ? `${id}-button` : `${baseId}-button`;
-  const menuId = id ? `${id}-menu` : `${baseId}-menu`;
-
-  // Close on outside click
-  useEffect(() => {
-    if (!isOpen) return;
-
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        onToggle();
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, onToggle]);
-
-  // Close on escape key
-  useEffect(() => {
-    if (!isOpen) return;
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onToggle();
-      }
-    }
-
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onToggle]);
 
   return (
-    <div ref={dropdownRef} className="relative inline-block">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm backdrop-blur-sm transition ${styles.pill}`}
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        aria-controls={menuId}
-        id={buttonId}
+    <SelectPrimitive.Root value={value} onValueChange={onChange}>
+      <SelectPrimitive.Trigger
+        id={componentId}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm backdrop-blur-sm transition outline-none',
+          'focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
+          styles.pill
+        )}
       >
         {icon}
-        <span>{selectedOption?.label ?? value}</span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-        />
-      </button>
+        <SelectPrimitive.Value>
+          {selectedOption?.label ?? value}
+        </SelectPrimitive.Value>
+        <SelectPrimitive.Icon asChild>
+          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+        </SelectPrimitive.Icon>
+      </SelectPrimitive.Trigger>
 
-      {isOpen && (
-        <div
-          className={`absolute left-0 z-50 mt-2 min-w-[180px] overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl ${styles.dropdown}`}
-          id={menuId}
-          role="menu"
-          aria-labelledby={buttonId}
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          position="popper"
+          sideOffset={8}
+          align="start"
+          className={cn(
+            'z-50 min-w-[180px] overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
+            styles.dropdown
+          )}
         >
-          <div className="p-1.5">
+          <SelectPrimitive.Viewport className="p-1.5">
             {options.map((option) => (
-              <button
+              <SelectPrimitive.Item
                 key={option.value}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  onToggle();
-                }}
-                className={`w-full rounded-xl px-3 py-2 text-left transition ${
-                  option.value === value
-                    ? styles.active
-                    : `text-gray-700 ${styles.hover}`
-                }`}
-                role="menuitem"
-              >
-                <span className="block text-sm font-medium">
-                  {option.label}
-                </span>
-                {option.description && (
-                  <span className="block text-xs text-gray-500">
-                    {option.description}
-                  </span>
+                value={option.value}
+                className={cn(
+                  'w-full cursor-default rounded-xl px-3 py-2 text-left transition outline-none',
+                  styles.item
                 )}
-              </button>
+              >
+                <SelectPrimitive.ItemText>
+                  <span className="block text-sm font-medium">
+                    {option.label}
+                  </span>
+                  {option.description && (
+                    <span className="block text-xs text-gray-500">
+                      {option.description}
+                    </span>
+                  )}
+                </SelectPrimitive.ItemText>
+              </SelectPrimitive.Item>
             ))}
-          </div>
-        </div>
-      )}
-    </div>
+          </SelectPrimitive.Viewport>
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
+    </SelectPrimitive.Root>
   );
 }

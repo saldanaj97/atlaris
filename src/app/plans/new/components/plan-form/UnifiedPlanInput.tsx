@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
@@ -36,25 +36,8 @@ export function UnifiedPlanInput({
   const [weeklyHours, setWeeklyHours] = useState('3-5');
   const [learningStyle, setLearningStyle] = useState('mixed');
   const [deadlineWeeks, setDeadlineWeeks] = useState('4');
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const topicInputId = `${baseId}-topic`;
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setActiveDropdown(null);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleSubmit = () => {
     if (!topic.trim() || isSubmitting || disabled) return;
@@ -75,15 +58,11 @@ export function UnifiedPlanInput({
     }
   };
 
-  const toggleDropdown = (id: string) => {
-    setActiveDropdown((current) => (current === id ? null : id));
-  };
-
   const isFormValid = topic.trim().length > 0;
   const isDisabled = isSubmitting || disabled || !isFormValid;
 
   return (
-    <div ref={containerRef} className="w-full max-w-2xl">
+    <div className="w-full max-w-2xl">
       {/* Main input card with glassmorphism */}
       <div className="relative rounded-3xl border border-white/50 bg-white/60 px-6 py-5 shadow-2xl backdrop-blur-xl transition-all focus-within:shadow-purple-500/20">
         {/* Decorative gradient glow - clipped to card bounds */}
@@ -124,8 +103,6 @@ export function UnifiedPlanInput({
             options={SKILL_LEVEL_OPTIONS}
             value={skillLevel}
             onChange={setSkillLevel}
-            isOpen={activeDropdown === 'skill-level'}
-            onToggle={() => toggleDropdown('skill-level')}
             variant="purple"
           />
           <span className="text-sm">with</span>
@@ -134,8 +111,6 @@ export function UnifiedPlanInput({
             options={WEEKLY_HOURS_OPTIONS}
             value={weeklyHours}
             onChange={setWeeklyHours}
-            isOpen={activeDropdown === 'weekly-hours'}
-            onToggle={() => toggleDropdown('weekly-hours')}
             icon={<Clock className="h-3.5 w-3.5" />}
             variant="cyan"
           />
@@ -150,8 +125,6 @@ export function UnifiedPlanInput({
             options={LEARNING_STYLE_OPTIONS}
             value={learningStyle}
             onChange={setLearningStyle}
-            isOpen={activeDropdown === 'learning-style'}
-            onToggle={() => toggleDropdown('learning-style')}
             variant="pink"
           />
           <span className="text-sm">and want to finish in</span>
@@ -160,8 +133,6 @@ export function UnifiedPlanInput({
             options={DEADLINE_OPTIONS}
             value={deadlineWeeks}
             onChange={setDeadlineWeeks}
-            isOpen={activeDropdown === 'deadline'}
-            onToggle={() => toggleDropdown('deadline')}
             icon={<Calendar className="h-3.5 w-3.5" />}
             variant="rose"
           />
