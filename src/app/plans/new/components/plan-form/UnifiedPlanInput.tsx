@@ -85,12 +85,14 @@ export function UnifiedPlanInput({
   return (
     <div ref={containerRef} className="w-full max-w-2xl">
       {/* Main input card with glassmorphism */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/50 bg-white/60 px-6 py-5 shadow-2xl backdrop-blur-xl transition-all focus-within:shadow-purple-500/20">
-        {/* Decorative gradient glow */}
+      <div className="relative rounded-3xl border border-white/50 bg-white/60 px-6 py-5 shadow-2xl backdrop-blur-xl transition-all focus-within:shadow-purple-500/20">
+        {/* Decorative gradient glow - clipped to card bounds */}
         <div
-          className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-40 blur-2xl"
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
           aria-hidden="true"
-        />
+        >
+          <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-40 blur-2xl" />
+        </div>
 
         {/* Topic input */}
         <div className="relative mb-4">
