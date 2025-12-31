@@ -17,15 +17,21 @@ interface DesktopHeaderProps {
  */
 export default function DesktopHeader({ navItems }: DesktopHeaderProps) {
   return (
-    <div className="hidden w-full items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl lg:flex">
+    <div className="hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl lg:grid">
       {/* Brand (left) */}
-      <BrandLogo />
+      <div className="flex justify-start">
+        <BrandLogo />
+      </div>
 
       {/* Navigation (center) */}
-      <DesktopNavigation navItems={navItems} />
+      <div className="flex justify-center">
+        <DesktopNavigation navItems={navItems} />
+      </div>
 
       {/* Auth controls (right) */}
-      <ClerkAuthControls />
+      <div className="flex justify-end">
+        <ClerkAuthControls />
+      </div>
     </div>
   );
 }

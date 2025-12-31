@@ -105,7 +105,7 @@ function selectWeeklyHoursLabel(label: string) {
 async function renderOnboardingForm() {
   (globalThis as any).React = React;
   const { default: OnboardingForm } = await import(
-    '@/app/plans/components/OnboardingForm'
+    '@/app/plans/new/components/OnboardingForm'
   );
   return render(<OnboardingForm />);
 }

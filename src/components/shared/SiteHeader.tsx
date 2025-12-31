@@ -34,9 +34,11 @@ export default async function SiteHeader() {
   const navItems = userId ? authenticatedNavItems : unauthenticatedNavItems;
 
   return (
-    <header className="fixed top-0 left-0 z-50 w-full">
-      <MobileHeader navItems={navItems} />
-      <DesktopHeader navItems={navItems} />
+    <header className="fixed top-0 left-0 z-50 w-full px-4 pt-4 lg:px-6 lg:pt-5">
+      <div className="mx-auto max-w-7xl">
+        <MobileHeader navItems={navItems} />
+        <DesktopHeader navItems={navItems} />
+      </div>
     </header>
   );
 }

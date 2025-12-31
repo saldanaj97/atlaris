@@ -1,4 +1,4 @@
-import OnboardingForm from '@/app/plans/components/OnboardingForm';
+import OnboardingForm from '@/app/plans/new/components/OnboardingForm';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../mocks/unit/client-logger.unit';
