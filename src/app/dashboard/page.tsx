@@ -48,7 +48,7 @@ export default async function DashboardPage() {
     reachedPlanLimit || reachedRegenLimit || reachedExportLimit;
 
   return (
-    <div className="container mx-auto min-h-screen">
+    <div className="min-h-screen">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-main-foreground mb-2 text-3xl font-bold">

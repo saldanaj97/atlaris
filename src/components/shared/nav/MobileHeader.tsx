@@ -17,19 +17,17 @@ interface MobileHeaderProps {
  */
 export default function MobileHeader({ navItems }: MobileHeaderProps) {
   return (
-    <div className="grid w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-white/30 px-4 py-3 shadow-lg backdrop-blur-xl lg:hidden">
+    <div className="grid w-full grid-cols-3 items-center justify-items-center rounded-2xl border border-white/40 bg-white/30 px-4 py-3 shadow-lg backdrop-blur-xl lg:hidden">
       {/* Left: hamburger */}
-      <div className="flex justify-start">
+      <div className="justify-self-start">
         <MobileNavigation navItems={navItems} />
       </div>
 
       {/* Center: brand */}
-      <div className="flex justify-center">
-        <BrandLogo size="sm" />
-      </div>
+      <BrandLogo size="sm" />
 
       {/* Right: user/auth */}
-      <div className="flex justify-end">
+      <div className="justify-self-end">
         <ClerkAuthControls />
       </div>
     </div>

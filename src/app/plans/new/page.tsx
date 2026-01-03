@@ -4,7 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
+import {
+  useStreamingPlanGeneration,
+  type StreamingError,
+} from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
@@ -16,12 +19,6 @@ import {
   UnifiedPlanInput,
   type PlanFormData,
 } from '@/app/plans/new/components/plan-form';
-
-interface StreamingError extends Error {
-  status?: number;
-  planId?: string;
-  data?: { planId?: string };
-}
 
 /**
  * Converts the unified form data to the OnboardingFormValues format
@@ -82,8 +79,10 @@ export default function CreateNewPlanPage() {
       router.push(`/plans/${planId}`);
     } catch (streamError) {
       const isAbort =
-        (streamError as DOMException | undefined)?.name === 'AbortError';
+        streamError instanceof DOMException &&
+        streamError.name === 'AbortError';
       if (isAbort) {
+        toast.info('Generation cancelled');
         return;
       }
 

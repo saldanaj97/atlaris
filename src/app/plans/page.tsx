@@ -40,12 +40,12 @@ export default async function PlansPage() {
 
   return (
     <div className="container mx-auto py-8">
-      <Link href="/dashboard">
-        <Button variant="default" className="mb-4 gap-2">
+      <Button asChild variant="default" className="mb-4 gap-2">
+        <Link href="/dashboard">
           <ArrowLeft className="h-4" />
           Back to Dashboard
-        </Button>
-      </Link>
+        </Link>
+      </Button>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold">Your Plans</h1>
         <Button asChild>

@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
+import {
+  useStreamingPlanGeneration,
+  type StreamingError,
+} from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
@@ -37,12 +40,6 @@ type FormState = {
   startDate?: string;
   deadlineDate: string;
 };
-
-interface StreamingError extends Error {
-  status?: number;
-  planId?: string;
-  data?: { planId?: string };
-}
 
 const weeklyHourOptions = [
   { value: '1-2', label: '1-2 hours per week' },
@@ -151,8 +148,9 @@ export default function OnboardingForm() {
           setUserTier('free');
         }
       } catch (error) {
-        // Ignore abort errors
-        if ((error as Error).name === 'AbortError') return;
+        // Ignore abort errors (fetch aborts throw DOMException with name 'AbortError')
+        if (error instanceof DOMException && error.name === 'AbortError')
+          return;
         clientLogger.error('Failed to fetch user tier:', error);
         setUserTier('free');
       }
@@ -237,7 +235,7 @@ export default function OnboardingForm() {
   const isCurrentStepComplete = stepHasRequiredValues(currentStep);
 
   // Calculate duration in weeks for cap check
-  const calculateDurationWeeks = (): number | null => {
+  const durationWeeks = useMemo(() => {
     if (!formState.deadlineDate) return null;
     const start = formState.startDate
       ? new Date(formState.startDate)
@@ -246,9 +244,7 @@ export default function OnboardingForm() {
     const diffTime = deadline.getTime() - start.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.ceil(diffDays / 7);
-  };
-
-  const durationWeeks = calculateDurationWeeks();
+  }, [formState.startDate, formState.deadlineDate]);
   const exceedsFreeCap =
     userTier === 'free' &&
     durationWeeks !== null &&
@@ -285,7 +281,8 @@ export default function OnboardingForm() {
       router.push(`/plans/${planId}`);
     } catch (streamError) {
       const isAbort =
-        (streamError as DOMException | undefined)?.name === 'AbortError';
+        streamError instanceof DOMException &&
+        streamError.name === 'AbortError';
       if (isAbort) {
         return;
       }

@@ -31,7 +31,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Validates and converts a string to AttemptStatus.
- * Logs a warning for unknown values in development and returns 'failure' as fallback.
+ * Logs a warning for unknown values and returns 'failure' as fallback.
  */
 function toAttemptStatus(status: string): AttemptStatus {
   if (VALID_ATTEMPT_STATUSES.has(status as AttemptStatus)) {
@@ -39,12 +39,11 @@ function toAttemptStatus(status: string): AttemptStatus {
   }
 
   // Log unknown status values to aid debugging data corruption or schema mismatches
-  if (process.env.NODE_ENV === 'development') {
-    logger.warn(
-      { status },
-      `[detailToClient] Unknown attempt status "${status}", falling back to "failure"`
-    );
-  }
+  // Logged in all environments to ensure production anomalies are visible
+  logger.warn(
+    { status },
+    `[detailToClient] Unknown attempt status "${status}", falling back to "failure"`
+  );
 
   return 'failure';
 }
@@ -57,9 +56,18 @@ function toClassification(
   classification: string | null | undefined
 ): FailureClassification | null {
   if (!classification) return null;
-  return VALID_CLASSIFICATIONS.has(classification as FailureClassification)
-    ? (classification as FailureClassification)
-    : null;
+  if (VALID_CLASSIFICATIONS.has(classification as FailureClassification)) {
+    return classification as FailureClassification;
+  }
+
+  // Log unknown classification values to aid debugging data corruption or schema mismatches
+  // Logged in all environments to ensure production anomalies are visible
+  logger.warn(
+    { classification },
+    `[detailToClient] Unknown failure classification "${classification}", returning null`
+  );
+
+  return null;
 }
 
 function toClientAttempt(attempt: GenerationAttempt): ClientGenerationAttempt {
@@ -74,6 +82,15 @@ function toClientAttempt(attempt: GenerationAttempt): ClientGenerationAttempt {
   }
 
   const status = toAttemptStatus(attempt.status);
+
+  // Log warning if successful attempt has a classification (unexpected data state)
+  // Logged in all environments to ensure production anomalies are visible
+  if (status === 'success' && attempt.classification) {
+    logger.warn(
+      { attemptId: attempt.id, classification: attempt.classification },
+      '[detailToClient] Success attempt has unexpected classification'
+    );
+  }
 
   return {
     id: attempt.id,

@@ -46,37 +46,3 @@ export type PlanAccessResult =
 export type ScheduleAccessResult =
   | { success: true; data: ScheduleJson }
   | { success: false; error: PlanAccessError };
-
-/**
- * Helper to create success result
- */
-export function planSuccess(data: LearningPlanDetail): PlanAccessResult {
-  return { success: true, data };
-}
-
-/**
- * Helper to create error result
- */
-export function planError(
-  code: PlanAccessErrorCode,
-  message: string
-): PlanAccessResult {
-  return { success: false, error: { code, message } };
-}
-
-/**
- * Helper to create schedule success result
- */
-export function scheduleSuccess(data: ScheduleJson): ScheduleAccessResult {
-  return { success: true, data };
-}
-
-/**
- * Helper to create schedule error result
- */
-export function scheduleError(
-  code: PlanAccessErrorCode,
-  message: string
-): ScheduleAccessResult {
-  return { success: false, error: { code, message } };
-}

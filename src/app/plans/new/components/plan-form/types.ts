@@ -2,19 +2,19 @@
  * Types and constants for the unified plan generation form.
  */
 
-export interface DropdownOption {
+export type DropdownOption = {
   value: string;
   label: string;
   description?: string;
-}
+};
 
-export interface PlanFormData {
+export type PlanFormData = {
   topic: string;
   skillLevel: string;
   weeklyHours: string;
   learningStyle: string;
   deadlineWeeks: string;
-}
+};
 
 export const SKILL_LEVEL_OPTIONS: DropdownOption[] = [
   { value: 'beginner', label: 'Beginner', description: "I'm new to this" },
@@ -59,6 +59,9 @@ export const DEADLINE_OPTIONS: DropdownOption[] = [
  */
 export function deadlineWeeksToDate(weeks: string): string {
   const weeksNum = parseInt(weeks, 10);
+  if (!Number.isFinite(weeksNum) || weeksNum < 0) {
+    throw new Error(`Invalid weeks value: ${weeks}`);
+  }
   const date = new Date();
   date.setDate(date.getDate() + weeksNum * 7);
   const year = date.getFullYear();

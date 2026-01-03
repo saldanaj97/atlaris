@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ScheduleJson } from '@/lib/scheduling/types';
 import type { ClientPlanDetail } from '@/lib/types/client';
@@ -129,6 +129,11 @@ function createMockSchedule(): ScheduleJson {
 describe('Plan Schedule View', () => {
   beforeEach(() => {
     pushMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    cleanup();
   });
 
   it('should toggle between modules and schedule view', async () => {

@@ -249,6 +249,24 @@ export async function getPlanScheduleForPage(
     );
     return scheduleSuccess(schedule);
   } catch (error) {
+    // Discriminate errors to return appropriate error codes
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes('not found') ||
+        message.includes('access denied') ||
+        message.includes('does not exist')
+      ) {
+        logger.debug(
+          { planId, userId: user.id },
+          'Schedule not found or access denied'
+        );
+        return scheduleError(
+          'NOT_FOUND',
+          'Schedule not found or you do not have access.'
+        );
+      }
+    }
     logger.error(
       { planId, userId: user.id, error },
       'Failed to fetch plan schedule'

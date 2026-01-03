@@ -17,7 +17,7 @@ import {
   planSuccess,
   scheduleError,
   scheduleSuccess,
-} from '@/app/plans/[id]/types';
+} from '@/app/plans/[id]/helpers';
 import type {
   LearningPlanDetail,
   LearningPlanWithModules,

@@ -27,12 +27,16 @@ import {
  */
 type JobQueueRow = InferSelectModel<typeof jobQueue>;
 
+const ALLOWED_JOB_TYPES: ReadonlySet<JobType> = Object.freeze(
+  new Set(Object.values(JOB_TYPES) as JobType[])
+);
+
 /**
  * Type guard to validate job type values at runtime.
  * Returns true if the value is a valid JobType.
  */
 function isValidJobType(value: string): value is JobType {
-  return Object.values(JOB_TYPES).includes(value as JobType);
+  return ALLOWED_JOB_TYPES.has(value as JobType);
 }
 
 /**
@@ -172,13 +176,11 @@ export async function cleanupOldJobs(olderThan: Date): Promise<number> {
   return result.count ?? 0;
 }
 
-const ALLOWED_JOB_TYPES = new Set<string>(Object.values(JOB_TYPES));
-
 function assertValidJobTypes(
   values: readonly unknown[]
 ): asserts values is JobType[] {
   const allValid = values.every(
-    (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v)
+    (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v as JobType)
   );
   if (!allValid) {
     throw new Error('Invalid job type(s) received');

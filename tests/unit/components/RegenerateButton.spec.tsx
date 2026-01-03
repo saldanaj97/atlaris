@@ -48,6 +48,7 @@ describe('RegenerateButton', () => {
   });
 
   it('should show loading state during regeneration', async () => {
+    vi.useFakeTimers();
     const mockFetch = vi
       .fn()
       .mockImplementation(
@@ -67,9 +68,13 @@ describe('RegenerateButton', () => {
 
     // Verify button is disabled during loading
     expect(button).toBeDisabled();
+
+    vi.advanceTimersByTime(100);
+    vi.useRealTimers();
   });
 
   it('should disable button during regeneration', async () => {
+    vi.useFakeTimers();
     const mockFetch = vi
       .fn()
       .mockImplementation(
@@ -91,6 +96,9 @@ describe('RegenerateButton', () => {
     await waitFor(() => {
       expect(button).toBeDisabled();
     });
+
+    vi.advanceTimersByTime(100);
+    vi.useRealTimers();
   });
 
   it('should show success toast on successful regeneration', async () => {
@@ -191,6 +199,7 @@ describe('RegenerateButton', () => {
   });
 
   it('should not allow multiple simultaneous regenerations', async () => {
+    vi.useFakeTimers();
     const mockFetch = vi
       .fn()
       .mockImplementation(
@@ -212,5 +221,8 @@ describe('RegenerateButton', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
+
+    vi.advanceTimersByTime(200);
+    vi.useRealTimers();
   });
 });

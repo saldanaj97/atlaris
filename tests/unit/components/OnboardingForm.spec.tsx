@@ -1,5 +1,11 @@
 import OnboardingForm from '@/app/plans/new/components/OnboardingForm';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../mocks/unit/client-logger.unit';
 import '../../mocks/unit/sonner.unit';
@@ -35,6 +41,7 @@ describe('OnboardingForm', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    cleanup();
   });
 
   it('should render first step with topic input', () => {

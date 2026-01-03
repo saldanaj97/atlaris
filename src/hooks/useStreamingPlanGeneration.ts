@@ -40,6 +40,16 @@ export type StreamingPlanState = {
   error?: GenerationError;
 };
 
+/**
+ * Extended Error type for streaming generation failures.
+ * Includes optional HTTP status and planId for error recovery flows.
+ */
+export type StreamingError = Error & {
+  status?: number;
+  planId?: string;
+  data?: { planId?: string };
+};
+
 const INITIAL_STATE: StreamingPlanState = {
   status: 'idle',
   modules: [],

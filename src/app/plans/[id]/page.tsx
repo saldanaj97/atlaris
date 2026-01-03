@@ -49,9 +49,8 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
     switch (code) {
       case 'UNAUTHORIZED':
         // User needs to authenticate - redirect to sign-in
-        // redirect() throws and never returns, so break is unreachable
+        // redirect() throws and never returns
         redirect(`/sign-in?redirect_url=/plans/${id}`);
-        break;
 
       case 'NOT_FOUND':
         // Plan doesn't exist or user doesn't have access
@@ -78,7 +77,10 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
   const planData = planResult.data;
   const formattedPlanDetails = mapDetailToClient(planData);
   if (!formattedPlanDetails) {
-    logger.error({ planId: id }, 'Failed to map plan details to client format');
+    logger.error(
+      { planId: id, planData },
+      'Failed to map plan details to client format'
+    );
     return <PlanDetailPageError message="Failed to load plan details." />;
   }
 
