@@ -13,7 +13,7 @@ interface HeroSectionProps {
 export function HeroSection({ onCtaClick }: HeroSectionProps) {
   return (
     <section
-      className="relative min-h-screen overflow-hidden pt-32"
+      className="relative overflow-hidden"
       aria-labelledby="hero-heading"
     >
       {/* Floating gradient orbs */}
@@ -30,7 +30,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
         aria-hidden="true"
       ></div>
 
-      <div className="relative z-10 mx-auto flex flex-col items-center px-6 pt-16 text-center lg:pt-24">
+      <div className="relative z-10 mx-auto flex flex-col items-center px-6 pt-4 text-center lg:pt-8">
         <div className="mb-8 inline-flex items-center rounded-full border border-purple-200/50 bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
           <span className="mr-2 h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></span>
           <span className="text-sm font-medium text-purple-700">

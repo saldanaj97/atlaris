@@ -1,9 +1,8 @@
-import '../../mocks/unit/sonner.unit';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import React from 'react';
-import { ExportButtons } from '@/components/plans/ExportButtons';
+import { ExportButtons } from '@/app/plans/components/ExportButtons';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '../../mocks/unit/sonner.unit';
 
 describe.skip('ExportButtons (temporarily disabled)', () => {
   beforeEach(() => {

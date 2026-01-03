@@ -24,7 +24,10 @@ describe('SiteFooter', () => {
   it('should display copyright notice', () => {
     render(<SiteFooter />);
 
-    expect(screen.getByText(/© 2025 Atlaris/i)).toBeInTheDocument();
+    const currentYear = new Date().getFullYear();
+    expect(
+      screen.getByText(new RegExp(`© ${currentYear} Atlaris`, 'i'))
+    ).toBeInTheDocument();
     expect(screen.getByText(/All rights reserved/i)).toBeInTheDocument();
   });
 

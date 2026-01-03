@@ -21,26 +21,27 @@ export const metadata: Metadata = {
   title: 'Atlaris - AI-Powered Learning Paths',
   description:
     'Create personalized learning plans with AI-generated modules and tasks. Track progress, export to Notion, and learn smarter.',
-  icons: [
-    {
-      rel: 'icon',
-      url: '/favicon-16x16.png',
-      sizes: '16x16',
-      type: 'image/png',
-    },
-    {
-      rel: 'icon',
-      url: '/favicon-32x32.png',
-      sizes: '32x32',
-      type: 'image/png',
-    },
-    {
-      rel: 'apple-touch-icon',
-      url: '/apple-touch-icon.png',
-      sizes: '180x180',
-      type: 'image/png',
-    },
-  ],
+  // TODO: Add favicon files to public/ folder then uncomment this
+  // icons: [
+  //   {
+  //     rel: 'icon',
+  //     url: '/favicon-16x16.png',
+  //     sizes: '16x16',
+  //     type: 'image/png',
+  //   },
+  //   {
+  //     rel: 'icon',
+  //     url: '/favicon-32x32.png',
+  //     sizes: '32x32',
+  //     type: 'image/png',
+  //   },
+  //   {
+  //     rel: 'apple-touch-icon',
+  //     url: '/apple-touch-icon.png',
+  //     sizes: '180x180',
+  //     type: 'image/png',
+  //   },
+  // ],
   openGraph: {
     title: 'Atlaris - AI-Powered Learning Paths',
     description:
@@ -78,10 +79,10 @@ export default function RootLayout({
     <ClerkProvider afterSignOutUrl="/landing">
       <html lang="en">
         <body
-          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} w-full antialiased`}
+          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
         >
           <SiteHeader />
-          <main>{children}</main>
+          <main className="flex-1 pt-16">{children}</main>
           <Toaster />
           <SiteFooter />
         </body>

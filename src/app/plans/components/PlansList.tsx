@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import type { PlanSummary } from '@/lib/types/db';
+import { formatSkillLevel as baseFormatSkillLevel } from '@/lib/formatters';
 import { Play } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,9 +36,11 @@ function formatDate(value?: Date | null) {
   }
 }
 
-function formatSkillLevel(level: PlanSummary['plan']['skillLevel']) {
-  const [first = '', ...rest] = level.split('');
-  return `${first.toUpperCase()}${rest.join('').toLowerCase()}`;
+function formatSkillLevel(
+  level: PlanSummary['plan']['skillLevel'] | null | undefined
+) {
+  if (!level) return 'Unknown';
+  return baseFormatSkillLevel(level);
 }
 
 interface PlanCardProps {

@@ -1,8 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import ScheduleWeekList from '@/components/plans/ScheduleWeekList';
+import ScheduleWeekList from '@/app/plans/components/ScheduleWeekList';
 import type { ScheduleJson } from '@/lib/scheduling/types';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 describe('ScheduleWeekList', () => {
   it('should render week headings', () => {
@@ -34,7 +33,7 @@ describe('ScheduleWeekList', () => {
     };
 
     render(<ScheduleWeekList schedule={schedule} />);
-    expect(screen.getByText(/Week 1/i)).toBeDefined();
+    expect(screen.getByText(/Week 1/i)).toBeInTheDocument();
   });
 
   it('should display task titles and time estimates', () => {
@@ -66,8 +65,8 @@ describe('ScheduleWeekList', () => {
     };
 
     render(<ScheduleWeekList schedule={schedule} />);
-    expect(screen.getByText(/Build React App/i)).toBeDefined();
-    expect(screen.getByText(/1\.5 hrs/i)).toBeDefined();
+    expect(screen.getByText(/Build React App/i)).toBeInTheDocument();
+    expect(screen.getByText(/1\.5 hrs/i)).toBeInTheDocument();
   });
 
   it('should display module badges', () => {
@@ -99,6 +98,6 @@ describe('ScheduleWeekList', () => {
     };
 
     render(<ScheduleWeekList schedule={schedule} />);
-    expect(screen.getByText(/Core Concepts/i)).toBeDefined();
+    expect(screen.getByText(/Core Concepts/i)).toBeInTheDocument();
   });
 });

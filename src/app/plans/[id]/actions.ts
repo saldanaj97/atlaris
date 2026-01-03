@@ -26,10 +26,16 @@ import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
-import type { LearningPlanDetail } from '@/lib/types/db';
-import type { ScheduleJson } from '@/lib/scheduling/types';
+import type { PlanAccessResult, ScheduleAccessResult } from './types';
+import {
+  planError,
+  planSuccess,
+  scheduleError,
+  scheduleSuccess,
+} from './helpers';
 
 interface UpdateTaskProgressInput {
   planId: string;
@@ -126,19 +132,35 @@ export async function updateTaskProgressAction({
 
 /**
  * Server action to fetch plan detail data with RLS enforcement.
- * Uses getDb() which respects request context when available.
+ * Returns a typed result with explicit error codes for proper handling.
+ *
+ * Error codes:
+ * - UNAUTHORIZED: User is not authenticated
+ * - NOT_FOUND: Plan does not exist or user doesn't have access
+ * - INTERNAL_ERROR: Unexpected error during fetch
  */
 export async function getPlanForPage(
   planId: string
-): Promise<LearningPlanDetail | null> {
+): Promise<PlanAccessResult> {
   const clerkUserId = await getEffectiveClerkUserId();
   if (!clerkUserId) {
-    throw new Error('Unauthorized');
+    logger.debug({ planId }, 'Plan access denied: user not authenticated');
+    return planError(
+      'UNAUTHORIZED',
+      'You must be signed in to view this plan.'
+    );
   }
 
   const user = await getUserByClerkId(clerkUserId);
   if (!user) {
-    throw new Error('User not found');
+    logger.warn(
+      { planId, clerkUserId },
+      'Plan access denied: authenticated user not found in database'
+    );
+    return planError(
+      'UNAUTHORIZED',
+      'Your account could not be found. Please sign in again.'
+    );
   }
 
   const { db: rlsDb, cleanup } =
@@ -151,9 +173,29 @@ export async function getPlanForPage(
   );
 
   try {
-    return await withRequestContext(ctx, () =>
+    const plan = await withRequestContext(ctx, () =>
       getLearningPlanDetail(planId, user.id)
     );
+
+    if (!plan) {
+      // Plan not found could mean:
+      // 1. Plan doesn't exist at all
+      // 2. Plan exists but user doesn't own it (RLS filtered)
+      // We return NOT_FOUND to avoid leaking information about plan existence
+      logger.debug(
+        { planId, userId: user.id },
+        'Plan not found or user does not have access'
+      );
+      return planError(
+        'NOT_FOUND',
+        'This plan does not exist or you do not have access to it.'
+      );
+    }
+
+    return planSuccess(plan);
+  } catch (error) {
+    logger.error({ planId, userId: user.id, error }, 'Failed to fetch plan');
+    return planError('INTERNAL_ERROR', 'An unexpected error occurred.');
   } finally {
     await cleanup();
   }
@@ -161,19 +203,35 @@ export async function getPlanForPage(
 
 /**
  * Server action to fetch plan schedule with RLS enforcement.
- * Uses getDb() which respects request context when available.
+ * Returns a typed result with explicit error codes for proper handling.
+ *
+ * Error codes:
+ * - UNAUTHORIZED: User is not authenticated
+ * - NOT_FOUND: Schedule does not exist for this plan
+ * - INTERNAL_ERROR: Unexpected error during fetch
  */
 export async function getPlanScheduleForPage(
   planId: string
-): Promise<ScheduleJson> {
+): Promise<ScheduleAccessResult> {
   const clerkUserId = await getEffectiveClerkUserId();
   if (!clerkUserId) {
-    throw new Error('Unauthorized');
+    logger.debug({ planId }, 'Schedule access denied: user not authenticated');
+    return scheduleError(
+      'UNAUTHORIZED',
+      'You must be signed in to view this schedule.'
+    );
   }
 
   const user = await getUserByClerkId(clerkUserId);
   if (!user) {
-    throw new Error('User not found');
+    logger.warn(
+      { planId, clerkUserId },
+      'Schedule access denied: authenticated user not found in database'
+    );
+    return scheduleError(
+      'UNAUTHORIZED',
+      'Your account could not be found. Please sign in again.'
+    );
   }
 
   const { db: rlsDb, cleanup } =
@@ -186,9 +244,34 @@ export async function getPlanScheduleForPage(
   );
 
   try {
-    return await withRequestContext(ctx, () =>
+    const schedule = await withRequestContext(ctx, () =>
       getPlanSchedule({ planId, userId: user.id })
     );
+    return scheduleSuccess(schedule);
+  } catch (error) {
+    // Discriminate errors to return appropriate error codes
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes('not found') ||
+        message.includes('access denied') ||
+        message.includes('does not exist')
+      ) {
+        logger.debug(
+          { planId, userId: user.id },
+          'Schedule not found or access denied'
+        );
+        return scheduleError(
+          'NOT_FOUND',
+          'Schedule not found or you do not have access.'
+        );
+      }
+    }
+    logger.error(
+      { planId, userId: user.id, error },
+      'Failed to fetch plan schedule'
+    );
+    return scheduleError('INTERNAL_ERROR', 'Failed to load schedule.');
   } finally {
     await cleanup();
   }

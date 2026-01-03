@@ -1,10 +1,18 @@
+// IMPORTANT: Mock imports must come first, before any component imports
+// that use the mocked modules (sonner, client-logger)
 import '../../mocks/unit/sonner.unit';
 import '../../mocks/unit/client-logger.unit';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import React from 'react';
-import { RegenerateButton } from '@/components/plans/RegenerateButton';
+
+import { RegenerateButton } from '@/app/plans/components/RegenerateButton';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { toast } from 'sonner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('RegenerateButton', () => {
   beforeEach(() => {
@@ -13,6 +21,7 @@ describe('RegenerateButton', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('should render with correct default label', () => {
@@ -38,20 +47,22 @@ describe('RegenerateButton', () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/plans/test-plan-123/regenerate',
-        {
+        expect.objectContaining({
           method: 'POST',
-        }
+        })
       );
     });
   });
 
   it('should show loading state during regeneration', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockImplementation(
-        () =>
-          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
-      );
+    // Use a deferred promise to control when fetch resolves
+    let resolvePromise: (value: { ok: boolean }) => void;
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ ok: boolean }>((resolve) => {
+          resolvePromise = resolve;
+        })
+    );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -59,21 +70,29 @@ describe('RegenerateButton', () => {
     const button = screen.getByRole('button', { name: /regenerate plan/i });
     fireEvent.click(button);
 
+    // Check loading state immediately after click
     await waitFor(() => {
       expect(screen.getByText(/regenerating/i)).toBeInTheDocument();
     });
 
     // Verify button is disabled during loading
     expect(button).toBeDisabled();
+
+    // Resolve the promise to clean up
+    await act(async () => {
+      resolvePromise!({ ok: true });
+    });
   });
 
   it('should disable button during regeneration', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockImplementation(
-        () =>
-          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
-      );
+    // Use a deferred promise to control when fetch resolves
+    let resolvePromise: (value: { ok: boolean }) => void;
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ ok: boolean }>((resolve) => {
+          resolvePromise = resolve;
+        })
+    );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -88,6 +107,11 @@ describe('RegenerateButton', () => {
     // Button should be disabled during loading
     await waitFor(() => {
       expect(button).toBeDisabled();
+    });
+
+    // Resolve the promise to clean up
+    await act(async () => {
+      resolvePromise!({ ok: true });
     });
   });
 
@@ -189,26 +213,31 @@ describe('RegenerateButton', () => {
   });
 
   it('should not allow multiple simultaneous regenerations', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockImplementation(
-        () =>
-          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 200))
-      );
+    // Use a deferred promise to control when fetch resolves
+    let resolvePromise: (value: { ok: boolean }) => void;
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ ok: boolean }>((resolve) => {
+          resolvePromise = resolve;
+        })
+    );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
 
     const button = screen.getByRole('button', { name: /regenerate plan/i });
 
-    // Click multiple times rapidly
+    // Click multiple times rapidly - button disables after first click
     fireEvent.click(button);
     fireEvent.click(button);
     fireEvent.click(button);
 
-    // Should only have been called once
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Should only have been called once because button is disabled during loading
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    // Resolve the promise to clean up
+    await act(async () => {
+      resolvePromise!({ ok: true });
     });
   });
 });

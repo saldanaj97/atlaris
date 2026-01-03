@@ -8,6 +8,16 @@ import {
 } from '@/lib/mappers/learningPlans';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 
+// Helper to generate date strings relative to today (avoids hardcoded dates that become "in the past")
+function getDateString(daysFromToday: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromToday);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 describe('normalizeOnboardingValues', () => {
   it('should normalize valid onboarding form values', () => {
     const values: OnboardingFormValues = {
@@ -15,8 +25,8 @@ describe('normalizeOnboardingValues', () => {
       skillLevel: 'beginner',
       learningStyle: 'mixed',
       weeklyHours: '3-5',
-      startDate: '2026-01-01',
-      deadlineDate: '2026-03-01',
+      startDate: getDateString(1), // tomorrow
+      deadlineDate: getDateString(60), // 60 days from now
       notes: 'Test notes',
     };
 
@@ -26,8 +36,8 @@ describe('normalizeOnboardingValues', () => {
     expect(result.skillLevel).toBe('beginner');
     expect(result.learningStyle).toBe('mixed');
     expect(result.weeklyHours).toBe(5);
-    expect(result.startDate).toBe('2026-01-01');
-    expect(result.deadlineDate).toBe('2026-03-01');
+    expect(result.startDate).toBe(values.startDate);
+    expect(result.deadlineDate).toBe(values.deadlineDate);
     expect(result.notes).toBe('Test notes');
   });
 
@@ -37,7 +47,7 @@ describe('normalizeOnboardingValues', () => {
       skillLevel: 'INTERMEDIATE',
       learningStyle: 'mixed',
       weeklyHours: '6-10',
-      deadlineDate: '2026-03-01',
+      deadlineDate: getDateString(60),
       notes: undefined,
     };
 
@@ -51,7 +61,7 @@ describe('normalizeOnboardingValues', () => {
       skillLevel: 'beginner',
       learningStyle: 'hands-on',
       weeklyHours: '1-2',
-      deadlineDate: '2026-03-01',
+      deadlineDate: getDateString(60),
       notes: undefined,
     };
 
@@ -66,7 +76,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'beginner',
         learningStyle: 'mixed',
         weeklyHours: '1-2',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       }).weeklyHours
     ).toBe(2);
@@ -77,7 +87,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'beginner',
         learningStyle: 'mixed',
         weeklyHours: '3-5',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       }).weeklyHours
     ).toBe(5);
@@ -88,7 +98,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'beginner',
         learningStyle: 'mixed',
         weeklyHours: '6-10',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       }).weeklyHours
     ).toBe(10);
@@ -99,7 +109,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'beginner',
         learningStyle: 'mixed',
         weeklyHours: '11-15',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       }).weeklyHours
     ).toBe(15);
@@ -110,7 +120,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'beginner',
         learningStyle: 'mixed',
         weeklyHours: '16-20',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       }).weeklyHours
     ).toBe(20);
@@ -121,7 +131,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'beginner',
         learningStyle: 'mixed',
         weeklyHours: '20+',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       }).weeklyHours
     ).toBe(25);
@@ -133,7 +143,7 @@ describe('normalizeOnboardingValues', () => {
       skillLevel: 'beginner',
       learningStyle: 'mixed',
       weeklyHours: '8',
-      deadlineDate: '2026-03-01',
+      deadlineDate: getDateString(60),
       notes: undefined,
     });
 
@@ -146,7 +156,7 @@ describe('normalizeOnboardingValues', () => {
       skillLevel: 'beginner',
       learningStyle: 'mixed',
       weeklyHours: 12,
-      deadlineDate: '2026-03-01',
+      deadlineDate: getDateString(60),
       notes: undefined,
     });
 
@@ -160,7 +170,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'invalid-level',
         learningStyle: 'mixed',
         weeklyHours: '3-5',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       })
     ).toThrow('Unsupported skill level');
@@ -173,7 +183,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'beginner',
         learningStyle: 'invalid-style',
         weeklyHours: '3-5',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       })
     ).toThrow('Unsupported learning style');
@@ -186,7 +196,7 @@ describe('normalizeOnboardingValues', () => {
         skillLevel: 'beginner',
         learningStyle: 'mixed',
         weeklyHours: 'invalid',
-        deadlineDate: '2026-03-01',
+        deadlineDate: getDateString(60),
         notes: undefined,
       })
     ).toThrow('Unable to parse weekly hours');
@@ -198,7 +208,7 @@ describe('normalizeOnboardingValues', () => {
       skillLevel: 'beginner',
       learningStyle: 'mixed',
       weeklyHours: '3-5',
-      deadlineDate: '2026-03-01',
+      deadlineDate: getDateString(60),
       notes: undefined,
     });
 
@@ -214,7 +224,7 @@ describe('mapOnboardingToCreateInput', () => {
       skillLevel: 'intermediate',
       learningStyle: 'mixed',
       weeklyHours: '6-10',
-      deadlineDate: '2026-06-01',
+      deadlineDate: getDateString(150),
     };
 
     const result = mapOnboardingToCreateInput(values);
@@ -224,25 +234,27 @@ describe('mapOnboardingToCreateInput', () => {
     expect(result.learningStyle).toBe('mixed');
     expect(result.weeklyHours).toBe(10);
     expect(result.startDate).toBeDefined(); // Should default to today
-    expect(result.deadlineDate).toBe('2026-06-01');
+    expect(result.deadlineDate).toBe(values.deadlineDate);
     expect(result.visibility).toBe('private');
     expect(result.origin).toBe('ai');
   });
 
   it('should preserve explicit startDate', () => {
+    const startDate = getDateString(14); // 2 weeks from now
+    const deadlineDate = getDateString(120); // ~4 months from now
     const values: OnboardingFormValues = {
       topic: 'Vue',
       skillLevel: 'beginner',
       learningStyle: 'reading',
       weeklyHours: '3-5',
-      startDate: '2026-02-15',
-      deadlineDate: '2026-05-15',
+      startDate,
+      deadlineDate,
       notes: undefined,
     };
 
     const result = mapOnboardingToCreateInput(values);
 
-    expect(result.startDate).toBe('2026-02-15');
+    expect(result.startDate).toBe(startDate);
   });
 
   it('should default startDate to today when not provided', () => {
@@ -251,7 +263,7 @@ describe('mapOnboardingToCreateInput', () => {
       skillLevel: 'advanced',
       learningStyle: 'practice',
       weeklyHours: '11-15',
-      deadlineDate: '2026-08-01',
+      deadlineDate: getDateString(200),
       notes: undefined,
     };
 
@@ -267,7 +279,7 @@ describe('mapOnboardingToCreateInput', () => {
       skillLevel: 'beginner',
       learningStyle: 'mixed',
       weeklyHours: '3-5',
-      deadlineDate: '2026-03-01',
+      deadlineDate: getDateString(60),
       notes: undefined,
     };
 
@@ -281,7 +293,7 @@ describe('mapOnboardingToCreateInput', () => {
       skillLevel: 'beginner',
       learningStyle: 'mixed',
       weeklyHours: '3-5',
-      deadlineDate: '2026-03-01',
+      deadlineDate: getDateString(60),
       notes: undefined,
     };
 
@@ -295,7 +307,7 @@ describe('mapOnboardingToCreateInput', () => {
       skillLevel: 'intermediate',
       learningStyle: 'mixed',
       weeklyHours: '6-10',
-      deadlineDate: '2026-04-01',
+      deadlineDate: getDateString(90),
       notes: 'Focus on async patterns',
     };
 

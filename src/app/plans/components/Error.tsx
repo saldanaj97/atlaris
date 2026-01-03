@@ -17,7 +17,10 @@ export default function PlanDetailPageError({
   message,
 }: PlanDetailPageErrorProps) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+    <div
+      role="alert"
+      className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4"
+    >
       <h1 className="mb-4 text-3xl font-bold text-red-600">
         Error Loading Plan
       </h1>

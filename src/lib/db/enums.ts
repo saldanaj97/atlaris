@@ -1,5 +1,7 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
+import { JOB_TYPE_VALUES } from '@/lib/jobs/constants';
+
 export const skillLevel = pgEnum('skill_level', [
   'beginner',
   'intermediate',
@@ -39,10 +41,7 @@ export const jobStatus = pgEnum('job_status', [
   'failed',
 ]);
 
-export const jobType = pgEnum('job_type', [
-  'plan_generation',
-  'plan_regeneration',
-]);
+export const jobType = pgEnum('job_type', [...JOB_TYPE_VALUES]);
 
 export const subscriptionTier = pgEnum('subscription_tier', [
   'free',

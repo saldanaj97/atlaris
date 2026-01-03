@@ -1,11 +1,15 @@
 import type { ProviderMetadata } from '@/lib/ai/provider';
 
-export const JOB_TYPES = {
-  PLAN_GENERATION: 'plan_generation',
-  PLAN_REGENERATION: 'plan_regeneration',
-} as const;
+import { JOB_TYPE_MAP, type JobTypeValue } from './constants';
 
-export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
+/**
+ * Job type constants object for convenient access.
+ * Re-exported from the single source of truth in constants.ts
+ * This ensures the enum and runtime validation are always in sync.
+ */
+export const JOB_TYPES = JOB_TYPE_MAP;
+
+export type JobType = JobTypeValue;
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
