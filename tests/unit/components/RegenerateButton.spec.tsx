@@ -4,7 +4,13 @@ import '../../mocks/unit/sonner.unit';
 import '../../mocks/unit/client-logger.unit';
 
 import { RegenerateButton } from '@/app/plans/components/RegenerateButton';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +21,7 @@ describe('RegenerateButton', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('should render with correct default label', () => {
@@ -48,13 +55,14 @@ describe('RegenerateButton', () => {
   });
 
   it('should show loading state during regeneration', async () => {
-    vi.useFakeTimers();
-    const mockFetch = vi
-      .fn()
-      .mockImplementation(
-        () =>
-          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
-      );
+    // Use a deferred promise to control when fetch resolves
+    let resolvePromise: (value: { ok: boolean }) => void;
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ ok: boolean }>((resolve) => {
+          resolvePromise = resolve;
+        })
+    );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -62,6 +70,7 @@ describe('RegenerateButton', () => {
     const button = screen.getByRole('button', { name: /regenerate plan/i });
     fireEvent.click(button);
 
+    // Check loading state immediately after click
     await waitFor(() => {
       expect(screen.getByText(/regenerating/i)).toBeInTheDocument();
     });
@@ -69,18 +78,21 @@ describe('RegenerateButton', () => {
     // Verify button is disabled during loading
     expect(button).toBeDisabled();
 
-    vi.advanceTimersByTime(100);
-    vi.useRealTimers();
+    // Resolve the promise to clean up
+    await act(async () => {
+      resolvePromise!({ ok: true });
+    });
   });
 
   it('should disable button during regeneration', async () => {
-    vi.useFakeTimers();
-    const mockFetch = vi
-      .fn()
-      .mockImplementation(
-        () =>
-          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 100))
-      );
+    // Use a deferred promise to control when fetch resolves
+    let resolvePromise: (value: { ok: boolean }) => void;
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ ok: boolean }>((resolve) => {
+          resolvePromise = resolve;
+        })
+    );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -97,8 +109,10 @@ describe('RegenerateButton', () => {
       expect(button).toBeDisabled();
     });
 
-    vi.advanceTimersByTime(100);
-    vi.useRealTimers();
+    // Resolve the promise to clean up
+    await act(async () => {
+      resolvePromise!({ ok: true });
+    });
   });
 
   it('should show success toast on successful regeneration', async () => {
@@ -199,13 +213,14 @@ describe('RegenerateButton', () => {
   });
 
   it('should not allow multiple simultaneous regenerations', async () => {
-    vi.useFakeTimers();
-    const mockFetch = vi
-      .fn()
-      .mockImplementation(
-        () =>
-          new Promise((resolve) => setTimeout(() => resolve({ ok: true }), 200))
-      );
+    // Use a deferred promise to control when fetch resolves
+    let resolvePromise: (value: { ok: boolean }) => void;
+    const mockFetch = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ ok: boolean }>((resolve) => {
+          resolvePromise = resolve;
+        })
+    );
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -218,11 +233,11 @@ describe('RegenerateButton', () => {
     fireEvent.click(button);
 
     // Should only have been called once because button is disabled during loading
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
 
-    vi.advanceTimersByTime(200);
-    vi.useRealTimers();
+    // Resolve the promise to clean up
+    await act(async () => {
+      resolvePromise!({ ok: true });
+    });
   });
 });

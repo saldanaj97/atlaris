@@ -1,17 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
-
-import {
-  useStreamingPlanGeneration,
-  type StreamingError,
-} from '@/hooks/useStreamingPlanGeneration';
-import { clientLogger } from '@/lib/logging/client';
-import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
-import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
-
 import { PlanDraftView } from '@/app/plans/components/PlanDraftView';
 import {
   deadlineWeeksToDate,
@@ -19,6 +7,16 @@ import {
   UnifiedPlanInput,
   type PlanFormData,
 } from '@/app/plans/new/components/plan-form';
+import {
+  useStreamingPlanGeneration,
+  type StreamingError,
+} from '@/hooks/useStreamingPlanGeneration';
+import { clientLogger } from '@/lib/logging/client';
+import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
+import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 /**
  * Converts the unified form data to the OnboardingFormValues format
@@ -41,6 +39,8 @@ function convertToOnboardingValues(data: PlanFormData): OnboardingFormValues {
  *
  * Modern unified input experience for generating learning plans.
  * Features glassmorphism design matching the landing page aesthetic.
+ *
+ * TODO: Add in proper testing for this page since we moved from using OnboardingForm to UnifiedPlanInput
  */
 export default function CreateNewPlanPage() {
   const router = useRouter();
@@ -53,18 +53,27 @@ export default function CreateNewPlanPage() {
 
   // Ref to track the latest planId to avoid stale closure issues in error handlers
   const planIdRef = useRef<string | undefined>(undefined);
+  // Ref to track if cancellation toast has been shown to prevent duplicates
+  const cancellationToastShownRef = useRef(false);
 
   // Sync planIdRef with streamingState.planId
   useEffect(() => {
     planIdRef.current = streamingState.planId;
   }, [streamingState.planId]);
 
-  const handleSubmit = async (data: PlanFormData) => {
-    // Convert the unified form data to the existing format
-    const onboardingValues = convertToOnboardingValues(data);
+  // Reset cancellation toast flag when starting a new generation
+  useEffect(() => {
+    if (streamingState.status === 'idle') {
+      cancellationToastShownRef.current = false;
+    }
+  }, [streamingState.status]);
 
+  const handleSubmit = async (data: PlanFormData) => {
     let payload: ReturnType<typeof mapOnboardingToCreateInput>;
     try {
+      // Convert the unified form data to the existing format
+      // This conversion includes deadlineWeeksToDate which can throw for invalid values
+      const onboardingValues = convertToOnboardingValues(data);
       payload = mapOnboardingToCreateInput(onboardingValues);
     } catch (error) {
       clientLogger.error('Failed to map form values', error);
@@ -82,7 +91,11 @@ export default function CreateNewPlanPage() {
         streamError instanceof DOMException &&
         streamError.name === 'AbortError';
       if (isAbort) {
-        toast.info('Generation cancelled');
+        // Only show toast if it hasn't been shown already (e.g., from onCancel handler)
+        if (!cancellationToastShownRef.current) {
+          toast.info('Generation cancelled');
+          cancellationToastShownRef.current = true;
+        }
         return;
       }
 
@@ -173,6 +186,11 @@ export default function CreateNewPlanPage() {
               onCancel={() => {
                 cancelStreaming();
                 setIsSubmitting(false);
+                // Show cancellation toast immediately when user clicks cancel
+                if (!cancellationToastShownRef.current) {
+                  toast.info('Generation cancelled');
+                  cancellationToastShownRef.current = true;
+                }
               }}
             />
           </div>

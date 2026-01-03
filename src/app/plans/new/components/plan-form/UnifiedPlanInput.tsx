@@ -11,7 +11,7 @@ import {
   SKILL_LEVEL_OPTIONS,
   WEEKLY_HOURS_OPTIONS,
 } from './types';
-import { logger } from '@sentry/nextjs';
+import { clientLogger } from '../../../../../lib/logging/client';
 
 interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
@@ -43,7 +43,9 @@ export function UnifiedPlanInput({
   const handleSubmit = () => {
     if (!topic.trim() || isSubmitting || disabled) {
       if (process.env.NODE_ENV === 'development' && !topic.trim()) {
-        logger.warn('[UnifiedPlanInput] Empty topic submission prevented');
+        clientLogger.warn(
+          '[UnifiedPlanInput] Empty topic submission prevented'
+        );
       }
       return;
     }

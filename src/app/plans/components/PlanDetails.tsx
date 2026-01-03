@@ -79,11 +79,7 @@ export default function PlanDetails({
           <PlanPendingState plan={plan} />
         ) : (
           <>
-            <PlanDetailsCard
-              plan={plan}
-              modules={modules}
-              statuses={statuses}
-            />
+            <PlanDetailsCard plan={plan} statuses={statuses} />
 
             {/* View Toggle */}
             <div className="border-border mb-6 border-b">

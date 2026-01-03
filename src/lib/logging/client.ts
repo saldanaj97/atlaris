@@ -11,6 +11,7 @@ function createBrowserLogger(level: BrowserLogLevel): LogMethod {
   };
 }
 
+// TODO: Look into whether we should use the logger from @sentry/nextjs as well
 export const clientLogger = {
   error: createBrowserLogger('error'),
   warn: createBrowserLogger('warn'),

@@ -13,20 +13,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
-import type { ClientModule, ClientPlanDetail } from '@/lib/types/client';
+import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ProgressStatus } from '@/lib/types/db';
 
 interface PlanDetailsCardProps {
   plan: ClientPlanDetail;
-  modules: ClientModule[];
   statuses: Record<string, ProgressStatus>;
 }
 
-export function PlanDetailsCard({
-  plan,
-  modules,
-  statuses,
-}: PlanDetailsCardProps) {
+export function PlanDetailsCard({ plan, statuses }: PlanDetailsCardProps) {
   const completedTasks = useMemo(
     () =>
       Object.values(statuses).filter((status) => status === 'completed').length,
@@ -35,13 +30,16 @@ export function PlanDetailsCard({
 
   const totalTasks = useMemo(
     () =>
-      modules.reduce((count, module) => count + (module.tasks?.length ?? 0), 0),
-    [modules]
+      (plan.modules ?? []).reduce(
+        (count, module) => count + (module.tasks?.length ?? 0),
+        0
+      ),
+    [plan.modules]
   );
 
   const totalMinutes = useMemo(
     () =>
-      modules.reduce(
+      (plan.modules ?? []).reduce(
         (sum, module) =>
           sum +
           (module.tasks ?? []).reduce(
@@ -50,7 +48,7 @@ export function PlanDetailsCard({
           ),
         0
       ),
-    [modules]
+    [plan.modules]
   );
 
   const completion = totalTasks
