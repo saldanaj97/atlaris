@@ -15,7 +15,7 @@ interface ScheduleWeekListProps {
  * @param schedule - The schedule data to render
  * @returns A React element representing the structured schedule view
  */
-export default function ScheduleWeekList({ schedule }: ScheduleWeekListProps) {
+export function ScheduleWeekList({ schedule }: ScheduleWeekListProps) {
   if (schedule.weeks.length === 0) {
     return (
       <Card className="text-muted-foreground p-6 text-center">

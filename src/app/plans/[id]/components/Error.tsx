@@ -13,9 +13,7 @@ interface PlanDetailPageErrorProps {
  * @param message - Optional custom error message to display instead of the default text
  * @returns The React element representing the error page UI
  */
-export default function PlanDetailPageError({
-  message,
-}: PlanDetailPageErrorProps) {
+export function PlanDetailPageError({ message }: PlanDetailPageErrorProps) {
   return (
     <div
       role="alert"

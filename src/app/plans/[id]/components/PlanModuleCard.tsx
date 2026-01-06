@@ -1,9 +1,5 @@
 'use client';
 
-import { useMemo, type ElementType } from 'react';
-
-import { formatMinutes } from '@/lib/formatters';
-
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -13,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-
+import { formatMinutes } from '@/lib/formatters';
 import {
   CheckCircle2,
   ExternalLink,
@@ -22,10 +18,12 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
+import { useMemo } from 'react';
+import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule } from '@/lib/types/client';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
-import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
+import type { ElementType } from 'react';
 
 interface PlanModuleCardProps {
   planId: string;
@@ -67,12 +65,12 @@ const RESOURCE_CONFIG: Record<
   },
 };
 
-export const PlanModuleCard = ({
+export function PlanModuleCard({
   planId,
   module,
   statuses,
   setStatuses,
-}: PlanModuleCardProps) => {
+}: PlanModuleCardProps) {
   const moduleTasks = useMemo(() => module.tasks ?? [], [module.tasks]);
 
   // Handle status changes - React Compiler auto-memoizes this callback
@@ -241,6 +239,4 @@ export const PlanModuleCard = ({
       </div>
     </Card>
   );
-};
-
-export default PlanModuleCard;
+}

@@ -1,18 +1,9 @@
-import {
-  getPlanForPage,
-  getPlanScheduleForPage,
-} from '@/app/plans/[id]/actions';
-import {
-  getPlanError,
-  getScheduleError,
-  isPlanSuccess,
-  isScheduleSuccess,
-} from '@/app/plans/[id]/helpers';
-import PlanDetailPageError from '@/app/plans/components/Error';
-import PlanDetails from '@/app/plans/components/PlanDetails';
+import { getPlanForPage } from '@/app/plans/[id]/actions';
+import { PlanDetailPageError } from '@/app/plans/[id]/components/Error';
+import { PlanDetails } from '@/app/plans/[id]/components/PlanDetails';
+import { getPlanError, isPlanSuccess } from '@/app/plans/[id]/helpers';
 import { logger } from '@/lib/logging/logger';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
-import type { ScheduleJson } from '@/lib/scheduling/types';
 import { redirect } from 'next/navigation';
 
 interface PlanPageProps {
@@ -20,20 +11,16 @@ interface PlanPageProps {
 }
 
 /**
- * Renders the plan detail page for a given plan id, including its schedule or an error UI.
+ * Renders the plan detail page for a given plan id.
  *
  * @param params - Route parameters containing the `id` of the learning plan to load
- * @returns The page UI: `PlanDetails` with the mapped plan and its schedule on success, or `PlanDetailPageError` when required data or schedule cannot be loaded
+ * @returns The page UI: `PlanDetails` with the mapped plan on success, or `PlanDetailPageError` when required data cannot be loaded
  */
 export default async function PlanDetailPage({ params }: PlanPageProps) {
   const { id } = await params;
   if (!id) return <PlanDetailPageError />;
 
-  // Fetch plan and schedule in parallel to avoid waterfalls
-  const [planResult, scheduleResult] = await Promise.all([
-    getPlanForPage(id),
-    getPlanScheduleForPage(id),
-  ]);
+  const planResult = await getPlanForPage(id);
 
   // Handle plan access errors with explicit error codes
   if (!isPlanSuccess(planResult)) {
@@ -84,37 +71,5 @@ export default async function PlanDetailPage({ params }: PlanPageProps) {
     return <PlanDetailPageError message="Failed to load plan details." />;
   }
 
-  // Handle schedule access errors - show plan with degraded schedule
-  let scheduleData: ScheduleJson | null = null;
-  let scheduleErrorMsg: string | undefined;
-
-  if (!isScheduleSuccess(scheduleResult)) {
-    const error = getScheduleError(scheduleResult);
-    const code = error.code;
-    const message = error.message;
-
-    logger.warn(
-      { planId: id, errorCode: code },
-      `Schedule access denied: ${message}`
-    );
-
-    // For schedule errors, if it's an auth error we should redirect
-    // (shouldn't happen if plan succeeded, but handle it anyway)
-    if (code === 'UNAUTHORIZED') {
-      redirect(`/sign-in?redirect_url=/plans/${id}`);
-    }
-
-    // Set error message for degraded display
-    scheduleErrorMsg = 'Failed to load schedule. Please try again later.';
-  } else {
-    scheduleData = scheduleResult.data;
-  }
-
-  return (
-    <PlanDetails
-      plan={formattedPlanDetails}
-      schedule={scheduleData}
-      scheduleError={scheduleErrorMsg}
-    />
-  );
+  return <PlanDetails plan={formattedPlanDetails} />;
 }
