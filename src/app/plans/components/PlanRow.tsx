@@ -1,0 +1,114 @@
+import { Button } from '@/components/ui/button';
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
+import Link from 'next/link';
+import { getNextTaskName, getPlanStatus, getRelativeTime } from './plan-utils';
+
+import type { PlanStatus } from '@/app/plans/types';
+import type { PlanSummary } from '@/lib/types/db';
+
+interface PlanRowProps {
+  summary: PlanSummary;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+export function PlanRow({ summary, isSelected, onSelect }: PlanRowProps) {
+  const { plan } = summary;
+  const progressPercent = Math.round(summary.completion * 100);
+  const status = getPlanStatus(summary);
+  const nextTask = getNextTaskName(summary);
+  const lastActivity = getRelativeTime(plan.createdAt);
+
+  const statusColors: Record<PlanStatus, string> = {
+    active: 'bg-emerald-500',
+    paused: 'bg-amber-500',
+    completed: 'bg-blue-500',
+    generating: 'bg-purple-500',
+    failed: 'bg-red-500',
+  };
+
+  return (
+    <Link
+      href={`/plans/${plan.id}`}
+      onClick={onSelect}
+      className={`group flex cursor-pointer items-center gap-4 rounded-lg px-4 py-3 transition ${
+        isSelected
+          ? 'bg-primary/5 ring-primary/30 ring-1'
+          : 'hover:bg-muted-foreground/[0.03]'
+      }`}
+    >
+      {/* Status indicator */}
+      <div className="relative flex-shrink-0">
+        <div className={`h-3 w-3 rounded-full ${statusColors[status]}`} />
+        {status === 'generating' && (
+          <div
+            className={`absolute inset-0 animate-ping rounded-full ${statusColors[status]} opacity-50`}
+          />
+        )}
+      </div>
+
+      {/* Title & Next Task */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-foreground truncate font-medium">
+            {plan.topic}
+          </span>
+          {progressPercent >= 80 && (
+            <Sparkles className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+          )}
+          {/* Tasks count */}
+          <div className="text-muted-foreground hidden w-15 flex-shrink-0 items-center gap-1.5 text-xs sm:flex">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            <span>
+              {summary.completedTasks}/{summary.totalTasks}
+            </span>
+          </div>
+        </div>
+        <div className="text-muted-foreground flex items-center gap-2 text-xs">
+          {summary.completedTasks > 0 &&
+            nextTask !== 'Not started' &&
+            nextTask !== 'All tasks completed' && (
+              <ArrowRight className="h-3 w-3" />
+            )}
+          <span className="truncate">{nextTask}</span>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div className="flex w-32 flex-shrink-0 items-center gap-2">
+        <div className="bg-muted-foreground/10 h-1.5 flex-1 overflow-hidden rounded-full">
+          <div
+            className="bg-primary h-full rounded-full"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <span className="text-muted-foreground w-8 text-right text-xs font-medium">
+          {progressPercent}%
+        </span>
+      </div>
+
+      {/* Last activity */}
+      <div className="text-muted-foreground hidden w-24 flex-shrink-0 items-center justify-end gap-1.5 text-xs md:flex">
+        <Clock className="h-3.5 w-3.5" />
+        {lastActivity}
+      </div>
+
+      {/* View Plan */}
+      <Button
+        variant="ghost"
+        size="icon"
+        title="View plan"
+        aria-label="View plan"
+        aria-describedby="View plan"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </Link>
+  );
+}

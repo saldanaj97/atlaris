@@ -1,7 +1,7 @@
 /**
  * Navigation configuration for authenticated and unauthenticated users.
  *
- * Authenticated users see: Explore, Dashboard (dropdown), Integrations
+ * Authenticated users see: Dashboard, Plans, Analytics, Settings
  * Unauthenticated users see: Explore, Pricing, About
  */
 
@@ -29,6 +29,10 @@ export const authenticatedNavItems: NavItem[] = [
     //   { label: 'My Plans', href: '/plans' },
     //   { label: 'Calendar', href: '/calendar' },
     // ],
+  },
+  {
+    label: 'Plans',
+    href: '/plans',
   },
   {
     label: 'Analytics',
