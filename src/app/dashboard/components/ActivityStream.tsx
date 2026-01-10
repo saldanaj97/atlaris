@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 
-import type { PlanSummary } from '@/lib/types/db';
-
 import { findActivePlan, generateActivities } from './activity-utils';
 import { ActivityCard } from './ActivityCard';
 import { ActivityFilterTabs } from './ActivityFilterTabs';
@@ -11,27 +9,15 @@ import { ActivityStreamSidebar } from './ActivityStreamSidebar';
 import { EmptyActivityState } from './EmptyActivityState';
 import { QuickStats } from './QuickStats';
 
+import type { PlanSummary } from '@/lib/types/db';
+import type { ActivityFilter } from '../types';
+
 interface ActivityStreamProps {
   summaries: PlanSummary[];
-  totalHoursLearned: number;
-  activePlans: number;
-  completedPlans: number;
-  limitsReached: boolean;
 }
 
-export function ActivityStream({
-  summaries,
-  totalHoursLearned,
-  activePlans,
-  completedPlans,
-  limitsReached,
-}: ActivityStreamProps) {
-  // Suppress unused variable warnings - these will be used for QuickStats in future
-  void totalHoursLearned;
-  void activePlans;
-  void completedPlans;
-  void limitsReached;
-  const [filter, setFilter] = useState<string>('all');
+export function ActivityStream({ summaries }: ActivityStreamProps) {
+  const [filter, setFilter] = useState<ActivityFilter>('all');
   const activities = generateActivities(summaries);
   const filteredActivities =
     filter === 'all' ? activities : activities.filter((a) => a.type === filter);

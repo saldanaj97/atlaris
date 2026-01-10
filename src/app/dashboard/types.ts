@@ -29,3 +29,22 @@ export type ScheduledEvent = {
   courseName: string;
   isUrgent?: boolean;
 };
+
+export type ActivityFilter =
+  | 'all'
+  | 'session'
+  | 'milestone'
+  | 'progress'
+  | 'export';
+
+export type ActivityLabel =
+  | 'All'
+  | 'Sessions'
+  | 'Milestones'
+  | 'Progress'
+  | 'Exports';
+
+export type ActivityFilterTab = {
+  id: ActivityFilter;
+  label: ActivityLabel;
+};

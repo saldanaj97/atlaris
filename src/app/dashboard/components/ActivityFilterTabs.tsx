@@ -1,23 +1,19 @@
 'use client';
 
 import { Filter } from 'lucide-react';
+import type { ActivityFilter, ActivityFilterTab } from '../types';
 
 interface ActivityFilterTabsProps {
-  activeFilter: string;
-  onFilterChange: (filter: string) => void;
-  tabs?: FilterTab[];
+  activeFilter: ActivityFilter;
+  onFilterChange: (filter: ActivityFilter) => void;
 }
 
-interface FilterTab {
-  id: string;
-  label: string;
-}
-
-const DEFAULT_FILTER_TABS: FilterTab[] = [
-  { id: 'all', label: 'All Activity' },
+const DEFAULT_FILTER_TABS: ActivityFilterTab[] = [
+  { id: 'all', label: 'All' },
   { id: 'session', label: 'Sessions' },
   { id: 'milestone', label: 'Milestones' },
   { id: 'progress', label: 'Progress' },
+  { id: 'export', label: 'Exports' },
 ];
 
 export function ActivityFilterTabs({
