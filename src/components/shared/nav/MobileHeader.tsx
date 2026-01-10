@@ -2,12 +2,14 @@
 
 import ClerkAuthControls from '@/components/shared/ClerkAuthControls';
 import type { NavItem } from '@/lib/navigation';
+import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 
 import BrandLogo from '../BrandLogo';
 import MobileNavigation from './MobileNavigation';
 
 interface MobileHeaderProps {
   navItems: NavItem[];
+  tier?: SubscriptionTier;
 }
 
 /**
@@ -15,7 +17,7 @@ interface MobileHeaderProps {
  *
  * Layout: hamburger (left) | title (center) | auth controls (right)
  */
-export default function MobileHeader({ navItems }: MobileHeaderProps) {
+export default function MobileHeader({ navItems, tier }: MobileHeaderProps) {
   return (
     <div className="grid w-full grid-cols-3 items-center justify-items-center rounded-2xl border border-white/40 bg-white/30 px-4 py-3 shadow-lg backdrop-blur-xl lg:hidden">
       {/* Left: hamburger */}
@@ -28,7 +30,7 @@ export default function MobileHeader({ navItems }: MobileHeaderProps) {
 
       {/* Right: user/auth */}
       <div className="justify-self-end">
-        <ClerkAuthControls />
+        <ClerkAuthControls tier={tier} />
       </div>
     </div>
   );
