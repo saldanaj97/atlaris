@@ -5,6 +5,7 @@ import { getUsageSummary } from '@/lib/stripe/usage';
 import { Plus, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { PlanCountBadge } from './components/PlanCountBadge';
 import { PlansList } from './components/PlansList';
 
 import type { PlanSummary } from '@/lib/types/db';
@@ -31,6 +32,13 @@ export default async function PlansPage() {
     reachedPlanLimit || reachedRegenLimit || reachedExportLimit;
 
   if (!summaries.length) {
+    const usageData = {
+      tier: usage.tier,
+      activePlans: usage.activePlans,
+      regenerations: usage.regenerations,
+      exports: usage.exports,
+    };
+
     return (
       <div className="mx-auto max-w-6xl px-6 py-8">
         {/* Empty state header */}
@@ -38,9 +46,7 @@ export default async function PlansPage() {
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-semibold">Your Plans</h1>
-              <span className="bg-muted-foreground/10 text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
-                {summaries.length}
-              </span>
+              <PlanCountBadge usage={usageData} />
             </div>
             <Button asChild>
               <Link href="/plans/new">

@@ -4,28 +4,31 @@ import { Button } from '@/components/ui/button';
 import { Plus, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { EmptyPlansList } from './EmptyPlansList';
 import { getPlanStatus } from './plan-utils';
 import { PlanRow } from './PlanRow';
+import { UsageHoverCard } from './UsageHoverCard';
 
 import type { FilterStatus, PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
 
-interface PlansListProps {
-  summaries: PlanSummary[];
-  limitsReached?: boolean;
-  usage?: {
-    tier: string;
-    activePlans: { current: number; limit: number };
-    regenerations: { used: number; limit: number };
-    exports: { used: number; limit: number };
-  };
+interface UsageData {
+  tier: string;
+  activePlans: { current: number; limit: number };
+  regenerations: { used: number; limit: number };
+  exports: { used: number; limit: number };
 }
 
-export function PlansList({
-  summaries,
-  limitsReached: _limitsReached = false,
-  usage: _usage,
-}: PlansListProps) {
+interface PlansListProps {
+  summaries: PlanSummary[];
+  usage?: UsageData;
+}
+
+function formatLimit(value: number): string {
+  return value === Infinity ? '∞' : String(value);
+}
+
+export function PlansList({ summaries, usage }: PlansListProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -65,6 +68,18 @@ export function PlansList({
     );
   }, [summaries]);
 
+  const planCountBadge = usage ? (
+    <UsageHoverCard usage={usage}>
+      <span className="bg-muted-foreground/10 text-muted-foreground cursor-default rounded-full px-2.5 py-0.5 text-xs font-medium">
+        {usage.activePlans.current} / {formatLimit(usage.activePlans.limit)}
+      </span>
+    </UsageHoverCard>
+  ) : (
+    <span className="bg-muted-foreground/10 text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
+      {summaries.length}
+    </span>
+  );
+
   return (
     <div className="font-sans">
       {/* Header */}
@@ -72,9 +87,7 @@ export function PlansList({
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-semibold">Your Plans</h1>
-            <span className="bg-muted-foreground/10 text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
-              {summaries.length}
-            </span>
+            {planCountBadge}
           </div>
 
           <div className="flex items-center gap-3">
@@ -172,9 +185,10 @@ export function PlansList({
       {/* Main Content */}
       <div>
         {filteredPlans.length === 0 ? (
-          <div className="text-muted-foreground py-12 text-center">
-            <p>No plans found matching your filters.</p>
-          </div>
+          <EmptyPlansList
+            searchQuery={searchQuery}
+            filterStatus={filterStatus}
+          />
         ) : (
           <div className="space-y-1">
             {filteredPlans.map((summary, index) => (

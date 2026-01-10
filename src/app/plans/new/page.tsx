@@ -1,6 +1,6 @@
 'use client';
 
-import { PlanDraftView } from '@/app/plans/components/PlanDraftView';
+import { PlanDraftView } from '@/app/plans/[id]/components/PlanDraftView';
 import {
   deadlineWeeksToDate,
   getTodayDateString,
