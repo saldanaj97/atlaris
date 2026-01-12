@@ -1,4 +1,4 @@
-import PlansList from '@/app/plans/components/PlansList';
+import { PlansList } from '@/app/plans/components/PlansList';
 import type { PlanSummary } from '@/lib/types/db';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
@@ -231,9 +231,13 @@ describe('PlansList', () => {
   };
 
   it('should render empty state when no plans provided', () => {
-    const { container } = render(<PlansList summaries={[]} />);
-    expect(container.querySelector('.grid')).toBeInTheDocument();
-    expect(container.querySelector('.grid')?.children.length).toBe(0);
+    render(<PlansList summaries={[]} />);
+
+    // EmptyPlansList shows "No Plans Found" title
+    expect(screen.getByText('No Plans Found')).toBeInTheDocument();
+    expect(
+      screen.getByText(/You haven't created any plans yet/i)
+    ).toBeInTheDocument();
   });
 
   it('should render all provided plans', () => {
@@ -248,129 +252,31 @@ describe('PlansList', () => {
     expect(screen.getByText('Python Basics')).toBeInTheDocument();
   });
 
-  it('should display completed badge for 100% completed plans', () => {
+  it('should display correct progress percentage for completed plans', () => {
     render(<PlansList summaries={[mockCompletedPlan]} />);
 
-    expect(screen.getByText('completed')).toBeInTheDocument();
+    // 1.0 * 100 = 100%
+    expect(screen.getByText('100%')).toBeInTheDocument();
   });
 
-  it('should display active badge for incomplete plans', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
-
-    expect(screen.getByText('active')).toBeInTheDocument();
-  });
-
-  it('should display correct progress percentage', () => {
+  it('should display correct progress percentage for active plans', () => {
     render(<PlansList summaries={[mockActivePlan]} />);
 
     // 0.4 * 100 = 40%
     expect(screen.getByText('40%')).toBeInTheDocument();
   });
 
-  it('should display correct week progress', () => {
+  it('should display correct task completion count', () => {
     render(<PlansList summaries={[mockActivePlan]} />);
 
-    // completedModules: 2, modules.length: 6, so current week is 3
-    expect(screen.getByText(/Week 3 of 6/i)).toBeInTheDocument();
+    // PlanRow shows tasks as X/Y format
+    expect(screen.getByText('8/20')).toBeInTheDocument();
   });
 
-  it('should display correct task completion stats', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
-
-    expect(screen.getByText(/Completed tasks: 8 \/ 20/i)).toBeInTheDocument();
-  });
-
-  it('should display formatted skill level', () => {
-    render(<PlansList summaries={[mockActivePlan, mockBeginnerPlan]} />);
-
-    expect(screen.getByText('Advanced')).toBeInTheDocument();
-    expect(screen.getByText('Beginner')).toBeInTheDocument();
-  });
-
-  it('should display learning style', () => {
-    render(<PlansList summaries={[mockActivePlan, mockCompletedPlan]} />);
-
-    expect(screen.getByText(/Learning style: practice/i)).toBeInTheDocument();
-    expect(screen.getByText(/Learning style: mixed/i)).toBeInTheDocument();
-  });
-
-  it('should display formatted weekly hours', () => {
+  it('should display task completion count for completed plans', () => {
     render(<PlansList summaries={[mockCompletedPlan]} />);
 
-    expect(screen.getByText('10 hrs / week')).toBeInTheDocument();
-  });
-
-  it('should display beginner plan weekly hours', () => {
-    render(<PlansList summaries={[mockBeginnerPlan]} />);
-
-    expect(screen.getByText('3 hrs / week')).toBeInTheDocument();
-  });
-
-  it('should display singular "hr" for 1 hour per week', () => {
-    const singleHourPlan: PlanSummary = {
-      ...mockActivePlan,
-      plan: { ...mockActivePlan.plan, weeklyHours: 1 },
-    };
-
-    render(<PlansList summaries={[singleHourPlan]} />);
-
-    expect(screen.getByText('1 hr / week')).toBeInTheDocument();
-  });
-
-  it('should display formatted creation date', () => {
-    render(<PlansList summaries={[mockCompletedPlan]} />);
-
-    // Should format as "Jan 15, 2024"
-    expect(screen.getByText(/Jan 15, 2024/i)).toBeInTheDocument();
-  });
-
-  it('should display formatted creation date for beginner plan', () => {
-    render(<PlansList summaries={[mockBeginnerPlan]} />);
-
-    // Should format as "Mar 1, 2024"
-    expect(screen.getByText(/Mar 1, 2024/i)).toBeInTheDocument();
-  });
-
-  it('should display "Continue" button for active plans', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
-
-    const continueButton = screen.getByRole('link', { name: /continue/i });
-    expect(continueButton).toBeInTheDocument();
-    expect(continueButton).toHaveAttribute('href', '/plans/plan-2');
-  });
-
-  it('should display "Review" button for completed plans', () => {
-    render(<PlansList summaries={[mockCompletedPlan]} />);
-
-    const reviewButton = screen.getByRole('link', { name: /review/i });
-    expect(reviewButton).toBeInTheDocument();
-    expect(reviewButton).toHaveAttribute('href', '/plans/plan-1');
-  });
-
-  it('should render correct link for each plan', () => {
-    render(<PlansList summaries={[mockCompletedPlan, mockActivePlan]} />);
-
-    const links = screen.getAllByRole('link');
-    expect(links[0]).toHaveAttribute('href', '/plans/plan-1');
-    expect(links[1]).toHaveAttribute('href', '/plans/plan-2');
-  });
-
-  it('should handle plans with no modules', () => {
-    const emptyModulesPlan: PlanSummary = {
-      ...mockActivePlan,
-      modules: [],
-    };
-
-    render(<PlansList summaries={[emptyModulesPlan]} />);
-
-    // Should show Week 1 of 1 as fallback
-    expect(screen.getByText(/Week 1 of 1/i)).toBeInTheDocument();
-  });
-
-  it('should display 100% for completed plans', () => {
-    render(<PlansList summaries={[mockCompletedPlan]} />);
-
-    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.getByText('20/20')).toBeInTheDocument();
   });
 
   it('should display 0% for newly started plans', () => {
@@ -379,13 +285,104 @@ describe('PlansList', () => {
     expect(screen.getByText('0%')).toBeInTheDocument();
   });
 
-  it('should maintain grid layout structure', () => {
+  it('should display task count for beginner plan', () => {
+    render(<PlansList summaries={[mockBeginnerPlan]} />);
+
+    expect(screen.getByText('0/15')).toBeInTheDocument();
+  });
+
+  it('should render correct link for each plan', () => {
+    render(<PlansList summaries={[mockCompletedPlan, mockActivePlan]} />);
+
+    const links = screen.getAllByRole('link');
+    const planLinks = links.filter(
+      (link) => link.getAttribute('href')?.startsWith('/plans/plan-') ?? false
+    );
+    expect(planLinks).toHaveLength(2);
+    expect(planLinks[0]).toHaveAttribute('href', '/plans/plan-1');
+    expect(planLinks[1]).toHaveAttribute('href', '/plans/plan-2');
+  });
+
+  it('should display "Your Plans" header', () => {
+    render(<PlansList summaries={[mockActivePlan]} />);
+
+    expect(screen.getByText('Your Plans')).toBeInTheDocument();
+  });
+
+  it('should display plan count in header', () => {
+    render(
+      <PlansList
+        summaries={[mockCompletedPlan, mockActivePlan, mockBeginnerPlan]}
+      />
+    );
+
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
+
+  it('should display search input', () => {
+    render(<PlansList summaries={[mockActivePlan]} />);
+
+    expect(screen.getByPlaceholderText('Search plans...')).toBeInTheDocument();
+  });
+
+  it('should display filter buttons', () => {
+    render(<PlansList summaries={[mockActivePlan]} />);
+
+    expect(screen.getByText('All Plans')).toBeInTheDocument();
+    expect(screen.getByText(/Active/)).toBeInTheDocument();
+    expect(screen.getByText(/Completed/)).toBeInTheDocument();
+    expect(screen.getByText(/Inactive/)).toBeInTheDocument();
+  });
+
+  it('should display New Plan button', () => {
+    render(<PlansList summaries={[mockActivePlan]} />);
+
+    expect(screen.getByText('New Plan')).toBeInTheDocument();
+  });
+
+  it('should display view plan buttons', () => {
+    render(<PlansList summaries={[mockActivePlan]} />);
+
+    // PlanRow has a "View plan" button
+    expect(
+      screen.getByRole('button', { name: /view plan/i })
+    ).toBeInTheDocument();
+  });
+
+  it('should display usage data when provided', () => {
+    const mockUsage = {
+      tier: 'pro',
+      activePlans: { current: 2, limit: 10 },
+      regenerations: { used: 1, limit: 5 },
+      exports: { used: 0, limit: 20 },
+    };
+
+    render(<PlansList summaries={[mockActivePlan]} usage={mockUsage} />);
+
+    // Usage shows "current / limit" format
+    expect(screen.getByText('2 / 10')).toBeInTheDocument();
+  });
+
+  it('should handle plans with no modules gracefully', () => {
+    const emptyModulesPlan: PlanSummary = {
+      ...mockActivePlan,
+      modules: [],
+    };
+
+    render(<PlansList summaries={[emptyModulesPlan]} />);
+
+    // Should still render the plan topic
+    expect(screen.getByText('Master React Hooks')).toBeInTheDocument();
+  });
+
+  it('should maintain list layout structure', () => {
     const { container } = render(
       <PlansList summaries={[mockCompletedPlan, mockActivePlan]} />
     );
 
-    const grid = container.querySelector('.grid');
-    expect(grid).toBeInTheDocument();
-    expect(grid?.children.length).toBe(2);
+    // New component uses space-y-1 div for list
+    const listContainer = container.querySelector('.space-y-1');
+    expect(listContainer).toBeInTheDocument();
+    expect(listContainer?.children.length).toBe(2);
   });
 });
