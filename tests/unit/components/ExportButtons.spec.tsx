@@ -1,4 +1,4 @@
-import { ExportButtons } from '@/app/plans/components/ExportButtons';
+import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
