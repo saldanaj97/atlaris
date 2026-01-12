@@ -19,18 +19,6 @@ export default async function PlansPage() {
   const summaries: PlanSummary[] = await getPlanSummariesForUser(user.id);
   const usage = await getUsageSummary(user.id);
 
-  const reachedPlanLimit =
-    usage.activePlans.limit !== Infinity &&
-    usage.activePlans.current >= usage.activePlans.limit;
-  const reachedRegenLimit =
-    usage.regenerations.limit !== Infinity &&
-    usage.regenerations.used >= usage.regenerations.limit;
-  const reachedExportLimit =
-    usage.exports.limit !== Infinity &&
-    usage.exports.used >= usage.exports.limit;
-  const limitsReached =
-    reachedPlanLimit || reachedRegenLimit || reachedExportLimit;
-
   if (!summaries.length) {
     const usageData = {
       tier: usage.tier,
@@ -93,7 +81,6 @@ export default async function PlansPage() {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <PlansList
         summaries={summaries}
-        limitsReached={limitsReached}
         usage={{
           tier: usage.tier,
           activePlans: usage.activePlans,
