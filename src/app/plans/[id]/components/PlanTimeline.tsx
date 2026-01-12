@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   Accordion,
   AccordionContent,
@@ -8,6 +9,7 @@ import {
 } from '@/components/ui/accordion';
 import { formatMinutes } from '@/lib/formatters';
 import {
+  ArrowRight,
   CheckCircle2,
   ChevronRight,
   ExternalLink,
@@ -370,6 +372,17 @@ export function PlanTimeline({
                           })}
                         </div>
                       )}
+
+                      {/* View Module Link */}
+                      <div className="mt-4 flex justify-end">
+                        <Link
+                          href={`/plans/${planId}/modules/${mod.id}`}
+                          className="inline-flex items-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                        >
+                          View Full Module
+                          <ArrowRight size={16} />
+                        </Link>
+                      </div>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
