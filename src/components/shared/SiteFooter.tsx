@@ -3,7 +3,7 @@ import Link from 'next/link';
 // TODO: Make sure the styling matches the design system
 export default function SiteFooter() {
   return (
-    <footer className="border-t border-slate-200 bg-[#FAF9F7] px-4 py-8 sm:px-6 lg:px-8">
+    <footer className="border-t border-slate-200 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
         {/* Brand */}
         <div className="flex items-center gap-2">

@@ -39,8 +39,8 @@ export function PlanRow({ summary, isSelected, onSelect }: PlanRowProps) {
       onClick={onSelect}
       className={`group flex cursor-pointer items-center gap-4 rounded-lg px-4 py-3 transition ${
         isSelected
-          ? 'bg-primary/5 ring-primary/30 ring-1'
-          : 'hover:bg-muted-foreground/[0.03]'
+          ? 'bg-primary/5 ring-primary/30 dark:bg-primary/10 ring-1'
+          : 'hover:bg-muted-foreground/[0.03] dark:hover:bg-foreground/5'
       }`}
     >
       {/* Status indicator */}

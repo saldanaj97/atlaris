@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function PricingPage() {
   return (
-    <div className="container mx-auto flex min-h-screen flex-col items-center justify-start gap-y-4 px-6 py-8">
+    <div className="mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-start gap-y-4 px-6 py-8">
       <div className="text-center">
         <h1 className="text-4xl font-bold">Choose your plan</h1>
         <p className="text-muted-foreground">

@@ -28,12 +28,12 @@ export default async function PlansPage() {
     };
 
     return (
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto min-h-screen max-w-7xl">
         {/* Empty state header */}
         <header className="mb-8">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-semibold">Your Plans</h1>
+              <h1>Your Plans</h1>
               <PlanCountBadge usage={usageData} />
             </div>
             <Button asChild>
@@ -45,7 +45,7 @@ export default async function PlansPage() {
           </div>
 
           {/* Disabled search bar */}
-          <div className="border-border bg-muted-foreground/5 flex w-full items-center gap-3 rounded-xl border px-4 py-3 opacity-50">
+          <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 flex w-full items-center gap-3 rounded-xl border px-4 py-3 opacity-50">
             <Search className="text-muted-foreground h-4 w-4" />
             <span className="text-muted-foreground flex-1 text-sm">
               Search plans or type a command...
@@ -61,7 +61,7 @@ export default async function PlansPage() {
           <div className="bg-primary/10 mb-6 flex h-16 w-16 items-center justify-center rounded-full">
             <Sparkles className="text-primary h-8 w-8" />
           </div>
-          <h2 className="text-xl font-semibold">No learning plans yet</h2>
+          <h2>No learning plans yet</h2>
           <p className="text-muted-foreground mt-2 max-w-md">
             Start by describing what you want to learn and we&apos;ll create a
             personalized learning plan with resources and milestones.
@@ -78,7 +78,7 @@ export default async function PlansPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="mx-auto min-h-screen max-w-7xl">
       <PlansList
         summaries={summaries}
         usage={{

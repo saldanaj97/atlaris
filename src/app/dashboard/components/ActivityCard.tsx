@@ -52,7 +52,7 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-2xl border border-l-4 border-white/60 ${config.borderColor} bg-white/60 p-5 shadow-sm backdrop-blur-sm transition hover:shadow-lg`}
+      className={`group relative overflow-hidden rounded-2xl border border-l-4 border-white/40 ${config.borderColor} dark:bg-card-background bg-black/5 p-5 shadow-lg backdrop-blur-xl transition hover:shadow-xl dark:border-white/10`}
     >
       <div className="flex gap-4">
         {/* Icon */}
@@ -69,20 +69,22 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
               <span className="text-xs font-medium text-slate-400">
                 {activity.planTitle}
               </span>
-              <h4 className="font-semibold text-slate-900">{activity.title}</h4>
+              <h4 className="font-semibold text-slate-900 dark:text-white">
+                {activity.title}
+              </h4>
             </div>
             <div className="flex items-center gap-2">
               <span className="flex-shrink-0 text-xs text-slate-400">
                 {activity.timestamp}
               </span>
-              <button className="rounded-lg p-1 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-500">
+              <button className="rounded-lg p-1 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-white/10">
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </div>
           </div>
 
           {activity.description && (
-            <p className="mb-3 text-sm text-slate-600">
+            <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">
               {activity.description}
             </p>
           )}

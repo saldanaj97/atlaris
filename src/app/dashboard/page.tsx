@@ -11,5 +11,9 @@ export default async function DashboardPage() {
 
   const summaries = await getPlanSummariesForUser(user.id);
 
-  return <ActivityStream summaries={summaries} />;
+  return (
+    <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
+      <ActivityStream summaries={summaries} />
+    </div>
+  );
 }

@@ -10,8 +10,6 @@
   --primary: oklch(66.9% 0.18368 248.8066);
   --secondary: oklch(62.9% 0.1 250);
   --background: oklch(0.9427 0 0);
-  --highlighter: oklch(0.93 0.17 98.5); /* Vibrant yellow */
-  --tape: oklch(0.96 0.03 100); /* Masking tape */
   --card-background: oklch(0.9702 0 0);
   --secondary-background: oklch(100% 0 0);
   --foreground: oklch(0% 0 0);
@@ -32,14 +30,14 @@
 }
 
 .dark {
-  --background: oklch(27.08% 0.0336 240.69);
-  --card-background: oklch(23.93% 0 0);
-  --secondary-background: oklch(23.93% 0 0);
+  --background: oklch(0.1626 0.0017 196.99);
+  --card-background: oklch(0.2482 0.0019 286.26);
+  --secondary-background: oklch(21% 0.03 240);
   --foreground: oklch(92.49% 0 0);
-  --muted-foreground: oklch(0% 0 0 / 0.5);
-  --main-foreground: oklch(0% 0 0);
+  --muted-foreground: oklch(92.49% 0 0 / 0.6);
+  --main-foreground: oklch(100% 0 0);
   --main: oklch(61.9% 0.16907 248.5982);
-  --border: oklch(0% 0 0);
+  --border: oklch(100% 0 0 / 0.1);
   --ring: oklch(100% 0 0);
   --shadow: 4px 4px 0px 0px var(--border);
   --chart-1: #008ae5;
@@ -91,6 +89,10 @@
     font-family: var(--font-family-base);
   }
 
+  /*
+   * Base Typography - App UI scale (default)
+   * These sizes are optimized for dashboard, settings, and app pages
+   */
   h1,
   h2,
   h3,
@@ -98,5 +100,115 @@
   h5,
   h6 {
     font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: 1.5rem; /* 24px */
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: 1.25rem; /* 20px */
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+  }
+
+  h3 {
+    font-size: 1.125rem; /* 18px */
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+
+  h4 {
+    font-size: 1rem; /* 16px */
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+
+  h5 {
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.4;
+    letter-spacing: 0;
+  }
+
+  h6 {
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.5;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  /* Typography for pages and components */
+  .subtitle {
+    font-weight: var(--font-weight-base);
+    color: var(--muted-foreground);
+  }
+
+  /*
+   * Marketing Typography - Large scale for landing/marketing pages
+   * Major Third (1.25x) scale with tight letter-spacing
+   */
+  .marketing-h1 {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    font-size: 3.0625rem; /* 49px */
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .marketing-h2 {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    font-size: 2.4375rem; /* 39px */
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  .marketing-h3 {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    font-size: 1.9375rem; /* 31px */
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .marketing-h4 {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    font-size: 1.5625rem; /* 25px */
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .marketing-subtitle {
+    font-family: var(--font-family-base);
+    font-weight: var(--font-weight-base);
+    font-size: 1.25rem; /* 20px */
+    line-height: 1.5;
+    letter-spacing: 0;
+    color: var(--muted-foreground);
+  }
+
+  /* Responsive scaling for marketing typography */
+  @media (max-width: 640px) {
+    .marketing-h1 {
+      font-size: 2.4375rem; /* 39px on mobile */
+    }
+    .marketing-h2 {
+      font-size: 1.9375rem; /* 31px on mobile */
+    }
+    .marketing-h3 {
+      font-size: 1.5625rem; /* 25px on mobile */
+    }
+    .marketing-h4 {
+      font-size: 1.25rem; /* 20px on mobile */
+    }
   }
 }

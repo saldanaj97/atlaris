@@ -27,7 +27,7 @@ export default async function AISettingsPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 py-8">
         <h1 className="mb-2 text-3xl font-bold">AI Preferences</h1>
         <p className="text-muted-foreground mb-6">
           Choose your preferred AI model for generating learning plans.

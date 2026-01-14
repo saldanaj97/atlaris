@@ -25,45 +25,39 @@ export function ActivityStream({ summaries }: ActivityStreamProps) {
   const activePlan = findActivePlan(summaries);
 
   return (
-    <div className="min-h-screen font-sans">
-      <div className="mx-auto max-w-6xl px-6 py-8">
-        <header className="mb-8">
-          <div className="mb-4">
-            <h1 className="mb-1 text-2xl font-bold text-slate-900">
-              Activity Feed
-            </h1>
-            <h2 className="text-slate-500">
-              Your learning journey, moment by moment
-            </h2>
-          </div>
-          <section aria-label="Quick statistics">
-            <QuickStats />
-          </section>
-        </header>
-
-        <div className="grid gap-8 lg:grid-cols-3">
-          {/* Main Feed */}
-          <div className="lg:col-span-2">
-            <ActivityFilterTabs
-              activeFilter={filter}
-              onFilterChange={setFilter}
-            />
-
-            {/* Activity Items */}
-            <div className="space-y-4">
-              {filteredActivities.length === 0 ? (
-                <EmptyActivityState filter={filter} />
-              ) : (
-                filteredActivities.map((activity) => (
-                  <ActivityCard key={activity.id} activity={activity} />
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <ActivityStreamSidebar activePlan={activePlan} />
+    <div className="font-sans">
+      <header className="mb-8">
+        <div className="mb-4">
+          <h1>Activity Feed</h1>
+          <h2 className="subtitle">Your learning journey, moment by moment</h2>
         </div>
+        <section aria-label="Quick statistics">
+          <QuickStats />
+        </section>
+      </header>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Main Feed */}
+        <div className="lg:col-span-2">
+          <ActivityFilterTabs
+            activeFilter={filter}
+            onFilterChange={setFilter}
+          />
+
+          {/* Activity Items */}
+          <div className="space-y-4">
+            {filteredActivities.length === 0 ? (
+              <EmptyActivityState filter={filter} />
+            ) : (
+              filteredActivities.map((activity) => (
+                <ActivityCard key={activity.id} activity={activity} />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <ActivityStreamSidebar activePlan={activePlan} />
       </div>
     </div>
   );

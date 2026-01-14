@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import {
   ArrowLeft,
   ArrowRight,
@@ -12,6 +11,7 @@ import {
   ListTodo,
   Lock,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useMemo } from 'react';
 
 import {
@@ -22,8 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { ModuleNavItem } from '@/lib/db/queries/modules';
 import { formatMinutes } from '@/lib/formatters';
-import type { ModuleWithTasks } from '@/lib/types/db';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ModuleWithTasks, ProgressStatus } from '@/lib/types/db';
 
 interface ModuleHeaderProps {
   module: ModuleWithTasks;

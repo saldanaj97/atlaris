@@ -1,3 +1,4 @@
+import { getUserByClerkId } from '@/lib/db/queries/users';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
@@ -6,7 +7,6 @@ import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { auth } from '@clerk/nextjs/server';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
-import { getUserByClerkId } from '@/lib/db/queries/users';
 
 /**
  * Server component wrapper for the site header.

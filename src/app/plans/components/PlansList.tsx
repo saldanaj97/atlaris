@@ -86,7 +86,7 @@ export function PlansList({ summaries, usage }: PlansListProps) {
       <header className="mb-8">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-semibold">Your Plans</h1>
+            <h1>Your Plans</h1>
             {planCountBadge}
           </div>
 
@@ -101,7 +101,7 @@ export function PlansList({ summaries, usage }: PlansListProps) {
         </div>
 
         {/* Search Bar */}
-        <div className="border-border bg-muted-foreground/5 flex w-full items-center gap-3 rounded-xl border px-4 py-3">
+        <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 flex w-full items-center gap-3 rounded-xl border px-4 py-3">
           <Search className="text-muted-foreground h-4 w-4" />
           <input
             type="text"
@@ -114,13 +114,13 @@ export function PlansList({ summaries, usage }: PlansListProps) {
       </header>
 
       {/* Filters Bar */}
-      <div className="mb-6 flex items-center gap-4 border-b pb-4">
+      <div className="border-border mb-6 flex items-center gap-4 border-b pb-4">
         <Button
           onClick={() => setFilterStatus('all')}
           className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
             filterStatus === 'all'
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground'
+              ? 'bg-primary/10 text-primary dark:bg-primary/20'
+              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
           }`}
         >
           All Plans
@@ -129,8 +129,8 @@ export function PlansList({ summaries, usage }: PlansListProps) {
           onClick={() => setFilterStatus('active')}
           className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
             filterStatus === 'active'
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground'
+              ? 'bg-primary/10 text-primary dark:bg-primary/20'
+              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
           }`}
         >
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -140,8 +140,8 @@ export function PlansList({ summaries, usage }: PlansListProps) {
           onClick={() => setFilterStatus('completed')}
           className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
             filterStatus === 'completed'
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground'
+              ? 'bg-primary/10 text-primary dark:bg-primary/20'
+              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
           }`}
         >
           <span className="h-2 w-2 rounded-full bg-blue-500" />
@@ -151,8 +151,8 @@ export function PlansList({ summaries, usage }: PlansListProps) {
           onClick={() => setFilterStatus('inactive')}
           className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
             filterStatus === 'inactive'
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground'
+              ? 'bg-primary/10 text-primary dark:bg-primary/20'
+              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
           }`}
         >
           <span className="h-2 w-2 rounded-full bg-amber-500" />
@@ -162,8 +162,8 @@ export function PlansList({ summaries, usage }: PlansListProps) {
           onClick={() => setFilterStatus('generating')}
           className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
             filterStatus === 'generating'
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground'
+              ? 'bg-primary/10 text-primary dark:bg-primary/20'
+              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
           }`}
         >
           <span className="h-2 w-2 rounded-full bg-purple-500" />
@@ -173,8 +173,8 @@ export function PlansList({ summaries, usage }: PlansListProps) {
           onClick={() => setFilterStatus('failed')}
           className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
             filterStatus === 'failed'
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground'
+              ? 'bg-primary/10 text-primary dark:bg-primary/20'
+              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
           }`}
         >
           <span className="h-2 w-2 rounded-full bg-red-500" />

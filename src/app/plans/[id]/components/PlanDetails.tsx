@@ -31,25 +31,23 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
     plan.status === 'pending' || plan.status === 'processing';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br dark:from-stone-950 dark:via-stone-900 dark:to-stone-950">
-      <div className="mx-auto max-w-7xl p-8">
-        {isPendingOrProcessing ? (
-          <PlanPendingState plan={plan} />
-        ) : (
-          <>
-            {/* Hero Overview */}
-            <PlanOverviewHeader plan={plan} statuses={statuses} />
+    <div className="mx-auto min-h-screen max-w-7xl py-8">
+      {isPendingOrProcessing ? (
+        <PlanPendingState plan={plan} />
+      ) : (
+        <>
+          {/* Hero Overview */}
+          <PlanOverviewHeader plan={plan} statuses={statuses} />
 
-            {/* Module Timeline */}
-            <PlanTimeline
-              planId={plan.id}
-              modules={modules}
-              statuses={statuses}
-              setStatuses={setStatuses}
-            />
-          </>
-        )}
-      </div>
+          {/* Module Timeline */}
+          <PlanTimeline
+            planId={plan.id}
+            modules={modules}
+            statuses={statuses}
+            setStatuses={setStatuses}
+          />
+        </>
+      )}
     </div>
   );
 }

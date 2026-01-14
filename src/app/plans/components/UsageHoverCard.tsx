@@ -42,7 +42,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
     <HoverCard openDelay={200} closeDelay={100}>
       <HoverCardTrigger asChild>{children}</HoverCardTrigger>
       <HoverCardContent
-        className="w-72 border-white/40 bg-white/70 shadow-lg backdrop-blur-xl"
+        className="w-72 border-white/40 bg-white/70 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-black/30"
         align="start"
       >
         <div className="space-y-4">

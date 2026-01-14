@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, Target, Trophy, TrendingUp } from 'lucide-react';
+import { Clock, Target, TrendingUp, Trophy } from 'lucide-react';
 
 export function QuickStats() {
   return (
@@ -37,7 +37,7 @@ export function QuickStats() {
       ].map((stat) => (
         <div
           key={stat.label}
-          className="rounded-2xl border border-white/60 bg-white/60 p-4 shadow-sm backdrop-blur-sm transition hover:shadow-md"
+          className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-4 shadow-lg backdrop-blur-xl transition hover:shadow-xl dark:border-white/10"
         >
           <div className="mb-2 flex items-center gap-2">
             <stat.icon className={`h-4 w-4 ${stat.color}`} />
@@ -45,7 +45,9 @@ export function QuickStats() {
               {stat.label}
             </span>
           </div>
-          <div className="text-xl font-bold text-slate-900">{stat.value}</div>
+          <div className="text-xl font-bold text-slate-900 dark:text-white">
+            {stat.value}
+          </div>
           <div className="text-xs text-slate-400">{stat.trend}</div>
         </div>
       ))}

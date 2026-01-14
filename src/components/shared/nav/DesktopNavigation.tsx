@@ -31,8 +31,10 @@ export default function DesktopNavigation({
         <DropdownMenu key={item.href}>
           <DropdownMenuTrigger asChild>
             <button
-              className={`flex items-center space-x-1 text-sm font-medium transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:outline-none ${
-                isActive ? 'text-purple-600' : 'text-gray-600'
+              className={`flex items-center space-x-1 text-sm font-medium transition hover:text-purple-400 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:outline-none dark:hover:text-purple-400 ${
+                isActive
+                  ? 'text-purple-600 dark:text-purple-400'
+                  : 'text-gray-600 dark:text-gray-200'
               }`}
             >
               <span>{item.label}</span>
@@ -67,8 +69,10 @@ export default function DesktopNavigation({
       <Link
         key={item.href}
         href={item.href}
-        className={`text-sm font-medium transition hover:text-purple-600 ${
-          isActive ? 'text-purple-600' : 'text-gray-600'
+        className={`text-sm font-medium transition hover:text-purple-400 dark:hover:text-purple-400 ${
+          isActive
+            ? 'text-purple-600 dark:text-purple-400'
+            : 'text-gray-600 dark:text-gray-200'
         }`}
       >
         {item.label}

@@ -103,7 +103,7 @@ function ContinueLearningCard({ plan }: { plan: PlanSummary }) {
 
 function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10">
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
             Upcoming Schedule
           </span>
         </div>
-        <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+        <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
           {events.length} events
         </span>
       </div>
@@ -130,7 +130,7 @@ function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
             <div key={event.id} className="relative flex gap-3">
               {/* Timeline connector */}
               {!isLast && (
-                <div className="absolute top-8 left-[15px] h-[calc(100%+4px)] w-px bg-zinc-200 dark:bg-zinc-700" />
+                <div className="absolute top-8 left-[15px] h-[calc(100%+4px)] w-px bg-white/20 dark:bg-zinc-700" />
               )}
 
               {/* Event Type Icon */}
@@ -181,7 +181,7 @@ function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
       {/* View All Link */}
       <Link
         href="/plans"
-        className="mt-4 block w-full rounded-lg border border-zinc-200 py-2 text-center text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+        className="mt-4 block w-full rounded-lg border border-white/20 bg-white/10 py-2 text-center text-sm font-medium text-zinc-600 transition-colors hover:bg-white/20 dark:text-zinc-400 dark:hover:bg-white/5"
       >
         View All Plans
       </Link>
@@ -191,9 +191,9 @@ function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
 
 function EmptyStateCard() {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10">
       <div className="flex flex-col items-center py-6 text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/20 dark:bg-zinc-800">
           <BookOpen className="h-6 w-6 text-zinc-400" />
         </div>
         <h3 className="mb-2 font-medium text-zinc-900 dark:text-zinc-100">
