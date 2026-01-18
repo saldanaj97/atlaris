@@ -1,7 +1,3 @@
-'use client';
-
-import { useMemo } from 'react';
-
 import {
   formatLearningStyle,
   formatMinutes,
@@ -13,51 +9,22 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
+import type { PlanDetailsCardStats } from '@/app/plans/[id]/types';
 import type { ClientPlanDetail } from '@/lib/types/client';
-import type { ProgressStatus } from '@/lib/types/db';
 
 interface PlanDetailsCardProps {
   plan: ClientPlanDetail;
-  statuses: Record<string, ProgressStatus>;
+  stats: PlanDetailsCardStats;
 }
 
-export function PlanDetailsCard({ plan, statuses }: PlanDetailsCardProps) {
-  const completedTasks = useMemo(
-    () =>
-      Object.values(statuses).filter((status) => status === 'completed').length,
-    [statuses]
-  );
-
-  const totalTasks = useMemo(
-    () =>
-      (plan.modules ?? []).reduce(
-        (count, module) => count + (module.tasks?.length ?? 0),
-        0
-      ),
-    [plan.modules]
-  );
-
-  const totalMinutes = useMemo(
-    () =>
-      (plan.modules ?? []).reduce(
-        (sum, module) =>
-          sum +
-          (module.tasks ?? []).reduce(
-            (moduleSum, task) => moduleSum + (task.estimatedMinutes ?? 0),
-            0
-          ),
-        0
-      ),
-    [plan.modules]
-  );
-
-  const completion = totalTasks
-    ? Math.round((completedTasks / totalTasks) * 100)
-    : 0;
-
-  const estimatedWeeks = plan.weeklyHours
-    ? Math.ceil(totalMinutes / (plan.weeklyHours * 60))
-    : null;
+export function PlanDetailsCard({ plan, stats }: PlanDetailsCardProps) {
+  const {
+    completedTasks,
+    totalTasks,
+    totalMinutes,
+    completionPercentage: completion,
+    estimatedWeeks,
+  } = stats;
 
   return (
     <Card className="mb-6 p-6">

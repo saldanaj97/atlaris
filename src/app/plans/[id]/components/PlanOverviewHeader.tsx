@@ -1,23 +1,12 @@
-'use client';
-
-import {
-  BookOpen,
-  Calendar,
-  Clock,
-  ExternalLink,
-  Share2,
-  TrendingUp,
-} from 'lucide-react';
-import { useMemo } from 'react';
-
 import { formatMinutes, formatSkillLevel } from '@/lib/formatters';
+import { BookOpen, Calendar, Clock, TrendingUp } from 'lucide-react';
 
+import type { PlanOverviewStats } from '@/app/plans/[id]/types';
 import type { ClientPlanDetail } from '@/lib/types/client';
-import type { ProgressStatus } from '@/lib/types/db';
 
 interface PlanOverviewProps {
   plan: ClientPlanDetail;
-  statuses: Record<string, ProgressStatus>;
+  stats: PlanOverviewStats;
 }
 
 // Gradient presets based on skill level for visual variety
@@ -38,74 +27,23 @@ const SKILL_SHADOWS: Record<string, string> = {
  * Magazine-style hero overview card for a learning plan.
  * Displays plan title, progress stats, and quick actions in an editorial layout.
  */
-export function PlanOverviewHeader({ plan, statuses }: PlanOverviewProps) {
-  // Memoize modules to maintain stable reference
-  const modules = useMemo(() => plan.modules ?? [], [plan.modules]);
-
-  // Calculate progress metrics
+export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
   const {
     completedTasks,
     totalTasks,
-    completion,
+    completionPercentage: completion,
     totalMinutes,
     estimatedWeeks,
-  } = useMemo(() => {
-    const tasks = modules.flatMap((m) => m.tasks ?? []);
-    const total = tasks.length;
-    const completed = Object.values(statuses).filter(
-      (s) => s === 'completed'
-    ).length;
-    const minutes = tasks.reduce(
-      (sum, t) => sum + (t.estimatedMinutes ?? 0),
-      0
-    );
-    const weeks = plan.weeklyHours
-      ? Math.ceil(minutes / (plan.weeklyHours * 60))
-      : null;
-
-    return {
-      completedTasks: completed,
-      totalTasks: total,
-      completion: total > 0 ? Math.round((completed / total) * 100) : 0,
-      totalMinutes: minutes,
-      estimatedWeeks: weeks,
-    };
-  }, [modules, statuses, plan.weeklyHours]);
-
-  // Calculate completed modules
-  const completedModules = useMemo(() => {
-    return modules.filter((mod) => {
-      const moduleTasks = mod.tasks ?? [];
-      if (moduleTasks.length === 0) return false;
-      return moduleTasks.every((task) => statuses[task.id] === 'completed');
-    }).length;
-  }, [modules, statuses]);
+    completedModules,
+    totalModules,
+    estimatedCompletionDate,
+    tags,
+  } = stats;
 
   const gradient =
     SKILL_GRADIENTS[plan.skillLevel] ?? SKILL_GRADIENTS.intermediate;
   const shadowColor =
     SKILL_SHADOWS[plan.skillLevel] ?? SKILL_SHADOWS.intermediate;
-
-  // Format estimated completion date
-  const estimatedCompletionDate = useMemo(() => {
-    if (!estimatedWeeks) return null;
-    const date = new Date();
-    date.setDate(date.getDate() + estimatedWeeks * 7);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  }, [estimatedWeeks]);
-
-  // Generate tags from plan metadata
-  const tags = useMemo(() => {
-    const result: string[] = [];
-    result.push(formatSkillLevel(plan.skillLevel));
-    if (plan.weeklyHours) {
-      result.push(`${plan.weeklyHours}h/week`);
-    }
-    if (modules.length > 0) {
-      result.push(`${modules.length} modules`);
-    }
-    return result;
-  }, [plan.skillLevel, plan.weeklyHours, modules.length]);
 
   return (
     <article className="lg:col-span-2">
@@ -128,22 +66,7 @@ export function PlanOverviewHeader({ plan, statuses }: PlanOverviewProps) {
                 </span>
               ))}
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
-                aria-label="Share plan"
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
-                aria-label="Open in new tab"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </button>
-            </div>
+            {/* Share/ExternalLink buttons removed - no functionality implemented */}
           </div>
 
           <div>
@@ -174,7 +97,7 @@ export function PlanOverviewHeader({ plan, statuses }: PlanOverviewProps) {
         <StatCard
           icon={<BookOpen className="h-5 w-5" />}
           label="Modules"
-          value={`${completedModules}/${modules.length}`}
+          value={`${completedModules}/${totalModules}`}
           sublabel="Completed"
         />
         <StatCard

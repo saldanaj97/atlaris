@@ -3,6 +3,7 @@
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
 import { PlanTimeline } from '@/app/plans/[id]/components/PlanTimeline';
+import { computeOverviewStats } from '@/app/plans/[id]/helpers';
 import { useState } from 'react';
 
 import type { ClientPlanDetail } from '@/lib/types/client';
@@ -27,6 +28,9 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
     }
   );
 
+  // Compute progress statistics (completion %, task counts, estimated weeks) for the header
+  const overviewStats = computeOverviewStats(plan, statuses);
+
   const isPendingOrProcessing =
     plan.status === 'pending' || plan.status === 'processing';
 
@@ -37,7 +41,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
       ) : (
         <>
           {/* Hero Overview */}
-          <PlanOverviewHeader plan={plan} statuses={statuses} />
+          <PlanOverviewHeader plan={plan} stats={overviewStats} />
 
           {/* Module Timeline */}
           <PlanTimeline

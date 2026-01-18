@@ -1,10 +1,9 @@
-import { PlanSummary } from '@/lib/types/db';
 import { BookOpen, Calendar, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { ScheduledEvent } from '../types';
 import { getEventTypeConfig, getRelativeTime } from './activity-utils';
-// TODO: Remove mock data
-import { scheduledEventsFixture } from '../../../../tests/fixtures/scheduledEventsFixture';
+
+import type { PlanSummary } from '@/lib/types/db';
+import type { ScheduledEvent } from '../types';
 
 interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;
@@ -134,7 +133,7 @@ function EmptyStateCard() {
 
 export function ActivityStreamSidebar({
   activePlan,
-  upcomingEvents = scheduledEventsFixture,
+  upcomingEvents = [],
 }: ActivityStreamSidebarProps) {
   return (
     <aside className="flex w-full flex-col gap-4">

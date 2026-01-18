@@ -3,7 +3,6 @@
 import '../../../../mocks/unit/client-logger.unit';
 import '../../../../mocks/unit/sonner.unit';
 
-import type { PlanFormData } from '@/app/plans/new/components/plan-form';
 import CreateNewPlanPage from '@/app/plans/new/page';
 import { clientLogger } from '@/lib/logging/client';
 import {
@@ -505,16 +504,9 @@ describe('CreateNewPlanPage', () => {
         name: /generate my plan/i,
       });
 
-      const formData: PlanFormData = {
-        topic: 'Learn TypeScript',
-        skillLevel: 'intermediate',
-        weeklyHours: '6-10',
-        learningStyle: 'practice',
-        deadlineWeeks: '8',
-      };
-
+      // Only changing the topic via textarea - other fields use defaults
       fireEvent.change(textarea, {
-        target: { value: formData.topic },
+        target: { value: 'Learn TypeScript' },
       });
 
       await act(async () => {
@@ -525,11 +517,12 @@ describe('CreateNewPlanPage', () => {
         expect(mockStartGeneration).toHaveBeenCalled();
       });
 
-      // Verify the form data was correctly processed
+      // Verify the form data was correctly processed with default values
       const callArgs = mockStartGeneration.mock.calls[0][0];
-      expect(callArgs.topic).toBe(formData.topic);
-      expect(callArgs.skillLevel).toBe(formData.skillLevel);
-      expect(callArgs.learningStyle).toBe(formData.learningStyle);
+      expect(callArgs.topic).toBe('Learn TypeScript');
+      // These use default values since we only changed the topic
+      expect(callArgs.skillLevel).toBe('beginner');
+      expect(callArgs.learningStyle).toBe('mixed');
     });
   });
 

@@ -1,13 +1,11 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Plus, Search } from 'lucide-react';
-import Link from 'next/link';
+import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { EmptyPlansList } from './EmptyPlansList';
 import { getPlanStatus } from './plan-utils';
 import { PlanRow } from './PlanRow';
-import { UsageHoverCard } from './UsageHoverCard';
 
 import type { FilterStatus, PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
@@ -24,11 +22,7 @@ interface PlansListProps {
   usage?: UsageData;
 }
 
-function formatLimit(value: number): string {
-  return value === Infinity ? '∞' : String(value);
-}
-
-export function PlansList({ summaries, usage }: PlansListProps) {
+export function PlansList({ summaries, usage: _usage }: PlansListProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -68,50 +62,20 @@ export function PlansList({ summaries, usage }: PlansListProps) {
     );
   }, [summaries]);
 
-  const planCountBadge = usage ? (
-    <UsageHoverCard usage={usage}>
-      <span className="bg-muted-foreground/10 text-muted-foreground cursor-default rounded-full px-2.5 py-0.5 text-xs font-medium">
-        {usage.activePlans.current} / {formatLimit(usage.activePlans.limit)}
-      </span>
-    </UsageHoverCard>
-  ) : (
-    <span className="bg-muted-foreground/10 text-muted-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
-      {summaries.length}
-    </span>
-  );
-
   return (
     <div className="font-sans">
-      {/* Header */}
-      <header className="mb-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1>Your Plans</h1>
-            {planCountBadge}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button asChild>
-              <Link href="/plans/new">
-                <Plus className="h-4 w-4" />
-                New Plan
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 flex w-full items-center gap-3 rounded-xl border px-4 py-3">
-          <Search className="text-muted-foreground h-4 w-4" />
-          <input
-            type="text"
-            placeholder="Search plans..."
-            className="text-foreground placeholder:text-muted-foreground flex-1 bg-transparent text-sm focus:outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </header>
+      {/* Search Bar */}
+      <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-xl border px-4 py-3">
+        <Search className="text-muted-foreground h-4 w-4" aria-hidden="true" />
+        <input
+          type="text"
+          placeholder="Search plans..."
+          aria-label="Search learning plans"
+          className="text-foreground placeholder:text-muted-foreground flex-1 bg-transparent text-sm focus:outline-none"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
 
       {/* Filters Bar */}
       <div className="border-border mb-6 flex items-center gap-4 border-b pb-4">

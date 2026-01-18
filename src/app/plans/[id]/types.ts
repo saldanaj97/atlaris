@@ -6,8 +6,8 @@
  * and not-found cases.
  */
 
-import type { LearningPlanDetail } from '@/lib/types/db';
 import type { ScheduleJson } from '@/lib/scheduling/types';
+import type { LearningPlanDetail } from '@/lib/types/db';
 
 /**
  * Error codes for plan access failures.
@@ -46,3 +46,29 @@ export type PlanAccessResult =
 export type ScheduleAccessResult =
   | { success: true; data: ScheduleJson }
   | { success: false; error: PlanAccessError };
+
+/**
+ * Stats computed for PlanOverviewHeader
+ */
+export type PlanOverviewStats = {
+  completedTasks: number;
+  totalTasks: number;
+  completionPercentage: number;
+  totalMinutes: number;
+  estimatedWeeks: number | null;
+  completedModules: number;
+  totalModules: number;
+  estimatedCompletionDate: string | null;
+  tags: string[];
+};
+
+/**
+ * Stats computed for PlanDetailsCard
+ */
+export type PlanDetailsCardStats = {
+  completedTasks: number;
+  totalTasks: number;
+  totalMinutes: number;
+  completionPercentage: number;
+  estimatedWeeks: number | null;
+};

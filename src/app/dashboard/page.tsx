@@ -1,19 +1,29 @@
-import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
-import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import { redirect } from 'next/navigation';
-import { ActivityStream } from './components/ActivityStream';
+import { Suspense } from 'react';
 
-export default async function DashboardPage() {
-  const user = await getOrCreateCurrentUserRecord();
-  if (!user) {
-    redirect('/sign-in?redirect_url=/dashboard');
-  }
+import {
+  DashboardContent,
+  DashboardContentSkeleton,
+} from './components/DashboardContent';
 
-  const summaries = await getPlanSummariesForUser(user.id);
-
+/**
+ * Dashboard page with Suspense boundary for data-dependent content.
+ *
+ * Static elements (header with title and subtitle) render immediately.
+ * ResumeLearningHero, ActivityFeedClient, and ActivityStreamSidebar wait for user plan data.
+ */
+export default function DashboardPage() {
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-      <ActivityStream summaries={summaries} />
+      {/* Static header - renders immediately */}
+      <header className="mb-6">
+        <h1>Activity Feed</h1>
+        <p className="subtitle">Your learning journey, moment by moment</p>
+      </header>
+
+      {/* Data-dependent content - wrapped in Suspense */}
+      <Suspense fallback={<DashboardContentSkeleton />}>
+        <DashboardContent />
+      </Suspense>
     </div>
   );
 }
