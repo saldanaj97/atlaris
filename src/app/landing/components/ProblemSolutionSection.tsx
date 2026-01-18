@@ -31,7 +31,7 @@ export function ProblemSolutionSection() {
             className="text-foreground mb-4 text-4xl font-bold md:text-5xl"
           >
             Most people don&apos;t fail to learn.{' '}
-            <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+            <span className="from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent">
               They fail to start.
             </span>
           </h2>
@@ -110,7 +110,17 @@ export function ProblemSolutionSection() {
   );
 }
 
-function ProblemItem({ children }: { children: React.ReactNode }) {
+interface ItemProps {
+  children: React.ReactNode;
+}
+
+/**
+ * Displays a problem item in the problem-solution comparison section.
+ * Renders a list item with an X icon and the provided children content.
+ *
+ * @param children - The content to display as the problem description
+ */
+function ProblemItem({ children }: ItemProps) {
   return (
     <li className="flex items-start gap-3">
       <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-rose-100 to-red-100 shadow-sm">
@@ -121,7 +131,13 @@ function ProblemItem({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SolutionItem({ children }: { children: React.ReactNode }) {
+/**
+ * Displays a solution item in the problem-solution comparison section.
+ * Renders a list item with a checkmark icon and the provided children content.
+ *
+ * @param children - The content to display as the solution description
+ */
+function SolutionItem({ children }: ItemProps) {
   return (
     <li className="flex items-start gap-3">
       <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-green-100 shadow-sm">

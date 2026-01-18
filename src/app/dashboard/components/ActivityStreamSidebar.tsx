@@ -1,104 +1,14 @@
-'use client';
-
 import { PlanSummary } from '@/lib/types/db';
-import { BookOpen, Calendar, Clock, Play } from 'lucide-react';
+import { BookOpen, Calendar, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { ScheduledEvent } from '../types';
-import {
-  formatEstimatedTime,
-  getEventTypeConfig,
-  getRelativeTime,
-} from './activity-utils';
+import { getEventTypeConfig, getRelativeTime } from './activity-utils';
+// TODO: Remove mock data
+import { scheduledEventsFixture } from '../../../../tests/fixtures/scheduledEventsFixture';
 
 interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;
   upcomingEvents?: ScheduledEvent[];
-}
-
-const mockScheduledEvents: ScheduledEvent[] = [
-  {
-    id: 'event-1',
-    title: 'Continue current module',
-    type: 'milestone',
-    dateTime: new Date(Date.now() + 1000 * 60 * 60 * 3),
-    duration: '30m',
-    courseName: 'Current Learning Plan',
-    isUrgent: true,
-  },
-  {
-    id: 'event-2',
-    title: 'Weekly review session',
-    type: 'assignment',
-    dateTime: new Date(Date.now() + 1000 * 60 * 60 * 24),
-    courseName: 'Learning Goals',
-  },
-  {
-    id: 'event-3',
-    title: 'Progress checkpoint',
-    type: 'quiz',
-    dateTime: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2),
-    duration: '15m',
-    courseName: 'Self Assessment',
-  },
-];
-
-function ContinueLearningCard({ plan }: { plan: PlanSummary }) {
-  const progress = Math.round(plan.completion * 100);
-  const currentModule =
-    plan.modules.find((m, idx) => {
-      const previousComplete = plan.modules
-        .slice(0, idx)
-        .every((prev) => prev.order <= m.order);
-      return previousComplete && idx < plan.modules.length;
-    }) ?? plan.modules[0];
-
-  return (
-    <div className="rounded-xl bg-gradient-to-b from-emerald-500 to-blue-500 p-5 shadow-sm">
-      {/* Course Info */}
-      <div>
-        <h3 className="mb-1 text-base font-semibold text-white">
-          {plan.plan.topic}
-        </h3>
-        <p className="mb-4 text-sm text-white/80">
-          {currentModule?.title ?? 'Getting started'}
-        </p>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="mb-3">
-        <div className="mb-1.5 flex items-center justify-between text-sm">
-          <span className="text-white">Progress</span>
-          <span className="font-medium text-white">{progress}%</span>
-        </div>
-        <div className="h-2 overflow-hidden rounded-full bg-white/20">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="mb-4 flex items-center justify-between text-xs text-white/80">
-        <span>
-          {plan.completedModules} of {plan.modules.length} modules
-        </span>
-        <span className="flex items-center gap-1">
-          <Clock className="h-3 w-3" />
-          {formatEstimatedTime(plan.totalMinutes, plan.completedMinutes)}
-        </span>
-      </div>
-
-      {/* Continue Button */}
-      <Link
-        href={`/plans/${plan.plan.id}`}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/20 px-4 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/30"
-      >
-        <Play className="h-4 w-4" />
-        Continue Learning
-      </Link>
-    </div>
-  );
 }
 
 function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
@@ -178,13 +88,22 @@ function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
         })}
       </div>
 
-      {/* View All Link */}
-      <Link
-        href="/plans"
-        className="mt-4 block w-full rounded-lg border border-white/20 bg-white/10 py-2 text-center text-sm font-medium text-zinc-600 transition-colors hover:bg-white/20 dark:text-zinc-400 dark:hover:bg-white/5"
-      >
-        View All Plans
-      </Link>
+      {/* Action Buttons - Side by side when space allows */}
+      <div className="mt-4 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
+        <Link
+          href="/plans"
+          className="flex items-center justify-center rounded-lg border border-white/20 bg-white/10 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-white/20 dark:text-zinc-400 dark:hover:bg-white/5"
+        >
+          View All Plans
+        </Link>
+        <Link
+          href="/plans/new"
+          className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r py-2 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
+        >
+          <Plus className="h-4 w-4" />
+          New Plan
+        </Link>
+      </div>
     </div>
   );
 }
@@ -215,16 +134,15 @@ function EmptyStateCard() {
 
 export function ActivityStreamSidebar({
   activePlan,
-  upcomingEvents = mockScheduledEvents,
+  upcomingEvents = scheduledEventsFixture,
 }: ActivityStreamSidebarProps) {
   return (
     <aside className="flex w-full flex-col gap-4">
       {activePlan ? (
-        <ContinueLearningCard plan={activePlan} />
+        <UpcomingScheduleCard events={upcomingEvents} />
       ) : (
         <EmptyStateCard />
       )}
-      <UpcomingScheduleCard events={upcomingEvents} />
     </aside>
   );
 }

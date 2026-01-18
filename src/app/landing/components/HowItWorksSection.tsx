@@ -74,18 +74,18 @@ function StepCard({
     <div
       className={`group relative overflow-hidden rounded-3xl border p-8 backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl ${
         emphasized
-          ? 'border-purple-200/50 bg-gradient-to-br from-purple-50/80 to-white/60 shadow-xl'
+          ? 'border-primary/30 from-primary/10 bg-gradient-to-br to-white/60 shadow-xl'
           : 'border-white/50 bg-white/40 shadow-lg'
       }`}
     >
       {/* Decorative glow */}
-      <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-20 blur-2xl transition group-hover:opacity-40"></div>
+      <div className="from-primary/40 to-accent/30 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-20 blur-2xl transition group-hover:opacity-40"></div>
 
       <div className="mb-4 flex items-center gap-3">
         <span
           className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold shadow-lg ${
             emphasized
-              ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
+              ? 'from-primary to-accent bg-gradient-to-br text-white'
               : 'bg-gradient-to-br from-gray-100 to-white text-gray-600'
           }`}
           aria-hidden="true"
@@ -105,9 +105,14 @@ function StepCard({
   );
 }
 
+interface Module {
+  title: string;
+  items: string[];
+}
+
 /** Visual 1: Notion-like outline */
 function CurriculumVisual() {
-  const modules = [
+  const modules: Module[] = [
     { title: 'Week 1-2: Foundations', items: ['Type basics', 'Interfaces'] },
     { title: 'Week 3-4: Advanced Types', items: ['Generics', 'Utility types'] },
     { title: 'Week 5-6: Real-world', items: ['React + TS', 'Testing'] },
@@ -115,9 +120,9 @@ function CurriculumVisual() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm">
-      <div className="border-b border-purple-100 bg-gradient-to-r from-purple-50/80 to-pink-50/80 px-4 py-3">
+      <div className="border-primary/20 from-primary/10 to-accent/10 border-b bg-gradient-to-r px-4 py-3">
         <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-purple-500" />
+          <FileText className="text-primary h-4 w-4" />
           <span className="text-sm font-medium text-gray-700">
             TypeScript Roadmap
           </span>
@@ -127,7 +132,7 @@ function CurriculumVisual() {
         {modules.map((module, idx) => (
           <div key={idx} className="space-y-1.5">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
-              <span className="text-purple-400">▼</span>
+              <span className="text-primary">▼</span>
               {module.title}
             </div>
             {module.items.map((item, itemIdx) => (
@@ -135,7 +140,7 @@ function CurriculumVisual() {
                 key={itemIdx}
                 className="ml-5 flex items-center gap-2 text-sm text-gray-500"
               >
-                <div className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
+                <div className="from-primary to-accent h-1.5 w-1.5 rounded-full bg-gradient-to-r" />
                 {item}
               </div>
             ))}
@@ -151,7 +156,7 @@ function ResourcesVisual() {
   return (
     <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm">
       {/* Event header */}
-      <div className="border-b border-purple-100 bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3">
+      <div className="from-primary to-accent border-primary/20 border-b bg-gradient-to-r px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-white">
             TypeScript Generics
@@ -163,18 +168,21 @@ function ResourcesVisual() {
       {/* Event details */}
       <div className="space-y-3 p-4">
         <div className="flex items-center gap-2 text-sm text-gray-600">
-          <CalendarCheck className="h-4 w-4 text-purple-500" />
+          <CalendarCheck className="text-primary h-4 w-4" />
           <span>1 hour · Focus time</span>
         </div>
 
-        <div className="rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50/50 to-pink-50/50 p-3">
-          <p className="mb-2 text-xs font-medium text-purple-600 uppercase">
+        <div className="border-primary/20 from-primary/10 to-accent/10 rounded-xl border bg-gradient-to-br p-3">
+          <p className="text-primary mb-2 text-xs font-medium uppercase">
             Resources
           </p>
           <div className="space-y-2">
-            <ResourceLink label="Official TS Docs: Generics" type="article" />
-            <ResourceLink label="Generics in 10 mins" type="video" />
-            <ResourceLink label="Practice exercises" type="exercise" />
+            <ResourceLinkMock
+              label="Official TS Docs: Generics"
+              type="article"
+            />
+            <ResourceLinkMock label="Generics in 10 mins" type="video" />
+            <ResourceLinkMock label="Practice exercises" type="exercise" />
           </div>
         </div>
       </div>
@@ -182,7 +190,7 @@ function ResourcesVisual() {
   );
 }
 
-function ResourceLink({ label, type }: { label: string; type: string }) {
+function ResourceLinkMock({ label, type }: { label: string; type: string }) {
   const icons: Record<string, string> = {
     article: '📄',
     video: '▶️',
@@ -190,10 +198,10 @@ function ResourceLink({ label, type }: { label: string; type: string }) {
   };
 
   return (
-    <div className="flex items-center gap-2 text-sm text-gray-600 transition hover:text-purple-600">
+    <div className="hover:text-primary flex items-center gap-2 text-sm text-gray-600 transition">
       <span>{icons[type]}</span>
       <span className="truncate">{label}</span>
-      <ExternalLink className="ml-auto h-3.5 w-3.5 flex-shrink-0 text-purple-400" />
+      <ExternalLink className="text-primary/60 ml-auto h-3.5 w-3.5 flex-shrink-0" />
     </div>
   );
 }
@@ -237,13 +245,13 @@ function SyncVisual() {
 
       {/* Lock screen preview */}
       <div className="mx-auto max-w-[160px] overflow-hidden rounded-2xl border-2 border-white/60 bg-gradient-to-b from-gray-100 to-gray-200 shadow-xl">
-        <div className="bg-gradient-to-r from-purple-100/80 to-pink-100/80 px-3 py-1.5 text-center">
+        <div className="from-primary/20 to-accent/20 bg-gradient-to-r px-3 py-1.5 text-center">
           <span className="text-[10px] font-medium text-gray-600">9:41 AM</span>
         </div>
         <div className="p-3">
           <div className="rounded-xl border border-white/60 bg-white/80 p-3 shadow-md backdrop-blur-sm">
             <div className="flex items-center gap-2">
-              <CalendarCheck className="h-4 w-4 text-purple-500" />
+              <CalendarCheck className="text-primary h-4 w-4" />
               <span className="text-xs font-medium text-gray-700">
                 Coming up
               </span>

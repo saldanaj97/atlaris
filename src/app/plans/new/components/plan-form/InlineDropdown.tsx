@@ -1,12 +1,12 @@
 'use client';
 
+import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown } from 'lucide-react';
 import { useId } from 'react';
-import { cn } from '@/lib/utils';
 import type { DropdownOption } from './types';
 
-type DropdownVariant = 'purple' | 'pink' | 'cyan' | 'rose';
+type DropdownVariant = 'primary' | 'accent' | 'cyan' | 'rose';
 
 interface InlineDropdownProps {
   id?: string;
@@ -25,25 +25,28 @@ const VARIANT_STYLES: Record<
     item: string;
   }
 > = {
-  purple: {
-    pill: 'border-purple-200/60 bg-purple-50/80 text-purple-700 hover:bg-purple-100/80 data-[state=open]:bg-purple-100/80',
-    dropdown: 'border-purple-200/60 bg-white/95',
-    item: 'text-gray-700 hover:bg-purple-50 data-[highlighted]:bg-purple-100 data-[highlighted]:text-purple-800 data-[state=checked]:bg-purple-100 data-[state=checked]:text-purple-800',
+  primary: {
+    pill: 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 data-[state=open]:bg-primary/20 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
+    dropdown:
+      'border-primary/20 bg-white/70 dark:border-border dark:bg-popover',
+    item: 'text-gray-700 hover:bg-primary/10 data-[highlighted]:bg-primary/20 data-[highlighted]:text-primary data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary dark:text-popover-foreground dark:hover:bg-foreground/10 dark:data-[highlighted]:bg-foreground/15 dark:data-[highlighted]:text-foreground dark:data-[state=checked]:bg-primary/20 dark:data-[state=checked]:text-primary',
   },
-  pink: {
-    pill: 'border-pink-200/60 bg-pink-50/80 text-pink-700 hover:bg-pink-100/80 data-[state=open]:bg-pink-100/80',
-    dropdown: 'border-pink-200/60 bg-white/95',
-    item: 'text-gray-700 hover:bg-pink-50 data-[highlighted]:bg-pink-100 data-[highlighted]:text-pink-800 data-[state=checked]:bg-pink-100 data-[state=checked]:text-pink-800',
+  accent: {
+    pill: 'border-accent/30 bg-accent/30 text-accent-foreground hover:bg-accent/50 data-[state=open]:bg-accent/50 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
+    dropdown: 'border-accent/20 bg-white/70 dark:border-border dark:bg-popover',
+    item: 'text-gray-700 hover:bg-accent/30 data-[highlighted]:bg-accent/50 data-[highlighted]:text-accent-foreground data-[state=checked]:bg-accent/50 data-[state=checked]:text-accent-foreground dark:text-popover-foreground dark:hover:bg-foreground/10 dark:data-[highlighted]:bg-foreground/15 dark:data-[highlighted]:text-foreground dark:data-[state=checked]:bg-primary/20 dark:data-[state=checked]:text-primary',
   },
   cyan: {
-    pill: 'border-cyan-200/60 bg-cyan-50/80 text-cyan-700 hover:bg-cyan-100/80 data-[state=open]:bg-cyan-100/80',
-    dropdown: 'border-cyan-200/60 bg-white/95',
-    item: 'text-gray-700 hover:bg-cyan-50 data-[highlighted]:bg-cyan-100 data-[highlighted]:text-cyan-800 data-[state=checked]:bg-cyan-100 data-[state=checked]:text-cyan-800',
+    pill: 'border-cyan-200/60 bg-cyan-50/80 text-cyan-700 hover:bg-cyan-100/80 data-[state=open]:bg-cyan-100/80 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
+    dropdown:
+      'border-cyan-200/40 bg-white/70 dark:border-border dark:bg-popover',
+    item: 'text-gray-700 hover:bg-cyan-50/80 data-[highlighted]:bg-cyan-100/80 data-[highlighted]:text-cyan-800 data-[state=checked]:bg-cyan-100/80 data-[state=checked]:text-cyan-800 dark:text-popover-foreground dark:hover:bg-foreground/10 dark:data-[highlighted]:bg-foreground/15 dark:data-[highlighted]:text-foreground dark:data-[state=checked]:bg-primary/20 dark:data-[state=checked]:text-primary',
   },
   rose: {
-    pill: 'border-rose-200/60 bg-rose-50/80 text-rose-700 hover:bg-rose-100/80 data-[state=open]:bg-rose-100/80',
-    dropdown: 'border-rose-200/60 bg-white/95',
-    item: 'text-gray-700 hover:bg-rose-50 data-[highlighted]:bg-rose-100 data-[highlighted]:text-rose-800 data-[state=checked]:bg-rose-100 data-[state=checked]:text-rose-800',
+    pill: 'border-rose-200/60 bg-rose-50/80 text-rose-700 hover:bg-rose-100/80 data-[state=open]:bg-rose-100/80 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
+    dropdown:
+      'border-rose-200/40 bg-white/70 dark:border-border dark:bg-popover',
+    item: 'text-gray-700 hover:bg-rose-50/80 data-[highlighted]:bg-rose-100/80 data-[highlighted]:text-rose-800 data-[state=checked]:bg-rose-100/80 data-[state=checked]:text-rose-800 dark:text-popover-foreground dark:hover:bg-foreground/10 dark:data-[highlighted]:bg-foreground/15 dark:data-[highlighted]:text-foreground dark:data-[state=checked]:bg-primary/20 dark:data-[state=checked]:text-primary',
   },
 };
 
@@ -64,7 +67,7 @@ export function InlineDropdown({
   value,
   icon,
   onChange,
-  variant = 'purple',
+  variant = 'primary',
 }: InlineDropdownProps) {
   const generatedId = useId();
   const componentId = id ?? generatedId;
@@ -77,7 +80,7 @@ export function InlineDropdown({
         id={componentId}
         className={cn(
           'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm backdrop-blur-sm transition outline-none',
-          'focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
+          'focus-visible:ring-ring dark:focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2',
           styles.pill
         )}
       >
@@ -96,7 +99,7 @@ export function InlineDropdown({
           sideOffset={8}
           align="start"
           className={cn(
-            'z-50 min-w-[180px] overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl',
+            'z-50 min-w-[180px] overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-2xl',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -110,7 +113,7 @@ export function InlineDropdown({
                 key={option.value}
                 value={option.value}
                 className={cn(
-                  'w-full cursor-default rounded-xl px-3 py-2 text-left transition outline-none',
+                  'w-full cursor-default rounded-xl px-3 py-2 text-left transition-colors outline-none',
                   styles.item
                 )}
               >
@@ -119,7 +122,7 @@ export function InlineDropdown({
                     {option.label}
                   </span>
                   {option.description && (
-                    <span className="block text-xs text-gray-500">
+                    <span className="text-muted-foreground block text-xs">
                       {option.description}
                     </span>
                   )}

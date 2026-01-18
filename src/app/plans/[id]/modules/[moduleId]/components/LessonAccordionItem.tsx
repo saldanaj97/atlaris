@@ -65,7 +65,7 @@ const RESOURCE_CONFIG: Record<
     label: 'Documentation',
     icon: FileText,
     badgeClass:
-      'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400',
+      'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary',
   },
   other: {
     label: 'Resource',
@@ -104,8 +104,12 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
           {block.content}
         </p>
       );
-    default:
-      return null;
+    default: {
+      // Exhaustive check - TypeScript will error at compile time if a new ContentBlockType is added
+      // but this switch statement isn't updated. The _exhaustiveCheck ensures we handle all cases.
+      const _exhaustiveCheck: never = block.type;
+      return _exhaustiveCheck;
+    }
   }
 }
 
@@ -186,7 +190,7 @@ export function LessonAccordionItem({
     if (isCompleted) {
       return 'border-green-200/50 bg-green-50/30 backdrop-blur-sm dark:border-green-800/30 dark:bg-green-950/20';
     }
-    return 'border-white/40 bg-white/30 shadow-lg backdrop-blur-xl hover:border-purple-200 hover:shadow-xl dark:border-stone-800/50 dark:bg-stone-900/30 dark:hover:border-purple-800';
+    return 'border-white/40 bg-white/30 shadow-lg backdrop-blur-xl hover:border-primary/30 hover:shadow-xl dark:border-stone-800/50 dark:bg-stone-900/30 dark:hover:border-primary/30';
   };
 
   return (
@@ -210,7 +214,7 @@ export function LessonAccordionItem({
                   ? 'bg-stone-200 text-stone-400 dark:bg-stone-700 dark:text-stone-500'
                   : isCompleted
                     ? 'bg-green-500 text-white'
-                    : 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400'
+                    : 'bg-primary/20 text-primary dark:bg-primary/20 dark:text-primary'
               }`}
             >
               {isLocked ? (
@@ -310,7 +314,7 @@ export function LessonAccordionItem({
                           href={resource.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="group/resource flex items-start gap-3 rounded-xl border border-white/40 bg-white/50 p-4 transition-all hover:border-purple-300 hover:bg-white/70 hover:shadow-md dark:border-stone-700/50 dark:bg-stone-800/50 dark:hover:border-purple-700 dark:hover:bg-stone-800/70"
+                          className="group/resource hover:border-primary/30 dark:hover:border-primary/30 flex items-start gap-3 rounded-xl border border-white/40 bg-white/50 p-4 transition-all hover:bg-white/70 hover:shadow-md dark:border-stone-700/50 dark:bg-stone-800/50 dark:hover:bg-stone-800/70"
                         >
                           <div
                             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.badgeClass}`}
@@ -319,7 +323,7 @@ export function LessonAccordionItem({
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="mb-1 flex items-center gap-2">
-                              <span className="truncate font-medium text-stone-800 group-hover/resource:text-purple-700 dark:text-stone-200 dark:group-hover/resource:text-purple-400">
+                              <span className="group-hover/resource:text-primary dark:group-hover/resource:text-primary truncate font-medium text-stone-800 dark:text-stone-200">
                                 {resource.title}
                               </span>
                               <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />

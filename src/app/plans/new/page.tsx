@@ -1,22 +1,21 @@
 'use client';
 
 import { PlanDraftView } from '@/app/plans/[id]/components/PlanDraftView';
+import { UnifiedPlanInput } from '@/app/plans/new/components/plan-form';
 import {
   deadlineWeeksToDate,
   getTodayDateString,
-  UnifiedPlanInput,
-  type PlanFormData,
-} from '@/app/plans/new/components/plan-form';
-import {
-  useStreamingPlanGeneration,
-  type StreamingError,
-} from '@/hooks/useStreamingPlanGeneration';
+} from '@/app/plans/new/components/plan-form/helpers';
+import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+
+import type { PlanFormData } from '@/app/plans/new/components/plan-form/types';
+import type { StreamingError } from '@/hooks/useStreamingPlanGeneration';
 
 /**
  * Converts the unified form data to the OnboardingFormValues format
@@ -132,39 +131,39 @@ export default function CreateNewPlanPage() {
   };
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-gradient-to-br from-rose-100 via-purple-50 to-cyan-100">
+    <div className="from-accent/30 via-primary/10 to-accent/20 dark:bg-background fixed inset-0 overflow-hidden bg-gradient-to-br dark:from-transparent dark:via-transparent dark:to-transparent">
       {/* Floating gradient orbs - matching landing page */}
       <div
-        className="absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-60 blur-3xl"
+        className="from-primary/30 to-accent/20 absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br opacity-60 blur-3xl dark:opacity-30"
         aria-hidden="true"
       />
       <div
-        className="absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br from-cyan-200 to-blue-200 opacity-60 blur-3xl"
+        className="from-primary/30 to-accent/20 absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br opacity-60 blur-3xl dark:opacity-30"
         aria-hidden="true"
       />
       <div
-        className="absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl"
+        className="from-primary/20 to-accent/15 absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br opacity-60 blur-3xl dark:opacity-30"
         aria-hidden="true"
       />
 
       <div className="relative z-10 flex h-full flex-col items-center justify-center overflow-y-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex items-center rounded-full border border-purple-200/50 bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
-            <span className="mr-2 h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-            <span className="text-sm font-medium text-purple-700">
+          <div className="dark:border-border dark:bg-card/50 border-primary/30 mb-4 inline-flex items-center rounded-full border bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
+            <span className="from-primary to-accent mr-2 h-2 w-2 rounded-full bg-gradient-to-r" />
+            <span className="text-primary text-sm font-medium">
               AI-Powered Learning Plans
             </span>
           </div>
 
-          <h1 className="mb-3 text-4xl font-bold tracking-tight text-gray-900 md:text-5xl">
+          <h1 className="text-foreground mb-3 text-4xl font-bold tracking-tight md:text-5xl">
             What do you want to{' '}
-            <span className="bg-gradient-to-r from-purple-600 via-pink-500 to-rose-500 bg-clip-text text-transparent">
+            <span className="from-primary via-accent to-primary bg-gradient-to-r bg-clip-text text-transparent">
               learn?
             </span>
           </h1>
 
-          <p className="mx-auto max-w-xl text-lg text-gray-600">
+          <p className="text-muted-foreground mx-auto max-w-xl text-lg">
             Describe your learning goal. We&apos;ll create a personalized,
             time-blocked schedule that syncs to your calendar.
           </p>

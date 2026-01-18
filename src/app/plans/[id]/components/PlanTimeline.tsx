@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import {
   Accordion,
   AccordionContent,
@@ -19,6 +18,7 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useMemo } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
@@ -73,7 +73,7 @@ const RESOURCE_CONFIG: Record<
     label: 'Documentation',
     icon: FileText,
     badgeClass:
-      'bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400',
+      'bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400',
   },
   other: {
     label: 'Resource',
@@ -182,7 +182,7 @@ export function PlanTimeline({
       {/* Timeline Container */}
       <div className="relative">
         {/* Vertical Line - positioned at center of the 64px (w-16) node column */}
-        <div className="absolute top-0 bottom-0 left-8 w-0.5 -translate-x-1/2 bg-gradient-to-b from-purple-200 via-purple-400 to-stone-200 dark:from-purple-800 dark:via-purple-600 dark:to-stone-700" />
+        <div className="from-primary/40 via-primary dark:from-primary/60 dark:via-primary absolute top-0 bottom-0 left-8 w-0.5 -translate-x-1/2 bg-gradient-to-b to-stone-200 dark:to-stone-700" />
 
         <Accordion
           type="multiple"
@@ -205,7 +205,7 @@ export function PlanTimeline({
                       mod.status === 'completed'
                         ? 'border-green-500 text-green-500'
                         : mod.status === 'active'
-                          ? 'scale-110 border-purple-500 text-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.4)]'
+                          ? 'border-primary text-primary scale-110 shadow-[0_0_12px_hsl(var(--primary)/0.4)]'
                           : 'border-stone-300 text-stone-300 dark:border-stone-600 dark:text-stone-600'
                     }`}
                   >
@@ -213,7 +213,7 @@ export function PlanTimeline({
                       <CheckCircle2 size={14} className="fill-green-100" />
                     )}
                     {mod.status === 'active' && (
-                      <div className="h-2 w-2 animate-pulse rounded-full bg-purple-500" />
+                      <div className="bg-primary h-2 w-2 animate-pulse rounded-full" />
                     )}
                     {mod.status === 'locked' && <Lock size={10} />}
                   </div>
@@ -225,7 +225,7 @@ export function PlanTimeline({
                   disabled={isLocked}
                   className={`flex-1 rounded-2xl border transition-all duration-300 ${
                     mod.status === 'active'
-                      ? 'border-purple-200 bg-white shadow-md dark:border-purple-800 dark:bg-stone-900'
+                      ? 'border-primary/30 dark:border-primary/50 bg-white shadow-md dark:bg-stone-900'
                       : 'border-stone-100 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900'
                   }`}
                 >
@@ -240,7 +240,7 @@ export function PlanTimeline({
                         <span
                           className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                             mod.status === 'active'
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+                              ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
                               : mod.status === 'completed'
                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
                                 : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
@@ -300,7 +300,7 @@ export function PlanTimeline({
                                 className={`rounded-xl border p-4 transition-colors ${
                                   isCompleted
                                     ? 'border-green-200 bg-green-50/50 dark:border-green-800/50 dark:bg-green-950/20'
-                                    : 'border-stone-100 bg-stone-50/50 hover:border-purple-200 dark:border-stone-800 dark:bg-stone-800/50 dark:hover:border-purple-800'
+                                    : 'hover:border-primary/30 dark:hover:border-primary/50 border-stone-100 bg-stone-50/50 dark:border-stone-800 dark:bg-stone-800/50'
                                 }`}
                               >
                                 <div className="flex items-start justify-between gap-3">
@@ -354,7 +354,7 @@ export function PlanTimeline({
                                           href={resource.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:border-purple-700 dark:hover:text-purple-400"
+                                          className="hover:border-primary/40 hover:text-primary dark:hover:border-primary/60 dark:hover:text-primary inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 transition-colors dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
                                         >
                                           <Icon size={14} />
                                           {resource.title}
@@ -377,7 +377,7 @@ export function PlanTimeline({
                       <div className="mt-4 flex justify-end">
                         <Link
                           href={`/plans/${planId}/modules/${mod.id}`}
-                          className="inline-flex items-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50"
+                          className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 dark:border-primary/50 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors"
                         >
                           View Full Module
                           <ArrowRight size={16} />

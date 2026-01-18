@@ -38,7 +38,7 @@ interface ModuleHeaderProps {
 
 // Gradient presets based on module order for visual variety
 const MODULE_GRADIENTS = [
-  'from-purple-600 via-indigo-500 to-blue-500',
+  'from-primary via-accent to-primary',
   'from-emerald-600 via-teal-500 to-cyan-500',
   'from-amber-600 via-orange-500 to-red-500',
   'from-pink-600 via-rose-500 to-red-500',
@@ -93,7 +93,7 @@ export function ModuleHeader({
           <li>
             <Link
               href={`/plans/${planId}`}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-purple-600 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-purple-400"
+              className="hover:text-primary dark:hover:text-primary inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium text-stone-600 transition-colors hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span className="max-w-[180px] truncate sm:max-w-[280px]">
@@ -106,7 +106,7 @@ export function ModuleHeader({
           </li>
           <li>
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1.5 font-medium text-purple-700 transition-colors hover:bg-purple-100 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:outline-none dark:bg-purple-950/50 dark:text-purple-300 dark:hover:bg-purple-950/70 dark:focus:ring-offset-stone-900">
+              <DropdownMenuTrigger className="bg-primary/10 text-primary hover:bg-primary/20 focus:ring-ring dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none dark:focus:ring-offset-stone-900">
                 Module {module.order}
                 <ChevronDown className="h-3.5 w-3.5" />
               </DropdownMenuTrigger>
@@ -130,9 +130,7 @@ export function ModuleHeader({
                           isLocked ? '#' : `/plans/${planId}/modules/${m.id}`
                         }
                         className={`flex items-center gap-2 ${
-                          isCurrent
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300'
-                            : ''
+                          isCurrent ? 'bg-primary/20 text-primary' : ''
                         } ${isLocked ? 'pointer-events-none text-stone-400 dark:text-stone-500' : ''}`}
                         onClick={
                           isLocked ? (e) => e.preventDefault() : undefined
@@ -142,13 +140,13 @@ export function ModuleHeader({
                         {isLocked ? (
                           <Lock className="h-4 w-4 flex-shrink-0 text-stone-400 dark:text-stone-500" />
                         ) : (
-                          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs font-medium text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                          <span className="bg-primary/20 text-primary flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-medium">
                             {m.order}
                           </span>
                         )}
                         <span className="truncate">{m.title}</span>
                         {isCurrent && !isLocked && (
-                          <CheckCircle2 className="ml-auto h-4 w-4 flex-shrink-0 text-purple-600 dark:text-purple-400" />
+                          <CheckCircle2 className="text-primary ml-auto h-4 w-4 flex-shrink-0" />
                         )}
                       </Link>
                     </DropdownMenuItem>
@@ -162,7 +160,7 @@ export function ModuleHeader({
 
       {/* Hero Card with Glassmorphism */}
       <div
-        className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-8 shadow-2xl shadow-purple-500/20`}
+        className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} shadow-primary/20 p-8 shadow-2xl`}
       >
         {/* Decorative glassmorphism overlay */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjA5IDAgNi0uNzc4IDguNTQzLTIuMTQ3QzUzLjA1MSA0Ny41OCA1OCA0MC40MTYgNTggMzJjMC04LjI4NC02LjcxNi0xNS0xNS0xNS0xLjU5MyAwLTMuMTI4LjI0OC00LjU3My43MDlDMzcuMjkgMTguMjQ5IDM2LjY1MiAxOCAzNiAxOHoiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L2c+PC9zdmc+')] opacity-30" />

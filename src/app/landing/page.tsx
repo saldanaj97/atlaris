@@ -1,14 +1,13 @@
-'use client';
-
 import {
   FeaturesSection,
-  FinalCtaSection,
-  HeroSection,
   HowItWorksSection,
   ProblemSolutionSection,
   UseCasesSection,
 } from './components';
-import { useLandingAnalytics } from './hooks/useLandingAnalytics';
+import {
+  FinalCtaSectionWithAnalytics,
+  HeroSectionWithAnalytics,
+} from './components/LandingAnalyticsWrapper';
 
 /**
  * Landing page for Atlaris - AI-powered learning roadmap and schedule generator.
@@ -17,18 +16,20 @@ import { useLandingAnalytics } from './hooks/useLandingAnalytics';
  * - Glassmorphism design with soft gradients and transparency
  * - AI-powered insights and crystal clarity
  * - Modern, airy, and intuitive interface
+ *
+ * This is a server component for optimal static generation. Analytics tracking
+ * is handled by client component wrappers (HeroSectionWithAnalytics and
+ * FinalCtaSectionWithAnalytics).
  */
 export default function LandingPage() {
-  const { trackHeroCta, trackFooterCta } = useLandingAnalytics();
-
   return (
-    <div className="mx-auto min-h-screen bg-gradient-to-br from-rose-100 via-purple-50 to-cyan-100 font-sans text-gray-800">
-      <HeroSection onCtaClick={trackHeroCta} />
+    <div className="via-primary/10 mx-auto min-h-screen bg-gradient-to-br from-rose-100 to-cyan-100 font-sans text-gray-800">
+      <HeroSectionWithAnalytics />
       <ProblemSolutionSection />
       <FeaturesSection />
       <HowItWorksSection />
       <UseCasesSection />
-      <FinalCtaSection onCtaClick={trackFooterCta} />
+      <FinalCtaSectionWithAnalytics />
     </div>
   );
 }

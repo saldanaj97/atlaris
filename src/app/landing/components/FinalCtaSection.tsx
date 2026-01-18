@@ -14,7 +14,7 @@ export function FinalCtaSection({ onCtaClick }: FinalCtaSectionProps) {
       className="relative overflow-hidden py-24 lg:py-32"
       aria-labelledby="final-cta-heading"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500"></div>
+      <div className="from-primary via-accent absolute inset-0 bg-gradient-to-br to-rose-500"></div>
       <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
 
       {/* Glass overlay pattern */}
@@ -37,7 +37,7 @@ export function FinalCtaSection({ onCtaClick }: FinalCtaSectionProps) {
           </p>
           <Button
             asChild
-            className="h-auto rounded-2xl bg-white px-8 py-4 font-semibold text-purple-600 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+            className="text-primary h-auto rounded-2xl bg-white px-8 py-4 font-semibold shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
           >
             <Link href="/plans/new" onClick={onCtaClick}>
               Start Free Trial

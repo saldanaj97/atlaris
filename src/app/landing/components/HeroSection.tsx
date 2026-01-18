@@ -18,22 +18,22 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
     >
       {/* Floating gradient orbs */}
       <div
-        className="absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-60 blur-3xl"
+        className="from-primary/40 to-accent/30 absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br opacity-60 blur-3xl"
         aria-hidden="true"
       ></div>
       <div
-        className="absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br from-cyan-200 to-blue-200 opacity-60 blur-3xl"
+        className="from-primary/30 to-accent/20 absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br opacity-60 blur-3xl"
         aria-hidden="true"
       ></div>
       <div
-        className="absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl"
+        className="from-destructive/20 to-accent/20 absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br opacity-60 blur-3xl"
         aria-hidden="true"
       ></div>
 
       <div className="relative z-10 mx-auto flex flex-col items-center px-6 pt-4 text-center lg:pt-8">
-        <div className="mb-8 inline-flex items-center rounded-full border border-purple-200/50 bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
-          <span className="mr-2 h-2 w-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></span>
-          <span className="text-sm font-medium text-purple-700">
+        <div className="border-primary/30 mb-8 inline-flex items-center rounded-full border bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
+          <span className="from-primary to-accent mr-2 h-2 w-2 rounded-full bg-gradient-to-r"></span>
+          <span className="text-primary text-sm font-medium">
             Now with AI-powered insights
           </span>
         </div>
@@ -43,7 +43,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
           className="mb-8 max-w-4xl text-5xl leading-tight font-bold tracking-tight text-gray-900 md:text-6xl lg:text-7xl"
         >
           Learn with
-          <span className="bg-gradient-to-r from-purple-600 via-pink-500 to-rose-500 bg-clip-text text-transparent">
+          <span className="from-primary via-accent to-destructive bg-gradient-to-r bg-clip-text text-transparent">
             {' '}
             crystal clarity
           </span>
@@ -55,10 +55,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
           it.
         </p>
 
-        <Button
-          asChild
-          className="group h-auto rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 px-8 py-4 text-white shadow-xl shadow-purple-500/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30"
-        >
+        <Button asChild variant="cta" className="group h-auto px-8 py-4">
           <Link href="/plans/new" onClick={onCtaClick}>
             <span className="font-medium">Start Free Trial</span>
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -68,14 +65,14 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
         {/* Glassmorphism card preview */}
         <div className="relative mt-20 w-full max-w-5xl">
           {/* Background glow */}
-          <div className="absolute -inset-4 rounded-3xl bg-gradient-to-r from-purple-400/30 via-pink-400/30 to-rose-400/30 blur-xl"></div>
+          <div className="from-primary/30 via-accent/30 to-accent/30 absolute -inset-4 rounded-3xl bg-gradient-to-r blur-xl"></div>
 
           <div className="relative overflow-hidden rounded-3xl border border-white/40 bg-white/30 p-2 shadow-2xl backdrop-blur-xl">
             <div className="rounded-2xl bg-gradient-to-br from-white/80 to-white/40 p-6">
-              <div className="aspect-video overflow-hidden rounded-xl bg-gradient-to-br from-purple-100/50 to-pink-100/50">
+              <div className="from-primary/20 to-accent/20 aspect-video overflow-hidden rounded-xl bg-gradient-to-br">
                 <div className="flex h-full items-center justify-center">
                   <div className="text-center">
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-400 to-pink-400 shadow-lg">
+                    <div className="from-primary to-accent mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg">
                       <svg
                         className="h-8 w-8 text-white"
                         fill="none"

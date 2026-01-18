@@ -37,7 +37,7 @@ export function ModuleDetailPageError({
           {planId && (
             <Link
               href={`/plans/${planId}`}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-700"
+              className="bg-primary hover:bg-primary/90 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-white transition"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Plan

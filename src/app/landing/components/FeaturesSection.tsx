@@ -11,7 +11,7 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
-    gradient: 'from-purple-400 to-purple-500',
+    gradient: 'from-primary to-primary-dark',
     icon: '✨',
     title: 'AI-Powered Learning',
     description:
@@ -42,7 +42,7 @@ export function FeaturesSection() {
     >
       <div className="mx-auto max-w-screen-xl px-6">
         <div className="mb-16 text-center">
-          <span className="mb-4 inline-block rounded-full bg-purple-100 px-4 py-1.5 text-sm font-medium text-purple-700">
+          <span className="bg-primary/20 text-primary-foreground mb-4 inline-block rounded-full px-4 py-1.5 text-sm font-medium">
             Features
           </span>
           <h2
@@ -50,7 +50,7 @@ export function FeaturesSection() {
             className="mb-4 text-4xl font-bold text-gray-900 md:text-5xl"
           >
             Beautifully{' '}
-            <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+            <span className="from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent">
               Transparent
             </span>
           </h2>

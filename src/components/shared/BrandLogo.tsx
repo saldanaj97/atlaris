@@ -22,7 +22,7 @@ export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
       aria-label="Atlaris - Go to homepage"
     >
       <div
-        className={`flex items-center justify-center bg-gradient-to-br from-purple-400 to-pink-400 text-white shadow-lg ${
+        className={`from-primary to-accent bg-primary flex items-center justify-center bg-gradient-to-br text-white shadow-lg ${
           isSmall ? 'h-8 w-8 rounded-lg' : 'h-9 w-9 rounded-xl'
         }`}
       >
@@ -42,7 +42,7 @@ export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
         </svg>
       </div>
       <span
-        className={`bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text font-semibold text-transparent ${
+        className={`from-primary to-accent bg-gradient-to-r bg-clip-text font-semibold text-transparent ${
           isSmall ? 'text-lg' : 'text-xl'
         }`}
       >

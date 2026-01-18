@@ -10,43 +10,51 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react';
+import type React from 'react';
 
 import type { ActivityItem } from '../types';
 
-export function ActivityCard({ activity }: { activity: ActivityItem }) {
-  const typeConfig = {
-    session: {
-      icon: BookOpen,
-      color: 'bg-purple-100 text-purple-600',
-      borderColor: 'border-l-purple-400',
-    },
-    milestone: {
-      icon: Trophy,
-      color: 'bg-amber-100 text-amber-600',
-      borderColor: 'border-l-amber-400',
-    },
-    export: {
-      icon: ExternalLink,
-      color: 'bg-emerald-100 text-emerald-600',
-      borderColor: 'border-l-emerald-400',
-    },
-    streak: {
-      icon: Zap,
-      color: 'bg-rose-100 text-rose-600',
-      borderColor: 'border-l-rose-400',
-    },
-    progress: {
-      icon: TrendingUp,
-      color: 'bg-cyan-100 text-cyan-600',
-      borderColor: 'border-l-cyan-400',
-    },
-    recommendation: {
-      icon: Sparkles,
-      color: 'bg-violet-100 text-violet-600',
-      borderColor: 'border-l-violet-400',
-    },
-  };
+const typeConfig: Record<
+  ActivityItem['type'],
+  {
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    borderColor: string;
+  }
+> = {
+  session: {
+    icon: BookOpen,
+    color: 'bg-indigo-100 text-indigo-600',
+    borderColor: 'border-l-indigo-400',
+  },
+  milestone: {
+    icon: Trophy,
+    color: 'bg-amber-100 text-amber-600',
+    borderColor: 'border-l-amber-400',
+  },
+  export: {
+    icon: ExternalLink,
+    color: 'bg-emerald-100 text-emerald-600',
+    borderColor: 'border-l-emerald-400',
+  },
+  streak: {
+    icon: Zap,
+    color: 'bg-rose-100 text-rose-600',
+    borderColor: 'border-l-rose-400',
+  },
+  progress: {
+    icon: TrendingUp,
+    color: 'bg-cyan-100 text-cyan-600',
+    borderColor: 'border-l-cyan-400',
+  },
+  recommendation: {
+    icon: Sparkles,
+    color: 'bg-violet-100 text-violet-600',
+    borderColor: 'border-l-violet-400',
+  },
+};
 
+export function ActivityCard({ activity }: { activity: ActivityItem }) {
   const config = typeConfig[activity.type];
   const Icon = config.icon;
 

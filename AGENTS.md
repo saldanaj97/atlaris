@@ -36,6 +36,8 @@ For database client usage: @docs/rules/database/client-usage.md
 
 For AI models and availability: @docs/rules/ai/available-models.md
 
+For styling, colors, and glassmorphism guidelines: @docs/rules/styles/styling.md
+
 ## Architecture Documentation
 
 For deeper architectural understanding:

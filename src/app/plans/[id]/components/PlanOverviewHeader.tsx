@@ -23,8 +23,15 @@ interface PlanOverviewProps {
 // Gradient presets based on skill level for visual variety
 const SKILL_GRADIENTS: Record<string, string> = {
   beginner: 'from-emerald-600 via-teal-500 to-cyan-500',
-  intermediate: 'from-purple-600 via-pink-500 to-rose-500',
+  intermediate: 'from-primary via-accent to-rose-500',
   advanced: 'from-amber-600 via-orange-500 to-red-500',
+};
+
+// Shadow color presets matching skill level gradients
+const SKILL_SHADOWS: Record<string, string> = {
+  beginner: 'shadow-emerald/20',
+  intermediate: 'shadow-primary/20',
+  advanced: 'shadow-amber/20',
 };
 
 /**
@@ -76,6 +83,8 @@ export function PlanOverviewHeader({ plan, statuses }: PlanOverviewProps) {
 
   const gradient =
     SKILL_GRADIENTS[plan.skillLevel] ?? SKILL_GRADIENTS.intermediate;
+  const shadowColor =
+    SKILL_SHADOWS[plan.skillLevel] ?? SKILL_SHADOWS.intermediate;
 
   // Format estimated completion date
   const estimatedCompletionDate = useMemo(() => {
@@ -102,7 +111,7 @@ export function PlanOverviewHeader({ plan, statuses }: PlanOverviewProps) {
     <article className="lg:col-span-2">
       {/* Cover Image Area */}
       <div
-        className={`relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-8 shadow-2xl shadow-purple-500/20`}
+        className={`relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-8 shadow-2xl ${shadowColor}`}
       >
         {/* Decorative elements */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjA5IDAgNi0uNzc4IDguNTQzLTIuMTQ3QzUzLjA1MSA0Ny41OCA1OCA0MC40MTYgNTggMzJjMC04LjI4NC02LjcxNi0xNS0xNS0xNS0xLjU5MyAwLTMuMTI4LjI0OC00LjU3My43MDlDMzcuMjkgMTguMjQ5IDM2LjY1MiAxOCAzNiAxOHoiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L2c+PC9zdmc+')] opacity-30" />

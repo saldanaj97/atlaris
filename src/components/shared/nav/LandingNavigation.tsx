@@ -9,7 +9,7 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const NAV_LINK_CLASSES =
-  'text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none';
+  'text-sm font-medium text-gray-600 transition hover:text-primary focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none';
 
 interface LandingNavigationProps {
   onCtaClick?: () => void;
@@ -48,7 +48,7 @@ export default function LandingNavigation({
             </Link>
             <Button
               asChild
-              className="h-auto rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2"
+              className="from-primary to-accent shadow-primary/25 hover:shadow-primary/30 focus-visible:ring-ring h-auto rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2"
             >
               <Link href="/plans/new" onClick={onCtaClick}>
                 Get Started
@@ -59,7 +59,7 @@ export default function LandingNavigation({
           {/* Mobile Menu Button */}
           <button
             type="button"
-            className="rounded-md p-2 text-gray-600 hover:bg-white/40 hover:text-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none md:hidden"
+            className="hover:text-primary focus-visible:ring-ring rounded-md p-2 text-gray-600 hover:bg-white/40 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none md:hidden"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-expanded={isMobileMenuOpen}
             aria-controls="mobile-menu"
@@ -84,28 +84,28 @@ export default function LandingNavigation({
           <div className="flex flex-col space-y-4 p-6">
             <Link
               href="#features"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className={NAV_LINK_CLASSES}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Features
             </Link>
             <Link
               href="/about"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className={NAV_LINK_CLASSES}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               About
             </Link>
             <Link
               href="/pricing"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className={NAV_LINK_CLASSES}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Pricing
             </Link>
             <Button
               asChild
-              className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30"
+              className="from-primary to-accent shadow-primary/25 hover:shadow-primary/30 w-full rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl"
             >
               <Link
                 href="/plans/new"

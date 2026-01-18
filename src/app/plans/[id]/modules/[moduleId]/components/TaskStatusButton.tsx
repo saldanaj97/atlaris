@@ -3,7 +3,7 @@
 import { updateModuleTaskProgressAction } from '@/app/plans/[id]/modules/[moduleId]/actions';
 import { Button } from '@/components/ui/button';
 import type { ProgressStatus } from '@/lib/types/db';
-import { CheckCircle2, CircleX, Loader2Icon } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2Icon } from 'lucide-react';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
 
@@ -68,7 +68,7 @@ export function TaskStatusButton({
       className={`flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-all ${
         isCompleted
           ? 'bg-green-500 text-white hover:bg-green-600'
-          : 'bg-white/50 text-stone-700 hover:bg-purple-500 hover:text-white dark:bg-stone-800/50 dark:text-stone-300 dark:hover:bg-purple-500'
+          : 'hover:bg-primary bg-white/50 text-stone-700 hover:text-white dark:bg-stone-800/50 dark:text-stone-300'
       }`}
     >
       <div className="flex items-center gap-2">
@@ -77,7 +77,7 @@ export function TaskStatusButton({
         ) : isCompleted ? (
           <CheckCircle2 className="h-5 w-5" />
         ) : (
-          <CircleX className="h-5 w-5" />
+          <Circle className="h-5 w-5" />
         )}
         {isCompleted ? 'Completed' : 'Mark Complete'}
       </div>

@@ -117,65 +117,47 @@ export function PlansList({ summaries, usage }: PlansListProps) {
       <div className="border-border mb-6 flex items-center gap-4 border-b pb-4">
         <Button
           onClick={() => setFilterStatus('all')}
-          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-            filterStatus === 'all'
-              ? 'bg-primary/10 text-primary dark:bg-primary/20'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
-          }`}
+          variant={filterStatus === 'all' ? 'default' : 'outline'}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition"
         >
           All Plans
         </Button>
         <Button
           onClick={() => setFilterStatus('active')}
-          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
-            filterStatus === 'active'
-              ? 'bg-primary/10 text-primary dark:bg-primary/20'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
-          }`}
+          variant={filterStatus === 'active' ? 'default' : 'outline'}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
           Active ({statusCounts.active})
         </Button>
         <Button
           onClick={() => setFilterStatus('completed')}
-          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
-            filterStatus === 'completed'
-              ? 'bg-primary/10 text-primary dark:bg-primary/20'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
-          }`}
+          variant={filterStatus === 'completed' ? 'default' : 'outline'}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
         >
           <span className="h-2 w-2 rounded-full bg-blue-500" />
           Completed ({statusCounts.completed})
         </Button>
         <Button
           onClick={() => setFilterStatus('inactive')}
-          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
-            filterStatus === 'inactive'
-              ? 'bg-primary/10 text-primary dark:bg-primary/20'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
-          }`}
+          variant={filterStatus === 'inactive' ? 'default' : 'outline'}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
         >
           <span className="h-2 w-2 rounded-full bg-amber-500" />
           Inactive ({statusCounts.paused})
         </Button>
         <Button
           onClick={() => setFilterStatus('generating')}
-          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
-            filterStatus === 'generating'
-              ? 'bg-primary/10 text-primary dark:bg-primary/20'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
-          }`}
+          variant={filterStatus === 'generating' ? 'default' : 'outline'}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
         >
-          <span className="h-2 w-2 rounded-full bg-purple-500" />
+          <span className="bg-primary h-2 w-2 rounded-full" />
           Generating ({statusCounts.generating})
         </Button>
         <Button
           onClick={() => setFilterStatus('failed')}
-          className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition ${
-            filterStatus === 'failed'
-              ? 'bg-primary/10 text-primary dark:bg-primary/20'
-              : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground dark:hover:bg-foreground/5'
-          }`}
+          variant={filterStatus === 'failed' ? 'default' : 'outline'}
+          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
         >
           <span className="h-2 w-2 rounded-full bg-red-500" />
           Failed ({statusCounts.failed})

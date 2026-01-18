@@ -197,7 +197,7 @@ export function ModuleDetail({ moduleData }: ModuleDetailProps) {
           ) : (
             <Link
               href={`/plans/${planId}`}
-              className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3 font-medium text-white transition hover:bg-purple-700"
+              className="bg-primary hover:bg-primary/90 inline-flex items-center gap-2 rounded-xl px-6 py-3 font-medium text-white transition"
             >
               Back to Plan Overview
               <ArrowRight className="h-4 w-4" />

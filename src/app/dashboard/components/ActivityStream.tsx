@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { findActivePlan, generateActivities } from './activity-utils';
 import { ActivityCard } from './ActivityCard';
 import { ActivityFilterTabs } from './ActivityFilterTabs';
 import { ActivityStreamSidebar } from './ActivityStreamSidebar';
 import { EmptyActivityState } from './EmptyActivityState';
-import { QuickStats } from './QuickStats';
+import { ResumeLearningHero } from './ResumeLearningHero';
 
 import type { PlanSummary } from '@/lib/types/db';
 import type { ActivityFilter } from '../types';
@@ -18,22 +18,28 @@ interface ActivityStreamProps {
 
 export function ActivityStream({ summaries }: ActivityStreamProps) {
   const [filter, setFilter] = useState<ActivityFilter>('all');
-  const activities = generateActivities(summaries);
-  const filteredActivities =
-    filter === 'all' ? activities : activities.filter((a) => a.type === filter);
-
-  const activePlan = findActivePlan(summaries);
+  const activities = useMemo(() => generateActivities(summaries), [summaries]);
+  const activePlan = useMemo(() => findActivePlan(summaries), [summaries]);
+  const filteredActivities = useMemo(
+    () =>
+      filter === 'all'
+        ? activities
+        : activities.filter((a) => a.type === filter),
+    [activities, filter]
+  );
 
   return (
     <div className="font-sans">
       <header className="mb-8">
-        <div className="mb-4">
+        <div className="mb-6">
           <h1>Activity Feed</h1>
           <h2 className="subtitle">Your learning journey, moment by moment</h2>
         </div>
-        <section aria-label="Quick statistics">
-          <QuickStats />
-        </section>
+        {activePlan && (
+          <section aria-label="Resume learning">
+            <ResumeLearningHero plan={activePlan} />
+          </section>
+        )}
       </header>
 
       <div className="grid gap-8 lg:grid-cols-3">

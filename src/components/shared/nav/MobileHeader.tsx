@@ -3,7 +3,10 @@
 import ClerkAuthControls from '@/components/shared/ClerkAuthControls';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import type { NavItem } from '@/lib/navigation';
+import { ROUTES } from '@/lib/routes';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
 
 import BrandLogo from '../BrandLogo';
 import MobileNavigation from './MobileNavigation';
@@ -29,8 +32,15 @@ export default function MobileHeader({ navItems, tier }: MobileHeaderProps) {
       {/* Center: brand */}
       <BrandLogo size="sm" />
 
-      {/* Right: theme toggle + user/auth */}
+      {/* Right: new plan + theme toggle + user/auth */}
       <div className="flex items-center gap-1 justify-self-end">
+        <Link
+          href={ROUTES.PLANS.NEW}
+          className="from-primary to-accent focus-visible:ring-ring focus-visible:ring-offset-card flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r text-white shadow-md transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          aria-label="Create new plan"
+        >
+          <Plus className="h-5 w-5" />
+        </Link>
         <ThemeToggle size="icon-sm" />
         <ClerkAuthControls tier={tier} />
       </div>

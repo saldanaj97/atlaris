@@ -6,8 +6,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { trackEvent } from '@/lib/analytics';
 import type { NavItem } from '@/lib/navigation';
-import { Menu } from 'lucide-react';
+import { Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -51,6 +52,23 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
           className="flex flex-1 flex-col gap-2 px-4"
           aria-label="Mobile navigation"
         >
+          {/* Create New Plan - Primary Action */}
+          <Link
+            href="/plans/new"
+            onClick={() => {
+              trackEvent({
+                event: 'cta_click',
+                label: 'Create New Plan',
+                location: 'nav',
+              });
+              setOpen(false);
+            }}
+            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 mb-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
+          >
+            <Plus className="h-4 w-4" />
+            Create New Plan
+          </Link>
+
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -61,14 +79,14 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
                   aria-current={isActive ? 'page' : undefined}
                   className={`rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
-                      : 'text-gray-600 hover:bg-white/60 hover:text-purple-600 dark:text-gray-200 dark:hover:bg-white/10 dark:hover:text-purple-400'
+                      ? 'from-primary to-accent bg-gradient-to-r text-white shadow-md'
+                      : 'hover:text-primary dark:hover:text-primary text-gray-600 hover:bg-white/60 dark:text-gray-200 dark:hover:bg-white/10'
                   }`}
                 >
                   {item.label}
                 </Link>
                 {item.dropdown && (
-                  <div className="ml-4 flex flex-col gap-1 border-l border-purple-100 pl-4 dark:border-purple-900">
+                  <div className="border-primary/20 dark:border-primary/30 ml-4 flex flex-col gap-1 border-l pl-4">
                     {item.dropdown.map((subItem) => {
                       const isSubActive = pathname === subItem.href;
                       return (
@@ -79,8 +97,8 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
                           aria-current={isSubActive ? 'page' : undefined}
                           className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                             isSubActive
-                              ? 'text-purple-600 dark:text-purple-400'
-                              : 'text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400'
+                              ? 'text-primary dark:text-primary'
+                              : 'hover:text-primary dark:hover:text-primary text-gray-500 dark:text-gray-400'
                           }`}
                         >
                           {subItem.label}

@@ -56,7 +56,7 @@ const RESOURCE_CONFIG: Record<
   doc: {
     label: 'Documentation',
     icon: FileText,
-    badgeClass: 'bg-purple-500/10 text-purple-600',
+    badgeClass: 'bg-primary/10 text-primary',
   },
   other: {
     label: 'Resource',
