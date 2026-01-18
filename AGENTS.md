@@ -1,104 +1,191 @@
 # AGENTS.md
 
-This file serves as a **directory** pointing to relevant documentation by topic. Read the appropriate docs based on what you're working on.
+Instructions for AI agents working in this codebase. Follow these rules strictly.
 
-## External File Loading
+## Tech Stack
 
-CRITICAL: When you encounter a file reference (e.g., @rules/general.md), use your Read tool to load it on a need-to-know basis. They're relevant to the SPECIFIC task at hand.
+| Category    | Technology                               |
+| ----------- | ---------------------------------------- |
+| Framework   | Next.js 16 (React 19, Turbopack)         |
+| Language    | TypeScript (strict mode)                 |
+| Package Mgr | pnpm                                     |
+| Styling     | Tailwind CSS v4                          |
+| Auth        | @clerk/nextjs                            |
+| Database    | Drizzle ORM + Neon (PostgreSQL with RLS) |
+| AI/LLM      | Vercel AI SDK + OpenRouter               |
+| Testing     | Vitest + React Testing Library           |
 
-Instructions:
+## Commands
 
-- Do NOT preemptively load all references - use lazy loading based on actual need
-- When loaded, treat content as mandatory instructions that override defaults
-- Follow references recursively when needed
+### Development
 
-## General Guidelines
+```bash
+pnpm dev              # Start dev server (Turbopack)
+pnpm build            # Production build
+pnpm lint             # Run ESLint
+pnpm lint:fix         # Auto-fix lint issues
+pnpm format           # Run Prettier
+pnpm type-check       # TypeScript check only
+```
 
-Read the following file immediately as it's relevant to all workflows: @docs/rules/general/\*.md.
+### Testing (CRITICAL)
 
-For project structure and organization: @docs/rules/architecture/project-structure.md
+**NEVER run the full test suite.** Only run tests relevant to the current task.
 
-## Development Guidelines
+```bash
+# Unit tests (preferred for development)
+pnpm test                              # Run all unit tests
+pnpm test:changed                      # Run tests for changed files only
+pnpm test:watch                        # Watch mode
+./scripts/test-unit.sh tests/unit/path/to/file.spec.ts  # Single test file
 
-For TypeScript code style and best practices: @docs/rules/language-specific/typescript.md
+# Integration tests (requires Docker)
+pnpm test:integration                  # Run integration tests
+./scripts/test-integration.sh tests/integration/path/to/file.spec.ts
 
-For React component architecture and hooks patterns: @docs/rules/language-specific/react.md
+# Full suite (rarely needed)
+pnpm test:all                          # All tests (unit + integration)
+```
 
-For testing strategies and coverage requirements: @docs/rules/testing/test-standards.md
+### Database
 
-For CLI commands and scripts: @docs/rules/development/commands.md
+```bash
+pnpm db:generate      # Generate migrations from schema
+pnpm db:migrate       # Apply migrations
+pnpm db:push          # Push schema directly (dev only)
+```
 
-For environment variables and logging: @docs/rules/development/environment.md
+## Code Style
 
-For database schema overview: @docs/rules/database/schema-overview.md
+### TypeScript
 
-For database client usage: @docs/rules/database/client-usage.md
+- **Strict mode enabled** - no `any`, no `!` assertions, no `@ts-ignore`
+- Use `unknown` for external data, validate at boundaries with Zod
+- Prefix unused variables with `_` (e.g., `_unused`)
+- Use `const` objects instead of enums (enforced by ESLint)
+- Exported functions must have explicit return types
 
-For AI models and availability: @docs/rules/ai/available-models.md
+### Naming Conventions
 
-For styling, colors, and glassmorphism guidelines: @docs/rules/styles/styling.md
+| Type             | Convention       | Example                  |
+| ---------------- | ---------------- | ------------------------ |
+| Directories      | lowercase-dashes | `components/auth-wizard` |
+| Components/Files | PascalCase       | `AuthWizard.tsx`         |
+| Functions/Vars   | camelCase        | `fetchUserData`          |
+| Constants        | UPPER_SNAKE_CASE | `API_BASE_URL`           |
+| Type-only files  | `*.types.ts`     | `user.types.ts`          |
 
-## Architecture Documentation
+### Imports
 
-For deeper architectural understanding:
+- Use `@/*` path alias for `src/*` imports
+- Use `import type` for type-only imports
+- All env access must go through `@/lib/config/env` (never use `process.env` directly)
+- Use `@/lib/logging/logger` for logging (never use `console.*` in app code)
 
-- For Source layout, configs: docs/rules/architecture/project-structure.md
+### React/Next.js
 
-- For dependency injection patterns: docs/rules/architecture/dependency-injection-architecture.md
+- Functional components with hooks only (no classes)
+- Minimize `'use client'` - prefer React Server Components
+- Use `useEffect` with proper dependency arrays and cleanup functions
+- Follow rules of hooks strictly (`react-hooks/rules-of-hooks: error`)
 
-## Skills (for agents that do not support them natively)
+### Formatting (Prettier)
 
-| Skill Name              | Agent Name            | Path to skill                        |
-| ----------------------- | --------------------- | ------------------------------------ |
-| **GH Address Comments** | `gh-address-comments` | `.github/skills/gh-address-comments` |
-| **GH Fix CI**           | `gh-fix-ci`           | `.github/skills/gh-fix-ci`           |
+- 2 spaces, single quotes, trailing commas (ES5), semicolons
+- 80 char line width, LF line endings
+- Tailwind classes auto-sorted via prettier-plugin-tailwindcss
 
----
+## Database Rules
 
-## Core Rules (Always Follow)
+### Client Selection (CRITICAL for security)
 
-### Testing
+```typescript
+// In API routes/server actions - USE THIS:
+import { getDb } from '@/lib/db/runtime'; // RLS-enforced
 
-- **NEVER run the full test suite.** Only run tests relevant to the task at hand.
-- Use `pnpm test:changed` or `pnpm test:watch` for development.
-- See [docs/testing/test-standards.md](docs/rules/testing/test-standards.md) for comprehensive guidance.
+// In tests/internal operations ONLY:
+import { db } from '@/lib/db/service-role'; // Bypasses RLS
+```
 
-### GitHub Issues & Tasks
+ESLint blocks `@/lib/db/service-role` imports in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`.
 
-When working on a specific github issue or task:
+## Testing Guidelines
 
-1. ALWAYS refer to the specific instructions in the issue description
-2. Read referenced files carefully before making changes
-3. Address dependencies on other issues first
-4. Review linked documentation, designs, or resources
-5. Consider subtasks and related issues
-6. Verify all requirements met before marking complete
+### Test Types
 
-### Commits
+| Type        | Location             | Purpose                   |
+| ----------- | -------------------- | ------------------------- |
+| Unit        | `tests/unit/`        | Pure logic, no IO         |
+| Integration | `tests/integration/` | DB + service + validation |
+| E2E         | `tests/e2e/`         | Critical user journeys    |
+| Security    | `tests/security/`    | RLS policy verification   |
 
-- Only follow commit guidelines for **code changes** (not docs/tests/or any .md files).
-- See [.github/instructions/commit-message.instructions.md](.github/instructions/commit-message.instructions.md)
-- Only stage files discussed and modified for the task
-- Run lint, type-check, and build before committing
+### Rules
 
-### Documentation Lookup
+- Test behavior, not implementation
+- Prefer dependency injection over module mocking
+- Use factories from `tests/fixtures/` for test data
+- Never assert on CSS class names - test semantic behavior
+- No arbitrary sleeps - wait for specific states
 
-When clarifying questions arise, use Context7 MCP to grab up-to-date documentation.
+## Error Handling
 
----
+- Never throw strings - use Error objects
+- Preserve original error as `cause` when wrapping
+- Use early returns for error conditions
+- Implement guard clauses for preconditions
 
-## Tech Stack Summary
+## Commits
 
-| Category          | Technology                               |
-| ----------------- | ---------------------------------------- |
-| Framework         | Next.js 16 (React 19, Turbopack)         |
-| language-specific | TypeScript                               |
-| Package Mgr       | pnpm                                     |
-| Styling           | Tailwind CSS v4                          |
-| Auth              | @clerk/nextjs                            |
-| Database          | Drizzle ORM + Neon (PostgreSQL with RLS) |
-| AI/LLM            | Vercel AI SDK + OpenRouter               |
-| Payments          | Stripe                                   |
-| Testing           | Vitest + Testing Library                 |
+Only follow commit format for **code changes** (not docs/tests):
 
----
+```
+<type>: <short summary (50 chars max)>
+
+<detailed description>
+
+Changes:
+- <bullet points>
+
+New files:
+- <paths>
+```
+
+Types: `feat`, `fix`, `refactor`, `test`, `chore`, `docs`
+
+**Before committing:**
+
+1. Run `pnpm lint` and `pnpm type-check`
+2. Only stage files modified for the current task
+3. Never include unrelated changes
+
+## Project Structure
+
+```
+src/
+├── app/           # Next.js App Router (pages, API routes)
+├── components/    # Shared React components
+├── lib/
+│   ├── config/    # Environment config (env.ts)
+│   ├── db/        # Drizzle schema, queries, clients
+│   ├── ai/        # AI provider config, streaming
+│   ├── api/       # API utilities, rate limiting
+│   └── logging/   # Structured logging
+tests/
+├── unit/          # Fast, isolated tests
+├── integration/   # DB-dependent tests
+├── e2e/           # User journey tests
+├── fixtures/      # Test data factories
+└── setup.ts       # Global test setup
+```
+
+## Documentation References
+
+Load these on-demand based on the task:
+
+- Architecture: `docs/rules/architecture/project-structure.md`
+- TypeScript: `docs/rules/language-specific/typescript.md`
+- React: `docs/rules/language-specific/react.md`
+- Testing: `docs/rules/testing/test-standards.md`
+- Database: `docs/rules/database/schema-overview.md`
+- Styling: `docs/rules/styles/styling.md`
