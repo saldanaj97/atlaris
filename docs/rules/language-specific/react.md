@@ -128,57 +128,118 @@ useEffect(() => {
 
 ---
 
-## Performance Tips
+## Performance & React Compiler
 
-### React Compiler (Automatic Memoization)
+### React Compiler is Enabled
 
-**React Compiler** (formerly "React Forget") is a **separate opt-in build tool** that automatically memoizes your components. It's stable (v1.0) and production-ready.
+This project uses **React Compiler** (`babel-plugin-react-compiler@1.0.0`) with Next.js's native SWC integration. It's configured in `next.config.ts`:
 
-| Without React Compiler                               | With React Compiler                   |
-| ---------------------------------------------------- | ------------------------------------- |
-| Manual `useMemo`, `useCallback`, `React.memo` needed | Automatic - compiler handles it       |
-| Must track dependencies carefully                    | Compiler analyzes code for you        |
-| Easy to miss optimization opportunities              | Optimizes more thoroughly than manual |
-
-**To enable:** Add `babel-plugin-react-compiler` to your build config. See [React Compiler docs](https://react.dev/learn/react-compiler).
-
-> **Note:** React 19 itself does NOT auto-memoize. The compiler is a separate tool you must opt into.
-
-### Manual Memoization (Without Compiler)
-
-If you're **not using React Compiler**, only optimize when you **measure** a problem:
-
-| Tool          | Use When                                   |
-| ------------- | ------------------------------------------ |
-| `React.memo`  | Component re-renders with same props       |
-| `useMemo`     | Expensive calculation runs every render    |
-| `useCallback` | Function reference causes child re-renders |
-| `React.lazy`  | Bundle is too large, need code splitting   |
-
-### Example: Memoizing Expensive Calculations
-
-```tsx
-// Only recalculates when `items` changes
-const sortedItems = useMemo(() => {
-  return [...items].sort((a, b) => a.name.localeCompare(b.name));
-}, [items]);
+```ts
+const nextConfig: NextConfig = {
+  reactCompiler: true,
+};
 ```
 
-### Escape Hatches (With Compiler)
+The compiler automatically memoizes components and values at build time, eliminating the need for manual `useMemo`, `useCallback`, and `React.memo` in most cases.
 
-Even with React Compiler, `useMemo`/`useCallback` can still be used for **fine-grained control**:
+### Rules for New Code
+
+**For new components and hooks:** Do NOT add manual memoization. Let the compiler handle it.
 
 ```tsx
-// Force specific memoization behavior (e.g., for effect dependencies)
-const stableValue = useMemo(() => computeValue(input), [input]);
+// ✅ New code - let compiler optimize
+function ProductList({ items, onSelect }) {
+  const sortedItems = items.toSorted((a, b) => a.name.localeCompare(b.name));
+  const handleClick = (item) => onSelect(item.id);
+
+  return (
+    <ul>
+      {sortedItems.map((item) => (
+        <ProductCard
+          key={item.id}
+          item={item}
+          onClick={() => handleClick(item)}
+        />
+      ))}
+    </ul>
+  );
+}
+
+// ❌ Unnecessary - compiler does this automatically
+function ProductList({ items, onSelect }) {
+  const sortedItems = useMemo(
+    () => items.toSorted((a, b) => a.name.localeCompare(b.name)),
+    [items]
+  );
+  const handleClick = useCallback((item) => onSelect(item.id), [onSelect]);
+  // ...
+}
+```
+
+### Rules for Existing Code
+
+**Do NOT remove existing `useMemo`/`useCallback` calls.** The React team explicitly advises:
+
+> "For existing code, we recommend either leaving existing memoization in place (removing it can change compilation output) or carefully testing before removing the memoization."
+
+Reasons to leave existing memoization alone:
+
+1. Removing it can change how the compiler optimizes that code
+2. Risk of introducing subtle runtime bugs
+3. Requires regression testing with no user-facing benefit
+4. The compiler respects and works alongside manual memoization
+
+### When Manual Memoization is Still Valid
+
+Use `useMemo`/`useCallback` as **escape hatches** for fine-grained control:
+
+**1. Effect dependencies** - When you need explicit control over when an effect runs:
+
+```tsx
+// Valid use case: useCallback for effect dependency
+const fetchData = useCallback(async () => {
+  const response = await fetch(`/api/items/${id}`);
+  setData(await response.json());
+}, [id]);
 
 useEffect(() => {
-  // Effect only runs when stableValue actually changes
-  doSomething(stableValue);
-}, [stableValue]);
+  void fetchData();
+}, [fetchData]); // Explicit control over effect timing
 ```
 
-**Tip:** Don't remove existing memoization when adopting the compiler—it works alongside manual memoization.
+**2. Opting out of compilation** - Use `"use no memo"` directive for problematic components:
+
+```tsx
+function ProblematicComponent() {
+  'use no memo'; // Skip compilation for this component
+  // ...
+}
+```
+
+**3. Opting in selectively** - If using `compilationMode: 'annotation'`:
+
+```tsx
+function OptimizedComponent() {
+  'use memo'; // Opt this component into compilation
+  // ...
+}
+```
+
+### Verifying Compiler is Working
+
+1. **React DevTools**: Optimized components show a **"Memo ✨"** badge
+2. **Build output**: Look for `react/compiler-runtime` imports in compiled code
+3. **ESLint**: `react-hooks/rules-of-hooks` and `react-hooks/exhaustive-deps` are set to `error`
+
+### Summary Table
+
+| Scenario                        | Action                                                      |
+| ------------------------------- | ----------------------------------------------------------- |
+| Writing new component           | Skip `useMemo`/`useCallback` - compiler handles it          |
+| Existing code with memoization  | Leave it alone                                              |
+| Function used in effect deps    | `useCallback` is valid escape hatch                         |
+| Component causing issues        | Add `"use no memo"` directive, fix root cause               |
+| Expensive non-React calculation | Consider memoizing outside React (e.g., module-level cache) |
 
 ---
 
