@@ -6,6 +6,7 @@ import {
   deadlineWeeksToDate,
   getTodayDateString,
 } from '@/app/plans/new/components/plan-form/helpers';
+import { MouseGlowContainer } from '@/components/effects/MouseGlow';
 import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
@@ -131,7 +132,7 @@ export default function CreateNewPlanPage() {
   };
 
   return (
-    <div className="from-accent/30 via-primary/10 to-accent/20 dark:bg-background fixed inset-0 overflow-hidden bg-gradient-to-br dark:from-transparent dark:via-transparent dark:to-transparent">
+    <MouseGlowContainer className="from-accent/30 via-primary/10 to-accent/20 dark:bg-background fixed inset-0 overflow-hidden bg-gradient-to-br dark:from-transparent dark:via-transparent dark:to-transparent">
       {/* Floating gradient orbs - matching landing page */}
       <div
         className="from-primary/30 to-accent/20 absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br opacity-60 blur-3xl dark:opacity-30"
@@ -195,6 +196,6 @@ export default function CreateNewPlanPage() {
           </div>
         )}
       </div>
-    </div>
+    </MouseGlowContainer>
   );
 }
