@@ -1,5 +1,6 @@
 import {
   FeaturesSection,
+  GradientBlobBackground,
   HowItWorksSection,
   ProblemSolutionSection,
   UseCasesSection,
@@ -23,13 +24,16 @@ import {
  */
 export default function LandingPage() {
   return (
-    <div className="via-primary/10 mx-auto min-h-screen bg-gradient-to-br from-rose-100 to-cyan-100 font-sans text-gray-800">
-      <HeroSectionWithAnalytics />
-      <ProblemSolutionSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <UseCasesSection />
-      <FinalCtaSectionWithAnalytics />
+    <div className="from-primary/5 via-accent/5 to-background text-foreground relative -mt-16 min-h-screen w-full overflow-hidden bg-gradient-to-br pt-16 font-sans">
+      <GradientBlobBackground />
+      <div className="relative z-10">
+        <HeroSectionWithAnalytics />
+        <ProblemSolutionSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <UseCasesSection />
+        <FinalCtaSectionWithAnalytics />
+      </div>
     </div>
   );
 }

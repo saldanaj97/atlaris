@@ -23,26 +23,38 @@ interface MobileHeaderProps {
  */
 export default function MobileHeader({ navItems, tier }: MobileHeaderProps) {
   return (
-    <div className="dark:bg-card-background grid w-full grid-cols-3 items-center justify-items-center rounded-2xl border border-white/40 bg-black/5 px-4 py-3 shadow-lg backdrop-blur-xl lg:hidden dark:border-white/10">
+    <div className="dark:bg-card-background relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2.5 shadow-lg backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-3 lg:hidden dark:border-white/10">
       {/* Left: hamburger */}
-      <div className="justify-self-start">
+      <div className="flex shrink-0">
         <MobileNavigation navItems={navItems} />
       </div>
 
-      {/* Center: brand */}
-      <BrandLogo size="sm" />
+      {/* Center: placeholder to maintain grid structure */}
+      <div className="flex min-w-0 items-center justify-center overflow-hidden" />
+
+      {/* Brand logo - absolutely positioned for true centering */}
+      <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center">
+        <div className="pointer-events-auto">
+          <BrandLogo size="sm" />
+        </div>
+      </div>
 
       {/* Right: new plan + theme toggle + user/auth */}
-      <div className="flex items-center gap-1 justify-self-end">
+      <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5">
+        {/* Hide New Plan button on very small screens to save space */}
         <Link
           href={ROUTES.PLANS.NEW}
-          className="from-primary to-accent focus-visible:ring-ring focus-visible:ring-offset-card flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r text-white shadow-md transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          className="from-primary to-accent focus-visible:ring-ring focus-visible:ring-offset-card hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r text-white shadow-md transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:h-9 sm:w-9 sm:rounded-xl lg:flex"
           aria-label="Create new plan"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
         </Link>
-        <ThemeToggle size="icon-sm" />
-        <ClerkAuthControls tier={tier} />
+        <div className="shrink-0">
+          <ThemeToggle size="icon-sm" />
+        </div>
+        <div className="min-w-0 shrink-0">
+          <ClerkAuthControls tier={tier} />
+        </div>
       </div>
     </div>
   );

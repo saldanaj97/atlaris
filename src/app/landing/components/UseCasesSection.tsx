@@ -1,4 +1,6 @@
 import { Quote } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
 import { StarRating } from './StarRating';
 
 interface QuoteCardProps {
@@ -24,7 +26,7 @@ const TESTIMONIALS: QuoteCardProps[] = [
     persona: 'Student',
     detail: 'CS Junior',
     avatarInitials: 'JM',
-    gradient: 'from-cyan-400 to-blue-500',
+    gradient: 'from-primary to-accent',
   },
   {
     quote:
@@ -32,7 +34,7 @@ const TESTIMONIALS: QuoteCardProps[] = [
     persona: 'Busy Professional',
     detail: 'Product Manager',
     avatarInitials: 'RL',
-    gradient: 'from-amber-400 to-orange-500',
+    gradient: 'from-destructive to-destructive/80',
   },
 ];
 
@@ -43,34 +45,22 @@ const TESTIMONIALS: QuoteCardProps[] = [
 export function UseCasesSection() {
   return (
     <section
-      className="relative overflow-hidden py-24 lg:py-32"
+      className="relative overflow-hidden lg:py-32"
       aria-labelledby="use-cases-heading"
     >
-      {/* Background decorations */}
-      <div
-        className="from-primary/30 to-accent/30 absolute top-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-gradient-to-br opacity-50 blur-3xl"
-        aria-hidden="true"
-      ></div>
-      <div
-        className="absolute right-10 bottom-20 h-48 w-48 rounded-full bg-gradient-to-br from-cyan-200 to-blue-200 opacity-40 blur-3xl"
-        aria-hidden="true"
-      ></div>
-
       <div className="relative z-10 mx-auto max-w-screen-xl px-6">
         <div className="mb-16 text-center">
-          <span className="mb-4 inline-block rounded-full bg-amber-100 px-4 py-1.5 text-sm font-medium text-amber-700">
+          <Badge className="bg-accent/10 text-accent-foreground mb-4 px-4 py-1.5">
             Real Stories
-          </span>
+          </Badge>
           <h2
             id="use-cases-heading"
-            className="mb-4 text-4xl font-bold text-gray-900 md:text-5xl"
+            className="text-foreground marketing-h2 mb-4"
           >
             Built for people with{' '}
-            <span className="from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent">
-              limited time
-            </span>
+            <span className="gradient-text">limited time</span>
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-gray-600">
+          <p className="text-muted-foreground marketing-subtitle mx-auto max-w-2xl">
             Not infinite motivation—just a schedule that actually works
           </p>
         </div>
@@ -105,7 +95,7 @@ function QuoteCard({
   gradient,
 }: QuoteCardProps) {
   return (
-    <figure className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl">
+    <figure className="group dark:bg-card/40 relative flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10">
       {/* Decorative glow */}
       <div
         className="from-primary/30 to-accent/30 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-20 blur-2xl transition group-hover:opacity-40"
@@ -124,7 +114,7 @@ function QuoteCard({
       </div>
 
       <blockquote className="relative flex-1">
-        <p className="text-lg leading-relaxed text-gray-700">
+        <p className="text-foreground text-lg leading-relaxed">
           &ldquo;{quote}&rdquo;
         </p>
       </blockquote>
@@ -138,7 +128,7 @@ function QuoteCard({
           {avatarInitials}
         </div>
         <div>
-          <p className="font-semibold text-gray-900">{persona}</p>
+          <p className="text-foreground font-semibold">{persona}</p>
           <p className="text-primary text-sm">{detail}</p>
         </div>
       </figcaption>

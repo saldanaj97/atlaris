@@ -293,6 +293,9 @@
     .marketing-h4 {
       font-size: 1.25rem; /* 20px on mobile */
     }
+    .marketing-subtitle {
+      font-size: 1rem; /* 16px on mobile */
+    }
   }
 }
 

@@ -1,7 +1,8 @@
 import Link from 'next/link';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, PlayCircle } from 'lucide-react';
 
 interface HeroSectionProps {
   onCtaClick?: () => void;
@@ -12,92 +13,60 @@ interface HeroSectionProps {
  */
 export function HeroSection({ onCtaClick }: HeroSectionProps) {
   return (
-    <section
-      className="relative overflow-hidden"
-      aria-labelledby="hero-heading"
-    >
-      {/* Floating gradient orbs */}
-      <div
-        className="from-primary/40 to-accent/30 absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br opacity-60 blur-3xl"
-        aria-hidden="true"
-      ></div>
-      <div
-        className="from-primary/30 to-accent/20 absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br opacity-60 blur-3xl"
-        aria-hidden="true"
-      ></div>
-      <div
-        className="from-destructive/20 to-accent/20 absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br opacity-60 blur-3xl"
-        aria-hidden="true"
-      ></div>
-
-      <div className="relative z-10 mx-auto flex flex-col items-center px-6 pt-4 text-center lg:pt-8">
-        <div className="border-primary/30 mb-8 inline-flex items-center rounded-full border bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
-          <span className="from-primary to-accent mr-2 h-2 w-2 rounded-full bg-gradient-to-r"></span>
-          <span className="text-primary text-sm font-medium">
+    <section className="relative" aria-labelledby="hero-heading">
+      <div className="relative z-10 mx-auto flex flex-col items-center px-6 pt-6 pb-48 text-center sm:pt-8 lg:min-h-screen lg:justify-center lg:pt-16">
+        {/* Heading Text Section - positioned in upper portion with balanced spacing */}
+        <div className="flex flex-col items-center space-y-6 lg:flex-1 lg:justify-center lg:space-y-6">
+          <Badge variant="glassmorphic" className="px-4 py-2">
+            <span className="from-primary to-accent mr-2 h-2 w-2 rounded-full bg-gradient-to-r"></span>
             Now with AI-powered insights
-          </span>
+          </Badge>
+
+          <h1
+            id="hero-heading"
+            className="text-foreground marketing-h1 max-w-4xl leading-tight font-bold tracking-tight"
+          >
+            Learn with
+            <span className="gradient-text"> crystal clarity</span>
+          </h1>
+
+          <p className="text-muted-foreground marketing-subtitle max-w-lg md:max-w-2xl">
+            Experience learning through a beautifully crafted interface
+            that&apos;s as clear as glass and as powerful as the technology
+            behind it.
+          </p>
+
+          <Button
+            asChild
+            variant="default"
+            className="group h-auto rounded-2xl px-8 py-4 font-semibold shadow-lg transition hover:shadow-xl"
+          >
+            <Link href="/plans/new" onClick={onCtaClick}>
+              Start Free Trial
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </Button>
         </div>
 
-        <h1
-          id="hero-heading"
-          className="mb-8 max-w-4xl text-5xl leading-tight font-bold tracking-tight text-gray-900 md:text-6xl lg:text-7xl"
-        >
-          Learn with
-          <span className="from-primary via-accent to-destructive bg-gradient-to-r bg-clip-text text-transparent">
-            {' '}
-            crystal clarity
-          </span>
-        </h1>
-
-        <p className="mb-12 max-w-2xl text-lg leading-relaxed text-gray-600 md:text-xl">
-          Experience learning through a beautifully crafted interface
-          that&apos;s as clear as glass and as powerful as the technology behind
-          it.
-        </p>
-
-        <Button asChild variant="cta" className="group h-auto px-8 py-4">
-          <Link href="/plans/new" onClick={onCtaClick}>
-            <span className="font-medium">Start Free Trial</span>
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Link>
-        </Button>
-
-        {/* Glassmorphism card preview */}
-        <div className="relative mt-20 w-full max-w-5xl">
+        {/* Glassmorphism card preview - positioned halfway down the viewport */}
+        {/* Negative margins pull the card down to overlap into the next section */}
+        <div className="relative mt-12 -mb-32 w-full max-w-7xl md:mt-6 md:-mb-40 lg:mt-0 lg:-mb-48">
           {/* Background glow */}
           <div className="from-primary/30 via-accent/30 to-accent/30 absolute -inset-4 rounded-3xl bg-gradient-to-r blur-xl"></div>
 
-          <div className="relative overflow-hidden rounded-3xl border border-white/40 bg-white/30 p-2 shadow-2xl backdrop-blur-xl">
-            <div className="rounded-2xl bg-gradient-to-br from-white/80 to-white/40 p-6">
-              <div className="from-primary/20 to-accent/20 aspect-video overflow-hidden rounded-xl bg-gradient-to-br">
-                <div className="flex h-full items-center justify-center">
-                  <div className="text-center">
-                    <div className="from-primary to-accent mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg">
-                      <svg
-                        className="h-8 w-8 text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <p className="text-gray-500">
-                      See your personalized dashboard in action
-                    </p>
+          <div className="dark:bg-card/30 relative rounded-3xl border border-white/40 bg-white/30 p-2 shadow-2xl backdrop-blur-xl dark:border-white/10">
+            <div className="dark:from-card/60 dark:to-card/40 rounded-2xl bg-gradient-to-br from-white/80 to-white/40 p-6">
+              <div className="from-primary/20 to-accent/20 flex aspect-video items-center justify-center rounded-xl bg-gradient-to-br">
+                <div className="text-center">
+                  <div className="gradient-brand mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shadow-lg">
+                    <PlayCircle
+                      className="h-8 w-8 text-white"
+                      aria-hidden="true"
+                    />
                   </div>
+                  <p className="text-muted-foreground">
+                    See your personalized dashboard in action
+                  </p>
                 </div>
               </div>
             </div>

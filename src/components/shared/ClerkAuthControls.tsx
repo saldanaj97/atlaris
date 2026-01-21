@@ -26,13 +26,22 @@ const tierVariants: Record<
 
 export default function ClerkAuthControls({ tier }: ClerkAuthControlsProps) {
   return (
-    <div className="flex items-center gap-2 lg:gap-4">
+    <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4">
       <SignedOut>
+        {/* On mobile, show only Sign Up button to save space */}
         <SignInButton>
-          <Button variant="secondary">Sign In</Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="hidden text-xs sm:inline-flex"
+          >
+            Sign In
+          </Button>
         </SignInButton>
         <SignUpButton>
-          <Button variant="default">Sign Up</Button>
+          <Button variant="default" size="sm" className="text-xs">
+            Sign Up
+          </Button>
         </SignUpButton>
       </SignedOut>
 
