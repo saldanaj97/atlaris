@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { getAllTasksInPlan } from '@/lib/db/queries/tasks';
 import { getUserByClerkId } from '@/lib/db/queries/users';
@@ -29,7 +29,7 @@ function getParams(req: Request) {
  * @returns A JSON response containing the list of tasks.
  */
 export const GET = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('read', async ({ req, userId }) => {
     const { planId } = getParams(req);
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');

@@ -1,6 +1,8 @@
 import { and, eq, lt, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
+import { toErrorResponse } from '@/lib/api/errors';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { db } from '@/lib/db/service-role';
 import { jobQueue } from '@/lib/db/schema';
 
@@ -25,7 +27,13 @@ interface HealthCheckResponse {
   reason?: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  try {
+    checkIpRateLimit(request, 'health');
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+
   const timestamp = new Date().toISOString();
   const stuckThreshold = new Date(Date.now() - STUCK_JOB_THRESHOLD_MS);
   // Use service-role DB to bypass RLS and get system-wide metrics

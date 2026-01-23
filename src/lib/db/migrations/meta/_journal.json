@@ -8,6 +8,20 @@
       "when": 1763496508060,
       "tag": "0000_wonderful_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769206834799,
+      "tag": "0001_tearful_morlocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769207410555,
+      "tag": "0002_natural_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

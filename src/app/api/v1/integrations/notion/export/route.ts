@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { users, learningPlans } from '@/lib/db/schema';
@@ -18,7 +18,7 @@ import { eq } from 'drizzle-orm';
 const exportRequestSchema = z.object({ planId: z.string().uuid() });
 
 export const POST = withErrorBoundary(
-  withAuth(async ({ req, userId: clerkUserId }) => {
+  withAuthAndRateLimit('integration', async ({ req, userId: clerkUserId }) => {
     const request = req as NextRequest;
     const { requestId, logger } = createRequestContext(req, {
       route: 'notion_export',

@@ -1,4 +1,4 @@
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
@@ -17,7 +17,7 @@ import { mapDetailToClient } from '@/lib/mappers/detailToClient';
  */
 
 export const GET = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('read', async ({ req, userId }) => {
     const planId = getPlanIdFromUrl(req, 'last');
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');
@@ -48,7 +48,7 @@ export const GET = withErrorBoundary(
 );
 
 export const DELETE = withErrorBoundary(
-  withAuth(async () => {
+  withAuthAndRateLimit('mutation', async () => {
     throw new ValidationError('Plan deletion is not yet implemented.');
   })
 );

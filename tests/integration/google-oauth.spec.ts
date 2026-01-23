@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/service-role';
-import { users, integrationTokens } from '@/lib/db/schema';
+import { users, integrationTokens, oauthStateTokens } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { getOAuthTokens } from '@/lib/integrations/oauth';
-import { clearOAuthStateTokens } from '@/lib/integrations/oauth-state';
+import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 
@@ -75,8 +75,8 @@ describe.skip('Google OAuth Flow', () => {
       name: 'Test User',
     });
 
-    // Clear OAuth state tokens cache before each test
-    clearOAuthStateTokens();
+    // Clear OAuth state tokens from database before each test
+    await db.delete(oauthStateTokens);
 
     // Capture original env values before overriding
     originalGoogleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -303,12 +303,11 @@ describe.skip('Google OAuth Flow', () => {
 
       testUserId = user.id;
 
-      // Generate and store a state token for testing
-      testStateToken = 'test_state_token_123';
-      const { storeOAuthStateToken } = await import(
-        '@/lib/integrations/oauth-state'
+      // Generate and store a state token for testing (returns the generated token)
+      testStateToken = await generateAndStoreOAuthStateToken(
+        'test_clerk_user_id',
+        'google_calendar'
       );
-      storeOAuthStateToken(testStateToken, 'test_clerk_user_id');
     });
 
     it('should exchange authorization code for tokens and store them', async () => {
@@ -502,13 +501,12 @@ describe.skip('Google OAuth Flow', () => {
       // Delete the test user so the database lookup fails
       await db.delete(users).where(eq(users.id, testUserId));
 
-      // Store a state token that maps to test_clerk_user_id (matching auth mock)
+      // Generate a state token that maps to test_clerk_user_id (matching auth mock)
       // but the user won't exist in the database
-      const nonExistentStateToken = 'non_existent_state_token';
-      const { storeOAuthStateToken } = await import(
-        '@/lib/integrations/oauth-state'
+      const nonExistentStateToken = await generateAndStoreOAuthStateToken(
+        'test_clerk_user_id',
+        'google_calendar'
       );
-      storeOAuthStateToken(nonExistentStateToken, 'test_clerk_user_id');
 
       const { GET: googleCallbackGET } = await import(
         '@/app/api/v1/auth/google/callback/route'
@@ -762,11 +760,10 @@ describe.skip('Google OAuth Flow', () => {
       );
 
       // Store a new state token for the second request (tokens are one-time use)
-      const secondStateToken = 'test_state_token_456';
-      const { storeOAuthStateToken: storeToken } = await import(
-        '@/lib/integrations/oauth-state'
+      const secondStateToken = await generateAndStoreOAuthStateToken(
+        'test_clerk_user_id',
+        'google_calendar'
       );
-      storeToken(secondStateToken, 'test_clerk_user_id');
 
       request = new NextRequest(
         `http://localhost:3000/api/v1/auth/google/callback?code=test_code_2&state=${secondStateToken}`

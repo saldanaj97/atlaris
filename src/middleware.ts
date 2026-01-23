@@ -1,6 +1,9 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
-
-import { createRouteMatcher } from '@clerk/nextjs/server';
+import {
+  clerkMiddleware,
+  createRouteMatcher,
+  type ClerkMiddlewareAuth,
+} from '@clerk/nextjs/server';
+import { type NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 const isProtectedRoute = createRouteMatcher([
@@ -9,53 +12,59 @@ const isProtectedRoute = createRouteMatcher([
   '/plans(.*)',
 ]);
 
-// Use basic auth for protected routes for now and later add paid plan
-// with isAuthenticated and user roles
-export default clerkMiddleware(async (auth, req) => {
-  // Check if maintenance mode is enabled
-  const isMaintenanceMode = process.env.MAINTENANCE_MODE === 'true';
-  const isMaintenancePage = req.nextUrl.pathname === '/maintenance';
+export default clerkMiddleware(
+  async (auth: ClerkMiddlewareAuth, request: NextRequest) => {
+    const isMaintenanceMode = process.env.MAINTENANCE_MODE === 'true';
+    const isMaintenancePage = request.nextUrl.pathname === '/maintenance';
 
-  // If maintenance mode is enabled and user is not already on maintenance page,
-  // redirect to maintenance page
-  if (isMaintenanceMode && !isMaintenancePage) {
-    return NextResponse.redirect(new URL('/maintenance', req.url));
+    if (isMaintenanceMode && !isMaintenancePage) {
+      return NextResponse.redirect(new URL('/maintenance', request.url));
+    }
+
+    if (!isMaintenanceMode && isMaintenancePage) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    if (request.nextUrl.pathname.startsWith('/api/v1/stripe/webhook')) {
+      return NextResponse.next();
+    }
+
+    if (isProtectedRoute(request)) await auth.protect();
+
+    const headerCorrelationId = request.headers.get('x-correlation-id');
+    const correlationId =
+      headerCorrelationId && headerCorrelationId.length
+        ? headerCorrelationId
+        : crypto.randomUUID();
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-correlation-id', correlationId);
+
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    });
+    response.headers.set('x-correlation-id', correlationId);
+
+    return response;
+  },
+  {
+    // CSP configuration - see https://clerk.com/docs/security/clerk-csp
+    contentSecurityPolicy: {
+      directives: {
+        'font-src': ["'self'", 'https://fonts.gstatic.com'],
+        'style-src': [
+          "'self'",
+          "'unsafe-inline'",
+          'https://fonts.googleapis.com',
+        ],
+      },
+    },
   }
-
-  // If maintenance mode is disabled and user is on maintenance page,
-  // redirect to home page
-  if (!isMaintenanceMode && isMaintenancePage) {
-    return NextResponse.redirect(new URL('/', req.url));
-  }
-
-  if (req.nextUrl.pathname.startsWith('/api/v1/stripe/webhook')) {
-    return NextResponse.next();
-  }
-
-  if (isProtectedRoute(req)) await auth.protect();
-
-  const headerCorrelationId = req.headers.get('x-correlation-id');
-  const correlationId =
-    headerCorrelationId && headerCorrelationId.length
-      ? headerCorrelationId
-      : crypto.randomUUID();
-
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set('x-correlation-id', correlationId);
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
-  response.headers.set('x-correlation-id', correlationId);
-
-  return response;
-});
+);
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 };

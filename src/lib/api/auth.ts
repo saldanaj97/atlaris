@@ -2,6 +2,11 @@ import { appEnv, devClerkEnv } from '@/lib/config/env';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 import {
+  checkUserRateLimit,
+  getUserRateLimitHeaders,
+  type UserRateLimitCategory,
+} from './user-rate-limit';
+import {
   createUser,
   getUserByClerkId,
   type DbUser,
@@ -182,4 +187,35 @@ export function withErrorBoundary(fn: PlainHandler): PlainHandler {
 export function compose(...fns: ((h: PlainHandler) => PlainHandler)[]) {
   return (final: PlainHandler): PlainHandler =>
     fns.reduceRight((acc, fn) => fn(acc), final);
+}
+
+export function withRateLimit(
+  category: UserRateLimitCategory
+): (handler: Handler) => Handler {
+  return (handler: Handler) => {
+    return async (ctx: HandlerCtx) => {
+      checkUserRateLimit(ctx.userId, category);
+      const response = await handler(ctx);
+
+      // Attach rate limit headers to the response
+      // We create a new Response because the original may be immutable
+      const rateLimitHeaders = getUserRateLimitHeaders(ctx.userId, category);
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: {
+          ...Object.fromEntries(response.headers.entries()),
+          ...rateLimitHeaders,
+        },
+      });
+    };
+  };
+}
+
+export function withAuthAndRateLimit(
+  category: UserRateLimitCategory,
+  handler: Handler
+): PlainHandler {
+  return withAuth(withRateLimit(category)(handler));
 }

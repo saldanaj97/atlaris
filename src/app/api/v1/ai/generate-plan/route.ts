@@ -1,4 +1,4 @@
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { notImplemented } from '@/lib/api/response';
 
 /**
@@ -13,4 +13,6 @@ import { notImplemented } from '@/lib/api/response';
  *  NOTE: If both endpoints coexist, ensure shared schema & DRY generation orchestration utility.
  */
 
-export const POST = withErrorBoundary(withAuth(async () => notImplemented()));
+export const POST = withErrorBoundary(
+  withAuthAndRateLimit('aiGeneration', async () => notImplemented())
+);

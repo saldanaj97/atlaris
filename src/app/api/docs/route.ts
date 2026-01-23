@@ -1,3 +1,5 @@
+import { toErrorResponse } from '@/lib/api/errors';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { appEnv } from '@/lib/config/env';
 
 const html = `<!doctype html>
@@ -39,9 +41,16 @@ const html = `<!doctype html>
   </body>
 </html>`;
 
-export const GET = async () => {
+export const GET = async (request: Request) => {
   if (!appEnv.isDevelopment && !appEnv.isTest) {
     return new Response('Not Found', { status: 404 });
+  }
+
+  // IP-based rate limiting for unauthenticated endpoint
+  try {
+    checkIpRateLimit(request, 'docs');
+  } catch (error) {
+    return toErrorResponse(error);
   }
 
   return new Response(html, {

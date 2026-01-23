@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { withAuth, type RouteHandlerContext } from '@/lib/api/auth';
+import {
+  withAuth,
+  withRateLimit,
+  type RouteHandlerContext,
+} from '@/lib/api/auth';
 import { AppError, toErrorResponse } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, users } from '@/lib/db/schema';
@@ -20,7 +24,7 @@ const syncRequestSchema = z.object({
 });
 
 const handleAuthedGoogleCalendarSync = withAuth(
-  async ({ req, userId: clerkUserId }) => {
+  withRateLimit('integration')(async ({ req, userId: clerkUserId }) => {
     const request = req as NextRequest;
     const { requestId, logger } = createRequestContext(req, {
       route: 'google_calendar_sync',
@@ -160,7 +164,7 @@ const handleAuthedGoogleCalendarSync = withAuth(
         { status: 500 }
       );
     }
-  }
+  })
 );
 
 export async function POST(

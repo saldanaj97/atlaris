@@ -29,7 +29,7 @@ docs/rules/        # Extended documentation (load on-demand)
 
 | Task                | Location                     | Notes                                             |
 | ------------------- | ---------------------------- | ------------------------------------------------- |
-| Add API endpoint    | `src/app/api/v1/`            | Use `getDb()` from runtime, never service-role    |
+| Add API endpoint    | `src/app/api/v1/`            | Use `withAuthAndRateLimit`, see rate-limiting.md  |
 | DB schema change    | `src/lib/db/schema/tables/`  | Run `pnpm db:generate` after                      |
 | AI generation logic | `src/lib/ai/orchestrator.ts` | Provider abstraction in `provider-factory.ts`     |
 | Add integration     | `src/lib/integrations/`      | Follow DI pattern (factory + types + sync)        |
@@ -124,6 +124,7 @@ Load on-demand based on task:
 - **Database**: `docs/rules/database/schema-overview.md`
 - **Styling**: `docs/rules/styles/styling.md`
 - **DI Pattern**: `docs/rules/architecture/dependency-injection-architecture.md`
+- **Rate Limiting**: `docs/rules/api/rate-limiting.md`
 
 ## Subdirectory Agents
 

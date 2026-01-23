@@ -93,6 +93,7 @@ export async function checkPlanLimit(userId: string): Promise<boolean> {
 /**
  * Check if user can use regenerations this month
  * @returns true if user has regenerations left, false otherwise
+ * @deprecated Use atomicCheckAndIncrementUsage for concurrent-safe quota enforcement
  */
 export async function checkRegenerationLimit(userId: string): Promise<boolean> {
   const tier = await getUserTier(userId);
@@ -111,6 +112,7 @@ export async function checkRegenerationLimit(userId: string): Promise<boolean> {
 /**
  * Check if user can export this month
  * @returns true if user has exports left, false otherwise
+ * @deprecated Use atomicCheckAndIncrementUsage for concurrent-safe quota enforcement
  */
 export async function checkExportLimit(userId: string): Promise<boolean> {
   const tier = await getUserTier(userId);
@@ -344,6 +346,107 @@ export async function markPlanGenerationFailure(
       updatedAt: timestamp,
     })
     .where(eq(learningPlans.id, planId));
+}
+
+export type AtomicUsageType = 'regeneration' | 'export';
+
+export type AtomicUsageResult =
+  | { allowed: true; newCount: number; limit: number }
+  | { allowed: false; currentCount: number; limit: number };
+
+export async function atomicCheckAndIncrementUsage(
+  userId: string,
+  type: AtomicUsageType
+): Promise<AtomicUsageResult> {
+  return db.transaction(async (tx) => {
+    const [user] = await tx
+      .select({ subscriptionTier: users.subscriptionTier })
+      .from(users)
+      .where(eq(users.id, userId))
+      .for('update');
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const tier = user.subscriptionTier;
+    const limit =
+      type === 'regeneration'
+        ? TIER_LIMITS[tier].monthlyRegenerations
+        : TIER_LIMITS[tier].monthlyExports;
+
+    if (limit === Infinity) {
+      const month = getCurrentMonth();
+      await ensureUsageMetricsExist(tx, userId, month);
+      await incrementUsageInTx(tx, userId, month, type);
+      return { allowed: true, newCount: 1, limit: Infinity };
+    }
+
+    const month = getCurrentMonth();
+    await ensureUsageMetricsExist(tx, userId, month);
+
+    const [metrics] = await tx
+      .select()
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
+      )
+      .for('update');
+
+    if (!metrics) {
+      throw new Error('Failed to lock usage metrics');
+    }
+
+    const currentCount =
+      type === 'regeneration' ? metrics.regenerationsUsed : metrics.exportsUsed;
+
+    if (currentCount >= limit) {
+      return { allowed: false, currentCount, limit };
+    }
+
+    await incrementUsageInTx(tx, userId, month, type);
+
+    return { allowed: true, newCount: currentCount + 1, limit };
+  });
+}
+
+async function ensureUsageMetricsExist(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  userId: string,
+  month: string
+): Promise<void> {
+  await tx
+    .insert(usageMetrics)
+    .values({
+      userId,
+      month,
+      plansGenerated: 0,
+      regenerationsUsed: 0,
+      exportsUsed: 0,
+    })
+    .onConflictDoNothing({
+      target: [usageMetrics.userId, usageMetrics.month],
+    });
+}
+
+async function incrementUsageInTx(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  userId: string,
+  month: string,
+  type: AtomicUsageType
+): Promise<void> {
+  const updateObj =
+    type === 'regeneration'
+      ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
+      : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+
+  await tx
+    .update(usageMetrics)
+    .set({
+      ...updateObj,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }
 
 const TIER_RECOMMENDATION_THRESHOLD_WEEKS = 8;

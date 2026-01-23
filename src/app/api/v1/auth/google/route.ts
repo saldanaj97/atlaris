@@ -1,8 +1,5 @@
 import { googleOAuthEnv } from '@/lib/config/env';
-import {
-  generateOAuthStateToken,
-  storeOAuthStateToken,
-} from '@/lib/integrations/oauth-state';
+import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state';
 import { logger } from '@/lib/logging/logger';
 import { auth } from '@clerk/nextjs/server';
 import { google } from 'googleapis';
@@ -36,10 +33,10 @@ export async function GET(_request: NextRequest) {
     );
   }
 
-  // Generate a cryptographically secure state token
-  const stateToken = generateOAuthStateToken();
-  // Store the mapping between state token and Clerk user ID
-  storeOAuthStateToken(stateToken, userId);
+  const stateToken = await generateAndStoreOAuthStateToken(
+    userId,
+    'google_calendar'
+  );
 
   const oauth2Client = new google.auth.OAuth2(
     config.clientId,

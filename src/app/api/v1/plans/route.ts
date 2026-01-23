@@ -2,7 +2,7 @@ import { ZodError } from 'zod';
 
 import { eq } from 'drizzle-orm';
 
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import {
   calculateTotalWeeks,
@@ -23,7 +23,7 @@ import {
 } from '@/lib/validation/learningPlans';
 
 export const GET = withErrorBoundary(
-  withAuth(async ({ userId }) => {
+  withAuthAndRateLimit('read', async ({ userId }) => {
     const user = await getUserByClerkId(userId);
     if (!user) {
       throw new Error(
@@ -39,7 +39,7 @@ export const GET = withErrorBoundary(
 // Use shared validation constants to avoid duplication
 
 export const POST = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('mutation', async ({ req, userId }) => {
     let body: CreateLearningPlanInput;
     try {
       body = createLearningPlanSchema.parse(await req.json());
