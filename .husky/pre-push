@@ -96,7 +96,7 @@ do
   INT_PID=""
   if has_changes_in "tests/integration" "$remote_sha"; then
     echo "  → Integration tests (tests/integration has changes)"
-    (pnpm test:integration:changed) &
+    (pnpm test:integration) &
     INT_PID=$!
     PIDS="$PIDS $INT_PID"
   fi
