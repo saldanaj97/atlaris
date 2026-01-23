@@ -58,8 +58,16 @@ describe('Navigation', () => {
       });
     });
 
+    it('should contain Plans nav item', () => {
+      const plansItem = authenticatedNavItems.find(
+        (item) => item.label === 'Plans'
+      );
+      expect(plansItem).toBeDefined();
+      expect(plansItem?.href).toBe('/plans');
+    });
+
     it('should have correct number of nav items', () => {
-      expect(authenticatedNavItems.length).toBe(3);
+      expect(authenticatedNavItems.length).toBe(4);
     });
 
     it('should not have highlight flag on any items', () => {
@@ -186,9 +194,10 @@ describe('Navigation', () => {
     });
 
     it('should have completely different navigation structure', () => {
-      // Authenticated users have Dashboard, Analytics, Settings
+      // Authenticated users have Dashboard, Plans, Analytics, Settings
       const authLabels = authenticatedNavItems.map((item) => item.label);
       expect(authLabels).toContain('Dashboard');
+      expect(authLabels).toContain('Plans');
       expect(authLabels).toContain('Analytics');
       expect(authLabels).toContain('Settings');
 
@@ -227,6 +236,15 @@ describe('Navigation', () => {
       );
       expect(authSettings).toBeDefined();
       expect(unauthSettings).toBeUndefined();
+
+      const authPlans = authenticatedNavItems.find(
+        (item) => item.label === 'Plans'
+      );
+      const unauthPlans = unauthenticatedNavItems.find(
+        (item) => item.label === 'Plans'
+      );
+      expect(authPlans).toBeDefined();
+      expect(unauthPlans).toBeUndefined();
     });
 
     it('should have Pricing and About only for unauthenticated users', () => {

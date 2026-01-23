@@ -1,3 +1,4 @@
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { ClerkProvider } from '@clerk/nextjs';
@@ -77,14 +78,16 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider afterSignOutUrl="/landing">
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body
           className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
         >
-          <SiteHeader />
-          <main className="flex-1 pt-16">{children}</main>
-          <Toaster />
-          <SiteFooter />
+          <ThemeProvider>
+            <SiteHeader />
+            <main className="flex-1 pt-16">{children}</main>
+            <Toaster />
+            <SiteFooter />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

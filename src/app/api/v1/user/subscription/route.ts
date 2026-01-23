@@ -1,11 +1,11 @@
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { json, jsonError } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getUsageSummary } from '@/lib/stripe/usage';
 
 // GET /api/v1/user/subscription
 export const GET = withErrorBoundary(
-  withAuth(async ({ userId: clerkUserId }) => {
+  withAuthAndRateLimit('read', async ({ userId: clerkUserId }) => {
     // Get user from database
     const user = await getUserByClerkId(clerkUserId);
     if (!user) {

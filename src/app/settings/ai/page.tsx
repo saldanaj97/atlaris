@@ -1,33 +1,23 @@
-import { ModelSelector } from '@/components/settings/model-selector';
+import { Suspense } from 'react';
+
 import { Card } from '@/components/ui/card';
-import { SubscriptionTier } from '@/lib/ai/types/model.types';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import { getUserByClerkId } from '@/lib/db/queries/users';
-import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
-import { redirect } from 'next/navigation';
 
-export default async function AISettingsPage() {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) redirect('/sign-in?redirect_url=/settings/ai');
+import {
+  ModelSelectionCard,
+  ModelSelectionCardSkeleton,
+} from './components/ModelSelectionCard';
 
-  const dbUser = await getUserByClerkId(clerkUserId);
-  if (!dbUser) redirect('/plans/new');
-
-  const sub = await getSubscriptionTier(dbUser.id);
-  const userTier: SubscriptionTier =
-    sub.subscriptionTier === 'starter'
-      ? 'starter'
-      : sub.subscriptionTier === 'pro'
-        ? 'pro'
-        : 'free';
-
-  // TODO: [OPENROUTER-MIGRATION] Get user's preferred model from database when column exists:
-  // const userPreferredModel = dbUser.preferredAiModel;
-  const userPreferredModel = null;
-
+/**
+ * AI Settings page with Suspense boundary for data-dependent content.
+ *
+ * Static elements (title, subtitle, About AI Models card) render immediately.
+ * Only the Model Selection card waits for user tier data.
+ */
+export default function AISettingsPage() {
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        {/* Static content - renders immediately */}
         <h1 className="mb-2 text-3xl font-bold">AI Preferences</h1>
         <p className="text-muted-foreground mb-6">
           Choose your preferred AI model for generating learning plans.
@@ -35,19 +25,12 @@ export default async function AISettingsPage() {
         </p>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="p-6">
-            <h2 className="mb-4 text-xl font-semibold">Model Selection</h2>
-            <ModelSelector
-              currentModel={userPreferredModel}
-              userTier={userTier}
-              // TODO: [OPENROUTER-MIGRATION] Implement onSave when API is ready
-              onSave={undefined}
-            />
-            <p className="text-muted-foreground mt-2 text-sm">
-              Model preference saving will be available soon.
-            </p>
-          </Card>
+          {/* Data-dependent card - wrapped in Suspense */}
+          <Suspense fallback={<ModelSelectionCardSkeleton />}>
+            <ModelSelectionCard />
+          </Suspense>
 
+          {/* Static content - renders immediately */}
           <Card className="p-6">
             <h2 className="mb-4 text-xl font-semibold">About AI Models</h2>
             <div className="text-muted-foreground space-y-4 text-sm">
@@ -70,7 +53,7 @@ export default async function AISettingsPage() {
                 Your selected model will be used for all future plan
                 generations. You can change it at any time.
               </p>
-              <div className="border-main rounded-base bg-main/50 mt-4 border-2 p-3">
+              <div className="border-border bg-muted/50 mt-4 rounded-lg border p-3">
                 <p className="text-xs">
                   <strong>Note:</strong> Model availability and pricing may
                   change. Free models are always available to all users.

@@ -50,8 +50,7 @@ export const GET = withErrorBoundary(async (req) => {
     );
   }
 
-  // Validate the state token and retrieve the associated Clerk user ID
-  const stateClerkUserId = validateOAuthStateToken(stateToken);
+  const stateClerkUserId = await validateOAuthStateToken(stateToken);
   if (!stateClerkUserId) {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=invalid_state', baseUrl)

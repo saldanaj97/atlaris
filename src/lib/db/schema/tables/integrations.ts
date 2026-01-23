@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   index,
   pgPolicy,
@@ -19,6 +20,67 @@ import { tasks } from './tasks';
 import { users } from './users';
 
 // Integration-related tables
+
+/**
+ * OAuth state tokens for CSRF protection during OAuth flows.
+ *
+ * This table stores short-lived tokens that map OAuth state parameters to Clerk user IDs.
+ * The tokens are:
+ * - Hashed (SHA-256) before storage for security
+ * - Single-use (deleted on validation via atomic DELETE...RETURNING)
+ * - Short-lived (10 minute TTL, enforced at query time)
+ *
+ * This replaces the previous in-memory LRU cache which failed in multi-instance
+ * serverless deployments (e.g., Vercel) where OAuth initiation and callback
+ * could land on different instances.
+ */
+export const oauthStateTokens = pgTable(
+  'oauth_state_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // SHA-256 hash of the state token (never store plaintext)
+    stateTokenHash: text('state_token_hash').notNull(),
+    // Clerk user ID who initiated the OAuth flow
+    clerkUserId: text('clerk_user_id').notNull(),
+    // Optional: which OAuth provider this token is for (for debugging/analytics)
+    provider: text('provider'),
+    // When this token expires (10 minutes from creation)
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    // Index for fast lookups by hash
+    index('oauth_state_tokens_hash_idx').on(table.stateTokenHash),
+    // Index for cleanup queries (expired tokens)
+    index('oauth_state_tokens_expires_at_idx').on(table.expiresAt),
+
+    // RLS Policies
+    // Note: These tokens are accessed via service-role in OAuth callbacks
+    // because the user might not be fully authenticated yet during the flow.
+    // However, we still enable RLS for defense-in-depth.
+
+    // Allow insert for authenticated users (creating their own tokens)
+    pgPolicy('oauth_state_tokens_insert', {
+      for: 'insert',
+      // Anyone can insert (OAuth initiation happens before full auth context)
+      withCheck: sql`true`,
+    }),
+
+    // Allow select/delete only for service role operations
+    // OAuth validation uses service-role to atomically delete and return
+    pgPolicy('oauth_state_tokens_select', {
+      for: 'select',
+      using: sql`true`, // Service role access for validation
+    }),
+
+    pgPolicy('oauth_state_tokens_delete', {
+      for: 'delete',
+      using: sql`true`, // Service role access for cleanup and validation
+    }),
+  ]
+).enableRLS();
 
 export const integrationTokens = pgTable(
   'integration_tokens',

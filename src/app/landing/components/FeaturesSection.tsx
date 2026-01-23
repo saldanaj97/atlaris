@@ -1,3 +1,5 @@
+import { Badge } from '@/components/ui/badge';
+
 /**
  * Features section with glassmorphism cards and AI-powered insights.
  */
@@ -11,21 +13,21 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
-    gradient: 'from-purple-400 to-purple-500',
+    gradient: 'from-primary to-primary-dark',
     icon: '✨',
     title: 'AI-Powered Learning',
     description:
       'Smart algorithms that understand your learning style and adapt in real-time.',
   },
   {
-    gradient: 'from-pink-400 to-rose-500',
+    gradient: 'from-destructive to-destructive/80',
     icon: '🎯',
     title: 'Goal Tracking',
     description:
       'Set milestones and watch your progress through beautiful visualizations.',
   },
   {
-    gradient: 'from-cyan-400 to-blue-500',
+    gradient: 'from-primary to-accent',
     icon: '🔮',
     title: 'Predictive Insights',
     description:
@@ -37,24 +39,21 @@ export function FeaturesSection() {
   return (
     <section
       id="features"
-      className="relative py-24 lg:py-32"
+      className="relative lg:py-32"
       aria-labelledby="features-heading"
     >
       <div className="mx-auto max-w-screen-xl px-6">
         <div className="mb-16 text-center">
-          <span className="mb-4 inline-block rounded-full bg-purple-100 px-4 py-1.5 text-sm font-medium text-purple-700">
+          <Badge className="bg-primary/10 text-primary mb-4 px-4 py-1.5">
             Features
-          </span>
+          </Badge>
           <h2
             id="features-heading"
-            className="mb-4 text-4xl font-bold text-gray-900 md:text-5xl"
+            className="text-foreground marketing-h2 mb-4"
           >
-            Beautifully{' '}
-            <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
-              Transparent
-            </span>
+            Beautifully <span className="gradient-text">Transparent</span>
           </h2>
-          <p className="mx-auto max-w-2xl text-lg text-gray-600">
+          <p className="text-muted-foreground marketing-subtitle mx-auto max-w-2xl">
             Every element designed with clarity in mind, letting you focus on
             what matters most.
           </p>
@@ -64,7 +63,7 @@ export function FeaturesSection() {
           {FEATURES.map((feature) => (
             <div
               key={feature.title}
-              className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
+              className="group dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10"
             >
               <div
                 className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${feature.gradient} opacity-30 blur-2xl`}
@@ -76,10 +75,10 @@ export function FeaturesSection() {
               >
                 {feature.icon}
               </div>
-              <h3 className="mb-3 text-xl font-semibold text-gray-900">
+              <h3 className="text-foreground mb-3 text-xl font-semibold">
                 {feature.title}
               </h3>
-              <p className="leading-relaxed text-gray-600">
+              <p className="text-muted-foreground leading-relaxed">
                 {feature.description}
               </p>
             </div>

@@ -1,6 +1,6 @@
 import { count, desc, eq } from 'drizzle-orm';
 
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
@@ -19,7 +19,7 @@ import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
 export const GET = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('read', async ({ req, userId }) => {
     const planId = getPlanIdFromUrl(req, 'second-to-last');
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');

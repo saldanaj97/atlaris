@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useId, useState } from 'react';
 
 import BrandLogo from '@/components/shared/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
 
 const NAV_LINK_CLASSES =
-  'text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none';
+  'text-sm font-medium text-muted-foreground transition hover:text-primary focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none';
 
 interface LandingNavigationProps {
   onCtaClick?: () => void;
@@ -23,11 +23,11 @@ export default function LandingNavigation({
   onCtaClick,
 }: LandingNavigationProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mobileMenuId = useId();
 
   return (
     <nav
       className="fixed start-0 top-0 z-50 w-full"
-      role="navigation"
       aria-label="Main navigation"
     >
       <div className="mx-auto max-w-screen-xl px-6 py-4">
@@ -48,7 +48,7 @@ export default function LandingNavigation({
             </Link>
             <Button
               asChild
-              className="h-auto rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2"
+              className="from-primary to-accent shadow-primary/25 hover:shadow-primary/30 focus-visible:ring-ring h-auto rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2"
             >
               <Link href="/plans/new" onClick={onCtaClick}>
                 Get Started
@@ -57,12 +57,13 @@ export default function LandingNavigation({
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            type="button"
-            className="rounded-md p-2 text-gray-600 hover:bg-white/40 hover:text-purple-600 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none md:hidden"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-primary hover:bg-white/40 md:hidden"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-expanded={isMobileMenuOpen}
-            aria-controls="mobile-menu"
+            aria-controls={mobileMenuId}
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
             {isMobileMenuOpen ? (
@@ -70,12 +71,12 @@ export default function LandingNavigation({
             ) : (
               <Menu className="h-6 w-6" aria-hidden="true" />
             )}
-          </button>
+          </Button>
         </div>
 
         {/* Mobile Menu */}
         <div
-          id="mobile-menu"
+          id={mobileMenuId}
           className={cn(
             'mt-2 overflow-hidden rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl transition-all duration-200 ease-in-out md:hidden',
             isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
@@ -84,28 +85,28 @@ export default function LandingNavigation({
           <div className="flex flex-col space-y-4 p-6">
             <Link
               href="#features"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className={NAV_LINK_CLASSES}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Features
             </Link>
             <Link
               href="/about"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className={NAV_LINK_CLASSES}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               About
             </Link>
             <Link
               href="/pricing"
-              className="text-sm font-medium text-gray-600 transition hover:text-purple-600 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+              className={NAV_LINK_CLASSES}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Pricing
             </Link>
             <Button
               asChild
-              className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-purple-500/25 transition hover:shadow-xl hover:shadow-purple-500/30"
+              className="from-primary to-accent shadow-primary/25 hover:shadow-primary/30 w-full rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl"
             >
               <Link
                 href="/plans/new"

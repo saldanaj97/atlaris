@@ -130,4 +130,47 @@ describe('ClerkAuthControls', () => {
     const signUpWrapper = screen.getByTestId('sign-up-button');
     expect(signUpWrapper).toContainElement(screen.getByText('Sign Up'));
   });
+
+  describe('tier badge', () => {
+    it('should not render tier badge when tier is not provided', () => {
+      render(<ClerkAuthControls />);
+
+      // No badge should be present
+      expect(screen.queryByText('free')).not.toBeInTheDocument();
+      expect(screen.queryByText('starter')).not.toBeInTheDocument();
+      expect(screen.queryByText('pro')).not.toBeInTheDocument();
+    });
+
+    it('should render free tier badge when tier is free', () => {
+      render(<ClerkAuthControls tier="free" />);
+
+      const signedInSection = screen.getByTestId('signed-in');
+      expect(signedInSection).toHaveTextContent('free');
+    });
+
+    it('should render starter tier badge when tier is starter', () => {
+      render(<ClerkAuthControls tier="starter" />);
+
+      const signedInSection = screen.getByTestId('signed-in');
+      expect(signedInSection).toHaveTextContent('starter');
+    });
+
+    it('should render pro tier badge when tier is pro', () => {
+      render(<ClerkAuthControls tier="pro" />);
+
+      const signedInSection = screen.getByTestId('signed-in');
+      expect(signedInSection).toHaveTextContent('pro');
+    });
+
+    it('should render tier badge next to user button when signed in', () => {
+      render(<ClerkAuthControls tier="pro" />);
+
+      const signedInSection = screen.getByTestId('signed-in');
+      // Badge and user button should both be in the signed-in section
+      expect(signedInSection).toHaveTextContent('pro');
+      expect(signedInSection).toContainElement(
+        screen.getByTestId('user-button')
+      );
+    });
+  });
 });

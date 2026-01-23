@@ -177,20 +177,20 @@ const ModelDropdown = ({
       )}
 
       {saveStatus === 'upgradeRequired' && (
-        <div className="rounded-base border-2 border-red-500 bg-red-50 p-3 text-sm text-red-900">
+        <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm">
           This model requires a Pro subscription. Please upgrade to use premium
           models.
         </div>
       )}
 
       {saveStatus === 'error' && (
-        <div className="rounded-base border-2 border-red-500 bg-red-50 p-3 text-sm text-red-900">
+        <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm">
           Failed to save preferences. Please try again.
         </div>
       )}
 
       {saveStatus === 'success' && (
-        <div className="rounded-base border-2 border-green-500 bg-green-50 p-3 text-sm text-green-900">
+        <div className="rounded-lg border-2 border-green-500 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
           Preferences saved successfully!
         </div>
       )}
@@ -204,7 +204,7 @@ const ModelDropdown = ({
       </Button>
 
       {userTier !== 'pro' && (
-        <div className="rounded-base border-border bg-main border-2 p-4">
+        <div className="border-border bg-muted rounded-lg border-2 p-4">
           <h4 className="mb-2 font-semibold">Unlock Premium Models</h4>
           <p className="text-muted-foreground mb-3 text-sm">
             Upgrade to Pro to access advanced models like Claude Sonnet 4.5,

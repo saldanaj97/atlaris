@@ -3,7 +3,7 @@ import { count, eq } from 'drizzle-orm';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { jsonError } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
@@ -28,7 +28,7 @@ export const maxDuration = 60;
  * Server-side rate limiting: max ATTEMPT_CAP (default 3) attempts per plan.
  */
 export const POST = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
     const rawPlanId = getPlanIdFromUrl(req, 'second-to-last');
     if (!rawPlanId) {
       throw new ValidationError('Plan id is required in the request path.');

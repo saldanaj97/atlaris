@@ -1,4 +1,5 @@
 import { withErrorBoundary } from '@/lib/api/auth';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { appEnv, stripeEnv } from '@/lib/config/env';
 import {
   attachRequestIdHeader,
@@ -15,6 +16,8 @@ export const POST = withErrorBoundary(async (req: Request) => {
   });
   const respond = (body: BodyInit | null, init?: ResponseInit) =>
     attachRequestIdHeader(new Response(body, init), requestId);
+
+  checkIpRateLimit(req, 'webhook');
 
   const rawBody = await req.text();
   const signature = req.headers.get('stripe-signature');

@@ -1,12 +1,37 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { db } from '@/lib/db/service-role';
 import { jobQueue } from '@/lib/db/schema';
 import { JOB_TYPES } from '@/lib/jobs/types';
 import { GET } from '@/app/api/health/worker/route';
+import { clearAllRateLimiters } from '@/lib/api/ip-rate-limit';
 import { ensureUser } from '../../../helpers/db';
 
+/**
+ * Creates a mock Request object for testing the health endpoint.
+ * The health endpoint now requires a Request argument for IP-based rate limiting.
+ */
+function createMockRequest(ip: string = '127.0.0.1'): Request {
+  return {
+    headers: {
+      get: (name: string) => {
+        if (name.toLowerCase() === 'x-forwarded-for') return ip;
+        return null;
+      },
+    },
+  } as unknown as Request;
+}
+
 describe('Health Endpoint', () => {
+  // Clear rate limiters between tests to ensure isolation
+  beforeEach(() => {
+    clearAllRateLimiters();
+  });
+
+  afterEach(() => {
+    clearAllRateLimiters();
+  });
+
   describe('Healthy State', () => {
     it('should return 200 with healthy status when no issues exist', async () => {
       // T064: Health endpoint healthy
@@ -51,7 +76,7 @@ describe('Health Endpoint', () => {
         updatedAt: now,
       });
 
-      const response = await GET();
+      const response = await GET(createMockRequest());
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -87,7 +112,7 @@ describe('Health Endpoint', () => {
         updatedAt: elevenMinutesAgo,
       });
 
-      const response = await GET();
+      const response = await GET(createMockRequest());
       const data = await response.json();
 
       expect(response.status).toBe(503);
@@ -119,7 +144,7 @@ describe('Health Endpoint', () => {
         updatedAt: fiveMinutesAgo,
       });
 
-      const response = await GET();
+      const response = await GET(createMockRequest());
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -155,7 +180,7 @@ describe('Health Endpoint', () => {
 
       await db.insert(jobQueue).values(jobs);
 
-      const response = await GET();
+      const response = await GET(createMockRequest());
       const data = await response.json();
 
       expect(response.status).toBe(503);
@@ -190,7 +215,7 @@ describe('Health Endpoint', () => {
 
       await db.insert(jobQueue).values(jobs);
 
-      const response = await GET();
+      const response = await GET(createMockRequest());
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -236,7 +261,7 @@ describe('Health Endpoint', () => {
 
       await db.insert(jobQueue).values(jobs);
 
-      const response = await GET();
+      const response = await GET(createMockRequest());
       const data = await response.json();
 
       expect(response.status).toBe(503);
@@ -250,7 +275,7 @@ describe('Health Endpoint', () => {
 
   describe('Error Handling', () => {
     it('should include timestamp in all responses', async () => {
-      const response = await GET();
+      const response = await GET(createMockRequest());
       const data = await response.json();
 
       expect(data).toHaveProperty('timestamp');

@@ -1,5 +1,7 @@
 import { ArrowDownCircle, Calendar, Check, X } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
+
 /**
  * Problem vs Solution section highlighting the contrast between
  * manual learning struggles and the structured Pathfinder approach.
@@ -8,30 +10,20 @@ import { ArrowDownCircle, Calendar, Check, X } from 'lucide-react';
 export function ProblemSolutionSection() {
   return (
     <section
-      className="relative py-24 lg:py-32"
+      className="relative lg:py-32"
       aria-labelledby="problem-solution-heading"
     >
-      {/* Background decoration */}
-      <div
-        className="absolute top-20 left-1/4 h-64 w-64 rounded-full bg-gradient-to-br from-rose-200 to-orange-100 opacity-40 blur-3xl"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute right-1/4 bottom-20 h-56 w-56 rounded-full bg-gradient-to-br from-emerald-200 to-cyan-100 opacity-40 blur-3xl"
-        aria-hidden="true"
-      />
-
       <div className="relative z-10 mx-auto max-w-screen-xl px-6">
         <div className="mb-16 text-center">
-          <span className="mb-4 inline-block rounded-full bg-rose-100 px-4 py-1.5 text-sm font-medium text-rose-700">
+          <Badge className="bg-destructive/10 text-destructive mb-4 px-4 py-1.5">
             The Challenge
-          </span>
+          </Badge>
           <h2
             id="problem-solution-heading"
-            className="text-foreground mb-4 text-4xl font-bold md:text-5xl"
+            className="text-foreground marketing-h2 mb-4"
           >
             Most people don&apos;t fail to learn.{' '}
-            <span className="bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">
+            <span className="from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent">
               They fail to start.
             </span>
           </h2>
@@ -40,15 +32,15 @@ export function ProblemSolutionSection() {
         <div className="grid gap-8 md:grid-cols-2">
           {/* Problem Card */}
           <div
-            className="group relative overflow-hidden rounded-3xl border border-rose-200/50 bg-gradient-to-br from-rose-50/80 to-white/60 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
+            className="group border-destructive/30 from-destructive/10 dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-gradient-to-br to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
             role="region"
             aria-labelledby="problem-card-heading"
           >
             {/* Decorative glow */}
-            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-rose-300 to-orange-200 opacity-30 blur-2xl"></div>
+            <div className="from-destructive/30 to-destructive/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-30 blur-2xl"></div>
 
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 to-red-500 shadow-lg">
+              <div className="from-destructive to-destructive/80 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg">
                 <ArrowDownCircle
                   className="h-6 w-6 text-white"
                   aria-hidden="true"
@@ -78,15 +70,15 @@ export function ProblemSolutionSection() {
 
           {/* Solution Card */}
           <div
-            className="group relative overflow-hidden rounded-3xl border border-emerald-200/50 bg-gradient-to-br from-emerald-50/80 to-white/60 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
+            className="group border-primary/30 from-primary/10 dark:border-primary/20 dark:from-primary/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-gradient-to-br to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
             role="region"
             aria-labelledby="solution-card-heading"
           >
             {/* Decorative glow */}
-            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-emerald-300 to-cyan-200 opacity-30 blur-2xl"></div>
+            <div className="from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-30 blur-2xl"></div>
 
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg">
+              <div className="from-primary to-accent flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg">
                 <Calendar className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
               <h3
@@ -110,22 +102,38 @@ export function ProblemSolutionSection() {
   );
 }
 
-function ProblemItem({ children }: { children: React.ReactNode }) {
+interface ItemProps {
+  children: React.ReactNode;
+}
+
+/**
+ * Displays a problem item in the problem-solution comparison section.
+ * Renders a list item with an X icon and the provided children content.
+ *
+ * @param children - The content to display as the problem description
+ */
+function ProblemItem({ children }: ItemProps) {
   return (
     <li className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-rose-100 to-red-100 shadow-sm">
-        <X className="h-3.5 w-3.5 text-rose-500" aria-hidden="true" />
+      <div className="bg-destructive/10 mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg shadow-sm">
+        <X className="text-destructive h-3.5 w-3.5" aria-hidden="true" />
       </div>
       <span className="text-muted-foreground leading-relaxed">{children}</span>
     </li>
   );
 }
 
-function SolutionItem({ children }: { children: React.ReactNode }) {
+/**
+ * Displays a solution item in the problem-solution comparison section.
+ * Renders a list item with a checkmark icon and the provided children content.
+ *
+ * @param children - The content to display as the solution description
+ */
+function SolutionItem({ children }: ItemProps) {
   return (
     <li className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-green-100 shadow-sm">
-        <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
+      <div className="bg-primary/10 mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg shadow-sm">
+        <Check className="text-primary h-3.5 w-3.5" aria-hidden="true" />
       </div>
       <span className="text-muted-foreground leading-relaxed">{children}</span>
     </li>

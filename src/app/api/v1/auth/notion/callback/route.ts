@@ -10,11 +10,18 @@ import {
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { validateOAuthStateToken } from '@/lib/integrations/oauth-state';
 
 export const GET = withErrorBoundary(async (req: Request) => {
   const request = req as NextRequest;
+
+  // For OAuth callbacks we must validate against the actual Clerk session,
+  // not the DEV_CLERK_USER_ID override used in tests and local dev.
+  const clerkUserId = await getClerkAuthUserId();
+
   const { requestId, logger } = createRequestContext(req, {
     route: 'notion_oauth_callback',
+    clerkUserId,
   });
   const redirectWithRequestId = (url: URL) =>
     attachRequestIdHeader(
@@ -25,7 +32,7 @@ export const GET = withErrorBoundary(async (req: Request) => {
   const url = request.nextUrl || new URL(request.url);
   const searchParams = url.searchParams;
   const code = searchParams.get('code');
-  const state = searchParams.get('state'); // contains internal users.id
+  const stateToken = searchParams.get('state'); // Secure state token (not raw userId)
   const error = searchParams.get('error');
 
   // Extract origin from request URL for redirects
@@ -41,40 +48,44 @@ export const GET = withErrorBoundary(async (req: Request) => {
     );
   }
 
-  if (!code || !state) {
+  if (!code || !stateToken) {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=missing_parameters', baseUrl)
     );
   }
 
+  const stateClerkUserId = await validateOAuthStateToken(stateToken);
+  if (!stateClerkUserId) {
+    return redirectWithRequestId(
+      new URL('/settings/integrations?error=invalid_state', baseUrl)
+    );
+  }
+
   // Authenticate current user (redirect on unauthenticated instead of JSON).
-  // We intentionally bypass DEV_CLERK_USER_ID here and rely on the actual
-  // Clerk session to prevent OAuth flows from being spoofed via overrides.
-  const clerkUserId = await getClerkAuthUserId();
   if (!clerkUserId) {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=unauthorized', baseUrl)
     );
   }
 
-  // Verify target user exists (state is internal users.id)
+  // Verify the authenticated user matches the user from the state token
+  if (clerkUserId !== stateClerkUserId) {
+    return redirectWithRequestId(
+      new URL('/settings/integrations?error=user_mismatch', baseUrl)
+    );
+  }
+
+  // Query users.clerkUserId to find the application user
   const db = getDb();
   const [user] = await db
     .select()
     .from(users)
-    .where(eq(users.id, state))
+    .where(eq(users.clerkUserId, stateClerkUserId))
     .limit(1);
 
   if (!user) {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=invalid_user', baseUrl)
-    );
-  }
-
-  // Verify authenticated user matches the user in the state parameter (via clerkUserId)
-  if (user.clerkUserId !== clerkUserId) {
-    return redirectWithRequestId(
-      new URL('/settings/integrations?error=user_mismatch', baseUrl)
     );
   }
 

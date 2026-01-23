@@ -1,17 +1,18 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
   LEARNING_STYLE_OPTIONS,
-  type PlanFormData,
   SKILL_LEVEL_OPTIONS,
   WEEKLY_HOURS_OPTIONS,
-} from './types';
-import { clientLogger } from '../../../../../lib/logging/client';
+} from './constants';
+
+import type { PlanFormData } from './types';
 
 interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
@@ -69,16 +70,26 @@ export function UnifiedPlanInput({
   const isFormValid = topic.trim().length > 0;
   const isDisabled = isSubmitting || disabled || !isFormValid;
 
+  // Memoize platform detection to avoid re-running on every render
+  const isMac = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    return (
+      (navigator as Navigator & { userAgentData?: { platform?: string } })
+        .userAgentData?.platform === 'macOS' ||
+      /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
+    );
+  }, []);
+
   return (
     <div className="w-full max-w-2xl">
       {/* Main input card with glassmorphism */}
-      <div className="relative rounded-3xl border border-white/50 bg-white/60 px-6 py-5 shadow-2xl backdrop-blur-xl transition-all focus-within:shadow-purple-500/20">
+      <div className="dark:border-border dark:bg-card/60 dark:focus-within:shadow-primary/10 focus-within:shadow-primary/20 border-border bg-card/60 relative rounded-3xl border px-6 py-5 shadow-2xl backdrop-blur-xl transition-all">
         {/* Decorative gradient glow - clipped to card bounds */}
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
           aria-hidden="true"
         >
-          <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-purple-300 to-pink-200 opacity-40 blur-2xl" />
+          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-40 blur-2xl dark:opacity-20" />
         </div>
 
         {/* Topic input */}
@@ -87,7 +98,7 @@ export function UnifiedPlanInput({
             What do you want to learn?
           </label>
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+            <div className="from-primary to-accent flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <textarea
@@ -96,7 +107,7 @@ export function UnifiedPlanInput({
               onChange={(e) => setTopic(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="I want to learn TypeScript for React development..."
-              className="min-h-[72px] w-full resize-none bg-transparent text-lg text-gray-900 placeholder-gray-400 focus:outline-none"
+              className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[72px] w-full resize-none bg-transparent text-lg focus:outline-none"
               rows={2}
               disabled={isSubmitting}
             />
@@ -104,14 +115,14 @@ export function UnifiedPlanInput({
         </div>
 
         {/* Inline sentence with dropdowns - Row 1 */}
-        <div className="mb-3 flex flex-wrap items-center gap-2 text-gray-700">
+        <div className="dark:text-foreground text-foreground mb-3 flex flex-wrap items-center gap-2">
           <span className="text-sm">I&apos;m a</span>
           <InlineDropdown
             id={`${baseId}-skill-level`}
             options={SKILL_LEVEL_OPTIONS}
             value={skillLevel}
             onChange={setSkillLevel}
-            variant="purple"
+            variant="primary"
           />
           <span className="text-sm">with</span>
           <InlineDropdown
@@ -120,20 +131,20 @@ export function UnifiedPlanInput({
             value={weeklyHours}
             onChange={setWeeklyHours}
             icon={<Clock className="h-3.5 w-3.5" />}
-            variant="cyan"
+            variant="accent"
           />
           <span className="text-sm">per week.</span>
         </div>
 
         {/* Inline sentence with dropdowns - Row 2 */}
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-gray-700">
+        <div className="dark:text-foreground text-foreground mb-4 flex flex-wrap items-center gap-2">
           <span className="text-sm">I prefer</span>
           <InlineDropdown
             id={`${baseId}-learning-style`}
             options={LEARNING_STYLE_OPTIONS}
             value={learningStyle}
             onChange={setLearningStyle}
-            variant="pink"
+            variant="accent"
           />
           <span className="text-sm">and want to finish in</span>
           <InlineDropdown
@@ -142,7 +153,7 @@ export function UnifiedPlanInput({
             value={deadlineWeeks}
             onChange={setDeadlineWeeks}
             icon={<Calendar className="h-3.5 w-3.5" />}
-            variant="rose"
+            variant="primary"
           />
         </div>
 
@@ -152,7 +163,7 @@ export function UnifiedPlanInput({
             type="button"
             onClick={handleSubmit}
             disabled={isDisabled}
-            className="group h-auto rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 px-6 py-3 text-white shadow-xl shadow-purple-500/25 transition hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-purple-500/30 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl"
+            className="group from-primary via-accent to-primary shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl bg-gradient-to-r px-6 py-3 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl"
           >
             {isSubmitting ? (
               <>
@@ -170,19 +181,13 @@ export function UnifiedPlanInput({
       </div>
 
       {/* Subtext with keyboard hint */}
-      <p className="mt-4 text-center text-sm text-gray-500">
+      <p className="dark:text-muted-foreground text-muted-foreground mt-4 text-center text-sm">
         Takes about 60 seconds. Press{' '}
         <kbd
-          className="rounded bg-gray-200/60 px-1.5 py-0.5 text-xs font-medium"
+          className="dark:bg-muted bg-muted/60 rounded px-1.5 py-0.5 text-xs font-medium"
           suppressHydrationWarning
         >
-          {typeof navigator !== 'undefined' &&
-          ((navigator as Navigator & { userAgentData?: { platform?: string } })
-            .userAgentData?.platform === 'macOS' ||
-            /Mac|iPod|iPhone|iPad/.test(navigator.userAgent))
-            ? '⌘'
-            : 'Ctrl'}
-          +Enter
+          {isMac ? '⌘' : 'Ctrl'}+Enter
         </kbd>{' '}
         to submit.
       </p>

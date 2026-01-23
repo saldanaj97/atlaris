@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db/runtime';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
 import type { InferSelectModel } from 'drizzle-orm';
 
@@ -25,6 +26,21 @@ export async function createUser(userData: {
   const db = getDb();
   const result = await db.insert(users).values(userData).returning();
   return result[0];
+}
+
+export async function deleteUserByClerkId(
+  clerkUserId: string
+): Promise<{ deleted: boolean; userId?: string }> {
+  const result = await serviceDb
+    .delete(users)
+    .where(eq(users.clerkUserId, clerkUserId))
+    .returning({ id: users.id });
+
+  if (result.length === 0) {
+    return { deleted: false };
+  }
+
+  return { deleted: true, userId: result[0].id };
 }
 
 // TODO: [OPENROUTER-MIGRATION] Add function when preferredAiModel column exists:

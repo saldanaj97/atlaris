@@ -1,6 +1,6 @@
 import { ZodError } from 'zod';
 
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json, jsonError } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
@@ -15,8 +15,7 @@ import {
 } from '@/lib/jobs/types';
 import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
 import {
-  checkRegenerationLimit,
-  incrementUsage,
+  atomicCheckAndIncrementUsage,
   resolveUserTier,
 } from '@/lib/stripe/usage';
 import {
@@ -30,7 +29,7 @@ import { eq } from 'drizzle-orm';
  * Enqueues a regeneration job for an existing plan with optional parameter overrides.
  */
 export const POST = withErrorBoundary(
-  withAuth(async ({ req, userId, params }) => {
+  withAuthAndRateLimit('aiGeneration', async ({ req, userId, params }) => {
     const planId = params.planId;
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');
@@ -56,16 +55,7 @@ export const POST = withErrorBoundary(
       return jsonError('Plan not found', { status: 404 });
     }
 
-    // Check regeneration quota
-    const canRegenerate = await checkRegenerationLimit(user.id);
-    if (!canRegenerate) {
-      return jsonError(
-        'Regeneration quota exceeded for your subscription tier.',
-        { status: 429 }
-      );
-    }
-
-    // Parse request body for overrides
+    // Parse request body for overrides (before quota check to fail fast on validation)
     let body: { overrides?: unknown } = {};
     try {
       body = (await req.json().catch(() => ({}))) as {
@@ -87,6 +77,18 @@ export const POST = withErrorBoundary(
       }
     }
 
+    // Atomically check and increment regeneration quota (prevents TOCTOU race)
+    const usageResult = await atomicCheckAndIncrementUsage(
+      user.id,
+      'regeneration'
+    );
+    if (!usageResult.allowed) {
+      return jsonError(
+        'Regeneration quota exceeded for your subscription tier.',
+        { status: 429 }
+      );
+    }
+
     // Compute priority based on tier and topic
     const tier = await resolveUserTier(user.id);
     const priority = computeJobPriority({
@@ -103,9 +105,6 @@ export const POST = withErrorBoundary(
       payload,
       priority
     );
-
-    // Increment regeneration usage counter
-    await incrementUsage(user.id, 'regeneration');
 
     return json(
       { generationId: planId, planId, status: 'pending' },

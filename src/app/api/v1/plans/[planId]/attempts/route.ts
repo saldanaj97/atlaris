@@ -1,4 +1,4 @@
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
@@ -7,7 +7,7 @@ import { getUserByClerkId } from '@/lib/db/queries/users';
 import { mapAttemptsToClient } from '@/lib/mappers/detailToClient';
 
 export const GET = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('read', async ({ req, userId }) => {
     const planId = getPlanIdFromUrl(req, 'second-to-last');
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');

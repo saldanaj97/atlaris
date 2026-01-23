@@ -1,5 +1,5 @@
 import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
@@ -16,7 +16,7 @@ import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
  * Returns null for preferredAiModel until the database column is added.
  */
 export const GET = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('read', async ({ req, userId }) => {
     const { requestId, logger } = createRequestContext(req, {
       route: 'GET /api/v1/user/preferences',
       userId,
@@ -52,7 +52,7 @@ export const GET = withErrorBoundary(
  * Validates the model ID and performs tier-gating (when implemented).
  */
 export const PATCH = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('mutation', async ({ req, userId }) => {
     const { requestId, logger } = createRequestContext(req, {
       route: 'PATCH /api/v1/user/preferences',
       userId,

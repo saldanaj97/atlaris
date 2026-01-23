@@ -1,14 +1,14 @@
-'use client';
-
 import {
   FeaturesSection,
-  FinalCtaSection,
-  HeroSection,
+  GradientBlobBackground,
   HowItWorksSection,
   ProblemSolutionSection,
   UseCasesSection,
 } from './components';
-import { useLandingAnalytics } from './hooks/useLandingAnalytics';
+import {
+  FinalCtaSectionWithAnalytics,
+  HeroSectionWithAnalytics,
+} from './components/LandingAnalyticsWrapper';
 
 /**
  * Landing page for Atlaris - AI-powered learning roadmap and schedule generator.
@@ -17,18 +17,23 @@ import { useLandingAnalytics } from './hooks/useLandingAnalytics';
  * - Glassmorphism design with soft gradients and transparency
  * - AI-powered insights and crystal clarity
  * - Modern, airy, and intuitive interface
+ *
+ * This is a server component for optimal static generation. Analytics tracking
+ * is handled by client component wrappers (HeroSectionWithAnalytics and
+ * FinalCtaSectionWithAnalytics).
  */
 export default function LandingPage() {
-  const { trackHeroCta, trackFooterCta } = useLandingAnalytics();
-
   return (
-    <div className="mx-auto min-h-screen bg-gradient-to-br from-rose-100 via-purple-50 to-cyan-100 font-sans text-gray-800">
-      <HeroSection onCtaClick={trackHeroCta} />
-      <ProblemSolutionSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <UseCasesSection />
-      <FinalCtaSection onCtaClick={trackFooterCta} />
+    <div className="from-primary/5 via-accent/5 to-background text-foreground relative -mt-16 min-h-screen w-full overflow-hidden bg-gradient-to-br pt-16 font-sans">
+      <GradientBlobBackground />
+      <div className="relative z-10">
+        <HeroSectionWithAnalytics />
+        <ProblemSolutionSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <UseCasesSection />
+        <FinalCtaSectionWithAnalytics />
+      </div>
     </div>
   );
 }

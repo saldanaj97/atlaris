@@ -1,7 +1,9 @@
+import { getUserByClerkId } from '@/lib/db/queries/users';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/lib/navigation';
+import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { auth } from '@clerk/nextjs/server';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
@@ -12,6 +14,7 @@ import MobileHeader from './nav/MobileHeader';
  * **Responsibilities:**
  * - Resolve whether a user is signed in (server-side)
  * - Select appropriate nav items based on auth state
+ * - Fetch user's subscription tier for display
  * - Render MobileHeader (mobile/tablet) and DesktopHeader (desktop)
  *
  *
@@ -30,14 +33,27 @@ import MobileHeader from './nav/MobileHeader';
  *
  */
 export default async function SiteHeader() {
-  const { userId } = await auth();
-  const navItems = userId ? authenticatedNavItems : unauthenticatedNavItems;
+  const { userId: clerkUserId } = await auth();
+  const navItems = clerkUserId
+    ? authenticatedNavItems
+    : unauthenticatedNavItems;
+
+  // Fetch tier only for authenticated users
+  let tier: SubscriptionTier | undefined;
+  if (clerkUserId) {
+    try {
+      const user = await getUserByClerkId(clerkUserId);
+      tier = user?.subscriptionTier;
+    } catch {
+      // Silently fail - tier badge is non-critical
+    }
+  }
 
   return (
     <header className="fixed top-0 left-0 z-50 w-full px-4 pt-4 lg:px-6 lg:pt-5">
       <div className="mx-auto max-w-7xl">
-        <MobileHeader navItems={navItems} />
-        <DesktopHeader navItems={navItems} />
+        <MobileHeader navItems={navItems} tier={tier} />
+        <DesktopHeader navItems={navItems} tier={tier} />
       </div>
     </header>
   );

@@ -216,6 +216,12 @@ export const oauthEncryptionEnv = {
   },
 } as const;
 
+export const clerkWebhookEnv = {
+  get secret() {
+    return getServerOptional('CLERK_WEBHOOK_SECRET');
+  },
+} as const;
+
 export const stripeEnv = {
   get secretKey() {
     return getServerRequired('STRIPE_SECRET_KEY');

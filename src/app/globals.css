@@ -4,85 +4,166 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Dotted grid pattern for background */
-  --pattern-dotted-grid: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='2' cy='2' r='1' fill='%23000' opacity='0.3'/%3E%3C/svg%3E");
-  /* Brand colors - intentionally theme-invariant (no dark mode override) */
-  --primary: oklch(66.9% 0.18368 248.8066);
-  --secondary: oklch(62.9% 0.1 250);
-  --background: oklch(0.9427 0 0);
-  --highlighter: oklch(0.93 0.17 98.5); /* Vibrant yellow */
-  --tape: oklch(0.96 0.03 100); /* Masking tape */
-  --card-background: oklch(0.9702 0 0);
-  --secondary-background: oklch(100% 0 0);
-  --foreground: oklch(0% 0 0);
-  --muted-foreground: oklch(0% 0 0 / 0.5);
-  --main-foreground: oklch(0% 0 0);
-  --main: oklch(66.9% 0.18368 248.8066);
-  --success: oklch(55% 0.16 145); /* Green for success states */
-  --border: oklch(0% 0 0);
-  --ring: oklch(0% 0 0);
-  --overlay: oklch(0% 0 0 / 0.8);
-  --shadow: 4px 4px 0px 0px var(--border);
-  --chart-1: #0099ff;
-  --chart-2: #ff4d50;
-  --chart-3: #facc00;
-  --chart-4: #05e17a;
-  --chart-5: #7a83ff;
-  --chart-active-dot: #000;
+  --background: oklch(0.98 0.01 75);
+  --foreground: oklch(0.25 0.02 60);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.32 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.32 0 0);
+  --primary: oklch(0.62 0.19 259.76);
+  --primary-dark: oklch(0.49 0.22 264.43);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.45 0.03 257.68);
+  --muted: oklch(0.98 0 0);
+  --muted-foreground: oklch(0.55 0.02 264.41);
+  --accent: oklch(0.95 0.03 233.56);
+  --accent-foreground: oklch(0.38 0.14 265.59);
+  --destructive: oklch(0.64 0.21 25.39);
+  --border: oklch(0.93 0.01 261.82);
+  --input: oklch(0.93 0.01 261.82);
+  --ring: oklch(0.62 0.19 259.76);
+  --chart-1: oklch(0.62 0.19 259.76);
+  --chart-2: oklch(0.55 0.22 262.96);
+  --chart-3: oklch(0.49 0.22 264.43);
+  --chart-4: oklch(0.42 0.18 265.55);
+  --chart-5: oklch(0.38 0.14 265.59);
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.14 0 0);
+  --sidebar-primary: oklch(0.2 0 0);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.2 0 0);
+  --sidebar-border: oklch(0.92 0 0);
+  --sidebar-ring: oklch(0.71 0 0);
+
+  --font-sans:
+    'Geist', 'Geist Fallback', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-serif: 'Source Serif 4', serif;
+  --font-mono: JetBrains Mono, monospace;
+
+  --radius: 2rem;
+
+  --shadow-2xs: 0 1px 1px 0px oklch(0 0 0 / 0.03);
+  --shadow-xs: 0 1px 2px 0px oklch(0 0 0 / 0.05);
+  --shadow-sm:
+    0 1px 3px 0px oklch(0 0 0 / 0.06), 0 1px 2px -1px oklch(0 0 0 / 0.06);
+  --shadow:
+    0 2px 4px 0px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08);
+  --shadow-md:
+    0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px oklch(0 0 0 / 0.1), 0 4px 6px -4px oklch(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px oklch(0 0 0 / 0.1), 0 8px 10px -6px oklch(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.25);
+
+  --spacing: 0.2rem;
 }
 
 .dark {
-  --background: oklch(27.08% 0.0336 240.69);
-  --card-background: oklch(23.93% 0 0);
-  --secondary-background: oklch(23.93% 0 0);
-  --foreground: oklch(92.49% 0 0);
-  --muted-foreground: oklch(0% 0 0 / 0.5);
-  --main-foreground: oklch(0% 0 0);
-  --main: oklch(61.9% 0.16907 248.5982);
-  --border: oklch(0% 0 0);
-  --ring: oklch(100% 0 0);
-  --shadow: 4px 4px 0px 0px var(--border);
-  --chart-1: #008ae5;
-  --chart-2: #ff6669;
-  --chart-3: #e0b700;
-  --chart-4: #04c86d;
-  --chart-5: #7a83ff;
-  --chart-active-dot: #fff;
+  --background: oklch(0.2 0 0);
+  --foreground: oklch(0.92 0 0);
+  --card: oklch(0.27 0 0);
+  --card-foreground: oklch(0.92 0 0);
+  --popover: oklch(0.27 0 0);
+  --popover-foreground: oklch(0.92 0 0);
+  --primary: oklch(0.62 0.19 259.76);
+  --primary-dark: oklch(0.55 0.22 262.96);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.27 0 0);
+  --secondary-foreground: oklch(0.92 0 0);
+  --muted: oklch(0.27 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.38 0.14 265.59);
+  --accent-foreground: oklch(0.88 0.06 254.63);
+  --destructive: oklch(0.64 0.21 25.39);
+  --border: oklch(0.37 0 0);
+  --input: oklch(0.37 0 0);
+  --ring: oklch(0.62 0.19 259.76);
+  --chart-1: oklch(0.71 0.14 254.69);
+  --chart-2: oklch(0.62 0.19 259.76);
+  --chart-3: oklch(0.55 0.22 262.96);
+  --chart-4: oklch(0.49 0.22 264.43);
+  --chart-5: oklch(0.42 0.18 265.55);
+  --sidebar: oklch(0.21 0.01 285.56);
+  --sidebar-foreground: oklch(0.99 0 0);
+  --sidebar-primary: oklch(0.49 0.24 264.41);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.27 0.01 285.81);
+  --sidebar-accent-foreground: oklch(0.99 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.55 0.02 285.76);
+
+  --shadow-2xs: 0 1px 1px 0px oklch(0 0 0 / 0.03);
+  --shadow-xs: 0 1px 2px 0px oklch(0 0 0 / 0.05);
+  --shadow-sm:
+    0 1px 3px 0px oklch(0 0 0 / 0.06), 0 1px 2px -1px oklch(0 0 0 / 0.06);
+  --shadow:
+    0 2px 4px 0px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08);
+  --shadow-md:
+    0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px oklch(0 0 0 / 0.1), 0 4px 6px -4px oklch(0 0 0 / 0.1);
+  --shadow-xl:
+    0 20px 25px -5px oklch(0 0 0 / 0.1), 0 8px 10px -6px oklch(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.25);
 }
 
 @theme inline {
-  --color-main: var(--main);
-  --color-primary: var(--primary);
-  --color-secondary: var(--secondary);
   --color-background: var(--background);
-  --color-card-background: var(--card-background);
-  --color-secondary-background: var(--secondary-background);
   --color-foreground: var(--foreground);
-  --color-main-foreground: var(--main-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-highlighter: var(--highlighter);
-  --color-tape: var(--tape);
-  --color-success: var(--success);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
   --color-border: var(--border);
-  --color-overlay: var(--overlay);
+  --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
-  --spacing-boxShadowX: 4px;
-  --spacing-boxShadowY: 4px;
-  --spacing-reverseBoxShadowX: -4px;
-  --spacing-reverseBoxShadowY: -4px;
-  --radius-base: 15px;
-  --shadow-shadow: var(--shadow);
-  --font-weight-base: 500;
-  --font-weight-heading: 700;
-  --font-family-heading:
-    var(--font-young-serif), Georgia, 'Times New Roman', serif;
-  --font-family-base: var(--font-work-sans), sans-serif;
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: calc(var(--radius) * 0.875);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
 }
 
 @layer base {
@@ -91,6 +172,10 @@
     font-family: var(--font-family-base);
   }
 
+  /*
+   * Base Typography - App UI scale (default)
+   * These sizes are optimized for dashboard, settings, and app pages
+   */
   h1,
   h2,
   h3,
@@ -98,5 +183,140 @@
   h5,
   h6 {
     font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: 1.5rem; /* 24px */
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: 1.25rem; /* 20px */
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+  }
+
+  h3 {
+    font-size: 1.125rem; /* 18px */
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+
+  h4 {
+    font-size: 1rem; /* 16px */
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+
+  h5 {
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.4;
+    letter-spacing: 0;
+  }
+
+  h6 {
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.5;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  /* Typography for pages and components */
+  .subtitle {
+    font-weight: var(--font-weight-base);
+    color: var(--muted-foreground);
+  }
+
+  /*
+   * Marketing Typography - Large scale for landing/marketing pages
+   * Major Third (1.25x) scale with tight letter-spacing
+   */
+  .marketing-h1 {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    font-size: 3.0625rem; /* 49px */
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .marketing-h2 {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    font-size: 2.4375rem; /* 39px */
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  .marketing-h3 {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    font-size: 1.9375rem; /* 31px */
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .marketing-h4 {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+    font-size: 1.5625rem; /* 25px */
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .marketing-subtitle {
+    font-family: var(--font-family-base);
+    font-weight: var(--font-weight-base);
+    font-size: 1.25rem; /* 20px */
+    line-height: 1.5;
+    letter-spacing: 0;
+    color: var(--muted-foreground);
+  }
+
+  /* Responsive scaling for marketing typography */
+  @media (max-width: 640px) {
+    .marketing-h1 {
+      font-size: 2.4375rem; /* 39px on mobile */
+    }
+    .marketing-h2 {
+      font-size: 1.9375rem; /* 31px on mobile */
+    }
+    .marketing-h3 {
+      font-size: 1.5625rem; /* 25px on mobile */
+    }
+    .marketing-h4 {
+      font-size: 1.25rem; /* 20px on mobile */
+    }
+    .marketing-subtitle {
+      font-size: 1rem; /* 16px on mobile */
+    }
+  }
+}
+
+@layer utilities {
+  /* Brand gradient - used for buttons, badges, highlights */
+  .gradient-brand {
+    @apply from-primary to-accent bg-gradient-to-r;
+  }
+
+  /* Brand gradient with hover states */
+  .gradient-brand-interactive {
+    @apply from-primary to-accent hover:from-primary/90 hover:to-accent/90 bg-gradient-to-r;
+  }
+
+  /* Decorative background glow effect */
+  .gradient-glow {
+    @apply from-primary/30 to-accent/20 rounded-full bg-gradient-to-br opacity-60 blur-3xl;
+  }
+
+  /* Gradient text effect */
+  .gradient-text {
+    @apply from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent;
   }
 }

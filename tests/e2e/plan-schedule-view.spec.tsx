@@ -1,9 +1,8 @@
 import '@testing-library/jest-dom';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ScheduleJson } from '@/lib/scheduling/types';
 import type { ClientPlanDetail } from '@/lib/types/client';
 
 // Mock next/navigation useRouter
@@ -17,20 +16,14 @@ vi.mock('next/navigation', async (orig) => {
 });
 
 // Mock child components to simplify the test
-vi.mock('@/components/plans/PlanDetailsCard', () => ({
-  PlanDetailsCard: () => (
-    <div data-testid="plan-details-card">Plan Details</div>
-  ),
-}));
-
-vi.mock('@/components/plans/PlanModuleCard', () => ({
-  PlanModuleCard: ({ module }: { module: { title: string } }) => (
-    <div data-testid={`module-${module.title}`}>{module.title}</div>
-  ),
-}));
-
-vi.mock('@/components/plans/ExportButtons', () => ({
+vi.mock('@/app/plans/[id]/components/ExportButtons', () => ({
   ExportButtons: () => <div data-testid="export-buttons">Export</div>,
+}));
+
+vi.mock('@/app/plans/[id]/components/PlanPendingState', () => ({
+  PlanPendingState: () => (
+    <div data-testid="plan-pending-state">Plan is generating...</div>
+  ),
 }));
 
 vi.mock('@/components/ui/button', () => ({
@@ -39,15 +32,12 @@ vi.mock('@/components/ui/button', () => ({
   ),
 }));
 
-async function renderPlanDetails(
-  plan: ClientPlanDetail,
-  schedule: ScheduleJson
-) {
+async function renderPlanDetails(plan: ClientPlanDetail) {
   (globalThis as any).React = React;
-  const { default: PlanDetails } = await import(
-    '@/app/plans/components/PlanDetails'
+  const { PlanDetails } = await import(
+    '@/app/plans/[id]/components/PlanDetails'
   );
-  return render(<PlanDetails plan={plan} schedule={schedule} />);
+  return render(<PlanDetails plan={plan} />);
 }
 
 function createMockPlan(): ClientPlanDetail {
@@ -77,56 +67,49 @@ function createMockPlan(): ClientPlanDetail {
             status: 'not_started',
             resources: [],
           },
+          {
+            id: 'task-2',
+            order: 2,
+            title: 'Task 2: Advanced Basics',
+            description: 'More advanced basics',
+            estimatedMinutes: 60,
+            status: 'completed',
+            resources: [],
+          },
         ],
       },
-    ],
-  };
-}
-
-function createMockSchedule(): ScheduleJson {
-  const today = new Date();
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay()); // Start of week
-
-  const formatDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-
-  return {
-    weeks: [
       {
-        weekNumber: 1,
-        startDate: formatDate(weekStart),
-        endDate: formatDate(weekEnd),
-        days: [
+        id: 'module-2',
+        order: 2,
+        title: 'Module 2: Advanced Topics',
+        description: 'Second module',
+        estimatedMinutes: 180,
+        tasks: [
           {
-            dayNumber: 1,
-            date: formatDate(weekStart),
-            sessions: [
-              {
-                taskId: 'task-1',
-                taskTitle: 'Task 1: Basics',
-                estimatedMinutes: 60,
-                moduleId: 'module-1',
-                moduleName: 'Module 1: Introduction',
-              },
-            ],
+            id: 'task-3',
+            order: 1,
+            title: 'Task 3: Deep Dive',
+            description: 'Deep dive into advanced topics',
+            estimatedMinutes: 90,
+            status: 'not_started',
+            resources: [],
+          },
+          {
+            id: 'task-4',
+            order: 2,
+            title: 'Task 4: Practice',
+            description: 'Practice what you learned',
+            estimatedMinutes: 90,
+            status: 'not_started',
+            resources: [],
           },
         ],
       },
     ],
-    totalWeeks: 1,
-    totalSessions: 1,
   };
 }
 
-describe('Plan Schedule View', () => {
+describe('Plan Details View', () => {
   beforeEach(() => {
     pushMock.mockReset();
   });
@@ -136,59 +119,77 @@ describe('Plan Schedule View', () => {
     cleanup();
   });
 
-  it('should toggle between modules and schedule view', async () => {
+  it('should display plan topic as heading', async () => {
     const plan = createMockPlan();
-    const schedule = createMockSchedule();
+    await renderPlanDetails(plan);
 
-    await renderPlanDetails(plan, schedule);
-
-    // Verify default view is modules
     expect(
-      screen.getByRole('heading', { name: /learning modules/i })
-    ).toBeVisible();
-
-    // Click schedule tab
-    const scheduleTab = screen.getByRole('tab', { name: /schedule/i });
-    fireEvent.click(scheduleTab);
-
-    // Verify schedule view is displayed
-    expect(
-      screen.getByRole('heading', { name: /learning schedule/i })
-    ).toBeVisible();
-    expect(screen.getByText(/Week 1/i)).toBeVisible();
-
-    // Click modules tab
-    const modulesTab = screen.getByRole('tab', { name: /modules/i });
-    fireEvent.click(modulesTab);
-
-    // Verify modules view is restored
-    expect(
-      screen.getByRole('heading', { name: /learning modules/i })
-    ).toBeVisible();
+      screen.getByRole('heading', { name: /Test Learning Topic/i })
+    ).toBeInTheDocument();
   });
 
-  it('should display week-grouped schedule with dates', async () => {
+  it('should display learning modules section', async () => {
     const plan = createMockPlan();
-    const schedule = createMockSchedule();
+    await renderPlanDetails(plan);
 
-    await renderPlanDetails(plan, schedule);
+    expect(
+      screen.getByRole('heading', { name: /learning modules/i })
+    ).toBeInTheDocument();
+  });
 
-    // Click schedule tab
-    const scheduleTab = screen.getByRole('tab', { name: /schedule/i });
-    fireEvent.click(scheduleTab);
+  it('should display module count', async () => {
+    const plan = createMockPlan();
+    await renderPlanDetails(plan);
 
-    // Verify week structure
-    expect(screen.getByText(/Week 1/i)).toBeVisible();
+    expect(screen.getByText(/2 modules/i)).toBeInTheDocument();
+  });
 
-    // Verify dates are displayed (format: YYYY-MM-DD)
-    const datePattern = /\d{4}-\d{2}-\d{2}/;
-    const dateTexts = screen.getAllByText(datePattern);
-    expect(dateTexts.length).toBeGreaterThan(0);
-    expect(dateTexts[0]).toBeVisible();
+  it('should display all module titles', async () => {
+    const plan = createMockPlan();
+    await renderPlanDetails(plan);
 
-    // Verify task time estimates (formatMinutes converts to "X min" or "X hr Y min")
-    const timePattern = /\d+\s*(min|hr)/i;
-    const timeText = screen.getByText(timePattern);
-    expect(timeText).toBeVisible();
+    expect(screen.getByText(/Module 1: Introduction/i)).toBeInTheDocument();
+    expect(screen.getByText(/Module 2: Advanced Topics/i)).toBeInTheDocument();
+  });
+
+  it('should display back to dashboard link', async () => {
+    const plan = createMockPlan();
+    await renderPlanDetails(plan);
+
+    const backLink = screen.getByRole('link', { name: /back to dashboard/i });
+    expect(backLink).toBeInTheDocument();
+    expect(backLink).toHaveAttribute('href', '/dashboard');
+  });
+
+  it('should display export buttons for ready plans', async () => {
+    const plan = createMockPlan();
+    await renderPlanDetails(plan);
+
+    expect(screen.getByTestId('export-buttons')).toBeInTheDocument();
+  });
+
+  it('should display pending state for generating plans', async () => {
+    const plan = createMockPlan();
+    plan.status = 'pending';
+    await renderPlanDetails(plan);
+
+    expect(screen.getByTestId('plan-pending-state')).toBeInTheDocument();
+    expect(screen.queryByText(/learning modules/i)).not.toBeInTheDocument();
+  });
+
+  it('should display pending state for processing plans', async () => {
+    const plan = createMockPlan();
+    plan.status = 'processing';
+    await renderPlanDetails(plan);
+
+    expect(screen.getByTestId('plan-pending-state')).toBeInTheDocument();
+  });
+
+  it('should not show export buttons for pending plans', async () => {
+    const plan = createMockPlan();
+    plan.status = 'pending';
+    await renderPlanDetails(plan);
+
+    expect(screen.queryByTestId('export-buttons')).not.toBeInTheDocument();
   });
 });

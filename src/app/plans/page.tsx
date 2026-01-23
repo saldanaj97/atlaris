@@ -1,58 +1,48 @@
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-
-import PlansList from '@/app/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
-import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import type { PlanSummary } from '@/lib/types/db';
-import { ArrowLeft } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { Suspense } from 'react';
 
-export default async function PlansPage() {
-  const user = await getOrCreateCurrentUserRecord();
-  if (!user) {
-    redirect('/sign-in?redirect_url=/plans');
-  }
+import {
+  PlansContent,
+  PlansContentSkeleton,
+  PlanCountBadgeContent,
+} from './components/PlansContent';
 
-  const summaries: PlanSummary[] = await getPlanSummariesForUser(user.id);
-
-  if (!summaries.length) {
-    return (
-      <div className="container mx-auto flex min-h-[60vh] flex-col items-center justify-center px-6 py-12">
-        <Card
-          className="max-w-md p-8 text-center"
-          role="status"
-          aria-live="polite"
-        >
-          <h1 className="text-3xl font-semibold">Your Plans</h1>
-          <p className="text-muted-foreground mt-3">
-            You have not created any learning plans yet. Start by describing
-            what you want to learn and we will organize the journey for you.
-          </p>
-          <Button asChild className="mt-6">
-            <Link href="/plans/new">Create your first plan</Link>
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
+/**
+ * Plans list page with Suspense boundaries for data-dependent content.
+ *
+ * Static elements (title, "New Plan" button) render immediately.
+ * Data-dependent elements (plan count badge, search bar, filters, plans list) are wrapped in Suspense.
+ */
+export default function PlansPage() {
   return (
-    <div className="container mx-auto py-8">
-      <Button asChild variant="default" className="mb-4 gap-2">
-        <Link href="/dashboard">
-          <ArrowLeft className="h-4" />
-          Back to Dashboard
-        </Link>
-      </Button>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-semibold">Your Plans</h1>
-        <Button asChild>
-          <Link href="/plans/new">Create New Plan</Link>
-        </Button>
-      </div>
-      <PlansList summaries={summaries} />
+    <div className="mx-auto min-h-screen max-w-7xl">
+      {/* Static header - renders immediately */}
+      <header className="mb-8">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <h1>Your Plans</h1>
+            {/* Plan count badge - data-dependent */}
+            <Suspense fallback={<Skeleton className="h-6 w-16 rounded-full" />}>
+              <PlanCountBadgeContent />
+            </Suspense>
+          </div>
+
+          <Button asChild>
+            <Link href="/plans/new">
+              <Plus className="h-4 w-4" />
+              New Plan
+            </Link>
+          </Button>
+        </div>
+      </header>
+
+      {/* Data-dependent content (search, filters, list) - wrapped in Suspense */}
+      <Suspense fallback={<PlansContentSkeleton />}>
+        <PlansContent />
+      </Suspense>
     </div>
   );
 }

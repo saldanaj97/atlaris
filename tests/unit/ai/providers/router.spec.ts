@@ -7,42 +7,43 @@ import {
   type RouterConfig,
 } from '@/lib/ai/providers/router';
 
-// Mock the OpenRouter SDK to avoid API calls
-vi.mock('@openrouter/sdk', () => ({
-  OpenRouter: vi.fn().mockImplementation(() => ({
-    chat: {
-      send: vi.fn().mockResolvedValue({
-        choices: [
-          {
-            message: {
-              content: JSON.stringify({
-                modules: [
-                  {
-                    title: 'Test Module',
-                    description: 'Test description',
-                    estimated_minutes: 60,
-                    tasks: [
-                      {
-                        title: 'Test Task',
-                        description: 'Test task description',
-                        estimated_minutes: 30,
-                      },
-                    ],
-                  },
-                ],
-              }),
+vi.mock('@openrouter/sdk', () => {
+  return {
+    OpenRouter: class {
+      chat = {
+        send: vi.fn().mockResolvedValue({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  modules: [
+                    {
+                      title: 'Test Module',
+                      description: 'Test description',
+                      estimated_minutes: 60,
+                      tasks: [
+                        {
+                          title: 'Test Task',
+                          description: 'Test task description',
+                          estimated_minutes: 30,
+                        },
+                      ],
+                    },
+                  ],
+                }),
+              },
             },
+          ],
+          usage: {
+            promptTokens: 10,
+            completionTokens: 20,
+            totalTokens: 30,
           },
-        ],
-        usage: {
-          promptTokens: 10,
-          completionTokens: 20,
-          totalTokens: 30,
-        },
-      }),
+        }),
+      };
     },
-  })),
-}));
+  };
+});
 
 const mockInput: GenerationInput = {
   topic: 'Test Topic',

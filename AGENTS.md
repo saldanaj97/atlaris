@@ -1,102 +1,134 @@
 # AGENTS.md
 
-This file serves as a **directory** pointing to relevant documentation by topic. Read the appropriate docs based on what you're working on.
+**Generated:** 2026-01-23 | **Commit:** 06a69c8 | **Branch:** staging
 
-## External File Loading
+## Overview
 
-CRITICAL: When you encounter a file reference (e.g., @rules/general.md), use your Read tool to load it on a need-to-know basis. They're relevant to the SPECIFIC task at hand.
+AI-powered learning plan generator. Turns goals into time-blocked schedules with calendar sync.  
+Stack: Next.js 16 + React 19 + TypeScript strict + Drizzle/Neon (RLS) + Clerk + OpenRouter.
 
-Instructions:
+## Structure
 
-- Do NOT preemptively load all references - use lazy loading based on actual need
-- When loaded, treat content as mandatory instructions that override defaults
-- Follow references recursively when needed
+```
+src/
+├── app/           # Next.js App Router (pages + API routes)
+├── components/    # Shared UI (billing/, settings/, ui/)
+├── lib/
+│   ├── ai/        # Provider abstraction, streaming, orchestration → see AGENTS.md
+│   ├── api/       # Request context, rate limiting
+│   ├── config/    # Centralized env access (NEVER use process.env directly)
+│   ├── curation/  # Resource ranking (YouTube, docs)
+│   ├── db/        # Schema, queries, RLS clients → see AGENTS.md
+│   ├── integrations/ # Notion/Google Calendar sync → see AGENTS.md
+│   └── logging/   # Structured logger (NEVER use console.*)
+tests/             # 5 test types → see AGENTS.md
+docs/rules/        # Extended documentation (load on-demand)
+```
 
-## General Guidelines
+## Where to Look
 
-Read the following file immediately as it's relevant to all workflows: @docs/rules/general/\*.md.
+| Task                | Location                     | Notes                                             |
+| ------------------- | ---------------------------- | ------------------------------------------------- |
+| Add API endpoint    | `src/app/api/v1/`            | Use `withAuthAndRateLimit`, see rate-limiting.md  |
+| DB schema change    | `src/lib/db/schema/tables/`  | Run `pnpm db:generate` after                      |
+| AI generation logic | `src/lib/ai/orchestrator.ts` | Provider abstraction in `provider-factory.ts`     |
+| Add integration     | `src/lib/integrations/`      | Follow DI pattern (factory + types + sync)        |
+| Environment var     | `src/lib/config/env.ts`      | Add to grouped config, validate with Zod          |
+| Write tests         | `tests/`                     | Unit in `tests/unit/`, integration needs DB setup |
 
-For project structure and organization: @docs/rules/architecture/project-structure.md
+## Commands
 
-## Development Guidelines
+```bash
+pnpm dev              # Dev server (Turbopack)
+pnpm build            # Production build
+pnpm lint && pnpm type-check  # Run before commit
 
-For TypeScript code style and best practices: @docs/rules/language-specific/typescript.md
+# Testing - NEVER run full suite, only relevant tests
+pnpm test                    # Unit tests
+pnpm test:changed            # Changed files only
+pnpm test:integration        # Integration (requires DB)
+./scripts/test-unit.sh path/to/file.spec.ts  # Single file
 
-For React component architecture and hooks patterns: @docs/rules/language-specific/react.md
+# Database
+pnpm db:generate      # Generate migrations
+pnpm db:migrate       # Apply migrations
+```
 
-For testing strategies and coverage requirements: @docs/rules/testing/test-standards.md
+## Critical Rules
 
-For CLI commands and scripts: @docs/rules/development/commands.md
+### Database Client Selection (Security)
 
-For environment variables and logging: @docs/rules/development/environment.md
+```typescript
+// API routes/server actions - ALWAYS use:
+import { getDb } from '@/lib/db/runtime';
 
-For database schema overview: @docs/rules/database/schema-overview.md
+// Tests/workers ONLY:
+import { db } from '@/lib/db/service-role';
+```
 
-For database client usage: @docs/rules/database/client-usage.md
+ESLint blocks service-role imports in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`.
 
-For AI models and availability: @docs/rules/ai/available-models.md
+### TypeScript
 
-## Architecture Documentation
+- Strict mode - no `any`, no `!` assertions, no `@ts-ignore`
+- Use `unknown` for external data, validate with Zod at boundaries
+- Prefix unused vars with `_`
+- Exported functions need explicit return types
 
-For deeper architectural understanding:
+### Imports
 
-- For Source layout, configs: docs/rules/architecture/project-structure.md
+- Path alias: `@/*` → `src/*`
+- `import type` for type-only imports
+- Env: only through `@/lib/config/env`
+- Logging: only through `@/lib/logging/logger`
 
-- For dependency injection patterns: docs/rules/architecture/dependency-injection-architecture.md
+### Naming
 
-## Skills (for agents that do not support them natively)
+| Type        | Convention       | Example          |
+| ----------- | ---------------- | ---------------- |
+| Directories | lowercase-dashes | `auth-wizard/`   |
+| Components  | PascalCase       | `AuthWizard.tsx` |
+| Functions   | camelCase        | `fetchUserData`  |
+| Constants   | UPPER_SNAKE_CASE | `API_BASE_URL`   |
+| Type files  | `*.types.ts`     | `user.types.ts`  |
 
-| Skill Name              | Agent Name            | Path to skill                        |
-| ----------------------- | --------------------- | ------------------------------------ |
-| **GH Address Comments** | `gh-address-comments` | `.github/skills/gh-address-comments` |
-| **GH Fix CI**           | `gh-fix-ci`           | `.github/skills/gh-fix-ci`           |
+## Anti-Patterns (Forbidden)
 
----
+- `process.env.*` directly (use `@/lib/config/env`)
+- `console.*` in app code (use `@/lib/logging/logger`)
+- Service-role DB in request handlers
+- Class components (functional + hooks only)
+- `as any`, `@ts-ignore`, non-null assertions
+- Running full test suite (`pnpm test:all`)
 
-## Core Rules (Always Follow)
+## Testing Quick Reference
 
-### Testing
+| Type        | Location             | Purpose           | Command                 |
+| ----------- | -------------------- | ----------------- | ----------------------- |
+| Unit        | `tests/unit/`        | Pure logic, no IO | `pnpm test`             |
+| Integration | `tests/integration/` | DB + service      | `pnpm test:integration` |
+| E2E         | `tests/e2e/`         | User journeys     | —                       |
+| Security    | `tests/security/`    | RLS policies      | —                       |
+| Smoke       | `tests/smoke/`       | Startup checks    | —                       |
 
-- **NEVER run the full test suite.** Only run tests relevant to the task at hand.
-- Use `pnpm test:changed` or `pnpm test:watch` for development.
-- See [docs/testing/test-standards.md](docs/rules/testing/test-standards.md) for comprehensive guidance.
+Use factories from `tests/fixtures/`. Test behavior, not implementation.
 
-### GitHub Issues & Tasks
+## Extended Docs
 
-When working on a specific github issue or task:
+Load on-demand based on task:
 
-1. ALWAYS refer to the specific instructions in the issue description
-2. Read referenced files carefully before making changes
-3. Address dependencies on other issues first
-4. Review linked documentation, designs, or resources
-5. Consider subtasks and related issues
-6. Verify all requirements met before marking complete
+- **Architecture**: `docs/rules/architecture/project-structure.md`
+- **TypeScript**: `docs/rules/language-specific/typescript.md`
+- **React**: `docs/rules/language-specific/react.md`
+- **Testing**: `docs/rules/testing/test-standards.md`
+- **Database**: `docs/rules/database/schema-overview.md`
+- **Styling**: `docs/rules/styles/styling.md`
+- **DI Pattern**: `docs/rules/architecture/dependency-injection-architecture.md`
+- **Rate Limiting**: `docs/rules/api/rate-limiting.md`
 
-### Commits
+## Subdirectory Agents
 
-- Only follow commit guidelines for **code changes** (not docs/tests/or any .md files).
-- See [.github/instructions/commit-message.instructions.md](.github/instructions/commit-message.instructions.md)
-- Only stage files discussed and modified for the task
-- Run lint, type-check, and build before committing
-
-### Documentation Lookup
-
-When clarifying questions arise, use Context7 MCP to grab up-to-date documentation.
-
----
-
-## Tech Stack Summary
-
-| Category          | Technology                               |
-| ----------------- | ---------------------------------------- |
-| Framework         | Next.js 16 (React 19, Turbopack)         |
-| language-specific | TypeScript                               |
-| Package Mgr       | pnpm                                     |
-| Styling           | Tailwind CSS v4                          |
-| Auth              | @clerk/nextjs                            |
-| Database          | Drizzle ORM + Neon (PostgreSQL with RLS) |
-| AI/LLM            | Vercel AI SDK + OpenRouter               |
-| Payments          | Stripe                                   |
-| Testing           | Vitest + Testing Library                 |
-
----
+- `src/lib/db/AGENTS.md` - Database clients, RLS, queries
+- `src/lib/ai/AGENTS.md` - AI providers, generation, streaming
+- `src/lib/integrations/AGENTS.md` - Third-party sync (Notion, GCal)
+- `tests/AGENTS.md` - Test architecture and patterns
