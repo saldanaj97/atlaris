@@ -7,17 +7,19 @@ import {
   type OpenRouterProviderConfig,
 } from '@/lib/ai/providers/openrouter';
 
-// Mock the OpenRouter SDK
 const mockSend = vi.fn();
-vi.mock('@openrouter/sdk', () => ({
-  OpenRouter: vi.fn().mockImplementation(() => ({
-    chat: {
-      send: mockSend,
-    },
-  })),
-}));
+const mockConstructor = vi.fn();
 
-import { OpenRouter } from '@openrouter/sdk';
+vi.mock('@openrouter/sdk', () => {
+  return {
+    OpenRouter: class {
+      constructor(config: unknown) {
+        mockConstructor(config);
+      }
+      chat = { send: mockSend };
+    },
+  };
+});
 
 // Default test model for OpenRouter tests
 const TEST_MODEL = 'google/gemini-2.0-flash-exp:free';
@@ -138,11 +140,9 @@ describe('OpenRouterProvider', () => {
     });
 
     it('creates client with API key from environment', () => {
-      const OpenRouterMock = vi.mocked(OpenRouter);
-
       new OpenRouterProvider({ model: TEST_MODEL });
 
-      expect(OpenRouterMock).toHaveBeenCalledWith(
+      expect(mockConstructor).toHaveBeenCalledWith(
         expect.objectContaining({
           apiKey: 'test-api-key',
         })
@@ -150,8 +150,6 @@ describe('OpenRouterProvider', () => {
     });
 
     it('creates client with custom config', () => {
-      const OpenRouterMock = vi.mocked(OpenRouter);
-
       const config: OpenRouterProviderConfig = {
         apiKey: 'custom-api-key',
         siteUrl: 'https://myapp.com',
@@ -162,7 +160,7 @@ describe('OpenRouterProvider', () => {
 
       new OpenRouterProvider(config);
 
-      expect(OpenRouterMock).toHaveBeenCalledWith(
+      expect(mockConstructor).toHaveBeenCalledWith(
         expect.objectContaining({
           apiKey: 'custom-api-key',
           siteUrl: 'https://myapp.com',

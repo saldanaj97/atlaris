@@ -1,32 +1,21 @@
-import '../../mocks/unit/notion-client.unit';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  mockPagesCreate,
+  resetNotionMocks,
+} from '../../mocks/unit/notion-client.unit';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NotionClient } from '@/lib/integrations/notion/client';
-import { Client } from '@notionhq/client';
 
 describe('NotionClient Rate Limiting', () => {
   let client: NotionClient;
-  let mockPagesCreate: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockPagesCreate = vi.fn().mockResolvedValue({ id: 'page_123' });
-    (Client as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      pages: {
-        create: mockPagesCreate,
-      },
-      blocks: {
-        children: {
-          append: vi.fn().mockResolvedValue({}),
-        },
-      },
-    }));
-
+    resetNotionMocks();
     client = new NotionClient('test_access_token');
   });
 
   it('should enforce 3 requests per second limit', async () => {
     const start = Date.now();
 
-    // Queue 6 requests
     const promises = Array(6)
       .fill(null)
       .map(() =>
@@ -39,8 +28,7 @@ describe('NotionClient Rate Limiting', () => {
     await Promise.all(promises);
     const elapsed = Date.now() - start;
 
-    // 6 requests at 3 req/sec = 5 intervals * 333.33ms = ~1666ms minimum
-    expect(elapsed).toBeGreaterThanOrEqual(1600); // Allow some tolerance
+    expect(elapsed).toBeGreaterThanOrEqual(1600);
     expect(mockPagesCreate).toHaveBeenCalledTimes(6);
   });
 

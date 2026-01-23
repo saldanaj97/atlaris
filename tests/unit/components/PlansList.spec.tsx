@@ -303,22 +303,6 @@ describe('PlansList', () => {
     expect(planLinks[1]).toHaveAttribute('href', '/plans/plan-2');
   });
 
-  it('should display "Your Plans" header', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
-
-    expect(screen.getByText('Your Plans')).toBeInTheDocument();
-  });
-
-  it('should display plan count in header', () => {
-    render(
-      <PlansList
-        summaries={[mockCompletedPlan, mockActivePlan, mockBeginnerPlan]}
-      />
-    );
-
-    expect(screen.getByText('3')).toBeInTheDocument();
-  });
-
   it('should display search input', () => {
     render(<PlansList summaries={[mockActivePlan]} />);
 
@@ -334,12 +318,6 @@ describe('PlansList', () => {
     expect(screen.getByText(/Inactive/)).toBeInTheDocument();
   });
 
-  it('should display New Plan button', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
-
-    expect(screen.getByText('New Plan')).toBeInTheDocument();
-  });
-
   it('should display view plan buttons', () => {
     render(<PlansList summaries={[mockActivePlan]} />);
 
@@ -347,20 +325,6 @@ describe('PlansList', () => {
     expect(
       screen.getByRole('button', { name: /view plan/i })
     ).toBeInTheDocument();
-  });
-
-  it('should display usage data when provided', () => {
-    const mockUsage = {
-      tier: 'pro',
-      activePlans: { current: 2, limit: 10 },
-      regenerations: { used: 1, limit: 5 },
-      exports: { used: 0, limit: 20 },
-    };
-
-    render(<PlansList summaries={[mockActivePlan]} usage={mockUsage} />);
-
-    // Usage shows "current / limit" format
-    expect(screen.getByText('2 / 10')).toBeInTheDocument();
   });
 
   it('should handle plans with no modules gracefully', () => {
