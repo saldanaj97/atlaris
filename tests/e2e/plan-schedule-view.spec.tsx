@@ -141,7 +141,9 @@ describe('Plan Details View', () => {
     const plan = createMockPlan();
     await renderPlanDetails(plan);
 
-    expect(screen.getByText(/2 modules/i)).toBeInTheDocument();
+    // Module count appears in both PlanOverviewHeader stats and PlanTimeline section header
+    const moduleCountElements = screen.getAllByText(/2 modules/i);
+    expect(moduleCountElements.length).toBeGreaterThan(0);
   });
 
   it('should display all module titles', async () => {

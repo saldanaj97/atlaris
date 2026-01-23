@@ -5,6 +5,7 @@ import { users, integrationTokens } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { setTestUser, clearTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
+import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state';
 
 // Mock Clerk auth before importing the route
 vi.mock('@clerk/nextjs/server', () => ({
@@ -84,8 +85,14 @@ describe('Notion OAuth Flow', () => {
         })
         .returning();
 
+      // Generate a valid state token for the user
+      const stateToken = await generateAndStoreOAuthStateToken(
+        user.clerkUserId,
+        'notion'
+      );
+
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/notion/callback?code=test_code&state=${user.id}`
+        `http://localhost:3000/api/v1/auth/notion/callback?code=test_code&state=${stateToken}`
       );
 
       const { GET: notionCallbackGET } = await import(
@@ -132,8 +139,14 @@ describe('Notion OAuth Flow', () => {
         })
         .returning();
 
+      // Generate a valid state token for the victim user (not the attacker)
+      const stateToken = await generateAndStoreOAuthStateToken(
+        user.clerkUserId,
+        'notion'
+      );
+
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/notion/callback?code=test_code&state=${user.id}`
+        `http://localhost:3000/api/v1/auth/notion/callback?code=test_code&state=${stateToken}`
       );
 
       const { GET: notionCallbackGET } = await import(
@@ -184,8 +197,14 @@ describe('Notion OAuth Flow', () => {
         })
         .returning();
 
+      // Generate a valid state token for the user
+      const stateToken = await generateAndStoreOAuthStateToken(
+        user.clerkUserId,
+        'notion'
+      );
+
       const request = new NextRequest(
-        `http://localhost:3000/api/v1/auth/notion/callback?code=test_code&state=${user.id}`
+        `http://localhost:3000/api/v1/auth/notion/callback?code=test_code&state=${stateToken}`
       );
 
       const { GET: notionCallbackGET } = await import(
