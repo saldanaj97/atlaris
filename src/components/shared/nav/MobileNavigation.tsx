@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
@@ -29,18 +30,20 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {/* Hamburger trigger */}
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={() => setOpen(true)}
-        className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/40 text-gray-600 shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20"
+        className="text-muted-foreground h-9 w-9 rounded-xl bg-white/40 shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
-      </button>
+      </Button>
 
       {/* Sheet content sliding from left */}
       <SheetContent
         side="left"
-        className="w-72 border-r border-white/40 bg-white/80 p-0 backdrop-blur-xl dark:border-white/10 dark:bg-gray-900/90"
+        className="dark:bg-card/90 w-72 border-r border-white/40 bg-white/80 p-0 backdrop-blur-xl dark:border-white/10"
       >
         <SheetHeader className="p-6">
           <BrandLogo size="sm" onClick={() => setOpen(false)} />
@@ -80,7 +83,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
                   className={`rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                     isActive
                       ? 'from-primary to-accent bg-gradient-to-r text-white shadow-md'
-                      : 'hover:text-primary dark:hover:text-primary text-gray-600 hover:bg-white/60 dark:text-gray-200 dark:hover:bg-white/10'
+                      : 'text-muted-foreground hover:text-primary dark:hover:text-primary hover:bg-white/60 dark:hover:bg-white/10'
                   }`}
                 >
                   {item.label}
@@ -98,7 +101,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
                           className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
                             isSubActive
                               ? 'text-primary dark:text-primary'
-                              : 'hover:text-primary dark:hover:text-primary text-gray-500 dark:text-gray-400'
+                              : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
                           }`}
                         >
                           {subItem.label}

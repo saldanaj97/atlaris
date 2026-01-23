@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,9 +25,7 @@ function getNavButtonClass(isActive: boolean): string {
     'flex items-center space-x-1 text-sm font-medium transition',
     'hover:text-primary dark:hover:text-primary',
     'focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
-    isActive
-      ? 'text-primary dark:text-primary'
-      : 'text-gray-600 dark:text-gray-200'
+    isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground'
   );
 }
 
@@ -45,14 +44,15 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button
+          variant="ghost"
           aria-haspopup="menu"
           aria-expanded={isOpen}
           className={getNavButtonClass(isActive)}
         >
           <span>{item.label}</span>
           <ChevronDown className="h-4 w-4" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
@@ -67,7 +67,7 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
                 'hover:bg-primary/10 hover:text-primary',
                 pathname === dropdownItem.href
                   ? 'text-primary font-semibold'
-                  : 'text-gray-600'
+                  : 'text-muted-foreground'
               )}
             >
               {dropdownItem.label}
@@ -110,9 +110,7 @@ export default function DesktopNavigation({
         className={cn(
           'text-sm font-medium transition',
           'hover:text-primary dark:hover:text-primary',
-          isActive
-            ? 'text-primary dark:text-primary'
-            : 'text-gray-600 dark:text-gray-200'
+          isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground'
         )}
       >
         {item.label}

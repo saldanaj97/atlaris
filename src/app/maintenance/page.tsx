@@ -10,8 +10,8 @@ export default function MaintenancePage() {
         <CardContent className="space-y-6">
           {/* Icon */}
           <div className="flex justify-center">
-            <div className="bg-main border-border shadow-shadow animate-pulse rounded-full border-2 p-5">
-              <ShieldAlert className="text-main-foreground h-10 w-10" />
+            <div className="border-border bg-primary animate-pulse rounded-full border-2 p-5 shadow-lg">
+              <ShieldAlert className="text-primary-foreground h-10 w-10" />
             </div>
           </div>
 
@@ -19,8 +19,8 @@ export default function MaintenancePage() {
           <div className="flex justify-center">
             <Badge className="gap-2">
               <span className="relative flex h-2 w-2">
-                <span className="bg-main-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
-                <span className="bg-main-foreground relative inline-flex h-2 w-2 rounded-full"></span>
+                <span className="bg-primary-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
+                <span className="bg-primary-foreground relative inline-flex h-2 w-2 rounded-full"></span>
               </span>
               System Maintenance in Progress
             </Badge>
@@ -38,7 +38,7 @@ export default function MaintenancePage() {
           </p>
 
           {/* Message Box */}
-          <div className="border-border bg-secondary-background rounded-lg border p-6 text-left">
+          <div className="border-border bg-secondary rounded-lg border p-6 text-left">
             <div className="space-y-4">
               <p className="text-foreground leading-relaxed">
                 We sincerely apologize for any inconvenience this may cause. Our
@@ -46,7 +46,7 @@ export default function MaintenancePage() {
                 enhancements to improve your experience.
               </p>
               <p className="text-foreground leading-relaxed">
-                <span className="text-main font-semibold">Good news:</span>{' '}
+                <span className="text-primary font-semibold">Good news:</span>{' '}
                 We're in the process of migrating to a zero-downtime
                 infrastructure. Once complete, future updates will occur
                 seamlessly without interrupting your service.

@@ -53,7 +53,7 @@ export default function AISettingsPage() {
                 Your selected model will be used for all future plan
                 generations. You can change it at any time.
               </p>
-              <div className="border-main rounded-base bg-main/50 mt-4 border-2 p-3">
+              <div className="border-border bg-muted/50 mt-4 rounded-lg border p-3">
                 <p className="text-xs">
                   <strong>Note:</strong> Model availability and pricing may
                   change. Free models are always available to all users.

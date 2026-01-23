@@ -36,7 +36,7 @@ export function PricingCard({
     >
       {isPopular && (
         <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 -translate-y-1/2 transform">
-          <Badge className="bg-main text-main-foreground rounded-base border-2 px-3 py-1 text-xs font-bold">
+          <Badge className="border-primary bg-primary text-primary-foreground rounded-full border-2 px-3 py-1 text-xs font-bold">
             Most Popular
           </Badge>
         </div>
@@ -52,8 +52,8 @@ export function PricingCard({
           {price} {intervalLabel}
         </p>
         <ul className="text-muted-foreground mb-6 space-y-2 text-sm">
-          {features.map((feature, idx) => (
-            <li key={idx}>{feature}</li>
+          {features.map((feature) => (
+            <li key={feature}>{feature}</li>
           ))}
         </ul>
       </div>

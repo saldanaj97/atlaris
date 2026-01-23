@@ -1,14 +1,13 @@
 import Link from 'next/link';
 
-// TODO: Make sure the styling matches the design system
 export default function SiteFooter() {
   return (
-    <footer className="border-t border-slate-200 px-4 py-8 sm:px-6 lg:px-8">
+    <footer className="border-border border-t px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
         {/* Brand */}
         <div className="flex items-center gap-2">
           <AtlarisLogoSmall />
-          <span className="text-sm font-semibold text-slate-700">Atlaris</span>
+          <span className="text-foreground text-sm font-semibold">Atlaris</span>
         </div>
 
         {/* Links */}
@@ -17,7 +16,7 @@ export default function SiteFooter() {
             <li>
               <Link
                 href="/about"
-                className="text-sm text-slate-500 transition-colors hover:text-slate-700 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring text-sm transition-colors focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 About
               </Link>
@@ -25,7 +24,7 @@ export default function SiteFooter() {
             <li>
               <Link
                 href="/pricing"
-                className="text-sm text-slate-500 transition-colors hover:text-slate-700 focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-slate-600 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring text-sm transition-colors focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 Pricing
               </Link>
@@ -34,7 +33,7 @@ export default function SiteFooter() {
         </nav>
 
         {/* Copyright */}
-        <p className="text-xs text-slate-400">
+        <p className="text-muted-foreground text-xs">
           © {new Date().getFullYear()} Atlaris. All rights reserved.
         </p>
       </div>
@@ -57,7 +56,7 @@ function AtlarisLogoSmall() {
         width="21"
         height="21"
         rx="4.5"
-        className="fill-slate-700 stroke-slate-800"
+        className="fill-primary stroke-primary"
         strokeWidth="1"
       />
       <path
