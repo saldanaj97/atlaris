@@ -22,7 +22,9 @@ src/
 │   ├── integrations/ # Notion/Google Calendar sync → see AGENTS.md
 │   └── logging/   # Structured logger (NEVER use console.*)
 tests/             # 5 test types → see AGENTS.md
-docs/rules/        # Extended documentation (load on-demand)
+docs/
+├── context/       # Architecture docs, flows, system explanations
+└── rules/         # LLM guidelines and guardrails (load on-demand)
 ```
 
 ## Where to Look
@@ -116,6 +118,16 @@ Use factories from `tests/fixtures/`. Test behavior, not implementation.
 ## Extended Docs
 
 Load on-demand based on task:
+
+### Architecture & System Context (`docs/context/`)
+
+Documentation explaining how our code works, architecture decisions, and system flows:
+
+- **Plan Generation**: `docs/context/plan-generation-architecture.md`
+
+### LLM Rules & Guidelines (`docs/rules/`)
+
+Guardrails and guidelines for LLMs to follow:
 
 - **Architecture**: `docs/rules/architecture/project-structure.md`
 - **TypeScript**: `docs/rules/language-specific/typescript.md`
