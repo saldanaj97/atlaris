@@ -16,7 +16,12 @@ import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
-import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
+import {
+  atomicCheckAndIncrementPdfUsage,
+  atomicCheckAndInsertPlan,
+  decrementPdfPlanUsage,
+  resolveUserTier,
+} from '@/lib/stripe/usage';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
@@ -82,13 +87,16 @@ export const POST = withErrorBoundary(
     }
 
     // Normalize persisted dates to tier limits while keeping requested cap validation strict
-    const { startDate, deadlineDate, totalWeeks } =
-      normalizePlanDurationForTier({
-        tier: userTier,
-        weeklyHours: body.weeklyHours,
-        startDate: body.startDate ?? null,
-        deadlineDate: body.deadlineDate ?? null,
-      });
+    const {
+      startDate: _startDate,
+      deadlineDate: _deadlineDate,
+      totalWeeks,
+    } = normalizePlanDurationForTier({
+      tier: userTier,
+      weeklyHours: body.weeklyHours,
+      startDate: body.startDate ?? null,
+      deadlineDate: body.deadlineDate ?? null,
+    });
 
     const cap = ensurePlanDurationAllowed({
       userTier,
@@ -109,22 +117,42 @@ export const POST = withErrorBoundary(
       });
     }
 
-    // Enforce subscription plan limits and in-flight generation cap atomically.
-    // This prevents users from spamming concurrent POSTs and bypassing plan caps
-    // while newly inserted rows are still non-eligible.
-    const created = await atomicCheckAndInsertPlan(user.id, {
-      topic: body.topic,
-      skillLevel: body.skillLevel,
-      weeklyHours: body.weeklyHours,
-      learningStyle: body.learningStyle,
-      visibility: body.visibility ?? 'private',
-      // This endpoint triggers AI generation, so origin is always 'ai'.
-      origin: 'ai',
-      startDate,
-      deadlineDate,
-    });
+    const origin = body.origin ?? 'ai';
+    const extractedContent = body.extractedContent;
 
-    // Fetch created row to include timestamps in response (back-compat shape)
+    if (origin === 'pdf') {
+      const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id);
+      if (!pdfUsage.allowed) {
+        return jsonError('PDF plan quota exceeded for this month.', {
+          status: 403,
+        });
+      }
+    }
+
+    const topic =
+      origin === 'pdf' && extractedContent
+        ? extractedContent.mainTopic
+        : body.topic;
+
+    let created: { id: string };
+    try {
+      created = await atomicCheckAndInsertPlan(user.id, {
+        topic,
+        skillLevel: body.skillLevel,
+        weeklyHours: body.weeklyHours,
+        learningStyle: body.learningStyle,
+        visibility: 'private',
+        origin,
+        startDate: body.startDate,
+        deadlineDate: body.deadlineDate,
+      });
+    } catch (err) {
+      if (origin === 'pdf') {
+        await decrementPdfPlanUsage(user.id);
+      }
+      throw err;
+    }
+
     const db = getDb();
     const [plan] = await db
       .select()
