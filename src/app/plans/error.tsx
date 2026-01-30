@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
@@ -17,14 +17,11 @@ interface ErrorProps {
  */
 export default function PlansError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    logger.error(
-      {
-        errorDigest: error.digest,
-        message: error.message,
-        stack: error.stack,
-      },
-      'Plans list error'
-    );
+    clientLogger.error('Plans list error:', {
+      errorDigest: error.digest,
+      message: error.message,
+      stack: error.stack,
+    });
   }, [error]);
 
   return (

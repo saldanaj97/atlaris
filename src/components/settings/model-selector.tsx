@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { getModelsForTier } from '@/lib/ai/ai-models';
 import type { AvailableModel, SubscriptionTier } from '@/lib/ai/types';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 
@@ -82,7 +82,10 @@ const ModelDropdown = ({
       setSaveStatus('success');
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      logger.error({ error, selectedModel }, 'Failed to save model preference');
+      clientLogger.error('Failed to save model preference:', {
+        error,
+        selectedModel,
+      });
       setSaveStatus('error');
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
