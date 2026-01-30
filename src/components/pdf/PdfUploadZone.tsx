@@ -91,7 +91,6 @@ export function PdfUploadZone({
   return (
     <div className="w-full max-w-2xl">
       <div
-        role="button"
         tabIndex={disabled || isUploading ? -1 : 0}
         className={`dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-12 shadow-2xl backdrop-blur-xl transition-all ${isDragging ? 'border-primary/50 bg-primary/5' : ''} ${disabled || isUploading ? 'cursor-not-allowed opacity-60' : 'hover:border-primary/30 cursor-pointer'} `}
         onDragOver={handleDragOver}
@@ -99,7 +98,7 @@ export function PdfUploadZone({
         onDrop={handleDrop}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        aria-label="Upload PDF file"
+        aria-label="Upload PDF file dropzone"
       >
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"

@@ -1,15 +1,36 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import {
+  DEADLINE_OPTIONS,
+  LEARNING_STYLE_OPTIONS,
+  SKILL_LEVEL_OPTIONS,
+  WEEKLY_HOURS_OPTIONS,
+} from '@/app/plans/new/components/plan-form/constants';
+import { InlineDropdown } from '@/app/plans/new/components/plan-form/InlineDropdown';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, CheckCircle2, FileText } from 'lucide-react';
-import { useState, useId } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  ArrowRight,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Sparkles,
+} from 'lucide-react';
+import { useId, useState } from 'react';
 
 interface ExtractedSection {
   title: string;
   content: string;
   level: number;
   suggestedTopic?: string;
+}
+
+export interface PdfPlanSettings {
+  skillLevel: string;
+  weeklyHours: string;
+  learningStyle: string;
+  deadlineWeeks: string;
 }
 
 interface PdfExtractionPreviewProps {
@@ -20,7 +41,9 @@ interface PdfExtractionPreviewProps {
   onGenerate: (editedData: {
     mainTopic: string;
     sections: ExtractedSection[];
+    settings: PdfPlanSettings;
   }) => void;
+  onSwitchToManual?: (mainTopic: string) => void;
   isGenerating?: boolean;
 }
 
@@ -30,12 +53,19 @@ export function PdfExtractionPreview({
   pageCount,
   confidence,
   onGenerate,
+  onSwitchToManual,
   isGenerating = false,
 }: PdfExtractionPreviewProps) {
   const [mainTopic, setMainTopic] = useState(initialTopic);
   const [sections, setSections] = useState(initialSections);
+  const [skillLevel, setSkillLevel] = useState('beginner');
+  const [weeklyHours, setWeeklyHours] = useState('3-5');
+  const [learningStyle, setLearningStyle] = useState('mixed');
+  const [deadlineWeeks, setDeadlineWeeks] = useState('4');
+
   const mainTopicId = useId();
   const sectionsLabelId = useId();
+  const baseId = useId();
 
   const handleSectionEdit = (
     index: number,
@@ -48,7 +78,11 @@ export function PdfExtractionPreview({
   };
 
   const handleGenerate = () => {
-    onGenerate({ mainTopic, sections });
+    onGenerate({
+      mainTopic,
+      sections,
+      settings: { skillLevel, weeklyHours, learningStyle, deadlineWeeks },
+    });
   };
 
   const confidenceColors = {
@@ -110,20 +144,19 @@ export function PdfExtractionPreview({
 
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <label
+                <span
                   id={sectionsLabelId}
                   className="text-foreground text-sm font-medium"
                 >
                   Sections ({sections.length})
-                </label>
+                </span>
                 <p className="text-muted-foreground text-xs">
                   Edit titles and content as needed
                 </p>
               </div>
 
-              <div
-                className="space-y-3"
-                role="group"
+              <fieldset
+                className="max-h-64 space-y-3 overflow-y-auto"
                 aria-labelledby={sectionsLabelId}
               >
                 {sections.map((section, index) => (
@@ -132,7 +165,14 @@ export function PdfExtractionPreview({
                     className="dark:bg-input/20 dark:border-input/50 bg-background/50 border-border hover:border-primary/30 rounded-xl border p-4 transition"
                   >
                     <div className="mb-2 flex items-start justify-between gap-3">
+                      <label
+                        className="sr-only"
+                        htmlFor={`section-title-${index}`}
+                      >
+                        Section {index + 1} title
+                      </label>
                       <input
+                        id={`section-title-${index}`}
                         type="text"
                         value={section.title}
                         onChange={(e) =>
@@ -145,7 +185,14 @@ export function PdfExtractionPreview({
                         Level {section.level}
                       </Badge>
                     </div>
+                    <label
+                      className="sr-only"
+                      htmlFor={`section-content-${index}`}
+                    >
+                      Section {index + 1} content
+                    </label>
                     <textarea
+                      id={`section-content-${index}`}
                       value={section.content}
                       onChange={(e) =>
                         handleSectionEdit(index, 'content', e.target.value)
@@ -156,11 +203,69 @@ export function PdfExtractionPreview({
                     />
                   </div>
                 ))}
+              </fieldset>
+            </div>
+
+            <div className="border-border dark:border-border mt-4 border-t pt-4">
+              <p className="text-foreground mb-3 text-sm font-medium">
+                Plan Settings
+              </p>
+              <div className="dark:text-foreground text-foreground mb-3 flex flex-wrap items-center gap-2">
+                <span className="text-sm">I&apos;m a</span>
+                <InlineDropdown
+                  id={`${baseId}-skill-level`}
+                  options={SKILL_LEVEL_OPTIONS}
+                  value={skillLevel}
+                  onChange={setSkillLevel}
+                  variant="primary"
+                />
+                <span className="text-sm">with</span>
+                <InlineDropdown
+                  id={`${baseId}-weekly-hours`}
+                  options={WEEKLY_HOURS_OPTIONS}
+                  value={weeklyHours}
+                  onChange={setWeeklyHours}
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                  variant="accent"
+                />
+                <span className="text-sm">per week.</span>
+              </div>
+
+              <div className="dark:text-foreground text-foreground flex flex-wrap items-center gap-2">
+                <span className="text-sm">I prefer</span>
+                <InlineDropdown
+                  id={`${baseId}-learning-style`}
+                  options={LEARNING_STYLE_OPTIONS}
+                  value={learningStyle}
+                  onChange={setLearningStyle}
+                  variant="accent"
+                />
+                <span className="text-sm">and want to finish in</span>
+                <InlineDropdown
+                  id={`${baseId}-deadline`}
+                  options={DEADLINE_OPTIONS}
+                  value={deadlineWeeks}
+                  onChange={setDeadlineWeeks}
+                  icon={<Calendar className="h-3.5 w-3.5" />}
+                  variant="primary"
+                />
               </div>
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex items-center justify-between">
+            {onSwitchToManual && (
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => onSwitchToManual(mainTopic)}
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm underline-offset-4 transition hover:underline"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Not what you expected? Try generating manually
+              </Button>
+            )}
+            {!onSwitchToManual && <div />}
             <Button
               type="button"
               onClick={handleGenerate}

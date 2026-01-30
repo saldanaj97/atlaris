@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
@@ -18,6 +18,7 @@ interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
   isSubmitting?: boolean;
   disabled?: boolean;
+  initialTopic?: string;
 }
 
 /**
@@ -31,13 +32,20 @@ export function UnifiedPlanInput({
   onSubmit,
   isSubmitting = false,
   disabled = false,
+  initialTopic = '',
 }: UnifiedPlanInputProps) {
   const baseId = useId();
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(initialTopic);
   const [skillLevel, setSkillLevel] = useState('beginner');
   const [weeklyHours, setWeeklyHours] = useState('3-5');
   const [learningStyle, setLearningStyle] = useState('mixed');
   const [deadlineWeeks, setDeadlineWeeks] = useState('4');
+
+  useEffect(() => {
+    if (initialTopic) {
+      setTopic(initialTopic);
+    }
+  }, [initialTopic]);
 
   const topicInputId = `${baseId}-topic`;
 
