@@ -47,7 +47,7 @@ export async function validatePdfUpload(
     tier = await (deps.resolveTier ?? resolveUserTier)(userId);
   } catch (err) {
     throw new Error(
-      `resolveTier failed for user ${userId}: ${err instanceof Error ? err.message : String(err)}`
+      `resolveTier failed: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 
