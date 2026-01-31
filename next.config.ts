@@ -15,6 +15,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   serverExternalPackages: [
+    'pdf-parse',
+    'pdfjs-dist',
     'postgres',
     'pino',
     'pino-std-serializers',

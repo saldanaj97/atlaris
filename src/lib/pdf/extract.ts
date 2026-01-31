@@ -1,10 +1,34 @@
+import fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { PDFParse, PasswordException } from 'pdf-parse';
+import { getPath } from 'pdf-parse/worker';
 
 import { detectStructure } from './structure';
 import type { PdfExtractionResponse } from './types';
 
 const PDF_HEADER = '%PDF-';
 const ENCRYPT_TOKEN = '/Encrypt';
+
+/** Resolve pdf.worker.mjs via pdf-parse's worker package so pdfjs-dist can load it in Next.js server bundle. */
+function getPdfWorkerSrc(): string {
+  const workerPath = getPath();
+  if (!fs.existsSync(workerPath)) {
+    throw new Error(
+      `PDF worker not found at ${workerPath}. Ensure pdf-parse is installed.`
+    );
+  }
+  return pathToFileURL(workerPath).href;
+}
+
+function ensurePdfWorkerSet(): void {
+  try {
+    const current = PDFParse.setWorker();
+    if (current) return;
+  } catch {
+    // ignore
+  }
+  PDFParse.setWorker(getPdfWorkerSrc());
+}
 
 const getMetadataField = (
   info: unknown,
@@ -49,6 +73,7 @@ export const extractTextFromPdf = async (
   }
 
   try {
+    ensurePdfWorkerSet();
     const parser = new PDFParse({ data: buffer });
     const textResult = await parser.getText();
     const infoResult = await parser.getInfo();
