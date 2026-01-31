@@ -37,7 +37,7 @@ export const POST = withErrorBoundary(
       return toExtractionError('PDF file is empty.');
     }
 
-    if (file.type && file.type !== 'application/pdf') {
+    if (!file.type || file.type !== 'application/pdf') {
       return toExtractionError('Only PDF files are supported.', 415);
     }
 
