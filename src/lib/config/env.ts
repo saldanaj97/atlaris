@@ -166,6 +166,13 @@ export const appEnv = {
   get isTest(): boolean {
     return this.nodeEnv === 'test' || Boolean(this.vitestWorkerId);
   },
+  /**
+   * Application base URL for constructing absolute URLs (e.g., Stripe redirects).
+   * Falls back to localhost in development/test environments.
+   */
+  get url(): string {
+    return getServerOptional('APP_URL') ?? 'http://localhost:3000';
+  },
 } as const;
 
 export const databaseEnv = {
