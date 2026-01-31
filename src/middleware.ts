@@ -14,6 +14,11 @@ const isProtectedRoute = createRouteMatcher([
 
 export default clerkMiddleware(
   async (auth: ClerkMiddlewareAuth, request: NextRequest) => {
+    // Allow Stripe webhooks to bypass all checks (including maintenance mode)
+    if (request.nextUrl.pathname.startsWith('/api/v1/stripe/webhook')) {
+      return NextResponse.next();
+    }
+
     const isMaintenanceMode = process.env.MAINTENANCE_MODE === 'true';
     const isMaintenancePage = request.nextUrl.pathname === '/maintenance';
 
@@ -23,10 +28,6 @@ export default clerkMiddleware(
 
     if (!isMaintenanceMode && isMaintenancePage) {
       return NextResponse.redirect(new URL('/', request.url));
-    }
-
-    if (request.nextUrl.pathname.startsWith('/api/v1/stripe/webhook')) {
-      return NextResponse.next();
     }
 
     if (isProtectedRoute(request)) await auth.protect();

@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
 import { useEffect } from 'react';
 
 interface ErrorProps {
@@ -15,14 +15,11 @@ interface ErrorProps {
  */
 export default function DashboardError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    logger.error(
-      {
-        errorDigest: error.digest,
-        message: error.message,
-        stack: error.stack,
-      },
-      'Dashboard error'
-    );
+    clientLogger.error('Dashboard error:', {
+      errorDigest: error.digest,
+      message: error.message,
+      stack: error.stack,
+    });
   }, [error]);
 
   return (

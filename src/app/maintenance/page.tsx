@@ -10,7 +10,7 @@ export default function MaintenancePage() {
         <CardContent className="space-y-6">
           {/* Icon */}
           <div className="flex justify-center">
-            <div className="border-border bg-primary animate-pulse rounded-full border-2 p-5 shadow-lg">
+            <div className="border-border bg-primary animate-pulse rounded-full border-2 p-5 shadow-lg motion-reduce:animate-none">
               <ShieldAlert className="text-primary-foreground h-10 w-10" />
             </div>
           </div>
@@ -19,7 +19,7 @@ export default function MaintenancePage() {
           <div className="flex justify-center">
             <Badge className="gap-2">
               <span className="relative flex h-2 w-2">
-                <span className="bg-primary-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
+                <span className="bg-primary-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 motion-reduce:animate-none"></span>
                 <span className="bg-primary-foreground relative inline-flex h-2 w-2 rounded-full"></span>
               </span>
               System Maintenance in Progress

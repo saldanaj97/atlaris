@@ -36,31 +36,94 @@ If you need a new variable:
 
 ## Logging
 
-### Core Rule
+### Critical Rule: Server vs Client
 
-**Use `@/lib/logging/logger` for structured logging.** Avoid `console.*` in application code.
+The codebase uses a **dual-logger architecture**:
 
-### API Routes
+| Environment | Import Path            | Use In                                                         |
+| ----------- | ---------------------- | -------------------------------------------------------------- |
+| **Server**  | `@/lib/logging/logger` | API routes, server components, server actions                  |
+| **Client**  | `@/lib/logging/client` | Client components with `'use client'`, hooks, error boundaries |
 
-For API routes, use helpers from `@/lib/logging/request-context`:
+**Never mix them.** Client components (`'use client'`) must NOT import `@/lib/logging/logger`. See the full logging architecture guide at `docs/rules/logging.md`.
+
+### Quick Reference
+
+#### Server-Side Logging
+
+```typescript
+import { logger } from '@/lib/logging/logger';
+
+// Basic logging
+logger.info('User created plan', { userId, planId });
+logger.error('Database connection failed', { error });
+```
+
+#### API Routes with Request Context
 
 ```typescript
 import { getRequestContext } from '@/lib/logging/request-context';
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   const { requestId, logger } = getRequestContext();
 
-  logger.info('Processing request', { requestId });
-  // ... handle request
+  logger.info('Creating new plan', { userId });
+  // All logs will include requestId automatically
+}
+```
+
+#### Client-Side Logging
+
+```typescript
+'use client';
+
+import { clientLogger } from '@/lib/logging/client';
+
+export function MyClientComponent() {
+  useEffect(() => {
+    clientLogger.info('Component mounted');
+  }, []);
+
+  const handleError = (error: Error) => {
+    clientLogger.error('Operation failed:', { error });
+  };
+}
+```
+
+#### Error Boundaries
+
+Error boundaries are always client components:
+
+```typescript
+'use client';
+
+import { clientLogger } from '@/lib/logging/client';
+import { useEffect } from 'react';
+
+export default function MyErrorBoundary({ error }: { error: Error }) {
+  useEffect(() => {
+    clientLogger.error('Error caught:', {
+      errorDigest: error.digest,
+      message: error.message,
+      stack: error.stack,
+    });
+  }, [error]);
+
+  return <div>Error occurred</div>;
 }
 ```
 
 ### When to Use Console
 
-If you think you need a direct `console.*` call, consider updating the centralized logging utilities in `@/lib/logging/` instead.
+If you think you need a direct `console.*` call, consider updating the centralized logging utilities in `@/lib/logging/` instead. The only exceptions are:
+
+- Scripts and CLI tools
+- Test output (test utilities may use console)
 
 ## Related Files
 
+- `docs/rules/logging.md` - Comprehensive logging architecture guide
 - `src/lib/config/env.ts` - Environment variable definitions and validation
-- `src/lib/logging/logger.ts` - Structured logging utilities
+- `src/lib/logging/logger.ts` - Server-side Pino structured logging
+- `src/lib/logging/client.ts` - Client-side console wrapper
 - `src/lib/logging/request-context.ts` - Request context helpers for API routes

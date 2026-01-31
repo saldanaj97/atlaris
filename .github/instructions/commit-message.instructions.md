@@ -11,6 +11,16 @@ Clear, consistent commit messages improve project maintainability and collaborat
 # Rules
 Make sure unless specified otherwise, to only stage and commit files that were discussed and modified as part of the task at hand. Do not include unrelated files or changes in the commit.
 
+## Commit Types
+
+- **feat**: New feature or functionality
+- **fix**: Bug fix
+- **docs**: Documentation only changes
+- **style**: Code style changes (formatting, missing semi-colons, etc.)
+- **refactor**: Code change that neither fixes a bug nor adds a feature
+- **test**: Adding or updating tests
+- **chore**: Changes to build process, dependencies, or auxiliary tools
+
 
 ## Format
 
@@ -26,14 +36,6 @@ Changes:
 - <bullet point of changes>
 - <bullet point of changes>
 - <bullet point of changes>
-<blank line>
-New files:
-- <path to new file>
-- <path to new file>
-<blank line>
-Tests cover:
-- <test description with test ID if applicable>
-- <test description with test ID if applicable>
 ```
 
 ## Structure Breakdown
@@ -57,19 +59,6 @@ Tests cover:
 - Include middleware, API changes, enhancements, etc.
 - Be specific about what was updated
 
-### 4. New Files Section (if applicable)
-- Label with `New files:`
-- Use bullet points (-)
-- List full paths to new files
-- Only include files that are part of the feature implementation
-
-### 5. Tests Cover Section (if applicable)
-- Label with `Tests cover:`
-- Use bullet points (-)
-- Describe what each test validates
-- Include test IDs in parentheses (e.g., T040, T041)
-- Show test results if relevant (e.g., "6/6 tests passing")
-
 ## Example
 
 ```
@@ -84,28 +73,7 @@ Changes:
 - Add rate limiting middleware (10 requests per 60 minutes)
 - Enhance RateLimitError with retryAfter field
 - Add comprehensive test suite for all Phase 4 features (6/6 tests passing)
-
-New files:
-- src/app/api/v1/plans/[planId]/status/route.ts
-- src/lib/api/rate-limit.ts
-- tests/contract/plans.api-integration.spec.ts
-
-Tests cover:
-- Job enqueueing on plan creation (T040)
-- Status transitions: pending → processing → ready/failed (T041)
-- Rate limit enforcement with retryAfter (T042)
-- Validation error handling without job creation (T043)
 ```
-
-## Commit Types
-
-- **feat**: New feature or functionality
-- **fix**: Bug fix
-- **docs**: Documentation only changes
-- **style**: Code style changes (formatting, missing semi-colons, etc.)
-- **refactor**: Code change that neither fixes a bug nor adds a feature
-- **test**: Adding or updating tests
-- **chore**: Changes to build process, dependencies, or auxiliary tools
 
 ## Best Practices
 
@@ -113,8 +81,7 @@ Tests cover:
 2. **Use imperative mood**: "Add feature" not "Added feature" or "Adds feature"
 3. **Reference test IDs**: Include test identifiers when applicable
 4. **Group related changes**: All changes in a commit should relate to the same feature/fix
-5. **Include metrics**: When relevant, include pass rates, performance improvements, etc.
-6. **Omit obvious sections**: If no new files or tests, omit those sections
+5. **Omit obvious sections**: If no new files or tests, omit those sections
 
 ## Notes
 

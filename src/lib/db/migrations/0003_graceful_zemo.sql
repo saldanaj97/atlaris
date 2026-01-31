@@ -1,0 +1,2 @@
+ALTER TABLE "usage_metrics" ADD COLUMN "pdf_plans_generated" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "usage_metrics" ADD CONSTRAINT "pdf_plans_generated_nonneg" CHECK ("usage_metrics"."pdf_plans_generated" >= 0);
