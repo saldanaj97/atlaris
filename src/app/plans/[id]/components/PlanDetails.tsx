@@ -44,7 +44,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
         href="/dashboard"
         className="mb-6 inline-flex items-center gap-2 text-sm text-stone-500 transition-colors hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
       >
-        <ArrowLeft size={16} />
+        <ArrowLeft size={16} aria-hidden="true" />
         Back to Dashboard
       </Link>
 

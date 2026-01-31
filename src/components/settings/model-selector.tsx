@@ -180,20 +180,32 @@ const ModelDropdown = ({
       )}
 
       {saveStatus === 'upgradeRequired' && (
-        <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
+        >
           This model requires a Pro subscription. Please upgrade to use premium
           models.
         </div>
       )}
 
       {saveStatus === 'error' && (
-        <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
+        >
           Failed to save preferences. Please try again.
         </div>
       )}
 
       {saveStatus === 'success' && (
-        <div className="rounded-lg border-2 border-green-500 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-lg border-2 border-green-500 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400"
+        >
           Preferences saved successfully!
         </div>
       )}

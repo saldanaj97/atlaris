@@ -48,7 +48,7 @@ export function PdfUploadError({
   const errorInfo = code ? errorMessages[code] : null;
 
   return (
-    <div className="w-full max-w-2xl">
+    <div className="w-full max-w-2xl" role="alert">
       <div className="dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-12 shadow-2xl backdrop-blur-xl">
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
