@@ -181,7 +181,7 @@ const ModelDropdown = ({
 
       {saveStatus === 'upgradeRequired' && (
         <div
-          role="alert"
+          role="status"
           aria-live="polite"
           className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
         >
@@ -193,7 +193,6 @@ const ModelDropdown = ({
       {saveStatus === 'error' && (
         <div
           role="alert"
-          aria-live="polite"
           className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
         >
           Failed to save preferences. Please try again.

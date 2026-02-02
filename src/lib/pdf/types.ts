@@ -44,7 +44,13 @@ export type PdfValidationResult =
     }
   | {
       success: false;
-      error: 'invalid_mime' | 'too_large' | 'too_many_pages' | 'no_text';
+      error:
+        | 'invalid_mime'
+        | 'too_large'
+        | 'too_many_pages'
+        | 'no_text'
+        | 'invalid_size'
+        | 'invalid_page_count';
       message: string;
     };
 

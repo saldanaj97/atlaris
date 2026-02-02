@@ -138,4 +138,130 @@ describe('pdf validation', () => {
       expect(result.pageCount).toBe(10);
     }
   });
+
+  it('rejects NaN file size', () => {
+    const result = validatePdfFile(
+      {
+        mimeType: 'application/pdf',
+        sizeBytes: NaN,
+        pageCount: 1,
+        text: 'Hello',
+      },
+      { maxSizeBytes: 5 * MB, maxPages: 50 }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('invalid_size');
+      expect(result.message).toContain('Invalid file size');
+    }
+  });
+
+  it('rejects negative file size', () => {
+    const result = validatePdfFile(
+      {
+        mimeType: 'application/pdf',
+        sizeBytes: -100,
+        pageCount: 1,
+        text: 'Hello',
+      },
+      { maxSizeBytes: 5 * MB, maxPages: 50 }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('invalid_size');
+      expect(result.message).toContain('Invalid file size');
+    }
+  });
+
+  it('rejects Infinity file size', () => {
+    const result = validatePdfFile(
+      {
+        mimeType: 'application/pdf',
+        sizeBytes: Infinity,
+        pageCount: 1,
+        text: 'Hello',
+      },
+      { maxSizeBytes: 5 * MB, maxPages: 50 }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('invalid_size');
+      expect(result.message).toContain('Invalid file size');
+    }
+  });
+
+  it('rejects NaN page count', () => {
+    const result = validatePdfFile(
+      {
+        mimeType: 'application/pdf',
+        sizeBytes: 1 * MB,
+        pageCount: NaN,
+        text: 'Hello',
+      },
+      { maxSizeBytes: 5 * MB, maxPages: 50 }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('invalid_page_count');
+      expect(result.message).toContain('Invalid page count');
+    }
+  });
+
+  it('rejects negative page count', () => {
+    const result = validatePdfFile(
+      {
+        mimeType: 'application/pdf',
+        sizeBytes: 1 * MB,
+        pageCount: -5,
+        text: 'Hello',
+      },
+      { maxSizeBytes: 5 * MB, maxPages: 50 }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('invalid_page_count');
+      expect(result.message).toContain('Invalid page count');
+    }
+  });
+
+  it('rejects Infinity page count', () => {
+    const result = validatePdfFile(
+      {
+        mimeType: 'application/pdf',
+        sizeBytes: 1 * MB,
+        pageCount: Infinity,
+        text: 'Hello',
+      },
+      { maxSizeBytes: 5 * MB, maxPages: 50 }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('invalid_page_count');
+      expect(result.message).toContain('Invalid page count');
+    }
+  });
+
+  it('allows zero file size and page count', () => {
+    const result = validatePdfFile(
+      {
+        mimeType: 'application/pdf',
+        sizeBytes: 0,
+        pageCount: 0,
+        text: 'Hello',
+      },
+      { maxSizeBytes: 5 * MB, maxPages: 50 }
+    );
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.sizeBytes).toBe(0);
+      expect(result.pageCount).toBe(0);
+    }
+  });
 });

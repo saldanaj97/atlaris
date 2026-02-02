@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
@@ -40,12 +40,22 @@ export function UnifiedPlanInput({
   const [weeklyHours, setWeeklyHours] = useState('3-5');
   const [learningStyle, setLearningStyle] = useState('mixed');
   const [deadlineWeeks, setDeadlineWeeks] = useState('4');
+  const topicTouchedRef = useRef(false);
 
   useEffect(() => {
-    if (initialTopic) {
+    if (
+      initialTopic !== undefined &&
+      initialTopic !== '' &&
+      !topicTouchedRef.current
+    ) {
       setTopic(initialTopic);
     }
   }, [initialTopic]);
+
+  const handleTopicChange = (value: string) => {
+    topicTouchedRef.current = true;
+    setTopic(value);
+  };
 
   const topicInputId = `${baseId}-topic`;
 
@@ -112,7 +122,7 @@ export function UnifiedPlanInput({
             <textarea
               id={topicInputId}
               value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+              onChange={(e) => handleTopicChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="I want to learn TypeScript for React development..."
               className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[72px] w-full resize-none bg-transparent text-lg focus:outline-none"

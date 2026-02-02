@@ -2,7 +2,8 @@
 
 import { Button } from '@/components/ui/button';
 import { FileText, Loader2, Upload } from 'lucide-react';
-import { useCallback, useId, useRef, useState } from 'react';
+import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react';
+import React, { useCallback, useId, useRef, useState } from 'react';
 
 interface PdfUploadZoneProps {
   onFileSelect: (file: File) => void;
@@ -22,13 +23,13 @@ export function PdfUploadZone({
   isUploading = false,
   disabled = false,
   error,
-}: PdfUploadZoneProps) {
+}: PdfUploadZoneProps): React.ReactElement {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
 
   const handleDragOver = useCallback(
-    (e: React.DragEvent) => {
+    (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       if (!disabled && !isUploading) {
@@ -38,14 +39,14 @@ export function PdfUploadZone({
     [disabled, isUploading]
   );
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   }, []);
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
@@ -63,13 +64,18 @@ export function PdfUploadZone({
   );
 
   const handleFileInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (disabled || isUploading) return;
       const files = e.target.files;
-      if (files && files[0]) {
-        onFileSelect(files[0]);
-      }
+      if (!files || !files[0]) return;
+      const file = files[0];
+      const isPdf =
+        file.type === 'application/pdf' ||
+        file.name.toLowerCase().endsWith('.pdf');
+      if (!isPdf) return;
+      onFileSelect(file);
     },
-    [onFileSelect]
+    [disabled, isUploading, onFileSelect]
   );
 
   const handleClick = useCallback(() => {
@@ -79,7 +85,7 @@ export function PdfUploadZone({
   }, [disabled, isUploading]);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
+    (e: KeyboardEvent<HTMLDivElement>) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         handleClick();
@@ -91,7 +97,9 @@ export function PdfUploadZone({
   return (
     <div className="w-full max-w-2xl">
       <div
+        role="button"
         tabIndex={disabled || isUploading ? -1 : 0}
+        aria-disabled={disabled || isUploading}
         className={`dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-12 shadow-2xl backdrop-blur-xl transition-all ${isDragging ? 'border-primary/50 bg-primary/5' : ''} ${disabled || isUploading ? 'cursor-not-allowed opacity-60' : 'hover:border-primary/30 cursor-pointer'} `}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

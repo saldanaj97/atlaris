@@ -19,6 +19,7 @@ export default function ModuleDetailError({ error, reset }: ErrorProps) {
     clientLogger.error('Module detail error:', {
       errorDigest: error.digest,
       message: error.message,
+      stack: error.stack,
     });
   }, [error]);
 

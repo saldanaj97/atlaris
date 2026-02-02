@@ -13,7 +13,7 @@ import { PdfUploadZone } from '@/components/pdf/PdfUploadZone';
 import { clientLogger } from '@/lib/logging/client';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface PdfCreatePanelProps {
@@ -68,6 +68,7 @@ type PageState =
 export function PdfCreatePanel({ onSwitchToManual }: PdfCreatePanelProps) {
   const router = useRouter();
   const [state, setState] = useState<PageState>({ status: 'idle' });
+  const isSubmittingRef = useRef(false);
 
   const handleFileSelect = async (file: File) => {
     if (file.type !== 'application/pdf') {
@@ -123,6 +124,10 @@ export function PdfCreatePanel({ onSwitchToManual }: PdfCreatePanelProps) {
     sections: ExtractionData['sections'];
     settings: PdfPlanSettings;
   }) => {
+    if (state.status === 'generating' || isSubmittingRef.current) {
+      return;
+    }
+    isSubmittingRef.current = true;
     setState({ status: 'generating' });
 
     const { mainTopic, sections, settings } = editedData;
@@ -168,6 +173,7 @@ export function PdfCreatePanel({ onSwitchToManual }: PdfCreatePanelProps) {
       toast.success('Learning plan created! Generation starting...');
       router.push(`/plans/${data.id}`);
     } catch (error) {
+      isSubmittingRef.current = false;
       clientLogger.error('Plan generation failed', error);
       setState({
         status: 'error',
@@ -180,10 +186,12 @@ export function PdfCreatePanel({ onSwitchToManual }: PdfCreatePanelProps) {
   };
 
   const handleRetry = () => {
+    isSubmittingRef.current = false;
     setState({ status: 'idle' });
   };
 
   const handleBack = () => {
+    isSubmittingRef.current = false;
     setState({ status: 'idle' });
   };
 

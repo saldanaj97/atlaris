@@ -1,14 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
-import { afterEach, vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { db } from '@/lib/db/service-role';
-import { users, learningPlans, usageMetrics } from '@/lib/db/schema';
-import { extractTextFromPdf } from '@/lib/pdf/extract';
-import { checkPdfPlanQuota, incrementPdfPlanUsage } from '@/lib/stripe/usage';
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
+import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
+import { extractTextFromPdf } from '@/lib/pdf/extract';
 import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
+import { checkPdfPlanQuota, incrementPdfPlanUsage } from '@/lib/stripe/usage';
+import {
+  ensureStripeWebhookEvents,
+  resetDbForIntegrationTestFile,
+} from '../helpers/db';
 
 const buildPdfBuffer = (text: string, pageCount = 1): Buffer => {
   const header = '%PDF-1.4\n';
@@ -90,9 +93,8 @@ describe('PDF to Plan E2E Flow', () => {
   beforeEach(async () => {
     vi.useFakeTimers();
     vi.setSystemTime(fixedNow);
-    await db.delete(usageMetrics);
-    await db.delete(learningPlans);
-    await db.delete(users);
+    await resetDbForIntegrationTestFile();
+    await ensureStripeWebhookEvents();
 
     const [user] = await db
       .insert(users)

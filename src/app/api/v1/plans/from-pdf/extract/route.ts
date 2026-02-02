@@ -1,4 +1,8 @@
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import {
+  type PlainHandler,
+  withAuthAndRateLimit,
+  withErrorBoundary,
+} from '@/lib/api/auth';
 import { checkPdfSizeLimit, validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 import { json } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
@@ -17,7 +21,7 @@ const errorResponse = (message: string, code: PdfErrorCode, status: number) =>
 const toExtractionError = (message: string, status = 400) =>
   errorResponse(message, 'INVALID_FILE', status);
 
-export const POST = withErrorBoundary(
+export const POST: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
     const user = await getUserByClerkId(userId);
     if (!user) {

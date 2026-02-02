@@ -9,12 +9,12 @@ import {
   type SkillLevel,
 } from '@/lib/types/db';
 
+import { pdfPreviewEditSchema } from './pdf';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
   weeklyHoursSchema,
 } from './shared';
-import { pdfPreviewEditSchema } from './pdf';
 
 export {
   NOTES_MAX_LENGTH,
@@ -43,11 +43,11 @@ function enforceMaxLength(
   }
 }
 
-const skillLevelEnum = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
-const learningStyleEnum = z.enum(
+const SKILL_LEVEL_ENUM = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
+const LEARNING_STYLE_ENUM = z.enum(
   LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
 );
-const resourceTypeEnum = z.enum(
+const RESOURCE_TYPE_ENUM = z.enum(
   RESOURCE_TYPES as [ResourceType, ...ResourceType[]]
 );
 
@@ -109,9 +109,9 @@ export const planRegenerationOverridesSchema = z
   .object({
     topic: planTopicOverrideSchema.optional(),
     notes: planNotesOverrideSchema.optional().nullable(),
-    skillLevel: skillLevelEnum.optional(),
+    skillLevel: SKILL_LEVEL_ENUM.optional(),
     weeklyHours: weeklyHoursSchema.optional(),
-    learningStyle: learningStyleEnum.optional(),
+    learningStyle: LEARNING_STYLE_ENUM.optional(),
     startDate: planStartDateOverrideSchema.optional().nullable(),
     deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
   })
@@ -124,9 +124,9 @@ export type PlanRegenerationOverridesInput = z.infer<
 export const createLearningPlanSchema = z
   .object({
     topic: topicSchema,
-    skillLevel: skillLevelEnum,
+    skillLevel: SKILL_LEVEL_ENUM,
     weeklyHours: weeklyHoursSchema,
-    learningStyle: learningStyleEnum,
+    learningStyle: LEARNING_STYLE_ENUM,
     notes: notesSchema
       .optional()
       .nullable()
@@ -155,6 +155,7 @@ export const createLearningPlanSchema = z
     origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const).default('ai'),
     extractedContent: pdfPreviewEditSchema.optional(),
   })
+  .strict()
   .superRefine((data, ctx) => {
     if (data.origin === 'pdf' && !data.extractedContent) {
       ctx.addIssue({
@@ -169,7 +170,7 @@ export type CreateLearningPlanInput = z.infer<typeof createLearningPlanSchema>;
 
 export const learningPlanResourceSchema = z.object({
   id: z.string().uuid(),
-  type: resourceTypeEnum,
+  type: RESOURCE_TYPE_ENUM,
   title: z.string(),
   url: z.string().url(),
   durationMinutes: z.number().int().nonnegative().optional(),

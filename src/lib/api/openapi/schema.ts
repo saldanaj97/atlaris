@@ -18,8 +18,8 @@ extendZodWithOpenApi(z);
 
 const registry = new OpenAPIRegistry();
 
-const skillLevelEnum = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
-const learningStyleEnum = z.enum(
+const SKILL_LEVEL_ENUM = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
+const LEARNING_STYLE_ENUM = z.enum(
   LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
 );
 
@@ -34,9 +34,9 @@ const learningPlanSchema = z
   .object({
     id: z.string().uuid(),
     topic: z.string(),
-    skillLevel: skillLevelEnum,
+    skillLevel: SKILL_LEVEL_ENUM,
     weeklyHours: z.number().int().nullable().optional(),
-    learningStyle: learningStyleEnum,
+    learningStyle: LEARNING_STYLE_ENUM,
     visibility: z.enum(['private', 'public'] as const),
     origin: z.enum(['ai', 'manual', 'template'] as const),
     createdAt: z.string().datetime().nullable().optional(),
@@ -67,9 +67,9 @@ const createPlanResponseSchema = z
   .object({
     id: z.string().uuid(),
     topic: z.string(),
-    skillLevel: skillLevelEnum,
+    skillLevel: SKILL_LEVEL_ENUM,
     weeklyHours: z.number().int().nullable().optional(),
-    learningStyle: learningStyleEnum,
+    learningStyle: LEARNING_STYLE_ENUM,
     visibility: z.enum(['private', 'public'] as const),
     origin: z.enum(['ai', 'manual', 'template'] as const),
     createdAt: z.string().datetime().nullable().optional(),

@@ -57,27 +57,26 @@ export const oauthStateTokens = pgTable(
     index('oauth_state_tokens_expires_at_idx').on(table.expiresAt),
 
     // RLS Policies
-    // Note: These tokens are accessed via service-role in OAuth callbacks
-    // because the user might not be fully authenticated yet during the flow.
-    // However, we still enable RLS for defense-in-depth.
+    // These tokens are accessed via service-role in OAuth callbacks,
+    // but we still enforce JWT-based RLS for defense-in-depth.
+    // Policies verify that clerk_user_id matches the authenticated user's sub claim.
 
-    // Allow insert for authenticated users (creating their own tokens)
+    // Allow insert only for the token owner
     pgPolicy('oauth_state_tokens_insert', {
       for: 'insert',
-      // Anyone can insert (OAuth initiation happens before full auth context)
-      withCheck: sql`true`,
+      withCheck: sql`clerk_user_id = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
 
-    // Allow select/delete only for service role operations
-    // OAuth validation uses service-role to atomically delete and return
+    // Allow select only for the token owner
     pgPolicy('oauth_state_tokens_select', {
       for: 'select',
-      using: sql`true`, // Service role access for validation
+      using: sql`clerk_user_id = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
 
+    // Allow delete only for the token owner
     pgPolicy('oauth_state_tokens_delete', {
       for: 'delete',
-      using: sql`true`, // Service role access for cleanup and validation
+      using: sql`clerk_user_id = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
   ]
 ).enableRLS();

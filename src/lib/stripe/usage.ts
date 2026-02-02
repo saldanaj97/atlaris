@@ -1,5 +1,6 @@
-import { db } from '@/lib/db/service-role';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
+import { logger } from '@/lib/logging/logger';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { TIER_LIMITS, type SubscriptionTier } from './tier-limits';
@@ -14,9 +15,9 @@ export type PdfUsageMetrics = { pdfPlansGenerated: number };
 /**
  * Get current month in YYYY-MM format
  */
-function getCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+function getCurrentMonth(now?: Date): string {
+  const d = now ?? new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 /**
@@ -139,6 +140,7 @@ type PdfQuotaDependencies = {
 /**
  * Check if user can create more PDF-based plans this month
  * @returns true if user has PDF plan quota left, false otherwise
+ * @deprecated Use atomicCheckAndIncrementPdfUsage for concurrent-safe quota enforcement
  */
 export async function checkPdfPlanQuota(
   userId: string,
@@ -151,8 +153,7 @@ export async function checkPdfPlanQuota(
     return true;
   }
 
-  const now = deps.now ? deps.now() : new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = getCurrentMonth(deps.now?.());
   const metrics = await (deps.getMetrics ?? getOrCreateUsageMetrics)(
     userId,
     month
@@ -408,6 +409,15 @@ export type AtomicPdfUsageResult =
   | { allowed: true; newCount: number; limit: number }
   | { allowed: false; currentCount: number; limit: number };
 
+/**
+ * Atomically check PDF plan quota and increment usage counter in a single transaction.
+ * This uses database-level locking to ensure concurrent requests cannot exceed the user's PDF plan limit.
+ * For users on Infinity-tier subscription, the quota is bypassed and the counter is incremented unconditionally.
+ *
+ * @param userId - The user's UUID
+ * @returns AtomicPdfUsageResult with allowed status, current/new count, and limit
+ * @throws Error if user not found or failed to lock usage metrics
+ */
 export async function atomicCheckAndIncrementPdfUsage(
   userId: string
 ): Promise<AtomicPdfUsageResult> {
@@ -429,6 +439,16 @@ export async function atomicCheckAndIncrementPdfUsage(
       const month = getCurrentMonth();
       await ensureUsageMetricsExist(tx, userId, month);
       await incrementPdfUsageInTx(tx, userId, month);
+      logger.info(
+        {
+          userId,
+          month,
+          action: 'atomicCheckAndIncrementPdfUsage',
+          newCount: 1,
+          limit: Infinity,
+        },
+        'PDF plan quota allowed (Infinity tier)'
+      );
       return { allowed: true, newCount: 1, limit: Infinity };
     }
 
@@ -450,17 +470,52 @@ export async function atomicCheckAndIncrementPdfUsage(
     const currentCount = metrics.pdfPlansGenerated;
 
     if (currentCount >= limit) {
+      logger.warn(
+        {
+          userId,
+          month,
+          action: 'atomicCheckAndIncrementPdfUsage',
+          currentCount,
+          limit,
+        },
+        'PDF plan quota denied'
+      );
       return { allowed: false, currentCount, limit };
     }
 
     await incrementPdfUsageInTx(tx, userId, month);
 
+    logger.info(
+      {
+        userId,
+        month,
+        action: 'atomicCheckAndIncrementPdfUsage',
+        newCount: currentCount + 1,
+        limit,
+      },
+      'PDF plan quota allowed'
+    );
     return { allowed: true, newCount: currentCount + 1, limit };
   });
 }
 
+/**
+ * Decrement PDF plan usage counter (used when a PDF plan is deleted/rolled back).
+ * This operation is performed outside a transaction and may fail silently if metrics don't exist.
+ * The counter is clamped at 0 to prevent negative values.
+ * Use this when undoing a PDF plan creation to maintain accurate quota accounting.
+ *
+ * @param userId - The user's UUID
+ * @returns void (logs result but doesn't throw on missing metrics)
+ */
 export async function decrementPdfPlanUsage(userId: string): Promise<void> {
   const month = getCurrentMonth();
+
+  const [before] = await db
+    .select({ pdfPlansGenerated: usageMetrics.pdfPlansGenerated })
+    .from(usageMetrics)
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .limit(1);
 
   await db
     .update(usageMetrics)
@@ -468,6 +523,16 @@ export async function decrementPdfPlanUsage(userId: string): Promise<void> {
       pdfPlansGenerated: sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
     })
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+
+  logger.info(
+    {
+      userId,
+      month,
+      action: 'decrementPdfPlanUsage',
+      priorCount: before?.pdfPlansGenerated ?? null,
+    },
+    'PDF plan usage decremented'
+  );
 }
 
 export async function atomicCheckAndIncrementUsage(
@@ -537,6 +602,7 @@ async function ensureUsageMetricsExist(
       userId,
       month,
       plansGenerated: 0,
+      pdfPlansGenerated: 0,
       regenerationsUsed: 0,
       exportsUsed: 0,
     })

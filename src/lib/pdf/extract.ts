@@ -72,12 +72,12 @@ export const extractTextFromPdf = async (
     };
   }
 
+  let parser: InstanceType<typeof PDFParse> | null = null;
   try {
     ensurePdfWorkerSet();
-    const parser = new PDFParse({ data: buffer });
+    parser = new PDFParse({ data: buffer });
     const textResult = await parser.getText();
     const infoResult = await parser.getInfo();
-    await parser.destroy();
     const text = textResult.text?.trim() ?? '';
 
     if (text.length === 0) {
@@ -126,5 +126,7 @@ export const extractTextFromPdf = async (
       error: 'extraction_failed',
       message,
     };
+  } finally {
+    parser?.destroy();
   }
 };

@@ -41,11 +41,27 @@ export const validatePdfFile = (
     };
   }
 
+  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes < 0) {
+    return {
+      success: false,
+      error: 'invalid_size',
+      message: 'Invalid file size: must be a non-negative number.',
+    };
+  }
+
   if (input.sizeBytes > limits.maxSizeBytes) {
     return {
       success: false,
       error: 'too_large',
       message: 'PDF exceeds the maximum allowed size.',
+    };
+  }
+
+  if (!Number.isFinite(input.pageCount) || input.pageCount < 0) {
+    return {
+      success: false,
+      error: 'invalid_page_count',
+      message: 'Invalid page count: must be a non-negative integer.',
     };
   }
 

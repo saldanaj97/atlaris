@@ -7,13 +7,13 @@ import {
   getTodayDateString,
 } from '@/app/plans/new/components/plan-form/helpers';
 import type { PlanFormData } from '@/app/plans/new/components/plan-form/types';
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import type { StreamingError } from '@/hooks/useStreamingPlanGeneration';
+import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface ManualCreatePanelProps {
@@ -36,7 +36,7 @@ function convertToOnboardingValues(data: PlanFormData): OnboardingFormValues {
 export function ManualCreatePanel({
   initialTopic,
   onTopicUsed,
-}: ManualCreatePanelProps) {
+}: ManualCreatePanelProps): React.ReactElement {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {
