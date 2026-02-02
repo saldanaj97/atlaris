@@ -1,3 +1,4 @@
+import { getDb } from '@/lib/db/runtime';
 import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
@@ -5,11 +6,16 @@ import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { getStripe } from './client';
 
+type DbClient = ReturnType<typeof getDb>;
+
 /**
  * Get user's subscription tier from database
  */
-export async function getSubscriptionTier(userId: string) {
-  const [user] = await db
+export async function getSubscriptionTier(
+  userId: string,
+  dbClient: DbClient = getDb()
+) {
+  const [user] = await dbClient
     .select({
       subscriptionTier: users.subscriptionTier,
       subscriptionStatus: users.subscriptionStatus,

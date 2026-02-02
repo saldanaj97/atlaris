@@ -86,40 +86,22 @@ export async function validatePdfUpload(
   pageCount: number,
   deps: PdfUploadValidationDeps = {}
 ): Promise<PdfUploadValidationResult> {
-  if (!Number.isFinite(sizeBytes) || sizeBytes < 0) {
-    throw new Error('sizeBytes must be a non-negative finite number');
-  }
   if (!Number.isFinite(pageCount) || pageCount < 0) {
     throw new Error('pageCount must be a non-negative finite number');
   }
 
-  let tier: SubscriptionTier;
-  try {
-    const db = getDb();
-    tier = await (deps.resolveTier ?? resolveUserTier)(userId, db);
-  } catch (err) {
-    throw new Error(
-      `resolveTier failed: ${err instanceof Error ? err.message : String(err)}`
-    );
+  const sizeResult = await checkPdfSizeLimit(userId, sizeBytes, deps);
+  if (!sizeResult.allowed) {
+    return sizeResult;
   }
 
-  const limits = toLimitDetails(tier);
-  const maxSizeBytes = limits.maxPdfSizeMb * 1024 * 1024;
-
-  if (sizeBytes > maxSizeBytes) {
-    return {
-      allowed: false,
-      code: 'FILE_TOO_LARGE',
-      reason: `PDF exceeds ${limits.maxPdfSizeMb}MB limit for ${tier} tier.`,
-      limits,
-    };
-  }
+  const { limits } = sizeResult;
 
   if (pageCount > limits.maxPdfPages) {
     return {
       allowed: false,
       code: 'TOO_MANY_PAGES',
-      reason: `PDF exceeds ${limits.maxPdfPages}-page limit for ${tier} tier.`,
+      reason: `PDF exceeds ${limits.maxPdfPages}-page limit.`,
       limits,
     };
   }

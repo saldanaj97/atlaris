@@ -584,6 +584,14 @@ export async function decrementPdfPlanUsage(
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
     .limit(1);
 
+  if (!before) {
+    logger.warn(
+      { userId, month, action: 'decrementPdfPlanUsage' },
+      'No usage metrics found to decrement'
+    );
+    return;
+  }
+
   await dbClient
     .update(usageMetrics)
     .set({
@@ -596,7 +604,7 @@ export async function decrementPdfPlanUsage(
       userId,
       month,
       action: 'decrementPdfPlanUsage',
-      priorCount: before?.pdfPlansGenerated ?? null,
+      priorCount: before.pdfPlansGenerated,
     },
     'PDF plan usage decremented'
   );

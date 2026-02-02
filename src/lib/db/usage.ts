@@ -1,7 +1,9 @@
 import { aiUsageEvents, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { getDb } from '@/lib/db/runtime';
 import { incrementUsage } from '@/lib/stripe/usage';
 import { eq, sql } from 'drizzle-orm';
+
+type DbClient = ReturnType<typeof getDb>;
 
 export interface EnsureBudgetParams {
   type: 'plan' | 'regeneration';
@@ -18,8 +20,11 @@ export interface RecordUsageParams {
   kind?: 'plan' | 'regeneration';
 }
 
-export async function recordUsage(params: RecordUsageParams) {
-  await db.insert(aiUsageEvents).values({
+export async function recordUsage(
+  params: RecordUsageParams,
+  dbClient: DbClient = getDb()
+): Promise<void> {
+  await dbClient.insert(aiUsageEvents).values({
     userId: params.userId,
     provider: params.provider,
     model: params.model,
@@ -31,7 +36,7 @@ export async function recordUsage(params: RecordUsageParams) {
 
   if (params.kind) {
     // Update monthly aggregate counters
-    await incrementUsage(params.userId, params.kind, db);
+    await incrementUsage(params.userId, params.kind, dbClient);
   }
 }
 
@@ -43,7 +48,8 @@ const TIER_LIMITS: Record<'free' | 'starter' | 'pro', number> = {
 
 export async function checkExportQuota(
   userId: string,
-  tier: 'free' | 'starter' | 'pro'
+  tier: 'free' | 'starter' | 'pro',
+  dbClient: DbClient = getDb()
 ): Promise<boolean> {
   const limit = TIER_LIMITS[tier];
 
@@ -51,7 +57,7 @@ export async function checkExportQuota(
     return true;
   }
 
-  const [result] = await db
+  const [result] = await dbClient
     .select({ exportCount: users.monthlyExportCount })
     .from(users)
     .where(eq(users.id, userId));
@@ -59,8 +65,11 @@ export async function checkExportQuota(
   return (result?.exportCount ?? 0) < limit;
 }
 
-export async function incrementExportUsage(userId: string): Promise<void> {
-  const updated = await db
+export async function incrementExportUsage(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<void> {
+  const updated = await dbClient
     .update(users)
     .set({
       monthlyExportCount: sql`${users.monthlyExportCount} + 1`,
@@ -76,6 +85,8 @@ export async function incrementExportUsage(userId: string): Promise<void> {
   }
 }
 
-export async function resetMonthlyExportCounts(): Promise<void> {
-  await db.update(users).set({ monthlyExportCount: 0 });
+export async function resetMonthlyExportCounts(
+  dbClient: DbClient = getDb()
+): Promise<void> {
+  await dbClient.update(users).set({ monthlyExportCount: 0 });
 }

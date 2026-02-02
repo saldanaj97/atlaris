@@ -33,6 +33,11 @@ function convertToOnboardingValues(data: PlanFormData): OnboardingFormValues {
   };
 }
 
+/**
+ * ManualCreatePanel handles manual plan creation, streams generation progress,
+ * and routes to the created plan on success. Manages form submission, streaming
+ * state, and error handling with cancellation support.
+ */
 export function ManualCreatePanel({
   initialTopic,
   onTopicUsed,

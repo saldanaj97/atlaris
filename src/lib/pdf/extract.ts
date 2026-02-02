@@ -25,7 +25,7 @@ function ensurePdfWorkerSet(): void {
     const current = PDFParse.setWorker();
     if (current) return;
   } catch {
-    // ignore
+    // setWorker() throws when no worker is configured; proceed to set one
   }
   PDFParse.setWorker(getPdfWorkerSrc());
 }

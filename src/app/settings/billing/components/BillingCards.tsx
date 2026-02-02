@@ -24,7 +24,7 @@ export async function BillingCards() {
   const db = getDb();
   const [usage, sub] = await Promise.all([
     getUsageSummary(dbUser.id, db),
-    getSubscriptionTier(dbUser.id),
+    getSubscriptionTier(dbUser.id, db),
   ]);
 
   const nextBilling = sub.subscriptionPeriodEnd

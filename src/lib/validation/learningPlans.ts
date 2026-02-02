@@ -164,6 +164,15 @@ export const createLearningPlanSchema = z
         message: 'extractedContent is required for PDF-based plans.',
       });
     }
+
+    // Forbid extractedContent when origin is NOT 'pdf'
+    if (data.origin !== 'pdf' && data.extractedContent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['extractedContent'],
+        message: 'extractedContent is only allowed for PDF-based plans.',
+      });
+    }
   });
 
 export type CreateLearningPlanInput = z.infer<typeof createLearningPlanSchema>;

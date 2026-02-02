@@ -192,8 +192,7 @@ const ModelDropdown = ({
 
       {saveStatus === 'upgradeRequired' && (
         <div
-          role="status"
-          aria-live="polite"
+          role="alert"
           className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
         >
           This model requires a Pro subscription. Please upgrade to use premium
@@ -259,7 +258,7 @@ export function ModelSelector({
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <AlertCircle className="size-6" />
+            <AlertCircle className="size-6" aria-hidden="true" />
           </EmptyMedia>
           <EmptyTitle>No models available</EmptyTitle>
           <EmptyDescription>

@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { SubscriptionTier } from '@/lib/ai/types/model.types';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
 import { redirect } from 'next/navigation';
 
@@ -18,7 +19,8 @@ export async function ModelSelectionCard() {
   const dbUser = await getUserByClerkId(clerkUserId);
   if (!dbUser) redirect('/plans/new');
 
-  const sub = await getSubscriptionTier(dbUser.id);
+  const db = getDb();
+  const sub = await getSubscriptionTier(dbUser.id, db);
   const userTier: SubscriptionTier =
     sub.subscriptionTier === 'starter'
       ? 'starter'
