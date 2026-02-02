@@ -32,15 +32,15 @@ export function ProblemSolutionSection() {
         <div className="grid gap-8 md:grid-cols-2">
           {/* Problem Card */}
           <div
-            className="group border-destructive/30 from-destructive/10 dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-gradient-to-br to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
+            className="group border-destructive/30 from-destructive/10 dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-linear-to-br to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
             role="region"
             aria-labelledby="problem-card-heading"
           >
             {/* Decorative glow */}
-            <div className="from-destructive/30 to-destructive/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-30 blur-2xl"></div>
+            <div className="from-destructive/30 to-destructive/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-30 blur-2xl"></div>
 
             <div className="mb-6 flex items-center gap-4">
-              <div className="from-destructive to-destructive/80 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg">
+              <div className="from-destructive to-destructive/80 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br shadow-lg">
                 <ArrowDownCircle
                   className="h-6 w-6 text-white"
                   aria-hidden="true"
@@ -70,15 +70,15 @@ export function ProblemSolutionSection() {
 
           {/* Solution Card */}
           <div
-            className="group border-primary/30 from-primary/10 dark:border-primary/20 dark:from-primary/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-gradient-to-br to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
+            className="group border-primary/30 from-primary/10 dark:border-primary/20 dark:from-primary/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-linear-to-br to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
             role="region"
             aria-labelledby="solution-card-heading"
           >
             {/* Decorative glow */}
-            <div className="from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-30 blur-2xl"></div>
+            <div className="from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-30 blur-2xl"></div>
 
             <div className="mb-6 flex items-center gap-4">
-              <div className="from-primary to-accent flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg">
+              <div className="from-primary to-accent flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br shadow-lg">
                 <Calendar className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
               <h3

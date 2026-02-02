@@ -66,12 +66,12 @@ export function FeaturesSection() {
               className="group dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10"
             >
               <div
-                className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${feature.gradient} opacity-30 blur-2xl`}
+                className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br ${feature.gradient} opacity-30 blur-2xl`}
                 aria-hidden="true"
               ></div>
 
               <div
-                className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} text-2xl shadow-lg`}
+                className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br ${feature.gradient} text-2xl shadow-lg`}
               >
                 {feature.icon}
               </div>

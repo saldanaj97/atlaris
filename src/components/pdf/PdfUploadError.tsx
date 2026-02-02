@@ -54,11 +54,11 @@ export function PdfUploadError({
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
           aria-hidden="true"
         >
-          <div className="dark:from-destructive/40 from-destructive/30 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br to-orange-500/20 opacity-40 blur-2xl dark:to-orange-500/30 dark:opacity-20" />
+          <div className="dark:from-destructive/40 from-destructive/30 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br to-orange-500/20 opacity-40 blur-2xl dark:to-orange-500/30 dark:opacity-20" />
         </div>
 
         <div className="relative flex flex-col items-center text-center">
-          <div className="from-destructive mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br to-orange-500 shadow-lg">
+          <div className="from-destructive mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br to-orange-500 shadow-lg">
             <AlertTriangle className="h-10 w-10 text-white" />
           </div>
 

@@ -98,7 +98,7 @@ function QuoteCard({
     <figure className="group dark:bg-card/40 relative flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10">
       {/* Decorative glow */}
       <div
-        className="from-primary/30 to-accent/30 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-20 blur-2xl transition group-hover:opacity-40"
+        className="from-primary/30 to-accent/30 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-20 blur-2xl transition group-hover:opacity-40"
         aria-hidden="true"
       ></div>
 
@@ -122,7 +122,7 @@ function QuoteCard({
       <figcaption className="border-primary/20 mt-6 flex items-center gap-4 border-t pt-6">
         {/* Avatar */}
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${gradient} text-sm font-bold text-white shadow-lg`}
+          className={`flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br ${gradient} text-sm font-bold text-white shadow-lg`}
           aria-hidden="true"
         >
           {avatarInitials}

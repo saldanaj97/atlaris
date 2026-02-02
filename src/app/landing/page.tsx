@@ -24,7 +24,7 @@ import {
  */
 export default function LandingPage() {
   return (
-    <div className="from-primary/5 via-accent/5 to-background text-foreground relative -mt-16 min-h-screen w-full overflow-hidden bg-gradient-to-br pt-16 font-sans">
+    <div className="from-primary/5 via-accent/5 to-background text-foreground relative -mt-16 min-h-screen w-full overflow-hidden bg-linear-to-br pt-16 font-sans">
       <GradientBlobBackground />
       <div className="relative z-10">
         <HeroSectionWithAnalytics />

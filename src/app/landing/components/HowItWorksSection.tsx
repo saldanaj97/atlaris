@@ -68,13 +68,13 @@ export function HowItWorksSection() {
 
 function StepCard({ stepNumber, title, description, visual }: StepCardProps) {
   return (
-    <div className="group border-primary/30 from-primary/10 dark:border-primary/20 dark:from-primary/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-gradient-to-br to-white/60 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl">
+    <div className="group border-primary/30 from-primary/10 dark:border-primary/20 dark:from-primary/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-linear-to-br to-white/60 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl">
       {/* Decorative glow */}
-      <div className="from-primary/40 to-accent/30 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-20 blur-2xl transition group-hover:opacity-40"></div>
+      <div className="from-primary/40 to-accent/30 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-20 blur-2xl transition group-hover:opacity-40"></div>
 
       <div className="mb-4 flex items-center gap-3">
         <span
-          className="from-primary to-accent flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-sm font-bold text-white shadow-lg"
+          className="from-primary to-accent flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br text-sm font-bold text-white shadow-lg"
           aria-hidden="true"
         >
           {stepNumber}
@@ -156,7 +156,7 @@ function ResourcesVisual() {
           <span>1 hour · Focus time</span>
         </div>
 
-        <div className="border-primary/20 from-primary/10 to-accent/10 rounded-xl border bg-gradient-to-br p-3">
+        <div className="border-primary/20 from-primary/10 to-accent/10 rounded-xl border bg-linear-to-br p-3">
           <p className="text-foreground mb-2 text-xs font-medium uppercase">
             Resources
           </p>
@@ -198,15 +198,15 @@ function SyncVisual() {
       <div className="flex items-center justify-center gap-4">
         <IntegrationIcon
           name="Google Calendar"
-          color="bg-gradient-to-br from-blue-400 to-blue-600"
+          color="bg-linear-to-br from-blue-400 to-blue-600"
         />
         <IntegrationIcon
           name="Notion"
-          color="bg-gradient-to-br from-gray-700 to-gray-900"
+          color="bg-linear-to-br from-gray-700 to-gray-900"
         />
         <IntegrationIcon
           name="Outlook"
-          color="bg-gradient-to-br from-sky-400 to-sky-600"
+          color="bg-linear-to-br from-sky-400 to-sky-600"
         />
       </div>
 

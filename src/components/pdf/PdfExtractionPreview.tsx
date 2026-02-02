@@ -93,13 +93,13 @@ export function PdfExtractionPreview({
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
           aria-hidden="true"
         >
-          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-40 blur-2xl dark:opacity-20" />
+          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-40 blur-2xl dark:opacity-20" />
         </div>
 
         <div className="relative">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="from-primary to-accent flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg">
+              <div className="from-primary to-accent flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br shadow-lg">
                 <FileText className="h-6 w-6 text-white" />
               </div>
               <div>

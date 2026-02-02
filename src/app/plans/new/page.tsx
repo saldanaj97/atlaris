@@ -140,17 +140,17 @@ function CreatePlanLoading() {
 
 export default function CreateNewPlanPage() {
   return (
-    <MouseGlowContainer className="from-accent/30 via-primary/10 to-accent/20 dark:bg-background fixed inset-0 overflow-hidden bg-gradient-to-br dark:from-transparent dark:via-transparent dark:to-transparent">
+    <MouseGlowContainer className="from-accent/30 via-primary/10 to-accent/20 dark:bg-background fixed inset-0 overflow-hidden bg-linear-to-br dark:from-transparent dark:via-transparent dark:to-transparent">
       <div
-        className="from-primary/30 to-accent/20 absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br opacity-60 blur-3xl dark:opacity-30"
+        className="from-primary/30 to-accent/20 absolute top-20 -left-20 h-96 w-96 rounded-full bg-linear-to-br opacity-60 blur-3xl dark:opacity-30"
         aria-hidden="true"
       />
       <div
-        className="from-primary/30 to-accent/20 absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br opacity-60 blur-3xl dark:opacity-30"
+        className="from-primary/30 to-accent/20 absolute top-40 -right-20 h-80 w-80 rounded-full bg-linear-to-br opacity-60 blur-3xl dark:opacity-30"
         aria-hidden="true"
       />
       <div
-        className="from-primary/20 to-accent/15 absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br opacity-60 blur-3xl dark:opacity-30"
+        className="from-primary/20 to-accent/15 absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-linear-to-br opacity-60 blur-3xl dark:opacity-30"
         aria-hidden="true"
       />
 

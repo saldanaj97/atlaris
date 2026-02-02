@@ -104,11 +104,11 @@ export function PdfUploadZone({
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
           aria-hidden="true"
         >
-          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-40 blur-2xl dark:opacity-20" />
+          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-40 blur-2xl dark:opacity-20" />
         </div>
 
         <div className="relative flex flex-col items-center text-center">
-          <div className="from-primary to-accent mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg">
+          <div className="from-primary to-accent mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br shadow-lg">
             {isUploading ? (
               <Loader2 className="h-10 w-10 animate-spin text-white" />
             ) : (

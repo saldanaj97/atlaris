@@ -97,7 +97,7 @@ export function UnifiedPlanInput({
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
           aria-hidden="true"
         >
-          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-40 blur-2xl dark:opacity-20" />
+          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-40 blur-2xl dark:opacity-20" />
         </div>
 
         {/* Topic input */}
@@ -106,7 +106,7 @@ export function UnifiedPlanInput({
             What do you want to learn?
           </label>
           <div className="flex items-start gap-3">
-            <div className="from-primary to-accent flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg">
+            <div className="from-primary to-accent flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-lg">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <textarea
