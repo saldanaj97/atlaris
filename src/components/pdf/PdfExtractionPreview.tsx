@@ -9,6 +9,7 @@ import {
 import { InlineDropdown } from '@/app/plans/new/components/plan-form/InlineDropdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import type { ExtractedSection } from '@/lib/pdf/types';
 import {
   ArrowRight,
   Calendar,
@@ -18,13 +19,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useId, useState } from 'react';
-
-interface ExtractedSection {
-  title: string;
-  content: string;
-  level: number;
-  suggestedTopic?: string;
-}
 
 export interface PdfPlanSettings {
   skillLevel: string;

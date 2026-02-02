@@ -168,9 +168,12 @@ export const appEnv = {
   },
   /**
    * Application base URL for constructing absolute URLs (e.g., Stripe redirects).
-   * Falls back to localhost in development/test environments.
+   * Required in production, falls back to localhost in development/test environments.
    */
   get url(): string {
+    if (isProdRuntime) {
+      return getServerRequired('APP_URL');
+    }
     return getServerOptional('APP_URL') ?? 'http://localhost:3000';
   },
 } as const;

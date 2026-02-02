@@ -29,6 +29,13 @@
       "when": 1769718261497,
       "tag": "0003_graceful_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1769800000000,
+      "tag": "0004_fix_security_policies",
+      "breakpoints": true
     }
   ]
 }

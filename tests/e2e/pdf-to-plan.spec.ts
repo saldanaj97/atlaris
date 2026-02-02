@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { afterEach, vi } from 'vitest';
 
 import { db } from '@/lib/db/service-role';
 import { users, learningPlans, usageMetrics } from '@/lib/db/schema';
@@ -75,17 +76,20 @@ const buildInvalidBuffer = (): Buffer => {
   return Buffer.from('This is not a PDF file', 'utf8');
 };
 
-const getCurrentMonth = (): string => {
-  const now = new Date();
+const fixedNow = new Date('2025-01-15T12:00:00Z');
+
+const getCurrentMonth = (now: Date = new Date()): string => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
-describe.skip('PDF to Plan E2E Flow (temporarily disabled)', () => {
+describe('PDF to Plan E2E Flow', () => {
   let userId: string;
   const clerkUserId = `clerk_e2e_pdf_${randomUUID()}`;
   const email = `pdf-e2e-${randomUUID()}@example.com`;
 
   beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedNow);
     await db.delete(usageMetrics);
     await db.delete(learningPlans);
     await db.delete(users);
@@ -100,6 +104,10 @@ describe.skip('PDF to Plan E2E Flow (temporarily disabled)', () => {
       })
       .returning();
     userId = user.id;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('Happy Path: Complete PDF to Plan Workflow', () => {
@@ -138,7 +146,7 @@ describe.skip('PDF to Plan E2E Flow (temporarily disabled)', () => {
     });
 
     it('should increment PDF usage counter after plan creation', async () => {
-      const month = getCurrentMonth();
+      const month = getCurrentMonth(fixedNow);
 
       const [initialMetrics] = await db
         .select()
@@ -237,7 +245,7 @@ describe.skip('PDF to Plan E2E Flow (temporarily disabled)', () => {
 
   describe('Quota Enforcement', () => {
     it('should deny PDF plan creation when quota exhausted', async () => {
-      const month = getCurrentMonth();
+      const month = getCurrentMonth(fixedNow);
       const freeLimit = TIER_LIMITS.free.monthlyPdfPlans;
 
       await db.insert(usageMetrics).values({
@@ -290,7 +298,7 @@ describe.skip('PDF to Plan E2E Flow (temporarily disabled)', () => {
       await incrementPdfPlanUsage(userId);
       await incrementPdfPlanUsage(userId);
 
-      const month = getCurrentMonth();
+      const month = getCurrentMonth(fixedNow);
       const [metrics] = await db
         .select()
         .from(usageMetrics)

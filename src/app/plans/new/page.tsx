@@ -2,7 +2,7 @@
 
 import { MouseGlowContainer } from '@/components/effects/MouseGlow';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useId, useState } from 'react';
 
 import {
   CreateMethodToggle,
@@ -14,6 +14,9 @@ import { PdfCreatePanel } from './components/PdfCreatePanel';
 function CreatePlanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const panelIdBase = useId();
+  const manualPanelId = `${panelIdBase}-manual-panel`;
+  const pdfPanelId = `${panelIdBase}-pdf-panel`;
 
   const methodParam = searchParams.get('method');
   const currentMethod: CreateMethod = methodParam === 'pdf' ? 'pdf' : 'manual';
@@ -80,30 +83,26 @@ function CreatePlanContent() {
       </div>
 
       <div
-        id="manual-panel"
+        id={manualPanelId}
         role="tabpanel"
         aria-labelledby="manual-tab"
-        hidden={currentMethod !== 'manual'}
+        aria-hidden={currentMethod !== 'manual'}
         className={currentMethod !== 'manual' ? 'hidden' : undefined}
       >
-        {currentMethod === 'manual' && (
-          <ManualCreatePanel
-            initialTopic={prefillTopic}
-            onTopicUsed={handleTopicUsed}
-          />
-        )}
+        <ManualCreatePanel
+          initialTopic={prefillTopic}
+          onTopicUsed={handleTopicUsed}
+        />
       </div>
 
       <div
-        id="pdf-panel"
+        id={pdfPanelId}
         role="tabpanel"
         aria-labelledby="pdf-tab"
-        hidden={currentMethod !== 'pdf'}
+        aria-hidden={currentMethod !== 'pdf'}
         className={currentMethod !== 'pdf' ? 'hidden' : undefined}
       >
-        {currentMethod === 'pdf' && (
-          <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
-        )}
+        <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
       </div>
     </>
   );

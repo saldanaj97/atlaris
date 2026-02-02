@@ -143,8 +143,8 @@ export const POST = withErrorBoundary(
         learningStyle: body.learningStyle,
         visibility: 'private',
         origin,
-        startDate: body.startDate,
-        deadlineDate: body.deadlineDate,
+        startDate: _startDate,
+        deadlineDate: _deadlineDate,
       });
     } catch (err) {
       if (origin === 'pdf') {

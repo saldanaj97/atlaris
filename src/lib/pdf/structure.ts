@@ -17,12 +17,12 @@ const isHeaderLine = (line: string): boolean => {
 };
 
 const getHeaderLevel = (line: string): number => {
-  const numericMatch = line.match(/^\d+(?:\.(\d+))*[.)]/);
+  const numericMatch = line.match(/^(\d+(?:\.\d+)*)[.)]/);
   if (!numericMatch) {
     return 1;
   }
 
-  const segments = line.split(/[.)]/)[0]?.split('.') ?? [];
+  const segments = numericMatch[1].split('.');
   return Math.min(Math.max(segments.length, 1), 5);
 };
 

@@ -1,5 +1,5 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
+import { checkPdfSizeLimit, validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 import { json } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { extractTextFromPdf } from '@/lib/pdf/extract';
@@ -39,6 +39,11 @@ export const POST = withErrorBoundary(
 
     if (!file.type || file.type !== 'application/pdf') {
       return toExtractionError('Only PDF files are supported.', 415);
+    }
+
+    const sizeCheck = await checkPdfSizeLimit(user.id, file.size);
+    if (!sizeCheck.allowed) {
+      return errorResponse(sizeCheck.reason, sizeCheck.code, 413);
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
