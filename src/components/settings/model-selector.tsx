@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { getModelsForTier } from '@/lib/ai/ai-models';
 import type { AvailableModel, SubscriptionTier } from '@/lib/ai/types';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
 import { cn } from '@/lib/utils';
 import { useEffect, useRef, useState } from 'react';
 
@@ -82,7 +82,10 @@ const ModelDropdown = ({
       setSaveStatus('success');
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      logger.error({ error, selectedModel }, 'Failed to save model preference');
+      clientLogger.error('Failed to save model preference:', {
+        error,
+        selectedModel,
+      });
       setSaveStatus('error');
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
@@ -177,20 +180,32 @@ const ModelDropdown = ({
       )}
 
       {saveStatus === 'upgradeRequired' && (
-        <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
+        >
           This model requires a Pro subscription. Please upgrade to use premium
           models.
         </div>
       )}
 
       {saveStatus === 'error' && (
-        <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm">
+        <div
+          role="alert"
+          aria-live="polite"
+          className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
+        >
           Failed to save preferences. Please try again.
         </div>
       )}
 
       {saveStatus === 'success' && (
-        <div className="rounded-lg border-2 border-green-500 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-lg border-2 border-green-500 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400"
+        >
           Preferences saved successfully!
         </div>
       )}

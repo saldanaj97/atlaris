@@ -26,6 +26,7 @@ export const usageMetrics = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     month: text('month').notNull(), // YYYY-MM
     plansGenerated: integer('plans_generated').notNull().default(0),
+    pdfPlansGenerated: integer('pdf_plans_generated').notNull().default(0),
     regenerationsUsed: integer('regenerations_used').notNull().default(0),
     exportsUsed: integer('exports_used').notNull().default(0),
     ...timestampFields,
@@ -35,6 +36,7 @@ export const usageMetrics = pgTable(
     index('idx_usage_metrics_user_id').on(table.userId),
     index('idx_usage_metrics_month').on(table.month),
     check('plans_generated_nonneg', sql`${table.plansGenerated} >= 0`),
+    check('pdf_plans_generated_nonneg', sql`${table.pdfPlansGenerated} >= 0`),
     check('regenerations_used_nonneg', sql`${table.regenerationsUsed} >= 0`),
     check('exports_used_nonneg', sql`${table.exportsUsed} >= 0`),
 

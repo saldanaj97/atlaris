@@ -9,6 +9,8 @@ export { TIER_LIMITS, type SubscriptionTier };
 // Usage type for incrementing counters
 export type UsageType = 'plan' | 'regeneration' | 'export';
 
+export type PdfUsageMetrics = { pdfPlansGenerated: number };
+
 /**
  * Get current month in YYYY-MM format
  */
@@ -128,6 +130,37 @@ export async function checkExportLimit(userId: string): Promise<boolean> {
   return metrics.exportsUsed < limit;
 }
 
+type PdfQuotaDependencies = {
+  resolveTier?: (userId: string) => Promise<SubscriptionTier>;
+  getMetrics?: (userId: string, month: string) => Promise<PdfUsageMetrics>;
+  now?: () => Date;
+};
+
+/**
+ * Check if user can create more PDF-based plans this month
+ * @returns true if user has PDF plan quota left, false otherwise
+ */
+export async function checkPdfPlanQuota(
+  userId: string,
+  deps: PdfQuotaDependencies = {}
+): Promise<boolean> {
+  const tier = await (deps.resolveTier ?? getUserTier)(userId);
+  const limit = TIER_LIMITS[tier].monthlyPdfPlans;
+
+  if (limit === Infinity) {
+    return true;
+  }
+
+  const now = deps.now ? deps.now() : new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const metrics = await (deps.getMetrics ?? getOrCreateUsageMetrics)(
+    userId,
+    month
+  );
+
+  return metrics.pdfPlansGenerated < limit;
+}
+
 /**
  * Increment usage counter for the current month
  */
@@ -153,6 +186,23 @@ export async function incrementUsage(
     .update(usageMetrics)
     .set({
       ...updateObj,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+}
+
+/**
+ * Increment PDF plan usage counter for the current month
+ */
+export async function incrementPdfPlanUsage(userId: string): Promise<void> {
+  const month = getCurrentMonth();
+
+  await getOrCreateUsageMetrics(userId, month);
+
+  await db
+    .update(usageMetrics)
+    .set({
+      pdfPlansGenerated: sql`${usageMetrics.pdfPlansGenerated} + 1`,
       updatedAt: new Date(),
     })
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
@@ -265,7 +315,7 @@ export async function atomicCheckAndInsertPlan(
     weeklyHours: number;
     learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
     visibility: 'private' | 'public';
-    origin: 'ai' | 'manual';
+    origin: 'ai' | 'manual' | 'template' | 'pdf';
     startDate?: string | null;
     deadlineDate?: string | null;
   }
@@ -353,6 +403,72 @@ export type AtomicUsageType = 'regeneration' | 'export';
 export type AtomicUsageResult =
   | { allowed: true; newCount: number; limit: number }
   | { allowed: false; currentCount: number; limit: number };
+
+export type AtomicPdfUsageResult =
+  | { allowed: true; newCount: number; limit: number }
+  | { allowed: false; currentCount: number; limit: number };
+
+export async function atomicCheckAndIncrementPdfUsage(
+  userId: string
+): Promise<AtomicPdfUsageResult> {
+  return db.transaction(async (tx) => {
+    const [user] = await tx
+      .select({ subscriptionTier: users.subscriptionTier })
+      .from(users)
+      .where(eq(users.id, userId))
+      .for('update');
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const tier = user.subscriptionTier;
+    const limit = TIER_LIMITS[tier].monthlyPdfPlans;
+
+    if (limit === Infinity) {
+      const month = getCurrentMonth();
+      await ensureUsageMetricsExist(tx, userId, month);
+      await incrementPdfUsageInTx(tx, userId, month);
+      return { allowed: true, newCount: 1, limit: Infinity };
+    }
+
+    const month = getCurrentMonth();
+    await ensureUsageMetricsExist(tx, userId, month);
+
+    const [metrics] = await tx
+      .select()
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
+      )
+      .for('update');
+
+    if (!metrics) {
+      throw new Error('Failed to lock usage metrics');
+    }
+
+    const currentCount = metrics.pdfPlansGenerated;
+
+    if (currentCount >= limit) {
+      return { allowed: false, currentCount, limit };
+    }
+
+    await incrementPdfUsageInTx(tx, userId, month);
+
+    return { allowed: true, newCount: currentCount + 1, limit };
+  });
+}
+
+export async function decrementPdfPlanUsage(userId: string): Promise<void> {
+  const month = getCurrentMonth();
+
+  await db
+    .update(usageMetrics)
+    .set({
+      pdfPlansGenerated: sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+}
 
 export async function atomicCheckAndIncrementUsage(
   userId: string,
@@ -444,6 +560,20 @@ async function incrementUsageInTx(
     .update(usageMetrics)
     .set({
       ...updateObj,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+}
+
+async function incrementPdfUsageInTx(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  userId: string,
+  month: string
+): Promise<void> {
+  await tx
+    .update(usageMetrics)
+    .set({
+      pdfPlansGenerated: sql`${usageMetrics.pdfPlansGenerated} + 1`,
       updatedAt: new Date(),
     })
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));

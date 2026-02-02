@@ -37,7 +37,7 @@ export const learningPlans = pgTable(
     startDate: date('start_date'),
     deadlineDate: date('deadline_date'),
     visibility: text('visibility').notNull().default('private'), // private | public
-    origin: text('origin').notNull().default('ai'), // ai | template | manual
+    origin: text('origin').notNull().default('ai'), // ai | template | manual | pdf
     generationStatus: generationStatus('generation_status')
       .notNull()
       .default('generating'),
