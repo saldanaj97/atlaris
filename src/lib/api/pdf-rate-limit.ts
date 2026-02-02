@@ -1,3 +1,4 @@
+import { getDb } from '@/lib/db/runtime';
 import {
   resolveUserTier,
   TIER_LIMITS,
@@ -5,7 +6,10 @@ import {
 } from '@/lib/stripe/usage';
 
 type PdfUploadValidationDeps = {
-  resolveTier?: (userId: string) => Promise<SubscriptionTier>;
+  resolveTier?: (
+    userId: string,
+    dbClient?: ReturnType<typeof getDb>
+  ) => Promise<SubscriptionTier>;
 };
 
 type PdfUploadLimitDetails = {
@@ -53,7 +57,8 @@ export async function checkPdfSizeLimit(
 
   let tier: SubscriptionTier;
   try {
-    tier = await (deps.resolveTier ?? resolveUserTier)(userId);
+    const db = getDb();
+    tier = await (deps.resolveTier ?? resolveUserTier)(userId, db);
   } catch (err) {
     throw new Error(
       `resolveTier failed: ${err instanceof Error ? err.message : String(err)}`
@@ -90,7 +95,8 @@ export async function validatePdfUpload(
 
   let tier: SubscriptionTier;
   try {
-    tier = await (deps.resolveTier ?? resolveUserTier)(userId);
+    const db = getDb();
+    tier = await (deps.resolveTier ?? resolveUserTier)(userId, db);
   } catch (err) {
     throw new Error(
       `resolveTier failed: ${err instanceof Error ? err.message : String(err)}`

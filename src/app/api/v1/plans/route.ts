@@ -66,7 +66,8 @@ export const POST = withErrorBoundary(
     await checkPlanGenerationRateLimit(user.id);
 
     // Enforce plan duration cap based on user tier using the requested window
-    const userTier = await resolveUserTier(user.id);
+    const db = getDb();
+    const userTier = await resolveUserTier(user.id, db);
     const requestedWeeks = calculateTotalWeeks({
       startDate: body.startDate ?? null,
       deadlineDate: body.deadlineDate ?? null,
@@ -121,10 +122,11 @@ export const POST = withErrorBoundary(
     const extractedContent = body.extractedContent;
 
     if (origin === 'pdf') {
-      const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id);
+      const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id, db);
       if (!pdfUsage.allowed) {
         return jsonError('PDF plan quota exceeded for this month.', {
           status: 403,
+          code: 'QUOTA_EXCEEDED',
         });
       }
     }
@@ -136,24 +138,26 @@ export const POST = withErrorBoundary(
 
     let created: { id: string };
     try {
-      created = await atomicCheckAndInsertPlan(user.id, {
-        topic,
-        skillLevel: body.skillLevel,
-        weeklyHours: body.weeklyHours,
-        learningStyle: body.learningStyle,
-        visibility: 'private',
-        origin,
-        startDate: _startDate,
-        deadlineDate: _deadlineDate,
-      });
+      created = await atomicCheckAndInsertPlan(
+        user.id,
+        {
+          topic,
+          skillLevel: body.skillLevel,
+          weeklyHours: body.weeklyHours,
+          learningStyle: body.learningStyle,
+          visibility: 'private',
+          origin,
+          startDate: _startDate,
+          deadlineDate: _deadlineDate,
+        },
+        db
+      );
     } catch (err) {
       if (origin === 'pdf') {
-        await decrementPdfPlanUsage(user.id);
+        await decrementPdfPlanUsage(user.id, db);
       }
       throw err;
     }
-
-    const db = getDb();
     const [plan] = await db
       .select()
       .from(learningPlans)

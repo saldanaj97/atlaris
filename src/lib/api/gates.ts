@@ -1,11 +1,12 @@
-import type { PlainHandler } from './auth';
 import { getUserByClerkId } from '@/lib/db/queries/users';
-import { jsonError } from './response';
+import { getDb } from '@/lib/db/runtime';
 import {
   checkExportLimit,
   checkPlanLimit,
   checkRegenerationLimit,
 } from '@/lib/stripe/usage';
+import type { PlainHandler } from './auth';
+import { jsonError } from './response';
 
 /**
  * Subscription tier hierarchy
@@ -105,24 +106,25 @@ export function checkFeatureLimit(feature: FeatureType) {
       }
 
       // Check limits based on feature type
+      const db = getDb();
       let hasLimit = false;
       let limitMessage = '';
 
       switch (feature) {
         case 'plan': {
-          hasLimit = await checkPlanLimit(user.id);
+          hasLimit = await checkPlanLimit(user.id, db);
           limitMessage =
             'You have reached the maximum number of active plans for your subscription tier';
           break;
         }
         case 'regeneration': {
-          hasLimit = await checkRegenerationLimit(user.id);
+          hasLimit = await checkRegenerationLimit(user.id, db);
           limitMessage =
             'You have reached your monthly regeneration limit for your subscription tier';
           break;
         }
         case 'export': {
-          hasLimit = await checkExportLimit(user.id);
+          hasLimit = await checkExportLimit(user.id, db);
           limitMessage =
             'You have reached your monthly export limit for your subscription tier';
           break;
@@ -171,13 +173,14 @@ export async function canUseFeature(
   userId: string,
   feature: FeatureType
 ): Promise<boolean> {
+  const db = getDb();
   switch (feature) {
     case 'plan':
-      return checkPlanLimit(userId);
+      return checkPlanLimit(userId, db);
     case 'regeneration':
-      return checkRegenerationLimit(userId);
+      return checkRegenerationLimit(userId, db);
     case 'export':
-      return checkExportLimit(userId);
+      return checkExportLimit(userId, db);
     default:
       return false;
   }

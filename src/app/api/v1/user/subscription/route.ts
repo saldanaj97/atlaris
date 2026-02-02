@@ -1,6 +1,7 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { json, jsonError } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
 import { getUsageSummary } from '@/lib/stripe/usage';
 
 // GET /api/v1/user/subscription
@@ -13,7 +14,8 @@ export const GET = withErrorBoundary(
     }
 
     // Get usage summary
-    const usage = await getUsageSummary(user.id);
+    const db = getDb();
+    const usage = await getUsageSummary(user.id, db);
 
     // Build response
     const response = {

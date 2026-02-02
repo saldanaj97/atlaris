@@ -1,9 +1,19 @@
+import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import { and, eq, sql } from 'drizzle-orm';
 
+import {
+  PlanCreationError,
+  PlanLimitReachedError,
+  UsageMetricsLoadError,
+  UsageMetricsLockError,
+  UserNotFoundError,
+} from './errors';
 import { TIER_LIMITS, type SubscriptionTier } from './tier-limits';
+
+// Type for DB client (compatible with both runtime and service-role clients)
+type DbClient = ReturnType<typeof getDb>;
 
 export { TIER_LIMITS, type SubscriptionTier };
 
@@ -23,8 +33,12 @@ function getCurrentMonth(now?: Date): string {
 /**
  * Get or create usage metrics for current month
  */
-async function getOrCreateUsageMetrics(userId: string, month: string) {
-  const [created] = await db
+async function getOrCreateUsageMetrics(
+  userId: string,
+  month: string,
+  dbClient: DbClient = getDb()
+) {
+  const [created] = await dbClient
     .insert(usageMetrics)
     .values({
       userId,
@@ -42,14 +56,14 @@ async function getOrCreateUsageMetrics(userId: string, month: string) {
     return created;
   }
 
-  const [existing] = await db
+  const [existing] = await dbClient
     .select()
     .from(usageMetrics)
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
     .limit(1);
 
   if (!existing) {
-    throw new Error('Failed to load usage metrics');
+    throw new UsageMetricsLoadError(userId, month);
   }
 
   return existing;
@@ -59,16 +73,17 @@ async function getOrCreateUsageMetrics(userId: string, month: string) {
  * Resolve user's subscription tier from database
  */
 export async function resolveUserTier(
-  userId: string
+  userId: string,
+  dbClient: DbClient = getDb()
 ): Promise<SubscriptionTier> {
-  const [user] = await db
+  const [user] = await dbClient
     .select({ subscriptionTier: users.subscriptionTier })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
 
   if (!user) {
-    throw new Error('User not found');
+    throw new UserNotFoundError(userId);
   }
 
   return user.subscriptionTier;
@@ -81,15 +96,18 @@ const getUserTier = resolveUserTier;
  * Check if user can create more plans
  * @returns true if user can create more plans, false otherwise
  */
-export async function checkPlanLimit(userId: string): Promise<boolean> {
-  const tier = await getUserTier(userId);
+export async function checkPlanLimit(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<boolean> {
+  const tier = await getUserTier(userId, dbClient);
   const limit = TIER_LIMITS[tier].maxActivePlans;
 
   if (limit === Infinity) {
     return true;
   }
 
-  const currentCount = await countPlansContributingToCap(db, userId);
+  const currentCount = await countPlansContributingToCap(dbClient, userId);
   return currentCount < limit;
 }
 
@@ -98,8 +116,11 @@ export async function checkPlanLimit(userId: string): Promise<boolean> {
  * @returns true if user has regenerations left, false otherwise
  * @deprecated Use atomicCheckAndIncrementUsage for concurrent-safe quota enforcement
  */
-export async function checkRegenerationLimit(userId: string): Promise<boolean> {
-  const tier = await getUserTier(userId);
+export async function checkRegenerationLimit(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<boolean> {
+  const tier = await getUserTier(userId, dbClient);
   const limit = TIER_LIMITS[tier].monthlyRegenerations;
 
   if (limit === Infinity) {
@@ -107,7 +128,7 @@ export async function checkRegenerationLimit(userId: string): Promise<boolean> {
   }
 
   const month = getCurrentMonth();
-  const metrics = await getOrCreateUsageMetrics(userId, month);
+  const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
 
   return metrics.regenerationsUsed < limit;
 }
@@ -117,8 +138,11 @@ export async function checkRegenerationLimit(userId: string): Promise<boolean> {
  * @returns true if user has exports left, false otherwise
  * @deprecated Use atomicCheckAndIncrementUsage for concurrent-safe quota enforcement
  */
-export async function checkExportLimit(userId: string): Promise<boolean> {
-  const tier = await getUserTier(userId);
+export async function checkExportLimit(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<boolean> {
+  const tier = await getUserTier(userId, dbClient);
   const limit = TIER_LIMITS[tier].monthlyExports;
 
   if (limit === Infinity) {
@@ -126,15 +150,23 @@ export async function checkExportLimit(userId: string): Promise<boolean> {
   }
 
   const month = getCurrentMonth();
-  const metrics = await getOrCreateUsageMetrics(userId, month);
+  const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
 
   return metrics.exportsUsed < limit;
 }
 
 type PdfQuotaDependencies = {
-  resolveTier?: (userId: string) => Promise<SubscriptionTier>;
-  getMetrics?: (userId: string, month: string) => Promise<PdfUsageMetrics>;
+  resolveTier?: (
+    userId: string,
+    dbClient?: DbClient
+  ) => Promise<SubscriptionTier>;
+  getMetrics?: (
+    userId: string,
+    month: string,
+    dbClient?: DbClient
+  ) => Promise<PdfUsageMetrics>;
   now?: () => Date;
+  dbClient?: DbClient;
 };
 
 /**
@@ -146,7 +178,8 @@ export async function checkPdfPlanQuota(
   userId: string,
   deps: PdfQuotaDependencies = {}
 ): Promise<boolean> {
-  const tier = await (deps.resolveTier ?? getUserTier)(userId);
+  const dbClient = deps.dbClient ?? getDb();
+  const tier = await (deps.resolveTier ?? getUserTier)(userId, dbClient);
   const limit = TIER_LIMITS[tier].monthlyPdfPlans;
 
   if (limit === Infinity) {
@@ -156,7 +189,8 @@ export async function checkPdfPlanQuota(
   const month = getCurrentMonth(deps.now?.());
   const metrics = await (deps.getMetrics ?? getOrCreateUsageMetrics)(
     userId,
-    month
+    month,
+    dbClient
   );
 
   return metrics.pdfPlansGenerated < limit;
@@ -167,12 +201,13 @@ export async function checkPdfPlanQuota(
  */
 export async function incrementUsage(
   userId: string,
-  type: UsageType
+  type: UsageType,
+  dbClient: DbClient = getDb()
 ): Promise<void> {
   const month = getCurrentMonth();
 
   // Ensure metrics exist for this month
-  await getOrCreateUsageMetrics(userId, month);
+  await getOrCreateUsageMetrics(userId, month, dbClient);
 
   // Increment the appropriate counter based on type
   const updateObj =
@@ -183,7 +218,7 @@ export async function incrementUsage(
         : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
 
   // Increment the counter
-  await db
+  await dbClient
     .update(usageMetrics)
     .set({
       ...updateObj,
@@ -195,12 +230,15 @@ export async function incrementUsage(
 /**
  * Increment PDF plan usage counter for the current month
  */
-export async function incrementPdfPlanUsage(userId: string): Promise<void> {
+export async function incrementPdfPlanUsage(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<void> {
   const month = getCurrentMonth();
 
-  await getOrCreateUsageMetrics(userId, month);
+  await getOrCreateUsageMetrics(userId, month, dbClient);
 
-  await db
+  await dbClient
     .update(usageMetrics)
     .set({
       pdfPlansGenerated: sql`${usageMetrics.pdfPlansGenerated} + 1`,
@@ -223,14 +261,17 @@ export function resetMonthlyUsage(): void {
 /**
  * Get usage summary for a user
  */
-export async function getUsageSummary(userId: string) {
-  const tier = await getUserTier(userId);
+export async function getUsageSummary(
+  userId: string,
+  dbClient: DbClient = getDb()
+) {
+  const tier = await getUserTier(userId, dbClient);
   const limits = TIER_LIMITS[tier];
   const month = getCurrentMonth();
-  const metrics = await getOrCreateUsageMetrics(userId, month);
+  const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
 
   // Count active plans
-  const [planCount] = await db
+  const [planCount] = await dbClient
     .select({ count: sql`count(*)::int` })
     .from(learningPlans)
     .where(
@@ -274,7 +315,7 @@ export async function getUsageSummary(userId: string) {
  * single transaction/lock, ensuring correctness under concurrency.
  */
 async function countPlansContributingToCap(
-  dbOrTx: Pick<typeof db, 'select'>,
+  dbOrTx: Pick<DbClient, 'select'>,
   userId: string
 ): Promise<number> {
   // Use a single query with filtered aggregates to count both buckets
@@ -305,6 +346,7 @@ async function countPlansContributingToCap(
  *
  * @param userId - The user's UUID
  * @param planData - The plan data to insert (partial learning plan record)
+ * @param dbClient - Database client (defaults to runtime DB with RLS)
  * @returns The inserted plan's ID
  * @throws Error if the user has reached their plan limit
  */
@@ -319,9 +361,10 @@ export async function atomicCheckAndInsertPlan(
     origin: 'ai' | 'manual' | 'template' | 'pdf';
     startDate?: string | null;
     deadlineDate?: string | null;
-  }
+  },
+  dbClient: DbClient = getDb()
 ): Promise<{ id: string }> {
-  return db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     // Lock the user row for update to prevent concurrent limit checks
     // This ensures that only one transaction at a time can check/insert plans for this user
     const [user] = await tx
@@ -331,7 +374,7 @@ export async function atomicCheckAndInsertPlan(
       .for('update');
 
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFoundError(userId);
     }
 
     const tier = user.subscriptionTier;
@@ -343,7 +386,7 @@ export async function atomicCheckAndInsertPlan(
       const currentCount = await countPlansContributingToCap(tx, userId);
 
       if (currentCount >= limit) {
-        throw new Error('Plan limit reached for current subscription tier.');
+        throw new PlanLimitReachedError(currentCount, limit);
       }
     }
 
@@ -359,7 +402,7 @@ export async function atomicCheckAndInsertPlan(
       .returning({ id: learningPlans.id });
 
     if (!plan) {
-      throw new Error('Failed to create plan.');
+      throw new PlanCreationError();
     }
 
     return plan;
@@ -368,11 +411,12 @@ export async function atomicCheckAndInsertPlan(
 
 export async function markPlanGenerationSuccess(
   planId: string,
+  dbClient: DbClient = getDb(),
   now: () => Date = () => new Date()
 ): Promise<void> {
   const timestamp = now();
 
-  await db
+  await dbClient
     .update(learningPlans)
     .set({
       generationStatus: 'ready',
@@ -385,11 +429,12 @@ export async function markPlanGenerationSuccess(
 
 export async function markPlanGenerationFailure(
   planId: string,
+  dbClient: DbClient = getDb(),
   now: () => Date = () => new Date()
 ): Promise<void> {
   const timestamp = now();
 
-  await db
+  await dbClient
     .update(learningPlans)
     .set({
       generationStatus: 'failed',
@@ -415,13 +460,15 @@ export type AtomicPdfUsageResult =
  * For users on Infinity-tier subscription, the quota is bypassed and the counter is incremented unconditionally.
  *
  * @param userId - The user's UUID
+ * @param dbClient - Database client (defaults to runtime DB with RLS)
  * @returns AtomicPdfUsageResult with allowed status, current/new count, and limit
  * @throws Error if user not found or failed to lock usage metrics
  */
 export async function atomicCheckAndIncrementPdfUsage(
-  userId: string
+  userId: string,
+  dbClient: DbClient = getDb()
 ): Promise<AtomicPdfUsageResult> {
-  return db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     const [user] = await tx
       .select({ subscriptionTier: users.subscriptionTier })
       .from(users)
@@ -429,7 +476,7 @@ export async function atomicCheckAndIncrementPdfUsage(
       .for('update');
 
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFoundError(userId);
     }
 
     const tier = user.subscriptionTier;
@@ -438,18 +485,34 @@ export async function atomicCheckAndIncrementPdfUsage(
     if (limit === Infinity) {
       const month = getCurrentMonth();
       await ensureUsageMetricsExist(tx, userId, month);
+
+      const [metrics] = await tx
+        .select()
+        .from(usageMetrics)
+        .where(
+          and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
+        )
+        .for('update');
+
+      if (!metrics) {
+        throw new UsageMetricsLockError(userId, month);
+      }
+
+      const currentCount = metrics.pdfPlansGenerated;
+      const newCount = currentCount + 1;
+
       await incrementPdfUsageInTx(tx, userId, month);
       logger.info(
         {
           userId,
           month,
           action: 'atomicCheckAndIncrementPdfUsage',
-          newCount: 1,
+          newCount,
           limit: Infinity,
         },
         'PDF plan quota allowed (Infinity tier)'
       );
-      return { allowed: true, newCount: 1, limit: Infinity };
+      return { allowed: true, newCount, limit: Infinity };
     }
 
     const month = getCurrentMonth();
@@ -464,7 +527,7 @@ export async function atomicCheckAndIncrementPdfUsage(
       .for('update');
 
     if (!metrics) {
-      throw new Error('Failed to lock usage metrics');
+      throw new UsageMetricsLockError(userId, month);
     }
 
     const currentCount = metrics.pdfPlansGenerated;
@@ -506,18 +569,22 @@ export async function atomicCheckAndIncrementPdfUsage(
  * Use this when undoing a PDF plan creation to maintain accurate quota accounting.
  *
  * @param userId - The user's UUID
+ * @param dbClient - Database client (defaults to runtime DB with RLS)
  * @returns void (logs result but doesn't throw on missing metrics)
  */
-export async function decrementPdfPlanUsage(userId: string): Promise<void> {
+export async function decrementPdfPlanUsage(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<void> {
   const month = getCurrentMonth();
 
-  const [before] = await db
+  const [before] = await dbClient
     .select({ pdfPlansGenerated: usageMetrics.pdfPlansGenerated })
     .from(usageMetrics)
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
     .limit(1);
 
-  await db
+  await dbClient
     .update(usageMetrics)
     .set({
       pdfPlansGenerated: sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
@@ -537,9 +604,10 @@ export async function decrementPdfPlanUsage(userId: string): Promise<void> {
 
 export async function atomicCheckAndIncrementUsage(
   userId: string,
-  type: AtomicUsageType
+  type: AtomicUsageType,
+  dbClient: DbClient = getDb()
 ): Promise<AtomicUsageResult> {
-  return db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     const [user] = await tx
       .select({ subscriptionTier: users.subscriptionTier })
       .from(users)
@@ -547,7 +615,7 @@ export async function atomicCheckAndIncrementUsage(
       .for('update');
 
     if (!user) {
-      throw new Error('User not found');
+      throw new UserNotFoundError(userId);
     }
 
     const tier = user.subscriptionTier;
@@ -559,8 +627,27 @@ export async function atomicCheckAndIncrementUsage(
     if (limit === Infinity) {
       const month = getCurrentMonth();
       await ensureUsageMetricsExist(tx, userId, month);
+
+      const [metrics] = await tx
+        .select()
+        .from(usageMetrics)
+        .where(
+          and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
+        )
+        .for('update');
+
+      if (!metrics) {
+        throw new UsageMetricsLockError(userId, month);
+      }
+
+      const currentCount =
+        type === 'regeneration'
+          ? metrics.regenerationsUsed
+          : metrics.exportsUsed;
+      const newCount = currentCount + 1;
+
       await incrementUsageInTx(tx, userId, month, type);
-      return { allowed: true, newCount: 1, limit: Infinity };
+      return { allowed: true, newCount, limit: Infinity };
     }
 
     const month = getCurrentMonth();
@@ -575,7 +662,7 @@ export async function atomicCheckAndIncrementUsage(
       .for('update');
 
     if (!metrics) {
-      throw new Error('Failed to lock usage metrics');
+      throw new UsageMetricsLockError(userId, month);
     }
 
     const currentCount =
@@ -592,7 +679,7 @@ export async function atomicCheckAndIncrementUsage(
 }
 
 async function ensureUsageMetricsExist(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
   month: string
 ): Promise<void> {
@@ -612,7 +699,7 @@ async function ensureUsageMetricsExist(
 }
 
 async function incrementUsageInTx(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
   month: string,
   type: AtomicUsageType
@@ -632,7 +719,7 @@ async function incrementUsageInTx(
 }
 
 async function incrementPdfUsageInTx(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
   month: string
 ): Promise<void> {

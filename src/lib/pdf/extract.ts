@@ -127,6 +127,8 @@ export const extractTextFromPdf = async (
       message,
     };
   } finally {
-    await parser?.destroy();
+    await parser?.destroy().catch(() => {
+      // Swallow destroy errors to avoid masking the original exception
+    });
   }
 };

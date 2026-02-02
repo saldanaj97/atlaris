@@ -1,5 +1,5 @@
-import { db } from '@/lib/db/service-role';
 import { aiUsageEvents, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { incrementUsage } from '@/lib/stripe/usage';
 import { eq, sql } from 'drizzle-orm';
 
@@ -31,7 +31,7 @@ export async function recordUsage(params: RecordUsageParams) {
 
   if (params.kind) {
     // Update monthly aggregate counters
-    await incrementUsage(params.userId, params.kind);
+    await incrementUsage(params.userId, params.kind, db);
   }
 }
 

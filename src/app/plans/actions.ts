@@ -3,6 +3,7 @@
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import {
   atomicCheckAndInsertPlan,
@@ -43,18 +44,23 @@ export async function generateLearningPlan(
 
   // Atomically check plan limit and insert plan (prevents race conditions)
   // This uses a database transaction with row-level locking
+  const db = getDb();
   let plan: { id: string };
   try {
-    plan = await atomicCheckAndInsertPlan(user.id, {
-      topic: params.topic,
-      skillLevel: params.skillLevel,
-      weeklyHours: params.weeklyHours,
-      learningStyle: params.learningStyle,
-      startDate: params.startDate ?? null,
-      deadlineDate: params.deadlineDate ?? null,
-      visibility: 'private',
-      origin: 'ai',
-    });
+    plan = await atomicCheckAndInsertPlan(
+      user.id,
+      {
+        topic: params.topic,
+        skillLevel: params.skillLevel,
+        weeklyHours: params.weeklyHours,
+        learningStyle: params.learningStyle,
+        startDate: params.startDate ?? null,
+        deadlineDate: params.deadlineDate ?? null,
+        visibility: 'private',
+        origin: 'ai',
+      },
+      db
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Failed to create plan.';
@@ -76,7 +82,7 @@ export async function generateLearningPlan(
   });
 
   if (result.status === 'success') {
-    await markPlanGenerationSuccess(plan.id);
+    await markPlanGenerationSuccess(plan.id, db);
 
     const usage = result.metadata?.usage;
     await recordUsage({
@@ -99,7 +105,7 @@ export async function generateLearningPlan(
 
   // Intentionally do not record usage on failure for this action.
   // Tests assert zero ai_usage_events when generation fails.
-  await markPlanGenerationFailure(plan.id);
+  await markPlanGenerationFailure(plan.id, db);
 
   const message =
     typeof result.error === 'string'

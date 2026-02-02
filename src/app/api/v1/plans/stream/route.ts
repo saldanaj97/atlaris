@@ -19,6 +19,7 @@ import {
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
 import {
@@ -54,7 +55,8 @@ export const POST = withErrorBoundary(
 
     await checkPlanGenerationRateLimit(user.id);
 
-    const userTier: SubscriptionTier = await resolveUserTier(user.id);
+    const db = getDb();
+    const userTier: SubscriptionTier = await resolveUserTier(user.id, db);
     const normalization = normalizePlanDurationForTier({
       tier: userTier,
       weeklyHours: body.weeklyHours,
@@ -91,16 +93,20 @@ export const POST = withErrorBoundary(
       deadlineDate,
     };
 
-    const plan = await atomicCheckAndInsertPlan(user.id, {
-      topic: generationInput.topic,
-      skillLevel: generationInput.skillLevel,
-      weeklyHours: generationInput.weeklyHours,
-      learningStyle: generationInput.learningStyle,
-      visibility: body.visibility ?? 'private',
-      origin: 'ai',
-      startDate: generationInput.startDate,
-      deadlineDate: generationInput.deadlineDate,
-    });
+    const plan = await atomicCheckAndInsertPlan(
+      user.id,
+      {
+        topic: generationInput.topic,
+        skillLevel: generationInput.skillLevel,
+        weeklyHours: generationInput.weeklyHours,
+        learningStyle: generationInput.learningStyle,
+        visibility: body.visibility ?? 'private',
+        origin: 'ai',
+        startDate: generationInput.startDate,
+        deadlineDate: generationInput.deadlineDate,
+      },
+      db
+    );
 
     // TODO: [OPENROUTER-MIGRATION] Once preferredAiModel column exists:
     // const userPreferredModel = user.preferredAiModel;

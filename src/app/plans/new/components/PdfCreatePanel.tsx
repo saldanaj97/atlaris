@@ -46,7 +46,7 @@ interface ExtractionApiResponse {
 
 interface PlanCreationApiResponse {
   id?: string;
-  error?: string;
+  error?: string | { message: string; code?: string };
 }
 
 interface ExtractionData {
@@ -159,16 +159,26 @@ export function PdfCreatePanel({
       const data = (await response.json()) as PlanCreationApiResponse;
 
       if (!response.ok) {
-        if (response.status === 403 && data.error?.includes('quota')) {
+        // Handle structured error response with code field
+        const errorMessage =
+          typeof data.error === 'string'
+            ? data.error
+            : (data.error?.message ?? 'Failed to create learning plan');
+        const errorCode =
+          typeof data.error === 'object' && data.error?.code
+            ? (data.error.code as ErrorCode)
+            : undefined;
+
+        if (errorCode === 'QUOTA_EXCEEDED') {
           setState({
             status: 'error',
-            error: data.error,
+            error: errorMessage,
             code: 'QUOTA_EXCEEDED',
           });
           return;
         }
 
-        throw new Error(data.error ?? 'Failed to create learning plan');
+        throw new Error(errorMessage);
       }
 
       if (!data.id) {

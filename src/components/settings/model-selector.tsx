@@ -3,6 +3,14 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -14,7 +22,10 @@ import {
 import { getModelsForTier } from '@/lib/ai/ai-models';
 import type { AvailableModel, SubscriptionTier } from '@/lib/ai/types';
 import { clientLogger } from '@/lib/logging/client';
+import { ROUTES } from '@/lib/routes';
 import { cn } from '@/lib/utils';
+import { AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 interface ModelSelectorProps {
@@ -83,7 +94,7 @@ const ModelDropdown = ({
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
       clientLogger.error('Failed to save model preference:', {
-        error,
+        message: error instanceof Error ? error.message : String(error),
         selectedModel,
       });
       setSaveStatus('error');
@@ -245,9 +256,24 @@ export function ModelSelector({
   // Handle edge case with no available models
   if (availableModels.length === 0) {
     return (
-      <div className="text-muted-foreground">
-        No models available for your tier.
-      </div>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <AlertCircle className="size-6" />
+          </EmptyMedia>
+          <EmptyTitle>No models available</EmptyTitle>
+          <EmptyDescription>
+            No AI models are currently available for your subscription tier.
+            This may occur if model configurations are being updated or if your
+            tier doesn&apos;t have access to any models.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button asChild variant="default">
+            <Link href={ROUTES.PRICING}>View Pricing Plans</Link>
+          </Button>
+        </EmptyContent>
+      </Empty>
     );
   }
 

@@ -13,6 +13,7 @@ export type PdfErrorCode =
   | 'TOO_MANY_PAGES'
   | 'NO_TEXT'
   | 'INVALID_FILE'
+  | 'PASSWORD_PROTECTED'
   | 'QUOTA_EXCEEDED';
 
 const errorResponse = (message: string, code: PdfErrorCode, status: number) =>
@@ -56,6 +57,9 @@ export const POST: PlainHandler = withErrorBoundary(
     if (!extraction.success) {
       if (extraction.error === 'no_text') {
         return errorResponse(extraction.message, 'NO_TEXT', 400);
+      }
+      if (extraction.error === 'password_protected') {
+        return errorResponse(extraction.message, 'PASSWORD_PROTECTED', 400);
       }
 
       return toExtractionError(extraction.message);

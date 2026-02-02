@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
+import { getDb } from '@/lib/db/runtime';
 import { getUsageSummary } from '@/lib/stripe/usage';
 import { Plus, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -20,7 +21,8 @@ export async function PlanCountBadgeContent() {
     return null;
   }
 
-  const usage = await getUsageSummary(user.id);
+  const db = getDb();
+  const usage = await getUsageSummary(user.id, db);
 
   return (
     <PlanCountBadge

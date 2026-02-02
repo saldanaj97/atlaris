@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import React from 'react';
 
 const ERROR_MESSAGES = {
   FILE_TOO_LARGE: {
@@ -29,6 +29,11 @@ const ERROR_MESSAGES = {
     title: 'Invalid File',
     description:
       'This file is not a valid PDF or is corrupted. Please try a different file.',
+  },
+  PASSWORD_PROTECTED: {
+    title: 'Password Protected',
+    description:
+      'Password-protected PDFs are not supported. Please remove the password protection or use a different file.',
   },
 } as const;
 

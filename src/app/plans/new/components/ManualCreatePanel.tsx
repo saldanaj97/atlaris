@@ -47,6 +47,7 @@ export function ManualCreatePanel({
 
   const planIdRef = useRef<string | undefined>(undefined);
   const cancellationToastShownRef = useRef(false);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     planIdRef.current = streamingState.planId;
@@ -59,6 +60,10 @@ export function ManualCreatePanel({
   }, [streamingState.status]);
 
   const handleSubmit = async (data: PlanFormData) => {
+    if (isSubmittingRef.current) {
+      return;
+    }
+
     let payload: ReturnType<typeof mapOnboardingToCreateInput>;
     try {
       const onboardingValues = convertToOnboardingValues(data);
@@ -71,6 +76,7 @@ export function ManualCreatePanel({
 
     onTopicUsed?.();
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       const planId = await startGeneration(payload);
@@ -113,6 +119,7 @@ export function ManualCreatePanel({
 
       toast.error(message);
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
