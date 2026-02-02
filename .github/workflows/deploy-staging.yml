@@ -5,8 +5,9 @@ on:
     inputs:
       deploy_migrations:
         description: 'Whether to run database migrations'
-        required: true
+        required: false
         type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       deploy_migrations:
@@ -31,10 +32,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout staging branch
+      - name: Checkout develop branch
         uses: actions/checkout@v4
         with:
-          ref: staging
+          ref: develop
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:

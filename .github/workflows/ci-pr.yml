@@ -2,7 +2,7 @@ name: CI - PR (trunk)
 
 on:
   pull_request:
-    branches: [main, staging]
+    branches: [main, develop]
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
@@ -593,20 +593,4 @@ jobs:
       - name: All checks passed (PR)
         run: echo "✅ All checks passed (PR)"
 
-  trigger-staging-deploy:
-    name: Deploy to Staging
-    needs: [all-checks-pr, changes]
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.base.ref == 'main' &&
-      github.event.pull_request.head.ref == 'staging' &&
-      needs.all-checks-pr.result == 'success' &&
-      needs.changes.outputs.migrations == 'true'
-    permissions:
-      contents: read
-      actions: read
-      deployments: write
-    uses: ./.github/workflows/deploy-staging.yml
-    with:
-      deploy_migrations: ${{ needs.changes.outputs.migrations == 'true' }}
-    secrets: inherit
+

@@ -5,8 +5,9 @@ on:
     inputs:
       deploy_migrations:
         description: 'Whether to run database migrations'
-        required: true
+        required: false
         type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       deploy_migrations:
@@ -121,4 +122,6 @@ jobs:
             echo "✅ **Deployment successful**" >> $GITHUB_STEP_SUMMARY
           fi
 
-# Note: Next.js deploys automatically via Vercel GitHub integration
+# Note: Next.js deploys automatically via Vercel GitHub integration.
+# This workflow is invoked by ci-trunk on push to main. Ensure main is
+# branch-protected (PR required, no direct push) so only merged PRs deploy.

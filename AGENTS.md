@@ -126,13 +126,15 @@ Load on-demand based on task:
 
 Documentation explaining how our code works, architecture decisions, and system flows:
 
-- **Plan Generation**: `docs/context/plan-generation-architecture.md`
+- **Plan Generation**: `docs/context/architecture/plan-generation-architecture.md`
+- **CI/CD & Branching**: `docs/context/ci/branching-strategy.md`
 
 ### LLM Rules & Guidelines (`docs/rules/`)
 
 Guardrails and guidelines for LLMs to follow:
 
 - **Architecture**: `docs/rules/architecture/project-structure.md`
+- **CI/CD Workflow**: `docs/rules/ci/development-workflow.md`
 - **Logging**: `docs/rules/logging.md`
 - **TypeScript**: `docs/rules/language-specific/typescript.md`
 - **React**: `docs/rules/language-specific/react.md`
