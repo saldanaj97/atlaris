@@ -1,5 +1,4 @@
 import { and, eq } from 'drizzle-orm';
-import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
@@ -87,8 +86,8 @@ const getCurrentMonth = (now: Date = new Date()): string => {
 
 describe('PDF to Plan E2E Flow', () => {
   let userId: string;
-  const clerkUserId = `clerk_e2e_pdf_${randomUUID()}`;
-  const email = `pdf-e2e-${randomUUID()}@example.com`;
+  const clerkUserId = `clerk_e2e_pdf_to_plan_user`;
+  const email = `pdf-e2e-to-plan-test@example.com`;
 
   beforeEach(async () => {
     vi.useFakeTimers();

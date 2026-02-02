@@ -8,7 +8,10 @@ import {
   PdfExtractionPreview,
   type PdfPlanSettings,
 } from '@/components/pdf/PdfExtractionPreview';
-import { PdfUploadError } from '@/components/pdf/PdfUploadError';
+import {
+  PdfUploadError,
+  type ErrorCode,
+} from '@/components/pdf/PdfUploadError';
 import { PdfUploadZone } from '@/components/pdf/PdfUploadZone';
 import { clientLogger } from '@/lib/logging/client';
 import { Loader2 } from 'lucide-react';
@@ -38,7 +41,7 @@ interface ExtractionApiResponse {
     };
   };
   error?: string;
-  code?: string;
+  code?: ErrorCode;
 }
 
 interface PlanCreationApiResponse {
@@ -63,9 +66,11 @@ type PageState =
   | { status: 'uploading' }
   | { status: 'preview'; extraction: ExtractionData }
   | { status: 'generating' }
-  | { status: 'error'; error: string; code?: string };
+  | { status: 'error'; error: string; code?: ErrorCode };
 
-export function PdfCreatePanel({ onSwitchToManual }: PdfCreatePanelProps) {
+export function PdfCreatePanel({
+  onSwitchToManual,
+}: PdfCreatePanelProps): React.ReactElement {
   const router = useRouter();
   const [state, setState] = useState<PageState>({ status: 'idle' });
   const isSubmittingRef = useRef(false);
@@ -266,5 +271,7 @@ export function PdfCreatePanel({ onSwitchToManual }: PdfCreatePanelProps) {
     );
   }
 
-  return null;
+  // Unreachable: all PageState variants are handled above
+  const _exhaustiveCheck: never = state;
+  return _exhaustiveCheck;
 }

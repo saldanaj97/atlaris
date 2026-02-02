@@ -1,11 +1,42 @@
 'use client';
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
+const ERROR_MESSAGES = {
+  FILE_TOO_LARGE: {
+    title: 'File Too Large',
+    description:
+      'This PDF exceeds the size limit for your subscription tier. Try a smaller file or upgrade your plan.',
+  },
+  TOO_MANY_PAGES: {
+    title: 'Too Many Pages',
+    description:
+      'This PDF has too many pages for your subscription tier. Try a shorter document or upgrade your plan.',
+  },
+  NO_TEXT: {
+    title: 'No Extractable Text',
+    description:
+      'This PDF appears to be scanned or image-based. Please use a PDF with selectable text.',
+  },
+  QUOTA_EXCEEDED: {
+    title: 'Monthly Limit Reached',
+    description:
+      "You've reached your monthly PDF plan limit. Upgrade your plan or wait until next month.",
+  },
+  INVALID_FILE: {
+    title: 'Invalid File',
+    description:
+      'This file is not a valid PDF or is corrupted. Please try a different file.',
+  },
+} as const;
+
+export type ErrorCode = keyof typeof ERROR_MESSAGES;
+
 interface PdfUploadErrorProps {
   error: string;
-  code?: string;
+  code?: ErrorCode;
   onRetry?: () => void;
   onBack?: () => void;
 }
@@ -15,37 +46,8 @@ export function PdfUploadError({
   code,
   onRetry,
   onBack,
-}: PdfUploadErrorProps) {
-  const errorMessages: Record<string, { title: string; description: string }> =
-    {
-      FILE_TOO_LARGE: {
-        title: 'File Too Large',
-        description:
-          'This PDF exceeds the size limit for your subscription tier. Try a smaller file or upgrade your plan.',
-      },
-      TOO_MANY_PAGES: {
-        title: 'Too Many Pages',
-        description:
-          'This PDF has too many pages for your subscription tier. Try a shorter document or upgrade your plan.',
-      },
-      NO_TEXT: {
-        title: 'No Extractable Text',
-        description:
-          'This PDF appears to be scanned or image-based. Please use a PDF with selectable text.',
-      },
-      QUOTA_EXCEEDED: {
-        title: 'Monthly Limit Reached',
-        description:
-          "You've reached your monthly PDF plan limit. Upgrade your plan or wait until next month.",
-      },
-      INVALID_FILE: {
-        title: 'Invalid File',
-        description:
-          'This file is not a valid PDF or is corrupted. Please try a different file.',
-      },
-    };
-
-  const errorInfo = code ? errorMessages[code] : null;
+}: PdfUploadErrorProps): React.ReactElement {
+  const errorInfo = code ? ERROR_MESSAGES[code] : null;
 
   return (
     <div className="w-full max-w-2xl" role="alert">
@@ -82,7 +84,7 @@ export function PdfUploadError({
               <Button
                 type="button"
                 onClick={onRetry}
-                className="from-primary via-accent to-primary shadow-primary/25 hover:shadow-primary/30 rounded-2xl bg-gradient-to-r text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+                className="from-primary via-accent to-primary shadow-primary/25 hover:shadow-primary/30 rounded-2xl bg-linear-to-r text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
               >
                 Try Again
               </Button>

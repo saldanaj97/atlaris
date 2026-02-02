@@ -2,7 +2,7 @@
 
 import { MouseGlowContainer } from '@/components/effects/MouseGlow';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useId, useState } from 'react';
+import React, { Suspense, useCallback, useId, useState } from 'react';
 
 import {
   CreateMethodToggle,
@@ -79,6 +79,8 @@ function CreatePlanContent() {
         <CreateMethodToggle
           value={currentMethod}
           onChange={handleMethodChange}
+          manualPanelId={manualPanelId}
+          pdfPanelId={pdfPanelId}
         />
       </div>
 
@@ -138,7 +140,7 @@ function CreatePlanLoading() {
   );
 }
 
-export default function CreateNewPlanPage() {
+export default function CreateNewPlanPage(): React.JSX.Element {
   return (
     <MouseGlowContainer className="from-accent/30 via-primary/10 to-accent/20 dark:bg-background fixed inset-0 overflow-hidden bg-linear-to-br dark:from-transparent dark:via-transparent dark:to-transparent">
       <div

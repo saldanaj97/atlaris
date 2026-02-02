@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { randomUUID } from 'node:crypto';
 
 import { POST } from '@/app/api/v1/plans/from-pdf/extract/route';
 import { clearTestUser, setTestUser } from '@/../tests/helpers/auth';
@@ -66,8 +65,8 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
   });
 
   it('extracts text and structure from a PDF', async () => {
-    const clerkUserId = `clerk_${randomUUID()}`;
-    const clerkEmail = `pdf.${randomUUID()}@example.com`;
+    const clerkUserId = `clerk_test_pdf_extract_user`;
+    const clerkEmail = `pdf-extract-test@example.com`;
 
     setTestUser(clerkUserId);
     await ensureUser({ clerkUserId, email: clerkEmail });

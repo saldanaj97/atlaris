@@ -11,12 +11,16 @@ interface CreateMethodToggleProps {
   value: CreateMethod;
   onChange: (method: CreateMethod) => void;
   disabled?: boolean;
+  manualPanelId?: string;
+  pdfPanelId?: string;
 }
 
 export function CreateMethodToggle({
   value,
   onChange,
   disabled = false,
+  manualPanelId = 'manual-panel',
+  pdfPanelId = 'pdf-panel',
 }: CreateMethodToggleProps): React.ReactElement {
   return (
     <div
@@ -29,7 +33,7 @@ export function CreateMethodToggle({
         variant="ghost"
         role="tab"
         aria-selected={value === 'manual'}
-        aria-controls="manual-panel"
+        aria-controls={manualPanelId}
         id="manual-tab"
         disabled={disabled}
         onClick={() => onChange('manual')}
@@ -48,7 +52,7 @@ export function CreateMethodToggle({
         variant="ghost"
         role="tab"
         aria-selected={value === 'pdf'}
-        aria-controls="pdf-panel"
+        aria-controls={pdfPanelId}
         id="pdf-tab"
         disabled={disabled}
         onClick={() => onChange('pdf')}

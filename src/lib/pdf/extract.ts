@@ -127,6 +127,6 @@ export const extractTextFromPdf = async (
       message,
     };
   } finally {
-    parser?.destroy();
+    await parser?.destroy();
   }
 };

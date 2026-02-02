@@ -18,7 +18,7 @@ import {
   FileText,
   Sparkles,
 } from 'lucide-react';
-import { useId, useState } from 'react';
+import React, { useId, useState } from 'react';
 
 export interface PdfPlanSettings {
   skillLevel: string;
@@ -49,7 +49,7 @@ export function PdfExtractionPreview({
   onGenerate,
   onSwitchToManual,
   isGenerating = false,
-}: PdfExtractionPreviewProps) {
+}: PdfExtractionPreviewProps): React.JSX.Element {
   const [mainTopic, setMainTopic] = useState(initialTopic);
   const [sections, setSections] = useState(initialSections);
   const [skillLevel, setSkillLevel] = useState('beginner');
