@@ -4,7 +4,12 @@ vi.mock('@/lib/pdf/extract', () => ({
   extractTextFromPdf: vi.fn(),
 }));
 
+vi.mock('@/lib/security/malware-scanner', () => ({
+  scanBufferForMalware: vi.fn(),
+}));
+
 import { POST } from '@/app/api/v1/plans/from-pdf/extract/route';
+import { scanBufferForMalware } from '@/lib/security/malware-scanner';
 import { extractTextFromPdf } from '@/lib/pdf/extract';
 import { clearTestUser, setTestUser } from '@/../tests/helpers/auth';
 import {
@@ -33,6 +38,8 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     await resetDbForIntegrationTestFile();
     await ensureStripeWebhookEvents();
     vi.mocked(extractTextFromPdf).mockReset();
+    vi.mocked(scanBufferForMalware).mockReset();
+    vi.mocked(scanBufferForMalware).mockResolvedValue({ clean: true });
   });
 
   afterEach(() => {

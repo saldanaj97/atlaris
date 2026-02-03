@@ -110,13 +110,13 @@ describe('PDF to Plan E2E Flow', () => {
 
   describe('Happy Path: Complete PDF to Plan Workflow', () => {
     it('should extract text and structure from a valid PDF', async () => {
-      const pdfBuffer = buildPdfBuffer('Chapter 1: TypeScript');
+      const pdfBuffer = buildPdfBuffer('Learn TypeScript');
 
       const result = await extractTextFromPdf(pdfBuffer);
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.text).toContain('TypeScript');
+        expect(result.text).toContain('Learn');
         expect(result.pageCount).toBeGreaterThanOrEqual(1);
         expect(result.structure).toBeDefined();
         expect(result.structure.sections).toBeDefined();
