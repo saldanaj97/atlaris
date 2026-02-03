@@ -38,7 +38,12 @@ Defined in `src/lib/db/enums.ts`:
 
 ## Row Level Security (RLS)
 
-RLS policies enforce tenant isolation using session variables. Public plan visibility allows anonymous read access.
+RLS policies enforce tenant isolation using role switching + session variables:
+
+- Request-scoped DB sessions run as `authenticated` or `anonymous` roles (via `src/lib/db/rls.ts`)
+- `request.jwt.claims` carries Clerk `sub` for ownership checks
+- User-facing policies are explicitly scoped with `to` (no implicit `PUBLIC` policies)
+- User-facing app data is authenticated-only; anonymous role does not have app-data read policies
 
 ## Common Indexes
 
@@ -56,16 +61,16 @@ RLS policies enforce tenant isolation using session variables. Public plan visib
 
 ## Code Locations
 
-| Component      | Location                                            |
-| -------------- | --------------------------------------------------- |
-| Schema         | `src/lib/db/schema/tables/`                         |
-| Enums          | `src/lib/db/enums.ts`                               |
-| Relations      | `src/lib/db/schema/relations.ts`                    |
-| Queries        | `src/lib/db/queries/`                               |
-| Usage tracking | `src/lib/db/usage.ts`                               |
-| Seeding        | `src/lib/db/seed.ts`, `src/lib/db/seed-cli.ts`      |
-| Migrations     | `src/lib/db/migrations/`                            |
-| Clients        | `src/lib/db/index.ts`, `src/lib/db/service-role.ts` |
+| Component      | Location                                                                   |
+| -------------- | -------------------------------------------------------------------------- |
+| Schema         | `src/lib/db/schema/tables/`                                                |
+| Enums          | `src/lib/db/enums.ts`                                                      |
+| Relations      | `src/lib/db/schema/relations.ts`                                           |
+| Queries        | `src/lib/db/queries/`                                                      |
+| Usage tracking | `src/lib/db/usage.ts`                                                      |
+| Seeding        | `src/lib/db/seed.ts`, `src/lib/db/seed-cli.ts`                             |
+| Migrations     | `src/lib/db/migrations/`                                                   |
+| Clients        | `src/lib/db/runtime.ts`, `src/lib/db/rls.ts`, `src/lib/db/service-role.ts` |
 
 ## Implemented Features
 
@@ -74,6 +79,5 @@ RLS policies enforce tenant isolation using session variables. Public plan visib
 - Row Level Security (RLS) with Neon for multi-tenant isolation
 - Usage tracking and quotas (monthly limits, AI API usage)
 - Third-party integrations: Notion exports, Google Calendar sync
-- Public plan sharing with anonymous access
 - Plan scheduling and regeneration tracking
 - OAuth token management for integrations

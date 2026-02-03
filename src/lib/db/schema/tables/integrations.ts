@@ -14,9 +14,10 @@ import { timestampFields } from '../helpers';
 import {
   recordOwnedByCurrentUser,
   userAndPlanOwnedByCurrentUser,
+  userAndTaskOwnedByCurrentUser,
 } from '../policy-helpers';
 import { learningPlans } from './plans';
-import { tasks } from './tasks';
+import { modules, tasks } from './tasks';
 import { users } from './users';
 
 // Integration-related tables
@@ -55,14 +56,17 @@ export const oauthStateTokens = pgTable(
     index('oauth_state_tokens_expires_at_idx').on(table.expiresAt),
     pgPolicy('oauth_state_tokens_insert', {
       for: 'insert',
+      to: 'authenticated',
       withCheck: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
     pgPolicy('oauth_state_tokens_select', {
       for: 'select',
+      to: 'authenticated',
       using: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
     pgPolicy('oauth_state_tokens_delete', {
       for: 'delete',
+      to: 'authenticated',
       using: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
   ]
@@ -95,18 +99,21 @@ export const integrationTokens = pgTable(
     // Users can read only their own integration tokens
     pgPolicy('integration_tokens_select_own', {
       for: 'select',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Users can insert tokens only for themselves
     pgPolicy('integration_tokens_insert_own', {
       for: 'insert',
+      to: 'authenticated',
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Users can update only their own tokens
     pgPolicy('integration_tokens_update_own', {
       for: 'update',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
@@ -114,6 +121,7 @@ export const integrationTokens = pgTable(
     // Users can delete only their own tokens
     pgPolicy('integration_tokens_delete_own', {
       for: 'delete',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
   ]
@@ -155,18 +163,21 @@ export const notionSyncState = pgTable(
       // Users can read only their own sync state
       pgPolicy('notion_sync_state_select_own', {
         for: 'select',
+        to: 'authenticated',
         using: userOwnsRecord,
       }),
 
       // Users can insert sync state only for themselves and their own plans
       pgPolicy('notion_sync_state_insert_own', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: userAndPlanOwnership,
       }),
 
       // Users can update only their own sync state and their own plans
       pgPolicy('notion_sync_state_update_own', {
         for: 'update',
+        to: 'authenticated',
         using: userAndPlanOwnership,
         withCheck: userAndPlanOwnership,
       }),
@@ -174,6 +185,7 @@ export const notionSyncState = pgTable(
       // Users can delete only their own sync state and their own plans
       pgPolicy('notion_sync_state_delete_own', {
         for: 'delete',
+        to: 'authenticated',
         using: userAndPlanOwnership,
       }),
     ];
@@ -220,18 +232,21 @@ export const googleCalendarSyncState = pgTable(
       // Users can read only their own sync state
       pgPolicy('google_calendar_sync_state_select_own', {
         for: 'select',
+        to: 'authenticated',
         using: userOwnsRecord,
       }),
 
       // Users can insert sync state only for themselves and their own plans
       pgPolicy('google_calendar_sync_state_insert_own', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: userAndPlanOwnership,
       }),
 
       // Users can update only their own sync state and their own plans
       pgPolicy('google_calendar_sync_state_update_own', {
         for: 'update',
+        to: 'authenticated',
         using: userAndPlanOwnership,
         withCheck: userAndPlanOwnership,
       }),
@@ -239,6 +254,7 @@ export const googleCalendarSyncState = pgTable(
       // Users can delete only their own sync state and their own plans
       pgPolicy('google_calendar_sync_state_delete_own', {
         for: 'delete',
+        to: 'authenticated',
         using: userAndPlanOwnership,
       }),
     ];
@@ -264,31 +280,51 @@ export const taskCalendarEvents = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
-    unique('task_calendar_event_unique').on(table.taskId, table.userId),
-    index('task_calendar_events_task_id_idx').on(table.taskId),
-    index('task_calendar_events_user_id_idx').on(table.userId),
+  (table) => {
+    const userAndTaskOwnership = userAndTaskOwnedByCurrentUser({
+      userIdColumn: table.userId,
+      taskIdColumn: table.taskId,
+      taskTable: tasks,
+      taskIdReferenceColumn: tasks.id,
+      taskModuleIdColumn: tasks.moduleId,
+      moduleTable: modules,
+      moduleIdReferenceColumn: modules.id,
+      modulePlanIdColumn: modules.planId,
+      planTable: learningPlans,
+      planIdReferenceColumn: learningPlans.id,
+      planUserIdColumn: learningPlans.userId,
+    });
 
-    // RLS Policies
-    pgPolicy('task_calendar_events_select_own', {
-      for: 'select',
-      using: recordOwnedByCurrentUser(table.userId),
-    }),
+    return [
+      unique('task_calendar_event_unique').on(table.taskId, table.userId),
+      index('task_calendar_events_task_id_idx').on(table.taskId),
+      index('task_calendar_events_user_id_idx').on(table.userId),
 
-    pgPolicy('task_calendar_events_insert_own', {
-      for: 'insert',
-      withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
+      // RLS Policies
+      pgPolicy('task_calendar_events_select_own', {
+        for: 'select',
+        to: 'authenticated',
+        using: userAndTaskOwnership,
+      }),
 
-    pgPolicy('task_calendar_events_update_own', {
-      for: 'update',
-      using: recordOwnedByCurrentUser(table.userId),
-      withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
+      pgPolicy('task_calendar_events_insert_own', {
+        for: 'insert',
+        to: 'authenticated',
+        withCheck: userAndTaskOwnership,
+      }),
 
-    pgPolicy('task_calendar_events_delete_own', {
-      for: 'delete',
-      using: recordOwnedByCurrentUser(table.userId),
-    }),
-  ]
+      pgPolicy('task_calendar_events_update_own', {
+        for: 'update',
+        to: 'authenticated',
+        using: userAndTaskOwnership,
+        withCheck: userAndTaskOwnership,
+      }),
+
+      pgPolicy('task_calendar_events_delete_own', {
+        for: 'delete',
+        to: 'authenticated',
+        using: userAndTaskOwnership,
+      }),
+    ];
+  }
 ).enableRLS();

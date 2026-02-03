@@ -29,6 +29,7 @@ import {
  *
  * Uses the anonymous database role which provides very restricted access.
  * RLS policies will see null for the user ID.
+ * In current product policy, app data should remain inaccessible to this role.
  *
  * Note: The underlying connection will be closed automatically via idle_timeout.
  * For long-running tests, consider calling cleanup() from the full result.

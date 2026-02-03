@@ -100,7 +100,7 @@ export const POST = withErrorBoundary(
         skillLevel: generationInput.skillLevel,
         weeklyHours: generationInput.weeklyHours,
         learningStyle: generationInput.learningStyle,
-        visibility: body.visibility ?? 'private',
+        visibility: 'private',
         origin: 'ai',
         startDate: generationInput.startDate,
         deadlineDate: generationInput.deadlineDate,

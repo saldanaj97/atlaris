@@ -9,6 +9,7 @@
 ### 1) Database RLS policies & permission enforcement
 
 - [ ] Verify every table is protected by RLS where required (no "oops, public read/write").
+- [ ] Verify user-facing policies include explicit role targets (`TO authenticated`) and never rely on implicit `TO PUBLIC`.
 - [ ] Confirm policies enforce tenant isolation (user/org boundaries) under all query paths.
 - [ ] Test policy bypass attempts using service-role vs anon/auth contexts.
 - [ ] Verify `getDb()` (RLS-enforced) is used in all API routes—never `db` (service-role) in request handlers.
@@ -45,7 +46,7 @@
 - [ ] Validate role checks (user/admin/org owner) at the API layer.
 - [ ] Ensure no IDOR issues (changing IDs to access other users' data).
 - [ ] Resource ownership verified server-side before any mutation.
-- [ ] Public plan sharing: verify anonymous users can only READ, never WRITE.
+- [ ] Verify anonymous sessions cannot read or write user-facing plan/module/task data.
 - [ ] Test horizontal privilege escalation (user A accessing user B's resources).
 - [ ] Test vertical privilege escalation (regular user accessing admin functions).
 

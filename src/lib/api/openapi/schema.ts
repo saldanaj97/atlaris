@@ -37,7 +37,7 @@ const learningPlanSchema = z
     skillLevel: SKILL_LEVEL_ENUM,
     weeklyHours: z.number().int().nullable().optional(),
     learningStyle: LEARNING_STYLE_ENUM,
-    visibility: z.enum(['private', 'public'] as const),
+    visibility: z.literal('private'),
     origin: z.enum(['ai', 'manual', 'template'] as const),
     createdAt: z.string().datetime().nullable().optional(),
   })
@@ -70,7 +70,7 @@ const createPlanResponseSchema = z
     skillLevel: SKILL_LEVEL_ENUM,
     weeklyHours: z.number().int().nullable().optional(),
     learningStyle: LEARNING_STYLE_ENUM,
-    visibility: z.enum(['private', 'public'] as const),
+    visibility: z.literal('private'),
     origin: z.enum(['ai', 'manual', 'template'] as const),
     createdAt: z.string().datetime().nullable().optional(),
     status: z.enum(['pending'] as const),

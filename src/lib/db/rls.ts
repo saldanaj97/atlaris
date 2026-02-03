@@ -6,7 +6,7 @@
  *
  * USAGE:
  * - Request handlers: Use createAuthenticatedRlsClient() with the user's Clerk ID
- * - Anonymous access: Use createAnonymousRlsClient()
+ * - Anonymous sessions: Use createAnonymousRlsClient() only for explicit public endpoints or RLS security tests
  * - Workers/background jobs: Use the service-role client from @/lib/db/service-role
  * - Tests: Use helper functions from tests/helpers/rls.ts
  *
@@ -130,18 +130,21 @@ export async function createAuthenticatedRlsClient(
  * Creates an RLS-enforced database client for anonymous users.
  *
  * Uses SET ROLE to switch to the anonymous role, then sets session variables
- * to null to indicate anonymous access. RLS policies will restrict access to
- * public resources only.
+ * to null to indicate anonymous access.
+ *
+ * Note: Current product policy keeps user-facing app data authenticated-only.
+ * Anonymous clients are primarily used for security tests and any future
+ * explicitly-approved public endpoints.
  *
  * @returns Promise resolving to RLS client result with database client and cleanup function
  *
  * @example
  * ```typescript
- * // For public queries
+ * // For RLS security tests
  * const { db: anonDb, cleanup } = await createAnonymousRlsClient();
  * try {
- *   const publicPlans = await anonDb.select().from(learningPlans);
- *   // Only returns plans with visibility='public'
+ *   const rows = await anonDb.select().from(learningPlans);
+ *   // Should return zero rows for private app data
  * } finally {
  *   await cleanup(); // Close connection when done
  * }

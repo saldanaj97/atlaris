@@ -308,10 +308,7 @@ export async function seedDatabase(
         ]),
         startDate: f.date({ minDate: '2024-01-01', maxDate: '2025-09-01' }),
         deadlineDate: f.date({ minDate: '2025-09-15', maxDate: '2026-12-31' }),
-        visibility: f.weightedRandom([
-          { weight: 0.8, value: f.valuesFromArray({ values: ['private'] }) },
-          { weight: 0.2, value: f.valuesFromArray({ values: ['public'] }) },
-        ]),
+        visibility: f.valuesFromArray({ values: ['private'] }),
         origin: f.weightedRandom([
           { weight: 0.85, value: f.valuesFromArray({ values: ['ai'] }) },
           { weight: 0.1, value: f.valuesFromArray({ values: ['template'] }) },
@@ -504,7 +501,7 @@ export async function seedDatabase(
             skillLevel: 'beginner' | 'intermediate' | 'advanced';
             weeklyHours: number;
             learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-            visibility: 'private' | 'public';
+            visibility: 'private';
             origin: 'ai' | 'template' | 'manual';
             modules: Array<{
               title: string;
@@ -596,7 +593,7 @@ export async function seedDatabase(
               skillLevel: 'intermediate',
               weeklyHours: 5,
               learningStyle: 'reading',
-              visibility: 'public',
+              visibility: 'private',
               origin: 'manual',
               modules: [
                 {
@@ -807,8 +804,7 @@ export async function seedDatabase(
               ['reading', 'video', 'mixed', 'practice', 'mixed'];
             const learningStyle = stylePool[(i * 11 + 5) % stylePool.length];
             const weeklyHours = 2 + ((i + currentCount) % 10); // 2-11
-            const visibility: 'private' | 'public' =
-              (i + currentCount) % 4 === 0 ? 'public' : 'private';
+            const visibility = 'private' as const;
 
             const [randPlan] = await db
               .insert(schema.learningPlans)
