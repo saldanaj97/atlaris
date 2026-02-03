@@ -233,10 +233,10 @@ function formatWindow(windowMs: number): string {
   }
   const minutes = seconds / 60;
   if (minutes < 60) {
-    return minutes === 1 ? 'minute' : `${minutes} minutes`;
+    return minutes === 1 ? '1 minute' : `${minutes} minutes`;
   }
   const hours = minutes / 60;
-  return hours === 1 ? 'hour' : `${hours} hours`;
+  return hours === 1 ? '1 hour' : `${hours} hours`;
 }
 
 // Pre-configured rate limiters for each category

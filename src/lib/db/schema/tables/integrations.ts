@@ -51,32 +51,19 @@ export const oauthStateTokens = pgTable(
       .notNull(),
   },
   (table) => [
-    // Index for fast lookups by hash
     index('oauth_state_tokens_hash_idx').on(table.stateTokenHash),
-    // Index for cleanup queries (expired tokens)
     index('oauth_state_tokens_expires_at_idx').on(table.expiresAt),
-
-    // RLS Policies
-    // These tokens are accessed via service-role in OAuth callbacks,
-    // but we still enforce JWT-based RLS for defense-in-depth.
-    // Policies verify that clerk_user_id matches the authenticated user's sub claim.
-
-    // Allow insert only for the token owner
     pgPolicy('oauth_state_tokens_insert', {
       for: 'insert',
-      withCheck: sql`clerk_user_id = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      withCheck: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
-
-    // Allow select only for the token owner
     pgPolicy('oauth_state_tokens_select', {
       for: 'select',
-      using: sql`clerk_user_id = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      using: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
-
-    // Allow delete only for the token owner
     pgPolicy('oauth_state_tokens_delete', {
       for: 'delete',
-      using: sql`clerk_user_id = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      using: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
   ]
 ).enableRLS();

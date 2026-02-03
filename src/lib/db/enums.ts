@@ -60,3 +60,10 @@ export const integrationProviderEnum = pgEnum('integration_provider', [
   'notion',
   'google_calendar',
 ]);
+
+export const planOrigin = pgEnum('plan_origin', [
+  'ai',
+  'template',
+  'manual',
+  'pdf',
+]);

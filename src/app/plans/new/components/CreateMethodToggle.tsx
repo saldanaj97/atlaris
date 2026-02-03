@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { FileText, Sparkles } from 'lucide-react';
@@ -13,6 +13,8 @@ interface CreateMethodToggleProps {
   disabled?: boolean;
   manualPanelId?: string;
   pdfPanelId?: string;
+  manualTabId?: string;
+  pdfTabId?: string;
 }
 
 export function CreateMethodToggle({
@@ -21,7 +23,13 @@ export function CreateMethodToggle({
   disabled = false,
   manualPanelId = 'manual-panel',
   pdfPanelId = 'pdf-panel',
+  manualTabId: manualTabIdProp,
+  pdfTabId: pdfTabIdProp,
 }: CreateMethodToggleProps): React.ReactElement {
+  const uid = useId();
+  const manualTabId = manualTabIdProp ?? `${uid}-manual-tab`;
+  const pdfTabId = pdfTabIdProp ?? `${uid}-pdf-tab`;
+
   return (
     <div
       role="tablist"
@@ -34,7 +42,7 @@ export function CreateMethodToggle({
         role="tab"
         aria-selected={value === 'manual'}
         aria-controls={manualPanelId}
-        id="manual-tab"
+        id={manualTabId}
         disabled={disabled}
         onClick={() => onChange('manual')}
         className={cn(
@@ -53,7 +61,7 @@ export function CreateMethodToggle({
         role="tab"
         aria-selected={value === 'pdf'}
         aria-controls={pdfPanelId}
-        id="pdf-tab"
+        id={pdfTabId}
         disabled={disabled}
         onClick={() => onChange('pdf')}
         className={cn(

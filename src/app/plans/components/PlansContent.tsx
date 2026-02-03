@@ -46,9 +46,10 @@ export async function PlansContent() {
     redirect('/sign-in?redirect_url=/plans');
   }
 
+  const db = getDb();
   const [summaries, usage] = await Promise.all([
-    getPlanSummariesForUser(user.id),
-    getUsageSummary(user.id),
+    getPlanSummariesForUser(user.id, db),
+    getUsageSummary(user.id, db),
   ]);
 
   if (!summaries.length) {

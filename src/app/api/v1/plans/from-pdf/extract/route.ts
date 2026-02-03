@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import {
   type PlainHandler,
   withAuthAndRateLimit,
@@ -6,7 +8,9 @@ import {
 import { checkPdfSizeLimit, validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 import { json } from '@/lib/api/response';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { logger } from '@/lib/logging/logger';
 import { extractTextFromPdf } from '@/lib/pdf/extract';
+import { scanBufferForMalware } from '@/lib/security/malware-scanner';
 
 export type PdfErrorCode =
   | 'FILE_TOO_LARGE'
@@ -14,13 +18,45 @@ export type PdfErrorCode =
   | 'NO_TEXT'
   | 'INVALID_FILE'
   | 'PASSWORD_PROTECTED'
-  | 'QUOTA_EXCEEDED';
+  | 'QUOTA_EXCEEDED'
+  | 'MALWARE_DETECTED'
+  | 'SCAN_FAILED';
 
 const errorResponse = (message: string, code: PdfErrorCode, status: number) =>
   json({ success: false, error: message, code }, { status });
 
 const toExtractionError = (message: string, status = 400) =>
   errorResponse(message, 'INVALID_FILE', status);
+
+const fileSchema = z
+  .instanceof(File)
+  .refine((file) => file.size > 0, 'PDF file is empty.')
+  .refine(
+    (file) => file.type === 'application/pdf',
+    'Only PDF files are supported.'
+  );
+
+const formDataSchema = z
+  .object({
+    file: fileSchema,
+  })
+  .strict();
+
+const isPdfMagicBytes = (buffer: Buffer): boolean => {
+  const signature = Buffer.from('%PDF-', 'utf8');
+  if (buffer.length < signature.length) {
+    return false;
+  }
+  return buffer.subarray(0, signature.length).equals(signature);
+};
+
+function parseFormDataToObject(formData: FormData): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of formData.entries()) {
+    result[key] = value;
+  }
+  return result;
+}
 
 export const POST: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
@@ -32,19 +68,17 @@ export const POST: PlainHandler = withErrorBoundary(
     }
 
     const formData = await req.formData();
-    const file = formData.get('file');
+    const formObject = parseFormDataToObject(formData);
 
-    if (!(file instanceof File)) {
-      return toExtractionError('PDF file is required.');
+    const parseResult = formDataSchema.safeParse(formObject);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0];
+      const message = firstError?.message ?? 'Invalid request.';
+      const isMimeError = message.includes('PDF files');
+      return toExtractionError(message, isMimeError ? 415 : 400);
     }
 
-    if (file.size === 0) {
-      return toExtractionError('PDF file is empty.');
-    }
-
-    if (!file.type || file.type !== 'application/pdf') {
-      return toExtractionError('Only PDF files are supported.', 415);
-    }
+    const { file } = parseResult.data;
 
     const sizeCheck = await checkPdfSizeLimit(user.id, file.size);
     if (!sizeCheck.allowed) {
@@ -52,6 +86,36 @@ export const POST: PlainHandler = withErrorBoundary(
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    if (!isPdfMagicBytes(buffer)) {
+      return toExtractionError('Invalid PDF file format.', 415);
+    }
+
+    try {
+      const scanResult = await scanBufferForMalware(buffer);
+      if (!scanResult.clean) {
+        logger.warn(
+          { userId: user.id, threat: scanResult.threat, fileSize: file.size },
+          'Malware detected in uploaded PDF'
+        );
+        return errorResponse(
+          'File rejected due to security concerns.',
+          'MALWARE_DETECTED',
+          400
+        );
+      }
+    } catch (error) {
+      logger.error(
+        { userId: user.id, error, fileSize: file.size },
+        'Malware scan failed for uploaded PDF'
+      );
+      return errorResponse(
+        'Unable to verify file security. Please try again.',
+        'SCAN_FAILED',
+        500
+      );
+    }
+
     const extraction = await extractTextFromPdf(buffer);
 
     if (!extraction.success) {

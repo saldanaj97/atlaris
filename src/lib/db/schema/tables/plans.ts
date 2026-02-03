@@ -13,7 +13,12 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { generationStatus, learningStyle, skillLevel } from '../../enums';
+import {
+  generationStatus,
+  learningStyle,
+  planOrigin,
+  skillLevel,
+} from '../../enums';
 import { timestampFields } from '../helpers';
 import {
   planOwnedByCurrentUser,
@@ -36,8 +41,8 @@ export const learningPlans = pgTable(
     learningStyle: learningStyle('learning_style').notNull(),
     startDate: date('start_date'),
     deadlineDate: date('deadline_date'),
-    visibility: text('visibility').notNull().default('private'), // private | public
-    origin: text('origin').notNull().default('ai'), // ai | template | manual | pdf
+    visibility: text('visibility').notNull().default('private'),
+    origin: planOrigin('origin').notNull().default('ai'),
     generationStatus: generationStatus('generation_status')
       .notNull()
       .default('generating'),
@@ -56,6 +61,7 @@ export const learningPlans = pgTable(
       table.userId,
       table.generationStatus
     ),
+    index('idx_learning_plans_user_origin').on(table.userId, table.origin),
 
     // RLS Policies (session-variable-based for Neon)
     // Note: Public plan access will be handled at application level

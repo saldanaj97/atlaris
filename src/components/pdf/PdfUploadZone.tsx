@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { clientLogger } from '@/lib/logging/client';
 import { FileText, Loader2, Upload } from 'lucide-react';
 import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react';
 import React, { useCallback, useId, useRef, useState } from 'react';
@@ -25,8 +26,42 @@ export function PdfUploadZone({
   error,
 }: PdfUploadZoneProps): React.ReactElement {
   const [isDragging, setIsDragging] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
+
+  const isPdfMagicBytes = useCallback(async (file: File): Promise<boolean> => {
+    try {
+      const buffer = await file.slice(0, 5).arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      const magicBytes = [0x25, 0x50, 0x44, 0x46, 0x2d];
+      if (bytes.length < magicBytes.length) {
+        return false;
+      }
+      return magicBytes.every((byte, index) => bytes[index] === byte);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const validatePdfFile = useCallback(
+    async (file: File): Promise<boolean> => {
+      const hasPdfExtension = file.name.toLowerCase().endsWith('.pdf');
+      const hasPdfMime = file.type === 'application/pdf';
+      if (!hasPdfExtension || !hasPdfMime) {
+        setLocalError('Please select a valid PDF file.');
+        return false;
+      }
+      const hasMagicBytes = await isPdfMagicBytes(file);
+      if (!hasMagicBytes) {
+        setLocalError('File does not appear to be a valid PDF.');
+        return false;
+      }
+      setLocalError(null);
+      return true;
+    },
+    [isPdfMagicBytes]
+  );
 
   const handleDragOver = useCallback(
     (e: DragEvent) => {
@@ -46,7 +81,7 @@ export function PdfUploadZone({
   }, []);
 
   const handleDrop = useCallback(
-    (e: DragEvent) => {
+    async (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
@@ -54,28 +89,45 @@ export function PdfUploadZone({
       if (disabled || isUploading) return;
 
       const files = Array.from(e.dataTransfer.files);
-      const pdfFile = files.find((file) => file.type === 'application/pdf');
+      const pdfFile = files.find(
+        (file) =>
+          file.type === 'application/pdf' &&
+          file.name.toLowerCase().endsWith('.pdf')
+      );
 
-      if (pdfFile) {
+      if (!pdfFile) {
+        setLocalError('Please select a PDF file.');
+        return;
+      }
+
+      const isValid = await validatePdfFile(pdfFile);
+      if (isValid) {
         onFileSelect(pdfFile);
       }
     },
-    [disabled, isUploading, onFileSelect]
+    [disabled, isUploading, onFileSelect, validatePdfFile]
   );
 
   const handleFileInputChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
+    async (e: ChangeEvent<HTMLInputElement>) => {
       if (disabled || isUploading) return;
       const files = e.target.files;
       if (!files || !files[0]) return;
       const file = files[0];
-      const isPdf =
-        file.type === 'application/pdf' ||
-        file.name.toLowerCase().endsWith('.pdf');
-      if (!isPdf) return;
-      onFileSelect(file);
+      try {
+        const isValid = await validatePdfFile(file);
+        if (!isValid) {
+          e.target.value = '';
+          return;
+        }
+        onFileSelect(file);
+      } catch (error) {
+        clientLogger.error('Failed to read selected PDF file', { error });
+        setLocalError('Unable to read the selected file. Please try again.');
+        e.target.value = '';
+      }
     },
-    [disabled, isUploading, onFileSelect]
+    [disabled, isUploading, onFileSelect, validatePdfFile]
   );
 
   const handleClick = useCallback(() => {
@@ -156,9 +208,9 @@ export function PdfUploadZone({
             </Button>
           )}
 
-          {error && (
+          {(localError ?? error) && (
             <div className="bg-destructive/10 border-destructive/20 text-destructive mt-4 rounded-lg border px-4 py-2 text-sm">
-              {error}
+              {localError ?? error}
             </div>
           )}
 

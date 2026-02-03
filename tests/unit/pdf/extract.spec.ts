@@ -139,47 +139,15 @@ describe('pdf validation', () => {
     }
   });
 
-  it('rejects NaN file size', () => {
+  it.each([
+    ['NaN', Number.NaN],
+    ['negative', -100],
+    ['Infinity', Number.POSITIVE_INFINITY],
+  ])('rejects %s file size', (_label, sizeBytes) => {
     const result = validatePdfFile(
       {
         mimeType: 'application/pdf',
-        sizeBytes: NaN,
-        pageCount: 1,
-        text: 'Hello',
-      },
-      { maxSizeBytes: 5 * MB, maxPages: 50 }
-    );
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toBe('invalid_size');
-      expect(result.message).toContain('Invalid file size');
-    }
-  });
-
-  it('rejects negative file size', () => {
-    const result = validatePdfFile(
-      {
-        mimeType: 'application/pdf',
-        sizeBytes: -100,
-        pageCount: 1,
-        text: 'Hello',
-      },
-      { maxSizeBytes: 5 * MB, maxPages: 50 }
-    );
-
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toBe('invalid_size');
-      expect(result.message).toContain('Invalid file size');
-    }
-  });
-
-  it('rejects Infinity file size', () => {
-    const result = validatePdfFile(
-      {
-        mimeType: 'application/pdf',
-        sizeBytes: Infinity,
+        sizeBytes,
         pageCount: 1,
         text: 'Hello',
       },
@@ -247,7 +215,7 @@ describe('pdf validation', () => {
     }
   });
 
-  it('allows zero file size and page count', () => {
+  it('rejects zero page count', () => {
     const result = validatePdfFile(
       {
         mimeType: 'application/pdf',
@@ -258,10 +226,9 @@ describe('pdf validation', () => {
       { maxSizeBytes: 5 * MB, maxPages: 50 }
     );
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.sizeBytes).toBe(0);
-      expect(result.pageCount).toBe(0);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe('empty_document');
     }
   });
 });

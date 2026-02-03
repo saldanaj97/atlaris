@@ -3,8 +3,10 @@ import { pathToFileURL } from 'node:url';
 import { PDFParse, PasswordException } from 'pdf-parse';
 import { getPath } from 'pdf-parse/worker';
 
-import { detectStructure } from './structure';
-import type { PdfExtractionResponse } from './types';
+import { logger } from '@/lib/logging/logger';
+
+import { detectStructure } from '@/lib/pdf/structure';
+import type { PdfExtractionResponse } from '@/lib/pdf/types';
 
 const PDF_HEADER = '%PDF-';
 const ENCRYPT_TOKEN = '/Encrypt';
@@ -121,10 +123,12 @@ export const extractTextFromPdf = async (
       };
     }
 
+    logger.error({ error, rawMessage: message }, 'PDF extraction failed');
+
     return {
       success: false,
       error: 'extraction_failed',
-      message,
+      message: 'An error occurred during extraction.',
     };
   } finally {
     await parser?.destroy().catch(() => {

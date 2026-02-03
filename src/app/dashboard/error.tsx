@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
 import { useEffect } from 'react';
+import type { JSX } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -13,7 +14,10 @@ interface ErrorProps {
  * Route-level error boundary for dashboard page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function DashboardError({ error, reset }: ErrorProps) {
+export default function DashboardError({
+  error,
+  reset,
+}: ErrorProps): JSX.Element {
   useEffect(() => {
     clientLogger.error('Dashboard error:', {
       errorDigest: error.digest,

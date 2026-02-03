@@ -7,12 +7,13 @@ import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
 import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
 
 /**
  * Async component that fetches user subscription data and renders the model selector.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function ModelSelectionCard() {
+export async function ModelSelectionCard(): Promise<JSX.Element> {
   const clerkUserId = await getEffectiveClerkUserId();
   if (!clerkUserId) redirect('/sign-in?redirect_url=/settings/ai');
 
@@ -52,7 +53,7 @@ export async function ModelSelectionCard() {
  * Skeleton for the Model Selection card.
  * Shown while the async component is loading.
  */
-export function ModelSelectionCardSkeleton() {
+export function ModelSelectionCardSkeleton(): JSX.Element {
   return (
     <Card className="p-6">
       <Skeleton className="mb-4 h-6 w-36" />

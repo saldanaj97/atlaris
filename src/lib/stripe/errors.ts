@@ -7,13 +7,11 @@ import { AppError } from '@/lib/api/errors';
  * This is typically an internal error as authenticated users should exist.
  */
 export class UserNotFoundError extends AppError {
-  constructor(userId?: string, details?: unknown) {
+  constructor(userId?: string, details?: Record<string, unknown>) {
     super('User not found', {
       status: 500,
       code: 'USER_NOT_FOUND',
-      details: userId
-        ? { userId, ...(details as Record<string, unknown>) }
-        : details,
+      details: userId ? { userId, ...(details ?? {}) } : details,
     });
   }
 }
@@ -23,14 +21,16 @@ export class UserNotFoundError extends AppError {
  * This indicates a database concurrency issue or transaction failure.
  */
 export class UsageMetricsLockError extends AppError {
-  constructor(userId?: string, month?: string, details?: unknown) {
+  constructor(
+    userId?: string,
+    month?: string,
+    details?: Record<string, unknown>
+  ) {
     super('Failed to lock usage metrics', {
       status: 503,
       code: 'USAGE_METRICS_LOCK_FAILED',
       details:
-        userId || month
-          ? { userId, month, ...(details as Record<string, unknown>) }
-          : details,
+        userId || month ? { userId, month, ...(details ?? {}) } : details,
     });
   }
 }
@@ -39,14 +39,16 @@ export class UsageMetricsLockError extends AppError {
  * Error thrown when usage metrics cannot be loaded from the database.
  */
 export class UsageMetricsLoadError extends AppError {
-  constructor(userId?: string, month?: string, details?: unknown) {
+  constructor(
+    userId?: string,
+    month?: string,
+    details?: Record<string, unknown>
+  ) {
     super('Failed to load usage metrics', {
       status: 500,
       code: 'USAGE_METRICS_LOAD_FAILED',
       details:
-        userId || month
-          ? { userId, month, ...(details as Record<string, unknown>) }
-          : details,
+        userId || month ? { userId, month, ...(details ?? {}) } : details,
     });
   }
 }
@@ -55,13 +57,17 @@ export class UsageMetricsLoadError extends AppError {
  * Error thrown when a user has reached their plan limit for their subscription tier.
  */
 export class PlanLimitReachedError extends AppError {
-  constructor(currentCount?: number, limit?: number, details?: unknown) {
+  constructor(
+    currentCount?: number,
+    limit?: number,
+    details?: Record<string, unknown>
+  ) {
     super('Plan limit reached for current subscription tier.', {
       status: 403,
       code: 'PLAN_LIMIT_REACHED',
       details:
         currentCount !== undefined || limit !== undefined
-          ? { currentCount, limit, ...(details as Record<string, unknown>) }
+          ? { currentCount, limit, ...(details ?? {}) }
           : details,
       classification: 'rate_limit',
     });

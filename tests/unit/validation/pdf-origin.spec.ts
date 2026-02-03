@@ -40,4 +40,29 @@ describe('createLearningPlanSchema PDF origin', () => {
 
     expect(result.success).toBe(true);
   });
+
+  it('rejects extractedContent for non-pdf origin', () => {
+    const result = createLearningPlanSchema.safeParse({
+      ...baseInput,
+      origin: 'ai',
+      extractedContent: {
+        mainTopic: 'Intro to TypeScript',
+        sections: [
+          {
+            title: 'Basics',
+            content: 'Types, interfaces, and functions.',
+            level: 1,
+          },
+        ],
+      },
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const flatErrors = result.error.flatten();
+      expect(flatErrors.fieldErrors.extractedContent).toEqual([
+        'extractedContent is only allowed for PDF-based plans.',
+      ]);
+    }
+  });
 });

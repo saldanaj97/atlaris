@@ -11,7 +11,7 @@ import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
   weeklyHoursSchema,
-} from './shared';
+} from '@/lib/validation/shared';
 
 const SKILL_LEVEL_ENUM = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
 const LEARNING_STYLE_ENUM = z.enum(

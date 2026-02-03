@@ -36,6 +36,13 @@
       "when": 1769800000000,
       "tag": "0004_fix_security_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1770080310556,
+      "tag": "0005_clear_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

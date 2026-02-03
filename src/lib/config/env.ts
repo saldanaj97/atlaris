@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
 import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
 
@@ -8,6 +10,9 @@ const normalize = (value: string | undefined | null): string | undefined => {
   const trimmed = value.trim();
   return trimmed === '' ? undefined : trimmed;
 };
+
+const APP_URL_SCHEMA = z.string().url();
+const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
 
 // TODO: Consider using zod for parsing and validation of numeric env vars
 function toNumber(value: string | undefined): number | undefined;
@@ -34,13 +39,10 @@ export function requireEnv(key: string): string {
 }
 
 const ensureServerRuntime = () => {
-  // Allow Node-based test environments (e.g., Vitest + JSDOM) where `window` exists
-  // but execution is still in Node.js (presents `process.versions.node`).
+  // Allow Node-based test environments (e.g., Vitest + JSDOM) where `window` exists.
   if (typeof window !== 'undefined') {
-    const hasProcess = typeof process !== 'undefined';
-    const isNodeLike = hasProcess && Boolean(process.versions?.node);
     const isVitest = optionalEnv('VITEST_WORKER_ID');
-    if (!isNodeLike && !isVitest) {
+    if (!isVitest) {
       throw new Error(
         'Attempted to access a server-only environment variable in the browser bundle.'
       );
@@ -171,10 +173,31 @@ export const appEnv = {
    * Required in production, falls back to localhost in development/test environments.
    */
   get url(): string {
-    if (isProdRuntime) {
-      return getServerRequired('APP_URL');
+    if (!isTestRuntime && serverOptionalCache.has(APP_URL_CACHE_KEY)) {
+      const cached = serverOptionalCache.get(APP_URL_CACHE_KEY);
+      if (cached) {
+        return cached;
+      }
     }
-    return getServerOptional('APP_URL') ?? 'http://localhost:3000';
+
+    const raw = isProdRuntime
+      ? getServerRequired('APP_URL')
+      : (getServerOptional('APP_URL') ?? 'http://localhost:3000');
+    const parsed = APP_URL_SCHEMA.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error('APP_URL must be a valid absolute URL');
+    }
+    if (isProdRuntime && !parsed.data.startsWith('https://')) {
+      throw new Error('APP_URL must use https in production');
+    }
+    const normalized = parsed.data.replace(/\/$/, '');
+    if (!isTestRuntime) {
+      serverOptionalCache.set(APP_URL_CACHE_KEY, normalized);
+    }
+    return normalized;
+  },
+  get maintenanceMode(): boolean {
+    return getServerOptional('MAINTENANCE_MODE') === 'true';
   },
 } as const;
 

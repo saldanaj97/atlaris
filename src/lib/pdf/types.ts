@@ -23,6 +23,7 @@ export interface PdfExtractionError {
 export type PdfExtractionResponse = PdfExtractionResult | PdfExtractionError;
 
 export interface ExtractedSection {
+  id?: string;
   title: string;
   content: string;
   level: number;
@@ -50,7 +51,8 @@ export type PdfValidationResult =
         | 'too_many_pages'
         | 'no_text'
         | 'invalid_size'
-        | 'invalid_page_count';
+        | 'invalid_page_count'
+        | 'empty_document';
       message: string;
     };
 

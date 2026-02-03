@@ -46,6 +46,7 @@ describe('sanitizePlainText', () => {
       const input =
         'Task description <!-- micro-explanation-task123 -->\nExplanation text';
       const result = sanitizePlainText(input);
+      // sanitize-html preserves surrounding whitespace when stripping comments.
       expect(result).toBe('Task description \nExplanation text');
     });
   });
@@ -176,8 +177,7 @@ describe('sanitizePlainText', () => {
     it('should handle HTML comments ending with --!>', () => {
       const input = 'text <!-- comment --!> more';
       const result = sanitizePlainText(input);
-      expect(result).not.toContain('<!--');
-      expect(result).not.toContain('--!>');
+      expect(result).toBe('text');
     });
 
     it('should handle script inside HTML comment', () => {
@@ -188,6 +188,7 @@ describe('sanitizePlainText', () => {
     });
 
     it('should not be fooled by encoded entities', () => {
+      // Encoded entities become literal text. Output is safe in text nodes only.
       const input = '&lt;script&gt;alert(1)&lt;/script&gt;';
       const result = sanitizePlainText(input);
       expect(result).toBe('<script>alert(1)</script>');
@@ -216,7 +217,7 @@ describe('sanitizePlainText', () => {
     it('should handle tabs and whitespace in tags', () => {
       const input = '<script\t>alert(1)</script\n>';
       const result = sanitizePlainText(input);
-      expect(result).not.toContain('alert');
+      expect(result).toBe('');
     });
   });
 

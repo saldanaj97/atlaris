@@ -36,7 +36,8 @@ export const GET = withErrorBoundary(
       );
     }
 
-    const summaries = await getPlanSummariesForUser(user.id);
+    const db = getDb();
+    const summaries = await getPlanSummariesForUser(user.id, db);
     return json(summaries);
   })
 );

@@ -227,14 +227,19 @@ export async function incrementUsage(
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }
 
+export type IncrementPdfPlanUsageOptions = {
+  now?: () => Date;
+};
+
 /**
  * Increment PDF plan usage counter for the current month
  */
 export async function incrementPdfPlanUsage(
   userId: string,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient = getDb(),
+  opts?: IncrementPdfPlanUsageOptions
 ): Promise<void> {
-  const month = getCurrentMonth();
+  const month = getCurrentMonth(opts?.now?.());
 
   await getOrCreateUsageMetrics(userId, month, dbClient);
 
@@ -578,13 +583,16 @@ export async function decrementPdfPlanUsage(
 ): Promise<void> {
   const month = getCurrentMonth();
 
-  const [before] = await dbClient
-    .select({ pdfPlansGenerated: usageMetrics.pdfPlansGenerated })
-    .from(usageMetrics)
+  const [updated] = await dbClient
+    .update(usageMetrics)
+    .set({
+      pdfPlansGenerated: sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
+      updatedAt: new Date(),
+    })
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
-    .limit(1);
+    .returning({ pdfPlansGenerated: usageMetrics.pdfPlansGenerated });
 
-  if (!before) {
+  if (!updated) {
     logger.warn(
       { userId, month, action: 'decrementPdfPlanUsage' },
       'No usage metrics found to decrement'
@@ -592,19 +600,12 @@ export async function decrementPdfPlanUsage(
     return;
   }
 
-  await dbClient
-    .update(usageMetrics)
-    .set({
-      pdfPlansGenerated: sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
-    })
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
-
   logger.info(
     {
       userId,
       month,
       action: 'decrementPdfPlanUsage',
-      priorCount: before.pdfPlansGenerated,
+      newCount: updated.pdfPlansGenerated,
     },
     'PDF plan usage decremented'
   );

@@ -1,8 +1,9 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import React from 'react';
+import { AlertTriangle, ArrowLeft } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 
 const ERROR_MESSAGES = {
   FILE_TOO_LARGE: {

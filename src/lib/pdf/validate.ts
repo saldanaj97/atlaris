@@ -65,6 +65,14 @@ export const validatePdfFile = (
     };
   }
 
+  if (input.pageCount === 0) {
+    return {
+      success: false,
+      error: 'empty_document',
+      message: 'PDF has zero pages.',
+    };
+  }
+
   if (input.pageCount > limits.maxPages) {
     return {
       success: false,

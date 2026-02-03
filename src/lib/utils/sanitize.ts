@@ -5,6 +5,9 @@ import sanitizeHtml from 'sanitize-html';
  * Uses the robust `sanitize-html` library to handle edge cases that naive regex misses
  * (malformed closing tags like `</script >`, mixed case tags, unusual comment terminators).
  *
+ * WARNING: This function decodes HTML entities (e.g., &lt; → <, &amp; → &).
+ * The output is NOT safe for direct HTML rendering - use proper escaping if needed.
+ *
  * @param input - The input string to sanitize
  * @param maxLength - Maximum length of the output (default: 10000 characters)
  * @returns Sanitized plain text string with no HTML tags or script/style content
@@ -18,7 +21,6 @@ export function sanitizePlainText(input: string, maxLength = 10_000): string {
     allowedTags: [],
     allowedAttributes: {},
     disallowedTagsMode: 'discard',
-    textFilter: (text: string) => text,
   });
 
   // SECURITY: decode &amp; LAST to prevent double-decoding (e.g., &amp;lt; -> &lt; -> <)

@@ -3,7 +3,10 @@ import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { redirect } from 'next/navigation';
 
-import { findActivePlan, generateActivities } from './activity-utils';
+import {
+  findActivePlan,
+  generateActivities,
+} from '@/app/dashboard/components/activity-utils';
 import { ActivityFeedClient } from './ActivityFeedClient';
 import { ActivityStreamSidebar } from './ActivityStreamSidebar';
 import { ResumeLearningHero } from './ResumeLearningHero';

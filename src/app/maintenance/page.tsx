@@ -1,9 +1,10 @@
 import { ShieldAlert } from 'lucide-react';
+import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
-export default function MaintenancePage() {
+export default function MaintenancePage(): JSX.Element {
   return (
     <div className="flex min-h-screen items-center justify-center p-5">
       <Card className="w-full max-w-2xl text-center">
@@ -11,7 +12,10 @@ export default function MaintenancePage() {
           {/* Icon */}
           <div className="flex justify-center">
             <div className="border-border bg-primary animate-pulse rounded-full border-2 p-5 shadow-lg motion-reduce:animate-none">
-              <ShieldAlert className="text-primary-foreground h-10 w-10" />
+              <ShieldAlert
+                className="text-primary-foreground h-10 w-10"
+                aria-hidden="true"
+              />
             </div>
           </div>
 

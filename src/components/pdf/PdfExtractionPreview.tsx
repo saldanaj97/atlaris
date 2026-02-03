@@ -18,6 +18,7 @@ import {
   FileText,
   Sparkles,
 } from 'lucide-react';
+import { nanoid } from 'nanoid';
 import React, { useId, useState } from 'react';
 
 export interface PdfPlanSettings {
@@ -26,6 +27,8 @@ export interface PdfPlanSettings {
   learningStyle: string;
   deadlineWeeks: string;
 }
+
+type SectionWithId = ExtractedSection & { id: string };
 
 interface PdfExtractionPreviewProps {
   mainTopic: string;
@@ -50,8 +53,16 @@ export function PdfExtractionPreview({
   onSwitchToManual,
   isGenerating = false,
 }: PdfExtractionPreviewProps): React.JSX.Element {
+  const sectionSeed = useId();
   const [mainTopic, setMainTopic] = useState(initialTopic);
-  const [sections, setSections] = useState(initialSections);
+  const [sections, setSections] = useState<SectionWithId[]>(() =>
+    initialSections.map(
+      (section): SectionWithId => ({
+        ...section,
+        id: section.id ?? `${sectionSeed}-${nanoid()}`,
+      })
+    )
+  );
   const [skillLevel, setSkillLevel] = useState('beginner');
   const [weeklyHours, setWeeklyHours] = useState('3-5');
   const [learningStyle, setLearningStyle] = useState('mixed');
@@ -155,18 +166,18 @@ export function PdfExtractionPreview({
               >
                 {sections.map((section, index) => (
                   <div
-                    key={`section-${section.title.slice(0, 20)}-${index}`}
+                    key={section.id}
                     className="dark:bg-input/20 dark:border-input/50 bg-background/50 border-border hover:border-primary/30 rounded-xl border p-4 transition"
                   >
                     <div className="mb-2 flex items-start justify-between gap-3">
                       <label
                         className="sr-only"
-                        htmlFor={`section-title-${index}`}
+                        htmlFor={`section-title-${section.id}`}
                       >
                         Section {index + 1} title
                       </label>
                       <input
-                        id={`section-title-${index}`}
+                        id={`section-title-${section.id}`}
                         type="text"
                         value={section.title}
                         onChange={(e) =>
@@ -181,12 +192,12 @@ export function PdfExtractionPreview({
                     </div>
                     <label
                       className="sr-only"
-                      htmlFor={`section-content-${index}`}
+                      htmlFor={`section-content-${section.id}`}
                     >
                       Section {index + 1} content
                     </label>
                     <textarea
-                      id={`section-content-${index}`}
+                      id={`section-content-${section.id}`}
                       value={section.content}
                       onChange={(e) =>
                         handleSectionEdit(index, 'content', e.target.value)

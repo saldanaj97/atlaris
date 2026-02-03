@@ -75,9 +75,6 @@ vi.mock('@/lib/mappers/learningPlans', () => ({
 }));
 
 // Mock UnifiedPlanInput to simplify form submission tests
-let capturedOnSubmit: ((data: unknown) => void) | null = null;
-let capturedIsSubmitting = false;
-
 vi.mock('@/app/plans/new/components/plan-form', () => ({
   UnifiedPlanInput: ({
     onSubmit,
@@ -85,30 +82,26 @@ vi.mock('@/app/plans/new/components/plan-form', () => ({
   }: {
     onSubmit: (data: unknown) => void;
     isSubmitting: boolean;
-  }) => {
-    capturedOnSubmit = onSubmit;
-    capturedIsSubmitting = isSubmitting;
-    return (
-      <div data-testid="unified-plan-input">
-        <span data-testid="is-submitting">{String(isSubmitting)}</span>
-        <button
-          type="button"
-          data-testid="mock-submit"
-          onClick={() =>
-            onSubmit({
-              topic: 'Test Topic',
-              skillLevel: 'beginner',
-              weeklyHours: '3-5',
-              learningStyle: 'mixed',
-              deadlineWeeks: '4',
-            })
-          }
-        >
-          Submit
-        </button>
-      </div>
-    );
-  },
+  }) => (
+    <div data-testid="unified-plan-input">
+      <span data-testid="is-submitting">{String(isSubmitting)}</span>
+      <button
+        type="button"
+        data-testid="mock-submit"
+        onClick={() =>
+          onSubmit({
+            topic: 'Test Topic',
+            skillLevel: 'beginner',
+            weeklyHours: '3-5',
+            learningStyle: 'mixed',
+            deadlineWeeks: '4',
+          })
+        }
+      >
+        Submit
+      </button>
+    </div>
+  ),
 }));
 
 describe('ManualCreatePanel', () => {
@@ -117,7 +110,6 @@ describe('ManualCreatePanel', () => {
     pushMock.mockClear();
     mockStartGeneration.mockClear();
     mockCancel.mockClear();
-    capturedOnSubmit = null;
     Object.assign(mockState, {
       status: 'idle' as const,
       modules: [],

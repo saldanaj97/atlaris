@@ -1,8 +1,10 @@
+import { nanoid } from 'nanoid';
+
 import type { ExtractedSection, ExtractedStructure } from './types';
 
 const HEADER_MAX_LENGTH = 120;
 
-const headerPatterns = [
+const HEADER_PATTERNS = [
   /^[A-Z0-9][A-Z0-9\s\-:]+$/,
   /^\d+(?:\.\d+)*[.)]\s+.+$/,
   /^[IVXLC]+\.[\s]+.+$/,
@@ -13,7 +15,7 @@ const isHeaderLine = (line: string): boolean => {
     return false;
   }
 
-  return headerPatterns.some((pattern) => pattern.test(line));
+  return HEADER_PATTERNS.some((pattern) => pattern.test(line));
 };
 
 const getHeaderLevel = (line: string): number => {
@@ -46,6 +48,7 @@ export const detectStructure = (text: string): ExtractedStructure => {
       if (currentSection) {
         sections.push({
           ...currentSection,
+          id: nanoid(),
           content: currentSection.content.trim(),
         });
       }
@@ -77,6 +80,7 @@ export const detectStructure = (text: string): ExtractedStructure => {
   if (currentSection) {
     sections.push({
       ...currentSection,
+      id: nanoid(),
       content: currentSection.content.trim(),
     });
   }

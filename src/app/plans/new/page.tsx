@@ -9,14 +9,22 @@ import {
   type CreateMethod,
 } from './components/CreateMethodToggle';
 import { ManualCreatePanel } from './components/ManualCreatePanel';
-import { PdfCreatePanel } from './components/PdfCreatePanel';
+
+const PdfCreatePanel = React.lazy(() =>
+  import('./components/PdfCreatePanel').then((module) => ({
+    default: module.PdfCreatePanel,
+  }))
+);
 
 function CreatePlanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const panelIdBase = useId();
+  const tabIdBase = useId();
   const manualPanelId = `${panelIdBase}-manual-panel`;
   const pdfPanelId = `${panelIdBase}-pdf-panel`;
+  const manualTabId = `${tabIdBase}-manual-tab`;
+  const pdfTabId = `${tabIdBase}-pdf-tab`;
 
   const methodParam = searchParams.get('method');
   const currentMethod: CreateMethod = methodParam === 'pdf' ? 'pdf' : 'manual';
@@ -81,13 +89,15 @@ function CreatePlanContent() {
           onChange={handleMethodChange}
           manualPanelId={manualPanelId}
           pdfPanelId={pdfPanelId}
+          manualTabId={manualTabId}
+          pdfTabId={pdfTabId}
         />
       </div>
 
       <div
         id={manualPanelId}
         role="tabpanel"
-        aria-labelledby="manual-tab"
+        aria-labelledby={manualTabId}
         aria-hidden={currentMethod !== 'manual'}
         className={currentMethod !== 'manual' ? 'hidden' : undefined}
       >
@@ -100,11 +110,19 @@ function CreatePlanContent() {
       <div
         id={pdfPanelId}
         role="tabpanel"
-        aria-labelledby="pdf-tab"
+        aria-labelledby={pdfTabId}
         aria-hidden={currentMethod !== 'pdf'}
         className={currentMethod !== 'pdf' ? 'hidden' : undefined}
       >
-        <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+        <Suspense
+          fallback={
+            <div className="text-muted-foreground text-center text-sm">
+              Loading PDF options...
+            </div>
+          }
+        >
+          <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+        </Suspense>
       </div>
     </>
   );
