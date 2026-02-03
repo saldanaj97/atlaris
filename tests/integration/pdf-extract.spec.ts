@@ -25,7 +25,11 @@ const createPdfRequest = () => {
   const pdfHeader = '%PDF-1.4\n%%EOF';
   const buffer = Buffer.from(pdfHeader, 'utf8');
   const file = new File([buffer], 'sample.pdf', { type: 'application/pdf' });
-  form.append('file', file);
+  // Ensure arrayBuffer exists in the test runtime.
+  const fileWithArrayBuffer = Object.assign(file, {
+    arrayBuffer: async () => buffer,
+  });
+  form.append('file', fileWithArrayBuffer);
 
   const request = new Request(BASE_URL, {
     method: 'POST',
