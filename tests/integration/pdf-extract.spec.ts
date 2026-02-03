@@ -27,9 +27,14 @@ const createPdfRequest = () => {
   const file = new File([buffer], 'sample.pdf', { type: 'application/pdf' });
   form.append('file', file);
 
-  return new Request(BASE_URL, {
+  const request = new Request(BASE_URL, {
     method: 'POST',
     body: form,
+  });
+
+  // Vitest/undici multipart parsing can drop File entries; override for stability.
+  return Object.assign(request, {
+    formData: async () => form,
   });
 };
 
