@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
 import { useEffect } from 'react';
 
 interface ErrorProps {
@@ -16,14 +16,11 @@ interface ErrorProps {
  */
 export default function BillingError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    logger.error(
-      {
-        errorDigest: error.digest,
-        message: error.message,
-        stack: error.stack,
-      },
-      'Billing page error'
-    );
+    clientLogger.error('Billing page error:', {
+      errorDigest: error.digest,
+      message: error.message,
+      stack: error.stack,
+    });
   }, [error]);
 
   return (

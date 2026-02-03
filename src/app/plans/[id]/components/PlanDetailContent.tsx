@@ -82,7 +82,7 @@ export function PlanDetailContentSkeleton() {
       {/* PlanOverviewHeader skeleton */}
       <article className="lg:col-span-2">
         {/* Cover Image Area skeleton */}
-        <div className="from-primary/20 via-accent/20 relative mb-6 overflow-hidden rounded-3xl bg-gradient-to-br to-rose-500/20 p-8 shadow-2xl">
+        <div className="from-primary/20 via-accent/20 relative mb-6 overflow-hidden rounded-3xl bg-linear-to-br to-rose-500/20 p-8 shadow-2xl">
           <div className="relative z-10 flex min-h-[280px] flex-col justify-between">
             {/* Top row: tags */}
             <div className="flex items-start justify-between">

@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
@@ -18,6 +18,7 @@ interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
   isSubmitting?: boolean;
   disabled?: boolean;
+  initialTopic?: string;
 }
 
 /**
@@ -31,13 +32,30 @@ export function UnifiedPlanInput({
   onSubmit,
   isSubmitting = false,
   disabled = false,
+  initialTopic = '',
 }: UnifiedPlanInputProps) {
   const baseId = useId();
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(initialTopic);
   const [skillLevel, setSkillLevel] = useState('beginner');
   const [weeklyHours, setWeeklyHours] = useState('3-5');
   const [learningStyle, setLearningStyle] = useState('mixed');
   const [deadlineWeeks, setDeadlineWeeks] = useState('4');
+  const topicTouchedRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      initialTopic !== undefined &&
+      initialTopic !== '' &&
+      !topicTouchedRef.current
+    ) {
+      setTopic(initialTopic);
+    }
+  }, [initialTopic]);
+
+  const handleTopicChange = (value: string) => {
+    topicTouchedRef.current = true;
+    setTopic(value);
+  };
 
   const topicInputId = `${baseId}-topic`;
 
@@ -89,7 +107,7 @@ export function UnifiedPlanInput({
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
           aria-hidden="true"
         >
-          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br opacity-40 blur-2xl dark:opacity-20" />
+          <div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-40 blur-2xl dark:opacity-20" />
         </div>
 
         {/* Topic input */}
@@ -98,13 +116,13 @@ export function UnifiedPlanInput({
             What do you want to learn?
           </label>
           <div className="flex items-start gap-3">
-            <div className="from-primary to-accent flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg">
+            <div className="from-primary to-accent flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-lg">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <textarea
               id={topicInputId}
               value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+              onChange={(e) => handleTopicChange(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="I want to learn TypeScript for React development..."
               className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[72px] w-full resize-none bg-transparent text-lg focus:outline-none"

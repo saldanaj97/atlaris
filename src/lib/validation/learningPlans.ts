@@ -9,8 +9,18 @@ import {
   type SkillLevel,
 } from '@/lib/types/db';
 
-export const TOPIC_MAX_LENGTH = 200;
-export const NOTES_MAX_LENGTH = 2000;
+import { pdfPreviewEditSchema } from './pdf';
+import {
+  NOTES_MAX_LENGTH,
+  TOPIC_MAX_LENGTH,
+  weeklyHoursSchema,
+} from './shared';
+
+export {
+  NOTES_MAX_LENGTH,
+  TOPIC_MAX_LENGTH,
+  weeklyHoursSchema,
+} from './shared';
 
 // Time constants in milliseconds
 export const MILLISECONDS_PER_WEEK = 7 * 24 * 3600 * 1000;
@@ -33,22 +43,13 @@ function enforceMaxLength(
   }
 }
 
-const skillLevelEnum = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
-const learningStyleEnum = z.enum(
+const SKILL_LEVEL_ENUM = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
+const LEARNING_STYLE_ENUM = z.enum(
   LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
 );
-const resourceTypeEnum = z.enum(
+const RESOURCE_TYPE_ENUM = z.enum(
   RESOURCE_TYPES as [ResourceType, ...ResourceType[]]
 );
-
-export const weeklyHoursSchema = z
-  .number()
-  .refine(Number.isFinite, {
-    message: 'Weekly hours must be provided as a number.',
-  })
-  .int('Weekly hours must be an integer.')
-  .min(0, 'Weekly hours cannot be negative.')
-  .max(80, 'Weekly hours cannot exceed 80.');
 
 const topicSchema = z
   .string()
@@ -108,9 +109,9 @@ export const planRegenerationOverridesSchema = z
   .object({
     topic: planTopicOverrideSchema.optional(),
     notes: planNotesOverrideSchema.optional().nullable(),
-    skillLevel: skillLevelEnum.optional(),
+    skillLevel: SKILL_LEVEL_ENUM.optional(),
     weeklyHours: weeklyHoursSchema.optional(),
-    learningStyle: learningStyleEnum.optional(),
+    learningStyle: LEARNING_STYLE_ENUM.optional(),
     startDate: planStartDateOverrideSchema.optional().nullable(),
     deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
   })
@@ -120,44 +121,65 @@ export type PlanRegenerationOverridesInput = z.infer<
   typeof planRegenerationOverridesSchema
 >;
 
-export const createLearningPlanSchema = z.object({
-  topic: topicSchema,
-  skillLevel: skillLevelEnum,
-  weeklyHours: weeklyHoursSchema,
-  learningStyle: learningStyleEnum,
-  notes: notesSchema
-    .optional()
-    .nullable()
-    .transform((value) => (value ? value : undefined)),
-  startDate: z
-    .string()
-    .trim()
-    .optional()
-    .nullable()
-    .refine(
-      (value) => !value || !Number.isNaN(Date.parse(value)),
-      'Start date must be a valid ISO date string.'
-    )
-    .transform((value) => (value ? value : undefined)),
-  deadlineDate: z
-    .string()
-    .trim()
-    .optional()
-    .nullable()
-    .refine(
-      (value) => !value || !Number.isNaN(Date.parse(value)),
-      'Deadline date must be a valid ISO date string.'
-    )
-    .transform((value) => (value ? value : undefined)),
-  visibility: z.enum(['private', 'public'] as const).default('private'),
-  origin: z.enum(['ai', 'manual', 'template'] as const).default('ai'),
-});
+export const createLearningPlanSchema = z
+  .object({
+    topic: topicSchema,
+    skillLevel: SKILL_LEVEL_ENUM,
+    weeklyHours: weeklyHoursSchema,
+    learningStyle: LEARNING_STYLE_ENUM,
+    notes: notesSchema
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : undefined)),
+    startDate: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine(
+        (value) => !value || !Number.isNaN(Date.parse(value)),
+        'Start date must be a valid ISO date string.'
+      )
+      .transform((value) => (value ? value : undefined)),
+    deadlineDate: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .refine(
+        (value) => !value || !Number.isNaN(Date.parse(value)),
+        'Deadline date must be a valid ISO date string.'
+      )
+      .transform((value) => (value ? value : undefined)),
+    visibility: z.enum(['private', 'public'] as const).default('private'),
+    origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const).default('ai'),
+    extractedContent: pdfPreviewEditSchema.optional(),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.origin === 'pdf' && !data.extractedContent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['extractedContent'],
+        message: 'extractedContent is required for PDF-based plans.',
+      });
+    }
+
+    // Forbid extractedContent when origin is NOT 'pdf'
+    if (data.origin !== 'pdf' && data.extractedContent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['extractedContent'],
+        message: 'extractedContent is only allowed for PDF-based plans.',
+      });
+    }
+  });
 
 export type CreateLearningPlanInput = z.infer<typeof createLearningPlanSchema>;
 
 export const learningPlanResourceSchema = z.object({
   id: z.string().uuid(),
-  type: resourceTypeEnum,
+  type: RESOURCE_TYPE_ENUM,
   title: z.string(),
   url: z.string().url(),
   durationMinutes: z.number().int().nonnegative().optional(),

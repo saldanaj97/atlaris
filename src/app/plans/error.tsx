@@ -1,10 +1,11 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
+import type { JSX } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -15,16 +16,13 @@ interface ErrorProps {
  * Route-level error boundary for plans list page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function PlansError({ error, reset }: ErrorProps) {
+export default function PlansError({ error, reset }: ErrorProps): JSX.Element {
   useEffect(() => {
-    logger.error(
-      {
-        errorDigest: error.digest,
-        message: error.message,
-        stack: error.stack,
-      },
-      'Plans list error'
-    );
+    clientLogger.error('Plans list error:', {
+      errorDigest: error.digest,
+      message: error.message,
+      stack: error.stack,
+    });
   }, [error]);
 
   return (

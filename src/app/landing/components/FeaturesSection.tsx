@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
  */
 
 interface Feature {
-  gradient: string;
   icon: string;
   title: string;
   description: string;
@@ -13,21 +12,18 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
-    gradient: 'from-primary to-primary-dark',
     icon: '✨',
     title: 'AI-Powered Learning',
     description:
       'Smart algorithms that understand your learning style and adapt in real-time.',
   },
   {
-    gradient: 'from-destructive to-destructive/80',
     icon: '🎯',
     title: 'Goal Tracking',
     description:
       'Set milestones and watch your progress through beautiful visualizations.',
   },
   {
-    gradient: 'from-primary to-accent',
     icon: '🔮',
     title: 'Predictive Insights',
     description:
@@ -66,13 +62,11 @@ export function FeaturesSection() {
               className="group dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10"
             >
               <div
-                className={`absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br ${feature.gradient} opacity-30 blur-2xl`}
+                className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30"
                 aria-hidden="true"
               ></div>
 
-              <div
-                className={`mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} text-2xl shadow-lg`}
-              >
+              <div className="gradient-brand-interactive mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg">
                 {feature.icon}
               </div>
               <h3 className="text-foreground mb-3 text-xl font-semibold">

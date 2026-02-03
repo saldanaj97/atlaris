@@ -3,7 +3,7 @@
 import '../../../../mocks/unit/client-logger.unit';
 import '../../../../mocks/unit/sonner.unit';
 
-import CreateNewPlanPage from '@/app/plans/new/page';
+import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
 import { clientLogger } from '@/lib/logging/client';
 import {
   act,
@@ -50,19 +50,66 @@ vi.mock('@/app/plans/[id]/components/PlanDraftView', () => ({
     onCancel: () => void;
   }) => (
     <div data-testid="plan-draft-view">
-      <button onClick={onCancel}>Cancel</button>
+      <button type="button" onClick={onCancel}>
+        Cancel
+      </button>
       <div data-testid="streaming-status">{String(state)}</div>
     </div>
   ),
 }));
 
-describe('CreateNewPlanPage', () => {
+// Mock mapOnboardingToCreateInput to return a valid payload
+const mockMappedPayload = {
+  topic: 'Test Topic',
+  skillLevel: 'beginner',
+  weeklyHours: 5,
+  learningStyle: 'mixed',
+  startDate: '2025-01-01',
+  deadlineDate: '2025-02-01',
+  visibility: 'private' as const,
+  origin: 'ai' as const,
+};
+
+vi.mock('@/lib/mappers/learningPlans', () => ({
+  mapOnboardingToCreateInput: vi.fn(() => mockMappedPayload),
+}));
+
+// Mock UnifiedPlanInput to simplify form submission tests
+vi.mock('@/app/plans/new/components/plan-form', () => ({
+  UnifiedPlanInput: ({
+    onSubmit,
+    isSubmitting,
+  }: {
+    onSubmit: (data: unknown) => void;
+    isSubmitting: boolean;
+  }) => (
+    <div data-testid="unified-plan-input">
+      <span data-testid="is-submitting">{String(isSubmitting)}</span>
+      <button
+        type="button"
+        data-testid="mock-submit"
+        onClick={() =>
+          onSubmit({
+            topic: 'Test Topic',
+            skillLevel: 'beginner',
+            weeklyHours: '3-5',
+            learningStyle: 'mixed',
+            deadlineWeeks: '4',
+          })
+        }
+      >
+        Submit
+      </button>
+    </div>
+  ),
+}));
+
+describe('ManualCreatePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     pushMock.mockClear();
     mockStartGeneration.mockClear();
     mockCancel.mockClear();
-    // Reset mock state
     Object.assign(mockState, {
       status: 'idle' as const,
       modules: [],
@@ -81,35 +128,21 @@ describe('CreateNewPlanPage', () => {
       const planId = 'plan-123';
       mockStartGeneration.mockResolvedValue(planId);
 
-      render(<CreateNewPlanPage />);
+      render(<ManualCreatePanel />);
 
-      // Find the textarea and submit button
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
+      const submitButton = screen.getByTestId('mock-submit');
 
-      // Fill in the form
-      fireEvent.change(textarea, {
-        target: { value: 'I want to learn TypeScript' },
-      });
-
-      // Submit the form
       await act(async () => {
         fireEvent.click(submitButton);
       });
 
-      // Wait for handleSubmit to complete
       await waitFor(() => {
         expect(mockStartGeneration).toHaveBeenCalledTimes(1);
       });
 
-      // Verify the payload was correctly mapped
       const callArgs = mockStartGeneration.mock.calls[0][0];
       expect(callArgs).toMatchObject({
-        topic: 'I want to learn TypeScript',
+        topic: 'Test Topic',
         skillLevel: 'beginner',
         learningStyle: 'mixed',
         visibility: 'private',
@@ -117,7 +150,6 @@ describe('CreateNewPlanPage', () => {
       });
       expect(callArgs.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
-      // Verify success toast and navigation
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalledWith(
           'Your learning plan is ready!'
@@ -133,30 +165,18 @@ describe('CreateNewPlanPage', () => {
       const planId = 'plan-456';
       mockStartGeneration.mockResolvedValue(planId);
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn React Hooks' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
       await waitFor(() => {
         expect(mockStartGeneration).toHaveBeenCalled();
       });
 
-      // Verify the mapper was called with correct structure
       const callArgs = mockStartGeneration.mock.calls[0][0];
-      expect(callArgs.topic).toBe('Learn React Hooks');
+      expect(callArgs.topic).toBe('Test Topic');
       expect(callArgs.skillLevel).toBe('beginner');
       expect(callArgs.weeklyHours).toBeGreaterThan(0);
       expect(callArgs.learningStyle).toBe('mixed');
@@ -170,33 +190,20 @@ describe('CreateNewPlanPage', () => {
       const abortError = new DOMException('Aborted', 'AbortError');
       mockStartGeneration.mockRejectedValue(abortError);
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn Vue.js' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
       await waitFor(() => {
         expect(mockStartGeneration).toHaveBeenCalled();
       });
 
-      // Wait for abort handling
       await waitFor(() => {
         expect(toast.info).toHaveBeenCalledWith('Generation cancelled');
       });
 
-      // Should not navigate on abort
       expect(pushMock).not.toHaveBeenCalled();
       expect(toast.success).not.toHaveBeenCalled();
       expect(toast.error).not.toHaveBeenCalled();
@@ -206,30 +213,17 @@ describe('CreateNewPlanPage', () => {
       const abortError = new DOMException('Aborted', 'AbortError');
       mockStartGeneration.mockRejectedValue(abortError);
 
-      // Set up streaming state to simulate mid-stream cancellation
       Object.assign(mockState, {
         status: 'generating' as const,
         planId: 'plan-789',
       });
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn Angular' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
-      // Simulate cancel button click (which also shows toast)
       const cancelButton = screen.queryByText('Cancel');
       if (cancelButton) {
         await act(async () => {
@@ -241,10 +235,8 @@ describe('CreateNewPlanPage', () => {
         expect(mockStartGeneration).toHaveBeenCalled();
       });
 
-      // Wait a bit to ensure no duplicate toasts
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Should only show cancellation toast once (either from handleSubmit or onCancel)
       const infoCalls = (toast.info as ReturnType<typeof vi.fn>).mock.calls;
       expect(infoCalls.length).toBeLessThanOrEqual(1);
     });
@@ -262,40 +254,26 @@ describe('CreateNewPlanPage', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithPlanId);
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn Node.js' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
       await waitFor(() => {
         expect(mockStartGeneration).toHaveBeenCalled();
       });
 
-      // Should show error toast with retry message
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith(
           'Generation failed. You can retry from the plan page.'
         );
       });
 
-      // Should redirect to plan page even on failure if planId exists
       await waitFor(() => {
         expect(pushMock).toHaveBeenCalledWith(`/plans/${planId}`);
       });
 
-      // Should log the error
       expect(clientLogger.error).toHaveBeenCalledWith(
         'Streaming plan generation failed',
         errorWithPlanId
@@ -313,21 +291,10 @@ describe('CreateNewPlanPage', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithData);
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn Python' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
       await waitFor(() => {
@@ -337,7 +304,6 @@ describe('CreateNewPlanPage', () => {
 
     it('should recover planId from streamingState.planId ref', async () => {
       const planId = 'plan-recovery-789';
-      // Set planId in state before error
       Object.assign(mockState, {
         status: 'generating' as const,
         planId,
@@ -350,21 +316,10 @@ describe('CreateNewPlanPage', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithoutPlanId);
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn Rust' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
       await waitFor(() => {
@@ -373,43 +328,25 @@ describe('CreateNewPlanPage', () => {
     });
   });
 
-  // Note: Tests for internal mapping function errors were removed because they
-  // required mocking internal modules which isn't possible with ES modules.
-  // The error handling behavior is tested via the generic error handling tests
-  // which cover the user-facing error toast and logging behavior.
-
   describe('handleSubmit - generic error handling', () => {
     it('should handle generic streaming errors without planId', async () => {
       const genericError = new Error('Network error');
       mockStartGeneration.mockRejectedValue(genericError);
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn Kotlin' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
       await waitFor(() => {
         expect(mockStartGeneration).toHaveBeenCalled();
       });
 
-      // Should show error toast with error message
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith('Network error');
       });
 
-      // Should not navigate without planId
       expect(pushMock).not.toHaveBeenCalled();
 
       expect(clientLogger.error).toHaveBeenCalledWith(
@@ -422,21 +359,10 @@ describe('CreateNewPlanPage', () => {
       const errorWithoutMessage = { status: 500 } as unknown as Error;
       mockStartGeneration.mockRejectedValue(errorWithoutMessage);
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn Dart' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
       await waitFor(() => {
@@ -450,7 +376,6 @@ describe('CreateNewPlanPage', () => {
   describe('UnifiedPlanInput integration', () => {
     it('should pass isSubmitting state to UnifiedPlanInput', async () => {
       const planId = 'plan-999';
-      // Make startGeneration take some time
       mockStartGeneration.mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -458,31 +383,16 @@ describe('CreateNewPlanPage', () => {
           })
       );
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      fireEvent.change(textarea, {
-        target: { value: 'Learn C++' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
-      // Button should show loading state
       await waitFor(() => {
-        expect(
-          screen.getByRole('button', { name: /generating/i })
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('is-submitting').textContent).toBe('true');
       });
 
-      // Wait for completion
       await waitFor(
         () => {
           expect(mockStartGeneration).toHaveBeenCalled();
@@ -495,32 +405,18 @@ describe('CreateNewPlanPage', () => {
       const planId = 'plan-integration-123';
       mockStartGeneration.mockResolvedValue(planId);
 
-      render(<CreateNewPlanPage />);
-
-      const textarea = screen.getByPlaceholderText(
-        /I want to learn TypeScript for React development/i
-      );
-      const submitButton = screen.getByRole('button', {
-        name: /generate my plan/i,
-      });
-
-      // Only changing the topic via textarea - other fields use defaults
-      fireEvent.change(textarea, {
-        target: { value: 'Learn TypeScript' },
-      });
+      render(<ManualCreatePanel />);
 
       await act(async () => {
-        fireEvent.click(submitButton);
+        fireEvent.click(screen.getByTestId('mock-submit'));
       });
 
       await waitFor(() => {
         expect(mockStartGeneration).toHaveBeenCalled();
       });
 
-      // Verify the form data was correctly processed with default values
       const callArgs = mockStartGeneration.mock.calls[0][0];
-      expect(callArgs.topic).toBe('Learn TypeScript');
-      // These use default values since we only changed the topic
+      expect(callArgs.topic).toBe('Test Topic');
       expect(callArgs.skillLevel).toBe('beginner');
       expect(callArgs.learningStyle).toBe('mixed');
     });
@@ -542,7 +438,7 @@ describe('CreateNewPlanPage', () => {
         ],
       });
 
-      render(<CreateNewPlanPage />);
+      render(<ManualCreatePanel />);
 
       expect(screen.getByTestId('plan-draft-view')).toBeInTheDocument();
     });
@@ -552,7 +448,7 @@ describe('CreateNewPlanPage', () => {
         status: 'idle' as const,
       });
 
-      render(<CreateNewPlanPage />);
+      render(<ManualCreatePanel />);
 
       expect(screen.queryByTestId('plan-draft-view')).not.toBeInTheDocument();
     });
@@ -563,7 +459,7 @@ describe('CreateNewPlanPage', () => {
         planId: 'plan-cancel-123',
       });
 
-      render(<CreateNewPlanPage />);
+      render(<ManualCreatePanel />);
 
       const cancelButton = screen.getByText('Cancel');
       await act(async () => {

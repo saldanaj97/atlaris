@@ -106,7 +106,11 @@ const handleAuthedGoogleCalendarSync = withAuth(
       }
 
       // Tier gate: check export quota for current subscription tier
-      const canExport = await checkExportQuota(user.id, user.subscriptionTier);
+      const canExport = await checkExportQuota(
+        user.id,
+        user.subscriptionTier,
+        db
+      );
       if (!canExport) {
         return respondJson(
           {
@@ -129,7 +133,7 @@ const handleAuthedGoogleCalendarSync = withAuth(
 
       // Increment usage after a successful sync (non-blocking)
       try {
-        await incrementExportUsage(user.id);
+        await incrementExportUsage(user.id, db);
       } catch (e) {
         logger.error(
           {

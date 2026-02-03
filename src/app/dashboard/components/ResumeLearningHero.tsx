@@ -68,7 +68,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const strokeDashoffset = circumference * (1 - progressPercent / 100);
 
   return (
-    <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-500 to-cyan-500 p-6 shadow-lg">
+    <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-teal-500 via-emerald-500 to-cyan-500 p-6 shadow-lg">
       {/* Top row: label (left) and circular progress (right) */}
       <div className="flex items-start justify-between gap-4">
         <p className="text-xs font-medium tracking-wider text-white/70 uppercase">

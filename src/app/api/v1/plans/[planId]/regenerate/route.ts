@@ -3,10 +3,10 @@ import { ZodError } from 'zod';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json, jsonError } from '@/lib/api/response';
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans } from '@/lib/db/schema';
 import { isUuid } from '@/lib/api/route-helpers';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
+import { learningPlans } from '@/lib/db/schema';
 import { enqueueJob } from '@/lib/jobs/queue';
 import {
   JOB_TYPES,
@@ -80,7 +80,8 @@ export const POST = withErrorBoundary(
     // Atomically check and increment regeneration quota (prevents TOCTOU race)
     const usageResult = await atomicCheckAndIncrementUsage(
       user.id,
-      'regeneration'
+      'regeneration',
+      db
     );
     if (!usageResult.allowed) {
       return jsonError(
@@ -90,7 +91,7 @@ export const POST = withErrorBoundary(
     }
 
     // Compute priority based on tier and topic
-    const tier = await resolveUserTier(user.id);
+    const tier = await resolveUserTier(user.id, db);
     const priority = computeJobPriority({
       tier,
       isPriorityTopic: isPriorityTopic(overrides?.topic ?? plan.topic),

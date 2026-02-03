@@ -9,6 +9,7 @@ import {
 import { GenerationResult } from '@/lib/ai/orchestrator';
 import { ParsedModule } from '@/lib/ai/parser';
 import { StreamingEvent } from '@/lib/ai/streaming/types';
+import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
 import {
@@ -48,7 +49,8 @@ export async function handleSuccessfulGeneration(
 
   emitModuleSummaries(modules, planId, emit);
 
-  await markPlanGenerationSuccess(planId);
+  const db = getDb();
+  await markPlanGenerationSuccess(planId, db);
   await tryRecordUsage(userId, result);
 
   emit({
@@ -80,7 +82,8 @@ export async function handleFailedGeneration(
   const retryable = isRetryableClassification(classification);
 
   if (!retryable) {
-    await markPlanGenerationFailure(planId);
+    const db = getDb();
+    await markPlanGenerationFailure(planId, db);
     await tryRecordUsage(userId, result);
   }
 
@@ -205,7 +208,8 @@ export async function safeMarkPlanFailed(
   userId: string
 ): Promise<void> {
   try {
-    await markPlanGenerationFailure(planId);
+    const db = getDb();
+    await markPlanGenerationFailure(planId, db);
   } catch (markErr) {
     logger.error(
       { error: markErr, planId, userId },

@@ -229,14 +229,14 @@ export function createUserRateLimiter(config: UserRateLimitConfig): {
 function formatWindow(windowMs: number): string {
   const seconds = windowMs / 1000;
   if (seconds < 60) {
-    return `${seconds} seconds`;
+    return seconds === 1 ? '1 second' : `${seconds} seconds`;
   }
   const minutes = seconds / 60;
   if (minutes < 60) {
-    return minutes === 1 ? 'minute' : `${minutes} minutes`;
+    return minutes === 1 ? '1 minute' : `${minutes} minutes`;
   }
   const hours = minutes / 60;
-  return hours === 1 ? 'hour' : `${hours} hours`;
+  return hours === 1 ? '1 hour' : `${hours} hours`;
 }
 
 // Pre-configured rate limiters for each category

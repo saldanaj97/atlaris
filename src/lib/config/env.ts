@@ -1,5 +1,23 @@
+import { z } from 'zod';
+
 import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
 import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
+
+/**
+ * Custom error type for environment variable validation failures.
+ * Allows callers to identify and handle configuration errors consistently,
+ * including redaction of sensitive information in logs.
+ */
+export class EnvValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly envKey?: string,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+    this.name = 'EnvValidationError';
+  }
+}
 
 type NodeEnv = 'development' | 'production' | 'test';
 
@@ -8,6 +26,9 @@ const normalize = (value: string | undefined | null): string | undefined => {
   const trimmed = value.trim();
   return trimmed === '' ? undefined : trimmed;
 };
+
+const APP_URL_SCHEMA = z.string().url();
+const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
 
 // TODO: Consider using zod for parsing and validation of numeric env vars
 function toNumber(value: string | undefined): number | undefined;
@@ -28,23 +49,29 @@ export function optionalEnv(key: string): string | undefined {
 export function requireEnv(key: string): string {
   const value = optionalEnv(key);
   if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+    throw new EnvValidationError(
+      `Missing required environment variable: ${key}`,
+      key
+    );
   }
   return value;
 }
 
 const ensureServerRuntime = () => {
-  // Allow Node-based test environments (e.g., Vitest + JSDOM) where `window` exists
-  // but execution is still in Node.js (presents `process.versions.node`).
+  // In non-production environments (dev/test/CI), allow server-only access
+  // even with window defined (jsdom), since Node.js testing frameworks
+  // (Vitest, Jest) polyfill window but still need server env vars
+  const isNonProduction =
+    typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+  if (isNonProduction) {
+    return;
+  }
+
+  // In production: verify we're not in a browser before accessing server-only vars
   if (typeof window !== 'undefined') {
-    const hasProcess = typeof process !== 'undefined';
-    const isNodeLike = hasProcess && Boolean(process.versions?.node);
-    const isVitest = optionalEnv('VITEST_WORKER_ID');
-    if (!isNodeLike && !isVitest) {
-      throw new Error(
-        'Attempted to access a server-only environment variable in the browser bundle.'
-      );
-    }
+    throw new EnvValidationError(
+      'Attempted to access a server-only environment variable in the browser bundle.'
+    );
   }
 };
 
@@ -165,6 +192,43 @@ export const appEnv = {
   },
   get isTest(): boolean {
     return this.nodeEnv === 'test' || Boolean(this.vitestWorkerId);
+  },
+  /**
+   * Application base URL for constructing absolute URLs (e.g., Stripe redirects).
+   * Required in production, falls back to localhost in development/test environments.
+   */
+  get url(): string {
+    if (!isTestRuntime && serverOptionalCache.has(APP_URL_CACHE_KEY)) {
+      const cached = serverOptionalCache.get(APP_URL_CACHE_KEY);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    const raw = isProdRuntime
+      ? getServerRequired('APP_URL')
+      : (getServerOptional('APP_URL') ?? 'http://localhost:3000');
+    const parsed = APP_URL_SCHEMA.safeParse(raw);
+    if (!parsed.success) {
+      throw new EnvValidationError(
+        'APP_URL must be a valid absolute URL',
+        'APP_URL'
+      );
+    }
+    if (isProdRuntime && !parsed.data.startsWith('https://')) {
+      throw new EnvValidationError(
+        'APP_URL must use https in production',
+        'APP_URL'
+      );
+    }
+    const normalized = parsed.data.replace(/\/$/, '');
+    if (!isTestRuntime) {
+      serverOptionalCache.set(APP_URL_CACHE_KEY, normalized);
+    }
+    return normalized;
+  },
+  get maintenanceMode(): boolean {
+    return getServerOptional('MAINTENANCE_MODE') === 'true';
   },
 } as const;
 

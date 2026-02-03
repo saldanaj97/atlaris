@@ -170,17 +170,17 @@ Landing pages and hero sections use blurred gradient orbs for ambient depth:
 {
   /* Primary brand orb */
 }
-<div className="from-primary/40 to-accent/30 absolute top-20 -left-20 h-96 w-96 rounded-full bg-gradient-to-br opacity-60 blur-3xl" />;
+<div className="from-primary/40 to-accent/30 absolute top-20 -left-20 h-96 w-96 rounded-full bg-linear-to-br opacity-60 blur-3xl" />;
 
 {
   /* Cyan accent orb */
 }
-<div className="absolute top-40 -right-20 h-80 w-80 rounded-full bg-gradient-to-br from-cyan-200 to-blue-200 opacity-60 blur-3xl" />;
+<div className="absolute top-40 -right-20 h-80 w-80 rounded-full bg-linear-to-br from-cyan-200 to-blue-200 opacity-60 blur-3xl" />;
 
 {
   /* Warm accent orb */
 }
-<div className="absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-gradient-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl" />;
+<div className="absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-linear-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl" />;
 ```
 
 **Guidelines:**
@@ -346,7 +346,7 @@ className =
 
 ```tsx
 className =
-  'absolute h-96 w-96 rounded-full bg-gradient-to-br from-primary/40 to-accent/30 opacity-60 blur-3xl';
+  'absolute h-96 w-96 rounded-full bg-linear-to-br from-primary/40 to-accent/30 opacity-60 blur-3xl';
 ```
 
 ### Gradient CTA Button

@@ -2,8 +2,9 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
 import { useEffect } from 'react';
+import type { JSX } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -14,16 +15,16 @@ interface ErrorProps {
  * Route-level error boundary for AI settings page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function AISettingsError({ error, reset }: ErrorProps) {
+export default function AISettingsError({
+  error,
+  reset,
+}: ErrorProps): JSX.Element {
   useEffect(() => {
-    logger.error(
-      {
-        errorDigest: error.digest,
-        message: error.message,
-        stack: error.stack,
-      },
-      'AI settings error'
-    );
+    clientLogger.error('AI settings error:', {
+      errorDigest: error.digest,
+      message: error.message,
+      stack: error.stack,
+    });
   }, [error]);
 
   return (

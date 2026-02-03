@@ -108,7 +108,11 @@ export const POST = withErrorBoundary(
 
     try {
       // Tier gate: check export quota for current subscription tier
-      const canExport = await checkExportQuota(user.id, user.subscriptionTier);
+      const canExport = await checkExportQuota(
+        user.id,
+        user.subscriptionTier,
+        db
+      );
       if (!canExport) {
         return respondJson(
           {
@@ -131,7 +135,7 @@ export const POST = withErrorBoundary(
 
       // Increment usage after a successful export (non-blocking)
       try {
-        await incrementExportUsage(user.id);
+        await incrementExportUsage(user.id, db);
       } catch (e) {
         logger.error(
           {

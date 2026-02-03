@@ -17,6 +17,8 @@ import {
 } from '@/lib/mappers/planQueries';
 import { LearningPlan, LearningPlanDetail, PlanSummary } from '@/lib/types/db';
 
+type DbClient = ReturnType<typeof getDb>;
+
 export async function getUserLearningPlans(
   userId: string
 ): Promise<LearningPlan[]> {
@@ -28,10 +30,10 @@ export async function getUserLearningPlans(
 }
 
 export async function getPlanSummariesForUser(
-  userId: string
+  userId: string,
+  dbClient: DbClient = getDb()
 ): Promise<PlanSummary[]> {
-  const db = getDb();
-  const planRows = await db
+  const planRows = await dbClient
     .select()
     .from(learningPlans)
     .where(eq(learningPlans.userId, userId));
@@ -44,7 +46,7 @@ export async function getPlanSummariesForUser(
 
   const planIds = planRows.map((plan) => plan.id);
 
-  const moduleRows = await db
+  const moduleRows = await dbClient
     .select()
     .from(modules)
     .where(inArray(modules.planId, planIds))
@@ -53,7 +55,7 @@ export async function getPlanSummariesForUser(
   const moduleIds = moduleRows.map((module) => module.id);
 
   const taskRows = moduleIds.length
-    ? await db
+    ? await dbClient
         .select({
           id: tasks.id,
           moduleId: tasks.moduleId,
@@ -68,7 +70,7 @@ export async function getPlanSummariesForUser(
   const taskIds = taskRows.map((task) => task.id);
 
   const progressRows = taskIds.length
-    ? await db
+    ? await dbClient
         .select({ taskId: taskProgress.taskId, status: taskProgress.status })
         .from(taskProgress)
         .where(

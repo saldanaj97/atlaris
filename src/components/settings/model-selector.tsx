@@ -3,6 +3,14 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -13,8 +21,11 @@ import {
 } from '@/components/ui/select';
 import { getModelsForTier } from '@/lib/ai/ai-models';
 import type { AvailableModel, SubscriptionTier } from '@/lib/ai/types';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
+import { ROUTES } from '@/lib/routes';
 import { cn } from '@/lib/utils';
+import { AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 interface ModelSelectorProps {
@@ -82,7 +93,10 @@ const ModelDropdown = ({
       setSaveStatus('success');
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (error) {
-      logger.error({ error, selectedModel }, 'Failed to save model preference');
+      clientLogger.error('Failed to save model preference:', {
+        message: error instanceof Error ? error.message : String(error),
+        selectedModel,
+      });
       setSaveStatus('error');
       statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
@@ -177,20 +191,30 @@ const ModelDropdown = ({
       )}
 
       {saveStatus === 'upgradeRequired' && (
-        <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm">
+        <div
+          role="alert"
+          className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
+        >
           This model requires a Pro subscription. Please upgrade to use premium
           models.
         </div>
       )}
 
       {saveStatus === 'error' && (
-        <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm">
+        <div
+          role="alert"
+          className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
+        >
           Failed to save preferences. Please try again.
         </div>
       )}
 
       {saveStatus === 'success' && (
-        <div className="rounded-lg border-2 border-green-500 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-lg border-2 border-green-500 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400"
+        >
           Preferences saved successfully!
         </div>
       )}
@@ -231,9 +255,24 @@ export function ModelSelector({
   // Handle edge case with no available models
   if (availableModels.length === 0) {
     return (
-      <div className="text-muted-foreground">
-        No models available for your tier.
-      </div>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <AlertCircle className="size-6" aria-hidden="true" />
+          </EmptyMedia>
+          <EmptyTitle>No models available</EmptyTitle>
+          <EmptyDescription>
+            No AI models are currently available for your subscription tier.
+            This may occur if model configurations are being updated or if your
+            tier doesn&apos;t have access to any models.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button asChild variant="default">
+            <Link href={ROUTES.PRICING}>View Pricing Plans</Link>
+          </Button>
+        </EmptyContent>
+      </Empty>
     );
   }
 

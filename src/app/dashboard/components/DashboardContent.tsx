@@ -3,9 +3,12 @@ import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { redirect } from 'next/navigation';
 
+import {
+  findActivePlan,
+  generateActivities,
+} from '@/app/dashboard/components/activity-utils';
 import { ActivityFeedClient } from './ActivityFeedClient';
 import { ActivityStreamSidebar } from './ActivityStreamSidebar';
-import { findActivePlan, generateActivities } from './activity-utils';
 import { ResumeLearningHero } from './ResumeLearningHero';
 
 /**
@@ -53,7 +56,7 @@ export function DashboardContentSkeleton() {
     <>
       {/* ResumeLearningHero skeleton */}
       <section aria-label="Resume learning loading" className="mb-8">
-        <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-teal-500/20 via-emerald-500/20 to-cyan-500/20 p-6 shadow-lg">
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-teal-500/20 via-emerald-500/20 to-cyan-500/20 p-6 shadow-lg">
           {/* Top row: label (left) and circular progress (right) */}
           <div className="flex items-start justify-between gap-4">
             <Skeleton className="h-4 w-28 bg-white/30" />

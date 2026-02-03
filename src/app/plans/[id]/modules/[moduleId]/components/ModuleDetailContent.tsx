@@ -101,7 +101,7 @@ export function ModuleDetailContentSkeleton() {
         </nav>
 
         {/* Hero Card skeleton */}
-        <div className="from-primary/20 via-accent/20 to-primary/20 relative overflow-hidden rounded-3xl bg-gradient-to-br p-8 shadow-2xl">
+        <div className="from-primary/20 via-accent/20 to-primary/20 relative overflow-hidden rounded-3xl bg-linear-to-br p-8 shadow-2xl">
           <div className="relative z-10 flex min-h-[200px] flex-col justify-between">
             {/* Top Row: Module Badge and Navigation */}
             <div className="flex items-start justify-between">

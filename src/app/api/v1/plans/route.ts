@@ -16,7 +16,13 @@ import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
-import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
+import { logger } from '@/lib/logging/logger';
+import {
+  atomicCheckAndIncrementPdfUsage,
+  atomicCheckAndInsertPlan,
+  decrementPdfPlanUsage,
+  resolveUserTier,
+} from '@/lib/stripe/usage';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
@@ -31,7 +37,8 @@ export const GET = withErrorBoundary(
       );
     }
 
-    const summaries = await getPlanSummariesForUser(user.id);
+    const db = getDb();
+    const summaries = await getPlanSummariesForUser(user.id, db);
     return json(summaries);
   })
 );
@@ -61,7 +68,8 @@ export const POST = withErrorBoundary(
     await checkPlanGenerationRateLimit(user.id);
 
     // Enforce plan duration cap based on user tier using the requested window
-    const userTier = await resolveUserTier(user.id);
+    const db = getDb();
+    const userTier = await resolveUserTier(user.id, db);
     const requestedWeeks = calculateTotalWeeks({
       startDate: body.startDate ?? null,
       deadlineDate: body.deadlineDate ?? null,
@@ -82,13 +90,16 @@ export const POST = withErrorBoundary(
     }
 
     // Normalize persisted dates to tier limits while keeping requested cap validation strict
-    const { startDate, deadlineDate, totalWeeks } =
-      normalizePlanDurationForTier({
-        tier: userTier,
-        weeklyHours: body.weeklyHours,
-        startDate: body.startDate ?? null,
-        deadlineDate: body.deadlineDate ?? null,
-      });
+    const {
+      startDate: _startDate,
+      deadlineDate: _deadlineDate,
+      totalWeeks,
+    } = normalizePlanDurationForTier({
+      tier: userTier,
+      weeklyHours: body.weeklyHours,
+      startDate: body.startDate ?? null,
+      deadlineDate: body.deadlineDate ?? null,
+    });
 
     const cap = ensurePlanDurationAllowed({
       userTier,
@@ -109,23 +120,53 @@ export const POST = withErrorBoundary(
       });
     }
 
-    // Enforce subscription plan limits and in-flight generation cap atomically.
-    // This prevents users from spamming concurrent POSTs and bypassing plan caps
-    // while newly inserted rows are still non-eligible.
-    const created = await atomicCheckAndInsertPlan(user.id, {
-      topic: body.topic,
-      skillLevel: body.skillLevel,
-      weeklyHours: body.weeklyHours,
-      learningStyle: body.learningStyle,
-      visibility: body.visibility ?? 'private',
-      // This endpoint triggers AI generation, so origin is always 'ai'.
-      origin: 'ai',
-      startDate,
-      deadlineDate,
-    });
+    const origin = body.origin ?? 'ai';
+    const extractedContent = body.extractedContent;
 
-    // Fetch created row to include timestamps in response (back-compat shape)
-    const db = getDb();
+    if (origin === 'pdf') {
+      const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id, db);
+      if (!pdfUsage.allowed) {
+        return jsonError('PDF plan quota exceeded for this month.', {
+          status: 403,
+          code: 'QUOTA_EXCEEDED',
+        });
+      }
+    }
+
+    const topic =
+      origin === 'pdf' && extractedContent
+        ? extractedContent.mainTopic
+        : body.topic;
+
+    let created: { id: string };
+    try {
+      created = await atomicCheckAndInsertPlan(
+        user.id,
+        {
+          topic,
+          skillLevel: body.skillLevel,
+          weeklyHours: body.weeklyHours,
+          learningStyle: body.learningStyle,
+          visibility: 'private',
+          origin,
+          startDate: _startDate,
+          deadlineDate: _deadlineDate,
+        },
+        db
+      );
+    } catch (err) {
+      if (origin === 'pdf') {
+        try {
+          await decrementPdfPlanUsage(user.id, db);
+        } catch (rollbackErr) {
+          logger.error(
+            { rollbackErr, userId: user.id },
+            'Failed to rollback pdf plan usage'
+          );
+        }
+      }
+      throw err;
+    }
     const [plan] = await db
       .select()
       .from(learningPlans)

@@ -22,7 +22,9 @@ src/
 │   ├── integrations/ # Notion/Google Calendar sync → see AGENTS.md
 │   └── logging/   # Structured logger (NEVER use console.*)
 tests/             # 5 test types → see AGENTS.md
-docs/rules/        # Extended documentation (load on-demand)
+docs/
+├── context/       # Architecture docs, flows, system explanations
+└── rules/         # LLM guidelines and guardrails (load on-demand)
 ```
 
 ## Where to Look
@@ -34,6 +36,7 @@ docs/rules/        # Extended documentation (load on-demand)
 | AI generation logic | `src/lib/ai/orchestrator.ts` | Provider abstraction in `provider-factory.ts`     |
 | Add integration     | `src/lib/integrations/`      | Follow DI pattern (factory + types + sync)        |
 | Environment var     | `src/lib/config/env.ts`      | Add to grouped config, validate with Zod          |
+| Logging             | `src/lib/logging/`           | Server logger vs clientLogger, see logging.md     |
 | Write tests         | `tests/`                     | Unit in `tests/unit/`, integration needs DB setup |
 
 ## Commands
@@ -80,7 +83,8 @@ ESLint blocks service-role imports in `src/app/api/**`, `src/lib/api/**`, `src/l
 - Path alias: `@/*` → `src/*`
 - `import type` for type-only imports
 - Env: only through `@/lib/config/env`
-- Logging: only through `@/lib/logging/logger`
+- Logging (server): `@/lib/logging/logger` (API routes, server components, actions)
+- Logging (client): `@/lib/logging/client` (browser components with `'use client'`)
 
 ### Naming
 
@@ -95,7 +99,8 @@ ESLint blocks service-role imports in `src/app/api/**`, `src/lib/api/**`, `src/l
 ## Anti-Patterns (Forbidden)
 
 - `process.env.*` directly (use `@/lib/config/env`)
-- `console.*` in app code (use `@/lib/logging/logger`)
+- `console.*` in app code (use `@/lib/logging/logger` for server, `@/lib/logging/client` for client)
+- Importing server logger (`@/lib/logging/logger`) in client components (`'use client'`)
 - Service-role DB in request handlers
 - Class components (functional + hooks only)
 - `as any`, `@ts-ignore`, non-null assertions
@@ -117,7 +122,20 @@ Use factories from `tests/fixtures/`. Test behavior, not implementation.
 
 Load on-demand based on task:
 
+### Architecture & System Context (`docs/context/`)
+
+Documentation explaining how our code works, architecture decisions, and system flows:
+
+- **Plan Generation**: `docs/context/architecture/plan-generation-architecture.md`
+- **CI/CD & Branching**: `docs/context/ci/branching-strategy.md`
+
+### LLM Rules & Guidelines (`docs/rules/`)
+
+Guardrails and guidelines for LLMs to follow:
+
 - **Architecture**: `docs/rules/architecture/project-structure.md`
+- **CI/CD Workflow**: `docs/rules/ci/development-workflow.md`
+- **Logging**: `docs/rules/logging.md`
 - **TypeScript**: `docs/rules/language-specific/typescript.md`
 - **React**: `docs/rules/language-specific/react.md`
 - **Testing**: `docs/rules/testing/test-standards.md`

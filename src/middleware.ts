@@ -6,15 +6,60 @@ import {
 import { type NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
+import { appEnv } from '@/lib/config/env';
+
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/api(.*)',
   '/plans(.*)',
 ]);
 
+const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const CORRELATION_ID_MAX_LENGTH = 64;
+
+const sanitizeCorrelationId = (value: string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.length > CORRELATION_ID_MAX_LENGTH) {
+    return null;
+  }
+  if (!CORRELATION_ID_PATTERN.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
+};
+
+const getCorrelationId = (request: NextRequest): string => {
+  const headerCorrelationId = request.headers.get('x-correlation-id');
+  const sanitized = sanitizeCorrelationId(headerCorrelationId);
+  return sanitized ?? crypto.randomUUID();
+};
+
+const nextResponseWithCorrelationId = (request: NextRequest): NextResponse => {
+  const correlationId = getCorrelationId(request);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-correlation-id', correlationId);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set('x-correlation-id', correlationId);
+  return response;
+};
+
 export default clerkMiddleware(
   async (auth: ClerkMiddlewareAuth, request: NextRequest) => {
-    const isMaintenanceMode = process.env.MAINTENANCE_MODE === 'true';
+    // Allow Stripe webhooks to bypass all checks (including maintenance mode)
+    if (request.nextUrl.pathname.startsWith('/api/v1/stripe/webhook')) {
+      return nextResponseWithCorrelationId(request);
+    }
+
+    const isMaintenanceMode = appEnv.maintenanceMode;
     const isMaintenancePage = request.nextUrl.pathname === '/maintenance';
 
     if (isMaintenanceMode && !isMaintenancePage) {
@@ -25,27 +70,8 @@ export default clerkMiddleware(
       return NextResponse.redirect(new URL('/', request.url));
     }
 
-    if (request.nextUrl.pathname.startsWith('/api/v1/stripe/webhook')) {
-      return NextResponse.next();
-    }
-
     if (isProtectedRoute(request)) await auth.protect();
-
-    const headerCorrelationId = request.headers.get('x-correlation-id');
-    const correlationId =
-      headerCorrelationId && headerCorrelationId.length
-        ? headerCorrelationId
-        : crypto.randomUUID();
-
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-correlation-id', correlationId);
-
-    const response = NextResponse.next({
-      request: { headers: requestHeaders },
-    });
-    response.headers.set('x-correlation-id', correlationId);
-
-    return response;
+    return nextResponseWithCorrelationId(request);
   },
   {
     // CSP configuration - see https://clerk.com/docs/security/clerk-csp

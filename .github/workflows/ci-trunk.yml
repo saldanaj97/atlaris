@@ -1,8 +1,8 @@
-name: CI - Main (trunk)
+name: CI - Trunk (develop + main)
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
@@ -11,7 +11,7 @@ on:
       - '**/*.csv'
       - '**/*.log'
   merge_group:
-    branches: [main]
+    branches: [main, develop]
   workflow_dispatch:
 
 permissions:
@@ -588,8 +588,8 @@ jobs:
             psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
           fi
 
-  all-checks-main:
-    name: All Checks Passed (main)
+  all-checks-trunk:
+    name: All Checks Passed (trunk)
     needs: [vulnerability-scan, integration-tests, e2e-tests, migration-dry-run]
     if: always() && (github.event_name == 'push' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
@@ -618,17 +618,36 @@ jobs:
           if [ "$failed" -ne 0 ]; then
             exit 1
           fi
-      - name: All checks passed (main)
-        run: echo "✅ All checks passed (main)"
+      - name: All checks passed (trunk)
+        run: echo "✅ All checks passed (trunk)"
 
+  trigger-staging-deploy:
+    name: Deploy to Staging
+    needs: [all-checks-trunk, changes]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop' &&
+      needs.all-checks-trunk.result == 'success'
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+    uses: ./.github/workflows/deploy-staging.yml
+    with:
+      deploy_migrations: ${{ needs.changes.outputs.migrations == 'true' }}
+    secrets: inherit
+
+  # Production deploys on every push to main. This is correct only if main
+  # changes exclusively via merged PRs (release/hotfix). Protect main with
+  # branch protection: require PR review, disallow direct pushes and force-push.
+  # Otherwise one bad `git push origin main` deploys straight to production.
   trigger-production-deploy:
     name: Deploy to Production
-    needs: [all-checks-main, changes]
+    needs: [all-checks-trunk, changes]
     if: |
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
-      needs.all-checks-main.result == 'success' &&
-      needs.changes.outputs.migrations == 'true'
+      needs.all-checks-trunk.result == 'success'
     permissions:
       contents: read
       actions: read

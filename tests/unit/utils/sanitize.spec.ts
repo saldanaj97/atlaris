@@ -46,7 +46,8 @@ describe('sanitizePlainText', () => {
       const input =
         'Task description <!-- micro-explanation-task123 -->\nExplanation text';
       const result = sanitizePlainText(input);
-      expect(result).toBe('Task description Explanation text');
+      // sanitize-html preserves surrounding whitespace when stripping comments.
+      expect(result).toBe('Task description \nExplanation text');
     });
   });
 
@@ -128,6 +129,95 @@ describe('sanitizePlainText', () => {
       const text = 'Short text';
       const result = sanitizePlainText(text, 100);
       expect(result).toBe('Short text');
+    });
+  });
+
+  describe('Security edge cases (CodeQL issue #103)', () => {
+    it('should strip script tags with space before closing >', () => {
+      const input = '<script>alert(1)</script >';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+      expect(result).not.toContain('alert');
+      expect(result).not.toContain('script');
+    });
+
+    it('should strip script tags with attributes in closing tag', () => {
+      const input = '<script>alert(1)</script foo="bar">';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+      expect(result).not.toContain('alert');
+    });
+
+    it('should strip mixed case script tags', () => {
+      const input = '<ScRiPt>alert(1)</ScRiPt>';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+      expect(result).not.toContain('alert');
+    });
+
+    it('should strip uppercase SCRIPT tags', () => {
+      const input = '<SCRIPT>alert(1)</SCRIPT>';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+    });
+
+    it('should strip style tags with space before closing >', () => {
+      const input = '<style>body{display:none}</style >';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+      expect(result).not.toContain('display');
+    });
+
+    it('should strip mixed case style tags', () => {
+      const input = '<StYlE>body{color:red}</StYlE>';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+    });
+
+    it('should handle HTML comments ending with --!>', () => {
+      const input = 'text <!-- comment --!> more';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('text');
+    });
+
+    it('should handle script inside HTML comment', () => {
+      const input = '<!-- <script>bad()</script> -->';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+      expect(result).not.toContain('bad');
+    });
+
+    it('should not be fooled by encoded entities', () => {
+      // Encoded entities become literal text. Output is safe in text nodes only.
+      const input = '&lt;script&gt;alert(1)&lt;/script&gt;';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('<script>alert(1)</script>');
+    });
+
+    it('should prevent double-decoding attacks', () => {
+      const input = '&amp;lt;script&amp;gt;evil&amp;lt;/script&amp;gt;';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('&lt;script&gt;evil&lt;/script&gt;');
+      expect(result).not.toContain('<script>');
+    });
+
+    it('should handle deeply nested malicious content', () => {
+      const input =
+        '<div><span><script>alert(1)</script></span></div><style>x</style>';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+    });
+
+    it('should handle newlines within script tags', () => {
+      const input = '<script>\nalert(1)\n</script>';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
+    });
+
+    it('should handle tabs and whitespace in tags', () => {
+      const input = '<script\t>alert(1)</script\n>';
+      const result = sanitizePlainText(input);
+      expect(result).toBe('');
     });
   });
 

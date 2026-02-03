@@ -312,7 +312,7 @@
 
   /* Decorative background glow effect */
   .gradient-glow {
-    @apply from-primary/30 to-accent/20 rounded-full bg-gradient-to-br opacity-60 blur-3xl;
+    @apply from-primary/30 to-accent/20 rounded-full bg-linear-to-br opacity-60 blur-3xl;
   }
 
   /* Gradient text effect */

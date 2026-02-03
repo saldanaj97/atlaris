@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { logger } from '@/lib/logging/logger';
+import { clientLogger } from '@/lib/logging/client';
 import Link from 'next/link';
 import { useEffect } from 'react';
 
@@ -16,10 +16,11 @@ interface ErrorProps {
  */
 export default function ModuleDetailError({ error, reset }: ErrorProps) {
   useEffect(() => {
-    logger.error(
-      { errorDigest: error.digest },
-      `Module detail error: ${error.message}`
-    );
+    clientLogger.error('Module detail error:', {
+      errorDigest: error.digest,
+      message: error.message,
+      stack: error.stack,
+    });
   }, [error]);
 
   return (
