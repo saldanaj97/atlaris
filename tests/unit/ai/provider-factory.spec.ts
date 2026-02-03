@@ -149,12 +149,24 @@ describe('AI Provider Factory', () => {
       delete process.env.VITEST_WORKER_ID;
     });
 
+    afterEach(() => {
+      // Restore window if it was hidden
+      if (!globalThis.window) {
+        (globalThis as any).window = undefined;
+      }
+    });
+
     it('should return RouterGenerationProvider by default in production', () => {
       (process.env as any).NODE_ENV = 'production';
       delete process.env.AI_PROVIDER;
 
+      // Hide window temporarily for this production test (simulating server env)
+      const originalWindow = globalThis.window;
+      delete (globalThis as any).window;
+
       const provider = getGenerationProvider();
 
+      (globalThis as any).window = originalWindow;
       expect(provider).toBeInstanceOf(RouterGenerationProvider);
     });
 
@@ -162,8 +174,13 @@ describe('AI Provider Factory', () => {
       (process.env as any).NODE_ENV = 'production';
       process.env.AI_PROVIDER = 'mock';
 
+      // Hide window temporarily for this production test (simulating server env)
+      const originalWindow = globalThis.window;
+      delete (globalThis as any).window;
+
       const provider = getGenerationProvider();
 
+      (globalThis as any).window = originalWindow;
       expect(provider).toBeInstanceOf(MockGenerationProvider);
     });
 
@@ -171,8 +188,13 @@ describe('AI Provider Factory', () => {
       (process.env as any).NODE_ENV = 'production';
       process.env.AI_PROVIDER = 'openai';
 
+      // Hide window temporarily for this production test (simulating server env)
+      const originalWindow = globalThis.window;
+      delete (globalThis as any).window;
+
       const provider = getGenerationProvider();
 
+      (globalThis as any).window = originalWindow;
       expect(provider).toBeInstanceOf(RouterGenerationProvider);
     });
   });

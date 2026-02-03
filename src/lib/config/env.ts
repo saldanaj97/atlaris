@@ -39,14 +39,20 @@ export function requireEnv(key: string): string {
 }
 
 const ensureServerRuntime = () => {
-  // Allow Node-based test environments (e.g., Vitest + JSDOM) where `window` exists.
+  // In non-production environments (dev/test/CI), allow server-only access
+  // even with window defined (jsdom), since Node.js testing frameworks
+  // (Vitest, Jest) polyfill window but still need server env vars
+  const isNonProduction =
+    typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+  if (isNonProduction) {
+    return;
+  }
+
+  // In production: verify we're not in a browser before accessing server-only vars
   if (typeof window !== 'undefined') {
-    const isVitest = optionalEnv('VITEST_WORKER_ID');
-    if (!isVitest) {
-      throw new Error(
-        'Attempted to access a server-only environment variable in the browser bundle.'
-      );
-    }
+    throw new Error(
+      'Attempted to access a server-only environment variable in the browser bundle.'
+    );
   }
 };
 
