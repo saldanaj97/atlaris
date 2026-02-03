@@ -48,17 +48,17 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
 
     const request = new Request(
-      'http://localhost/api/v1/stripe/create-checkout',
+      'http://localhost:3000/api/v1/stripe/create-checkout',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Origin: 'http://localhost',
+          Origin: 'http://localhost:3000',
         },
         body: JSON.stringify({
           priceId: 'price_starter123',
-          successUrl: 'http://localhost/success',
-          cancelUrl: 'http://localhost/cancel',
+          successUrl: 'http://localhost:3000/success',
+          cancelUrl: 'http://localhost:3000/cancel',
         }),
       }
     );
@@ -81,8 +81,8 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       customer: 'cus_new123',
       line_items: [{ price: 'price_starter123', quantity: 1 }],
       mode: 'subscription',
-      success_url: 'http://localhost/success',
-      cancel_url: 'http://localhost/cancel',
+      success_url: 'http://localhost:3000/success',
+      cancel_url: 'http://localhost:3000/cancel',
     });
 
     // Verify customer ID was saved to DB
@@ -127,12 +127,12 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
 
     const request = new Request(
-      'http://localhost/api/v1/stripe/create-checkout',
+      'http://localhost:3000/api/v1/stripe/create-checkout',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Origin: 'http://localhost',
+          Origin: 'http://localhost:3000',
         },
         body: JSON.stringify({
           priceId: 'price_pro123',
@@ -188,12 +188,12 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
 
     const request = new Request(
-      'http://localhost/api/v1/stripe/create-checkout',
+      'http://localhost:3000/api/v1/stripe/create-checkout',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Origin: 'http://localhost',
+          Origin: 'http://localhost:3000',
         },
         body: JSON.stringify({
           priceId: 'price_test123',
@@ -209,8 +209,8 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(createCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({
         success_url:
-          'http://localhost/settings/billing?session_id={CHECKOUT_SESSION_ID}',
-        cancel_url: 'http://localhost/settings/billing',
+          'http://localhost:3000/settings/billing?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url: 'http://localhost:3000/settings/billing',
       })
     );
   });
@@ -224,7 +224,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     setTestUser('user_missing_price');
 
     const request = new Request(
-      'http://localhost/api/v1/stripe/create-checkout',
+      'http://localhost:3000/api/v1/stripe/create-checkout',
       {
         method: 'POST',
         headers: {
@@ -239,14 +239,14 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(response.status).toBe(400);
 
     const body = await response.json();
-    expect(body.error).toContain('priceId');
+    expect(body.error).toContain('priceId is required');
   });
 
   it('returns 401 when user not authenticated', async () => {
     setTestUser(''); // No user
 
     const request = new Request(
-      'http://localhost/api/v1/stripe/create-checkout',
+      'http://localhost:3000/api/v1/stripe/create-checkout',
       {
         method: 'POST',
         headers: {
@@ -273,7 +273,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     setTestUser('user_does_not_exist');
 
     const request = new Request(
-      'http://localhost/api/v1/stripe/create-checkout',
+      'http://localhost:3000/api/v1/stripe/create-checkout',
       {
         method: 'POST',
         headers: {
@@ -313,7 +313,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
 
     const request = new Request(
-      'http://localhost/api/v1/stripe/create-checkout',
+      'http://localhost:3000/api/v1/stripe/create-checkout',
       {
         method: 'POST',
         headers: {
