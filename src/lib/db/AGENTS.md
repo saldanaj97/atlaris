@@ -51,8 +51,9 @@ db/
 ```typescript
 // rls.ts creates clients that:
 // 1. Switch to auth role (has RLS policies)
-// 2. Set session variable: SET LOCAL app.user_id = '...'
-// 3. Execute queries (RLS filters by user_id)
+// 2. Set session variable: request.jwt.claims = {"sub": "<clerkUserId>"}
+//    via SELECT set_config('request.jwt.claims', '{"sub":"..."}', false)
+// 3. Execute queries (RLS filters by request.jwt.claims->>'sub')
 // 4. Must call cleanup() when done
 
 const { db, cleanup } = await createAuthenticatedRlsClient(userId);

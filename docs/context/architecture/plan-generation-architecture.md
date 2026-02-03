@@ -476,14 +476,14 @@ import { db } from '@/lib/db/service-role';
 
 ### How RLS Works
 
-The `getDb()` client sets a session variable `app.user_id` from the authenticated Clerk user. RLS policies then filter:
+The `getDb()` client sets the `request.jwt.claims` session variable to a JSON payload containing the Clerk user ID (for example, `{ "sub": "clerk_user_id" }`). RLS policies then filter by extracting `sub`:
 
 ```sql
 -- Example policy on learning_plans
 CREATE POLICY "Users can only see their own plans"
   ON learning_plans
   FOR SELECT
-  USING (user_id = current_setting('app.user_id')::uuid);
+  USING (user_id = current_setting('request.jwt.claims', true)::json->>'sub');
 ```
 
 ---

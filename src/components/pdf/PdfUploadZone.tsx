@@ -30,6 +30,10 @@ export function PdfUploadZone({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
 
+  /**
+   * Validates that a file is actually a PDF by checking its magic bytes signature (%PDF-).
+   * This security guard prevents spoofed files that claim to be PDFs via extension/MIME type.
+   */
   const isPdfMagicBytes = useCallback(async (file: File): Promise<boolean> => {
     try {
       const buffer = await file.slice(0, 5).arrayBuffer();
@@ -48,7 +52,7 @@ export function PdfUploadZone({
     async (file: File): Promise<boolean> => {
       const hasPdfExtension = file.name.toLowerCase().endsWith('.pdf');
       const hasPdfMime = file.type === 'application/pdf';
-      if (!hasPdfExtension || !hasPdfMime) {
+      if (!hasPdfExtension && !hasPdfMime) {
         setLocalError('Please select a valid PDF file.');
         return false;
       }
@@ -81,51 +85,61 @@ export function PdfUploadZone({
   }, []);
 
   const handleDrop = useCallback(
-    async (e: DragEvent) => {
+    (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
 
       if (disabled || isUploading) return;
 
-      const files = Array.from(e.dataTransfer.files);
-      const pdfFile = files.find(
-        (file) =>
-          file.type === 'application/pdf' &&
-          file.name.toLowerCase().endsWith('.pdf')
-      );
+      const run = async (): Promise<void> => {
+        const files = Array.from(e.dataTransfer.files);
+        const pdfFile = files.find(
+          (file) =>
+            file.type === 'application/pdf' ||
+            file.name.toLowerCase().endsWith('.pdf')
+        );
 
-      if (!pdfFile) {
-        setLocalError('Please select a PDF file.');
-        return;
-      }
+        if (!pdfFile) {
+          setLocalError('Please select a PDF file.');
+          return;
+        }
 
-      const isValid = await validatePdfFile(pdfFile);
-      if (isValid) {
-        onFileSelect(pdfFile);
-      }
+        const isValid = await validatePdfFile(pdfFile);
+        if (isValid) {
+          onFileSelect(pdfFile);
+        }
+      };
+
+      void run().catch((error: unknown) => {
+        clientLogger.error('Failed to handle dropped PDF file', { error });
+        setLocalError('Unable to read the dropped file. Please try again.');
+      });
     },
     [disabled, isUploading, onFileSelect, validatePdfFile]
   );
 
   const handleFileInputChange = useCallback(
-    async (e: ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       if (disabled || isUploading) return;
-      const files = e.target.files;
+      const input = e.currentTarget;
+      const files = input.files;
       if (!files || !files[0]) return;
       const file = files[0];
-      try {
+      const run = async (): Promise<void> => {
         const isValid = await validatePdfFile(file);
         if (!isValid) {
-          e.target.value = '';
+          input.value = '';
           return;
         }
         onFileSelect(file);
-      } catch (error) {
+      };
+
+      void run().catch((error: unknown) => {
         clientLogger.error('Failed to read selected PDF file', { error });
         setLocalError('Unable to read the selected file. Please try again.');
-        e.target.value = '';
-      }
+        input.value = '';
+      });
     },
     [disabled, isUploading, onFileSelect, validatePdfFile]
   );
@@ -137,7 +151,7 @@ export function PdfUploadZone({
   }, [disabled, isUploading]);
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>) => {
+    (e: KeyboardEvent<HTMLButtonElement>) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         handleClick();
@@ -148,14 +162,16 @@ export function PdfUploadZone({
 
   return (
     <div className="w-full max-w-2xl">
-      <div
-        role="button"
+      <Button
+        type="button"
+        variant="ghost"
+        size="lg"
         tabIndex={disabled || isUploading ? -1 : 0}
         aria-disabled={disabled || isUploading}
-        className={`dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-12 shadow-2xl backdrop-blur-xl transition-all ${isDragging ? 'border-primary/50 bg-primary/5' : ''} ${disabled || isUploading ? 'cursor-not-allowed opacity-60' : 'hover:border-primary/30 cursor-pointer'} `}
+        className={`dark:border-border dark:bg-card/60 border-border bg-card/60 relative block h-auto w-full rounded-3xl border px-6 py-12 text-left whitespace-normal shadow-2xl backdrop-blur-xl transition-all ${isDragging ? 'border-primary/50 bg-primary/5' : ''} ${disabled || isUploading ? 'cursor-not-allowed opacity-60' : 'hover:border-primary/30 cursor-pointer'} `}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onDrop={(e) => void handleDrop(e)}
+        onDrop={handleDrop}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         aria-label="Upload PDF file dropzone"
@@ -191,20 +207,17 @@ export function PdfUploadZone({
             id={inputId}
             type="file"
             accept=".pdf,application/pdf"
-            onChange={(e) => void handleFileInputChange(e)}
+            onChange={handleFileInputChange}
             className="sr-only"
             disabled={disabled || isUploading}
           />
 
           {!isUploading && (
-            <Button
-              type="button"
-              variant="outline"
-              className="pointer-events-auto"
-              disabled={disabled}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Choose File
+            <Button asChild variant="outline" className="pointer-events-none">
+              <span>
+                <Upload className="mr-2 h-4 w-4" />
+                Choose File
+              </span>
             </Button>
           )}
 
@@ -218,7 +231,7 @@ export function PdfUploadZone({
             Supports PDF files with extractable text only
           </p>
         </div>
-      </div>
+      </Button>
     </div>
   );
 }

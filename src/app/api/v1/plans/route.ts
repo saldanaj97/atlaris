@@ -16,6 +16,7 @@ import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByClerkId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 import {
   atomicCheckAndIncrementPdfUsage,
   atomicCheckAndInsertPlan,
@@ -155,7 +156,14 @@ export const POST = withErrorBoundary(
       );
     } catch (err) {
       if (origin === 'pdf') {
-        await decrementPdfPlanUsage(user.id, db);
+        try {
+          await decrementPdfPlanUsage(user.id, db);
+        } catch (rollbackErr) {
+          logger.error(
+            { rollbackErr, userId: user.id },
+            'Failed to rollback pdf plan usage'
+          );
+        }
       }
       throw err;
     }

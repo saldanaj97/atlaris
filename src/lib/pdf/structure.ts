@@ -11,7 +11,7 @@ const HEADER_PATTERNS = [
 ];
 
 const isHeaderLine = (line: string): boolean => {
-  if (line.length === 0 || line.length > HEADER_MAX_LENGTH) {
+  if (line.length < 3 || line.length > HEADER_MAX_LENGTH) {
     return false;
   }
 

@@ -1,5 +1,11 @@
 import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
-import { aiEnv, appEnv, optionalEnv, requireEnv } from '@/lib/config/env';
+import {
+  EnvValidationError,
+  aiEnv,
+  appEnv,
+  optionalEnv,
+  requireEnv,
+} from '@/lib/config/env';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('Environment Configuration', () => {
@@ -54,25 +60,39 @@ describe('Environment Configuration', () => {
       expect(requireEnv('REQUIRED_VAR')).toBe('required-value');
     });
 
-    it('should throw error for missing environment variable', () => {
+    it('should throw EnvValidationError for missing environment variable', () => {
       delete process.env.REQUIRED_VAR;
+      expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
         'Missing required environment variable: REQUIRED_VAR'
       );
     });
 
-    it('should throw error for empty string', () => {
+    it('should throw EnvValidationError for empty string', () => {
       process.env.REQUIRED_VAR = '';
+      expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
         'Missing required environment variable: REQUIRED_VAR'
       );
     });
 
-    it('should throw error for whitespace-only string', () => {
+    it('should throw EnvValidationError for whitespace-only string', () => {
       process.env.REQUIRED_VAR = '   ';
+      expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
         'Missing required environment variable: REQUIRED_VAR'
       );
+    });
+
+    it('should set envKey property on EnvValidationError', () => {
+      delete process.env.REQUIRED_VAR;
+      try {
+        requireEnv('REQUIRED_VAR');
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EnvValidationError);
+        expect((error as EnvValidationError).envKey).toBe('REQUIRED_VAR');
+      }
     });
 
     it('should trim whitespace from value', () => {
