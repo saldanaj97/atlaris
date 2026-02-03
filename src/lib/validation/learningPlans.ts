@@ -151,7 +151,8 @@ export const createLearningPlanSchema = z
         'Deadline date must be a valid ISO date string.'
       )
       .transform((value) => (value ? value : undefined)),
-    visibility: z.enum(['private', 'public'] as const).default('private'),
+    // Public visibility is intentionally disabled; field retained for compatibility.
+    visibility: z.literal('private').optional().default('private'),
     origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const).default('ai'),
     extractedContent: pdfPreviewEditSchema.optional(),
   })

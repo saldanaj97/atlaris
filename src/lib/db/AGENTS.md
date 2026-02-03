@@ -4,7 +4,7 @@
 
 ## Overview
 
-Drizzle ORM + Neon PostgreSQL with Row Level Security (RLS). Two client types: RLS-enforced (default) and service-role (bypass).
+Drizzle ORM + Neon PostgreSQL with Row Level Security (RLS). Two client types: RLS-enforced (default) and service-role (bypass). User-facing policies are explicitly scoped to `authenticated` (never implicit `PUBLIC`).
 
 ## Client Selection (CRITICAL)
 
@@ -50,8 +50,8 @@ db/
 
 ```typescript
 // rls.ts creates clients that:
-// 1. Switch to auth role (has RLS policies)
-// 2. Set session variable: request.jwt.claims = {"sub": "<clerkUserId>"}
+// 1. Switch to role: authenticated OR anonymous
+// 2. Set session variable: request.jwt.claims = {"sub": "<clerkUserId>"} (or null for anon)
 //    via SELECT set_config('request.jwt.claims', '{"sub":"..."}', false)
 // 3. Execute queries (RLS filters by request.jwt.claims->>'sub')
 // 4. Must call cleanup() when done
@@ -63,6 +63,13 @@ try {
   await cleanup(); // CRITICAL: releases connection
 }
 ```
+
+## RLS Policy Rules
+
+- Always include explicit `to` in every `pgPolicy(...)`:
+  - `to: 'authenticated'` for user-owned tables and authenticated reads
+- Current product posture: no anonymous app-data policies
+- Never omit `to` (omitted means `TO PUBLIC` in PostgreSQL)
 
 ## Queries Pattern
 
@@ -101,6 +108,7 @@ pnpm db:push       # Push schema directly (dev only)
 ## Anti-Patterns
 
 - Importing `@/lib/db/service-role` in API routes
+- Omitting `to` in `pgPolicy(...)` (defaults to insecure `PUBLIC` scope)
 - Forgetting `cleanup()` after RLS client use
 - Direct SQL without parameterization
 - Hardcoding user IDs instead of using session context

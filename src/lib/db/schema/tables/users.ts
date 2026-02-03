@@ -43,17 +43,19 @@ export const users = pgTable(
     // session variable set by createRlsClient() from @/lib/db/rls.
     //
     // Note: Service-role operations (workers, background jobs) use the
-    // bypass client from @/lib/db/drizzle which has RLS disabled.
+    // bypass client from @/lib/db/service-role which has RLS disabled.
 
     // Users can read only their own data
     pgPolicy('users_select_own', {
       for: 'select',
+      to: 'authenticated',
       using: sql`${table.clerkUserId} = ${clerkSub}`,
     }),
 
     // Users can only insert their own record during signup
     pgPolicy('users_insert_own', {
       for: 'insert',
+      to: 'authenticated',
       withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
     }),
 
@@ -62,6 +64,7 @@ export const users = pgTable(
     // users can modify (e.g., name is OK, stripe fields are not)
     pgPolicy('users_update_own', {
       for: 'update',
+      to: 'authenticated',
       using: sql`${table.clerkUserId} = ${clerkSub}`,
       withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
     }),

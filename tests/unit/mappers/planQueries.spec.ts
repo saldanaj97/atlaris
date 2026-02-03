@@ -282,7 +282,7 @@ describe('mapPlanSummaries', () => {
         skillLevel: 'intermediate',
         weeklyHours: 10,
         learningStyle: 'reading',
-        visibility: 'public',
+        visibility: 'private',
         origin: 'manual',
         startDate: '2024-02-01',
         deadlineDate: '2024-04-01',

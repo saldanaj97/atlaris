@@ -476,14 +476,25 @@ import { db } from '@/lib/db/service-role';
 
 ### How RLS Works
 
-The `getDb()` client sets the `request.jwt.claims` session variable to a JSON payload containing the Clerk user ID (for example, `{ "sub": "clerk_user_id" }`). RLS policies then filter by extracting `sub`:
+`getDb()` returns the request-scoped client created by middleware/context setup. The underlying RLS client (`src/lib/db/rls.ts`) does two security-critical steps:
+
+1. `SET ROLE authenticated` or `SET ROLE anonymous`
+2. `set_config('request.jwt.claims', '{"sub":"<clerk_user_id>"}', false)` (or `null` for anonymous)
+
+Current product policy scopes app-data RLS to `authenticated`; anonymous role has no app-data read policies.
 
 ```sql
--- Example policy on learning_plans
-CREATE POLICY "Users can only see their own plans"
+-- Authenticated: own plans only
+CREATE POLICY learning_plans_select
   ON learning_plans
   FOR SELECT
-  USING (user_id = current_setting('request.jwt.claims', true)::json->>'sub');
+  TO authenticated
+  USING (
+    user_id IN (
+      SELECT id FROM users
+      WHERE clerk_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
+    )
+  );
 ```
 
 ---

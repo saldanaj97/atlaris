@@ -64,6 +64,7 @@ export const jobQueue = pgTable(
     // Users can read only their own jobs
     pgPolicy('job_queue_select_own', {
       for: 'select',
+      to: 'authenticated',
       using: sql`${table.userId} IN (
         SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
       )`,
@@ -72,13 +73,16 @@ export const jobQueue = pgTable(
     // Users can create jobs only for themselves
     pgPolicy('job_queue_insert_own', {
       for: 'insert',
+      to: 'authenticated',
       withCheck: sql`${table.userId} IN (
         SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
       )`,
     }),
 
-    // Only service role can update jobs (worker operations)
+    // Intentionally no authenticated UPDATE policy:
+    // only service-role workers can transition job state.
 
-    // Only service role can delete jobs (cleanup operations)
+    // Intentionally no authenticated DELETE policy:
+    // only service-role workers can perform queue cleanup.
   ]
 ).enableRLS();

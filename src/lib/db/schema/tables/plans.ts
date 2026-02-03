@@ -64,24 +64,27 @@ export const learningPlans = pgTable(
     index('idx_learning_plans_user_origin').on(table.userId, table.origin),
 
     // RLS Policies (session-variable-based for Neon)
-    // Note: Public plan access will be handled at application level
-    // Service-role operations use bypass client from @/lib/db/drizzle
+    // Note: Learning plans are private-only product data.
+    // Service-role operations use bypass client from @/lib/db/service-role.
 
-    // Users can read public plans OR their own plans
+    // Users can read only their own plans
     pgPolicy('learning_plans_select', {
       for: 'select',
-      using: sql`${table.visibility} = 'public' OR ${recordOwnedByCurrentUser(table.userId)}`,
+      to: 'authenticated',
+      using: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Users can only create plans for themselves
     pgPolicy('learning_plans_insert', {
       for: 'insert',
+      to: 'authenticated',
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
 
     // Users can update only their own plans
     pgPolicy('learning_plans_update', {
       for: 'update',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
@@ -89,6 +92,7 @@ export const learningPlans = pgTable(
     // Users can delete only their own plans
     pgPolicy('learning_plans_delete', {
       for: 'delete',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
   ]
@@ -126,17 +130,20 @@ export const planSchedules = pgTable(
       // Users can read schedule cache for their own plans
       pgPolicy('plan_schedules_select', {
         for: 'select',
+        to: 'authenticated',
         using: planOwnership,
       }),
 
       // Users can create/update schedule cache for their own plans
       pgPolicy('plan_schedules_insert', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: planOwnership,
       }),
 
       pgPolicy('plan_schedules_update', {
         for: 'update',
+        to: 'authenticated',
         using: planOwnership,
         withCheck: planOwnership,
       }),
@@ -144,6 +151,7 @@ export const planSchedules = pgTable(
       // Users can delete schedule cache for their own plans
       pgPolicy('plan_schedules_delete', {
         for: 'delete',
+        to: 'authenticated',
         using: planOwnership,
       }),
     ];
@@ -181,18 +189,21 @@ export const planGenerations = pgTable(
       // Users can read generation records only for their own plans
       pgPolicy('plan_generations_select', {
         for: 'select',
+        to: 'authenticated',
         using: planOwnership,
       }),
 
       // Users can create generation records only for their own plans
       pgPolicy('plan_generations_insert', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: planOwnership,
       }),
 
       // Users can update generation records only for their own plans
       pgPolicy('plan_generations_update', {
         for: 'update',
+        to: 'authenticated',
         using: planOwnership,
         withCheck: planOwnership,
       }),
@@ -200,6 +211,7 @@ export const planGenerations = pgTable(
       // Users can delete generation records only for their own plans
       pgPolicy('plan_generations_delete', {
         for: 'delete',
+        to: 'authenticated',
         using: planOwnership,
       }),
     ];
@@ -245,12 +257,14 @@ export const generationAttempts = pgTable(
       // Users can read attempts for plans they own
       pgPolicy('generation_attempts_select', {
         for: 'select',
+        to: 'authenticated',
         using: planOwnership,
       }),
 
       // Users can insert attempts only for plans they own
       pgPolicy('generation_attempts_insert', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: planOwnership,
       }),
     ];
