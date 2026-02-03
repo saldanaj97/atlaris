@@ -1,13 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { POST } from '@/app/api/v1/plans/from-pdf/extract/route';
-import { extractTextFromPdf } from '@/lib/pdf/extract';
-import { clearTestUser, setTestUser } from '@/../tests/helpers/auth';
-import { ensureUser } from '@/../tests/helpers/db';
-
 vi.mock('@/lib/pdf/extract', () => ({
   extractTextFromPdf: vi.fn(),
 }));
+
+import { POST } from '@/app/api/v1/plans/from-pdf/extract/route';
+import { extractTextFromPdf } from '@/lib/pdf/extract';
+import { clearTestUser, setTestUser } from '@/../tests/helpers/auth';
+import {
+  ensureStripeWebhookEvents,
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '@/../tests/helpers/db';
 
 const BASE_URL = 'http://localhost/api/v1/plans/from-pdf/extract';
 
@@ -15,10 +19,7 @@ const createPdfRequest = () => {
   const form = new FormData();
   const pdfHeader = '%PDF-1.4\n%%EOF';
   const buffer = Buffer.from(pdfHeader, 'utf8');
-  const blob = new Blob([new Uint8Array(buffer)], {
-    type: 'application/pdf',
-  });
-  const file = new File([blob], 'sample.pdf', { type: 'application/pdf' });
+  const file = new File([buffer], 'sample.pdf', { type: 'application/pdf' });
   form.append('file', file);
 
   return new Request(BASE_URL, {
@@ -28,7 +29,9 @@ const createPdfRequest = () => {
 };
 
 describe('POST /api/v1/plans/from-pdf/extract', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+    await ensureStripeWebhookEvents();
     vi.mocked(extractTextFromPdf).mockReset();
   });
 
@@ -37,8 +40,8 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
   });
 
   it('extracts text and structure from a PDF', async () => {
-    const clerkUserId = `clerk_test_pdf_extract_user`;
-    const clerkEmail = `pdf-extract-test@example.com`;
+    const clerkUserId = `clerk_pdf_extract_${Date.now()}`;
+    const clerkEmail = `pdf-extract-${Date.now()}@test.local`;
 
     setTestUser(clerkUserId);
     await ensureUser({ clerkUserId, email: clerkEmail });
@@ -70,8 +73,8 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
   });
 
   it('returns 400 when extraction finds no text', async () => {
-    const clerkUserId = `clerk_test_pdf_no_text`;
-    const clerkEmail = `pdf-no-text@example.com`;
+    const clerkUserId = `clerk_pdf_notext_${Date.now()}`;
+    const clerkEmail = `pdf-notext-${Date.now()}@test.local`;
 
     setTestUser(clerkUserId);
     await ensureUser({ clerkUserId, email: clerkEmail });

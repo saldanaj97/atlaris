@@ -8,7 +8,9 @@ import { getStripe } from '@/lib/stripe/client';
 import { createCustomer } from '@/lib/stripe/subscriptions';
 
 const createCheckoutBodySchema = z.object({
-  priceId: z.string().min(1, 'priceId is required'),
+  priceId: z
+    .string({ message: 'priceId is required' })
+    .min(1, 'priceId is required'),
   successUrl: z.string().optional(),
   cancelUrl: z.string().optional(),
 });
@@ -55,7 +57,14 @@ export const POST = withErrorBoundary(
       return jsonError('User not found', { status: 404 });
     }
 
-    const parseResult = createCheckoutBodySchema.safeParse(await req.json());
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonError('Invalid JSON in request body', { status: 400 });
+    }
+
+    const parseResult = createCheckoutBodySchema.safeParse(body);
     if (!parseResult.success) {
       const firstError = parseResult.error.issues[0];
       return jsonError(firstError?.message ?? 'Invalid request body', {
