@@ -3,6 +3,22 @@ import { z } from 'zod';
 import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
 import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
 
+/**
+ * Custom error type for environment variable validation failures.
+ * Allows callers to identify and handle configuration errors consistently,
+ * including redaction of sensitive information in logs.
+ */
+export class EnvValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly envKey?: string,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+    this.name = 'EnvValidationError';
+  }
+}
+
 type NodeEnv = 'development' | 'production' | 'test';
 
 const normalize = (value: string | undefined | null): string | undefined => {
@@ -33,7 +49,10 @@ export function optionalEnv(key: string): string | undefined {
 export function requireEnv(key: string): string {
   const value = optionalEnv(key);
   if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+    throw new EnvValidationError(
+      `Missing required environment variable: ${key}`,
+      key
+    );
   }
   return value;
 }
@@ -50,7 +69,7 @@ const ensureServerRuntime = () => {
 
   // In production: verify we're not in a browser before accessing server-only vars
   if (typeof window !== 'undefined') {
-    throw new Error(
+    throw new EnvValidationError(
       'Attempted to access a server-only environment variable in the browser bundle.'
     );
   }
@@ -191,10 +210,16 @@ export const appEnv = {
       : (getServerOptional('APP_URL') ?? 'http://localhost:3000');
     const parsed = APP_URL_SCHEMA.safeParse(raw);
     if (!parsed.success) {
-      throw new Error('APP_URL must be a valid absolute URL');
+      throw new EnvValidationError(
+        'APP_URL must be a valid absolute URL',
+        'APP_URL'
+      );
     }
     if (isProdRuntime && !parsed.data.startsWith('https://')) {
-      throw new Error('APP_URL must use https in production');
+      throw new EnvValidationError(
+        'APP_URL must use https in production',
+        'APP_URL'
+      );
     }
     const normalized = parsed.data.replace(/\/$/, '');
     if (!isTestRuntime) {

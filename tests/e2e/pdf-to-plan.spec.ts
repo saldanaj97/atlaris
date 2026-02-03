@@ -193,11 +193,6 @@ describe('PDF to Plan E2E Flow', () => {
       expect(plan).toBeDefined();
       expect(plan.origin).toBe('pdf');
       expect(plan.userId).toBe(userId);
-
-      await incrementPdfPlanUsage(userId, undefined, { now: e2eNow });
-
-      const hasQuota = await checkPdfPlanQuota(userId, { now: e2eNow });
-      expect(hasQuota).toBe(true);
     });
   });
 
@@ -242,6 +237,16 @@ describe('PDF to Plan E2E Flow', () => {
   });
 
   describe('Quota Enforcement', () => {
+    it('should allow PDF plan creation when quota available after incrementing usage', async () => {
+      const hasQuotaBefore = await checkPdfPlanQuota(userId, { now: e2eNow });
+      expect(hasQuotaBefore).toBe(true);
+
+      await incrementPdfPlanUsage(userId, undefined, { now: e2eNow });
+
+      const hasQuotaAfter = await checkPdfPlanQuota(userId, { now: e2eNow });
+      expect(hasQuotaAfter).toBe(true);
+    });
+
     it('should deny PDF plan creation when quota exhausted', async () => {
       const month = getCurrentMonth(E2E_FIXED_DATE);
       const freeLimit = TIER_LIMITS.free.monthlyPdfPlans;
