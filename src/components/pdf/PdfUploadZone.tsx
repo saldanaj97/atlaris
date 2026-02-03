@@ -155,7 +155,7 @@ export function PdfUploadZone({
         className={`dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-12 shadow-2xl backdrop-blur-xl transition-all ${isDragging ? 'border-primary/50 bg-primary/5' : ''} ${disabled || isUploading ? 'cursor-not-allowed opacity-60' : 'hover:border-primary/30 cursor-pointer'} `}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDrop={(e) => void handleDrop(e)}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         aria-label="Upload PDF file dropzone"
@@ -191,7 +191,7 @@ export function PdfUploadZone({
             id={inputId}
             type="file"
             accept=".pdf,application/pdf"
-            onChange={handleFileInputChange}
+            onChange={(e) => void handleFileInputChange(e)}
             className="sr-only"
             disabled={disabled || isUploading}
           />
