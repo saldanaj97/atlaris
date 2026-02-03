@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
@@ -78,8 +78,6 @@ const buildInvalidBuffer = (): Buffer => {
   return Buffer.from('This is not a PDF file', 'utf8');
 };
 
-const fixedNow = new Date('2025-01-15T12:00:00Z');
-
 const getCurrentMonth = (now: Date = new Date()): string => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
@@ -90,8 +88,6 @@ describe('PDF to Plan E2E Flow', () => {
   const email = `pdf-e2e-to-plan-test@example.com`;
 
   beforeEach(async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(fixedNow);
     await resetDbForIntegrationTestFile();
     await ensureStripeWebhookEvents();
 
@@ -105,10 +101,6 @@ describe('PDF to Plan E2E Flow', () => {
       })
       .returning();
     userId = user.id;
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   describe('Happy Path: Complete PDF to Plan Workflow', () => {
@@ -147,7 +139,7 @@ describe('PDF to Plan E2E Flow', () => {
     });
 
     it('should increment PDF usage counter after plan creation', async () => {
-      const month = getCurrentMonth(fixedNow);
+      const month = getCurrentMonth();
 
       const [initialMetrics] = await db
         .select()
@@ -246,7 +238,7 @@ describe('PDF to Plan E2E Flow', () => {
 
   describe('Quota Enforcement', () => {
     it('should deny PDF plan creation when quota exhausted', async () => {
-      const month = getCurrentMonth(fixedNow);
+      const month = getCurrentMonth();
       const freeLimit = TIER_LIMITS.free.monthlyPdfPlans;
 
       await db.insert(usageMetrics).values({
@@ -299,7 +291,7 @@ describe('PDF to Plan E2E Flow', () => {
       await incrementPdfPlanUsage(userId);
       await incrementPdfPlanUsage(userId);
 
-      const month = getCurrentMonth(fixedNow);
+      const month = getCurrentMonth();
       const [metrics] = await db
         .select()
         .from(usageMetrics)
