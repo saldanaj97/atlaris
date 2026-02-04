@@ -51,12 +51,12 @@ db/
 ```typescript
 // rls.ts creates clients that:
 // 1. Switch to role: authenticated OR anonymous
-// 2. Set session variable: request.jwt.claims = {"sub": "<clerkUserId>"} (or null for anon)
-//    via SELECT set_config('request.jwt.claims', '{"sub":"..."}', false)
-// 3. Execute queries (RLS filters by request.jwt.claims->>'sub')
+// 2. For authenticated users, validate JWT with auth.jwt_session_init(jwt)
+// 3. RLS policies use auth.user_id() for verified identity
 // 4. Must call cleanup() when done
 
-const { db, cleanup } = await createAuthenticatedRlsClient(userId);
+const identity = await getAuthenticatedRlsIdentity(clerkUserId);
+const { db, cleanup } = await createAuthenticatedRlsClient(identity);
 try {
   // queries here see only user's data
 } finally {

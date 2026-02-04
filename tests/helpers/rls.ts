@@ -4,10 +4,10 @@
  * This module provides test utilities for creating database clients with different
  * auth contexts to verify RLS policies work correctly.
  *
- * NEON RLS ARCHITECTURE (Session Variable Approach):
+ * NEON RLS ARCHITECTURE (JWT Session Approach):
  * - All clients use the same database URL (owner role)
- * - RLS ensures policies apply via session variables
- * - Session variables differentiate between users:
+ * - RLS ensures policies apply via JWT session variables
+ * - In test/dev mode we fall back to request.jwt.claims for simplicity
  *   - Authenticated: request.jwt.claims = '{"sub": "clerk_user_id"}'
  *   - Anonymous: request.jwt.claims = 'null'
  *   - Service (test setup): Regular db client from drizzle.ts (has BYPASSRLS)
@@ -19,6 +19,7 @@
  */
 
 import { db } from '@/lib/db/service-role';
+import type { RlsClient } from '@/lib/db/rls';
 import {
   createAnonymousRlsClient,
   createAuthenticatedRlsClient,
@@ -36,7 +37,7 @@ import {
  *
  * @returns Promise resolving to Drizzle database client with RLS enforcement (anonymous)
  */
-export async function createAnonRlsDb() {
+export async function createAnonRlsDb(): Promise<RlsClient> {
   const result = await createAnonymousRlsClient();
   return result.db;
 }
@@ -53,8 +54,13 @@ export async function createAnonRlsDb() {
  * @param clerkUserId - The Clerk user ID (e.g., "user_123")
  * @returns Promise resolving to Drizzle database client with RLS enforcement for this user
  */
-export async function createRlsDbForUser(clerkUserId: string) {
-  const result = await createAuthenticatedRlsClient(clerkUserId);
+export async function createRlsDbForUser(
+  clerkUserId: string
+): Promise<RlsClient> {
+  const result = await createAuthenticatedRlsClient({
+    kind: 'clerk-user-id',
+    userId: clerkUserId,
+  });
   return result.db;
 }
 
@@ -66,6 +72,6 @@ export async function createRlsDbForUser(clerkUserId: string) {
  *
  * @returns Drizzle database client with RLS bypassed (service role)
  */
-export function getServiceRoleDb() {
+export function getServiceRoleDb(): typeof db {
   return db;
 }

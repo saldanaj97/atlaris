@@ -17,14 +17,18 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
+import {
+  getAuthenticatedRlsIdentity,
+  getEffectiveClerkUserId,
+} from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { createAuthenticatedRlsClient } from '@/lib/db/rls';
-import { getDb } from '@/lib/db/runtime';
+import { JwtValidationError } from '@/lib/api/errors';
 import { getPlanSchedule } from '@/lib/api/schedule';
+import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
 import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
@@ -99,8 +103,8 @@ export async function updateTaskProgressAction({
     throw new Error('User not found.');
   }
 
-  const { db: rlsDb, cleanup } =
-    await createAuthenticatedRlsClient(clerkUserId);
+  const identity = await getAuthenticatedRlsIdentity(clerkUserId);
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(identity);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-task-progress'),
     clerkUserId,
@@ -163,8 +167,26 @@ export async function getPlanForPage(
     );
   }
 
-  const { db: rlsDb, cleanup } =
-    await createAuthenticatedRlsClient(clerkUserId);
+  let rlsDb: Awaited<ReturnType<typeof createAuthenticatedRlsClient>>['db'];
+  let cleanup: () => Promise<void>;
+  try {
+    const identity = await getAuthenticatedRlsIdentity(clerkUserId);
+    const result = await createAuthenticatedRlsClient(identity);
+    rlsDb = result.db;
+    cleanup = result.cleanup;
+  } catch (error) {
+    if (error instanceof JwtValidationError) {
+      logger.warn(
+        { planId, clerkUserId, error },
+        'Plan access denied: invalid JWT'
+      );
+      return planError(
+        'UNAUTHORIZED',
+        'Your session is no longer valid. Please sign in again.'
+      );
+    }
+    throw error;
+  }
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-plan'),
     clerkUserId,
@@ -234,8 +256,26 @@ export async function getPlanScheduleForPage(
     );
   }
 
-  const { db: rlsDb, cleanup } =
-    await createAuthenticatedRlsClient(clerkUserId);
+  let rlsDb: Awaited<ReturnType<typeof createAuthenticatedRlsClient>>['db'];
+  let cleanup: () => Promise<void>;
+  try {
+    const identity = await getAuthenticatedRlsIdentity(clerkUserId);
+    const result = await createAuthenticatedRlsClient(identity);
+    rlsDb = result.db;
+    cleanup = result.cleanup;
+  } catch (error) {
+    if (error instanceof JwtValidationError) {
+      logger.warn(
+        { planId, clerkUserId, error },
+        'Schedule access denied: invalid JWT'
+      );
+      return scheduleError(
+        'UNAUTHORIZED',
+        'Your session is no longer valid. Please sign in again.'
+      );
+    }
+    throw error;
+  }
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-schedule'),
     clerkUserId,
