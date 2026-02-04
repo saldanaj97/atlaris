@@ -38,10 +38,10 @@ Defined in `src/lib/db/enums.ts`:
 
 ## Row Level Security (RLS)
 
-RLS policies enforce tenant isolation using role switching + session variables:
+RLS policies enforce tenant isolation using role switching + database-validated JWT sessions:
 
 - Request-scoped DB sessions run as `authenticated` or `anonymous` roles (via `src/lib/db/rls.ts`)
-- `request.jwt.claims` carries Clerk `sub` for ownership checks
+- Authenticated sessions call `auth.jwt_session_init(jwt)` and policies read `auth.user_id()`
 - User-facing policies are explicitly scoped with `to` (no implicit `PUBLIC` policies)
 - User-facing app data is authenticated-only; anonymous role does not have app-data read policies
 

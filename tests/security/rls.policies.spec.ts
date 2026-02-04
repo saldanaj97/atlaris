@@ -16,9 +16,11 @@
  */
 
 import { eq, sql } from 'drizzle-orm';
+import postgres from 'postgres';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { databaseEnv } from '@/lib/config/env';
 import { db } from '@/lib/db/service-role';
 import {
   learningPlans,
@@ -58,6 +60,50 @@ const expectedPolicyTables = [
   'task_progress',
   'task_calendar_events',
 ] as const;
+
+type PgRows<T> = { rows: T[] };
+
+function toRows<T>(result: unknown): T[] {
+  if (Array.isArray(result)) {
+    return result as T[];
+  }
+  if (typeof result === 'object' && result !== null && 'rows' in result) {
+    return (result as PgRows<T>).rows;
+  }
+  return [];
+}
+
+async function detectJwtValidation(): Promise<boolean> {
+  try {
+    const extensionRows = toRows<{ installed: boolean }>(
+      await db.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_extension WHERE extname = 'pg_session_jwt'
+        ) AS installed
+      `)
+    );
+    const extensionInstalled = Boolean(extensionRows[0]?.installed);
+    if (!extensionInstalled) {
+      return false;
+    }
+
+    const settingsRows = toRows<{ name: string; setting: string | null }>(
+      await db.execute(sql`
+        SELECT name, setting
+        FROM pg_settings
+        WHERE name LIKE 'pg_session_jwt.%'
+      `)
+    );
+
+    return settingsRows.some((row) =>
+      typeof row.setting === 'string' ? row.setting.trim().length > 0 : false
+    );
+  } catch {
+    return false;
+  }
+}
+
+const jwtValidationEnabled = runRls ? await detectJwtValidation() : false;
 
 async function expectRlsViolation(operation: () => Promise<unknown>) {
   try {
@@ -128,6 +174,50 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         expect(roles.size).toBeGreaterThan(0);
       }
     });
+  });
+
+  describe('Identity Validation', () => {
+    const jwtValidationTest = it.skipIf(!jwtValidationEnabled);
+
+    jwtValidationTest(
+      'manual request.jwt.claims does not grant access when JWT validation is enabled',
+      async () => {
+        const [victim] = await db
+          .insert(users)
+          .values({
+            clerkUserId: 'user_jwt_victim',
+            email: 'jwt-victim@test.com',
+          })
+          .returning();
+
+        await db.insert(learningPlans).values({
+          userId: victim.id,
+          topic: 'Private Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+        });
+
+        const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
+        const maliciousDb = postgres(connectionUrl, {
+          max: 1,
+          idle_timeout: 20,
+          connect_timeout: 10,
+        });
+
+        try {
+          await maliciousDb.unsafe('SET ROLE authenticated');
+          await maliciousDb.unsafe('SET search_path = public');
+          await maliciousDb`SELECT set_config('request.jwt.claims', ${JSON.stringify({ sub: victim.clerkUserId })}, false)`;
+
+          const rows = await maliciousDb`SELECT id FROM learning_plans`;
+          expect(rows).toHaveLength(0);
+        } finally {
+          await maliciousDb.end({ timeout: 5 });
+        }
+      }
+    );
   });
 
   describe('Service Role Access (RLS Bypass)', () => {

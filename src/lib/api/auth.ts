@@ -1,4 +1,10 @@
 import { appEnv, devClerkEnv } from '@/lib/config/env';
+import type { AuthenticatedRlsIdentity } from '@/lib/db/rls';
+import {
+  createUser,
+  getUserByClerkId,
+  type DbUser,
+} from '@/lib/db/queries/users';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 import {
@@ -6,11 +12,6 @@ import {
   getUserRateLimitHeaders,
   type UserRateLimitCategory,
 } from './user-rate-limit';
-import {
-  createUser,
-  getUserByClerkId,
-  type DbUser,
-} from '@/lib/db/queries/users';
 
 /**
  * Returns the effective Clerk user id for the current request.
@@ -52,6 +53,35 @@ export async function getClerkAuthUserId(): Promise<string | null> {
   const { auth } = await import('@clerk/nextjs/server');
   const { userId } = await auth();
   return userId ?? null;
+}
+
+export async function getClerkJwt(): Promise<string | null> {
+  // Avoid importing Clerk in Vitest environments.
+  if (appEnv.vitestWorkerId) {
+    return null;
+  }
+
+  const { auth } = await import('@clerk/nextjs/server');
+  const { getToken } = await auth();
+  const jwt = await getToken();
+  return jwt ?? null;
+}
+
+export async function getAuthenticatedRlsIdentity(
+  clerkUserId: string
+): Promise<AuthenticatedRlsIdentity> {
+  const jwt = await getClerkJwt();
+  if (jwt) {
+    return { kind: 'jwt', token: jwt };
+  }
+
+  if (appEnv.isProduction) {
+    throw new AuthError(
+      'Authentication session is missing. Please sign in again.'
+    );
+  }
+
+  return { kind: 'clerk-user-id', userId: clerkUserId };
 }
 
 export async function requireUser() {
@@ -155,8 +185,9 @@ export function withAuth(handler: Handler): PlainHandler {
 
     // Create RLS-enforced database client for this request
     // This client automatically scopes all queries to the authenticated user
+    const identity = await getAuthenticatedRlsIdentity(userId);
     const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-    const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(userId);
+    const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(identity);
 
     // Create request context with the RLS-enforced DB and cleanup function
     const requestContext = createRequestContext(req, userId, rlsDb, cleanup);

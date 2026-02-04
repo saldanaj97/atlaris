@@ -28,6 +28,7 @@ const normalize = (value: string | undefined | null): string | undefined => {
 };
 
 const APP_URL_SCHEMA = z.string().url();
+const CLERK_JWKS_URL_SCHEMA = z.string().url();
 const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
 
 // TODO: Consider using zod for parsing and validation of numeric env vars
@@ -283,6 +284,29 @@ export const oauthEncryptionEnv = {
 export const clerkWebhookEnv = {
   get secret() {
     return getServerOptional('CLERK_WEBHOOK_SECRET');
+  },
+} as const;
+
+export const clerkJwtEnv = {
+  get jwksUrl(): string | undefined {
+    const value = getServerRequiredProdOnly('CLERK_JWKS_URL');
+    if (!value) {
+      return undefined;
+    }
+    const parsed = CLERK_JWKS_URL_SCHEMA.safeParse(value);
+    if (!parsed.success) {
+      throw new EnvValidationError(
+        'CLERK_JWKS_URL must be a valid absolute URL',
+        'CLERK_JWKS_URL'
+      );
+    }
+    if (isProdRuntime && !parsed.data.startsWith('https://')) {
+      throw new EnvValidationError(
+        'CLERK_JWKS_URL must use https in production',
+        'CLERK_JWKS_URL'
+      );
+    }
+    return parsed.data;
   },
 } as const;
 
