@@ -40,12 +40,6 @@ export class AuthError extends AppError {
   }
 }
 
-export class JwtValidationError extends AppError {
-  constructor(message = 'Authentication failed', details?: unknown) {
-    super(message, { status: 401, code: 'JWT_VALIDATION_FAILED', details });
-  }
-}
-
 export class ForbiddenError extends AppError {
   constructor(message = 'Forbidden', details?: unknown) {
     super(message, { status: 403, code: 'FORBIDDEN', details });

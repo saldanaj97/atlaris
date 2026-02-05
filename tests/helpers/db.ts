@@ -147,36 +147,12 @@ export async function ensureRlsRolesAndPermissions() {
     CREATE SCHEMA IF NOT EXISTS auth;
   `);
 
-  const extensionResult = await db.execute(sql`
-    SELECT EXISTS (
-      SELECT 1 FROM pg_extension WHERE extname = 'pg_session_jwt'
-    ) AS installed
+  // Create auth.jwt() function for RLS policies
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
+    LANGUAGE sql
+    AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
   `);
-  const extensionRows = Array.isArray(extensionResult)
-    ? extensionResult
-    : (extensionResult as { rows: Array<{ installed: boolean }> }).rows;
-  const extensionInstalled = Boolean(extensionRows[0]?.installed);
-
-  if (!extensionInstalled) {
-    // Create minimal auth.* functions for RLS policy evaluation in test databases
-    await db.execute(sql`
-      CREATE OR REPLACE FUNCTION auth.session() RETURNS jsonb
-      LANGUAGE sql
-      AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
-    `);
-
-    await db.execute(sql`
-      CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-      LANGUAGE sql
-      AS $$ SELECT auth.session() $$;
-    `);
-
-    await db.execute(sql`
-      CREATE OR REPLACE FUNCTION auth.user_id() RETURNS text
-      LANGUAGE sql
-      AS $$ SELECT auth.session() ->> 'sub' $$;
-    `);
-  }
 
   // Grant schema access to RLS roles
   await db.execute(sql`

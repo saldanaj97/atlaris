@@ -479,7 +479,7 @@ import { db } from '@/lib/db/service-role';
 `getDb()` returns the request-scoped client created by middleware/context setup. The underlying RLS client (`src/lib/db/rls.ts`) does two security-critical steps:
 
 1. `SET ROLE authenticated` or `SET ROLE anonymous`
-2. `auth.jwt_session_init('<clerk_jwt>')` to validate identity for authenticated sessions
+2. `set_config('request.jwt.claims', '{"sub":"<clerk_user_id>"}', false)` (or `null` for anonymous)
 
 Current product policy scopes app-data RLS to `authenticated`; anonymous role has no app-data read policies.
 
@@ -492,7 +492,7 @@ CREATE POLICY learning_plans_select
   USING (
     user_id IN (
       SELECT id FROM users
-      WHERE clerk_user_id = auth.user_id()
+      WHERE clerk_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
     )
   );
 ```

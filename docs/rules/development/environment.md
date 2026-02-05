@@ -17,7 +17,6 @@ Prefer the exported grouped configs instead of raw keys:
 - `stripeEnv` - Stripe API keys and settings
 - `aiEnv` - AI/LLM provider configuration
 - `loggingEnv` - Logging configuration
-- `clerkJwtEnv` - Clerk JWKS configuration for pg_session_jwt
 
 ### Adding New Variables
 
@@ -29,10 +28,9 @@ If you need a new variable:
 
 ### Special Variables
 
-| Variable              | Purpose                                   | Required |
-| --------------------- | ----------------------------------------- | -------- |
-| `CLERK_SESSION_TOKEN` | Manual API testing authentication         | No       |
-| `CLERK_JWKS_URL`      | pg_session_jwt JWKS config for Clerk JWTs | Prod     |
+| Variable              | Purpose                           | Required |
+| --------------------- | --------------------------------- | -------- |
+| `CLERK_SESSION_TOKEN` | Manual API testing authentication | No       |
 
 > **Note**: `CLERK_SESSION_TOKEN` is only for `scripts/test-plan-generation.sh`. Not required for normal development.
 

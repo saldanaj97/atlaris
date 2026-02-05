@@ -10,12 +10,8 @@
 
 import { revalidatePath } from 'next/cache';
 
-import {
-  getAuthenticatedRlsIdentity,
-  getEffectiveClerkUserId,
-} from '@/lib/api/auth';
+import { getEffectiveClerkUserId } from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { JwtValidationError } from '@/lib/api/errors';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getModuleDetail } from '@/lib/db/queries/modules';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
@@ -77,26 +73,8 @@ export async function getModuleForPage(
     );
   }
 
-  let rlsDb: Awaited<ReturnType<typeof createAuthenticatedRlsClient>>['db'];
-  let cleanup: () => Promise<void>;
-  try {
-    const identity = await getAuthenticatedRlsIdentity(clerkUserId);
-    const result = await createAuthenticatedRlsClient(identity);
-    rlsDb = result.db;
-    cleanup = result.cleanup;
-  } catch (error) {
-    if (error instanceof JwtValidationError) {
-      logger.warn(
-        { moduleId, clerkUserId, error },
-        'Module access denied: invalid JWT'
-      );
-      return moduleError(
-        'UNAUTHORIZED',
-        'Your session is no longer valid. Please sign in again.'
-      );
-    }
-    throw error;
-  }
+  const { db: rlsDb, cleanup } =
+    await createAuthenticatedRlsClient(clerkUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-module'),
     clerkUserId,
@@ -160,19 +138,8 @@ export async function updateModuleTaskProgressAction({
     throw new Error('User not found.');
   }
 
-  let rlsDb: Awaited<ReturnType<typeof createAuthenticatedRlsClient>>['db'];
-  let cleanup: () => Promise<void>;
-  try {
-    const identity = await getAuthenticatedRlsIdentity(clerkUserId);
-    const result = await createAuthenticatedRlsClient(identity);
-    rlsDb = result.db;
-    cleanup = result.cleanup;
-  } catch (error) {
-    if (error instanceof JwtValidationError) {
-      throw new Error('Your session is no longer valid. Please sign in again.');
-    }
-    throw error;
-  }
+  const { db: rlsDb, cleanup } =
+    await createAuthenticatedRlsClient(clerkUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-module-task-progress'),
     clerkUserId,
