@@ -36,7 +36,7 @@ describe('POST /api/v1/integrations/disconnect', () => {
       'http://localhost:3000/api/v1/integrations/disconnect',
       {
         method: 'POST',
-        body: JSON.stringify({ integration: 'notion' }),
+        body: JSON.stringify({ integration: 'google_calendar' }),
       }
     );
 

@@ -3,11 +3,11 @@ import { type Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Atlaris - Turn Learning Goals into Scheduled Action',
   description:
-    'Atlaris turns what you want to learn into a time-blocked, resource-linked schedule that syncs directly to Google Calendar, Notion, or Outlook.',
+    'Atlaris turns what you want to learn into a time-blocked, resource-linked schedule that syncs directly to Google Calendar or Outlook.',
   openGraph: {
     title: "Atlaris - Your learning plan isn't the problem. Your calendar is.",
     description:
-      'Atlaris turns what you want to learn into a time-blocked, resource-linked schedule that syncs directly to Google Calendar, Notion, or Outlook.',
+      'Atlaris turns what you want to learn into a time-blocked, resource-linked schedule that syncs directly to Google Calendar or Outlook.',
     images: [
       {
         url: '/og-landing.jpg',
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 
 /**
  * Note: This is a nested layout - the root layout already provides <html>, <body>,
- * ClerkProvider, fonts, Toaster, and <main>
+ * global providers, fonts, Toaster, and <main>
  */
 export default function LandingLayout({
   children,

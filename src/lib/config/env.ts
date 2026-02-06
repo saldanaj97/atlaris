@@ -155,7 +155,7 @@ const isProdRuntime =
  * - Ensures the variable is only accessed in a server runtime.
  * - Caching behavior follows the same pattern as getServerRequired/getServerOptional.
  *
- * Use this for third-party integration credentials (e.g., Google OAuth, Notion)
+ * Use this for third-party integration credentials (e.g., Google OAuth)
  * that are required in production but can be mocked or omitted in tests.
  *
  * @param {string} key - The name of the environment variable to retrieve.
@@ -244,21 +244,6 @@ export const databaseEnv = {
   },
   get authenticatedRoleUrl(): string {
     return getServerOptional('DATABASE_URL_AUTHENTICATED_ROLE') ?? this.url;
-  },
-} as const;
-
-export const notionEnv = {
-  get clientId() {
-    return getServerRequired('NOTION_CLIENT_ID');
-  },
-  get clientSecret() {
-    return getServerRequired('NOTION_CLIENT_SECRET');
-  },
-  get redirectUri() {
-    return getServerRequired('NOTION_REDIRECT_URI');
-  },
-  get parentPageId() {
-    return getServerOptional('NOTION_PARENT_PAGE_ID') ?? '';
   },
 } as const;
 

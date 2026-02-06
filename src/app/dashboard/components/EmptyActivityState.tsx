@@ -42,7 +42,7 @@ function getFilterDescription(filter: ActivityFilter): string {
     case 'progress':
       return 'Progress updates are tracked as you work through your plans. Complete tasks and mark progress to see updates here.';
     case 'export':
-      return 'Exports are created when you export your plans or content to external platforms like Notion or Google Calendar.';
+      return 'Exports are created when you export your plans or content to external platforms like Google Calendar.';
     default:
       return "You don't have any activity yet. Create a plan to get started!";
   }

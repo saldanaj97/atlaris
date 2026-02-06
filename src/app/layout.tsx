@@ -21,7 +21,7 @@ const youngSerif = Young_Serif({
 export const metadata: Metadata = {
   title: 'Atlaris - AI-Powered Learning Paths',
   description:
-    'Create personalized learning plans with AI-generated modules and tasks. Track progress, export to Notion, and learn smarter.',
+    'Create personalized learning plans with AI-generated modules and tasks. Track progress, sync to Google Calendar, and learn smarter.',
   // TODO: Add favicon files to public/ folder then uncomment this
   // icons: [
   //   {
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Atlaris - AI-Powered Learning Paths',
     description:
-      'Create personalized learning plans with AI-generated modules and tasks. Track progress, export to Notion, and learn smarter.',
+      'Create personalized learning plans with AI-generated modules and tasks. Track progress, sync to Google Calendar, and learn smarter.',
     images: [
       { url: '/og-default.jpg', width: 1200, height: 630, alt: 'Atlaris' },
       {

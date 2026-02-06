@@ -7,7 +7,6 @@ import {
   jobQueue,
   learningPlans,
   modules,
-  notionSyncState,
   planGenerations,
   aiUsageEvents,
   resources,
@@ -52,9 +51,6 @@ export async function truncateAll() {
   );
   await db.execute(
     sql`TRUNCATE TABLE ${integrationTokens} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(
-    sql`TRUNCATE TABLE ${notionSyncState} RESTART IDENTITY CASCADE`
   );
   await db.execute(
     sql`TRUNCATE TABLE ${googleCalendarSyncState} RESTART IDENTITY CASCADE`
@@ -193,20 +189,6 @@ export async function ensureRlsRolesAndPermissions() {
     ALTER DEFAULT PRIVILEGES IN SCHEMA public
     GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anonymous;
   `);
-}
-
-/**
- * Ensures the notion_sync_state table exists using Drizzle's schema/migration system.
- * If migrations are run before tests, this function is unnecessary.
- * If dynamic creation is needed, use Drizzle's API.
- */
-export async function ensureNotionSyncState() {
-  // If using Drizzle's migration system, the table will be created automatically.
-  // If not, you can use Drizzle's schema API to ensure the table exists.
-  // For example, you could run a dummy query to trigger table creation:
-  await db.select().from(notionSyncState).limit(1);
-  // If you need to ensure indexes, use Drizzle's migration system.
-  // Remove raw SQL table/index creation to avoid duplication.
 }
 
 /**

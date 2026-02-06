@@ -48,7 +48,7 @@ const policyRowSchema = z.object({
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_schedules, plan_generations, generation_attempts, task_resources,
 // usage_metrics, ai_usage_events, oauth_state_tokens, integration_tokens,
-// notion_sync_state, google_calendar_sync_state, job_queue.
+// google_calendar_sync_state, job_queue.
 const expectedPolicyTables = [
   'users',
   'learning_plans',

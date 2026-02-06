@@ -33,7 +33,7 @@ vi.mock('googleapis', () => ({
 async function ensureIntegrationTokensTable() {
   await db.execute(sql`
     DO $$ BEGIN
-      CREATE TYPE integration_provider AS ENUM('notion', 'google_calendar');
+      CREATE TYPE integration_provider AS ENUM('google_calendar');
     EXCEPTION
       WHEN duplicate_object THEN null;
     END $$;

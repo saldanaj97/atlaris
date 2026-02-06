@@ -13,14 +13,13 @@ describe.skip('ExportButtons (temporarily disabled)', () => {
     vi.restoreAllMocks();
   });
 
-  it('should render Notion and Google Calendar buttons', () => {
+  it('should render Google Calendar button', () => {
     render(<ExportButtons planId="test-plan-123" />);
 
-    expect(screen.getByText(/Export to Notion/i)).toBeInTheDocument();
     expect(screen.getByText(/Add to Google Calendar/i)).toBeInTheDocument();
   });
 
-  it('should show loading state and success message when exporting', async () => {
+  it('should show loading state and success message when syncing', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -31,8 +30,8 @@ describe.skip('ExportButtons (temporarily disabled)', () => {
 
     render(<ExportButtons planId="test-plan-123" />);
 
-    const notionButton = screen.getByText(/Export to Notion/i);
-    fireEvent.click(notionButton);
+    const calendarButton = screen.getByText(/Add to Google Calendar/i);
+    fireEvent.click(calendarButton);
 
     // Assert loading state
     await waitFor(() => {
@@ -41,34 +40,34 @@ describe.skip('ExportButtons (temporarily disabled)', () => {
 
     // Assert success flow
     await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('Exported to Notion', {
-        description: 'Your learning plan is now in Notion!',
+      expect(toast.success).toHaveBeenCalledWith('Added to Google Calendar', {
+        description: '5 events created',
       });
     });
 
     // Assert loading UI cleared
     await waitFor(() => {
-      expect(screen.getByText(/Export to Notion/i)).toBeInTheDocument();
+      expect(screen.getByText(/Add to Google Calendar/i)).toBeInTheDocument();
       expect(screen.queryByText(/Exporting/i)).not.toBeInTheDocument();
     });
   });
 
-  it('should show error message on export failure', async () => {
+  it('should show error message on sync failure', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: false,
-        json: async () => ({ error: 'Export failed' }),
+        json: async () => ({ error: 'Sync failed' }),
       })
     );
 
     render(<ExportButtons planId="test-plan-123" />);
 
-    const notionButton = screen.getByText(/Export to Notion/i);
-    fireEvent.click(notionButton);
+    const calendarButton = screen.getByText(/Add to Google Calendar/i);
+    fireEvent.click(calendarButton);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Export failed');
+      expect(toast.error).toHaveBeenCalledWith('Sync failed');
     });
   });
 

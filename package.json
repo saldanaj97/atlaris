@@ -26,7 +26,6 @@
     "@asteasolutions/zod-to-openapi": "^8.1.0",
     "@neondatabase/auth": "latest",
     "@neondatabase/serverless": "^1.0.2",
-    "@notionhq/client": "^5.3.0",
     "@openrouter/sdk": "^0.2.11",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
