@@ -1,7 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import type { AnyPgColumn, AnyPgTable } from 'drizzle-orm/pg-core';
 
-import { clerkSub } from './tables/common';
+import { currentUserId } from './tables/common';
 import { users } from './tables/users';
 
 type BasePlanParams = {
@@ -16,12 +16,12 @@ type BasePlanParams = {
  */
 
 /**
- * SQL fragment that ensures a row belongs to the current authenticated Clerk user.
+ * SQL fragment that ensures a row belongs to the current authenticated user.
  */
 export const recordOwnedByCurrentUser = (userIdColumn: AnyPgColumn): SQL =>
   sql`
     ${userIdColumn} IN (
-      SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
     )
   `;
 
@@ -43,7 +43,7 @@ export const planOwnedByCurrentUser = ({
       SELECT 1 FROM ${planTable}
       WHERE ${planIdReferenceColumn} = ${planIdColumn}
       AND ${planUserIdColumn} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
       )
     )
   `;
@@ -103,7 +103,7 @@ export const userAndTaskOwnedByCurrentUser = ({
       JOIN ${planTable} ON ${planIdReferenceColumn} = ${modulePlanIdColumn}
       WHERE ${taskIdReferenceColumn} = ${taskIdColumn}
       AND ${planUserIdColumn} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
       )
     )
   `;

@@ -13,7 +13,7 @@ import {
 
 import { jobStatus, jobType } from '../../enums';
 import { timestampFields } from '../helpers';
-import { clerkSub } from './common';
+import { currentUserId } from './common';
 import { learningPlans } from './plans';
 import { users } from './users';
 
@@ -66,7 +66,7 @@ export const jobQueue = pgTable(
       for: 'select',
       to: 'authenticated',
       using: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
       )`,
     }),
 
@@ -75,7 +75,7 @@ export const jobQueue = pgTable(
       for: 'insert',
       to: 'authenticated',
       withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
       )`,
     }),
 

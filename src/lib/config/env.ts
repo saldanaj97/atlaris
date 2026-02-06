@@ -265,9 +265,12 @@ export const oauthEncryptionEnv = {
   },
 } as const;
 
-export const clerkWebhookEnv = {
-  get secret() {
-    return getServerOptional('CLERK_WEBHOOK_SECRET');
+export const neonAuthEnv = {
+  get baseUrl() {
+    return getServerRequired('NEON_AUTH_BASE_URL');
+  },
+  get cookieSecret() {
+    return getServerRequired('NEON_AUTH_COOKIE_SECRET');
   },
 } as const;
 
@@ -394,15 +397,15 @@ export const googleAiEnv = {
   },
 } as const;
 
-export const devClerkEnv = {
+export const devAuthEnv = {
   get userId() {
-    return getServerOptional('DEV_CLERK_USER_ID');
+    return getServerOptional('DEV_AUTH_USER_ID');
   },
   get email() {
-    return getServerOptional('DEV_CLERK_USER_EMAIL') ?? 'dev@example.com';
+    return getServerOptional('DEV_AUTH_USER_EMAIL') ?? 'dev@example.com';
   },
   get name() {
-    return getServerOptional('DEV_CLERK_USER_NAME') ?? 'Dev User';
+    return getServerOptional('DEV_AUTH_USER_NAME') ?? 'Dev User';
   },
 } as const;
 

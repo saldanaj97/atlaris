@@ -25,7 +25,7 @@ import { users } from './users';
 /**
  * OAuth state tokens for CSRF protection during OAuth flows.
  *
- * This table stores short-lived tokens that map OAuth state parameters to Clerk user IDs.
+ * This table stores short-lived tokens that map OAuth state parameters to auth user IDs.
  * The tokens are:
  * - Hashed (SHA-256) before storage for security
  * - Single-use (deleted on validation via atomic DELETE...RETURNING)
@@ -41,8 +41,8 @@ export const oauthStateTokens = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     // SHA-256 hash of the state token (never store plaintext)
     stateTokenHash: text('state_token_hash').notNull(),
-    // Clerk user ID who initiated the OAuth flow
-    clerkUserId: text('clerk_user_id').notNull(),
+    // Auth user ID who initiated the OAuth flow
+    authUserId: text('auth_user_id').notNull(),
     // Optional: which OAuth provider this token is for (for debugging/analytics)
     provider: text('provider'),
     // When this token expires (10 minutes from creation)
@@ -57,17 +57,17 @@ export const oauthStateTokens = pgTable(
     pgPolicy('oauth_state_tokens_insert', {
       for: 'insert',
       to: 'authenticated',
-      withCheck: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      withCheck: sql`${table.authUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
     pgPolicy('oauth_state_tokens_select', {
       for: 'select',
       to: 'authenticated',
-      using: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      using: sql`${table.authUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
     pgPolicy('oauth_state_tokens_delete', {
       for: 'delete',
       to: 'authenticated',
-      using: sql`${table.clerkUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      using: sql`${table.authUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
     }),
   ]
 ).enableRLS();

@@ -1,4 +1,4 @@
-import { appEnv, devClerkEnv } from '@/lib/config/env';
+import { appEnv, devAuthEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 import dotenv from 'dotenv';
 import { eq } from 'drizzle-orm';
@@ -219,17 +219,17 @@ export async function seedDatabase(
   // Seed the database with all tables and relationships
   // Optional: deterministic dev user injection (before randomized seeding)
   // for easier local testing and predictable auth
-  const devClerkUserId = devClerkEnv.userId;
-  const devEmail = devClerkEnv.email;
-  const devName = devClerkEnv.name;
+  const devAuthUserId = devAuthEnv.userId;
+  const devEmail = devAuthEnv.email;
+  const devName = devAuthEnv.name;
 
-  if (isDevEnv && devClerkUserId) {
+  if (isDevEnv && devAuthUserId) {
     try {
       // Attempt to insert deterministic dev user; ignore conflict if already present
       await db
         .insert(schema.users)
         .values({
-          clerkUserId: devClerkUserId,
+          authUserId: devAuthUserId,
           email: devEmail,
           name: devName,
           subscriptionTier: 'free',
@@ -238,9 +238,9 @@ export async function seedDatabase(
       insertedDevUser = true;
       logger.info(
         {
-          clerkUserId: devClerkUserId,
+          authUserId: devAuthUserId,
         },
-        `👤 Ensured deterministic dev user '${devClerkUserId}'`
+        `👤 Ensured deterministic dev user '${devAuthUserId}'`
       );
     } catch (e) {
       logger.warn(
@@ -267,7 +267,7 @@ export async function seedDatabase(
     users: {
       count: adjustedUserCount,
       columns: {
-        clerkUserId: f.string({ isUnique: true }), // Clerk user IDs must be unique
+        authUserId: f.string({ isUnique: true }), // Auth user IDs must be unique
         email: f.email(),
         name: f.fullName(),
         subscriptionTier: f.weightedRandom([
@@ -474,12 +474,12 @@ export async function seedDatabase(
 
   // After randomized seeding, optionally create curated data for the deterministic dev user
   // so local development always has predictable, rich content to test UI flows.
-  if (isDevEnv && insertedDevUser && devClerkUserId) {
+  if (isDevEnv && insertedDevUser && devAuthUserId) {
     try {
       const devUser = await db
         .select({ id: schema.users.id })
         .from(schema.users)
-        .where(eq(schema.users.clerkUserId, devClerkUserId))
+        .where(eq(schema.users.authUserId, devAuthUserId))
         .limit(1);
       if (devUser.length) {
         const devUserId = devUser[0].id;
