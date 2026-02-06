@@ -1,10 +1,10 @@
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { auth } from '@/lib/auth/server';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/lib/navigation';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-import { auth } from '@clerk/nextjs/server';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
 
@@ -33,16 +33,15 @@ import MobileHeader from './nav/MobileHeader';
  *
  */
 export default async function SiteHeader() {
-  const { userId: clerkUserId } = await auth();
-  const navItems = clerkUserId
-    ? authenticatedNavItems
-    : unauthenticatedNavItems;
+  const { data: session } = await auth.getSession();
+  const authUserId = session?.user?.id;
+  const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
 
   // Fetch tier only for authenticated users
   let tier: SubscriptionTier | undefined;
-  if (clerkUserId) {
+  if (authUserId) {
     try {
-      const user = await getUserByClerkId(clerkUserId);
+      const user = await getUserByAuthId(authUserId);
       tier = user?.subscriptionTier;
     } catch {
       // Silently fail - tier badge is non-critical
@@ -52,8 +51,16 @@ export default async function SiteHeader() {
   return (
     <header className="fixed top-0 left-0 z-50 w-full px-4 pt-4 lg:px-6 lg:pt-5">
       <div className="mx-auto max-w-7xl">
-        <MobileHeader navItems={navItems} tier={tier} />
-        <DesktopHeader navItems={navItems} tier={tier} />
+        <MobileHeader
+          navItems={navItems}
+          tier={tier}
+          isAuthenticated={Boolean(authUserId)}
+        />
+        <DesktopHeader
+          navItems={navItems}
+          tier={tier}
+          isAuthenticated={Boolean(authUserId)}
+        />
       </div>
     </header>
   );

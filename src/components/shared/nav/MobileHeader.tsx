@@ -1,6 +1,6 @@
 'use client';
 
-import ClerkAuthControls from '@/components/shared/ClerkAuthControls';
+import AuthControls from '@/components/shared/AuthControls';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import type { NavItem } from '@/lib/navigation';
 import { ROUTES } from '@/lib/routes';
@@ -14,6 +14,7 @@ import MobileNavigation from './MobileNavigation';
 interface MobileHeaderProps {
   navItems: NavItem[];
   tier?: SubscriptionTier;
+  isAuthenticated: boolean;
 }
 
 /**
@@ -21,7 +22,11 @@ interface MobileHeaderProps {
  *
  * Layout: hamburger (left) | title (center) | auth controls (right)
  */
-export default function MobileHeader({ navItems, tier }: MobileHeaderProps) {
+export default function MobileHeader({
+  navItems,
+  tier,
+  isAuthenticated,
+}: MobileHeaderProps) {
   return (
     <div className="dark:bg-card-background relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2.5 shadow-lg backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-3 lg:hidden dark:border-white/10">
       {/* Left: hamburger */}
@@ -43,9 +48,9 @@ export default function MobileHeader({ navItems, tier }: MobileHeaderProps) {
       <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5">
         {/* Hide New Plan button on very small screens to save space */}
         <Link
-          href={ROUTES.PLANS.NEW}
+          href={isAuthenticated ? ROUTES.PLANS.NEW : '/auth/sign-in'}
           className="from-primary to-accent focus-visible:ring-ring focus-visible:ring-offset-card hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r text-white shadow-md transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:h-9 sm:w-9 sm:rounded-xl lg:flex"
-          aria-label="Create new plan"
+          aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
         >
           <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
         </Link>
@@ -53,7 +58,7 @@ export default function MobileHeader({ navItems, tier }: MobileHeaderProps) {
           <ThemeToggle size="icon-sm" />
         </div>
         <div className="min-w-0 shrink-0">
-          <ClerkAuthControls tier={tier} />
+          <AuthControls tier={tier} />
         </div>
       </div>
     </div>

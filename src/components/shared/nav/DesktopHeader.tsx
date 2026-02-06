@@ -1,11 +1,10 @@
 'use client';
 
-import ClerkAuthControls from '@/components/shared/ClerkAuthControls';
+import AuthControls from '@/components/shared/AuthControls';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import type { NavItem } from '@/lib/navigation';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
@@ -15,6 +14,7 @@ import DesktopNavigation from './DesktopNavigation';
 interface DesktopHeaderProps {
   navItems: NavItem[];
   tier?: SubscriptionTier;
+  isAuthenticated: boolean;
   onNewPlanClick?: () => void;
 }
 
@@ -26,6 +26,7 @@ interface DesktopHeaderProps {
 export default function DesktopHeader({
   navItems,
   tier,
+  isAuthenticated,
   onNewPlanClick,
 }: DesktopHeaderProps) {
   const handleNewPlanClick = () => {
@@ -69,7 +70,7 @@ export default function DesktopHeader({
 
       {/* Auth controls (right) */}
       <div className="flex items-center justify-end gap-3">
-        <SignedIn>
+        {isAuthenticated ? (
           <Link
             href="/plans/new"
             onClick={handleNewPlanClick}
@@ -78,22 +79,22 @@ export default function DesktopHeader({
             <Plus className="h-4 w-4" />
             <span>New Plan</span>
           </Link>
-        </SignedIn>
-        <SignedOut>
-          <SignInButton mode="modal">
-            <Button
-              variant="default"
-              size="sm"
-              className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center gap-1.5 bg-gradient-to-r text-white"
-              onClick={handleNewPlanClick}
-            >
+        ) : (
+          <Button
+            variant="default"
+            size="sm"
+            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center gap-1.5 bg-gradient-to-r text-white"
+            onClick={handleNewPlanClick}
+            asChild
+          >
+            <Link href="/auth/sign-in">
               <Plus className="h-4 w-4" />
               <span>New Plan</span>
-            </Button>
-          </SignInButton>
-        </SignedOut>
+            </Link>
+          </Button>
+        )}
         <ThemeToggle />
-        <ClerkAuthControls tier={tier} />
+        <AuthControls tier={tier} />
       </div>
     </div>
   );
