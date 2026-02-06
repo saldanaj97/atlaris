@@ -1,7 +1,7 @@
 import { googleOAuthEnv } from '@/lib/config/env';
 import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state';
 import { logger } from '@/lib/logging/logger';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth/server';
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -19,7 +19,8 @@ function getGoogleOAuthConfig() {
 }
 
 export async function GET(_request: NextRequest) {
-  const { userId } = await auth();
+  const { data: session } = await auth.getSession();
+  const userId = session?.user?.id;
 
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

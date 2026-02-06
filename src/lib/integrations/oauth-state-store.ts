@@ -18,14 +18,14 @@ function generateToken(): string {
 
 export function createOAuthStateStore(): OAuthStateStore {
   return {
-    async issue({ clerkUserId, provider }): Promise<string> {
+    async issue({ authUserId, provider }): Promise<string> {
       const plainToken = generateToken();
       const tokenHash = hashToken(plainToken);
       const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 
       await db.insert(oauthStateTokens).values({
         stateTokenHash: tokenHash,
-        clerkUserId,
+        authUserId,
         provider: provider ?? null,
         expiresAt,
       });
@@ -46,9 +46,9 @@ export function createOAuthStateStore(): OAuthStateStore {
             gt(oauthStateTokens.expiresAt, now)
           )
         )
-        .returning({ clerkUserId: oauthStateTokens.clerkUserId });
+        .returning({ authUserId: oauthStateTokens.authUserId });
 
-      return deleted?.clerkUserId ?? null;
+      return deleted?.authUserId ?? null;
     },
   };
 }

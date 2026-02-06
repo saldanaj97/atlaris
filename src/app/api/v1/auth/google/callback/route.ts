@@ -1,4 +1,4 @@
-import { getClerkAuthUserId, withErrorBoundary } from '@/lib/api/auth';
+import { getAuthUserId, withErrorBoundary } from '@/lib/api/auth';
 import { googleOAuthEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
@@ -15,13 +15,19 @@ import { NextRequest, NextResponse } from 'next/server';
 export const GET = withErrorBoundary(async (req) => {
   const request = req as NextRequest;
 
-  // For OAuth callbacks we must validate against the actual Clerk session,
-  // not the DEV_CLERK_USER_ID override used in tests and local dev.
-  const clerkUserId = await getClerkAuthUserId();
+  // For OAuth callbacks we must validate against the actual auth session,
+  // not the DEV_AUTH_USER_ID override used in tests and local dev.
+  const authUserId = await getAuthUserId();
+
+  if (!authUserId) {
+    return NextResponse.redirect(
+      new URL('/settings/integrations?error=unauthenticated', request.url)
+    );
+  }
 
   const { requestId, logger } = createRequestContext(req, {
     route: 'google_oauth_callback',
-    clerkUserId,
+    authUserId,
   });
   const redirectWithRequestId = (url: URL) =>
     attachRequestIdHeader(NextResponse.redirect(url), requestId);
@@ -50,26 +56,26 @@ export const GET = withErrorBoundary(async (req) => {
     );
   }
 
-  const stateClerkUserId = await validateOAuthStateToken(stateToken);
-  if (!stateClerkUserId) {
+  const stateAuthUserId = await validateOAuthStateToken(stateToken);
+  if (!stateAuthUserId) {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=invalid_state', baseUrl)
     );
   }
 
   // Verify the authenticated user matches the user from the state token
-  if (clerkUserId !== stateClerkUserId) {
+  if (authUserId !== stateAuthUserId) {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=user_mismatch', baseUrl)
     );
   }
 
-  // Query users.clerkUserId to find the application user
+  // Query users.authUserId to find the application user
   const db = getDb();
   const [user] = await db
     .select()
     .from(users)
-    .where(eq(users.clerkUserId, stateClerkUserId))
+    .where(eq(users.authUserId, stateAuthUserId))
     .limit(1);
 
   if (!user) {
