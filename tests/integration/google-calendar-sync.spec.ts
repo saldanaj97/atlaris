@@ -13,9 +13,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock Auth auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 // Mock googleapis
@@ -40,22 +40,22 @@ describe.skip('Google Calendar Sync API (temporarily disabled)', () => {
   let testUserId: string;
   let testPlanId: string;
   let testModuleId: string;
-  const clerkUserId = 'clerk_google_sync_test';
+  const authUserId = 'auth_google_sync_test';
   const createdTaskIds: string[] = [];
 
   beforeEach(async () => {
-    // Mock Clerk auth to return test user
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    // Mock Auth auth to return test user
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
 
     // Ensure route handlers authenticate as this test user
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     // Ensure test user
     testUserId = await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'google-sync-test@example.com',
     });
 

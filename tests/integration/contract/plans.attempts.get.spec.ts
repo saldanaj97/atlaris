@@ -13,12 +13,12 @@ function buildRequest(planId: string) {
 }
 
 describe('GET /api/v1/plans/:planId/attempts', () => {
-  const clerkId = 'contract-attempts-owner';
+  const authId = 'contract-attempts-owner';
   const email = 'attempts-owner@example.com';
 
   it('returns attempt history for owning user', async () => {
-    setTestUser(clerkId);
-    const userId = await ensureUser({ clerkUserId: clerkId, email });
+    setTestUser(authId);
+    const userId = await ensureUser({ authUserId: authId, email });
 
     const [plan] = await db
       .insert(learningPlans)
@@ -77,7 +77,7 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
   it('returns 404 when plan is not owned', async () => {
     setTestUser('other-owner');
     await ensureUser({
-      clerkUserId: 'other-owner',
+      authUserId: 'other-owner',
       email: 'other@example.com',
     });
 

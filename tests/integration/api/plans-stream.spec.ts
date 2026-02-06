@@ -29,12 +29,12 @@ afterAll(() => {
 
 describe('POST /api/v1/plans/stream', () => {
   it('streams generation and persists plan data', async () => {
-    const clerkUserId = `stream-user-${Date.now()}`;
+    const authUserId = `stream-user-${Date.now()}`;
     await ensureUser({
-      clerkUserId,
-      email: `${clerkUserId}@example.com`,
+      authUserId,
+      email: `${authUserId}@example.com`,
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const payload = {
       topic: 'Learning TypeScript',
@@ -80,9 +80,9 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('marks plan failed on generation error', async () => {
-    const clerkUserId = `stream-failure-${Date.now()}`;
-    await ensureUser({ clerkUserId, email: `${clerkUserId}@example.com` });
-    setTestUser(clerkUserId);
+    const authUserId = `stream-failure-${Date.now()}`;
+    await ensureUser({ authUserId, email: `${authUserId}@example.com` });
+    setTestUser(authUserId);
 
     // Mock the orchestrator to throw during generation
     const orchestrator = await import('@/lib/ai/orchestrator');
@@ -136,12 +136,12 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('accepts valid model override via query param', async () => {
-    const clerkUserId = `stream-model-override-${Date.now()}`;
+    const authUserId = `stream-model-override-${Date.now()}`;
     await ensureUser({
-      clerkUserId,
-      email: `${clerkUserId}@example.com`,
+      authUserId,
+      email: `${authUserId}@example.com`,
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const payload = {
       topic: 'Learning React',
@@ -174,12 +174,12 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('falls back to default model when invalid model override is provided', async () => {
-    const clerkUserId = `stream-invalid-model-${Date.now()}`;
+    const authUserId = `stream-invalid-model-${Date.now()}`;
     await ensureUser({
-      clerkUserId,
-      email: `${clerkUserId}@example.com`,
+      authUserId,
+      email: `${authUserId}@example.com`,
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const payload = {
       topic: 'Learning Vue',
@@ -212,12 +212,12 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('works without model param (uses default)', async () => {
-    const clerkUserId = `stream-no-model-${Date.now()}`;
+    const authUserId = `stream-no-model-${Date.now()}`;
     await ensureUser({
-      clerkUserId,
-      email: `${clerkUserId}@example.com`,
+      authUserId,
+      email: `${authUserId}@example.com`,
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const payload = {
       topic: 'Learning Python',

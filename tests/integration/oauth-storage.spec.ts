@@ -61,7 +61,7 @@ describe.skip('OAuth Token Storage', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: `auth_test_${Date.now()}`,
+        authUserId: `auth_test_${Date.now()}`,
         email: `test-${Date.now()}@example.com`,
       })
       .returning();

@@ -13,8 +13,8 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
-const clerkUserId = 'clerk_generation_capped';
-const clerkEmail = 'generation-capped@example.com';
+const authUserId = 'auth_generation_capped';
+const authEmail = 'generation-capped@example.com';
 
 async function seedCappedAttempts(planId: string) {
   await db.insert(generationAttempts).values([
@@ -62,11 +62,11 @@ async function seedCappedAttempts(planId: string) {
 
 describe('generation integration - capped attempts', () => {
   beforeEach(() => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
   });
 
   it('records capped classification and skips provider invocation after three failures', async () => {
-    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+    const userId = await ensureUser({ authUserId, email: authEmail });
 
     const [plan] = await db
       .insert(learningPlans)

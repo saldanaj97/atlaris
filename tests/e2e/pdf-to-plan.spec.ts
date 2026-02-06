@@ -89,7 +89,7 @@ const e2eNow = (): Date => new Date(E2E_FIXED_DATE.getTime());
 
 describe('PDF to Plan E2E Flow', () => {
   let userId: string;
-  const clerkUserId = `clerk_e2e_pdf_to_plan_user`;
+  const authUserId = `auth_e2e_pdf_to_plan_user`;
   const email = `pdf-e2e-to-plan-test@example.com`;
 
   beforeEach(async () => {
@@ -99,7 +99,7 @@ describe('PDF to Plan E2E Flow', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId,
+        authUserId,
         email,
         name: 'PDF E2E Test User',
         subscriptionTier: 'free',

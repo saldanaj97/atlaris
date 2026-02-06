@@ -13,13 +13,13 @@ function buildRequest(planId: string) {
 }
 
 describe('GET /api/v1/plans/:planId', () => {
-  const ownerClerkId = 'clerk_plan_detail_owner';
+  const ownerAuthId = 'auth_plan_detail_owner';
   const ownerEmail = 'owner-detail@example.com';
 
   it('returns plan detail with ordered modules and tasks for owner', async () => {
-    setTestUser(ownerClerkId);
+    setTestUser(ownerAuthId);
     const ownerId = await ensureUser({
-      clerkUserId: ownerClerkId,
+      authUserId: ownerAuthId,
       email: ownerEmail,
     });
 
@@ -96,7 +96,7 @@ describe('GET /api/v1/plans/:planId', () => {
   it('returns 404 when plan does not exist or not owned by user', async () => {
     setTestUser('non-owner-uid');
     await ensureUser({
-      clerkUserId: 'non-owner-uid',
+      authUserId: 'non-owner-uid',
       email: 'non-owner@example.com',
     });
 
@@ -108,9 +108,9 @@ describe('GET /api/v1/plans/:planId', () => {
 
   it('returns 404 when accessing plan owned by another user (cross-tenant protection)', async () => {
     // Create owner and their plan
-    setTestUser(ownerClerkId);
+    setTestUser(ownerAuthId);
     const ownerId = await ensureUser({
-      clerkUserId: ownerClerkId,
+      authUserId: ownerAuthId,
       email: ownerEmail,
     });
 
@@ -128,11 +128,11 @@ describe('GET /api/v1/plans/:planId', () => {
       .returning();
 
     // Try to access as a different user
-    const attackerClerkId = 'clerk_plan_detail_attacker';
+    const attackerAuthId = 'auth_plan_detail_attacker';
     const attackerEmail = 'attacker-detail@example.com';
-    setTestUser(attackerClerkId);
+    setTestUser(attackerAuthId);
     await ensureUser({
-      clerkUserId: attackerClerkId,
+      authUserId: attackerAuthId,
       email: attackerEmail,
     });
 

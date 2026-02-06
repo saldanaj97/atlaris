@@ -5,34 +5,34 @@ import { ensureUser } from '../../helpers/db';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock Auth auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 describe('GET /api/v1/plans/:planId/tasks', () => {
-  const ownerClerkId = 'clerk_plan_tasks_owner';
-  const otherClerkId = 'clerk_plan_tasks_other';
+  const ownerAuthId = 'auth_plan_tasks_owner';
+  const otherAuthId = 'auth_plan_tasks_other';
   let ownerUserId: string;
   let _otherUserId: string;
   let planId: string;
   let moduleId: string;
 
   beforeEach(async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: ownerClerkId,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: ownerAuthId } },
+    });
 
-    setTestUser(ownerClerkId);
+    setTestUser(ownerAuthId);
 
     ownerUserId = await ensureUser({
-      clerkUserId: ownerClerkId,
+      authUserId: ownerAuthId,
       email: 'plan-tasks-owner@example.com',
     });
 
     _otherUserId = await ensureUser({
-      clerkUserId: otherClerkId,
+      authUserId: otherAuthId,
       email: 'plan-tasks-other@example.com',
     });
 
@@ -121,10 +121,10 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   it('should return 401 for unauthenticated requests', async () => {
     clearTestUser();
 
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: null,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: null },
+    });
 
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
@@ -139,12 +139,12 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
 
   it('should return 404 when accessing another users plan', async () => {
     // Switch to another user
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: otherClerkId,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: otherAuthId } },
+    });
 
-    setTestUser(otherClerkId);
+    setTestUser(otherAuthId);
 
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(

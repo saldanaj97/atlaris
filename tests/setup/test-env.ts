@@ -14,3 +14,11 @@ if (!process.env.OAUTH_ENCRYPTION_KEY) {
   process.env.OAUTH_ENCRYPTION_KEY =
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 }
+
+// Neon Auth defaults for tests
+if (!process.env.NEON_AUTH_BASE_URL) {
+  process.env.NEON_AUTH_BASE_URL = 'https://auth.test.neon.local';
+}
+if (!process.env.NEON_AUTH_COOKIE_SECRET) {
+  process.env.NEON_AUTH_COOKIE_SECRET = 'test_neon_auth_cookie_secret';
+}

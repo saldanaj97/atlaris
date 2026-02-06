@@ -8,13 +8,13 @@
  * - All clients use the same database URL (owner role)
  * - RLS ensures policies apply via session variables
  * - Session variables differentiate between users:
- *   - Authenticated: request.jwt.claims = '{"sub": "clerk_user_id"}'
+ *   - Authenticated: request.jwt.claims = '{"sub": "auth_user_id"}'
  *   - Anonymous: request.jwt.claims = 'null'
  *   - Service (test setup): Regular db client from drizzle.ts (has BYPASSRLS)
  *
  * USAGE:
  * - createAnonRlsDb() - Creates client with session variable set to null
- * - createRlsDbForUser() - Creates client with user's Clerk ID in session variable
+ * - createRlsDbForUser() - Creates client with user's auth ID in session variable
  * - getServiceRoleDb() - Returns service-role client (bypasses RLS for setup/cleanup)
  */
 
@@ -50,11 +50,11 @@ export async function createAnonRlsDb() {
  * Note: The underlying connection will be closed automatically via idle_timeout.
  * For long-running tests, consider calling cleanup() from the full result.
  *
- * @param clerkUserId - The Clerk user ID (e.g., "user_123")
+ * @param authUserId - The auth user ID (e.g., "user_123")
  * @returns Promise resolving to Drizzle database client with RLS enforcement for this user
  */
-export async function createRlsDbForUser(clerkUserId: string) {
-  const result = await createAuthenticatedRlsClient(clerkUserId);
+export async function createRlsDbForUser(authUserId: string) {
+  const result = await createAuthenticatedRlsClient(authUserId);
   return result.db;
 }
 

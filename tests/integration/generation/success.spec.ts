@@ -13,13 +13,13 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
-const clerkUserId = 'clerk_generation_success';
-const clerkEmail = 'generation-success@example.com';
+const authUserId = 'auth_generation_success';
+const authEmail = 'generation-success@example.com';
 
 describe('generation integration - success path', () => {
   it('persists modules/tasks and logs a successful attempt', async () => {
-    setTestUser(clerkUserId);
-    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    const userId = await ensureUser({ authUserId, email: authEmail });
 
     const [plan] = await db
       .insert(learningPlans)

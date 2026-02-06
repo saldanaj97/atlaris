@@ -13,8 +13,8 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
-const clerkUserId = 'clerk_generation_cap_boundary';
-const clerkEmail = 'generation-cap-boundary@example.com';
+const authUserId = 'auth_generation_cap_boundary';
+const authEmail = 'generation-cap-boundary@example.com';
 
 async function seedFailureAttempts(planId: string, count: number) {
   const attempts = Array.from({ length: count }, (_, index) => ({
@@ -36,11 +36,11 @@ async function seedFailureAttempts(planId: string, count: number) {
 
 describe('generation integration - attempt cap boundary', () => {
   beforeEach(() => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
   });
 
   it('allows the third attempt and caps the fourth', async () => {
-    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+    const userId = await ensureUser({ authUserId, email: authEmail });
 
     const [plan] = await db
       .insert(learningPlans)

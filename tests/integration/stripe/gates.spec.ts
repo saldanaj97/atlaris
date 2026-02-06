@@ -20,7 +20,7 @@ describe('Gating Middleware', () => {
   describe('requireSubscription', () => {
     it('allows access for user with sufficient tier', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_has_starter',
+        authUserId: 'user_has_starter',
         email: 'has.starter@example.com',
       });
 
@@ -44,7 +44,7 @@ describe('Gating Middleware', () => {
 
     it('blocks access for user with insufficient tier', async () => {
       await ensureUser({
-        clerkUserId: 'user_only_free',
+        authUserId: 'user_only_free',
         email: 'only.free@example.com',
       });
 
@@ -68,7 +68,7 @@ describe('Gating Middleware', () => {
 
     it('allows pro tier access for starter-required endpoint', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_pro',
+        authUserId: 'user_pro',
         email: 'pro@example.com',
       });
 
@@ -121,7 +121,7 @@ describe('Gating Middleware', () => {
     describe('plan feature', () => {
       it('allows plan creation when under limit', async () => {
         const userId = await ensureUser({
-          clerkUserId: 'user_under_plan_limit',
+          authUserId: 'user_under_plan_limit',
           email: 'under.plan@example.com',
         });
 
@@ -159,7 +159,7 @@ describe('Gating Middleware', () => {
 
       it('blocks plan creation when at limit', async () => {
         const userId = await ensureUser({
-          clerkUserId: 'user_at_plan_limit',
+          authUserId: 'user_at_plan_limit',
           email: 'at.plan@example.com',
         });
 
@@ -212,7 +212,7 @@ describe('Gating Middleware', () => {
     describe('regeneration feature', () => {
       it('allows regeneration when under limit', async () => {
         const userId = await ensureUser({
-          clerkUserId: 'user_under_regen_limit',
+          authUserId: 'user_under_regen_limit',
           email: 'under.regen@example.com',
         });
 
@@ -238,7 +238,7 @@ describe('Gating Middleware', () => {
 
       it('blocks regeneration when at limit', async () => {
         const userId = await ensureUser({
-          clerkUserId: 'user_at_regen_limit',
+          authUserId: 'user_at_regen_limit',
           email: 'at.regen@example.com',
         });
 
@@ -270,7 +270,7 @@ describe('Gating Middleware', () => {
     describe('export feature', () => {
       it('allows export when under limit', async () => {
         const userId = await ensureUser({
-          clerkUserId: 'user_under_export_limit',
+          authUserId: 'user_under_export_limit',
           email: 'under.export@example.com',
         });
 
@@ -296,7 +296,7 @@ describe('Gating Middleware', () => {
 
       it('blocks export when at limit', async () => {
         const userId = await ensureUser({
-          clerkUserId: 'user_at_export_limit',
+          authUserId: 'user_at_export_limit',
           email: 'at.export@example.com',
         });
 
@@ -325,7 +325,7 @@ describe('Gating Middleware', () => {
   describe('hasSubscriptionTier', () => {
     it('returns true for exact tier match', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_exact_match',
+        authUserId: 'user_exact_match',
         email: 'exact@example.com',
       });
 
@@ -340,7 +340,7 @@ describe('Gating Middleware', () => {
 
     it('returns true for higher tier', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_higher_tier',
+        authUserId: 'user_higher_tier',
         email: 'higher@example.com',
       });
 
@@ -355,7 +355,7 @@ describe('Gating Middleware', () => {
 
     it('returns false for lower tier', async () => {
       await ensureUser({
-        clerkUserId: 'user_lower_tier',
+        authUserId: 'user_lower_tier',
         email: 'lower@example.com',
       });
 
@@ -374,7 +374,7 @@ describe('Gating Middleware', () => {
   describe('canUseFeature', () => {
     it('returns true when user can create plans', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_can_create_plan',
+        authUserId: 'user_can_create_plan',
         email: 'can.plan@example.com',
       });
 
@@ -384,7 +384,7 @@ describe('Gating Middleware', () => {
 
     it('returns false when user cannot create plans', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_cannot_create_plan',
+        authUserId: 'user_cannot_create_plan',
         email: 'cannot.plan@example.com',
       });
 
@@ -422,7 +422,7 @@ describe('Gating Middleware', () => {
 
     it('returns true when user can use regenerations', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_can_regen',
+        authUserId: 'user_can_regen',
         email: 'can.regen@example.com',
       });
 
@@ -432,7 +432,7 @@ describe('Gating Middleware', () => {
 
     it('returns true when user can export', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_can_export',
+        authUserId: 'user_can_export',
         email: 'can.export@example.com',
       });
 

@@ -17,7 +17,7 @@ describe('truncateAll', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: `truncate-${uniqueTag}`,
+        authUserId: `truncate-${uniqueTag}`,
         email,
         name: 'Truncate Guard',
       })

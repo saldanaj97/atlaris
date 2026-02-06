@@ -12,11 +12,11 @@ describe('AI Router (mock in tests)', () => {
 
   it('returns modules using mock provider via router', async () => {
     // Ensure a user + plan exist and are linked
-    const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
-    const email = `${clerkUserId}@example.com`;
+    const authUserId = process.env.DEV_AUTH_USER_ID || `test-${Date.now()}`;
+    const email = `${authUserId}@example.com`;
     const [userRow] = await db
       .insert(users)
-      .values({ clerkUserId, email, name: 'Test' })
+      .values({ authUserId, email, name: 'Test' })
       .onConflictDoNothing()
       .returning();
     const userId =
@@ -25,7 +25,7 @@ describe('AI Router (mock in tests)', () => {
         await db
           .select({ id: users.id })
           .from(users)
-          .where(eq(users.clerkUserId, clerkUserId))
+          .where(eq(users.authUserId, authUserId))
           .limit(1)
       )[0].id;
 

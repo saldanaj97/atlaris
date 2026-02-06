@@ -16,7 +16,7 @@ describe('Schedule Queries', () => {
   beforeEach(async () => {
     // Create a user and plan for testing
     userId = await ensureUser({
-      clerkUserId: 'clerk_schedule_test_user',
+      authUserId: 'auth_schedule_test_user',
       email: 'scheduletest@example.com',
     });
 

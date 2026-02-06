@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock Auth auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 describe('GET /api/v1/plans/:planId/status - access control', () => {
@@ -16,26 +16,26 @@ describe('GET /api/v1/plans/:planId/status - access control', () => {
   let otherUserId: string;
   let ownerPlanId: string;
   let otherPlanId: string | null = null;
-  const ownerClerkId = 'clerk_status_owner';
-  const otherClerkId = 'clerk_status_other';
+  const ownerAuthId = 'auth_status_owner';
+  const otherAuthId = 'auth_status_other';
 
   beforeEach(async () => {
-    // Mock Clerk to return the owner by default
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: ownerClerkId,
-    } as Awaited<ReturnType<typeof auth>>);
+    // Mock Auth to return the owner by default
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: ownerAuthId } },
+    });
 
     // Authenticate as owner for the route
-    setTestUser(ownerClerkId);
+    setTestUser(ownerAuthId);
 
     // Create owner and other users
     ownerUserId = await ensureUser({
-      clerkUserId: ownerClerkId,
+      authUserId: ownerAuthId,
       email: 'status-owner@example.com',
     });
     otherUserId = await ensureUser({
-      clerkUserId: otherClerkId,
+      authUserId: otherAuthId,
       email: 'status-other@example.com',
     });
 

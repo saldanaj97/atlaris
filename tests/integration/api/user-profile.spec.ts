@@ -3,24 +3,24 @@ import { NextRequest } from 'next/server';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock Auth auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 describe('GET /api/v1/user/profile', () => {
-  const clerkUserId = 'clerk_profile_test_user';
+  const authUserId = 'auth_profile_test_user';
 
   beforeEach(async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
 
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'profile@example.com',
     });
   });
@@ -48,18 +48,18 @@ describe('GET /api/v1/user/profile', () => {
 });
 
 describe('PUT /api/v1/user/profile', () => {
-  const clerkUserId = 'clerk_profile_update_user';
+  const authUserId = 'auth_profile_update_user';
 
   beforeEach(async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
 
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'update-profile@example.com',
     });
   });

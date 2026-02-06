@@ -11,7 +11,7 @@ describe('Monitoring Queries', () => {
     it('should return correct counts and statistics for jobs', async () => {
       // T060: Monitoring queries test
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-id',
+        authUserId: 'test-auth-id',
         email: 'test@example.com',
       });
 
@@ -136,7 +136,7 @@ describe('Monitoring Queries', () => {
 
     it('should only count jobs since the specified timestamp', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-id-2',
+        authUserId: 'test-auth-id-2',
         email: 'test2@example.com',
       });
 
@@ -182,7 +182,7 @@ describe('Monitoring Queries', () => {
     it('should retrieve most recent failed jobs with correct limit', async () => {
       // T061: Failed jobs retrieval test
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-id-3',
+        authUserId: 'test-auth-id-3',
         email: 'test3@example.com',
       });
 
@@ -228,7 +228,7 @@ describe('Monitoring Queries', () => {
 
     it('should return empty array when no failed jobs exist', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-id-4',
+        authUserId: 'test-auth-id-4',
         email: 'test4@example.com',
       });
 
@@ -253,7 +253,7 @@ describe('Monitoring Queries', () => {
     it('should delete only old completed and failed jobs', async () => {
       // T062: Cleanup test
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-id-5',
+        authUserId: 'test-auth-id-5',
         email: 'test5@example.com',
       });
 
@@ -345,7 +345,7 @@ describe('Monitoring Queries', () => {
 
     it('should return 0 when no jobs match cleanup criteria', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-id-6',
+        authUserId: 'test-auth-id-6',
         email: 'test6@example.com',
       });
 

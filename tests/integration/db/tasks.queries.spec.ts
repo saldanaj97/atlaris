@@ -22,7 +22,7 @@ describe('DB Tasks Queries', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: 'test-clerk-id-tasks',
+        authUserId: 'test-auth-id-tasks',
         email: 'test-tasks@example.com',
         subscriptionTier: 'free',
       })

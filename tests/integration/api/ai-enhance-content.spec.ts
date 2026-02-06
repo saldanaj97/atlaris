@@ -3,24 +3,24 @@ import { NextRequest } from 'next/server';
 import { setTestUser, clearTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock Auth auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 describe('POST /api/v1/ai/enhance-content', () => {
-  const clerkUserId = 'clerk_enhance_content_test_user';
+  const authUserId = 'auth_enhance_content_test_user';
 
   beforeEach(async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
 
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'enhance-content@example.com',
     });
   });
@@ -53,10 +53,10 @@ describe('POST /api/v1/ai/enhance-content', () => {
   it('should require authentication', async () => {
     clearTestUser();
 
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: null,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: null },
+    });
 
     const { POST } = await import('@/app/api/v1/ai/enhance-content/route');
     const request = new NextRequest(

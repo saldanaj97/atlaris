@@ -19,7 +19,7 @@ describe('RLS attempt insertion', () => {
     // Owner user + plan
     setTestUser('rls_insert_owner');
     const ownerId = await ensureUser({
-      clerkUserId: 'rls_insert_owner',
+      authUserId: 'rls_insert_owner',
       email: 'rls_insert_owner@example.com',
     });
 
@@ -39,7 +39,7 @@ describe('RLS attempt insertion', () => {
     // Different user tries to run attempt
     setTestUser('rls_insert_attacker');
     const attackerId = await ensureUser({
-      clerkUserId: 'rls_insert_attacker',
+      authUserId: 'rls_insert_attacker',
       email: 'rls_insert_attacker@example.com',
     });
 

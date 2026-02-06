@@ -13,7 +13,7 @@ describe('Export Tier Gates', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: 'test_clerk',
+        authUserId: 'test_auth',
         email: 'test@example.com',
         subscriptionTier: 'free',
       })

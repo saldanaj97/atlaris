@@ -22,8 +22,8 @@ async function createRequest(planId: string, body: unknown) {
 }
 
 describe('POST /api/v1/plans/:id/regenerate', () => {
-  const clerkUserId = 'clerk_api_regen_user';
-  const clerkEmail = 'api-regen@example.com';
+  const authUserId = 'auth_api_regen_user';
+  const authEmail = 'api-regen@example.com';
 
   afterEach(async () => {
     await db.delete(jobQueue);
@@ -32,10 +32,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('enqueues regeneration with priority', async () => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
     const userId = await ensureUser({
-      clerkUserId,
-      email: clerkEmail,
+      authUserId,
+      email: authEmail,
       subscriptionTier: 'pro',
     });
 
@@ -88,10 +88,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('rejects regeneration for non-existent plan', async () => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
     await ensureUser({
-      clerkUserId,
-      email: clerkEmail,
+      authUserId,
+      email: authEmail,
     });
 
     const fakePlanId = '00000000-0000-0000-0000-000000000000';
@@ -107,16 +107,16 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('rejects regeneration for plan owned by different user', async () => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
     await ensureUser({
-      clerkUserId,
-      email: clerkEmail,
+      authUserId,
+      email: authEmail,
     });
 
     // Create another user and their plan
-    const otherClerkUserId = 'clerk_api_regen_other';
+    const otherAuthUserId = 'auth_api_regen_other';
     const otherUserId = await ensureUser({
-      clerkUserId: otherClerkUserId,
+      authUserId: otherAuthUserId,
       email: 'api-regen-other@example.com',
     });
 
@@ -153,10 +153,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
   describe('invalid overrides schema', () => {
     it('rejects topic that is too short', async () => {
-      setTestUser(clerkUserId);
+      setTestUser(authUserId);
       const userId = await ensureUser({
-        clerkUserId,
-        email: clerkEmail,
+        authUserId,
+        email: authEmail,
       });
 
       const [plan] = await db
@@ -190,10 +190,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     it('rejects invalid weeklyHours', async () => {
-      setTestUser(clerkUserId);
+      setTestUser(authUserId);
       const userId = await ensureUser({
-        clerkUserId,
-        email: clerkEmail,
+        authUserId,
+        email: authEmail,
       });
 
       const [plan] = await db
@@ -227,10 +227,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     it('rejects invalid skillLevel', async () => {
-      setTestUser(clerkUserId);
+      setTestUser(authUserId);
       const userId = await ensureUser({
-        clerkUserId,
-        email: clerkEmail,
+        authUserId,
+        email: authEmail,
       });
 
       const [plan] = await db
@@ -264,10 +264,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     it('rejects extra fields in overrides', async () => {
-      setTestUser(clerkUserId);
+      setTestUser(authUserId);
       const userId = await ensureUser({
-        clerkUserId,
-        email: clerkEmail,
+        authUserId,
+        email: authEmail,
       });
 
       const [plan] = await db
@@ -302,10 +302,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('rejects regeneration when quota limit exceeded', async () => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
     const userId = await ensureUser({
-      clerkUserId,
-      email: clerkEmail,
+      authUserId,
+      email: authEmail,
       subscriptionTier: 'free', // Free tier has 5 regenerations/month
     });
 
@@ -356,10 +356,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('handles concurrent regeneration requests for same plan', async () => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
     const userId = await ensureUser({
-      clerkUserId,
-      email: clerkEmail,
+      authUserId,
+      email: authEmail,
       subscriptionTier: 'pro',
     });
 

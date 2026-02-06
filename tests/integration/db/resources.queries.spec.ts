@@ -31,7 +31,7 @@ describe('DB Resources Queries', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: 'test-clerk-id',
+        authUserId: 'test-auth-id',
         email: 'test@example.com',
         subscriptionTier: 'free',
       })

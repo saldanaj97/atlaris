@@ -15,16 +15,16 @@ async function createRequest(body: unknown) {
 }
 
 describe('POST /api/v1/plans - caps', () => {
-  const clerkUserId = 'clerk_api_caps_user';
-  const clerkEmail = 'api-caps@example.com';
+  const authUserId = 'auth_api_caps_user';
+  const authEmail = 'api-caps@example.com';
 
   afterEach(async () => {
     await db.delete(learningPlans);
   });
 
   it('rejects free > 2 weeks before enqueue', async () => {
-    setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
 
     const threeWeeksFromNow = new Date(
       Date.now() + 21 * 24 * 3600 * 1000

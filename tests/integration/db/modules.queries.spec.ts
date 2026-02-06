@@ -13,7 +13,7 @@ describe('Module Queries', () => {
   beforeEach(async () => {
     // Create a user and plan for testing
     userId = await ensureUser({
-      clerkUserId: 'clerk_module_test_user',
+      authUserId: 'auth_module_test_user',
       email: 'moduletest@example.com',
     });
 

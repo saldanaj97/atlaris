@@ -68,7 +68,7 @@ describe.skip('Google Calendar Sync E2E Flow (temporarily disabled)', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: 'e2e_gcal_test_user',
+        authUserId: 'e2e_gcal_test_user',
         email: 'e2e-gcal@example.com',
       })
       .returning();

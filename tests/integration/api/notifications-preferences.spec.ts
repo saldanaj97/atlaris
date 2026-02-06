@@ -3,24 +3,24 @@ import { NextRequest } from 'next/server';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock Auth auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 describe('GET /api/v1/notifications/preferences', () => {
-  const clerkUserId = 'clerk_notif_prefs_test_user';
+  const authUserId = 'auth_notif_prefs_test_user';
 
   beforeEach(async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
 
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'notif-prefs@example.com',
     });
   });
@@ -47,18 +47,18 @@ describe('GET /api/v1/notifications/preferences', () => {
 });
 
 describe('PUT /api/v1/notifications/preferences', () => {
-  const clerkUserId = 'clerk_notif_update_test_user';
+  const authUserId = 'auth_notif_update_test_user';
 
   beforeEach(async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
 
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'notif-update@example.com',
     });
   });

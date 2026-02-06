@@ -14,7 +14,7 @@ describe('Concurrency - plan creation ordering', () => {
   it('maintains created_at ordering and uniqueness under concurrency', async () => {
     setTestUser('concurrency_creator');
     const userId = await ensureUser({
-      clerkUserId: 'concurrency_creator',
+      authUserId: 'concurrency_creator',
       email: 'concurrency_creator@example.com',
     });
 

@@ -208,19 +208,19 @@ export async function ensureTaskCalendarEvents() {
 // Cache table removed – no-op helper deleted
 
 export async function ensureUser({
-  clerkUserId,
+  authUserId,
   email,
   name,
   subscriptionTier,
 }: {
-  clerkUserId: string;
+  authUserId: string;
   email: string;
   name?: string;
   subscriptionTier?: 'free' | 'starter' | 'pro';
 }): Promise<string> {
   // Try to find existing user first
   const existing = await db.query.users.findFirst({
-    where: (fields, operators) => operators.eq(fields.clerkUserId, clerkUserId),
+    where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
   });
 
   if (existing) {
@@ -238,7 +238,7 @@ export async function ensureUser({
   const [inserted] = await db
     .insert(users)
     .values({
-      clerkUserId,
+      authUserId,
       email,
       name: name ?? email,
       ...(subscriptionTier && { subscriptionTier }),
@@ -246,7 +246,7 @@ export async function ensureUser({
     .returning({ id: users.id });
 
   if (!inserted?.id) {
-    throw new Error(`Failed to create user for ${clerkUserId}`);
+    throw new Error(`Failed to create user for ${authUserId}`);
   }
 
   return inserted.id;

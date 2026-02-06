@@ -13,7 +13,7 @@ describe('getPlanSchedule API', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: `test-clerk-${Date.now()}`,
+        authUserId: `test-auth-${Date.now()}`,
         email: `test-${Date.now()}@example.com`,
         name: 'Test User',
       })
