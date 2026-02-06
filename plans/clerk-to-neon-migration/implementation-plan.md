@@ -34,6 +34,12 @@ Phase 6 (Tests) — requires Phases 2-5 complete
 Phase 7 (Verification)
 ```
 
+## Other Notes:
+
+- Whenever you see 'x parallel agents', look through through the entire phase because I have grouped and specified which tasks can be completed in parallel using subagents for more efficiency.
+- Make sure to mark off the phases that have been completed as they have been completed.
+- After finishing an entire phase and marking it as complete, lint, typecheck, build and if all is green, then commit the changes.
+
 ---
 
 ## PHASE 0: Notion Removal
@@ -94,7 +100,7 @@ grep -r "notion\|Notion\|@notionhq" src/ tests/ --include='*.ts' --include='*.ts
 
 ---
 
-## PHASE 1: Package & Environment Changes
+## PHASE 1 (completed): Package & Environment Changes
 
 **Goal**: Swap npm packages, update all environment files.
 **Dependency**: Phase 0 complete.
