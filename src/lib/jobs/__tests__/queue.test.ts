@@ -23,13 +23,13 @@ type InsertedPlan = typeof learningPlans.$inferSelect;
 type PlanFixture = {
   plan: InsertedPlan;
   userId: string;
-  clerkUserId: string;
+  authUserId: string;
 };
 
 async function createPlanFixture(key: string): Promise<PlanFixture> {
-  const clerkUserId = `queue-${key}`;
-  const email = `${clerkUserId}@example.com`;
-  const userId = await ensureUser({ clerkUserId, email });
+  const authUserId = `queue-${key}`;
+  const email = `${authUserId}@example.com`;
+  const userId = await ensureUser({ authUserId, email });
 
   const [plan] = await db
     .insert(learningPlans)
@@ -48,7 +48,7 @@ async function createPlanFixture(key: string): Promise<PlanFixture> {
     throw new Error('Failed to insert plan fixture');
   }
 
-  return { plan, userId, clerkUserId };
+  return { plan, userId, authUserId };
 }
 
 describe('Job queue service', () => {

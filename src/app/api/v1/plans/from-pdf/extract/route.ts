@@ -7,7 +7,7 @@ import {
 } from '@/lib/api/auth';
 import { checkPdfSizeLimit, validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 import { json } from '@/lib/api/response';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { logger } from '@/lib/logging/logger';
 import { extractTextFromPdf } from '@/lib/pdf/extract';
 import { scanBufferForMalware } from '@/lib/security/malware-scanner';
@@ -60,7 +60,7 @@ function parseFormDataToObject(formData: FormData): Record<string, unknown> {
 
 export const POST: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
       throw new Error(
         'Authenticated user record missing despite provisioning.'

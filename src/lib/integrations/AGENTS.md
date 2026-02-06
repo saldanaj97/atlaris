@@ -4,7 +4,7 @@
 
 ## Overview
 
-Third-party sync for Notion and Google Calendar. Uses dependency injection for testability.
+Third-party sync for Google Calendar. Uses dependency injection for testability.
 
 ## Architecture (DI Pattern)
 
@@ -14,12 +14,6 @@ Each integration follows factory + types + sync structure:
 integrations/
 ├── oauth.ts              # Shared OAuth utilities
 ├── oauth-state.ts        # CSRF state management
-├── notion/
-│   ├── types.ts          # NotionIntegrationClient interface
-│   ├── factory.ts        # createNotionClient()
-│   ├── sync.ts           # syncPlanToNotion(), deltaSyncPlanToNotion()
-│   ├── mapper.ts         # Plan → Notion blocks
-│   └── client.ts         # Low-level client wrapper
 └── google-calendar/
     ├── types.ts          # GoogleCalendarClient interface
     ├── factory.ts        # createGoogleCalendarClient()
@@ -96,7 +90,6 @@ Tokens stored in `integration_tokens` table with `provider` enum.
 Credentials via `@/lib/config/env`:
 
 - `googleOAuthEnv.clientId`, `.clientSecret`, `.redirectUri`
-- `notionOAuthEnv.clientId`, `.clientSecret`, `.redirectUri`
 
 Prod-required, test-optional semantics.
 

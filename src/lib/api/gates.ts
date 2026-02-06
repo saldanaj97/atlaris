@@ -1,4 +1,4 @@
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import {
   checkExportLimit,
@@ -28,22 +28,22 @@ export function requireSubscription(minTier: SubscriptionTier) {
     return async (req: Request) => {
       // Get user from request context (assumes withAuth middleware is applied)
       const { getRequestContext } = await import('./context');
-      const { getEffectiveClerkUserId } = await import('./auth');
+      const { getEffectiveAuthUserId } = await import('./auth');
       const context = getRequestContext();
-      let clerkUserId: string | undefined = context?.userId;
+      let authUserId: string | undefined = context?.userId;
 
-      // Fallback to effective Clerk user id in tests or when middleware wasn't applied
-      if (!clerkUserId) {
-        const maybeId = await getEffectiveClerkUserId();
-        clerkUserId = maybeId ?? undefined;
+      // Fallback to effective auth user id in tests or when middleware wasn't applied
+      if (!authUserId) {
+        const maybeId = await getEffectiveAuthUserId();
+        authUserId = maybeId ?? undefined;
       }
 
-      if (!clerkUserId) {
+      if (!authUserId) {
         return jsonError('Unauthorized', { status: 401 });
       }
 
       // Get user subscription tier
-      const user = await getUserByClerkId(clerkUserId);
+      const user = await getUserByAuthId(authUserId);
       if (!user) {
         return jsonError('User not found', { status: 404 });
       }
@@ -85,22 +85,22 @@ export function checkFeatureLimit(feature: FeatureType) {
     return async (req: Request) => {
       // Get user from request context
       const { getRequestContext } = await import('./context');
-      const { getEffectiveClerkUserId } = await import('./auth');
+      const { getEffectiveAuthUserId } = await import('./auth');
       const context = getRequestContext();
-      let clerkUserId: string | undefined = context?.userId;
+      let authUserId: string | undefined = context?.userId;
 
-      // Fallback to effective Clerk user id in tests or when middleware wasn't applied
-      if (!clerkUserId) {
-        const maybeId = await getEffectiveClerkUserId();
-        clerkUserId = maybeId ?? undefined;
+      // Fallback to effective auth user id in tests or when middleware wasn't applied
+      if (!authUserId) {
+        const maybeId = await getEffectiveAuthUserId();
+        authUserId = maybeId ?? undefined;
       }
 
-      if (!clerkUserId) {
+      if (!authUserId) {
         return jsonError('Unauthorized', { status: 401 });
       }
 
       // Get user database ID
-      const user = await getUserByClerkId(clerkUserId);
+      const user = await getUserByAuthId(authUserId);
       if (!user) {
         return jsonError('User not found', { status: 404 });
       }
@@ -152,10 +152,10 @@ export function checkFeatureLimit(feature: FeatureType) {
  * Helper to check if user has a specific subscription tier or higher
  */
 export async function hasSubscriptionTier(
-  clerkUserId: string,
+  authUserId: string,
   minTier: SubscriptionTier
 ): Promise<boolean> {
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     return false;
   }

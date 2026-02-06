@@ -18,7 +18,7 @@ import {
 } from '@/lib/api/plans/shared';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
@@ -46,7 +46,7 @@ export const POST = withErrorBoundary(
       throw new ValidationError('Invalid request body.', error);
     }
 
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
       throw new Error(
         'Authenticated user record missing despite provisioning.'

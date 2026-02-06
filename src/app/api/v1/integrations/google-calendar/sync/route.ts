@@ -24,11 +24,11 @@ const syncRequestSchema = z.object({
 });
 
 const handleAuthedGoogleCalendarSync = withAuth(
-  withRateLimit('integration')(async ({ req, userId: clerkUserId }) => {
+  withRateLimit('integration')(async ({ req, userId: authUserId }) => {
     const request = req as NextRequest;
     const { requestId, logger } = createRequestContext(req, {
       route: 'google_calendar_sync',
-      clerkUserId,
+      authUserId,
     });
     const respondJson = (payload: unknown, init?: ResponseInit) =>
       attachRequestIdHeader(NextResponse.json(payload, init), requestId);
@@ -53,7 +53,7 @@ const handleAuthedGoogleCalendarSync = withAuth(
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.clerkUserId, clerkUserId))
+      .where(eq(users.authUserId, authUserId))
       .limit(1);
 
     if (!user) {

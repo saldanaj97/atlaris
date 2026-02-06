@@ -5,7 +5,7 @@
 ## Overview
 
 AI-powered learning plan generator. Turns goals into time-blocked schedules with calendar sync.  
-Stack: Next.js 16 + React 19 + TypeScript strict + Drizzle/Neon (RLS) + Clerk + OpenRouter.
+Stack: Next.js 16 + React 19 + TypeScript strict + Drizzle/Neon (RLS) + Neon Auth + OpenRouter.
 
 ## Structure
 

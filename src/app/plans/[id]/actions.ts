@@ -17,14 +17,14 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
 import { getPlanSchedule } from '@/lib/api/schedule';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
@@ -89,21 +89,20 @@ export async function updateTaskProgressAction({
     throw new Error('Invalid progress status.');
   }
 
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     throw new Error('You must be signed in to update progress.');
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     throw new Error('User not found.');
   }
 
-  const { db: rlsDb, cleanup } =
-    await createAuthenticatedRlsClient(clerkUserId);
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-task-progress'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
@@ -142,8 +141,8 @@ export async function updateTaskProgressAction({
 export async function getPlanForPage(
   planId: string
 ): Promise<PlanAccessResult> {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     logger.debug({ planId }, 'Plan access denied: user not authenticated');
     return planError(
       'UNAUTHORIZED',
@@ -151,10 +150,10 @@ export async function getPlanForPage(
     );
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     logger.warn(
-      { planId, clerkUserId },
+      { planId, authUserId },
       'Plan access denied: authenticated user not found in database'
     );
     return planError(
@@ -163,11 +162,10 @@ export async function getPlanForPage(
     );
   }
 
-  const { db: rlsDb, cleanup } =
-    await createAuthenticatedRlsClient(clerkUserId);
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-plan'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
@@ -213,8 +211,8 @@ export async function getPlanForPage(
 export async function getPlanScheduleForPage(
   planId: string
 ): Promise<ScheduleAccessResult> {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     logger.debug({ planId }, 'Schedule access denied: user not authenticated');
     return scheduleError(
       'UNAUTHORIZED',
@@ -222,10 +220,10 @@ export async function getPlanScheduleForPage(
     );
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     logger.warn(
-      { planId, clerkUserId },
+      { planId, authUserId },
       'Schedule access denied: authenticated user not found in database'
     );
     return scheduleError(
@@ -234,11 +232,10 @@ export async function getPlanScheduleForPage(
     );
   }
 
-  const { db: rlsDb, cleanup } =
-    await createAuthenticatedRlsClient(clerkUserId);
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-schedule'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );

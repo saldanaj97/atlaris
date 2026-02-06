@@ -2,7 +2,7 @@ import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import {
   attachRequestIdHeader,
   createRequestContext,
@@ -24,7 +24,7 @@ export const GET = withErrorBoundary(
 
     logger.info('Fetching user preferences');
 
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
 
     if (!user) {
       logger.warn('User not found in database');
@@ -76,7 +76,7 @@ export const PATCH = withErrorBoundary(
       throw new ValidationError('Invalid preferences', parsed.error.flatten());
     }
 
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
       logger.warn('User not found in database');
       throw new NotFoundError('User not found');

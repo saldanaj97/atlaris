@@ -51,7 +51,7 @@ db/
 ```typescript
 // rls.ts creates clients that:
 // 1. Switch to role: authenticated OR anonymous
-// 2. Set session variable: request.jwt.claims = {"sub": "<clerkUserId>"} (or null for anon)
+// 2. Set session variable: request.jwt.claims = {"sub": "<authUserId>"} (or null for anon)
 //    via SELECT set_config('request.jwt.claims', '{"sub":"..."}', false)
 // 3. Execute queries (RLS filters by request.jwt.claims->>'sub')
 // 4. Must call cleanup() when done
@@ -88,14 +88,14 @@ export async function getPlanById(
 
 ## Key Tables
 
-| Table                 | Purpose                      | Notes                    |
-| --------------------- | ---------------------------- | ------------------------ |
-| `users`               | User accounts                | `clerk_user_id` for auth |
-| `learning_plans`      | Plans with generation status | RLS by `user_id`         |
-| `modules`             | Plan sections                | `order` starts at 1      |
-| `tasks`               | Learning activities          | `order` starts at 1      |
-| `generation_attempts` | AI attempt audit log         | Max 3 per plan           |
-| `integration_tokens`  | OAuth tokens                 | Notion, GCal             |
+| Table                 | Purpose                      | Notes                   |
+| --------------------- | ---------------------------- | ----------------------- |
+| `users`               | User accounts                | `auth_user_id` for auth |
+| `learning_plans`      | Plans with generation status | RLS by `user_id`        |
+| `modules`             | Plan sections                | `order` starts at 1     |
+| `tasks`               | Learning activities          | `order` starts at 1     |
+| `generation_attempts` | AI attempt audit log         | Max 3 per plan          |
+| `integration_tokens`  | OAuth tokens                 | Google Calendar         |
 
 ## Commands
 

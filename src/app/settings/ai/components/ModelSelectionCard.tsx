@@ -2,8 +2,8 @@ import { ModelSelector } from '@/components/settings/model-selector';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SubscriptionTier } from '@/lib/ai/types/model.types';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
 import { redirect } from 'next/navigation';
@@ -14,10 +14,10 @@ import type { JSX } from 'react';
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function ModelSelectionCard(): Promise<JSX.Element> {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) redirect('/sign-in?redirect_url=/settings/ai');
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) redirect('/sign-in?redirect_url=/settings/ai');
 
-  const dbUser = await getUserByClerkId(clerkUserId);
+  const dbUser = await getUserByAuthId(authUserId);
   if (!dbUser) redirect('/plans/new');
 
   const db = getDb();

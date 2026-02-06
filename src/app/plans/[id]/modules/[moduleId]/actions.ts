@@ -10,12 +10,12 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getModuleDetail } from '@/lib/db/queries/modules';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
@@ -52,8 +52,8 @@ function assertNonEmpty(value: string | undefined, message: string) {
 export async function getModuleForPage(
   moduleId: string
 ): Promise<ModuleAccessResult> {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     logger.debug({ moduleId }, 'Module access denied: user not authenticated');
     return moduleError(
       'UNAUTHORIZED',
@@ -61,10 +61,10 @@ export async function getModuleForPage(
     );
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     logger.warn(
-      { moduleId, clerkUserId },
+      { moduleId, authUserId },
       'Module access denied: authenticated user not found in database'
     );
     return moduleError(
@@ -73,11 +73,10 @@ export async function getModuleForPage(
     );
   }
 
-  const { db: rlsDb, cleanup } =
-    await createAuthenticatedRlsClient(clerkUserId);
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-module'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
@@ -128,21 +127,20 @@ export async function updateModuleTaskProgressAction({
     throw new Error('Invalid progress status.');
   }
 
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     throw new Error('You must be signed in to update progress.');
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     throw new Error('User not found.');
   }
 
-  const { db: rlsDb, cleanup } =
-    await createAuthenticatedRlsClient(clerkUserId);
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-module-task-progress'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
