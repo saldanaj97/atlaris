@@ -1,4 +1,9 @@
-import { appEnv, devClerkEnv } from '@/lib/config/env';
+import { appEnv, devAuthEnv } from '@/lib/config/env';
+import {
+  createUser,
+  getUserByAuthId,
+  type DbUser,
+} from '@/lib/db/queries/users';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 import {
@@ -6,91 +11,70 @@ import {
   getUserRateLimitHeaders,
   type UserRateLimitCategory,
 } from './user-rate-limit';
-import {
-  createUser,
-  getUserByClerkId,
-  type DbUser,
-} from '@/lib/db/queries/users';
 
 /**
- * Returns the effective Clerk user id for the current request.
- * In development or test (Vitest), if DEV_CLERK_USER_ID is set, that value is returned
- * (allowing you to bypass real Clerk provisioning while seeding a deterministic user).
- *
- * NOTE: In Vitest test runs, we avoid importing '@clerk/nextjs/server' entirely.
- * This prevents server-only module guards from firing when tests exercise auth-aware
- * helpers (e.g., gating middleware) outside of a real Next.js server context.
+ * Returns the effective auth user id for the current request.
+ * In development or test (Vitest), if DEV_AUTH_USER_ID is set, that value is returned
+ * (allowing you to bypass real Neon auth provisioning while seeding a deterministic user).
  */
-export async function getEffectiveClerkUserId(): Promise<string | null> {
-  // In Vitest, rely solely on DEV_CLERK_USER_ID and never import Clerk.
-  // This keeps auth-dependent helpers usable in pure Node test environments.
+export async function getEffectiveAuthUserId(): Promise<string | null> {
   if (appEnv.vitestWorkerId) {
-    const devUserId = devClerkEnv.userId;
+    const devUserId = devAuthEnv.userId;
     return devUserId || null;
   }
 
-  // In local development, prefer DEV_CLERK_USER_ID when present.
   if (appEnv.isDevelopment) {
-    const devUserId = devClerkEnv.userId;
+    const devUserId = devAuthEnv.userId;
     if (devUserId !== undefined) {
-      // Return the value as-is, converting empty string to null
       return devUserId || null;
     }
   }
-  const { auth } = await import('@clerk/nextjs/server');
-  const { userId } = await auth();
-  return userId ?? null;
+
+  const { auth } = await import('@/lib/auth/server');
+  const { data: session } = await auth.getSession();
+  return session?.user?.id ?? null;
 }
 
 /**
- * Returns the Clerk user id from the actual Clerk session, ignoring
- * DEV_CLERK_USER_ID overrides. This is intended for security-sensitive flows
+ * Returns the auth user id from the actual Neon session, ignoring
+ * DEV_AUTH_USER_ID overrides. This is intended for security-sensitive flows
  * (e.g. OAuth callbacks) where we must validate the currently authenticated
  * end user rather than a test/development override.
  */
-export async function getClerkAuthUserId(): Promise<string | null> {
-  const { auth } = await import('@clerk/nextjs/server');
-  const { userId } = await auth();
-  return userId ?? null;
+export async function getAuthUserId(): Promise<string | null> {
+  const { auth } = await import('@/lib/auth/server');
+  const { data: session } = await auth.getSession();
+  return session?.user?.id ?? null;
 }
 
-export async function requireUser() {
-  const userId = await getEffectiveClerkUserId();
+export async function requireUser(): Promise<string> {
+  const userId = await getEffectiveAuthUserId();
   if (!userId) throw new AuthError();
   return userId;
 }
 
-async function ensureUserRecord(clerkUserId: string): Promise<DbUser> {
-  const existing = await getUserByClerkId(clerkUserId);
+async function ensureUserRecord(authUserId: string): Promise<DbUser> {
+  const existing = await getUserByAuthId(authUserId);
   if (existing) {
     return existing;
   }
 
-  const { currentUser } = await import('@clerk/nextjs/server');
-  const clerkUser = await currentUser();
+  const { auth } = await import('@/lib/auth/server');
+  const { data: session } = await auth.getSession();
 
-  if (!clerkUser) {
-    throw new AuthError('Clerk user data unavailable.');
+  if (!session?.user) {
+    throw new AuthError('Auth user data unavailable.');
   }
 
-  const emailAddresses = clerkUser.emailAddresses ?? [];
-  const preferredEmail =
-    emailAddresses.find(
-      (address) => address.id === clerkUser.primaryEmailAddressId
-    )?.emailAddress ?? emailAddresses[0]?.emailAddress;
-
-  if (!preferredEmail) {
-    throw new AuthError('Clerk user must have an email address.');
+  const email = session.user.email;
+  if (!email) {
+    throw new AuthError('Auth user must have an email address.');
   }
-
-  const nameParts = [clerkUser.firstName, clerkUser.lastName].filter(Boolean);
-  const trimmedName = nameParts.join(' ').trim();
-  const displayName = trimmedName || clerkUser.fullName || undefined;
 
   const created = await createUser({
-    clerkUserId,
-    email: preferredEmail,
-    name: displayName,
+    authUserId,
+    email,
+    name: session.user.name || undefined,
   });
 
   if (!created) {
@@ -101,7 +85,7 @@ async function ensureUserRecord(clerkUserId: string): Promise<DbUser> {
 }
 
 export async function getOrCreateCurrentUserRecord(): Promise<DbUser | null> {
-  const userId = await getEffectiveClerkUserId();
+  const userId = await getEffectiveAuthUserId();
   if (!userId) return null;
   return ensureUserRecord(userId);
 }
@@ -137,12 +121,9 @@ export function withAuth(handler: Handler): PlainHandler {
       ? await routeContext.params
       : {};
 
-    // In Vitest/test environments, mirror production behavior by ensuring the user
-    // record exists, but avoid creating per-request RLS clients. Tests control DB
-    // state directly via the service-role client (see getDb/runtime and helpers).
     if (appEnv.isTest) {
       const user = await requireCurrentUserRecord();
-      const userId = user.clerkUserId;
+      const userId = user.authUserId;
       const requestContext = createRequestContext(req, userId);
 
       return await withRequestContext(requestContext, () =>
@@ -151,14 +132,11 @@ export function withAuth(handler: Handler): PlainHandler {
     }
 
     const user = await requireCurrentUserRecord();
-    const userId = user.clerkUserId;
+    const userId = user.authUserId;
 
-    // Create RLS-enforced database client for this request
-    // This client automatically scopes all queries to the authenticated user
     const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
     const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(userId);
 
-    // Create request context with the RLS-enforced DB and cleanup function
     const requestContext = createRequestContext(req, userId, rlsDb, cleanup);
 
     try {
@@ -166,8 +144,6 @@ export function withAuth(handler: Handler): PlainHandler {
         handler({ req, userId, params })
       );
     } finally {
-      // Always close the database connection when the request completes
-      // This prevents connection leaks in long-running server processes
       await cleanup();
     }
   };

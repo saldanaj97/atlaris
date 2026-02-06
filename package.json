@@ -41,6 +41,7 @@
     "@sentry/nextjs": "^10.32.1",
     "@types/sanitize-html": "^2.16.0",
     "ai": "^5.0.68",
+    "better-auth": "^1.4.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

@@ -1,36 +1,30 @@
-import {
-  clerkMiddleware,
-  createRouteMatcher,
-  type ClerkMiddlewareAuth,
-} from '@clerk/nextjs/server';
-import { type NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import { getSessionCookie } from 'better-auth/cookies';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { appEnv } from '@/lib/config/env';
 
-const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/api(.*)',
-  '/plans(.*)',
-]);
+const protectedPrefixes = ['/dashboard', '/api', '/plans', '/account'];
+
+function isProtectedRoute(pathname: string): boolean {
+  // Auth API routes must NOT be protected (they handle sign-in/sign-up)
+  if (pathname.startsWith('/api/auth/')) {
+    return false;
+  }
+  // Stripe webhooks bypass all checks
+  if (pathname.startsWith('/api/v1/stripe/webhook')) {
+    return false;
+  }
+  return protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
+}
 
 const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const CORRELATION_ID_MAX_LENGTH = 64;
 
 const sanitizeCorrelationId = (value: string | null): string | null => {
-  if (!value) {
-    return null;
-  }
+  if (!value) return null;
   const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-  if (trimmed.length > CORRELATION_ID_MAX_LENGTH) {
-    return null;
-  }
-  if (!CORRELATION_ID_PATTERN.test(trimmed)) {
-    return null;
-  }
+  if (!trimmed || trimmed.length > CORRELATION_ID_MAX_LENGTH) return null;
+  if (!CORRELATION_ID_PATTERN.test(trimmed)) return null;
   return trimmed;
 };
 
@@ -40,7 +34,16 @@ const getCorrelationId = (request: NextRequest): string => {
   return sanitized ?? crypto.randomUUID();
 };
 
-const nextResponseWithCorrelationId = (request: NextRequest): NextResponse => {
+const withCorrelationId = (
+  request: NextRequest,
+  response: NextResponse
+): NextResponse => {
+  const correlationId = getCorrelationId(request);
+  response.headers.set('x-correlation-id', correlationId);
+  return response;
+};
+
+const nextWithCorrelationId = (request: NextRequest): NextResponse => {
   const correlationId = getCorrelationId(request);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-correlation-id', correlationId);
@@ -52,41 +55,44 @@ const nextResponseWithCorrelationId = (request: NextRequest): NextResponse => {
   return response;
 };
 
-export default clerkMiddleware(
-  async (auth: ClerkMiddlewareAuth, request: NextRequest) => {
-    // Allow Stripe webhooks to bypass all checks (including maintenance mode)
-    if (request.nextUrl.pathname.startsWith('/api/v1/stripe/webhook')) {
-      return nextResponseWithCorrelationId(request);
-    }
+export default function middleware(request: NextRequest): NextResponse {
+  const { pathname } = request.nextUrl;
 
-    const isMaintenanceMode = appEnv.maintenanceMode;
-    const isMaintenancePage = request.nextUrl.pathname === '/maintenance';
-
-    if (isMaintenanceMode && !isMaintenancePage) {
-      return NextResponse.redirect(new URL('/maintenance', request.url));
-    }
-
-    if (!isMaintenanceMode && isMaintenancePage) {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-
-    if (isProtectedRoute(request)) await auth.protect();
-    return nextResponseWithCorrelationId(request);
-  },
-  {
-    // CSP configuration - see https://clerk.com/docs/security/clerk-csp
-    contentSecurityPolicy: {
-      directives: {
-        'font-src': ["'self'", 'https://fonts.gstatic.com'],
-        'style-src': [
-          "'self'",
-          "'unsafe-inline'",
-          'https://fonts.googleapis.com',
-        ],
-      },
-    },
+  // Stripe webhooks bypass all checks including maintenance mode
+  if (pathname.startsWith('/api/v1/stripe/webhook')) {
+    return nextWithCorrelationId(request);
   }
-);
+
+  // Maintenance mode
+  const isMaintenanceMode = appEnv.maintenanceMode;
+  const isMaintenancePage = pathname === '/maintenance';
+
+  if (isMaintenanceMode && !isMaintenancePage) {
+    return withCorrelationId(
+      request,
+      NextResponse.redirect(new URL('/maintenance', request.url))
+    );
+  }
+  if (!isMaintenanceMode && isMaintenancePage) {
+    return withCorrelationId(
+      request,
+      NextResponse.redirect(new URL('/', request.url))
+    );
+  }
+
+  // Auth protection
+  if (isProtectedRoute(pathname)) {
+    const sessionCookie = getSessionCookie(request);
+    if (!sessionCookie) {
+      return withCorrelationId(
+        request,
+        NextResponse.redirect(new URL('/auth/sign-in', request.url))
+      );
+    }
+  }
+
+  return nextWithCorrelationId(request);
+}
 
 export const config = {
   matcher: [

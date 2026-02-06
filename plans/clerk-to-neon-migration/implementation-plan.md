@@ -152,7 +152,7 @@ ls node_modules/@clerk 2>/dev/null  # Must NOT exist
 
 ---
 
-## PHASE 2: Database Schema Rename (Identity Layer)
+## PHASE 2 (completed): Database Schema Rename (Identity Layer)
 
 **Goal**: Rename all `clerk_user_id` references to `auth_user_id`, rename `clerkSub` variable to `currentUserId`, delete webhook events table, update queries, generate migration.
 **Dependency**: Phase 1 complete.
@@ -276,7 +276,7 @@ grep -r "clerkSub\|clerkUserId\|clerk_user_id\|getUserByClerkId\|deleteUserByCle
 
 ---
 
-## PHASE 3: Auth Server + Middleware + API Auth Rewrite
+## PHASE 3 (completed): Auth Server + Middleware + API Auth Rewrite
 
 **Goal**: Create Neon Auth server/client instances, rewrite middleware, rewrite all auth API functions, update RLS client, delete webhook route.
 **Dependency**: Phase 2 complete.
