@@ -1,7 +1,7 @@
 /**
  * User-based rate limiting for authenticated endpoints.
  *
- * This module provides rate limiting keyed by user ID (from Clerk auth) rather than IP.
+ * This module provides rate limiting keyed by user ID rather than IP.
  * It's designed to prevent authenticated users from overwhelming the system, regardless
  * of whether they're paying customers.
  *
@@ -62,7 +62,7 @@ export const USER_RATE_LIMIT_CONFIGS = {
   },
 
   /**
-   * MEDIUM-HIGH COST - Third-party integrations (Notion, Google Calendar)
+   * MEDIUM-HIGH COST - Third-party integrations (Google Calendar)
    * External API calls with rate limits on the provider side.
    * Balance between usability and preventing provider rate limits.
    */
@@ -138,7 +138,7 @@ export function createUserRateLimiter(config: UserRateLimitConfig): {
    * Checks if the user has exceeded the rate limit.
    * Increments the request count for the user.
    *
-   * @param userId - Clerk user ID
+   * @param userId - Authenticated user ID
    * @throws RateLimitError if rate limit exceeded
    */
   function check(userId: string): void {
@@ -263,7 +263,7 @@ function getRateLimiter(
 /**
  * Checks user-based rate limit for a request.
  *
- * @param userId - Clerk user ID from authenticated context
+ * @param userId - Authenticated user ID
  * @param category - The cost category of the endpoint
  * @throws RateLimitError if rate limit exceeded
  */
@@ -278,7 +278,7 @@ export function checkUserRateLimit(
 /**
  * Gets rate limit headers for a response.
  *
- * @param userId - Clerk user ID from authenticated context
+ * @param userId - Authenticated user ID
  * @param category - The cost category of the endpoint
  * @returns Headers object with rate limit information
  */

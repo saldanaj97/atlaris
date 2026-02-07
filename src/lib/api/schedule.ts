@@ -14,6 +14,24 @@ interface GetPlanScheduleParams {
   userId: string;
 }
 
+export const SCHEDULE_FETCH_ERROR_CODE = {
+  PLAN_NOT_FOUND_OR_ACCESS_DENIED: 'PLAN_NOT_FOUND_OR_ACCESS_DENIED',
+  INVALID_WEEKLY_HOURS: 'INVALID_WEEKLY_HOURS',
+} as const;
+
+export type ScheduleFetchErrorCode =
+  (typeof SCHEDULE_FETCH_ERROR_CODE)[keyof typeof SCHEDULE_FETCH_ERROR_CODE];
+
+export class ScheduleFetchError extends Error {
+  readonly code: ScheduleFetchErrorCode;
+
+  constructor(code: ScheduleFetchErrorCode, message: string) {
+    super(message);
+    this.name = 'ScheduleFetchError';
+    this.code = code;
+  }
+}
+
 /**
  * Produce a plan's schedule, using a write-through cache to reuse a previously computed result when the schedule inputs have not changed.
  *
@@ -36,7 +54,10 @@ export async function getPlanSchedule(
     .limit(1);
 
   if (!plan) {
-    throw new Error('Plan not found or access denied');
+    throw new ScheduleFetchError(
+      SCHEDULE_FETCH_ERROR_CODE.PLAN_NOT_FOUND_OR_ACCESS_DENIED,
+      'Plan not found or access denied'
+    );
   }
 
   // Load modules and tasks in a single joined query
@@ -68,7 +89,8 @@ export async function getPlanSchedule(
 
   // Build schedule inputs
   if (plan.weeklyHours <= 0) {
-    throw new Error(
+    throw new ScheduleFetchError(
+      SCHEDULE_FETCH_ERROR_CODE.INVALID_WEEKLY_HOURS,
       'Plan weekly hours must be greater than zero to generate a schedule'
     );
   }

@@ -12,7 +12,7 @@ import { getDb } from '@/lib/db/runtime';
 
 - **Use in**: API routes, server actions, request handlers
 - **Behavior**: Respects Row Level Security, enforces tenant isolation
-- **Runtime model**: `src/lib/db/rls.ts` switches role and initializes pg_session_jwt with `auth.jwt_session_init()` so policies use `auth.user_id()`
+- **Runtime model**: `src/lib/db/rls.ts` switches role (`SET ROLE authenticated|anonymous`) and sets `request.jwt.claims`
 - **Location**: `src/lib/db/runtime.ts`
 
 ### 2. Service-Role Client (Bypass)
@@ -34,14 +34,6 @@ import { db } from '@/lib/db/service-role';
   - `to: 'authenticated'` for user-owned CRUD + authenticated reads
   - No anonymous app-data policies unless a new public feature is explicitly approved
 - Omitted `to` is forbidden because PostgreSQL defaults to `TO PUBLIC`
-
-### RLS Identity Validation
-
-- Database validates Clerk JWTs via `pg_session_jwt`.
-- Authenticated requests must initialize the session with `auth.jwt_session_init(jwt)`.
-- Policies should read identity from `auth.user_id()` (not `request.jwt.claims`).
-- Never set `request.jwt.claims` in production request handlers.
-- JWKS configuration is seeded via migrations; set `CLERK_JWKS_URL` in the environment and ensure the database has `app.clerk_jwks_url` configured before running migrations.
 
 ### Request Handlers (API Routes, Server Actions)
 

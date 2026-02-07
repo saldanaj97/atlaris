@@ -6,14 +6,14 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { ensureUser } from '../../helpers/db';
-import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('AI usage logging', () => {
   it('atomically checks plan limit, creates plan, and records usage event', async () => {
-    const clerkUserId = buildTestClerkUserId('db-usage');
+    const authUserId = buildTestAuthUserId('db-usage');
     const userId = await ensureUser({
-      clerkUserId,
-      email: buildTestEmail(clerkUserId),
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
 
     // Check the limit and create the plan in a single atomic transaction

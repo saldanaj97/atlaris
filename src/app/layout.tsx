@@ -1,7 +1,8 @@
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
-import { ClerkProvider } from '@clerk/nextjs';
+import { authClient } from '@/lib/auth/client';
+import { NeonAuthUIProvider } from '@neondatabase/auth/react';
 import { type Metadata } from 'next';
 import { Work_Sans, Young_Serif } from 'next/font/google';
 import { Toaster } from 'sonner';
@@ -21,7 +22,7 @@ const youngSerif = Young_Serif({
 export const metadata: Metadata = {
   title: 'Atlaris - AI-Powered Learning Paths',
   description:
-    'Create personalized learning plans with AI-generated modules and tasks. Track progress, export to Notion, and learn smarter.',
+    'Create personalized learning plans with AI-generated modules and tasks. Track progress, sync to Google Calendar, and learn smarter.',
   // TODO: Add favicon files to public/ folder then uncomment this
   // icons: [
   //   {
@@ -46,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Atlaris - AI-Powered Learning Paths',
     description:
-      'Create personalized learning plans with AI-generated modules and tasks. Track progress, export to Notion, and learn smarter.',
+      'Create personalized learning plans with AI-generated modules and tasks. Track progress, sync to Google Calendar, and learn smarter.',
     images: [
       { url: '/og-default.jpg', width: 1200, height: 630, alt: 'Atlaris' },
       {
@@ -77,10 +78,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider afterSignOutUrl="/landing">
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
+      >
+        <NeonAuthUIProvider
+          authClient={authClient}
+          redirectTo="/dashboard"
+          emailOTP
+          social={{ providers: ['google'] }}
         >
           <ThemeProvider>
             <SiteHeader />
@@ -88,8 +94,8 @@ export default function RootLayout({
             <Toaster />
             <SiteFooter />
           </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </NeonAuthUIProvider>
+      </body>
+    </html>
   );
 }

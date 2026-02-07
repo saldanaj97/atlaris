@@ -3,7 +3,7 @@ import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
 /**
@@ -26,7 +26,7 @@ export const GET = withErrorBoundary(
       throw new ValidationError('Invalid plan id format.');
     }
 
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
       throw new Error(
         'Authenticated user record missing despite provisioning.'

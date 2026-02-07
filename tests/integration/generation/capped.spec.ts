@@ -12,9 +12,10 @@ import { desc, eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
-const clerkUserId = 'clerk_generation_capped';
-const clerkEmail = 'generation-capped@example.com';
+const authUserId = buildTestAuthUserId('generation-capped');
+const authEmail = buildTestEmail(authUserId);
 
 async function seedCappedAttempts(planId: string) {
   await db.insert(generationAttempts).values([
@@ -62,11 +63,11 @@ async function seedCappedAttempts(planId: string) {
 
 describe('generation integration - capped attempts', () => {
   beforeEach(() => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
   });
 
   it('records capped classification and skips provider invocation after three failures', async () => {
-    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+    const userId = await ensureUser({ authUserId, email: authEmail });
 
     const [plan] = await db
       .insert(learningPlans)

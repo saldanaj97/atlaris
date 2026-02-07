@@ -4,7 +4,7 @@
  * IMPORTANT: This helper is for APPLICATION LOGIC testing only.
  *
  * What this does:
- * - Sets DEV_CLERK_USER_ID for your Next.js API routes
+ * - Sets DEV_AUTH_USER_ID for your Next.js API routes
  * - Allows testing business logic that depends on the current user
  *
  * What this does NOT do:
@@ -14,8 +14,8 @@
  *
  * For RLS policy testing, use helpers in tests/helpers/rls.ts instead.
  */
-export function setTestUser(clerkUserId: string) {
-  process.env.DEV_CLERK_USER_ID = clerkUserId;
+export function setTestUser(authUserId: string) {
+  process.env.DEV_AUTH_USER_ID = authUserId;
 }
 
 /**
@@ -23,5 +23,5 @@ export function setTestUser(clerkUserId: string) {
  * Use this in tests that need to verify unauthenticated behavior.
  */
 export function clearTestUser() {
-  delete process.env.DEV_CLERK_USER_ID;
+  delete process.env.DEV_AUTH_USER_ID;
 }

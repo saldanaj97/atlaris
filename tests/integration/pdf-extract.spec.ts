@@ -56,11 +56,11 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
   });
 
   it('extracts text and structure from a PDF', async () => {
-    const clerkUserId = `clerk_pdf_extract_${Date.now()}`;
-    const clerkEmail = `pdf-extract-${Date.now()}@test.local`;
+    const authUserId = `auth_pdf_extract_${Date.now()}`;
+    const authEmail = `pdf-extract-${Date.now()}@test.local`;
 
-    setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
 
     vi.mocked(extractTextFromPdf).mockResolvedValue({
       success: true,
@@ -89,11 +89,11 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
   });
 
   it('returns 400 when extraction finds no text', async () => {
-    const clerkUserId = `clerk_pdf_notext_${Date.now()}`;
-    const clerkEmail = `pdf-notext-${Date.now()}@test.local`;
+    const authUserId = `auth_pdf_notext_${Date.now()}`;
+    const authEmail = `pdf-notext-${Date.now()}@test.local`;
 
-    setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
 
     vi.mocked(extractTextFromPdf).mockResolvedValue({
       success: false,

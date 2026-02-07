@@ -16,11 +16,9 @@
  */
 
 import { eq, sql } from 'drizzle-orm';
-import postgres from 'postgres';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { databaseEnv } from '@/lib/config/env';
 import { db } from '@/lib/db/service-role';
 import {
   learningPlans,
@@ -33,13 +31,18 @@ import {
 } from '@/lib/db/schema';
 import { truncateAll } from '../helpers/db';
 import {
+  cleanupTrackedRlsClients,
   createAnonRlsDb,
   createRlsDbForUser,
   getServiceRoleDb,
 } from '../helpers/rls';
 
+function shouldRunRlsTests(): boolean {
+  return process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
+}
+
 // Run RLS tests only when explicitly enabled (CI or RUN_RLS_TESTS=1)
-const runRls = process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
+const runRls = shouldRunRlsTests();
 const policyRowSchema = z.object({
   tablename: z.string(),
   policyname: z.string(),
@@ -50,7 +53,7 @@ const policyRowSchema = z.object({
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_schedules, plan_generations, generation_attempts, task_resources,
 // usage_metrics, ai_usage_events, oauth_state_tokens, integration_tokens,
-// notion_sync_state, google_calendar_sync_state, job_queue.
+// google_calendar_sync_state, job_queue.
 const expectedPolicyTables = [
   'users',
   'learning_plans',
@@ -60,50 +63,6 @@ const expectedPolicyTables = [
   'task_progress',
   'task_calendar_events',
 ] as const;
-
-type PgRows<T> = { rows: T[] };
-
-function toRows<T>(result: unknown): T[] {
-  if (Array.isArray(result)) {
-    return result as T[];
-  }
-  if (typeof result === 'object' && result !== null && 'rows' in result) {
-    return (result as PgRows<T>).rows;
-  }
-  return [];
-}
-
-async function detectJwtValidation(): Promise<boolean> {
-  try {
-    const extensionRows = toRows<{ installed: boolean }>(
-      await db.execute(sql`
-        SELECT EXISTS (
-          SELECT 1 FROM pg_extension WHERE extname = 'pg_session_jwt'
-        ) AS installed
-      `)
-    );
-    const extensionInstalled = Boolean(extensionRows[0]?.installed);
-    if (!extensionInstalled) {
-      return false;
-    }
-
-    const settingsRows = toRows<{ name: string; setting: string | null }>(
-      await db.execute(sql`
-        SELECT name, setting
-        FROM pg_settings
-        WHERE name LIKE 'pg_session_jwt.%'
-      `)
-    );
-
-    return settingsRows.some((row) =>
-      typeof row.setting === 'string' ? row.setting.trim().length > 0 : false
-    );
-  } catch {
-    return false;
-  }
-}
-
-const jwtValidationEnabled = runRls ? await detectJwtValidation() : false;
 
 async function expectRlsViolation(operation: () => Promise<unknown>) {
   try {
@@ -125,7 +84,12 @@ async function expectRlsViolation(operation: () => Promise<unknown>) {
 
 describe.skipIf(!runRls)('RLS Policy Verification', () => {
   beforeEach(async () => {
+    await cleanupTrackedRlsClients();
     await truncateAll();
+  });
+
+  afterEach(async () => {
+    await cleanupTrackedRlsClients();
   });
 
   describe('Policy Role Scope', () => {
@@ -176,50 +140,6 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
     });
   });
 
-  describe('Identity Validation', () => {
-    const jwtValidationTest = it.skipIf(!jwtValidationEnabled);
-
-    jwtValidationTest(
-      'manual request.jwt.claims does not grant access when JWT validation is enabled',
-      async () => {
-        const [victim] = await db
-          .insert(users)
-          .values({
-            clerkUserId: 'user_jwt_victim',
-            email: 'jwt-victim@test.com',
-          })
-          .returning();
-
-        await db.insert(learningPlans).values({
-          userId: victim.id,
-          topic: 'Private Plan',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          visibility: 'private',
-        });
-
-        const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
-        const maliciousDb = postgres(connectionUrl, {
-          max: 1,
-          idle_timeout: 20,
-          connect_timeout: 10,
-        });
-
-        try {
-          await maliciousDb.unsafe('SET ROLE authenticated');
-          await maliciousDb.unsafe('SET search_path = public');
-          await maliciousDb`SELECT set_config('request.jwt.claims', ${JSON.stringify({ sub: victim.clerkUserId })}, false)`;
-
-          const rows = await maliciousDb`SELECT id FROM learning_plans`;
-          expect(rows).toHaveLength(0);
-        } finally {
-          await maliciousDb.end({ timeout: 5 });
-        }
-      }
-    );
-  });
-
   describe('Service Role Access (RLS Bypass)', () => {
     it('service role can read all users regardless of ownership', async () => {
       const serviceClient = getServiceRoleDb();
@@ -228,7 +148,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const _user1 = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_1',
+          authUserId: 'user_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -236,7 +156,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const _user2 = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_2',
+          authUserId: 'user_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -245,8 +165,8 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const rows = await serviceClient.select().from(users);
 
       expect(rows).toHaveLength(2);
-      expect(rows.map((u) => u.clerkUserId)).toContain('user_1');
-      expect(rows.map((u) => u.clerkUserId)).toContain('user_2');
+      expect(rows.map((u) => u.authUserId)).toContain('user_1');
+      expect(rows.map((u) => u.authUserId)).toContain('user_2');
     });
   });
 
@@ -257,7 +177,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [publicUser] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_public_plan',
+          authUserId: 'user_public_plan',
           email: 'public@test.com',
         })
         .returning();
@@ -274,7 +194,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [privateUser] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_private',
+          authUserId: 'user_private',
           email: 'private@test.com',
         })
         .returning();
@@ -299,7 +219,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'anon_target_user',
+          authUserId: 'anon_target_user',
           email: 'anon@test.com',
         })
         .returning();
@@ -322,7 +242,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'anon_no_write',
+          authUserId: 'anon_no_write',
           email: 'anon-no-write@test.com',
         })
         .returning();
@@ -373,7 +293,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'anon_module_insert',
+          authUserId: 'anon_module_insert',
           email: 'anon-module@test.com',
         })
         .returning();
@@ -406,7 +326,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_profile_1',
+          authUserId: 'user_profile_1',
           email: 'user-profile-1@test.com',
           name: 'User One',
         })
@@ -415,7 +335,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_profile_2',
+          authUserId: 'user_profile_2',
           email: 'user-profile-2@test.com',
           name: 'User Two',
         })
@@ -426,14 +346,14 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const visibleRows = await user1Db
         .select({
           id: users.id,
-          clerkUserId: users.clerkUserId,
+          authUserId: users.authUserId,
           name: users.name,
         })
         .from(users);
 
       expect(visibleRows).toHaveLength(1);
       expect(visibleRows[0]?.id).toBe(user1.id);
-      expect(visibleRows[0]?.clerkUserId).toBe('user_profile_1');
+      expect(visibleRows[0]?.authUserId).toBe('user_profile_1');
 
       const ownUpdate = await user1Db
         .update(users)
@@ -458,7 +378,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_auth_123',
+          authUserId: 'user_auth_123',
           email: 'auth@test.com',
         })
         .returning();
@@ -488,7 +408,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_1',
+          authUserId: 'user_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -496,7 +416,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_2',
+          authUserId: 'user_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -536,7 +456,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_insert',
+          authUserId: 'user_insert',
           email: 'insert@test.com',
         })
         .returning();
@@ -569,7 +489,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_cant_insert_1',
+          authUserId: 'user_cant_insert_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -577,7 +497,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_cant_insert_2',
+          authUserId: 'user_cant_insert_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -602,7 +522,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [owner] = await db
         .insert(users)
         .values({
-          clerkUserId: 'calendar_owner',
+          authUserId: 'calendar_owner',
           email: 'calendar-owner@test.com',
         })
         .returning();
@@ -610,7 +530,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [attacker] = await db
         .insert(users)
         .values({
-          clerkUserId: 'calendar_attacker',
+          authUserId: 'calendar_attacker',
           email: 'calendar-attacker@test.com',
         })
         .returning();
@@ -695,7 +615,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_update',
+          authUserId: 'user_update',
           email: 'update@test.com',
         })
         .returning();
@@ -730,7 +650,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_update_1',
+          authUserId: 'user_no_update_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -738,7 +658,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_update_2',
+          authUserId: 'user_no_update_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -775,7 +695,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_delete',
+          authUserId: 'user_delete',
           email: 'delete@test.com',
         })
         .returning();
@@ -812,7 +732,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_delete_1',
+          authUserId: 'user_no_delete_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -820,7 +740,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_delete_2',
+          authUserId: 'user_no_delete_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -865,7 +785,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_modules_1',
+          authUserId: 'user_modules_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -873,7 +793,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_modules_2',
+          authUserId: 'user_modules_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -936,7 +856,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_tasks',
+          authUserId: 'user_tasks',
           email: 'tasks@test.com',
         })
         .returning();
@@ -987,7 +907,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_progress',
+          authUserId: 'user_progress',
           email: 'progress@test.com',
         })
         .returning();
@@ -1071,7 +991,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_resources',
+          authUserId: 'user_resources',
           email: 'resources@test.com',
         })
         .returning();
@@ -1088,7 +1008,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_resources',
+          authUserId: 'user_no_resources',
           email: 'noresources@test.com',
         })
         .returning();

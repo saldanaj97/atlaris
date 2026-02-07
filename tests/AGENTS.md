@@ -126,7 +126,7 @@ export async function createTestUser(overrides = {}) {
   return db
     .insert(users)
     .values({
-      clerkUserId: `user_${nanoid()}`,
+      authUserId: `user_${nanoid()}`,
       email: `test-${nanoid()}@example.com`,
       ...overrides,
     })

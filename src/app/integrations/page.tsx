@@ -6,7 +6,7 @@ export default function Page() {
       <Card className="p-8">
         <h1 className="text-3xl font-bold">Integrations</h1>
         <p className="text-muted-foreground mt-4">
-          Showcase for Notion, Google Calendar, and CSV exports coming soon.
+          Showcase for Google Calendar and CSV exports coming soon.
         </p>
       </Card>
     </div>

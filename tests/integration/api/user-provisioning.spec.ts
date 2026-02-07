@@ -7,41 +7,37 @@ import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { truncateAll } from '../../helpers/db';
 
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
-  currentUser: vi.fn(),
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 describe('POST /api/v1/plans user provisioning', () => {
-  const clerkUserId = 'clerk_provisioning_flow';
-  const clerkEmail = 'provisioning@example.com';
+  const authUserId = 'auth_provisioning_flow';
+  const authEmail = 'provisioning@example.com';
 
   beforeEach(async () => {
     await truncateAll();
 
-    const { auth, currentUser } = await import('@clerk/nextjs/server');
+    const { auth } = await import('@/lib/auth/server');
 
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: {
+        user: {
+          id: authUserId,
+          email: authEmail,
+          name: 'Auto Provisioned',
+        },
+      },
+    });
 
-    vi.mocked(currentUser).mockResolvedValue({
-      id: clerkUserId,
-      emailAddresses: [{ id: 'primary', emailAddress: clerkEmail }],
-      primaryEmailAddressId: 'primary',
-      firstName: 'Auto',
-      lastName: 'Provisioned',
-      fullName: 'Auto Provisioned',
-    } as Awaited<ReturnType<typeof currentUser>>);
-
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('creates a database user when the Clerk user is new', async () => {
+  it('creates a database user when the Auth user is new', async () => {
     const planPayload = {
       topic: 'Integration testing guardrails',
       skillLevel: 'beginner',
@@ -66,10 +62,10 @@ describe('POST /api/v1/plans user provisioning', () => {
     const [provisionedUser] = await db
       .select()
       .from(users)
-      .where(eq(users.clerkUserId, clerkUserId));
+      .where(eq(users.authUserId, authUserId));
 
     expect(provisionedUser).toBeDefined();
-    expect(provisionedUser?.email).toBe(clerkEmail);
+    expect(provisionedUser?.email).toBe(authEmail);
     expect(provisionedUser?.name).toBe('Auto Provisioned');
   });
 });

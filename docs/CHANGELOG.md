@@ -3,7 +3,6 @@
 ## Unreleased
 
 ### Added
-
 - AI-backed learning plan generation replacing mock provider
 - Generation attempts tracking with classification (timeout, rate_limit, validation, capped)
 - Adaptive streaming parser and timeout controller
@@ -11,10 +10,6 @@
 - RLS policies for generation_attempts table
 
 ### Documentation
-
 - Traceability matrix linking FR/NFR to tests
 - Performance appendix and metrics
 
-### Security
-
-- Migrated RLS identity to database-validated JWT sessions using pg_session_jwt

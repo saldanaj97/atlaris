@@ -13,16 +13,16 @@ import { ensureUser } from '../../helpers/db';
 import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route';
 
 async function createPlanWithAttempt({
-  clerkUserId,
+  authUserId,
   email,
   topic = 'RLS Plan',
 }: {
-  clerkUserId: string;
+  authUserId: string;
   email: string;
   topic?: string;
 }) {
-  setTestUser(clerkUserId);
-  const userId = await ensureUser({ clerkUserId, email });
+  setTestUser(authUserId);
+  const userId = await ensureUser({ authUserId, email });
   const [plan] = await db
     .insert(learningPlans)
     .values({
@@ -51,18 +51,18 @@ async function createPlanWithAttempt({
     metadata: null,
   });
 
-  return { planId: plan.id, userId, clerkUserId };
+  return { planId: plan.id, userId, authUserId };
 }
 
 describe('RLS attempt visibility', () => {
   it('allows owner to list attempts and denies other user', async () => {
     const owner = await createPlanWithAttempt({
-      clerkUserId: 'rls_owner',
+      authUserId: 'rls_owner',
       email: 'rls_owner@example.com',
     });
 
     // Owner fetch
-    setTestUser(owner.clerkUserId);
+    setTestUser(owner.authUserId);
     const ownerResp = await GET_ATTEMPTS(
       new Request(`http://localhost/api/v1/plans/${owner.planId}/attempts`)
     );
@@ -74,7 +74,7 @@ describe('RLS attempt visibility', () => {
     // Another user should not be able to see attempts for private plan
     setTestUser('rls_other');
     await ensureUser({
-      clerkUserId: 'rls_other',
+      authUserId: 'rls_other',
       email: 'rls_other@example.com',
     });
 

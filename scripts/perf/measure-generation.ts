@@ -19,7 +19,7 @@ import {
 } from '@/lib/ai/provider';
 import { client, db, isClientInitialized } from '@/lib/db/service-role';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
-import { createUser, getUserByClerkId } from '@/lib/db/queries/users';
+import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 
 interface Stats {
@@ -175,17 +175,17 @@ function normalizeStats(stats: Stats | null): NormalizedStats | null {
 }
 
 async function ensurePerfUser() {
-  const clerkUserId = process.env.PERF_CLERK_USER_ID ?? 'perf-harness-user';
+  const authUserId = process.env.PERF_AUTH_USER_ID ?? 'perf-harness-user';
   const email =
     process.env.PERF_USER_EMAIL ?? 'perf-harness@learning-path.local';
 
-  let user = await getUserByClerkId(clerkUserId);
+  let user = await getUserByAuthId(authUserId);
   if (user) {
     return user;
   }
 
   user = await createUser({
-    clerkUserId,
+    authUserId,
     email,
     name: 'Performance Harness User',
   });

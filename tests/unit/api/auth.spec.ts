@@ -8,29 +8,31 @@ import { AuthError } from '@/lib/api/errors';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 
 const mocks = vi.hoisted(() => ({
-  getUserByClerkId: vi.fn(),
+  getUserByAuthId: vi.fn(),
   createUser: vi.fn(),
-  currentUser: vi.fn(),
+  getSession: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/users', () => ({
-  getUserByClerkId: mocks.getUserByClerkId,
+  getUserByAuthId: mocks.getUserByAuthId,
   createUser: mocks.createUser,
 }));
 
-vi.mock('@clerk/nextjs/server', () => ({
-  currentUser: mocks.currentUser,
+vi.mock('@/lib/auth/server', () => ({
+  auth: {
+    getSession: mocks.getSession,
+  },
 }));
 
-const mockGetUserByClerkId = mocks.getUserByClerkId;
+const mockGetUserByAuthId = mocks.getUserByAuthId;
 const mockCreateUser = mocks.createUser;
-const mockCurrentUser = mocks.currentUser;
+const mockGetSession = mocks.getSession;
 
 describe('auth helpers', () => {
   beforeEach(() => {
-    mockGetUserByClerkId.mockReset();
+    mockGetUserByAuthId.mockReset();
     mockCreateUser.mockReset();
-    mockCurrentUser.mockReset();
+    mockGetSession.mockReset();
     clearTestUser();
   });
 
@@ -39,22 +41,23 @@ describe('auth helpers', () => {
   });
 
   it('creates a user when none exists yet', async () => {
-    const clerkUserId = 'clerk-create';
-    setTestUser(clerkUserId);
-    mockGetUserByClerkId.mockResolvedValue(undefined);
+    const authUserId = 'auth-create';
+    setTestUser(authUserId);
+    mockGetUserByAuthId.mockResolvedValue(undefined);
 
-    mockCurrentUser.mockResolvedValue({
-      id: clerkUserId,
-      emailAddresses: [{ id: 'primary', emailAddress: 'create@example.com' }],
-      primaryEmailAddressId: 'primary',
-      firstName: 'Create',
-      lastName: 'Record',
-      fullName: 'Create Record',
+    mockGetSession.mockResolvedValue({
+      data: {
+        user: {
+          id: authUserId,
+          email: 'create@example.com',
+          name: 'Create Record',
+        },
+      },
     });
 
     const createdRecord = {
       id: 'db-create',
-      clerkUserId,
+      authUserId,
       email: 'create@example.com',
       name: 'Create Record',
     };
@@ -64,37 +67,37 @@ describe('auth helpers', () => {
 
     expect(result).toEqual(createdRecord);
     expect(mockCreateUser).toHaveBeenCalledWith({
-      clerkUserId,
+      authUserId,
       email: 'create@example.com',
       name: 'Create Record',
     });
-    expect(mockCurrentUser).toHaveBeenCalled();
+    expect(mockGetSession).toHaveBeenCalled();
   });
 
-  it('returns the existing user without calling Clerk again', async () => {
-    const clerkUserId = 'clerk-existing';
-    setTestUser(clerkUserId);
+  it('returns the existing user without calling Auth again', async () => {
+    const authUserId = 'auth-existing';
+    setTestUser(authUserId);
     const existingRecord = {
       id: 'db-existing',
-      clerkUserId,
+      authUserId,
       email: 'existing@example.com',
       name: 'Existing User',
     };
-    mockGetUserByClerkId.mockResolvedValue(existingRecord);
+    mockGetUserByAuthId.mockResolvedValue(existingRecord);
 
     const result = await getOrCreateCurrentUserRecord();
 
     expect(result).toEqual(existingRecord);
     expect(mockCreateUser).not.toHaveBeenCalled();
-    expect(mockCurrentUser).not.toHaveBeenCalled();
+    expect(mockGetSession).not.toHaveBeenCalled();
   });
 
   it('returns null when no authenticated user is present', async () => {
     const result = await getOrCreateCurrentUserRecord();
     expect(result).toBeNull();
-    expect(mockGetUserByClerkId).not.toHaveBeenCalled();
+    expect(mockGetUserByAuthId).not.toHaveBeenCalled();
     expect(mockCreateUser).not.toHaveBeenCalled();
-    expect(mockCurrentUser).not.toHaveBeenCalled();
+    expect(mockGetSession).not.toHaveBeenCalled();
   });
 
   it('requireCurrentUserRecord throws if authentication is missing', async () => {

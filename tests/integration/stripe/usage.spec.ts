@@ -19,7 +19,7 @@ describe('Usage Tracking', () => {
   describe('checkPlanLimit', () => {
     it('allows free tier user with 0 plans to create up to 3 plans', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_free_plan_limit',
+        authUserId: 'user_free_plan_limit',
         email: 'free@example.com',
       });
 
@@ -67,7 +67,7 @@ describe('Usage Tracking', () => {
 
     it('allows starter tier user up to 10 plans', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_starter_plan_limit',
+        authUserId: 'user_starter_plan_limit',
         email: 'starter@example.com',
       });
 
@@ -108,7 +108,7 @@ describe('Usage Tracking', () => {
 
     it('allows pro tier user unlimited plans', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_pro_plan_limit',
+        authUserId: 'user_pro_plan_limit',
         email: 'pro@example.com',
       });
 
@@ -138,7 +138,7 @@ describe('Usage Tracking', () => {
 
     it('ignores non-eligible plans when enforcing limits', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_plan_limit_non_eligible',
+        authUserId: 'user_plan_limit_non_eligible',
         email: 'non.eligible@example.com',
       });
 
@@ -196,7 +196,7 @@ describe('Usage Tracking', () => {
   describe('checkRegenerationLimit', () => {
     it('allows free tier user 5 regenerations per month', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_free_regen',
+        authUserId: 'user_free_regen',
         email: 'free.regen@example.com',
       });
 
@@ -217,7 +217,7 @@ describe('Usage Tracking', () => {
 
     it('allows starter tier user 10 regenerations per month', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_starter_regen',
+        authUserId: 'user_starter_regen',
         email: 'starter.regen@example.com',
       });
 
@@ -251,7 +251,7 @@ describe('Usage Tracking', () => {
 
     it('allows pro tier user 50 regenerations per month', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_pro_regen',
+        authUserId: 'user_pro_regen',
         email: 'pro.regen@example.com',
       });
 
@@ -287,7 +287,7 @@ describe('Usage Tracking', () => {
   describe('checkExportLimit', () => {
     it('allows free tier user 10 exports per month', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_free_export',
+        authUserId: 'user_free_export',
         email: 'free.export@example.com',
       });
 
@@ -308,7 +308,7 @@ describe('Usage Tracking', () => {
 
     it('allows starter tier user 50 exports per month', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_starter_export',
+        authUserId: 'user_starter_export',
         email: 'starter.export@example.com',
       });
 
@@ -333,7 +333,7 @@ describe('Usage Tracking', () => {
 
     it('allows pro tier user unlimited exports', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_pro_export',
+        authUserId: 'user_pro_export',
         email: 'pro.export@example.com',
       });
 
@@ -360,7 +360,7 @@ describe('Usage Tracking', () => {
   describe('incrementUsage', () => {
     it('creates usage metrics row if not exists and increments plan counter', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_increment_plan',
+        authUserId: 'user_increment_plan',
         email: 'increment.plan@example.com',
       });
 
@@ -387,7 +387,7 @@ describe('Usage Tracking', () => {
 
     it('increments regeneration counter for existing row', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_increment_regen',
+        authUserId: 'user_increment_regen',
         email: 'increment.regen@example.com',
       });
 
@@ -411,7 +411,7 @@ describe('Usage Tracking', () => {
 
     it('increments export counter for existing row', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_increment_export',
+        authUserId: 'user_increment_export',
         email: 'increment.export@example.com',
       });
 
@@ -435,7 +435,7 @@ describe('Usage Tracking', () => {
 
     it('updates updatedAt timestamp', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_increment_timestamp',
+        authUserId: 'user_increment_timestamp',
         email: 'increment.timestamp@example.com',
       });
 
@@ -467,7 +467,7 @@ describe('Usage Tracking', () => {
   describe('getUsageSummary', () => {
     it('excludes non-eligible plans and counts only eligible ones', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_summary_eligibility_filter',
+        authUserId: 'user_summary_eligibility_filter',
         email: 'summary.eligibility@example.com',
       });
 
@@ -523,7 +523,7 @@ describe('Usage Tracking', () => {
     });
     it('returns complete usage summary for free tier', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_summary_free',
+        authUserId: 'user_summary_free',
         email: 'summary.free@example.com',
       });
 
@@ -582,7 +582,7 @@ describe('Usage Tracking', () => {
 
     it('returns summary for pro tier with Infinity limits', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_summary_pro',
+        authUserId: 'user_summary_pro',
         email: 'summary.pro@example.com',
       });
 
@@ -636,7 +636,7 @@ describe('Usage Tracking', () => {
 
     it('creates usage metrics row for current month if not exists', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_summary_create',
+        authUserId: 'user_summary_create',
         email: 'summary.create@example.com',
       });
 
@@ -665,7 +665,7 @@ describe('Usage Tracking', () => {
   describe('Monthly Partitioning', () => {
     it('auto-resets usage for new month via separate row', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_monthly_partition',
+        authUserId: 'user_monthly_partition',
         email: 'monthly@example.com',
       });
 

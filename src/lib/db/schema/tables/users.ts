@@ -10,7 +10,7 @@ import {
 
 import { subscriptionStatus, subscriptionTier } from '../../enums';
 import { timestampFields } from '../helpers';
-import { clerkSub } from './common';
+import { currentUserId } from './common';
 
 // Users table
 
@@ -18,7 +18,7 @@ export const users = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    clerkUserId: text('clerk_user_id').notNull().unique(),
+    authUserId: text('auth_user_id').notNull().unique(),
     email: text('email').notNull().unique(),
     name: text('name'),
     subscriptionTier: subscriptionTier('subscription_tier')
@@ -49,14 +49,14 @@ export const users = pgTable(
     pgPolicy('users_select_own', {
       for: 'select',
       to: 'authenticated',
-      using: sql`${table.clerkUserId} = ${clerkSub}`,
+      using: sql`${table.authUserId} = ${currentUserId}`,
     }),
 
     // Users can only insert their own record during signup
     pgPolicy('users_insert_own', {
       for: 'insert',
       to: 'authenticated',
-      withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
+      withCheck: sql`${table.authUserId} = ${currentUserId}`,
     }),
 
     // Users can update only their own profile fields
@@ -65,8 +65,8 @@ export const users = pgTable(
     pgPolicy('users_update_own', {
       for: 'update',
       to: 'authenticated',
-      using: sql`${table.clerkUserId} = ${clerkSub}`,
-      withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
+      using: sql`${table.authUserId} = ${currentUserId}`,
+      withCheck: sql`${table.authUserId} = ${currentUserId}`,
     }),
 
     // Users cannot delete their own records

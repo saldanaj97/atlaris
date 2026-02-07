@@ -62,7 +62,7 @@ describe.skip('Google Calendar Sync Route (temporarily disabled)', () => {
     vi.clearAllMocks();
 
     // Default to authenticated test user for routes that require it
-    setTestUser('clerk-user-123');
+    setTestUser('auth-user-123');
 
     // Import mocked functions
     const { getOAuthTokens } = await import('@/lib/integrations/oauth');

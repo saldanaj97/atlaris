@@ -72,7 +72,7 @@ export function decryptToken(encryptedData: string): OAuthTokenData {
   };
 }
 
-export type IntegrationProvider = 'notion' | 'google_calendar';
+export type IntegrationProvider = 'google_calendar';
 
 interface StoreTokensParams {
   userId: string;

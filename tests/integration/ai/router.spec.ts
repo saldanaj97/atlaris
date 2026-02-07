@@ -2,21 +2,32 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('AI Router (mock in tests)', () => {
+  let authUserId: string;
+  let email: string;
+
   beforeEach(() => {
     process.env.AI_PROVIDER = 'router';
     process.env.AI_USE_MOCK = 'true';
+
+    authUserId = buildTestAuthUserId('ai-router');
+    email = buildTestEmail(authUserId);
+    setTestUser(authUserId);
+  });
+
+  afterEach(() => {
+    clearTestUser();
   });
 
   it('returns modules using mock provider via router', async () => {
     // Ensure a user + plan exist and are linked
-    const clerkUserId = process.env.DEV_CLERK_USER_ID || `test-${Date.now()}`;
-    const email = `${clerkUserId}@example.com`;
     const [userRow] = await db
       .insert(users)
-      .values({ clerkUserId, email, name: 'Test' })
+      .values({ authUserId, email, name: 'Test' })
       .onConflictDoNothing()
       .returning();
     const userId =
@@ -25,7 +36,7 @@ describe('AI Router (mock in tests)', () => {
         await db
           .select({ id: users.id })
           .from(users)
-          .where(eq(users.clerkUserId, clerkUserId))
+          .where(eq(users.authUserId, authUserId))
           .limit(1)
       )[0].id;
 

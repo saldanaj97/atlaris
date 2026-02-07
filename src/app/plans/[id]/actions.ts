@@ -17,18 +17,18 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import {
-  getAuthenticatedRlsIdentity,
-  getEffectiveClerkUserId,
-} from '@/lib/api/auth';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { JwtValidationError } from '@/lib/api/errors';
-import { getPlanSchedule } from '@/lib/api/schedule';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
+import { getDb } from '@/lib/db/runtime';
+import {
+  getPlanSchedule,
+  ScheduleFetchError,
+  SCHEDULE_FETCH_ERROR_CODE,
+} from '@/lib/api/schedule';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
-import { getUserByClerkId } from '@/lib/db/queries/users';
-import { getDb } from '@/lib/db/runtime';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
@@ -93,21 +93,20 @@ export async function updateTaskProgressAction({
     throw new Error('Invalid progress status.');
   }
 
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     throw new Error('You must be signed in to update progress.');
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     throw new Error('User not found.');
   }
 
-  const identity = await getAuthenticatedRlsIdentity(clerkUserId);
-  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(identity);
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-task-progress'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
@@ -146,8 +145,8 @@ export async function updateTaskProgressAction({
 export async function getPlanForPage(
   planId: string
 ): Promise<PlanAccessResult> {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     logger.debug({ planId }, 'Plan access denied: user not authenticated');
     return planError(
       'UNAUTHORIZED',
@@ -155,10 +154,10 @@ export async function getPlanForPage(
     );
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     logger.warn(
-      { planId, clerkUserId },
+      { planId, authUserId },
       'Plan access denied: authenticated user not found in database'
     );
     return planError(
@@ -167,29 +166,10 @@ export async function getPlanForPage(
     );
   }
 
-  let rlsDb: Awaited<ReturnType<typeof createAuthenticatedRlsClient>>['db'];
-  let cleanup: () => Promise<void>;
-  try {
-    const identity = await getAuthenticatedRlsIdentity(clerkUserId);
-    const result = await createAuthenticatedRlsClient(identity);
-    rlsDb = result.db;
-    cleanup = result.cleanup;
-  } catch (error) {
-    if (error instanceof JwtValidationError) {
-      logger.warn(
-        { planId, clerkUserId, error },
-        'Plan access denied: invalid JWT'
-      );
-      return planError(
-        'UNAUTHORIZED',
-        'Your session is no longer valid. Please sign in again.'
-      );
-    }
-    throw error;
-  }
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-plan'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
@@ -235,8 +215,8 @@ export async function getPlanForPage(
 export async function getPlanScheduleForPage(
   planId: string
 ): Promise<ScheduleAccessResult> {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     logger.debug({ planId }, 'Schedule access denied: user not authenticated');
     return scheduleError(
       'UNAUTHORIZED',
@@ -244,10 +224,10 @@ export async function getPlanScheduleForPage(
     );
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     logger.warn(
-      { planId, clerkUserId },
+      { planId, authUserId },
       'Schedule access denied: authenticated user not found in database'
     );
     return scheduleError(
@@ -256,29 +236,10 @@ export async function getPlanScheduleForPage(
     );
   }
 
-  let rlsDb: Awaited<ReturnType<typeof createAuthenticatedRlsClient>>['db'];
-  let cleanup: () => Promise<void>;
-  try {
-    const identity = await getAuthenticatedRlsIdentity(clerkUserId);
-    const result = await createAuthenticatedRlsClient(identity);
-    rlsDb = result.db;
-    cleanup = result.cleanup;
-  } catch (error) {
-    if (error instanceof JwtValidationError) {
-      logger.warn(
-        { planId, clerkUserId, error },
-        'Schedule access denied: invalid JWT'
-      );
-      return scheduleError(
-        'UNAUTHORIZED',
-        'Your session is no longer valid. Please sign in again.'
-      );
-    }
-    throw error;
-  }
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-schedule'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
@@ -289,13 +250,9 @@ export async function getPlanScheduleForPage(
     );
     return scheduleSuccess(schedule);
   } catch (error) {
-    // Discriminate errors to return appropriate error codes
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
+    if (error instanceof ScheduleFetchError) {
       if (
-        message.includes('not found') ||
-        message.includes('access denied') ||
-        message.includes('does not exist')
+        error.code === SCHEDULE_FETCH_ERROR_CODE.PLAN_NOT_FOUND_OR_ACCESS_DENIED
       ) {
         logger.debug(
           { planId, userId: user.id },
@@ -306,7 +263,16 @@ export async function getPlanScheduleForPage(
           'Schedule not found or you do not have access.'
         );
       }
+
+      if (error.code === SCHEDULE_FETCH_ERROR_CODE.INVALID_WEEKLY_HOURS) {
+        logger.warn(
+          { planId, userId: user.id, code: error.code },
+          'Schedule generation blocked by invalid weekly hours'
+        );
+        return scheduleError('INTERNAL_ERROR', 'Failed to load schedule.');
+      }
     }
+
     logger.error(
       { planId, userId: user.id, error },
       'Failed to fetch plan schedule'

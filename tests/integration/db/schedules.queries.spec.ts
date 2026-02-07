@@ -8,6 +8,7 @@ import {
 } from '@/lib/db/queries/schedules';
 import { learningPlans } from '@/lib/db/schema';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('Schedule Queries', () => {
   let userId: string;
@@ -15,9 +16,10 @@ describe('Schedule Queries', () => {
 
   beforeEach(async () => {
     // Create a user and plan for testing
+    const authUserId = buildTestAuthUserId('db-schedules-queries');
     userId = await ensureUser({
-      clerkUserId: 'clerk_schedule_test_user',
-      email: 'scheduletest@example.com',
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
 
     const [plan] = await db

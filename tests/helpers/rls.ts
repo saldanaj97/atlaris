@@ -4,26 +4,34 @@
  * This module provides test utilities for creating database clients with different
  * auth contexts to verify RLS policies work correctly.
  *
- * NEON RLS ARCHITECTURE (JWT Session Approach):
+ * NEON RLS ARCHITECTURE (Session Variable Approach):
  * - All clients use the same database URL (owner role)
- * - RLS ensures policies apply via JWT session variables
- * - In test/dev mode we fall back to request.jwt.claims for simplicity
- *   - Authenticated: request.jwt.claims = '{"sub": "clerk_user_id"}'
+ * - RLS ensures policies apply via session variables
+ * - Session variables differentiate between users:
+ *   - Authenticated: request.jwt.claims = '{"sub": "auth_user_id"}'
  *   - Anonymous: request.jwt.claims = 'null'
  *   - Service (test setup): Regular db client from drizzle.ts (has BYPASSRLS)
  *
  * USAGE:
  * - createAnonRlsDb() - Creates client with session variable set to null
- * - createRlsDbForUser() - Creates client with user's Clerk ID in session variable
+ * - createRlsDbForUser() - Creates client with user's auth ID in session variable
  * - getServiceRoleDb() - Returns service-role client (bypasses RLS for setup/cleanup)
  */
 
 import { db } from '@/lib/db/service-role';
-import type { RlsClient } from '@/lib/db/rls';
 import {
   createAnonymousRlsClient,
   createAuthenticatedRlsClient,
 } from '@/lib/db/rls';
+
+type DbInstance = typeof db;
+type CleanupCallback = () => Promise<void>;
+
+const trackedRlsClientCleanups = new Set<CleanupCallback>();
+
+function trackCleanup(cleanup: CleanupCallback): void {
+  trackedRlsClientCleanups.add(cleanup);
+}
 
 /**
  * Creates an RLS-enforced database client for an anonymous user.
@@ -37,8 +45,9 @@ import {
  *
  * @returns Promise resolving to Drizzle database client with RLS enforcement (anonymous)
  */
-export async function createAnonRlsDb(): Promise<RlsClient> {
+export async function createAnonRlsDb(): Promise<DbInstance> {
   const result = await createAnonymousRlsClient();
+  trackCleanup(result.cleanup);
   return result.db;
 }
 
@@ -51,17 +60,26 @@ export async function createAnonRlsDb(): Promise<RlsClient> {
  * Note: The underlying connection will be closed automatically via idle_timeout.
  * For long-running tests, consider calling cleanup() from the full result.
  *
- * @param clerkUserId - The Clerk user ID (e.g., "user_123")
+ * @param authUserId - The auth user ID (e.g., "user_123")
  * @returns Promise resolving to Drizzle database client with RLS enforcement for this user
  */
 export async function createRlsDbForUser(
-  clerkUserId: string
-): Promise<RlsClient> {
-  const result = await createAuthenticatedRlsClient({
-    kind: 'clerk-user-id',
-    userId: clerkUserId,
-  });
+  authUserId: string
+): Promise<DbInstance> {
+  const result = await createAuthenticatedRlsClient(authUserId);
+  trackCleanup(result.cleanup);
   return result.db;
+}
+
+/**
+ * Closes all tracked RLS clients created via this helper module.
+ *
+ * Safe to call repeatedly; each cleanup callback is idempotent.
+ */
+export async function cleanupTrackedRlsClients(): Promise<void> {
+  const cleanups = [...trackedRlsClientCleanups];
+  trackedRlsClientCleanups.clear();
+  await Promise.allSettled(cleanups.map((cleanup) => cleanup()));
 }
 
 /**
@@ -72,6 +90,6 @@ export async function createRlsDbForUser(
  *
  * @returns Drizzle database client with RLS bypassed (service role)
  */
-export function getServiceRoleDb(): typeof db {
+export function getServiceRoleDb(): DbInstance {
   return db;
 }

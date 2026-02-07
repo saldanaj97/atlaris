@@ -6,7 +6,7 @@ import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
-import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { setTestUser, clearTestUser } from '../../helpers/auth';
 
 describe('Server Action: generateLearningPlan (dates parity)', () => {
@@ -28,12 +28,12 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
   });
 
   it('persists startDate and deadlineDate when provided', async () => {
-    const clerkUserId = buildTestClerkUserId('generate-learning-plan-dates');
+    const authUserId = buildTestAuthUserId('generate-learning-plan-dates');
     await ensureUser({
-      clerkUserId,
-      email: buildTestEmail(clerkUserId),
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const startDate = '2025-11-01';
     const deadlineDate = '2025-12-15';
@@ -65,12 +65,12 @@ describe('Server Action: generateLearningPlan (dates parity)', () => {
   });
 
   it('allows omitted startDate (null) while keeping deadlineDate', async () => {
-    const clerkUserId = buildTestClerkUserId('generate-learning-plan-dates');
+    const authUserId = buildTestAuthUserId('generate-learning-plan-dates');
     await ensureUser({
-      clerkUserId,
-      email: buildTestEmail(clerkUserId),
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const deadlineDate = '2075-12-15';
 

@@ -17,8 +17,8 @@ async function createRequest(body: unknown) {
 }
 
 describe('POST /api/v1/plans', () => {
-  const clerkUserId = 'clerk_post_contract_user';
-  const clerkEmail = 'contract-post@example.com';
+  const authUserId = 'auth_post_contract_user';
+  const authEmail = 'contract-post@example.com';
 
   afterEach(async () => {
     // ensure we do not leak plans across tests in case truncate hook is bypassed
@@ -26,8 +26,8 @@ describe('POST /api/v1/plans', () => {
   });
 
   it('creates a new plan and returns 201 with persisted payload', async () => {
-    setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
 
     const request = await createRequest({
       topic: 'Applied Machine Learning',
@@ -56,8 +56,8 @@ describe('POST /api/v1/plans', () => {
   });
 
   it('returns 400 when validation fails', async () => {
-    setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
 
     const request = await createRequest({
       skillLevel: 'beginner',
@@ -75,8 +75,8 @@ describe('POST /api/v1/plans', () => {
   });
 
   it('returns 429 when generation attempts are capped for follow-up requests', async () => {
-    setTestUser(clerkUserId);
-    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    const userId = await ensureUser({ authUserId, email: authEmail });
     const [plan] = await db
       .insert(learningPlans)
       .values({

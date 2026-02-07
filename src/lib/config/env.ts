@@ -28,8 +28,34 @@ const normalize = (value: string | undefined | null): string | undefined => {
 };
 
 const APP_URL_SCHEMA = z.string().url();
-const CLERK_JWKS_URL_SCHEMA = z.string().url();
 const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
+const NEON_AUTH_COOKIE_SECRET_MIN_LENGTH = 32;
+
+const NeonAuthEnvSchema = z
+  .object({
+    baseUrl: z.string().url(),
+    cookieSecret: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (isProdRuntime && !value.baseUrl.startsWith('https://')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['baseUrl'],
+        message: 'NEON_AUTH_BASE_URL must use https in production',
+      });
+    }
+
+    if (
+      isProdRuntime &&
+      value.cookieSecret.length < NEON_AUTH_COOKIE_SECRET_MIN_LENGTH
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['cookieSecret'],
+        message: `NEON_AUTH_COOKIE_SECRET must be at least ${NEON_AUTH_COOKIE_SECRET_MIN_LENGTH} characters in production`,
+      });
+    }
+  });
 
 // TODO: Consider using zod for parsing and validation of numeric env vars
 function toNumber(value: string | undefined): number | undefined;
@@ -156,7 +182,7 @@ const isProdRuntime =
  * - Ensures the variable is only accessed in a server runtime.
  * - Caching behavior follows the same pattern as getServerRequired/getServerOptional.
  *
- * Use this for third-party integration credentials (e.g., Google OAuth, Notion)
+ * Use this for third-party integration credentials (e.g., Google OAuth)
  * that are required in production but can be mocked or omitted in tests.
  *
  * @param {string} key - The name of the environment variable to retrieve.
@@ -248,21 +274,6 @@ export const databaseEnv = {
   },
 } as const;
 
-export const notionEnv = {
-  get clientId() {
-    return getServerRequired('NOTION_CLIENT_ID');
-  },
-  get clientSecret() {
-    return getServerRequired('NOTION_CLIENT_SECRET');
-  },
-  get redirectUri() {
-    return getServerRequired('NOTION_REDIRECT_URI');
-  },
-  get parentPageId() {
-    return getServerOptional('NOTION_PARENT_PAGE_ID') ?? '';
-  },
-} as const;
-
 export const googleOAuthEnv = {
   get clientId() {
     return getServerRequiredProdOnly('GOOGLE_CLIENT_ID');
@@ -281,34 +292,27 @@ export const oauthEncryptionEnv = {
   },
 } as const;
 
-export const clerkWebhookEnv = {
-  get secret() {
-    return getServerOptional('CLERK_WEBHOOK_SECRET');
-  },
-} as const;
+const parsedNeonAuthEnv = NeonAuthEnvSchema.safeParse({
+  baseUrl: getServerRequired('NEON_AUTH_BASE_URL'),
+  cookieSecret: getServerRequired('NEON_AUTH_COOKIE_SECRET'),
+});
 
-export const clerkJwtEnv = {
-  get jwksUrl(): string | undefined {
-    const value = getServerRequiredProdOnly('CLERK_JWKS_URL');
-    if (!value) {
-      return undefined;
-    }
-    const parsed = CLERK_JWKS_URL_SCHEMA.safeParse(value);
-    if (!parsed.success) {
-      throw new EnvValidationError(
-        'CLERK_JWKS_URL must be a valid absolute URL',
-        'CLERK_JWKS_URL'
-      );
-    }
-    if (isProdRuntime && !parsed.data.startsWith('https://')) {
-      throw new EnvValidationError(
-        'CLERK_JWKS_URL must use https in production',
-        'CLERK_JWKS_URL'
-      );
-    }
-    return parsed.data;
-  },
-} as const;
+if (!parsedNeonAuthEnv.success) {
+  const issue = parsedNeonAuthEnv.error.issues[0];
+  const envKey =
+    issue?.path[0] === 'baseUrl'
+      ? 'NEON_AUTH_BASE_URL'
+      : issue?.path[0] === 'cookieSecret'
+        ? 'NEON_AUTH_COOKIE_SECRET'
+        : undefined;
+
+  throw new EnvValidationError(
+    issue?.message ?? 'Invalid Neon auth config',
+    envKey
+  );
+}
+
+export const neonAuthEnv = parsedNeonAuthEnv.data;
 
 export const stripeEnv = {
   get secretKey() {
@@ -433,15 +437,15 @@ export const googleAiEnv = {
   },
 } as const;
 
-export const devClerkEnv = {
+export const devAuthEnv = {
   get userId() {
-    return getServerOptional('DEV_CLERK_USER_ID');
+    return getServerOptional('DEV_AUTH_USER_ID');
   },
   get email() {
-    return getServerOptional('DEV_CLERK_USER_EMAIL') ?? 'dev@example.com';
+    return getServerOptional('DEV_AUTH_USER_EMAIL') ?? 'dev@example.com';
   },
   get name() {
-    return getServerOptional('DEV_CLERK_USER_NAME') ?? 'Dev User';
+    return getServerOptional('DEV_AUTH_USER_NAME') ?? 'Dev User';
   },
 } as const;
 

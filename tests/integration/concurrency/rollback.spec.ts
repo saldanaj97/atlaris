@@ -18,7 +18,7 @@ describe('Concurrency - rollback on DB error', () => {
   it('rolls back modules/tasks when an error occurs mid-transaction', async () => {
     setTestUser('rollback_user');
     const userId = await ensureUser({
-      clerkUserId: 'rollback_user',
+      authUserId: 'rollback_user',
       email: 'rollback_user@example.com',
     });
 

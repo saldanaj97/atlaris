@@ -1,3 +1,6 @@
+import { eq, inArray } from 'drizzle-orm';
+import { NextRequest } from 'next/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/lib/db/service-role';
 import {
   integrationTokens,
@@ -7,15 +10,12 @@ import {
   users,
 } from '@/lib/db/schema';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
-import { eq, inArray } from 'drizzle-orm';
-import { NextRequest } from 'next/server';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 // Mock googleapis
@@ -40,26 +40,26 @@ describe.skip('POST /api/v1/integrations/google-calendar/sync - access control (
   let ownerUserId: string;
   let otherUserId: string;
   let otherPlanId: string;
-  const ownerClerkId = 'clerk_gsync_owner';
-  const otherClerkId = 'clerk_gsync_other';
+  const ownerAuthId = 'auth_gsync_owner';
+  const otherAuthId = 'auth_gsync_other';
 
   beforeEach(async () => {
-    // Mock Clerk to return the owner by default
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: ownerClerkId,
-    } as Awaited<ReturnType<typeof auth>>);
+    // Mock Auth to return the owner by default
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: ownerAuthId } },
+    });
 
     // Authenticate as owner for the route
-    setTestUser(ownerClerkId);
+    setTestUser(ownerAuthId);
 
     // Ensure users
     ownerUserId = await ensureUser({
-      clerkUserId: ownerClerkId,
+      authUserId: ownerAuthId,
       email: 'gsync-owner@example.com',
     });
     otherUserId = await ensureUser({
-      clerkUserId: otherClerkId,
+      authUserId: otherAuthId,
       email: 'gsync-other@example.com',
     });
 

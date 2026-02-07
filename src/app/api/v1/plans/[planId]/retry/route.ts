@@ -8,7 +8,7 @@ import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { jsonError } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 
@@ -39,9 +39,9 @@ export const POST = withErrorBoundary(
     // Re-assign to a const to ensure TypeScript narrows the type for closures
     const planId: string = rawPlanId;
 
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
-      throw new Error(
+      throw new NotFoundError(
         'Authenticated user record missing despite provisioning.'
       );
     }

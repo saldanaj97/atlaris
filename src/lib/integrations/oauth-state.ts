@@ -11,11 +11,11 @@ function getDefaultStore(): OAuthStateStore {
 }
 
 export async function generateAndStoreOAuthStateToken(
-  clerkUserId: string,
+  authUserId: string,
   provider?: string,
   store: OAuthStateStore = getDefaultStore()
 ): Promise<string> {
-  return store.issue({ clerkUserId, provider });
+  return store.issue({ authUserId, provider });
 }
 
 export async function validateOAuthStateToken(

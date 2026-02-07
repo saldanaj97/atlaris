@@ -5,6 +5,7 @@ import { db } from '@/lib/db/service-role';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 function buildRequest(planId: string) {
   return new Request(`http://localhost/api/v1/plans/${planId}/attempts`, {
@@ -13,12 +14,12 @@ function buildRequest(planId: string) {
 }
 
 describe('GET /api/v1/plans/:planId/attempts', () => {
-  const clerkId = 'contract-attempts-owner';
-  const email = 'attempts-owner@example.com';
+  const authId = buildTestAuthUserId('contract-attempts-owner');
+  const email = buildTestEmail(authId);
 
   it('returns attempt history for owning user', async () => {
-    setTestUser(clerkId);
-    const userId = await ensureUser({ clerkUserId: clerkId, email });
+    setTestUser(authId);
+    const userId = await ensureUser({ authUserId: authId, email });
 
     const [plan] = await db
       .insert(learningPlans)
@@ -60,7 +61,7 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
         promptHash: 'hash',
         metadata: {
           input: { topic: { truncated: false, original_length: 20 } },
-        } as any,
+        },
       },
     ]);
 
@@ -75,10 +76,11 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
   });
 
   it('returns 404 when plan is not owned', async () => {
-    setTestUser('other-owner');
+    const otherOwnerAuthId = buildTestAuthUserId('contract-attempts-other');
+    setTestUser(otherOwnerAuthId);
     await ensureUser({
-      clerkUserId: 'other-owner',
-      email: 'other@example.com',
+      authUserId: otherOwnerAuthId,
+      email: buildTestEmail(otherOwnerAuthId),
     });
 
     const response = await GET(

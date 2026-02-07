@@ -5,6 +5,7 @@ import { db } from '@/lib/db/service-role';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 function buildRequest(planId: string) {
   return new Request(`http://localhost/api/v1/plans/${planId}`, {
@@ -13,13 +14,13 @@ function buildRequest(planId: string) {
 }
 
 describe('GET /api/v1/plans/:planId', () => {
-  const ownerClerkId = 'clerk_plan_detail_owner';
-  const ownerEmail = 'owner-detail@example.com';
+  const ownerAuthId = buildTestAuthUserId('plan-detail-owner');
+  const ownerEmail = buildTestEmail(ownerAuthId);
 
   it('returns plan detail with ordered modules and tasks for owner', async () => {
-    setTestUser(ownerClerkId);
+    setTestUser(ownerAuthId);
     const ownerId = await ensureUser({
-      clerkUserId: ownerClerkId,
+      authUserId: ownerAuthId,
       email: ownerEmail,
     });
 
@@ -94,10 +95,11 @@ describe('GET /api/v1/plans/:planId', () => {
   });
 
   it('returns 404 when plan does not exist or not owned by user', async () => {
-    setTestUser('non-owner-uid');
+    const nonOwnerAuthId = buildTestAuthUserId('plan-detail-non-owner');
+    setTestUser(nonOwnerAuthId);
     await ensureUser({
-      clerkUserId: 'non-owner-uid',
-      email: 'non-owner@example.com',
+      authUserId: nonOwnerAuthId,
+      email: buildTestEmail(nonOwnerAuthId),
     });
 
     const response = await GET(
@@ -108,9 +110,9 @@ describe('GET /api/v1/plans/:planId', () => {
 
   it('returns 404 when accessing plan owned by another user (cross-tenant protection)', async () => {
     // Create owner and their plan
-    setTestUser(ownerClerkId);
+    setTestUser(ownerAuthId);
     const ownerId = await ensureUser({
-      clerkUserId: ownerClerkId,
+      authUserId: ownerAuthId,
       email: ownerEmail,
     });
 
@@ -128,11 +130,11 @@ describe('GET /api/v1/plans/:planId', () => {
       .returning();
 
     // Try to access as a different user
-    const attackerClerkId = 'clerk_plan_detail_attacker';
-    const attackerEmail = 'attacker-detail@example.com';
-    setTestUser(attackerClerkId);
+    const attackerAuthId = buildTestAuthUserId('plan-detail-attacker');
+    const attackerEmail = buildTestEmail(attackerAuthId);
+    setTestUser(attackerAuthId);
     await ensureUser({
-      clerkUserId: attackerClerkId,
+      authUserId: attackerAuthId,
       email: attackerEmail,
     });
 

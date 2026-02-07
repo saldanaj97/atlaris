@@ -1,6 +1,6 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { json, jsonError } from '@/lib/api/response';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getCustomerPortalUrl } from '@/lib/stripe/subscriptions';
 
 interface CreatePortalBody {
@@ -9,9 +9,9 @@ interface CreatePortalBody {
 
 // POST /api/v1/stripe/create-portal
 export const POST = withErrorBoundary(
-  withAuthAndRateLimit('billing', async ({ req, userId: clerkUserId }) => {
+  withAuthAndRateLimit('billing', async ({ req, userId: authUserId }) => {
     // Get user from database
-    const user = await getUserByClerkId(clerkUserId);
+    const user = await getUserByAuthId(authUserId);
     if (!user) {
       return jsonError('User not found', { status: 404 });
     }

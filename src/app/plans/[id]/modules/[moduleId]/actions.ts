@@ -10,16 +10,12 @@
 
 import { revalidatePath } from 'next/cache';
 
-import {
-  getAuthenticatedRlsIdentity,
-  getEffectiveClerkUserId,
-} from '@/lib/api/auth';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { JwtValidationError } from '@/lib/api/errors';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getModuleDetail } from '@/lib/db/queries/modules';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
@@ -56,8 +52,8 @@ function assertNonEmpty(value: string | undefined, message: string) {
 export async function getModuleForPage(
   moduleId: string
 ): Promise<ModuleAccessResult> {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     logger.debug({ moduleId }, 'Module access denied: user not authenticated');
     return moduleError(
       'UNAUTHORIZED',
@@ -65,10 +61,10 @@ export async function getModuleForPage(
     );
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     logger.warn(
-      { moduleId, clerkUserId },
+      { moduleId, authUserId },
       'Module access denied: authenticated user not found in database'
     );
     return moduleError(
@@ -77,29 +73,10 @@ export async function getModuleForPage(
     );
   }
 
-  let rlsDb: Awaited<ReturnType<typeof createAuthenticatedRlsClient>>['db'];
-  let cleanup: () => Promise<void>;
-  try {
-    const identity = await getAuthenticatedRlsIdentity(clerkUserId);
-    const result = await createAuthenticatedRlsClient(identity);
-    rlsDb = result.db;
-    cleanup = result.cleanup;
-  } catch (error) {
-    if (error instanceof JwtValidationError) {
-      logger.warn(
-        { moduleId, clerkUserId, error },
-        'Module access denied: invalid JWT'
-      );
-      return moduleError(
-        'UNAUTHORIZED',
-        'Your session is no longer valid. Please sign in again.'
-      );
-    }
-    throw error;
-  }
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-module'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
@@ -150,40 +127,44 @@ export async function updateModuleTaskProgressAction({
     throw new Error('Invalid progress status.');
   }
 
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     throw new Error('You must be signed in to update progress.');
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     throw new Error('User not found.');
   }
 
-  let rlsDb: Awaited<ReturnType<typeof createAuthenticatedRlsClient>>['db'];
-  let cleanup: () => Promise<void>;
-  try {
-    const identity = await getAuthenticatedRlsIdentity(clerkUserId);
-    const result = await createAuthenticatedRlsClient(identity);
-    rlsDb = result.db;
-    cleanup = result.cleanup;
-  } catch (error) {
-    if (error instanceof JwtValidationError) {
-      throw new Error('Your session is no longer valid. Please sign in again.');
-    }
-    throw error;
-  }
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-module-task-progress'),
-    clerkUserId,
+    authUserId,
     rlsDb,
     cleanup
   );
 
   try {
-    const taskProgress = await withRequestContext(ctx, async () =>
-      setTaskProgress(user.id, taskId, status)
-    );
+    let taskProgress: Awaited<ReturnType<typeof setTaskProgress>>;
+    try {
+      taskProgress = await withRequestContext(ctx, async () =>
+        setTaskProgress(user.id, taskId, status)
+      );
+    } catch (error) {
+      logger.error(
+        {
+          planId,
+          moduleId,
+          taskId,
+          userId: user.id,
+          status,
+          error,
+        },
+        'Failed to update module task progress'
+      );
+      throw new Error('Unable to update task progress right now.');
+    }
 
     // Revalidate both the module page and the parent plan page
     revalidatePath(`/plans/${planId}/modules/${moduleId}`);

@@ -6,7 +6,6 @@ import { client, isClientInitialized } from '@/lib/db/service-role';
 import { Mutex } from 'async-mutex';
 import {
   ensureGoogleCalendarSyncState,
-  ensureNotionSyncState,
   ensureStripeWebhookEvents,
   ensureTaskCalendarEvents,
   resetDbForIntegrationTestFile,
@@ -58,7 +57,6 @@ if (!skipDbSetup) {
     releaseDbLock = await dbLock.acquire();
     await resetDbForIntegrationTestFile();
     await ensureStripeWebhookEvents();
-    await ensureNotionSyncState();
     await ensureGoogleCalendarSyncState();
     await ensureTaskCalendarEvents();
   });

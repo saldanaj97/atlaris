@@ -13,13 +13,13 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
-const clerkUserId = 'clerk_generation_validation';
-const clerkEmail = 'generation-validation@example.com';
+const authUserId = 'auth_generation_validation';
+const authEmail = 'generation-validation@example.com';
 
 describe('generation integration - validation failure', () => {
   it('classifies attempt as validation when provider output is empty', async () => {
-    setTestUser(clerkUserId);
-    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    const userId = await ensureUser({ authUserId, email: authEmail });
 
     const [plan] = await db
       .insert(learningPlans)

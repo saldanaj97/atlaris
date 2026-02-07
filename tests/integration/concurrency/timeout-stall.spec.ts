@@ -16,7 +16,7 @@ describe('Concurrency - provider stall timeout classification', () => {
   it('classifies stalled provider as timeout', async () => {
     setTestUser('stall_user');
     const userId = await ensureUser({
-      clerkUserId: 'stall_user',
+      authUserId: 'stall_user',
       email: 'stall_user@example.com',
     });
 

@@ -16,7 +16,7 @@ describe('Job Queries', () => {
   beforeEach(async () => {
     // Create a user and plan for testing
     userId = await ensureUser({
-      clerkUserId: 'clerk_job_test_user',
+      authUserId: 'auth_job_test_user',
       email: 'jobtest@example.com',
     });
 

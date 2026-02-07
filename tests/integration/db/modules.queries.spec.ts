@@ -4,6 +4,7 @@ import { db } from '@/lib/db/service-role';
 import { getModuleWithTasks } from '@/lib/db/queries/modules';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('Module Queries', () => {
   let userId: string;
@@ -12,9 +13,10 @@ describe('Module Queries', () => {
 
   beforeEach(async () => {
     // Create a user and plan for testing
+    const authUserId = buildTestAuthUserId('db-modules-queries');
     userId = await ensureUser({
-      clerkUserId: 'clerk_module_test_user',
-      email: 'moduletest@example.com',
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
 
     const [plan] = await db

@@ -10,20 +10,20 @@ function sanitizeScenario(scenario: string): string {
 }
 
 /**
- * Builds a unique Clerk user id for tests with a stable prefix suitable for debugging.
+ * Builds a unique auth user id for tests with a stable prefix suitable for debugging.
  * @param scenario - Human-friendly scenario name
  */
-export function buildTestClerkUserId(scenario: string): string {
+export function buildTestAuthUserId(scenario: string): string {
   const timestamp = Date.now().toString(36);
   const suffix = nanoid();
   const sanitized = sanitizeScenario(scenario || 'test');
-  return `clerk_test_${sanitized}-${timestamp}-${suffix}`;
+  return `auth_test_${sanitized}-${timestamp}-${suffix}`;
 }
 
 /**
  * Builds an email address that stays unique per test run.
- * @param clerkUserId - Clerk user id used to build the email
+ * @param authUserId - Auth user id used to build the email
  */
-export function buildTestEmail(clerkUserId: string): string {
-  return `${clerkUserId}@example.test`;
+export function buildTestEmail(authUserId: string): string {
+  return `${authUserId}@example.test`;
 }

@@ -13,7 +13,7 @@ import {
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { json, jsonError } from '@/lib/api/response';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
@@ -30,7 +30,7 @@ import {
 
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ userId }) => {
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
       throw new Error(
         'Authenticated user record missing despite provisioning.'
@@ -57,7 +57,7 @@ export const POST = withErrorBoundary(
       throw new ValidationError('Invalid request body.', error);
     }
 
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
       throw new Error(
         'Authenticated user record missing despite provisioning.'

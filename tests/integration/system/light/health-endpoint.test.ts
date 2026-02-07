@@ -36,7 +36,7 @@ describe('Health Endpoint', () => {
     it('should return 200 with healthy status when no issues exist', async () => {
       // T064: Health endpoint healthy
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-health',
+        authUserId: 'test-auth-health',
         email: 'health@example.com',
       });
 
@@ -94,7 +94,7 @@ describe('Health Endpoint', () => {
     it('should return 503 when stuck jobs are detected', async () => {
       // T065: Health endpoint unhealthy (stuck job)
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-stuck',
+        authUserId: 'test-auth-stuck',
         email: 'stuck@example.com',
       });
 
@@ -126,7 +126,7 @@ describe('Health Endpoint', () => {
 
     it('should not detect recent processing jobs as stuck', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-recent',
+        authUserId: 'test-auth-recent',
         email: 'recent@example.com',
       });
 
@@ -158,7 +158,7 @@ describe('Health Endpoint', () => {
     it('should return 503 when backlog exceeds threshold', async () => {
       // T066: Health endpoint backlog
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-backlog',
+        authUserId: 'test-auth-backlog',
         email: 'backlog@example.com',
       });
 
@@ -194,7 +194,7 @@ describe('Health Endpoint', () => {
 
     it('should return healthy when backlog is below threshold', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-small-backlog',
+        authUserId: 'test-auth-small-backlog',
         email: 'small-backlog@example.com',
       });
 
@@ -228,7 +228,7 @@ describe('Health Endpoint', () => {
   describe('Multiple Issues', () => {
     it('should report both stuck jobs and backlog in reason', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'test-clerk-multiple',
+        authUserId: 'test-auth-multiple',
         email: 'multiple@example.com',
       });
 

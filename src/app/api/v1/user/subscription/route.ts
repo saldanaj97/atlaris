@@ -1,14 +1,14 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { json, jsonError } from '@/lib/api/response';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { getUsageSummary } from '@/lib/stripe/usage';
 
 // GET /api/v1/user/subscription
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ userId: clerkUserId }) => {
+  withAuthAndRateLimit('read', async ({ userId: authUserId }) => {
     // Get user from database
-    const user = await getUserByClerkId(clerkUserId);
+    const user = await getUserByAuthId(authUserId);
     if (!user) {
       return jsonError('User not found', { status: 404 });
     }

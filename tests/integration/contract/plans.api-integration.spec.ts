@@ -12,6 +12,7 @@ import {
 import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
@@ -31,8 +32,8 @@ async function createStatusRequest(planId: string) {
 }
 
 describe('Phase 4: API Integration', () => {
-  const clerkUserId = 'clerk_phase4_user';
-  const clerkEmail = 'phase4-test@example.com';
+  const authUserId = buildTestAuthUserId('phase4-user');
+  const authEmail = buildTestEmail(authUserId);
 
   afterEach(async () => {
     // Clean up test data (order matters due to foreign key constraints)
@@ -44,8 +45,8 @@ describe('Phase 4: API Integration', () => {
 
   describe('T040: Plan creation creates plan record', () => {
     it('POST /api/v1/plans returns 201 with status generating and creates plan record', async () => {
-      setTestUser(clerkUserId);
-      await ensureUser({ clerkUserId, email: clerkEmail });
+      setTestUser(authUserId);
+      await ensureUser({ authUserId, email: authEmail });
 
       const request = await createPlanRequest({
         topic: 'Applied Machine Learning',
@@ -82,8 +83,8 @@ describe('Phase 4: API Integration', () => {
 
   describe('T041: Status endpoint state transition test', () => {
     it('maps generationStatus to plan status correctly: generating -> ready', async () => {
-      setTestUser(clerkUserId);
-      const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+      setTestUser(authUserId);
+      const userId = await ensureUser({ authUserId, email: authEmail });
 
       // Create a plan with default generationStatus (generating)
       // Note: The API maps 'generating' -> 'processing' for the frontend
@@ -131,8 +132,8 @@ describe('Phase 4: API Integration', () => {
     });
 
     it('maps failed job status correctly', async () => {
-      setTestUser(clerkUserId);
-      const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+      setTestUser(authUserId);
+      const userId = await ensureUser({ authUserId, email: authEmail });
 
       // Create a plan with failed status
       const [plan] = await db
@@ -172,8 +173,8 @@ describe('Phase 4: API Integration', () => {
 
   describe('T042: Rate limit exceeded test', () => {
     it('returns 429 with retryAfter when rate limit is exceeded', async () => {
-      setTestUser(clerkUserId);
-      const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+      setTestUser(authUserId);
+      const userId = await ensureUser({ authUserId, email: authEmail });
 
       // Create 10 jobs (the limit) within the time window
       const jobPromises = [];
@@ -232,8 +233,8 @@ describe('Phase 4: API Integration', () => {
 
   describe('T043: Malformed plan creation input test', () => {
     it('returns validation error for invalid skillLevel without inserting job', async () => {
-      setTestUser(clerkUserId);
-      await ensureUser({ clerkUserId, email: clerkEmail });
+      setTestUser(authUserId);
+      await ensureUser({ authUserId, email: authEmail });
 
       const initialJobCount = await db.query.jobQueue.findMany();
 
@@ -259,8 +260,8 @@ describe('Phase 4: API Integration', () => {
     });
 
     it('returns validation error for missing topic without inserting job', async () => {
-      setTestUser(clerkUserId);
-      await ensureUser({ clerkUserId, email: clerkEmail });
+      setTestUser(authUserId);
+      await ensureUser({ authUserId, email: authEmail });
 
       const initialJobCount = await db.query.jobQueue.findMany();
 
