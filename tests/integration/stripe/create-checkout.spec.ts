@@ -12,6 +12,10 @@ vi.mock('@/lib/stripe/client', () => ({
   getStripe: vi.fn(),
 }));
 
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
+}));
+
 describe('POST /api/v1/stripe/create-checkout', () => {
   beforeEach(async () => {
     await truncateAll();
@@ -263,13 +267,14 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(response.status).toBe(401);
   });
 
-  it('returns 500 when user not found in database and auto-provision fails', async () => {
-    // When an auth user ID is provided but doesn't exist in DB, the auth middleware
-    // attempts to auto-provision the user by calling auth.getSession().
-    // In test environments, this fails with a 500 error because:
-    // 1. There's no real Auth session
-    // 2. The server-only module throws when imported in test context
-    // This results in an internal server error rather than a clean auth error.
+  it('returns 401 when user not found in database and auto-provision fails', async () => {
+    // When DEV_AUTH_USER_ID is set but the user doesn't exist in DB, the auth
+    // middleware attempts to auto-provision via auth.getSession(). If getSession()
+    // returns no session (e.g. no cookies in test), ensureUserRecord throws
+    // AuthError and the API returns 401.
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({ data: {} });
+
     setTestUser('user_does_not_exist');
 
     const request = new Request(
@@ -287,9 +292,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 
     const response = await POST(request);
 
-    // In test environment, auto-provisioning fails with server error
-    // because auth.getSession() depends on server session context
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(401);
   });
 
   it('handles Stripe API errors gracefully', async () => {
