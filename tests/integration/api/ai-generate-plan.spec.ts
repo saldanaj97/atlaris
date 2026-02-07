@@ -2,8 +2,12 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { setTestUser, clearTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import {
+  createAuthenticatedSession,
+  createUnauthenticatedSession,
+} from '../../mocks/shared/auth-session';
 
-// Mock Auth auth before importing the route
+// Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
@@ -13,9 +17,9 @@ describe('POST /api/v1/ai/generate-plan', () => {
 
   beforeEach(async () => {
     const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
-    });
+    vi.mocked(auth.getSession).mockResolvedValue(
+      createAuthenticatedSession(authUserId)
+    );
 
     setTestUser(authUserId);
 
@@ -55,9 +59,9 @@ describe('POST /api/v1/ai/generate-plan', () => {
     clearTestUser();
 
     const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: null },
-    });
+    vi.mocked(auth.getSession).mockResolvedValue(
+      createUnauthenticatedSession()
+    );
 
     const { POST } = await import('@/app/api/v1/ai/generate-plan/route');
     const request = new NextRequest(

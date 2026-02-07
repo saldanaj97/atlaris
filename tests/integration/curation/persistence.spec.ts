@@ -16,6 +16,7 @@ import {
 import { eq } from 'drizzle-orm';
 import { upsertAndAttach } from '@/lib/db/queries/resources';
 import type { ResourceCandidate } from '@/lib/curation/types';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('Curation Persistence Integration', () => {
   let testUserId: string;
@@ -24,12 +25,14 @@ describe('Curation Persistence Integration', () => {
   let testTaskId: string;
 
   beforeEach(async () => {
+    const authUserId = buildTestAuthUserId('curation-persistence');
+
     // Create test user
     const [user] = await db
       .insert(users)
       .values({
-        authUserId: 'test-auth-id',
-        email: 'test@example.com',
+        authUserId,
+        email: buildTestEmail(authUserId),
         subscriptionTier: 'free',
       })
       .returning();

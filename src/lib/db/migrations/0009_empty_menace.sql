@@ -9,6 +9,7 @@ ALTER TABLE "oauth_state_tokens" RENAME COLUMN "clerk_user_id" TO "auth_user_id"
 ALTER TABLE "users" DROP CONSTRAINT "users_clerk_user_id_unique";--> statement-breakpoint
 ALTER TABLE "integration_tokens" ALTER COLUMN "provider" SET DATA TYPE text;--> statement-breakpoint
 DROP TYPE "public"."integration_provider";--> statement-breakpoint
+DELETE FROM "integration_tokens" WHERE "provider" <> 'google_calendar';--> statement-breakpoint
 CREATE TYPE "public"."integration_provider" AS ENUM('google_calendar');--> statement-breakpoint
 ALTER TABLE "integration_tokens" ALTER COLUMN "provider" SET DATA TYPE "public"."integration_provider" USING "provider"::"public"."integration_provider";--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_auth_user_id_unique" UNIQUE("auth_user_id");--> statement-breakpoint

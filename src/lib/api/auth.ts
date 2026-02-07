@@ -1,4 +1,5 @@
 import { appEnv, devAuthEnv } from '@/lib/config/env';
+import { auth } from '@/lib/auth/server';
 import {
   createUser,
   getUserByAuthId,
@@ -30,7 +31,6 @@ export async function getEffectiveAuthUserId(): Promise<string | null> {
     }
   }
 
-  const { auth } = await import('@/lib/auth/server');
   const { data: session } = await auth.getSession();
   return session?.user?.id ?? null;
 }
@@ -42,7 +42,6 @@ export async function getEffectiveAuthUserId(): Promise<string | null> {
  * end user rather than a test/development override.
  */
 export async function getAuthUserId(): Promise<string | null> {
-  const { auth } = await import('@/lib/auth/server');
   const { data: session } = await auth.getSession();
   return session?.user?.id ?? null;
 }
@@ -59,7 +58,6 @@ async function ensureUserRecord(authUserId: string): Promise<DbUser> {
     return existing;
   }
 
-  const { auth } = await import('@/lib/auth/server');
   const { data: session } = await auth.getSession();
 
   if (!session?.user) {

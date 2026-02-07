@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Auth auth before importing the route
+// Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));

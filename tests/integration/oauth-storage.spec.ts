@@ -9,13 +9,10 @@ import {
 import { eq, and, sql } from 'drizzle-orm';
 
 async function ensureIntegrationTokensTable() {
-  // Create enum if it doesn't exist
+  // Recreate enum to guarantee expected values
   await db.execute(sql`
-    DO $$ BEGIN
-      CREATE TYPE integration_provider AS ENUM('google_calendar');
-    EXCEPTION
-      WHEN duplicate_object THEN null;
-    END $$;
+    DROP TYPE IF EXISTS integration_provider CASCADE;
+    CREATE TYPE integration_provider AS ENUM('google_calendar');
   `);
 
   // Create table if it doesn't exist

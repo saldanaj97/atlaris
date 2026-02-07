@@ -146,9 +146,25 @@ export async function updateModuleTaskProgressAction({
   );
 
   try {
-    const taskProgress = await withRequestContext(ctx, async () =>
-      setTaskProgress(user.id, taskId, status)
-    );
+    let taskProgress: Awaited<ReturnType<typeof setTaskProgress>>;
+    try {
+      taskProgress = await withRequestContext(ctx, async () =>
+        setTaskProgress(user.id, taskId, status)
+      );
+    } catch (error) {
+      logger.error(
+        {
+          planId,
+          moduleId,
+          taskId,
+          userId: user.id,
+          status,
+          error,
+        },
+        'Failed to update module task progress'
+      );
+      throw new Error('Unable to update task progress right now.');
+    }
 
     // Revalidate both the module page and the parent plan page
     revalidatePath(`/plans/${planId}/modules/${moduleId}`);

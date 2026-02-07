@@ -7,6 +7,7 @@ import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 /**
  * This test uses application path to insert an attempt via orchestrator
@@ -16,11 +17,14 @@ import { createMockProvider } from '../../helpers/mockProvider';
 
 describe('RLS attempt insertion', () => {
   it('blocks attempt insertion for non-owner user', async () => {
+    const ownerAuthUserId = buildTestAuthUserId('rls-insert-owner');
+    const attackerAuthUserId = buildTestAuthUserId('rls-insert-attacker');
+
     // Owner user + plan
-    setTestUser('rls_insert_owner');
+    setTestUser(ownerAuthUserId);
     const ownerId = await ensureUser({
-      authUserId: 'rls_insert_owner',
-      email: 'rls_insert_owner@example.com',
+      authUserId: ownerAuthUserId,
+      email: buildTestEmail(ownerAuthUserId),
     });
 
     const [plan] = await db
@@ -37,10 +41,10 @@ describe('RLS attempt insertion', () => {
       .returning();
 
     // Different user tries to run attempt
-    setTestUser('rls_insert_attacker');
+    setTestUser(attackerAuthUserId);
     const attackerId = await ensureUser({
-      authUserId: 'rls_insert_attacker',
-      email: 'rls_insert_attacker@example.com',
+      authUserId: attackerAuthUserId,
+      email: buildTestEmail(attackerAuthUserId),
     });
 
     const mock = createMockProvider({ scenario: 'success' });

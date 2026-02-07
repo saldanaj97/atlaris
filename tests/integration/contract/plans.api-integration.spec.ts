@@ -12,6 +12,7 @@ import {
 import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
@@ -31,8 +32,8 @@ async function createStatusRequest(planId: string) {
 }
 
 describe('Phase 4: API Integration', () => {
-  const authUserId = 'auth_phase4_user';
-  const authEmail = 'phase4-test@example.com';
+  const authUserId = buildTestAuthUserId('phase4-user');
+  const authEmail = buildTestEmail(authUserId);
 
   afterEach(async () => {
     // Clean up test data (order matters due to foreign key constraints)

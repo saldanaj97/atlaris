@@ -1,49 +1,19 @@
 import AuthControls from '@/components/shared/AuthControls';
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const { mockUseSession } = vi.hoisted(() => ({
-  mockUseSession: vi.fn(),
-}));
-
-vi.mock('@/lib/auth/client', () => ({
-  authClient: {
-    useSession: mockUseSession,
-  },
-}));
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@neondatabase/auth/react', () => ({
   UserButton: () => <div data-testid="user-button">Mocked UserButton</div>,
 }));
 
-const setAuthenticated = (userId: string): void => {
-  mockUseSession.mockReturnValue({
-    data: {
-      user: {
-        id: userId,
-      },
-    },
-  });
-};
-
-const setUnauthenticated = (): void => {
-  mockUseSession.mockReturnValue({ data: null });
-};
-
 afterEach(() => {
   cleanup();
-  vi.restoreAllMocks();
-});
-
-beforeEach(() => {
-  mockUseSession.mockReset();
+  vi.clearAllMocks();
 });
 
 describe('AuthControls', () => {
   it('renders sign in and sign up links when unauthenticated', () => {
-    setUnauthenticated();
-
-    render(<AuthControls />);
+    render(<AuthControls isAuthenticated={false} />);
 
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
       'href',
@@ -57,9 +27,7 @@ describe('AuthControls', () => {
   });
 
   it('renders user button and hides sign in/sign up when authenticated', () => {
-    setAuthenticated('user_123');
-
-    render(<AuthControls />);
+    render(<AuthControls isAuthenticated={true} />);
 
     expect(screen.getByTestId('user-button')).toBeInTheDocument();
     expect(
@@ -74,9 +42,7 @@ describe('AuthControls', () => {
     it.each(['free', 'starter', 'pro'] as const)(
       'renders %s tier when authenticated and tier is provided',
       (tier) => {
-        setAuthenticated('user_123');
-
-        render(<AuthControls tier={tier} />);
+        render(<AuthControls isAuthenticated={true} tier={tier} />);
 
         expect(screen.getByText(tier)).toBeInTheDocument();
         expect(screen.getByTestId('user-button')).toBeInTheDocument();

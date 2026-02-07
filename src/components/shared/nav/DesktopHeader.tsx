@@ -71,14 +71,18 @@ export default function DesktopHeader({
       {/* Auth controls (right) */}
       <div className="flex items-center justify-end gap-3">
         {isAuthenticated ? (
-          <Link
-            href="/plans/new"
+          <Button
+            variant="default"
+            size="sm"
+            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center gap-1.5 bg-gradient-to-r text-white"
             onClick={handleNewPlanClick}
-            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center gap-1.5 rounded-lg bg-gradient-to-r px-3 py-1.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
+            asChild
           >
-            <Plus className="h-4 w-4" />
-            <span>New Plan</span>
-          </Link>
+            <Link href="/plans/new">
+              <Plus className="h-4 w-4" />
+              <span>New Plan</span>
+            </Link>
+          </Button>
         ) : (
           <Button
             variant="default"
@@ -94,7 +98,10 @@ export default function DesktopHeader({
           </Button>
         )}
         <ThemeToggle />
-        <AuthControls tier={tier} />
+        <AuthControls
+          isAuthenticated={isAuthenticated}
+          tier={isAuthenticated ? tier : undefined}
+        />
       </div>
     </div>
   );

@@ -29,6 +29,33 @@ const normalize = (value: string | undefined | null): string | undefined => {
 
 const APP_URL_SCHEMA = z.string().url();
 const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
+const NEON_AUTH_COOKIE_SECRET_MIN_LENGTH = 32;
+
+const NeonAuthEnvSchema = z
+  .object({
+    baseUrl: z.string().url(),
+    cookieSecret: z.string(),
+  })
+  .superRefine((value, ctx) => {
+    if (isProdRuntime && !value.baseUrl.startsWith('https://')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['baseUrl'],
+        message: 'NEON_AUTH_BASE_URL must use https in production',
+      });
+    }
+
+    if (
+      isProdRuntime &&
+      value.cookieSecret.length < NEON_AUTH_COOKIE_SECRET_MIN_LENGTH
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['cookieSecret'],
+        message: `NEON_AUTH_COOKIE_SECRET must be at least ${NEON_AUTH_COOKIE_SECRET_MIN_LENGTH} characters in production`,
+      });
+    }
+  });
 
 // TODO: Consider using zod for parsing and validation of numeric env vars
 function toNumber(value: string | undefined): number | undefined;
@@ -265,14 +292,27 @@ export const oauthEncryptionEnv = {
   },
 } as const;
 
-export const neonAuthEnv = {
-  get baseUrl() {
-    return getServerRequired('NEON_AUTH_BASE_URL');
-  },
-  get cookieSecret() {
-    return getServerRequired('NEON_AUTH_COOKIE_SECRET');
-  },
-} as const;
+const parsedNeonAuthEnv = NeonAuthEnvSchema.safeParse({
+  baseUrl: getServerRequired('NEON_AUTH_BASE_URL'),
+  cookieSecret: getServerRequired('NEON_AUTH_COOKIE_SECRET'),
+});
+
+if (!parsedNeonAuthEnv.success) {
+  const issue = parsedNeonAuthEnv.error.issues[0];
+  const envKey =
+    issue?.path[0] === 'baseUrl'
+      ? 'NEON_AUTH_BASE_URL'
+      : issue?.path[0] === 'cookieSecret'
+        ? 'NEON_AUTH_COOKIE_SECRET'
+        : undefined;
+
+  throw new EnvValidationError(
+    issue?.message ?? 'Invalid Neon auth config',
+    envKey
+  );
+}
+
+export const neonAuthEnv = parsedNeonAuthEnv.data;
 
 export const stripeEnv = {
   get secretKey() {

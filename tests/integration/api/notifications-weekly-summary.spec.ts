@@ -1,17 +1,23 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { setTestUser, clearTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
-// Mock Auth auth before importing the route
+// Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
 
 describe('POST /api/v1/notifications/weekly-summary', () => {
-  const authUserId = 'auth_weekly_summary_test_user';
+  let authUserId: string;
 
   beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+
+    authUserId = buildTestAuthUserId('weekly-summary');
+    const email = buildTestEmail(authUserId);
+
     const { auth } = await import('@/lib/auth/server');
     vi.mocked(auth.getSession).mockResolvedValue({
       data: { user: { id: authUserId } },
@@ -21,7 +27,7 @@ describe('POST /api/v1/notifications/weekly-summary', () => {
 
     await ensureUser({
       authUserId,
-      email: 'weekly-summary@example.com',
+      email,
     });
   });
 

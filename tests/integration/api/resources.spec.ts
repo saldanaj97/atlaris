@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { setTestUser, clearTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Auth auth before importing the route
+// Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));

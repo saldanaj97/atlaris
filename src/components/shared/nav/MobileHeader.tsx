@@ -46,10 +46,10 @@ export default function MobileHeader({
 
       {/* Right: new plan + theme toggle + user/auth */}
       <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5">
-        {/* Hide New Plan button on very small screens to save space */}
+        {/* New Plan quick action */}
         <Link
           href={isAuthenticated ? ROUTES.PLANS.NEW : '/auth/sign-in'}
-          className="from-primary to-accent focus-visible:ring-ring focus-visible:ring-offset-card hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r text-white shadow-md transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:h-9 sm:w-9 sm:rounded-xl lg:flex"
+          className="from-primary to-accent focus-visible:ring-ring focus-visible:ring-offset-card flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r text-white shadow-md transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:h-9 sm:w-9 sm:rounded-xl"
           aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
         >
           <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -58,7 +58,10 @@ export default function MobileHeader({
           <ThemeToggle size="icon-sm" />
         </div>
         <div className="min-w-0 shrink-0">
-          <AuthControls tier={tier} />
+          <AuthControls
+            isAuthenticated={isAuthenticated}
+            tier={isAuthenticated ? tier : undefined}
+          />
         </div>
       </div>
     </div>

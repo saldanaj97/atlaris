@@ -75,7 +75,7 @@ export const GET = withErrorBoundary(async (req) => {
   const [user] = await db
     .select()
     .from(users)
-    .where(eq(users.authUserId, stateAuthUserId))
+    .where(eq(users.authUserId, authUserId))
     .limit(1);
 
   if (!user) {

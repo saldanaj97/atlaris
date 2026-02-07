@@ -18,7 +18,7 @@ function getGoogleOAuthConfig() {
   }
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(_request: NextRequest): Promise<NextResponse> {
   const { data: session } = await auth.getSession();
   const userId = session?.user?.id;
 

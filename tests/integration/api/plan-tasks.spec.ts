@@ -5,7 +5,7 @@ import { ensureUser } from '../../helpers/db';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 
-// Mock Auth auth before importing the route
+// Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
@@ -124,6 +124,25 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     const { auth } = await import('@/lib/auth/server');
     vi.mocked(auth.getSession).mockResolvedValue({
       data: { user: null },
+    });
+
+    const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/plans/${planId}/tasks`,
+      { method: 'GET' }
+    );
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(401);
+  });
+
+  it('should return 401 when session payload is null', async () => {
+    clearTestUser();
+
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: null,
     });
 
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');

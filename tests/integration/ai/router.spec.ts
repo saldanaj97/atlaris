@@ -2,18 +2,29 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('AI Router (mock in tests)', () => {
+  let authUserId: string;
+  let email: string;
+
   beforeEach(() => {
     process.env.AI_PROVIDER = 'router';
     process.env.AI_USE_MOCK = 'true';
+
+    authUserId = buildTestAuthUserId('ai-router');
+    email = buildTestEmail(authUserId);
+    setTestUser(authUserId);
+  });
+
+  afterEach(() => {
+    clearTestUser();
   });
 
   it('returns modules using mock provider via router', async () => {
     // Ensure a user + plan exist and are linked
-    const authUserId = process.env.DEV_AUTH_USER_ID || `test-${Date.now()}`;
-    const email = `${authUserId}@example.com`;
     const [userRow] = await db
       .insert(users)
       .values({ authUserId, email, name: 'Test' })

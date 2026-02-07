@@ -8,9 +8,11 @@ import { extractTextFromPdf } from '@/lib/pdf/extract';
 import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 import { checkPdfPlanQuota, incrementPdfPlanUsage } from '@/lib/stripe/usage';
 import {
+  ensureUser,
   ensureStripeWebhookEvents,
   resetDbForIntegrationTestFile,
 } from '../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../helpers/testIds';
 
 const buildPdfBuffer = (text: string, pageCount = 1): Buffer => {
   const header = '%PDF-1.4\n';
@@ -89,23 +91,19 @@ const e2eNow = (): Date => new Date(E2E_FIXED_DATE.getTime());
 
 describe('PDF to Plan E2E Flow', () => {
   let userId: string;
-  const authUserId = `auth_e2e_pdf_to_plan_user`;
-  const email = `pdf-e2e-to-plan-test@example.com`;
+  const authUserId = buildTestAuthUserId('e2e-pdf-to-plan-user');
+  const email = buildTestEmail(authUserId);
 
   beforeEach(async () => {
     await resetDbForIntegrationTestFile();
     await ensureStripeWebhookEvents();
 
-    const [user] = await db
-      .insert(users)
-      .values({
-        authUserId,
-        email,
-        name: 'PDF E2E Test User',
-        subscriptionTier: 'free',
-      })
-      .returning();
-    userId = user.id;
+    userId = await ensureUser({
+      authUserId,
+      email,
+      name: 'PDF E2E Test User',
+      subscriptionTier: 'free',
+    });
   });
 
   describe('Happy Path: Complete PDF to Plan Workflow', () => {

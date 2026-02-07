@@ -70,11 +70,13 @@ describe('User Queries', () => {
 
       const after = new Date(Date.now() + tolerance);
 
-      expect(user?.createdAt).toBeInstanceOf(Date);
-      expect(user!.createdAt.getTime()).toBeGreaterThanOrEqual(
-        before.getTime()
-      );
-      expect(user!.createdAt.getTime()).toBeLessThanOrEqual(after.getTime());
+      expect(user).toBeDefined();
+      if (!user) {
+        throw new Error('Expected user to be defined');
+      }
+      expect(user.createdAt).toBeInstanceOf(Date);
+      expect(user.createdAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(user.createdAt.getTime()).toBeLessThanOrEqual(after.getTime());
     });
   });
 

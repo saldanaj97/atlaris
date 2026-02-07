@@ -4,6 +4,7 @@ import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 async function createRequest(body: unknown) {
@@ -15,8 +16,8 @@ async function createRequest(body: unknown) {
 }
 
 describe('POST /api/v1/plans - caps', () => {
-  const authUserId = 'auth_api_caps_user';
-  const authEmail = 'api-caps@example.com';
+  const authUserId = buildTestAuthUserId('api-caps-user');
+  const authEmail = buildTestEmail(authUserId);
 
   afterEach(async () => {
     await db.delete(learningPlans);

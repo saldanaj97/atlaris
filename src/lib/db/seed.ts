@@ -240,7 +240,7 @@ export async function seedDatabase(
         {
           authUserId: devAuthUserId,
         },
-        `👤 Ensured deterministic dev user '${devAuthUserId}'`
+        '👤 Ensured deterministic dev user'
       );
     } catch (e) {
       logger.warn(

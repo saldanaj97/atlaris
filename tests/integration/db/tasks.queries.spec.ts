@@ -10,6 +10,7 @@ import {
   appendTaskDescription,
   appendTaskMicroExplanation,
 } from '@/lib/db/queries/tasks';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('DB Tasks Queries', () => {
   let testUserId: string;
@@ -18,12 +19,14 @@ describe('DB Tasks Queries', () => {
   let testTaskId: string;
 
   beforeEach(async () => {
+    const authUserId = buildTestAuthUserId('db-tasks-queries');
+
     // Create test user
     const [user] = await db
       .insert(users)
       .values({
-        authUserId: 'test-auth-id-tasks',
-        email: 'test-tasks@example.com',
+        authUserId,
+        email: buildTestEmail(authUserId),
         subscriptionTier: 'free',
       })
       .returning();

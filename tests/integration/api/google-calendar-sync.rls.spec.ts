@@ -1,3 +1,6 @@
+import { eq, inArray } from 'drizzle-orm';
+import { NextRequest } from 'next/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@/lib/db/service-role';
 import {
   integrationTokens,
@@ -7,13 +10,10 @@ import {
   users,
 } from '@/lib/db/schema';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
-import { eq, inArray } from 'drizzle-orm';
-import { NextRequest } from 'next/server';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Auth auth before importing the route
+// Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));

@@ -25,4 +25,4 @@ export const stripeWebhookEvents = pgTable(
     unique('stripe_webhook_events_event_id_unique').on(table.eventId),
     index('idx_stripe_webhook_events_created_at').on(table.createdAt),
   ]
-).enableRLS();
+);

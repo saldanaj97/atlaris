@@ -255,7 +255,7 @@ function IntegrationIcon({ name, color }: { name: string; color: string }) {
       aria-label={name}
     >
       <span className="text-lg font-semibold text-white" aria-hidden="true">
-        {name === 'Google Calendar' ? 'G' : 'O'}
+        {name.charAt(0)}
       </span>
     </div>
   );

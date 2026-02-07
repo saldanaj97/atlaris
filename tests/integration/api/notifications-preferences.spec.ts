@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { setTestUser } from '../../helpers/auth';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock Auth auth before importing the route
+// Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
@@ -27,6 +27,7 @@ describe('GET /api/v1/notifications/preferences', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    clearTestUser();
   });
 
   it('should return 501 Not Implemented', async () => {
@@ -65,6 +66,7 @@ describe('PUT /api/v1/notifications/preferences', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    clearTestUser();
   });
 
   it('should return 501 Not Implemented', async () => {

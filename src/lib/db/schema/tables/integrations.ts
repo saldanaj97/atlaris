@@ -16,6 +16,7 @@ import {
   userAndPlanOwnedByCurrentUser,
   userAndTaskOwnedByCurrentUser,
 } from '../policy-helpers';
+import { currentUserId } from './common';
 import { learningPlans } from './plans';
 import { modules, tasks } from './tasks';
 import { users } from './users';
@@ -57,17 +58,17 @@ export const oauthStateTokens = pgTable(
     pgPolicy('oauth_state_tokens_insert', {
       for: 'insert',
       to: 'authenticated',
-      withCheck: sql`${table.authUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      withCheck: sql`${table.authUserId} = ${currentUserId}`,
     }),
     pgPolicy('oauth_state_tokens_select', {
       for: 'select',
       to: 'authenticated',
-      using: sql`${table.authUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      using: sql`${table.authUserId} = ${currentUserId}`,
     }),
     pgPolicy('oauth_state_tokens_delete', {
       for: 'delete',
       to: 'authenticated',
-      using: sql`${table.authUserId} = (current_setting('request.jwt.claims', true)::json->>'sub')`,
+      using: sql`${table.authUserId} = ${currentUserId}`,
     }),
   ]
 ).enableRLS();

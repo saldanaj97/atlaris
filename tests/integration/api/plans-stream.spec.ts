@@ -7,6 +7,7 @@ import { db } from '@/lib/db/service-role';
 
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import {
   readStreamingResponse,
   type StreamingEvent,
@@ -29,10 +30,10 @@ afterAll(() => {
 
 describe('POST /api/v1/plans/stream', () => {
   it('streams generation and persists plan data', async () => {
-    const authUserId = `stream-user-${Date.now()}`;
+    const authUserId = buildTestAuthUserId('stream-user');
     await ensureUser({
       authUserId,
-      email: `${authUserId}@example.com`,
+      email: buildTestEmail(authUserId),
     });
     setTestUser(authUserId);
 
@@ -80,8 +81,8 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('marks plan failed on generation error', async () => {
-    const authUserId = `stream-failure-${Date.now()}`;
-    await ensureUser({ authUserId, email: `${authUserId}@example.com` });
+    const authUserId = buildTestAuthUserId('stream-failure');
+    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
     setTestUser(authUserId);
 
     // Mock the orchestrator to throw during generation
@@ -136,10 +137,10 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('accepts valid model override via query param', async () => {
-    const authUserId = `stream-model-override-${Date.now()}`;
+    const authUserId = buildTestAuthUserId('stream-model-override');
     await ensureUser({
       authUserId,
-      email: `${authUserId}@example.com`,
+      email: buildTestEmail(authUserId),
     });
     setTestUser(authUserId);
 
@@ -174,10 +175,10 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('falls back to default model when invalid model override is provided', async () => {
-    const authUserId = `stream-invalid-model-${Date.now()}`;
+    const authUserId = buildTestAuthUserId('stream-invalid-model');
     await ensureUser({
       authUserId,
-      email: `${authUserId}@example.com`,
+      email: buildTestEmail(authUserId),
     });
     setTestUser(authUserId);
 
@@ -212,10 +213,10 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('works without model param (uses default)', async () => {
-    const authUserId = `stream-no-model-${Date.now()}`;
+    const authUserId = buildTestAuthUserId('stream-no-model');
     await ensureUser({
       authUserId,
-      email: `${authUserId}@example.com`,
+      email: buildTestEmail(authUserId),
     });
     setTestUser(authUserId);
 

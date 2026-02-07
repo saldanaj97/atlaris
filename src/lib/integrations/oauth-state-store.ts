@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from 'crypto';
 import { and, eq, gt, sql } from 'drizzle-orm';
 
+import { getDb } from '@/lib/db/runtime';
 import { oauthStateTokens } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 
 import type { OAuthStateStore } from './oauth-state.types';
 
@@ -19,6 +19,7 @@ function generateToken(): string {
 export function createOAuthStateStore(): OAuthStateStore {
   return {
     async issue({ authUserId, provider }): Promise<string> {
+      const db = getDb();
       const plainToken = generateToken();
       const tokenHash = hashToken(plainToken);
       const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
@@ -34,6 +35,7 @@ export function createOAuthStateStore(): OAuthStateStore {
     },
 
     async consume({ stateToken }): Promise<string | null> {
+      const db = getDb();
       const tokenHash = hashToken(stateToken);
       const now = new Date();
 
@@ -54,6 +56,7 @@ export function createOAuthStateStore(): OAuthStateStore {
 }
 
 export async function cleanupExpiredTokens(): Promise<number> {
+  const db = getDb();
   const result = await db
     .delete(oauthStateTokens)
     .where(gt(sql`now()`, oauthStateTokens.expiresAt));

@@ -16,7 +16,7 @@
  */
 
 import { eq, sql } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { db } from '@/lib/db/service-role';
@@ -31,13 +31,18 @@ import {
 } from '@/lib/db/schema';
 import { truncateAll } from '../helpers/db';
 import {
+  cleanupTrackedRlsClients,
   createAnonRlsDb,
   createRlsDbForUser,
   getServiceRoleDb,
 } from '../helpers/rls';
 
+function shouldRunRlsTests(): boolean {
+  return process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
+}
+
 // Run RLS tests only when explicitly enabled (CI or RUN_RLS_TESTS=1)
-const runRls = process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
+const runRls = shouldRunRlsTests();
 const policyRowSchema = z.object({
   tablename: z.string(),
   policyname: z.string(),
@@ -79,7 +84,12 @@ async function expectRlsViolation(operation: () => Promise<unknown>) {
 
 describe.skipIf(!runRls)('RLS Policy Verification', () => {
   beforeEach(async () => {
+    await cleanupTrackedRlsClients();
     await truncateAll();
+  });
+
+  afterEach(async () => {
+    await cleanupTrackedRlsClients();
   });
 
   describe('Policy Role Scope', () => {

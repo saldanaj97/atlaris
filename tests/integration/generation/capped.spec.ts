@@ -12,9 +12,10 @@ import { desc, eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
-const authUserId = 'auth_generation_capped';
-const authEmail = 'generation-capped@example.com';
+const authUserId = buildTestAuthUserId('generation-capped');
+const authEmail = buildTestEmail(authUserId);
 
 async function seedCappedAttempts(planId: string) {
   await db.insert(generationAttempts).values([

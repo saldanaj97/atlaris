@@ -24,6 +24,15 @@ import {
   createAuthenticatedRlsClient,
 } from '@/lib/db/rls';
 
+type DbInstance = typeof db;
+type CleanupCallback = () => Promise<void>;
+
+const trackedRlsClientCleanups = new Set<CleanupCallback>();
+
+function trackCleanup(cleanup: CleanupCallback): void {
+  trackedRlsClientCleanups.add(cleanup);
+}
+
 /**
  * Creates an RLS-enforced database client for an anonymous user.
  *
@@ -36,8 +45,9 @@ import {
  *
  * @returns Promise resolving to Drizzle database client with RLS enforcement (anonymous)
  */
-export async function createAnonRlsDb() {
+export async function createAnonRlsDb(): Promise<DbInstance> {
   const result = await createAnonymousRlsClient();
+  trackCleanup(result.cleanup);
   return result.db;
 }
 
@@ -53,9 +63,23 @@ export async function createAnonRlsDb() {
  * @param authUserId - The auth user ID (e.g., "user_123")
  * @returns Promise resolving to Drizzle database client with RLS enforcement for this user
  */
-export async function createRlsDbForUser(authUserId: string) {
+export async function createRlsDbForUser(
+  authUserId: string
+): Promise<DbInstance> {
   const result = await createAuthenticatedRlsClient(authUserId);
+  trackCleanup(result.cleanup);
   return result.db;
+}
+
+/**
+ * Closes all tracked RLS clients created via this helper module.
+ *
+ * Safe to call repeatedly; each cleanup callback is idempotent.
+ */
+export async function cleanupTrackedRlsClients(): Promise<void> {
+  const cleanups = [...trackedRlsClientCleanups];
+  trackedRlsClientCleanups.clear();
+  await Promise.allSettled(cleanups.map((cleanup) => cleanup()));
 }
 
 /**
@@ -66,6 +90,6 @@ export async function createRlsDbForUser(authUserId: string) {
  *
  * @returns Drizzle database client with RLS bypassed (service role)
  */
-export function getServiceRoleDb() {
+export function getServiceRoleDb(): DbInstance {
   return db;
 }

@@ -2,12 +2,13 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { authClient } from '@/lib/auth/client';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { UserButton } from '@neondatabase/auth/react';
 import Link from 'next/link';
+import type { ReactElement } from 'react';
 
 interface AuthControlsProps {
+  isAuthenticated: boolean;
   tier?: SubscriptionTier;
 }
 
@@ -20,10 +21,10 @@ const tierVariants: Record<
   pro: 'default',
 };
 
-export default function AuthControls({ tier }: AuthControlsProps) {
-  const { data: session } = authClient.useSession();
-  const isAuthenticated = Boolean(session?.user?.id);
-
+export default function AuthControls({
+  isAuthenticated,
+  tier,
+}: AuthControlsProps): ReactElement {
   return (
     <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4">
       {isAuthenticated ? (

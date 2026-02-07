@@ -2416,7 +2416,7 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": true
+      "isRLSEnabled": false
     },
     "public.job_queue": {
       "name": "job_queue",

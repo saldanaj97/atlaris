@@ -19,6 +19,42 @@ const TIER_HIERARCHY = {
 
 type SubscriptionTier = keyof typeof TIER_HIERARCHY;
 
+type GateUser = NonNullable<Awaited<ReturnType<typeof getUserByAuthId>>>;
+
+type GateUserResolutionResult =
+  | { ok: true; user: GateUser }
+  | { ok: false; response: Response };
+
+async function resolveGateUser(): Promise<GateUserResolutionResult> {
+  const { getRequestContext } = await import('./context');
+  const { getEffectiveAuthUserId } = await import('./auth');
+  const context = getRequestContext();
+  let authUserId: string | undefined = context?.userId;
+
+  // Fallback to effective auth user id in tests or when middleware wasn't applied
+  if (!authUserId) {
+    const maybeId = await getEffectiveAuthUserId();
+    authUserId = maybeId ?? undefined;
+  }
+
+  if (!authUserId) {
+    return {
+      ok: false,
+      response: jsonError('Unauthorized', { status: 401 }),
+    };
+  }
+
+  const user = await getUserByAuthId(authUserId);
+  if (!user) {
+    return {
+      ok: false,
+      response: jsonError('User not found', { status: 404 }),
+    };
+  }
+
+  return { ok: true, user };
+}
+
 /**
  * Middleware to require a minimum subscription tier
  * @param minTier Minimum subscription tier required
@@ -26,27 +62,11 @@ type SubscriptionTier = keyof typeof TIER_HIERARCHY;
 export function requireSubscription(minTier: SubscriptionTier) {
   return (handler: PlainHandler): PlainHandler => {
     return async (req: Request) => {
-      // Get user from request context (assumes withAuth middleware is applied)
-      const { getRequestContext } = await import('./context');
-      const { getEffectiveAuthUserId } = await import('./auth');
-      const context = getRequestContext();
-      let authUserId: string | undefined = context?.userId;
-
-      // Fallback to effective auth user id in tests or when middleware wasn't applied
-      if (!authUserId) {
-        const maybeId = await getEffectiveAuthUserId();
-        authUserId = maybeId ?? undefined;
+      const resolved = await resolveGateUser();
+      if (!resolved.ok) {
+        return resolved.response;
       }
-
-      if (!authUserId) {
-        return jsonError('Unauthorized', { status: 401 });
-      }
-
-      // Get user subscription tier
-      const user = await getUserByAuthId(authUserId);
-      if (!user) {
-        return jsonError('User not found', { status: 404 });
-      }
+      const { user } = resolved;
 
       const userTierLevel = TIER_HIERARCHY[user.subscriptionTier];
       const requiredTierLevel = TIER_HIERARCHY[minTier];
@@ -83,27 +103,11 @@ export type FeatureType = 'plan' | 'regeneration' | 'export';
 export function checkFeatureLimit(feature: FeatureType) {
   return (handler: PlainHandler): PlainHandler => {
     return async (req: Request) => {
-      // Get user from request context
-      const { getRequestContext } = await import('./context');
-      const { getEffectiveAuthUserId } = await import('./auth');
-      const context = getRequestContext();
-      let authUserId: string | undefined = context?.userId;
-
-      // Fallback to effective auth user id in tests or when middleware wasn't applied
-      if (!authUserId) {
-        const maybeId = await getEffectiveAuthUserId();
-        authUserId = maybeId ?? undefined;
+      const resolved = await resolveGateUser();
+      if (!resolved.ok) {
+        return resolved.response;
       }
-
-      if (!authUserId) {
-        return jsonError('Unauthorized', { status: 401 });
-      }
-
-      // Get user database ID
-      const user = await getUserByAuthId(authUserId);
-      if (!user) {
-        return jsonError('User not found', { status: 404 });
-      }
+      const { user } = resolved;
 
       // Check limits based on feature type
       const db = getDb();

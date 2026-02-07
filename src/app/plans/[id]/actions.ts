@@ -21,7 +21,11 @@ import { getEffectiveAuthUserId } from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
-import { getPlanSchedule } from '@/lib/api/schedule';
+import {
+  getPlanSchedule,
+  ScheduleFetchError,
+  SCHEDULE_FETCH_ERROR_CODE,
+} from '@/lib/api/schedule';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
 import { getUserByAuthId } from '@/lib/db/queries/users';
@@ -246,13 +250,9 @@ export async function getPlanScheduleForPage(
     );
     return scheduleSuccess(schedule);
   } catch (error) {
-    // Discriminate errors to return appropriate error codes
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
+    if (error instanceof ScheduleFetchError) {
       if (
-        message.includes('not found') ||
-        message.includes('access denied') ||
-        message.includes('does not exist')
+        error.code === SCHEDULE_FETCH_ERROR_CODE.PLAN_NOT_FOUND_OR_ACCESS_DENIED
       ) {
         logger.debug(
           { planId, userId: user.id },
@@ -263,7 +263,16 @@ export async function getPlanScheduleForPage(
           'Schedule not found or you do not have access.'
         );
       }
+
+      if (error.code === SCHEDULE_FETCH_ERROR_CODE.INVALID_WEEKLY_HOURS) {
+        logger.warn(
+          { planId, userId: user.id, code: error.code },
+          'Schedule generation blocked by invalid weekly hours'
+        );
+        return scheduleError('INTERNAL_ERROR', 'Failed to load schedule.');
+      }
     }
+
     logger.error(
       { planId, userId: user.id, error },
       'Failed to fetch plan schedule'

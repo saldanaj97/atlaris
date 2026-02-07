@@ -41,7 +41,7 @@ export const POST = withErrorBoundary(
 
     const user = await getUserByAuthId(userId);
     if (!user) {
-      throw new Error(
+      throw new NotFoundError(
         'Authenticated user record missing despite provisioning.'
       );
     }
