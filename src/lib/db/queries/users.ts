@@ -7,19 +7,19 @@ import type { InferSelectModel } from 'drizzle-orm';
 
 export type DbUser = InferSelectModel<typeof users>;
 
-export async function getUserByClerkId(
-  clerkUserId: string
+export async function getUserByAuthId(
+  authUserId: string
 ): Promise<DbUser | undefined> {
   const db = getDb();
   const result = await db
     .select()
     .from(users)
-    .where(eq(users.clerkUserId, clerkUserId));
+    .where(eq(users.authUserId, authUserId));
   return result[0];
 }
 
 export async function createUser(userData: {
-  clerkUserId: string;
+  authUserId: string;
   email: string;
   name?: string;
 }): Promise<DbUser | undefined> {
@@ -28,12 +28,12 @@ export async function createUser(userData: {
   return result[0];
 }
 
-export async function deleteUserByClerkId(
-  clerkUserId: string
+export async function deleteUserByAuthId(
+  authUserId: string
 ): Promise<{ deleted: boolean; userId?: string }> {
   const result = await serviceDb
     .delete(users)
-    .where(eq(users.clerkUserId, clerkUserId))
+    .where(eq(users.authUserId, authUserId))
     .returning({ id: users.id });
 
   if (result.length === 0) {

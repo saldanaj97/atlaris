@@ -9,13 +9,10 @@ import {
 import { eq, and, sql } from 'drizzle-orm';
 
 async function ensureIntegrationTokensTable() {
-  // Create enum if it doesn't exist
+  // Recreate enum to guarantee expected values
   await db.execute(sql`
-    DO $$ BEGIN
-      CREATE TYPE integration_provider AS ENUM('notion', 'google_calendar');
-    EXCEPTION
-      WHEN duplicate_object THEN null;
-    END $$;
+    DROP TYPE IF EXISTS integration_provider CASCADE;
+    CREATE TYPE integration_provider AS ENUM('google_calendar');
   `);
 
   // Create table if it doesn't exist
@@ -61,7 +58,7 @@ describe.skip('OAuth Token Storage', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: `clerk_test_${Date.now()}`,
+        authUserId: `auth_test_${Date.now()}`,
         email: `test-${Date.now()}@example.com`,
       })
       .returning();
@@ -79,13 +76,13 @@ describe.skip('OAuth Token Storage', () => {
 
     await storeOAuthTokens({
       userId: testUserId,
-      provider: 'notion',
+      provider: 'google_calendar',
       tokenData,
       workspaceId: 'workspace_123',
       workspaceName: 'Test Workspace',
     });
 
-    const retrieved = await getOAuthTokens(testUserId, 'notion');
+    const retrieved = await getOAuthTokens(testUserId, 'google_calendar');
 
     expect(retrieved).toBeDefined();
     expect(retrieved!.accessToken).toBe(tokenData.accessToken);
@@ -106,16 +103,16 @@ describe.skip('OAuth Token Storage', () => {
 
     await storeOAuthTokens({
       userId: testUserId,
-      provider: 'notion',
+      provider: 'google_calendar',
       tokenData: tokenData1,
     });
     await storeOAuthTokens({
       userId: testUserId,
-      provider: 'notion',
+      provider: 'google_calendar',
       tokenData: tokenData2,
     });
 
-    const retrieved = await getOAuthTokens(testUserId, 'notion');
+    const retrieved = await getOAuthTokens(testUserId, 'google_calendar');
     expect(retrieved!.accessToken).toBe('new_token');
 
     // Should only have one record
@@ -125,7 +122,7 @@ describe.skip('OAuth Token Storage', () => {
       .where(
         and(
           eq(integrationTokens.userId, testUserId),
-          eq(integrationTokens.provider, 'notion')
+          eq(integrationTokens.provider, 'google_calendar')
         )
       );
 
@@ -146,7 +143,7 @@ describe.skip('OAuth Token Storage', () => {
   });
 
   it('should return null for non-existent tokens', async () => {
-    const retrieved = await getOAuthTokens(testUserId, 'notion');
+    const retrieved = await getOAuthTokens(testUserId, 'google_calendar');
     expect(retrieved).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 async function createRequest(body: unknown) {
@@ -15,16 +16,16 @@ async function createRequest(body: unknown) {
 }
 
 describe('POST /api/v1/plans - caps', () => {
-  const clerkUserId = 'clerk_api_caps_user';
-  const clerkEmail = 'api-caps@example.com';
+  const authUserId = buildTestAuthUserId('api-caps-user');
+  const authEmail = buildTestEmail(authUserId);
 
   afterEach(async () => {
     await db.delete(learningPlans);
   });
 
   it('rejects free > 2 weeks before enqueue', async () => {
-    setTestUser(clerkUserId);
-    await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
 
     const threeWeeksFromNow = new Date(
       Date.now() + 21 * 24 * 3600 * 1000

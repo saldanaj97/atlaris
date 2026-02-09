@@ -17,12 +17,12 @@ describe('Plan Queries - Tenant Scoping', () => {
   beforeEach(async () => {
     // Create two users
     ownerId = await ensureUser({
-      clerkUserId: 'clerk_plan_queries_owner',
+      authUserId: 'auth_plan_queries_owner',
       email: 'owner-queries@example.com',
     });
 
     attackerId = await ensureUser({
-      clerkUserId: 'clerk_plan_queries_attacker',
+      authUserId: 'auth_plan_queries_attacker',
       email: 'attacker-queries@example.com',
     });
 

@@ -1,27 +1,33 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { setTestUser, clearTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 describe('POST /api/v1/notifications/weekly-summary', () => {
-  const clerkUserId = 'clerk_weekly_summary_test_user';
+  let authUserId: string;
 
   beforeEach(async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    await resetDbForIntegrationTestFile();
 
-    setTestUser(clerkUserId);
+    authUserId = buildTestAuthUserId('weekly-summary');
+    const email = buildTestEmail(authUserId);
+
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
+
+    setTestUser(authUserId);
 
     await ensureUser({
-      clerkUserId,
-      email: 'weekly-summary@example.com',
+      authUserId,
+      email,
     });
   });
 
@@ -49,10 +55,10 @@ describe('POST /api/v1/notifications/weekly-summary', () => {
   it('should require authentication', async () => {
     clearTestUser();
 
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: null,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: null },
+    });
 
     const { POST } = await import(
       '@/app/api/v1/notifications/weekly-summary/route'

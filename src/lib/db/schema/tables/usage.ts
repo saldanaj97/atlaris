@@ -43,19 +43,23 @@ export const usageMetrics = pgTable(
     // RLS policies
     pgPolicy('usage_metrics_select_own', {
       for: 'select',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('usage_metrics_insert_own', {
       for: 'insert',
+      to: 'authenticated',
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('usage_metrics_update_own', {
       for: 'update',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('usage_metrics_delete_own', {
       for: 'delete',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
   ]
@@ -89,10 +93,12 @@ export const aiUsageEvents = pgTable(
     // RLS policies
     pgPolicy('ai_usage_events_select_own', {
       for: 'select',
+      to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
     pgPolicy('ai_usage_events_insert_own', {
       for: 'insert',
+      to: 'authenticated',
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
   ]

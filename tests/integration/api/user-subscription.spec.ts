@@ -5,25 +5,25 @@ import { ensureUser } from '../../helpers/db';
 import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 describe('GET /api/v1/user/subscription', () => {
-  const clerkUserId = 'clerk_subscription_test_user';
+  const authUserId = 'auth_subscription_test_user';
   let userId: string;
 
   beforeEach(async () => {
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: clerkUserId,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
 
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     userId = await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'subscription@example.com',
       subscriptionTier: 'free',
     });
@@ -103,10 +103,10 @@ describe('GET /api/v1/user/subscription', () => {
     clearTestUser();
 
     // Mock auth to return null (unauthenticated)
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: null,
-    } as Awaited<ReturnType<typeof auth>>);
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: null },
+    });
 
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
@@ -123,7 +123,7 @@ describe('GET /api/v1/user/subscription', () => {
 
   it('should handle pro tier subscriptions', async () => {
     await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'subscription@example.com',
       subscriptionTier: 'pro',
     });
@@ -143,7 +143,7 @@ describe('GET /api/v1/user/subscription', () => {
 
   it('should handle starter tier subscriptions', async () => {
     await ensureUser({
-      clerkUserId,
+      authUserId,
       email: 'subscription@example.com',
       subscriptionTier: 'starter',
     });

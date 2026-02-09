@@ -14,9 +14,14 @@ if (!process.env.CI) {
 
 // Shared alias configuration for test projects
 const srcRoot = fileURLToPath(new URL('./src', import.meta.url));
+const authServerMockPath = fileURLToPath(
+  new URL('./tests/mocks/shared/auth-server.ts', import.meta.url)
+);
 const testAliases = {
+  '@/lib/auth/server': authServerMockPath,
   '@': srcRoot,
   '@/': path.join(srcRoot, path.sep),
+  'next/headers': 'next/headers.js',
 } as const;
 
 export default defineConfig({

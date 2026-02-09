@@ -13,13 +13,13 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
-const clerkUserId = 'clerk_generation_timeout';
-const clerkEmail = 'generation-timeout@example.com';
+const authUserId = 'auth_generation_timeout';
+const authEmail = 'generation-timeout@example.com';
 
 describe('generation integration - timeout classification', () => {
   it('marks attempt as timeout when provider exceeds deadline', async () => {
-    setTestUser(clerkUserId);
-    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    const userId = await ensureUser({ authUserId, email: authEmail });
 
     const [plan] = await db
       .insert(learningPlans)

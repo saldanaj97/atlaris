@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { getAllTasksInPlan } from '@/lib/db/queries/tasks';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 import { isUuid } from '@/lib/api/route-helpers';
@@ -25,7 +25,7 @@ function getParams(req: Request) {
  * GET /api/v1/plans/:planId/tasks
  * Retrieves all tasks in the specified learning plan for the authenticated user.
  * @param req - The incoming request object.
- * @param userId - The authenticated user's Clerk ID.
+ * @param userId - The authenticated user's auth ID.
  * @returns A JSON response containing the list of tasks.
  */
 export const GET = withErrorBoundary(
@@ -38,7 +38,7 @@ export const GET = withErrorBoundary(
       throw new ValidationError('Invalid plan id format.');
     }
 
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
       throw new Error(
         'Authenticated user record missing despite provisioning.'

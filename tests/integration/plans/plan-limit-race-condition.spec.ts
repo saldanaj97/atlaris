@@ -19,7 +19,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     const [user] = await db
       .insert(users)
       .values({
-        clerkUserId: `test-race-${Date.now()}-${Math.random()}`,
+        authUserId: `test-race-${Date.now()}-${Math.random()}`,
         email: `race-test-${Date.now()}@example.com`,
         subscriptionTier: 'free', // 3 plan limit
       })

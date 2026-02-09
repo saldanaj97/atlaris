@@ -12,19 +12,19 @@ export interface OAuthStateStore {
    * Issues a new OAuth state token for the given user.
    * The plaintext token is returned; only the hash is stored.
    *
-   * @param params.clerkUserId - The Clerk user ID initiating the OAuth flow
+   * @param params.authUserId - The auth user ID initiating the OAuth flow
    * @param params.provider - Optional provider name for debugging/analytics
    * @returns The plaintext state token to include in the OAuth redirect
    */
-  issue(params: { clerkUserId: string; provider?: string }): Promise<string>;
+  issue(params: { authUserId: string; provider?: string }): Promise<string>;
 
   /**
    * Validates and consumes an OAuth state token.
-   * Returns the Clerk user ID if valid, null otherwise.
+   * Returns the auth user ID if valid, null otherwise.
    * The token is deleted after successful validation (single-use).
    *
    * @param params.stateToken - The plaintext state token from the OAuth callback
-   * @returns The Clerk user ID if valid and not expired, null otherwise
+   * @returns The auth user ID if valid and not expired, null otherwise
    */
   consume(params: { stateToken: string }): Promise<string | null>;
 }
@@ -33,7 +33,7 @@ export interface OAuthStateStore {
  * Parameters for issuing an OAuth state token.
  */
 export interface IssueOAuthStateParams {
-  clerkUserId: string;
+  authUserId: string;
   provider?: string;
 }
 

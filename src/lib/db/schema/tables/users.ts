@@ -10,7 +10,7 @@ import {
 
 import { subscriptionStatus, subscriptionTier } from '../../enums';
 import { timestampFields } from '../helpers';
-import { clerkSub } from './common';
+import { currentUserId } from './common';
 
 // Users table
 
@@ -18,7 +18,7 @@ export const users = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    clerkUserId: text('clerk_user_id').notNull().unique(),
+    authUserId: text('auth_user_id').notNull().unique(),
     email: text('email').notNull().unique(),
     name: text('name'),
     subscriptionTier: subscriptionTier('subscription_tier')
@@ -43,18 +43,20 @@ export const users = pgTable(
     // session variable set by createRlsClient() from @/lib/db/rls.
     //
     // Note: Service-role operations (workers, background jobs) use the
-    // bypass client from @/lib/db/drizzle which has RLS disabled.
+    // bypass client from @/lib/db/service-role which has RLS disabled.
 
     // Users can read only their own data
     pgPolicy('users_select_own', {
       for: 'select',
-      using: sql`${table.clerkUserId} = ${clerkSub}`,
+      to: 'authenticated',
+      using: sql`${table.authUserId} = ${currentUserId}`,
     }),
 
     // Users can only insert their own record during signup
     pgPolicy('users_insert_own', {
       for: 'insert',
-      withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
+      to: 'authenticated',
+      withCheck: sql`${table.authUserId} = ${currentUserId}`,
     }),
 
     // Users can update only their own profile fields
@@ -62,8 +64,9 @@ export const users = pgTable(
     // users can modify (e.g., name is OK, stripe fields are not)
     pgPolicy('users_update_own', {
       for: 'update',
-      using: sql`${table.clerkUserId} = ${clerkSub}`,
-      withCheck: sql`${table.clerkUserId} = ${clerkSub}`,
+      to: 'authenticated',
+      using: sql`${table.authUserId} = ${currentUserId}`,
+      withCheck: sql`${table.authUserId} = ${currentUserId}`,
     }),
 
     // Users cannot delete their own records

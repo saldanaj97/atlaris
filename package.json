@@ -24,9 +24,8 @@
   "dependencies": {
     "@ai-sdk/openai": "^2.0.48",
     "@asteasolutions/zod-to-openapi": "^8.1.0",
-    "@clerk/nextjs": "^6.36.10",
+    "@neondatabase/auth": "latest",
     "@neondatabase/serverless": "^1.0.2",
-    "@notionhq/client": "^5.3.0",
     "@openrouter/sdk": "^0.2.11",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -42,6 +41,7 @@
     "@sentry/nextjs": "^10.32.1",
     "@types/sanitize-html": "^2.16.0",
     "ai": "^5.0.68",
+    "better-auth": "^1.4.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -67,7 +67,6 @@
     "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "stripe": "^20.2.0",
-    "svix": "^1.84.1",
     "tailwind-merge": "^3.3.1",
     "ws": "^8.18.3",
     "zod": "^4.1.9"

@@ -7,6 +7,7 @@ import { db } from '@/lib/db/service-role';
 import { learningPlans, users } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
@@ -19,18 +20,18 @@ async function createRequest(body: unknown) {
 }
 
 describe('POST /api/v1/plans with dates in job payload', () => {
-  const clerkUserId = 'clerk_api_dates_user';
-  const clerkEmail = 'api-dates@example.com';
+  const authUserId = buildTestAuthUserId('api-dates-user');
+  const authEmail = buildTestEmail(authUserId);
 
   afterEach(async () => {
     await db.delete(learningPlans);
   });
 
   it('persists startDate and deadlineDate to database when provided', async () => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
     await ensureUser({
-      clerkUserId,
-      email: clerkEmail,
+      authUserId,
+      email: authEmail,
       subscriptionTier: 'pro',
     });
 
@@ -63,10 +64,10 @@ describe('POST /api/v1/plans with dates in job payload', () => {
   });
 
   it('returns 403 when free tier duration exceeds cap and omits startDate', async () => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
     await ensureUser({
-      clerkUserId,
-      email: clerkEmail,
+      authUserId,
+      email: authEmail,
       subscriptionTier: 'free',
     });
 
@@ -93,12 +94,12 @@ describe('POST /api/v1/plans with dates in job payload', () => {
   });
 
   it('allows pro tier users to create long-running plans without a startDate', async () => {
-    const proClerkUserId = 'clerk_api_dates_user_pro';
-    const proEmail = 'api-dates-pro@example.com';
+    const proAuthUserId = buildTestAuthUserId('api-dates-user-pro');
+    const proEmail = buildTestEmail(proAuthUserId);
 
-    setTestUser(proClerkUserId);
+    setTestUser(proAuthUserId);
     const proUserId = await ensureUser({
-      clerkUserId: proClerkUserId,
+      authUserId: proAuthUserId,
       email: proEmail,
     });
 
@@ -134,10 +135,10 @@ describe('POST /api/v1/plans with dates in job payload', () => {
   });
 
   it('accepts dates in ISO format and persists to DB', async () => {
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
     await ensureUser({
-      clerkUserId,
-      email: clerkEmail,
+      authUserId,
+      email: authEmail,
       subscriptionTier: 'pro',
     });
 

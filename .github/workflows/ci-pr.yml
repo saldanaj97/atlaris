@@ -136,7 +136,8 @@ jobs:
             ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build Next.js app
         env:
-            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+            NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
+            NEON_AUTH_COOKIE_SECRET: ${{ secrets.NEON_AUTH_COOKIE_SECRET }}
         run: pnpm build
       - name: Save Next.js cache
         if: always()
@@ -592,5 +593,3 @@ jobs:
           fi
       - name: All checks passed (PR)
         run: echo "✅ All checks passed (PR)"
-
-

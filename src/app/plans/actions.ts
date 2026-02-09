@@ -1,8 +1,8 @@
 'use server';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import {
@@ -32,12 +32,12 @@ export interface GenerateLearningPlanResult {
 export async function generateLearningPlan(
   params: GenerateLearningPlanParams
 ): Promise<GenerateLearningPlanResult> {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
     return { planId: '', status: 'failure', error: 'Unauthenticated.' };
   }
 
-  const user = await getUserByClerkId(clerkUserId);
+  const user = await getUserByAuthId(authUserId);
   if (!user) {
     return { planId: '', status: 'failure', error: 'User not found.' };
   }

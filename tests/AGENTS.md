@@ -52,6 +52,7 @@ tests/
 pnpm test                              # Unit tests only
 pnpm test:changed                      # Changed files
 pnpm test:integration                  # Integration tests
+RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/  # Security (RLS) tests
 ./scripts/test-unit.sh path/to/file    # Single file
 ```
 
@@ -125,7 +126,7 @@ export async function createTestUser(overrides = {}) {
   return db
     .insert(users)
     .values({
-      clerkUserId: `user_${nanoid()}`,
+      authUserId: `user_${nanoid()}`,
       email: `test-${nanoid()}@example.com`,
       ...overrides,
     })
@@ -158,3 +159,10 @@ Shared mocks in `tests/mocks/shared/` (e.g., Google API rate limiter).
 - Asserting on CSS classes
 - Using `setTimeout` for async (use `waitFor`)
 - Mocking what you can inject
+
+## Security Test Expectations (RLS)
+
+- Verify anonymous cannot read user-facing app data
+- Verify anonymous write attempts fail on user-owned tables
+- Verify authenticated users keep existing own-data behavior
+- Verify `pg_policies` metadata for user-facing tables is `authenticated`-scoped and not `PUBLIC`

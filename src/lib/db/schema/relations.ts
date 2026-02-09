@@ -9,7 +9,6 @@ import {
 import {
   integrationTokens,
   googleCalendarSyncState,
-  notionSyncState,
   taskCalendarEvents,
 } from './tables/integrations';
 import { jobQueue } from './tables/jobs';
@@ -26,7 +25,6 @@ import { aiUsageEvents, usageMetrics } from './tables/usage';
 export const usersRelations = relations(users, ({ many }) => ({
   learningPlans: many(learningPlans),
   integrationTokens: many(integrationTokens),
-  notionSyncState: many(notionSyncState),
   googleCalendarSyncState: many(googleCalendarSyncState),
   usageMetrics: many(usageMetrics),
   aiUsageEvents: many(aiUsageEvents),
@@ -46,7 +44,6 @@ export const learningPlansRelations = relations(
     planSchedules: one(planSchedules),
     planGenerations: many(planGenerations),
     generationAttempts: many(generationAttempts),
-    notionSyncState: one(notionSyncState),
     googleCalendarSyncState: one(googleCalendarSyncState),
     jobQueue: many(jobQueue),
   })
@@ -128,20 +125,6 @@ export const integrationTokensRelations = relations(
   ({ one }) => ({
     user: one(users, {
       fields: [integrationTokens.userId],
-      references: [users.id],
-    }),
-  })
-);
-
-export const notionSyncStateRelations = relations(
-  notionSyncState,
-  ({ one }) => ({
-    plan: one(learningPlans, {
-      fields: [notionSyncState.planId],
-      references: [learningPlans.id],
-    }),
-    user: one(users, {
-      fields: [notionSyncState.userId],
       references: [users.id],
     }),
   })

@@ -57,7 +57,7 @@ export function HowItWorksSection() {
           <StepCard
             stepNumber={3}
             title="Sync to your real life"
-            description="One click exports your entire schedule to Google Calendar, Notion, or Outlook. It shows up where you actually look."
+            description="One click exports your entire schedule to Google Calendar or Outlook. It shows up where you actually look."
             visual={<SyncVisual />}
           />
         </div>
@@ -94,7 +94,7 @@ function StepCard({ stepNumber, title, description, visual }: StepCardProps) {
   );
 }
 
-/** Visual 1: Notion-like outline */
+/** Visual 1: Structured outline */
 function CurriculumVisual() {
   const modules: Module[] = [
     { title: 'Week 1-2: Foundations', items: ['Type basics', 'Interfaces'] },
@@ -201,10 +201,6 @@ function SyncVisual() {
           color="bg-linear-to-br from-blue-400 to-blue-600"
         />
         <IntegrationIcon
-          name="Notion"
-          color="bg-linear-to-br from-gray-700 to-gray-900"
-        />
-        <IntegrationIcon
           name="Outlook"
           color="bg-linear-to-br from-sky-400 to-sky-600"
         />
@@ -259,7 +255,7 @@ function IntegrationIcon({ name, color }: { name: string; color: string }) {
       aria-label={name}
     >
       <span className="text-lg font-semibold text-white" aria-hidden="true">
-        {name === 'Google Calendar' ? 'G' : name === 'Notion' ? 'N' : 'O'}
+        {name.charAt(0)}
       </span>
     </div>
   );

@@ -12,6 +12,7 @@ import { getDb } from '@/lib/db/runtime';
 
 - **Use in**: API routes, server actions, request handlers
 - **Behavior**: Respects Row Level Security, enforces tenant isolation
+- **Runtime model**: `src/lib/db/rls.ts` switches role (`SET ROLE authenticated|anonymous`) and sets `request.jwt.claims`
 - **Location**: `src/lib/db/runtime.ts`
 
 ### 2. Service-Role Client (Bypass)
@@ -25,6 +26,14 @@ import { db } from '@/lib/db/service-role';
 - **Location**: `src/lib/db/service-role.ts`
 
 ## Usage Rules
+
+### Policy Scope Rules (RLS)
+
+- Every user-facing `pgPolicy(...)` must include explicit `to`
+- Current scope policy:
+  - `to: 'authenticated'` for user-owned CRUD + authenticated reads
+  - No anonymous app-data policies unless a new public feature is explicitly approved
+- Omitted `to` is forbidden because PostgreSQL defaults to `TO PUBLIC`
 
 ### Request Handlers (API Routes, Server Actions)
 
@@ -66,7 +75,11 @@ describe('Plan creation', () => {
 });
 ```
 
-For RLS policy tests, use authenticated Neon clients.
+For RLS policy tests, use RLS clients and run:
+
+```bash
+RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/
+```
 
 ### Transactional Writes
 

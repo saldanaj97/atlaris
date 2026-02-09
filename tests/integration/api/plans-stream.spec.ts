@@ -7,6 +7,7 @@ import { db } from '@/lib/db/service-role';
 
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import {
   readStreamingResponse,
   type StreamingEvent,
@@ -29,12 +30,12 @@ afterAll(() => {
 
 describe('POST /api/v1/plans/stream', () => {
   it('streams generation and persists plan data', async () => {
-    const clerkUserId = `stream-user-${Date.now()}`;
+    const authUserId = buildTestAuthUserId('stream-user');
     await ensureUser({
-      clerkUserId,
-      email: `${clerkUserId}@example.com`,
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const payload = {
       topic: 'Learning TypeScript',
@@ -80,9 +81,9 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('marks plan failed on generation error', async () => {
-    const clerkUserId = `stream-failure-${Date.now()}`;
-    await ensureUser({ clerkUserId, email: `${clerkUserId}@example.com` });
-    setTestUser(clerkUserId);
+    const authUserId = buildTestAuthUserId('stream-failure');
+    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    setTestUser(authUserId);
 
     // Mock the orchestrator to throw during generation
     const orchestrator = await import('@/lib/ai/orchestrator');
@@ -136,12 +137,12 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('accepts valid model override via query param', async () => {
-    const clerkUserId = `stream-model-override-${Date.now()}`;
+    const authUserId = buildTestAuthUserId('stream-model-override');
     await ensureUser({
-      clerkUserId,
-      email: `${clerkUserId}@example.com`,
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const payload = {
       topic: 'Learning React',
@@ -174,12 +175,12 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('falls back to default model when invalid model override is provided', async () => {
-    const clerkUserId = `stream-invalid-model-${Date.now()}`;
+    const authUserId = buildTestAuthUserId('stream-invalid-model');
     await ensureUser({
-      clerkUserId,
-      email: `${clerkUserId}@example.com`,
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const payload = {
       topic: 'Learning Vue',
@@ -212,12 +213,12 @@ describe('POST /api/v1/plans/stream', () => {
   });
 
   it('works without model param (uses default)', async () => {
-    const clerkUserId = `stream-no-model-${Date.now()}`;
+    const authUserId = buildTestAuthUserId('stream-no-model');
     await ensureUser({
-      clerkUserId,
-      email: `${clerkUserId}@example.com`,
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
-    setTestUser(clerkUserId);
+    setTestUser(authUserId);
 
     const payload = {
       topic: 'Learning Python',

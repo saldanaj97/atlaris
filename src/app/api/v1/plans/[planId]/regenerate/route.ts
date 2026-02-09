@@ -4,7 +4,7 @@ import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json, jsonError } from '@/lib/api/response';
 import { isUuid } from '@/lib/api/route-helpers';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 import { enqueueJob } from '@/lib/jobs/queue';
@@ -38,7 +38,7 @@ export const POST = withErrorBoundary(
       throw new ValidationError('Invalid plan id format.');
     }
 
-    const user = await getUserByClerkId(userId);
+    const user = await getUserByAuthId(userId);
     if (!user) {
       throw new Error(
         'Authenticated user record missing despite provisioning.'

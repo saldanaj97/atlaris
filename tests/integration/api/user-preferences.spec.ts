@@ -13,12 +13,12 @@ if (process.env.DATABASE_URL?.includes('neon.tech')) {
 
 // TODO: [OPENROUTER-MIGRATION] Enable when preferredAiModel column is added to users table
 describe.skip('GET /api/v1/user/preferences', () => {
-  const testClerkUserId = `preferences-get-user-${Date.now()}`;
+  const testAuthUserId = `preferences-get-user-${Date.now()}`;
 
   beforeAll(async () => {
     await ensureUser({
-      clerkUserId: testClerkUserId,
-      email: `${testClerkUserId}@example.com`,
+      authUserId: testAuthUserId,
+      email: `${testAuthUserId}@example.com`,
     });
   });
 
@@ -27,7 +27,7 @@ describe.skip('GET /api/v1/user/preferences', () => {
   });
 
   it('returns available models for authenticated user', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'GET',
@@ -43,7 +43,7 @@ describe.skip('GET /api/v1/user/preferences', () => {
   });
 
   it('returns null for preferredAiModel (not yet implemented)', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'GET',
@@ -57,7 +57,7 @@ describe.skip('GET /api/v1/user/preferences', () => {
   });
 
   it('returns models with correct structure', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'GET',
@@ -90,12 +90,12 @@ describe.skip('GET /api/v1/user/preferences', () => {
 
 // TODO: [OPENROUTER-MIGRATION] Enable when preferredAiModel column is added to users table
 describe.skip('PATCH /api/v1/user/preferences', () => {
-  const testClerkUserId = `preferences-patch-user-${Date.now()}`;
+  const testAuthUserId = `preferences-patch-user-${Date.now()}`;
 
   beforeAll(async () => {
     await ensureUser({
-      clerkUserId: testClerkUserId,
-      email: `${testClerkUserId}@example.com`,
+      authUserId: testAuthUserId,
+      email: `${testAuthUserId}@example.com`,
     });
   });
 
@@ -104,7 +104,7 @@ describe.skip('PATCH /api/v1/user/preferences', () => {
   });
 
   it('accepts valid model ID', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'PATCH',
@@ -125,7 +125,7 @@ describe.skip('PATCH /api/v1/user/preferences', () => {
   });
 
   it('accepts another valid model ID', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'PATCH',
@@ -145,7 +145,7 @@ describe.skip('PATCH /api/v1/user/preferences', () => {
   });
 
   it('rejects invalid model ID with validation error', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'PATCH',
@@ -165,7 +165,7 @@ describe.skip('PATCH /api/v1/user/preferences', () => {
   });
 
   it('rejects empty model ID', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'PATCH',
@@ -182,7 +182,7 @@ describe.skip('PATCH /api/v1/user/preferences', () => {
   });
 
   it('rejects missing preferredAiModel field', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'PATCH',
@@ -214,7 +214,7 @@ describe.skip('PATCH /api/v1/user/preferences', () => {
   });
 
   it('rejects non-JSON body', async () => {
-    setTestUser(testClerkUserId);
+    setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'PATCH',

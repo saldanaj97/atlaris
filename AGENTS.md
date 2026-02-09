@@ -5,7 +5,7 @@
 ## Overview
 
 AI-powered learning plan generator. Turns goals into time-blocked schedules with calendar sync.  
-Stack: Next.js 16 + React 19 + TypeScript strict + Drizzle/Neon (RLS) + Clerk + OpenRouter.
+Stack: Next.js 16 + React 19 + TypeScript strict + Drizzle/Neon (RLS) + Neon Auth + OpenRouter.
 
 ## Structure
 
@@ -71,6 +71,14 @@ import { db } from '@/lib/db/service-role';
 
 ESLint blocks service-role imports in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`.
 
+### RLS Policy Authoring (Security)
+
+- Every `pgPolicy(...)` in `src/lib/db/schema/tables/*.ts` must include explicit `to: ...`
+- Current product policy: user-facing tables are authenticated-only
+  - `to: 'authenticated'` for user-owned CRUD and reads
+  - No anonymous app-data policies unless explicitly approved for a new public feature
+- Never rely on omitted `to` (PostgreSQL defaults to `TO PUBLIC`, which is forbidden for app-facing policies)
+
 ### TypeScript
 
 - Strict mode - no `any`, no `!` assertions, no `@ts-ignore`
@@ -108,13 +116,13 @@ ESLint blocks service-role imports in `src/app/api/**`, `src/lib/api/**`, `src/l
 
 ## Testing Quick Reference
 
-| Type        | Location             | Purpose           | Command                 |
-| ----------- | -------------------- | ----------------- | ----------------------- |
-| Unit        | `tests/unit/`        | Pure logic, no IO | `pnpm test`             |
-| Integration | `tests/integration/` | DB + service      | `pnpm test:integration` |
-| E2E         | `tests/e2e/`         | User journeys     | —                       |
-| Security    | `tests/security/`    | RLS policies      | —                       |
-| Smoke       | `tests/smoke/`       | Startup checks    | —                       |
+| Type        | Location             | Purpose           | Command                                                                   |
+| ----------- | -------------------- | ----------------- | ------------------------------------------------------------------------- |
+| Unit        | `tests/unit/`        | Pure logic, no IO | `pnpm test`                                                               |
+| Integration | `tests/integration/` | DB + service      | `pnpm test:integration`                                                   |
+| E2E         | `tests/e2e/`         | User journeys     | —                                                                         |
+| Security    | `tests/security/`    | RLS policies      | `RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/` |
+| Smoke       | `tests/smoke/`       | Startup checks    | —                                                                         |
 
 Use factories from `tests/fixtures/`. Test behavior, not implementation.
 

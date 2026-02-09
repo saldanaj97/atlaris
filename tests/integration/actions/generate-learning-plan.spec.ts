@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
-import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const ORIGINAL = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -14,7 +14,7 @@ const ORIGINAL = {
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
 };
 
-let clerkUserId: string;
+let authUserId: string;
 
 describe('Server Action: generateLearningPlan', () => {
   beforeEach(async () => {
@@ -22,8 +22,8 @@ describe('Server Action: generateLearningPlan', () => {
   });
 
   beforeEach(() => {
-    clerkUserId = buildTestClerkUserId('generate-learning-plan');
-    setTestUser(clerkUserId);
+    authUserId = buildTestAuthUserId('generate-learning-plan');
+    setTestUser(authUserId);
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
     // Deflake: ensure mock provider does not randomly fail
@@ -52,8 +52,8 @@ describe('Server Action: generateLearningPlan', () => {
 
   it('creates a plan, generates modules/tasks, and persists them', async () => {
     await ensureUser({
-      clerkUserId,
-      email: buildTestEmail(clerkUserId),
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
 
     const res = await generateLearningPlan({
@@ -103,8 +103,8 @@ describe('Server Action: generateLearningPlan', () => {
 
   it('marks plan as failed and skips usage on generation failure', async () => {
     await ensureUser({
-      clerkUserId,
-      email: buildTestEmail(clerkUserId),
+      authUserId,
+      email: buildTestEmail(authUserId),
     });
 
     const originalFailureRate = process.env.MOCK_GENERATION_FAILURE_RATE;

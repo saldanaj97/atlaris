@@ -3,8 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getEffectiveClerkUserId } from '@/lib/api/auth';
-import { getUserByClerkId } from '@/lib/db/queries/users';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
 import { getUsageSummary } from '@/lib/stripe/usage';
@@ -15,10 +15,10 @@ import { redirect } from 'next/navigation';
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function BillingCards() {
-  const clerkUserId = await getEffectiveClerkUserId();
-  if (!clerkUserId) redirect('/sign-in?redirect_url=/settings/billing');
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) redirect('/sign-in?redirect_url=/settings/billing');
 
-  const dbUser = await getUserByClerkId(clerkUserId);
+  const dbUser = await getUserByAuthId(authUserId);
   if (!dbUser) redirect('/plans/new');
 
   const db = getDb();

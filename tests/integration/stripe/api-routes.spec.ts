@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { setTestUser } from '../../helpers/auth';
-import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import {
   markUserAsSubscribed,
   buildStripeCustomerId,
@@ -22,10 +22,10 @@ vi.mock('@/lib/stripe/client', () => ({
 }));
 
 async function createAuthTestUser() {
-  const clerkUserId = buildTestClerkUserId('stripe-api');
-  const email = buildTestEmail(clerkUserId);
-  const userId = await ensureUser({ clerkUserId, email });
-  setTestUser(clerkUserId);
+  const authUserId = buildTestAuthUserId('stripe-api');
+  const email = buildTestEmail(authUserId);
+  const userId = await ensureUser({ authUserId, email });
+  setTestUser(authUserId);
   return userId;
 }
 

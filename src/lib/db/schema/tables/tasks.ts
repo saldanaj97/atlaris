@@ -16,7 +16,6 @@ import {
 import { progressStatus, resourceType } from '../../enums';
 import { timestampFields } from '../helpers';
 import {
-  planIsPublic,
   planOwnedByCurrentUser,
   recordOwnedByCurrentUser,
   wrapCondition,
@@ -40,12 +39,6 @@ export const modules = pgTable(
     ...timestampFields,
   },
   (table) => {
-    const publicPlanVisibility = planIsPublic({
-      planIdColumn: table.planId,
-      planTable: learningPlans,
-      planIdReferenceColumn: learningPlans.id,
-      planVisibilityColumn: learningPlans.visibility,
-    });
     const ownPlanAccess = planOwnedByCurrentUser({
       planIdColumn: table.planId,
       planTable: learningPlans,
@@ -62,33 +55,24 @@ export const modules = pgTable(
 
       // RLS Policies
 
-      // Anonymous users can read modules of public plans
-      pgPolicy('modules_select_public_anon', {
-        for: 'select',
-        using: publicPlanVisibility,
-      }),
-
-      // Authenticated users can read modules of public plans
-      pgPolicy('modules_select_public_auth', {
-        for: 'select',
-        using: publicPlanVisibility,
-      }),
-
       // Users can read modules of their own plans
       pgPolicy('modules_select_own_plan', {
         for: 'select',
+        to: 'authenticated',
         using: ownPlanAccess,
       }),
 
       // Users can insert modules only in their own plans
       pgPolicy('modules_insert_own_plan', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: ownPlanAccess,
       }),
 
       // Users can update modules only in their own plans
       pgPolicy('modules_update_own_plan', {
         for: 'update',
+        to: 'authenticated',
         using: ownPlanAccess,
         withCheck: ownPlanAccess,
       }),
@@ -96,6 +80,7 @@ export const modules = pgTable(
       // Users can delete modules only in their own plans
       pgPolicy('modules_delete_own_plan', {
         for: 'delete',
+        to: 'authenticated',
         using: ownPlanAccess,
       }),
     ];
@@ -119,20 +104,6 @@ export const tasks = pgTable(
     ...timestampFields,
   },
   (table) => {
-    const modulePublicAccess = sql`
-      EXISTS (
-        SELECT 1 FROM ${modules}
-        WHERE ${modules.id} = ${table.moduleId}
-        AND ${wrapCondition(
-          planIsPublic({
-            planIdColumn: modules.planId,
-            planTable: learningPlans,
-            planIdReferenceColumn: learningPlans.id,
-            planVisibilityColumn: learningPlans.visibility,
-          })
-        )}
-      )
-    `;
     const moduleOwnPlanAccess = sql`
       EXISTS (
         SELECT 1 FROM ${modules}
@@ -157,33 +128,24 @@ export const tasks = pgTable(
 
       // RLS Policies
 
-      // Anonymous users can read tasks of public plans
-      pgPolicy('tasks_select_public_anon', {
-        for: 'select',
-        using: modulePublicAccess,
-      }),
-
-      // Authenticated users can read tasks of public plans
-      pgPolicy('tasks_select_public_auth', {
-        for: 'select',
-        using: modulePublicAccess,
-      }),
-
       // Users can read tasks of their own plans
       pgPolicy('tasks_select_own_plan', {
         for: 'select',
+        to: 'authenticated',
         using: moduleOwnPlanAccess,
       }),
 
       // Users can insert tasks only in their own plans
       pgPolicy('tasks_insert_own_plan', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: moduleOwnPlanAccess,
       }),
 
       // Users can update tasks only in their own plans
       pgPolicy('tasks_update_own_plan', {
         for: 'update',
+        to: 'authenticated',
         using: moduleOwnPlanAccess,
         withCheck: moduleOwnPlanAccess,
       }),
@@ -191,22 +153,12 @@ export const tasks = pgTable(
       // Users can delete tasks only in their own plans
       pgPolicy('tasks_delete_own_plan', {
         for: 'delete',
+        to: 'authenticated',
         using: moduleOwnPlanAccess,
       }),
     ];
   }
 ).enableRLS();
-
-const taskBelongsToPublicPlan = (taskIdColumn: AnyPgColumn) =>
-  sql`
-    EXISTS (
-      SELECT 1 FROM ${tasks}
-      JOIN ${modules} ON ${modules.id} = ${tasks.moduleId}
-      JOIN ${learningPlans} ON ${learningPlans.id} = ${modules.planId}
-      WHERE ${tasks.id} = ${taskIdColumn}
-      AND ${learningPlans.visibility} = 'public'
-    )
-  `;
 
 const taskBelongsToUserPlan = (taskIdColumn: AnyPgColumn) =>
   sql`
@@ -243,15 +195,10 @@ export const resources = pgTable(
 
     // RLS Policies
 
-    // Anonymous users can read all resources (public catalog)
-    pgPolicy('resources_select_anon', {
-      for: 'select',
-      using: sql`true`,
-    }),
-
     // Authenticated users can read all resources
     pgPolicy('resources_select_auth', {
       for: 'select',
+      to: 'authenticated',
       using: sql`true`,
     }),
 
@@ -276,7 +223,6 @@ export const taskResources = pgTable(
       .defaultNow(),
   },
   (table) => {
-    const taskPublicAccess = taskBelongsToPublicPlan(table.taskId);
     const taskOwnAccess = taskBelongsToUserPlan(table.taskId);
 
     return [
@@ -290,38 +236,30 @@ export const taskResources = pgTable(
 
       // RLS Policies
 
-      // Anonymous users can read task resources of public plans
-      pgPolicy('task_resources_select_public_anon', {
-        for: 'select',
-        using: taskPublicAccess,
-      }),
-
-      // Authenticated users can read task resources of public plans
-      pgPolicy('task_resources_select_public_auth', {
-        for: 'select',
-        using: taskPublicAccess,
-      }),
-
       // Users can read task resources of their own plans
       pgPolicy('task_resources_select_own_plan', {
         for: 'select',
+        to: 'authenticated',
         using: taskOwnAccess,
       }),
 
       // Users can manage task resources only in their own plans
       pgPolicy('task_resources_insert_own_plan', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: taskOwnAccess,
       }),
 
       pgPolicy('task_resources_update_own_plan', {
         for: 'update',
+        to: 'authenticated',
         using: taskOwnAccess,
         withCheck: taskOwnAccess,
       }),
 
       pgPolicy('task_resources_delete_own_plan', {
         for: 'delete',
+        to: 'authenticated',
         using: taskOwnAccess,
       }),
     ];
@@ -350,11 +288,6 @@ export const taskProgress = pgTable(
   (table) => {
     const userOwnsRecord = recordOwnedByCurrentUser(table.userId);
     const taskOwnedByUser = taskBelongsToUserPlan(table.taskId);
-    const taskPublicAccess = taskBelongsToPublicPlan(table.taskId);
-    const taskAccessible = sql`
-      ${wrapCondition(taskOwnedByUser)}
-      OR ${wrapCondition(taskPublicAccess)}
-    `;
 
     return [
       unique('task_progress_task_id_user_id_unique').on(
@@ -369,31 +302,35 @@ export const taskProgress = pgTable(
       // Users can only read their own progress
       pgPolicy('task_progress_select_own', {
         for: 'select',
+        to: 'authenticated',
         using: userOwnsRecord,
       }),
 
       // Users can create progress only for themselves and only for tasks they can access
       pgPolicy('task_progress_insert_own', {
         for: 'insert',
+        to: 'authenticated',
         withCheck: sql`
           ${wrapCondition(userOwnsRecord)}
-          AND ${wrapCondition(taskAccessible)}
+          AND ${wrapCondition(taskOwnedByUser)}
         `,
       }),
 
       // Users can update only their own progress (prevent changing taskId or userId)
       pgPolicy('task_progress_update_own', {
         for: 'update',
+        to: 'authenticated',
         using: userOwnsRecord,
         withCheck: sql`
         ${wrapCondition(userOwnsRecord)}
-        AND ${wrapCondition(taskAccessible)}
+        AND ${wrapCondition(taskOwnedByUser)}
       `,
       }),
 
       // Users can delete only their own progress
       pgPolicy('task_progress_delete_own', {
         for: 'delete',
+        to: 'authenticated',
         using: userOwnsRecord,
       }),
     ];

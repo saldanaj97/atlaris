@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
-import { buildTestClerkUserId, buildTestEmail } from '../../helpers/testIds';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import {
   markUserAsSubscribed,
   buildStripeCustomerId,
@@ -26,9 +26,9 @@ vi.mock('@/lib/stripe/client', () => ({
 }));
 
 async function createUniqueUser() {
-  const clerkUserId = buildTestClerkUserId('stripe-subscriptions');
-  const email = buildTestEmail(clerkUserId);
-  return ensureUser({ clerkUserId, email });
+  const authUserId = buildTestAuthUserId('stripe-subscriptions');
+  const email = buildTestEmail(authUserId);
+  return ensureUser({ authUserId, email });
 }
 
 describe('Subscription Management', () => {

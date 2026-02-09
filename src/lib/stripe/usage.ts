@@ -362,7 +362,7 @@ export async function atomicCheckAndInsertPlan(
     skillLevel: 'beginner' | 'intermediate' | 'advanced';
     weeklyHours: number;
     learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-    visibility: 'private' | 'public';
+    visibility: 'private';
     origin: 'ai' | 'manual' | 'template' | 'pdf';
     startDate?: string | null;
     deadlineDate?: string | null;

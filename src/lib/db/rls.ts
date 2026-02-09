@@ -5,8 +5,8 @@
  * to non-privileged database roles, combined with session variables for access control.
  *
  * USAGE:
- * - Request handlers: Use createAuthenticatedRlsClient() with the user's Clerk ID
- * - Anonymous access: Use createAnonymousRlsClient()
+ * - Request handlers: Use createAuthenticatedRlsClient() with the authenticated user ID
+ * - Anonymous sessions: Use createAnonymousRlsClient() only for explicit public endpoints or RLS security tests
  * - Workers/background jobs: Use the service-role client from @/lib/db/service-role
  * - Tests: Use helper functions from tests/helpers/rls.ts
  *
@@ -53,13 +53,13 @@ export interface RlsClientResult {
  * to identify the user. RLS policies check both the role and session variable
  * to enforce user-specific access control.
  *
- * @param clerkUserId - The Clerk user ID for the authenticated user
+ * @param authUserId - The authenticated user ID
  * @returns Promise resolving to RLS client result with database client and cleanup function
  *
  * @example
  * ```typescript
  * // In an API route handler
- * const userId = await getEffectiveClerkUserId();
+ * const userId = await getEffectiveAuthUserId();
  * const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(userId);
  * try {
  *   const plans = await rlsDb.select().from(learningPlans);
@@ -70,9 +70,9 @@ export interface RlsClientResult {
  * ```
  */
 export async function createAuthenticatedRlsClient(
-  clerkUserId: string
+  authUserId: string
 ): Promise<RlsClientResult> {
-  const jwtClaims = JSON.stringify({ sub: clerkUserId });
+  const jwtClaims = JSON.stringify({ sub: authUserId });
 
   // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
   // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
@@ -92,7 +92,7 @@ export async function createAuthenticatedRlsClient(
   // Set search_path after SET ROLE (role switch may reset it)
   await sql.unsafe('SET search_path = public');
 
-  // Set session variable with user's Clerk ID using set_config for safety
+  // Set session variable with authenticated user ID using set_config for safety
   // CRITICAL: Must await to ensure session variable is set before queries execute
   // This persists for the connection lifetime
   // Using set_config() with template tag parameterization is safer than string interpolation
@@ -114,7 +114,7 @@ export async function createAuthenticatedRlsClient(
       // Log but don't throw - connection cleanup errors shouldn't fail the request
       // The connection will eventually timeout and close on its own
       logger.warn(
-        { error, clerkUserId },
+        { error, authUserId },
         'Failed to close RLS database connection'
       );
     }
@@ -130,18 +130,21 @@ export async function createAuthenticatedRlsClient(
  * Creates an RLS-enforced database client for anonymous users.
  *
  * Uses SET ROLE to switch to the anonymous role, then sets session variables
- * to null to indicate anonymous access. RLS policies will restrict access to
- * public resources only.
+ * to null to indicate anonymous access.
+ *
+ * Note: Current product policy keeps user-facing app data authenticated-only.
+ * Anonymous clients are primarily used for security tests and any future
+ * explicitly-approved public endpoints.
  *
  * @returns Promise resolving to RLS client result with database client and cleanup function
  *
  * @example
  * ```typescript
- * // For public queries
+ * // For RLS security tests
  * const { db: anonDb, cleanup } = await createAnonymousRlsClient();
  * try {
- *   const publicPlans = await anonDb.select().from(learningPlans);
- *   // Only returns plans with visibility='public'
+ *   const rows = await anonDb.select().from(learningPlans);
+ *   // Should return zero rows for private app data
  * } finally {
  *   await cleanup(); // Close connection when done
  * }

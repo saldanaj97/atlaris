@@ -8,9 +8,9 @@ import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state'
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 
-// Mock Clerk auth before importing the route
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(),
+// Mock Auth auth before importing the route
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
 }));
 
 // Mock googleapis
@@ -21,7 +21,7 @@ vi.mock('googleapis', () => ({
         generateAuthUrl: vi
           .fn()
           .mockReturnValue(
-            'https://accounts.google.com/o/oauth2/v2/auth?client_id=test_google_client_id&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fv1%2Fauth%2Fgoogle%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events&access_type=offline&state=test_clerk_user_id&prompt=consent'
+            'https://accounts.google.com/o/oauth2/v2/auth?client_id=test_google_client_id&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Fv1%2Fauth%2Fgoogle%2Fcallback&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.events&access_type=offline&state=test_auth_user_id&prompt=consent'
           ),
         getToken: vi.fn(),
       })),
@@ -33,7 +33,7 @@ vi.mock('googleapis', () => ({
 async function ensureIntegrationTokensTable() {
   await db.execute(sql`
     DO $$ BEGIN
-      CREATE TYPE integration_provider AS ENUM('notion', 'google_calendar');
+      CREATE TYPE integration_provider AS ENUM('google_calendar');
     EXCEPTION
       WHEN duplicate_object THEN null;
     END $$;
@@ -70,7 +70,7 @@ describe.skip('Google OAuth Flow', () => {
 
     // Create test user in database
     await ensureUser({
-      clerkUserId: 'test_clerk_user_id',
+      authUserId: 'test_auth_user_id',
       email: 'test@example.com',
       name: 'Test User',
     });
@@ -83,14 +83,14 @@ describe.skip('Google OAuth Flow', () => {
     originalGoogleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
     originalGoogleRedirectUri = process.env.GOOGLE_REDIRECT_URI;
 
-    // Mock Clerk auth to return test user
-    const { auth } = await import('@clerk/nextjs/server');
-    vi.mocked(auth).mockResolvedValue({
-      userId: 'test_clerk_user_id',
-    } as Awaited<ReturnType<typeof auth>>);
+    // Mock Auth auth to return test user
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: 'test_auth_user_id' } },
+    });
 
     // Ensure route handlers authenticate as this test user
-    setTestUser('test_clerk_user_id');
+    setTestUser('test_auth_user_id');
 
     // Set required env vars
     process.env.GOOGLE_CLIENT_ID = 'test_google_client_id';
@@ -195,10 +195,10 @@ describe.skip('Google OAuth Flow', () => {
     });
 
     it('should return 401 when user is not authenticated', async () => {
-      const { auth } = await import('@clerk/nextjs/server');
-      vi.mocked(auth).mockResolvedValue({
-        userId: null,
-      } as Awaited<ReturnType<typeof auth>>);
+      const { auth } = await import('@/lib/auth/server');
+      vi.mocked(auth.getSession).mockResolvedValue({
+        data: { user: null },
+      });
 
       const { GET: googleAuthGET } = await import(
         '@/app/api/v1/auth/google/route'
@@ -296,7 +296,7 @@ describe.skip('Google OAuth Flow', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'test_clerk_user_id',
+          authUserId: 'test_auth_user_id',
           email: 'test@example.com',
         })
         .returning();
@@ -305,7 +305,7 @@ describe.skip('Google OAuth Flow', () => {
 
       // Generate and store a state token for testing (returns the generated token)
       testStateToken = await generateAndStoreOAuthStateToken(
-        'test_clerk_user_id',
+        'test_auth_user_id',
         'google_calendar'
       );
     });
@@ -501,10 +501,10 @@ describe.skip('Google OAuth Flow', () => {
       // Delete the test user so the database lookup fails
       await db.delete(users).where(eq(users.id, testUserId));
 
-      // Generate a state token that maps to test_clerk_user_id (matching auth mock)
+      // Generate a state token that maps to test_auth_user_id (matching auth mock)
       // but the user won't exist in the database
       const nonExistentStateToken = await generateAndStoreOAuthStateToken(
-        'test_clerk_user_id',
+        'test_auth_user_id',
         'google_calendar'
       );
 
@@ -761,7 +761,7 @@ describe.skip('Google OAuth Flow', () => {
 
       // Store a new state token for the second request (tokens are one-time use)
       const secondStateToken = await generateAndStoreOAuthStateToken(
-        'test_clerk_user_id',
+        'test_auth_user_id',
         'google_calendar'
       );
 
@@ -1008,7 +1008,7 @@ describe.skip('Google OAuth Flow', () => {
     const url = new URL(location!);
     const stateParam = url.searchParams.get('state');
     expect(stateParam).toBeTruthy();
-    expect(stateParam).not.toBe('test_clerk_user_id');
+    expect(stateParam).not.toBe('test_auth_user_id');
     // Verify state token is a valid base64url string (contains only base64url characters)
     expect(stateParam).toMatch(/^[A-Za-z0-9_-]+$/);
   });

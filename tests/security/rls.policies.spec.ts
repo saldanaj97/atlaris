@@ -15,27 +15,54 @@
  * 4. Verify data isolation between users
  */
 
-import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { eq, sql } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { db } from '@/lib/db/service-role';
 import {
   learningPlans,
   modules,
   resources,
+  taskCalendarEvents,
   taskProgress,
   tasks,
   users,
 } from '@/lib/db/schema';
 import { truncateAll } from '../helpers/db';
 import {
+  cleanupTrackedRlsClients,
   createAnonRlsDb,
   createRlsDbForUser,
   getServiceRoleDb,
 } from '../helpers/rls';
 
+function shouldRunRlsTests(): boolean {
+  return process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
+}
+
 // Run RLS tests only when explicitly enabled (CI or RUN_RLS_TESTS=1)
-const runRls = process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
+const runRls = shouldRunRlsTests();
+const policyRowSchema = z.object({
+  tablename: z.string(),
+  policyname: z.string(),
+  role: z.string(),
+});
+// Keep this list limited to tables with explicit allow/deny behavior checks in
+// this file. Do not add metadata-only tables here without functional tests.
+// Coverage gap (not functionally exercised in this suite yet):
+// plan_schedules, plan_generations, generation_attempts, task_resources,
+// usage_metrics, ai_usage_events, oauth_state_tokens, integration_tokens,
+// google_calendar_sync_state, job_queue.
+const expectedPolicyTables = [
+  'users',
+  'learning_plans',
+  'modules',
+  'tasks',
+  'resources',
+  'task_progress',
+  'task_calendar_events',
+] as const;
 
 async function expectRlsViolation(operation: () => Promise<unknown>) {
   try {
@@ -57,7 +84,60 @@ async function expectRlsViolation(operation: () => Promise<unknown>) {
 
 describe.skipIf(!runRls)('RLS Policy Verification', () => {
   beforeEach(async () => {
+    await cleanupTrackedRlsClients();
     await truncateAll();
+  });
+
+  afterEach(async () => {
+    await cleanupTrackedRlsClients();
+  });
+
+  describe('Policy Role Scope', () => {
+    it('scopes user-facing policies to authenticated role (not PUBLIC)', async () => {
+      const rawPolicyRows = await db.execute(sql`
+        SELECT tablename, policyname, unnest(roles) AS role
+        FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = ANY(ARRAY[${sql.raw(
+            expectedPolicyTables.map((name) => `'${name}'`).join(',')
+          )}]::text[])
+        ORDER BY tablename, policyname, role
+      `);
+      const rawRows = Array.isArray(rawPolicyRows)
+        ? rawPolicyRows
+        : (rawPolicyRows as { rows: unknown[] }).rows;
+      const policyRows = z.array(policyRowSchema).parse(rawRows);
+
+      expect(policyRows.length).toBeGreaterThan(0);
+      const rolesByPolicy = new Map<string, Set<string>>();
+      const allowedRoles = new Set(['authenticated']);
+      const tablesWithPolicies = new Set(
+        policyRows.map((row) => row.tablename)
+      );
+      const missingTables = expectedPolicyTables.filter(
+        (tableName) => !tablesWithPolicies.has(tableName)
+      );
+
+      expect(missingTables).toEqual([]);
+
+      for (const row of policyRows) {
+        const policyKey = `${row.tablename}.${row.policyname}`;
+        const role = row.role.toLowerCase();
+
+        expect(role).not.toBe('public');
+        expect(allowedRoles.has(role)).toBe(true);
+        expect(role).toBe('authenticated');
+        expect(row.policyname.endsWith('_anon')).toBe(false);
+
+        const existingRoles = rolesByPolicy.get(policyKey) ?? new Set<string>();
+        existingRoles.add(role);
+        rolesByPolicy.set(policyKey, existingRoles);
+      }
+
+      for (const roles of rolesByPolicy.values()) {
+        expect(roles.size).toBeGreaterThan(0);
+      }
+    });
   });
 
   describe('Service Role Access (RLS Bypass)', () => {
@@ -68,7 +148,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const _user1 = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_1',
+          authUserId: 'user_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -76,7 +156,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const _user2 = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_2',
+          authUserId: 'user_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -85,26 +165,42 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const rows = await serviceClient.select().from(users);
 
       expect(rows).toHaveLength(2);
-      expect(rows.map((u) => u.clerkUserId)).toContain('user_1');
-      expect(rows.map((u) => u.clerkUserId)).toContain('user_2');
+      expect(rows.map((u) => u.authUserId)).toContain('user_1');
+      expect(rows.map((u) => u.authUserId)).toContain('user_2');
     });
   });
 
   describe('Anonymous Access', () => {
-    it('anonymous users cannot read private learning plans', async () => {
+    it('anonymous users cannot read learning plans regardless of visibility', async () => {
       const anonDb = await createAnonRlsDb();
 
-      // Create a private plan
-      const [user] = await db
+      const [publicUser] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_private',
+          authUserId: 'user_public_plan',
+          email: 'public@test.com',
+        })
+        .returning();
+
+      await db.insert(learningPlans).values({
+        userId: publicUser.id,
+        topic: 'Public Topic',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'public',
+      });
+
+      const [privateUser] = await db
+        .insert(users)
+        .values({
+          authUserId: 'user_private',
           email: 'private@test.com',
         })
         .returning();
 
       await db.insert(learningPlans).values({
-        userId: user.id,
+        userId: privateUser.id,
         topic: 'Private Topic',
         skillLevel: 'beginner',
         weeklyHours: 5,
@@ -123,7 +219,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'anon_target_user',
+          authUserId: 'anon_target_user',
           email: 'anon@test.com',
         })
         .returning();
@@ -139,15 +235,150 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         })
       );
     });
+
+    it('anonymous users cannot update or delete learning plans', async () => {
+      const anonDb = await createAnonRlsDb();
+
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'anon_no_write',
+          email: 'anon-no-write@test.com',
+        })
+        .returning();
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'Read-Only Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'public',
+        })
+        .returning();
+
+      const readableRows = await anonDb
+        .select()
+        .from(learningPlans)
+        .where(eq(learningPlans.id, plan.id));
+      expect(readableRows).toHaveLength(0);
+
+      const updated = await anonDb
+        .update(learningPlans)
+        .set({ topic: 'Should Not Update' })
+        .where(eq(learningPlans.id, plan.id))
+        .returning({ id: learningPlans.id });
+
+      const deleted = await anonDb
+        .delete(learningPlans)
+        .where(eq(learningPlans.id, plan.id))
+        .returning({ id: learningPlans.id });
+
+      expect(updated).toHaveLength(0);
+      expect(deleted).toHaveLength(0);
+
+      const persistedPlan = await db.query.learningPlans.findFirst({
+        where: (fields, operators) => operators.eq(fields.id, plan.id),
+      });
+
+      expect(persistedPlan).toBeDefined();
+      expect(persistedPlan?.topic).toBe('Read-Only Plan');
+    });
+
+    it('anonymous users cannot insert modules into any plans', async () => {
+      const anonDb = await createAnonRlsDb();
+
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'anon_module_insert',
+          email: 'anon-module@test.com',
+        })
+        .returning();
+
+      const [targetPlan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'Target Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+        })
+        .returning();
+
+      await expectRlsViolation(() =>
+        anonDb.insert(modules).values({
+          planId: targetPlan.id,
+          order: 1,
+          title: 'Unauthorized Module',
+          estimatedMinutes: 30,
+        })
+      );
+    });
   });
 
   describe('Authenticated User Access', () => {
+    it('authenticated users can read and update only their own user row', async () => {
+      const [user1] = await db
+        .insert(users)
+        .values({
+          authUserId: 'user_profile_1',
+          email: 'user-profile-1@test.com',
+          name: 'User One',
+        })
+        .returning();
+
+      const [user2] = await db
+        .insert(users)
+        .values({
+          authUserId: 'user_profile_2',
+          email: 'user-profile-2@test.com',
+          name: 'User Two',
+        })
+        .returning();
+
+      const user1Db = await createRlsDbForUser('user_profile_1');
+
+      const visibleRows = await user1Db
+        .select({
+          id: users.id,
+          authUserId: users.authUserId,
+          name: users.name,
+        })
+        .from(users);
+
+      expect(visibleRows).toHaveLength(1);
+      expect(visibleRows[0]?.id).toBe(user1.id);
+      expect(visibleRows[0]?.authUserId).toBe('user_profile_1');
+
+      const ownUpdate = await user1Db
+        .update(users)
+        .set({ name: 'User One Updated' })
+        .where(eq(users.id, user1.id))
+        .returning({ id: users.id, name: users.name });
+
+      expect(ownUpdate).toHaveLength(1);
+      expect(ownUpdate[0]?.name).toBe('User One Updated');
+
+      const crossTenantUpdate = await user1Db
+        .update(users)
+        .set({ name: 'Should Not Update' })
+        .where(eq(users.id, user2.id))
+        .returning({ id: users.id });
+
+      expect(crossTenantUpdate).toHaveLength(0);
+    });
+
     it('authenticated users can read their own learning plans', async () => {
       // Create user in database
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_auth_123',
+          authUserId: 'user_auth_123',
           email: 'auth@test.com',
         })
         .returning();
@@ -172,12 +403,12 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       expect(rows[0]?.topic).toBe('My Private Plan');
     });
 
-    it('authenticated users cannot read other users private plans', async () => {
+    it('authenticated users cannot read other users plans', async () => {
       // Create two users
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_1',
+          authUserId: 'user_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -185,7 +416,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_2',
+          authUserId: 'user_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -200,24 +431,24 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         visibility: 'private',
       });
 
-      // Create a public plan for user2 (should be visible)
+      // Create another private plan for user2 (own records should be visible)
       await db.insert(learningPlans).values({
         userId: user2.id,
-        topic: 'User 2 Public Plan',
+        topic: 'User 2 Private Plan',
         skillLevel: 'advanced',
         weeklyHours: 15,
         learningStyle: 'video',
-        visibility: 'public',
+        visibility: 'private',
       });
 
       // Authenticate as user2
       const user2Db = await createRlsDbForUser('user_2');
 
-      // User2 should only see the public plan, not user1's private plan
+      // User2 should only see their own plan, not user1's plan
       const rows = await user2Db.select().from(learningPlans);
 
       expect(rows).toHaveLength(1);
-      expect(rows[0]?.topic).toBe('User 2 Public Plan');
+      expect(rows[0]?.topic).toBe('User 2 Private Plan');
     });
 
     it('authenticated users can insert plans for themselves only', async () => {
@@ -225,7 +456,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_insert',
+          authUserId: 'user_insert',
           email: 'insert@test.com',
         })
         .returning();
@@ -258,7 +489,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_cant_insert_1',
+          authUserId: 'user_cant_insert_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -266,7 +497,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_cant_insert_2',
+          authUserId: 'user_cant_insert_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -287,12 +518,104 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       );
     });
 
+    it('authenticated users cannot insert calendar events for tasks they do not own', async () => {
+      const [owner] = await db
+        .insert(users)
+        .values({
+          authUserId: 'calendar_owner',
+          email: 'calendar-owner@test.com',
+        })
+        .returning();
+
+      const [attacker] = await db
+        .insert(users)
+        .values({
+          authUserId: 'calendar_attacker',
+          email: 'calendar-attacker@test.com',
+        })
+        .returning();
+
+      const [ownerPlan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: owner.id,
+          topic: 'Owner Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+        })
+        .returning();
+
+      const [ownerModule] = await db
+        .insert(modules)
+        .values({
+          planId: ownerPlan.id,
+          order: 1,
+          title: 'Owner Module',
+          estimatedMinutes: 60,
+        })
+        .returning();
+
+      const [ownerTask] = await db
+        .insert(tasks)
+        .values({
+          moduleId: ownerModule.id,
+          order: 1,
+          title: 'Owner Task',
+          estimatedMinutes: 30,
+        })
+        .returning();
+
+      const attackerDb = await createRlsDbForUser('calendar_attacker');
+
+      await expectRlsViolation(() =>
+        attackerDb.insert(taskCalendarEvents).values({
+          taskId: ownerTask.id,
+          userId: attacker.id,
+          calendarEventId: `event_${Date.now()}`,
+          calendarId: 'primary',
+        })
+      );
+
+      const [ownerEvent] = await db
+        .insert(taskCalendarEvents)
+        .values({
+          taskId: ownerTask.id,
+          userId: owner.id,
+          calendarEventId: `owner_event_${Date.now()}`,
+          calendarId: 'primary',
+        })
+        .returning({ id: taskCalendarEvents.id });
+
+      const updated = await attackerDb
+        .update(taskCalendarEvents)
+        .set({ calendarId: 'hacked' })
+        .where(eq(taskCalendarEvents.id, ownerEvent.id))
+        .returning({ id: taskCalendarEvents.id });
+
+      const deleted = await attackerDb
+        .delete(taskCalendarEvents)
+        .where(eq(taskCalendarEvents.id, ownerEvent.id))
+        .returning({ id: taskCalendarEvents.id });
+
+      expect(updated).toHaveLength(0);
+      expect(deleted).toHaveLength(0);
+
+      const persistedEvent = await db.query.taskCalendarEvents.findFirst({
+        where: (fields, operators) => operators.eq(fields.id, ownerEvent.id),
+      });
+
+      expect(persistedEvent).toBeDefined();
+      expect(persistedEvent?.calendarId).toBe('primary');
+    });
+
     it('authenticated users can update their own plans', async () => {
       // Create user and plan
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_update',
+          authUserId: 'user_update',
           email: 'update@test.com',
         })
         .returning();
@@ -327,7 +650,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_update_1',
+          authUserId: 'user_no_update_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -335,7 +658,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_update_2',
+          authUserId: 'user_no_update_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -372,7 +695,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_delete',
+          authUserId: 'user_delete',
           email: 'delete@test.com',
         })
         .returning();
@@ -409,7 +732,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_delete_1',
+          authUserId: 'user_no_delete_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -417,7 +740,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_delete_2',
+          authUserId: 'user_no_delete_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -457,12 +780,12 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
   });
 
   describe('Cascade Policies (modules, tasks, etc.)', () => {
-    it('users can only read modules from plans they own or public plans', async () => {
+    it('users can only read modules from plans they own', async () => {
       // Create two users
       const [user1] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_modules_1',
+          authUserId: 'user_modules_1',
           email: 'user1@test.com',
         })
         .returning();
@@ -470,7 +793,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user2] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_modules_2',
+          authUserId: 'user_modules_2',
           email: 'user2@test.com',
         })
         .returning();
@@ -488,16 +811,16 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         })
         .returning();
 
-      // Create public plan for user2
-      const [publicPlan] = await db
+      // Create another private plan for user2
+      const [otherUserPlan] = await db
         .insert(learningPlans)
         .values({
           userId: user2.id,
-          topic: 'Public Plan',
+          topic: 'Other User Plan',
           skillLevel: 'intermediate',
           weeklyHours: 10,
           learningStyle: 'video',
-          visibility: 'public',
+          visibility: 'private',
         })
         .returning();
 
@@ -510,32 +833,30 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       });
 
       await db.insert(modules).values({
-        planId: publicPlan.id,
+        planId: otherUserPlan.id,
         order: 1,
-        title: 'Public Module',
+        title: 'Other User Module',
         estimatedMinutes: 90,
       });
 
       // Authenticate as user1
       const user1Db = await createRlsDbForUser('user_modules_1');
 
-      // User1 should see:
-      // - Module from their own private plan
-      // - Module from user2's public plan
+      // User1 should only see modules from their own plan.
       const rows = await user1Db.select().from(modules);
 
-      expect(rows).toHaveLength(2);
+      expect(rows).toHaveLength(1);
       const titles = rows.map((m) => m.title);
       expect(titles).toContain('Private Module');
-      expect(titles).toContain('Public Module');
+      expect(titles).not.toContain('Other User Module');
     });
 
-    it('users can only read tasks from plans they own or public plans', async () => {
+    it('users can only read tasks from plans they own', async () => {
       // Create user
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_tasks',
+          authUserId: 'user_tasks',
           email: 'tasks@test.com',
         })
         .returning();
@@ -586,7 +907,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_progress',
+          authUserId: 'user_progress',
           email: 'progress@test.com',
         })
         .returning();
@@ -653,7 +974,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
   });
 
   describe('Resources Access', () => {
-    it('all users (including anonymous) can read resources', async () => {
+    it('only authenticated users can read resources', async () => {
       // Create a resource using direct DB access
       await db.insert(resources).values({
         type: 'article',
@@ -661,17 +982,16 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         url: `https://example.com/article-${Date.now()}`,
       });
 
-      // Anonymous user should see it
+      // Anonymous user should not see resources
       const anonDb = await createAnonRlsDb();
       const anonData = await anonDb.select().from(resources);
-      expect(anonData).toHaveLength(1);
-      expect(anonData[0]?.title).toBe('Test Article');
+      expect(anonData).toHaveLength(0);
 
       // Authenticated user should also see it
       const [_user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_resources',
+          authUserId: 'user_resources',
           email: 'resources@test.com',
         })
         .returning();
@@ -688,7 +1008,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       const [_user] = await db
         .insert(users)
         .values({
-          clerkUserId: 'user_no_resources',
+          authUserId: 'user_no_resources',
           email: 'noresources@test.com',
         })
         .returning();

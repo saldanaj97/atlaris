@@ -8,13 +8,13 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
-const clerkUserId = 'clerk_generation_rate_limit';
-const clerkEmail = 'generation-rate-limit@example.com';
+const authUserId = 'auth_generation_rate_limit';
+const authEmail = 'generation-rate-limit@example.com';
 
 describe('generation integration - rate limit classification', () => {
   it('records rate_limit classification when provider signals throttling', async () => {
-    setTestUser(clerkUserId);
-    const userId = await ensureUser({ clerkUserId, email: clerkEmail });
+    setTestUser(authUserId);
+    const userId = await ensureUser({ authUserId, email: authEmail });
 
     const [plan] = await db
       .insert(learningPlans)

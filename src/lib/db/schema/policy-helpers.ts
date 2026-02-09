@@ -1,7 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import type { AnyPgColumn, AnyPgTable } from 'drizzle-orm/pg-core';
 
-import { clerkSub } from './tables/common';
+import { currentUserId } from './tables/common';
 import { users } from './tables/users';
 
 type BasePlanParams = {
@@ -16,12 +16,12 @@ type BasePlanParams = {
  */
 
 /**
- * SQL fragment that ensures a row belongs to the current authenticated Clerk user.
+ * SQL fragment that ensures a row belongs to the current authenticated user.
  */
-export const recordOwnedByCurrentUser = (userIdColumn: AnyPgColumn) =>
+export const recordOwnedByCurrentUser = (userIdColumn: AnyPgColumn): SQL =>
   sql`
     ${userIdColumn} IN (
-      SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+      SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
     )
   `;
 
@@ -37,35 +37,14 @@ export const planOwnedByCurrentUser = ({
   planTable,
   planIdReferenceColumn,
   planUserIdColumn,
-}: PlanOwnershipParams) =>
+}: PlanOwnershipParams): SQL =>
   sql`
     EXISTS (
       SELECT 1 FROM ${planTable}
       WHERE ${planIdReferenceColumn} = ${planIdColumn}
       AND ${planUserIdColumn} IN (
-        SELECT id FROM ${users} WHERE ${users.clerkUserId} = ${clerkSub}
+        SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
       )
-    )
-  `;
-
-type PlanVisibilityParams = BasePlanParams & {
-  planVisibilityColumn: AnyPgColumn;
-};
-
-/**
- * SQL fragment that resolves whether the referenced plan is public.
- */
-export const planIsPublic = ({
-  planIdColumn,
-  planTable,
-  planIdReferenceColumn,
-  planVisibilityColumn,
-}: PlanVisibilityParams) =>
-  sql`
-    EXISTS (
-      SELECT 1 FROM ${planTable}
-      WHERE ${planIdReferenceColumn} = ${planIdColumn}
-      AND ${planVisibilityColumn} = 'public'
     )
   `;
 
@@ -79,13 +58,60 @@ type PlanAndUserOwnershipParams = PlanOwnershipParams & {
 export const userAndPlanOwnedByCurrentUser = ({
   userIdColumn,
   ...planParams
-}: PlanAndUserOwnershipParams) => {
+}: PlanAndUserOwnershipParams): SQL => {
   const userOwnership = recordOwnedByCurrentUser(userIdColumn);
   const planOwnership = planOwnedByCurrentUser(planParams);
   return sql`${userOwnership} AND ${planOwnership}`;
 };
 
+type TaskAndUserOwnershipParams = {
+  userIdColumn: AnyPgColumn;
+  taskIdColumn: AnyPgColumn;
+  taskTable: AnyPgTable;
+  taskIdReferenceColumn: AnyPgColumn;
+  taskModuleIdColumn: AnyPgColumn;
+  moduleTable: AnyPgTable;
+  moduleIdReferenceColumn: AnyPgColumn;
+  modulePlanIdColumn: AnyPgColumn;
+  planTable: AnyPgTable;
+  planIdReferenceColumn: AnyPgColumn;
+  planUserIdColumn: AnyPgColumn;
+};
+
+/**
+ * SQL fragment that ensures both the record owner and referenced task ownership
+ * resolve to the current authenticated user.
+ */
+export const userAndTaskOwnedByCurrentUser = ({
+  userIdColumn,
+  taskIdColumn,
+  taskTable,
+  taskIdReferenceColumn,
+  taskModuleIdColumn,
+  moduleTable,
+  moduleIdReferenceColumn,
+  modulePlanIdColumn,
+  planTable,
+  planIdReferenceColumn,
+  planUserIdColumn,
+}: TaskAndUserOwnershipParams): SQL => {
+  const userOwnership = recordOwnedByCurrentUser(userIdColumn);
+  const taskOwnership = sql`
+    EXISTS (
+      SELECT 1 FROM ${taskTable}
+      JOIN ${moduleTable} ON ${moduleIdReferenceColumn} = ${taskModuleIdColumn}
+      JOIN ${planTable} ON ${planIdReferenceColumn} = ${modulePlanIdColumn}
+      WHERE ${taskIdReferenceColumn} = ${taskIdColumn}
+      AND ${planUserIdColumn} IN (
+        SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
+      )
+    )
+  `;
+
+  return sql`${userOwnership} AND ${taskOwnership}`;
+};
+
 /**
  * Utility to compose ad-hoc conditions with parentheses in callers.
  */
-export const wrapCondition = (condition: SQL) => sql`(${condition})`;
+export const wrapCondition = (condition: SQL): SQL => sql`(${condition})`;

@@ -10,7 +10,7 @@ describe('Stripe DB schema', () => {
   describe('users (subscription + Stripe fields)', () => {
     it('defaults subscriptionTier to free via ensureUser()', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_sub_defaults',
+        authUserId: 'user_sub_defaults',
         email: 'defaults@example.com',
       });
       const rows = await db.query.users.findMany({
@@ -22,7 +22,7 @@ describe('Stripe DB schema', () => {
 
     it('accepts valid subscriptionTier enum values', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_enum_valid',
+        authUserId: 'user_enum_valid',
         email: 'enumvalid@example.com',
       });
       await db
@@ -42,7 +42,7 @@ describe('Stripe DB schema', () => {
 
     it('rejects invalid subscriptionTier values', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'user_enum_invalid',
+        authUserId: 'user_enum_invalid',
         email: 'invalid@example.com',
       });
       await expect(
@@ -55,11 +55,11 @@ describe('Stripe DB schema', () => {
 
     it('enforces uniqueness on stripeCustomerId and stripeSubscriptionId', async () => {
       const a = await ensureUser({
-        clerkUserId: 'u_a',
+        authUserId: 'u_a',
         email: 'a@example.com',
       });
       const b = await ensureUser({
-        clerkUserId: 'u_b',
+        authUserId: 'u_b',
         email: 'b@example.com',
       });
 
@@ -88,7 +88,7 @@ describe('Stripe DB schema', () => {
 
     it('accepts valid subscriptionStatus values and a timestamp for subscriptionPeriodEnd', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'u_status',
+        authUserId: 'u_status',
         email: 'status@example.com',
       });
 
@@ -112,7 +112,7 @@ describe('Stripe DB schema', () => {
   describe('usage_metrics', () => {
     it('inserts with defaults and non-negative checks', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'u_metrics_defaults',
+        authUserId: 'u_metrics_defaults',
         email: 'metrics.defaults@example.com',
       });
 
@@ -129,7 +129,7 @@ describe('Stripe DB schema', () => {
 
     it('enforces unique (userId, month)', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'u_metrics_unique',
+        authUserId: 'u_metrics_unique',
         email: 'metrics.unique@example.com',
       });
 
@@ -141,7 +141,7 @@ describe('Stripe DB schema', () => {
 
     it('rejects negative counters', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'u_metrics_neg',
+        authUserId: 'u_metrics_neg',
         email: 'metrics.neg@example.com',
       });
       await expect(
@@ -168,7 +168,7 @@ describe('Stripe DB schema', () => {
 
     it('cascades delete when user is removed', async () => {
       const userId = await ensureUser({
-        clerkUserId: 'u_metrics_cascade',
+        authUserId: 'u_metrics_cascade',
         email: 'metrics.cascade@example.com',
       });
       await db.insert(usageMetrics).values({ userId, month: '2025-04' });
