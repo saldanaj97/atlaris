@@ -1,13 +1,9 @@
-name: Deploy - Production
+name: Deploy Production
 
 on:
-  workflow_call:
-    inputs:
-      deploy_migrations:
-        description: 'Whether to run database migrations'
-        required: false
-        type: boolean
-        default: false
+  push:
+    branches:
+      - 'main'
   workflow_dispatch:
     inputs:
       deploy_migrations:
@@ -16,112 +12,35 @@ on:
         type: boolean
         default: true
 
-permissions:
-  contents: read
-  actions: read
-  deployments: write
-
 concurrency:
   group: deploy-production
   cancel-in-progress: false # Never cancel production deployments
 
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+  DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_PROD_NON_POOLING }}
+
 jobs:
-  migrate-database:
-    name: Migrate Database (Production)
-    if: inputs.deploy_migrations
+  deploy-production:
+    permissions: write-all
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
-      - name: Setup pnpm store cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'pnpm'
+          node-version: "22"
+          cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Wake up Neon database
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          echo "Waking up Neon database (may be scaled to zero)..."
-          for i in 1 2 3 4 5 6; do
-            echo "Attempt $i/6..."
-            if psql "$DATABASE_URL" -c "SELECT 1" > /dev/null 2>&1; then
-              echo "Database awake and ready"
-              exit 0
-            fi
-            echo "Not ready, waiting 10 seconds before retry..."
-            sleep 10
-          done
-          echo "Failed to wake database after 6 attempts"
-          exit 1
-      - name: Run migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
+
+      - name: Run Drizzle migrations
         run: pnpm db:migrate
-      - name: Verify migration success
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_NON_POOLING }}
-        run: |
-          echo "Migration completed successfully"
-
-  report-status:
-    name: Report Deployment Status (Production)
-    needs: [migrate-database]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check deployment status
-        run: |
-          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-
-          # Migration
-          if [ "${{ inputs.deploy_migrations }}" != "true" ]; then
-            echo "| Migrations | ⏭️ Not requested |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.migrate-database.result }}" == "success" ]; then
-            echo "| Migrations | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Migrations | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # Determine overall status
-          FAILED=0
-          for result in "${{ needs.migrate-database.result }}"; do
-            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
-              FAILED=1
-            fi
-          done
-
-          if [ "$FAILED" -eq 1 ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "❌ **Deployment failed**" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ **Deployment successful**" >> $GITHUB_STEP_SUMMARY
-          fi
-
-# Note: Next.js deploys automatically via Vercel GitHub integration.
-# This workflow is invoked by ci-trunk on push to main. Ensure main is
-# branch-protected (PR required, no direct push) so only merged PRs deploy.

@@ -1,0 +1,119 @@
+name: Deploy Preview
+
+# Required GitHub Secrets:
+#   NEON_API_KEY            - Neon API key (account settings)
+#   NEON_PROJECT_ID         - Neon project ID (project settings)
+#   NEON_DATABASE_ROLE      - Database role name for branch creation
+#   NEON_DATABASE_NAME      - Database name for branch creation
+#   VERCEL_TOKEN            - Vercel deploy token
+#   VERCEL_ORG_ID           - Vercel organization/team ID
+#   VERCEL_PROJECT_ID       - Vercel project ID
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [develop, main]
+
+concurrency:
+  group: preview-${{ github.event.number }}
+  cancel-in-progress: true
+
+env:
+  NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+  NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+  NEON_DATABASE_ROLE: ${{ secrets.NEON_PREVIEW_DATABASE_ROLE }}
+  NEON_DATABASE_NAME: ${{ secrets.NEON_PREVIEW_DATABASE_NAME }}
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy-preview:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Delete any existing branch from a previous push to this PR.
+      # This ensures a fresh branch with the latest parent state on each push.
+      - name: Delete existing Neon Branch (if any)
+        uses: neondatabase/delete-branch-action@v3.2.0
+        continue-on-error: true
+        with:
+          project_id: ${{ env.NEON_PROJECT_ID }}
+          branch: preview/pr-${{ github.event.number }}-${{ github.head_ref }}
+          api_key: ${{ env.NEON_API_KEY }}
+
+      - name: Create Neon Branch
+        id: create-branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ env.NEON_PROJECT_ID }}
+          branch_name: preview/pr-${{ github.event.number }}-${{ github.head_ref }}
+          role: ${{ env.NEON_DATABASE_ROLE }}
+          database: ${{ env.NEON_DATABASE_NAME }}
+          api_key: ${{ env.NEON_API_KEY }}
+
+      - name: Run Drizzle Migrations
+        env:
+          DATABASE_URL: ${{ steps.create-branch.outputs.db_url_pooled }}
+          DATABASE_URL_NON_POOLING: ${{ steps.create-branch.outputs.db_url }}
+        run: pnpm db:migrate
+
+      # Post schema diff (preview branch vs its parent) as a PR comment.
+      # See https://github.com/neondatabase/schema-diff-action
+      - name: Post Schema Diff Comment to PR
+        uses: neondatabase/schema-diff-action@v1
+        with:
+          project_id: ${{ env.NEON_PROJECT_ID }}
+          compare_branch: preview/pr-${{ github.event.number }}-${{ github.head_ref }}
+          api_key: ${{ env.NEON_API_KEY }}
+          database: ${{ env.NEON_DATABASE_NAME }}
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=preview --token=${{ env.VERCEL_TOKEN }}
+
+      # Build with overridden database URLs pointing to the preview Neon branch.
+      # vercel build embeds env vars into the deployment, making them available
+      # at runtime in Serverless Functions (API routes, server components).
+      - name: Build Project Artifacts
+        env:
+          DATABASE_URL: ${{ steps.create-branch.outputs.db_url_pooled }}
+          DATABASE_URL_NON_POOLING: ${{ steps.create-branch.outputs.db_url }}
+        run: vercel build --token=${{ env.VERCEL_TOKEN }}
+
+      - name: Deploy Preview to Vercel
+        id: deploy
+        run: echo "preview_url=$(vercel deploy --prebuilt --token=${{ env.VERCEL_TOKEN }})" >> $GITHUB_OUTPUT
+
+      - name: Comment on Pull Request
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          message: |
+            **Preview Deployment**
+
+            | Resource | Link |
+            |----------|------|
+            | Vercel Preview | ${{ steps.deploy.outputs.preview_url }} |
+            | Neon Branch | [Console](https://console.neon.tech/app/projects/${{ env.NEON_PROJECT_ID }}/branches/${{ steps.create-branch.outputs.branch_id }}) |
+          comment-tag: preview-deployment
