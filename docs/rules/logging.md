@@ -2,6 +2,16 @@
 
 This document defines the logging architecture for Atlaris, ensuring proper separation between server-side and client-side logging contexts.
 
+## Sentry Integration
+
+All logs are sent to Sentry for observability:
+
+- **Server**: Pino logs are forwarded via `Sentry.pinoIntegration()` in `sentry.server.config.ts`
+- **Client**: `clientLogger` uses `Sentry.logger` directly
+- **Request context**: `createRequestContext()` sets `request_id` on Sentry's isolation scope for correlation
+
+Ensure `enableLogs: true` is set in all Sentry config files (server, edge, client).
+
 ## Architecture Overview
 
 The codebase uses a **dual-logger architecture** with distinct implementations for server and client environments:
@@ -112,11 +122,11 @@ export default function MyErrorBoundary({ error }: { error: Error }) {
 
 ## File Locations
 
-| Module          | Path                                 | Purpose                                     |
-| --------------- | ------------------------------------ | ------------------------------------------- |
-| Server logger   | `src/lib/logging/logger.ts`          | Pino-based structured logging               |
-| Client logger   | `src/lib/logging/client.ts`          | Console wrapper for browser                 |
-| Request context | `src/lib/logging/request-context.ts` | Request-scoped logging with correlation IDs |
+| Module          | Path                                 | Purpose                                                |
+| --------------- | ------------------------------------ | ------------------------------------------------------ |
+| Server logger   | `src/lib/logging/logger.ts`          | Pino-based structured logging (forwarded to Sentry)    |
+| Client logger   | `src/lib/logging/client.ts`          | Sentry.logger wrapper for browser (+ console in dev)   |
+| Request context | `src/lib/logging/request-context.ts` | Request-scoped logging with correlation IDs for Sentry |
 
 ## Anti-Patterns (Forbidden)
 
@@ -133,12 +143,12 @@ export default function MyErrorBoundary({ error }: { error: Error }) {
 - Log levels configurable via environment
 - Safe for server-side secrets (doesn't leak to client)
 
-**Client (Console wrapper)**:
+**Client (Sentry.logger)**:
 
-- Minimal browser-compatible implementation
+- Uses `Sentry.logger` for structured logs sent to Sentry
 - `'use client'` directive for Next.js App Router
-- Future extensibility (Sentry integration planned)
-- No Node.js dependencies
+- In development, also logs to console for local visibility
+- No Node.js dependencies (Sentry runs in browser)
 
 ## ESLint Configuration
 

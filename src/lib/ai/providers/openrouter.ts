@@ -1,4 +1,5 @@
 import { OpenRouter } from '@openrouter/sdk';
+import * as Sentry from '@sentry/nextjs';
 
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
 import { ProviderError, ProviderInvalidResponseError } from '@/lib/ai/provider';
@@ -65,119 +66,139 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       deadlineDate: input.deadlineDate,
     });
 
-    let response;
-    try {
-      response = await this.client.chat.send({
-        model: this.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        stream: false,
-        temperature: this.temperature,
-        responseFormat: { type: 'json_object' },
-        // Ensure OpenRouter only routes to providers that support JSON response format
-        provider: { requireParameters: true },
-      });
-    } catch (err) {
-      // Log the full error details for debugging
-      const errorDetails = {
-        source: 'openrouter-provider',
-        event: 'api_error',
-        model: this.model,
-        errorMessage: err instanceof Error ? err.message : String(err),
-        errorName: err instanceof Error ? err.name : 'Unknown',
-        // Capture OpenRouter-specific error details if available
-        ...(err && typeof err === 'object' && 'code' in err
-          ? { errorCode: (err as { code: unknown }).code }
-          : {}),
-        ...(err && typeof err === 'object' && 'status' in err
-          ? { httpStatus: (err as { status: unknown }).status }
-          : {}),
-        ...(err && typeof err === 'object' && 'body' in err
-          ? { responseBody: JSON.stringify((err as { body: unknown }).body) }
-          : {}),
-      };
-      logger.error(errorDetails, 'OpenRouter API call failed');
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: userPrompt },
+    ];
 
-      // Classify error based on HTTP status code for better retry handling
-      const message =
-        err instanceof Error ? err.message : 'OpenRouter API call failed';
+    return Sentry.startSpan(
+      {
+        op: 'gen_ai.request',
+        name: `request ${this.model}`,
+        attributes: {
+          'gen_ai.request.model': this.model,
+          'gen_ai.request.messages': JSON.stringify(messages),
+          'gen_ai.request.temperature': this.temperature,
+        },
+      },
+      async (span) => {
+        let response;
+        try {
+          response = await this.client.chat.send({
+            model: this.model,
+            messages,
+            stream: false,
+            temperature: this.temperature,
+            responseFormat: { type: 'json_object' },
+            provider: { requireParameters: true },
+          });
+        } catch (err) {
+          const errorDetails = {
+            source: 'openrouter-provider',
+            event: 'api_error',
+            model: this.model,
+            errorMessage: err instanceof Error ? err.message : String(err),
+            errorName: err instanceof Error ? err.name : 'Unknown',
+            ...(err && typeof err === 'object' && 'code' in err
+              ? { errorCode: (err as { code: unknown }).code }
+              : {}),
+            ...(err && typeof err === 'object' && 'status' in err
+              ? { httpStatus: (err as { status: unknown }).status }
+              : {}),
+            ...(err && typeof err === 'object' && 'body' in err
+              ? {
+                  responseBody: JSON.stringify((err as { body: unknown }).body),
+                }
+              : {}),
+          };
+          logger.error(errorDetails, 'OpenRouter API call failed');
 
-      const status =
-        err && typeof err === 'object' && 'status' in err
-          ? (err as { status: number }).status
-          : undefined;
+          const message =
+            err instanceof Error ? err.message : 'OpenRouter API call failed';
+          const status =
+            err && typeof err === 'object' && 'status' in err
+              ? (err as { status: number }).status
+              : undefined;
+          const kind =
+            status === 429
+              ? 'rate_limit'
+              : status === 408 || message.toLowerCase().includes('timeout')
+                ? 'timeout'
+                : 'unknown';
 
-      // Map HTTP status codes to provider error kinds
-      const kind =
-        status === 429
-          ? 'rate_limit'
-          : status === 408 || message.toLowerCase().includes('timeout')
-            ? 'timeout'
-            : 'unknown';
+          throw new ProviderError(kind, message);
+        }
 
-      throw new ProviderError(kind, message);
-    }
+        const rawContent = response.choices?.[0]?.message?.content;
+        if (!rawContent) {
+          throw new ProviderInvalidResponseError(
+            'OpenRouter returned an empty response'
+          );
+        }
 
-    const rawContent = response.choices?.[0]?.message?.content;
+        const content =
+          typeof rawContent === 'string'
+            ? rawContent
+            : rawContent
+                .filter(
+                  (item): item is { type: 'text'; text: string } =>
+                    item.type === 'text'
+                )
+                .map((item) => item.text)
+                .join('');
 
-    if (!rawContent) {
-      throw new ProviderInvalidResponseError(
-        'OpenRouter returned an empty response'
-      );
-    }
+        if (!content) {
+          throw new ProviderInvalidResponseError(
+            'OpenRouter returned no text content'
+          );
+        }
 
-    // Content can be a string or an array of content items; extract text content
-    const content =
-      typeof rawContent === 'string'
-        ? rawContent
-        : rawContent
-            .filter(
-              (item): item is { type: 'text'; text: string } =>
-                item.type === 'text'
-            )
-            .map((item) => item.text)
-            .join('');
+        const usage = response.usage;
+        span.setAttribute(
+          'gen_ai.response.text',
+          JSON.stringify([content.slice(0, 10_000)])
+        );
+        if (usage) {
+          span.setAttribute(
+            'gen_ai.usage.input_tokens',
+            usage.promptTokens ?? 0
+          );
+          span.setAttribute(
+            'gen_ai.usage.output_tokens',
+            usage.completionTokens ?? 0
+          );
+        }
 
-    if (!content) {
-      throw new ProviderInvalidResponseError(
-        'OpenRouter returned no text content'
-      );
-    }
+        let parsedContent: unknown;
+        try {
+          parsedContent = JSON.parse(content);
+        } catch {
+          throw new ProviderInvalidResponseError(
+            'OpenRouter returned invalid JSON'
+          );
+        }
 
-    // Parse and validate the JSON response against PlanSchema
-    let parsedContent: unknown;
-    try {
-      parsedContent = JSON.parse(content);
-    } catch {
-      throw new ProviderInvalidResponseError(
-        'OpenRouter returned invalid JSON'
-      );
-    }
+        const parseResult = PlanSchema.safeParse(parsedContent);
+        if (!parseResult.success) {
+          throw new ProviderInvalidResponseError(
+            `OpenRouter response failed schema validation: ${parseResult.error.message}`
+          );
+        }
 
-    const parseResult = PlanSchema.safeParse(parsedContent);
-
-    if (!parseResult.success) {
-      throw new ProviderInvalidResponseError(
-        `OpenRouter response failed schema validation: ${parseResult.error.message}`
-      );
-    }
-
-    const plan = parseResult.data;
-    const usage = response.usage;
-
-    return buildPlanProviderResult({
-      plan,
-      usage: usage
-        ? {
-            inputTokens: usage.promptTokens,
-            outputTokens: usage.completionTokens,
-            totalTokens: usage.totalTokens,
-          }
-        : undefined,
-      provider: 'openrouter',
-      model: this.model,
-    });
+        const plan = parseResult.data;
+        return buildPlanProviderResult({
+          plan,
+          usage: usage
+            ? {
+                inputTokens: usage.promptTokens,
+                outputTokens: usage.completionTokens,
+                totalTokens: usage.totalTokens,
+              }
+            : undefined,
+          provider: 'openrouter',
+          model: this.model,
+        });
+      }
+    );
   }
 }

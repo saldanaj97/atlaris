@@ -13,6 +13,14 @@ Sentry.init({
   // Enable logs to be sent to Sentry
   enableLogs: true,
 
+  // Forward Pino logs to Sentry (pino is used in @/lib/logging/logger)
+  // Vercel AI integration for micro-explanations (generateObject) + force for Vercel builds
+  integrations: (defaultIntegrations) => [
+    ...defaultIntegrations,
+    Sentry.pinoIntegration(),
+    Sentry.vercelAIIntegration({ force: true }),
+  ],
+
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,

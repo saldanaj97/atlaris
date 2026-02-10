@@ -6,6 +6,7 @@ import {
   type GenerationAttemptRecord,
 } from '@/lib/db/queries/attempts';
 import type { FailureClassification } from '@/lib/types/client';
+import * as Sentry from '@sentry/nextjs';
 
 import { classifyFailure } from './classification';
 import { pacePlan } from './pacing';
@@ -209,10 +210,38 @@ export async function runGenerationAttempt(
   let rawText: string | undefined;
 
   try {
-    const providerResult = await provider.generate(context.input, {
-      signal: controller.signal,
-      timeoutMs: options.timeoutConfig?.baseMs,
-    });
+    const providerResult = await Sentry.startSpan(
+      {
+        op: 'gen_ai.invoke_agent',
+        name: 'invoke_agent Plan Generation',
+        attributes: {
+          'gen_ai.agent.name': 'Plan Generation',
+        },
+      },
+      async (span) => {
+        const result = await provider.generate(context.input, {
+          signal: controller.signal,
+          timeoutMs: options.timeoutConfig?.baseMs,
+        });
+        const meta = result.metadata;
+        if (meta.model) {
+          span.setAttribute('gen_ai.request.model', meta.model);
+        }
+        if (meta.usage?.promptTokens != null) {
+          span.setAttribute(
+            'gen_ai.usage.input_tokens',
+            meta.usage.promptTokens
+          );
+        }
+        if (meta.usage?.completionTokens != null) {
+          span.setAttribute(
+            'gen_ai.usage.output_tokens',
+            meta.usage.completionTokens
+          );
+        }
+        return result;
+      }
+    );
 
     providerMetadata = providerResult.metadata;
 
