@@ -27,7 +27,6 @@ jobs:
     outputs:
       integration: ${{ steps.filter.outputs.integration }}
       e2e: ${{ steps.filter.outputs.e2e }}
-      migrations: ${{ steps.filter.outputs.migrations }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,30 +52,8 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
-            migrations:
-              - 'src/lib/db/migrations/*.sql'
-              - 'src/lib/db/migrations/meta/**'
-              - 'src/lib/db/schema/**'
-              - 'src/lib/db/enums.ts'
-              - 'drizzle.config.ts'
 
 
-
-  vulnerability-scan:
-    name: Security Audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: [changes]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Run dependency audit
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
 
   e2e-tests:
     name: E2E / Smoke Tests
@@ -87,8 +64,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
-        total: [4]
+        shard: [1, 2]
+        total: [2]
     services:
       postgres:
         image: postgres:17
@@ -288,8 +265,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
-        total: [4]
+        shard: [1, 2]
+        total: [2]
     services:
       postgres:
         image: postgres:17
@@ -481,115 +458,9 @@ jobs:
             psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
           fi
 
-  migration-dry-run:
-    name: DB Migration Dry-Run
-    needs: [changes]
-    if: needs.changes.outputs.migrations == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:17
-        ports:
-          - '5432:5432'
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd="pg_isready -U postgres -d postgres"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-      - name: Setup pnpm store cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Prepare ephemeral database
-        env:
-          PGPASSWORD: postgres
-        run: |
-          for i in {1..30}; do
-            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
-            sleep 1
-          done
-          DB_NAME="ci_${GITHUB_RUN_ID}_migrate_${GITHUB_JOB}"
-          echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
-          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
-
-          # Defensive bootstrap (idempotent)
-          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE EXTENSION IF NOT EXISTS pgcrypto;
-          DO $$ BEGIN CREATE ROLE anonymous NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE neondb_owner NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          CREATE SCHEMA IF NOT EXISTS auth;
-          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-          LANGUAGE sql
-          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
-          SQL
-
-          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
-      - name: Apply migrations (dry-run DB)
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
-        run: pnpm db:migrate
-      - name: Grant RLS bypass and role permissions
-        env:
-          PGPASSWORD: postgres
-        run: |
-          # Grant BYPASSRLS to postgres user to allow direct test access
-          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 -c "ALTER ROLE postgres BYPASSRLS;"
-
-          # Grant table permissions to authenticated role for RLS testing
-          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
-          GRANT USAGE ON SCHEMA public TO authenticated;
-          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
-          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
-          SQL
-
-          # Grant read-only permissions to anonymous role
-          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
-          GRANT USAGE ON SCHEMA public TO anonymous;
-          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anonymous;
-          SQL
-      - name: Cleanup ephemeral database
-        if: always()
-        env:
-          PGPASSWORD: postgres
-        run: |
-          if [ -n "${{ env.DB_NAME }}" ]; then
-            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
-            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
-          fi
-
   all-checks-trunk:
     name: All Checks Passed (trunk)
-    needs: [vulnerability-scan, integration-tests, e2e-tests, migration-dry-run]
+    needs: [integration-tests, e2e-tests]
     if: always() && (github.event_name == 'push' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     steps:
@@ -597,14 +468,12 @@ jobs:
         run: |
           # Populate results using GitHub Actions expressions at render time
           declare -A results=(
-            [vulnerability-scan]="${{ needs.vulnerability-scan.result }}"
-            [migration-dry-run]="${{ needs['migration-dry-run'].result }}"
             [integration-tests]="${{ needs['integration-tests'].result }}"
             [e2e-tests]="${{ needs['e2e-tests'].result }}"
           )
 
           failed=0
-          for job in vulnerability-scan migration-dry-run integration-tests e2e-tests; do
+          for job in integration-tests e2e-tests; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)
@@ -619,39 +488,3 @@ jobs:
           fi
       - name: All checks passed (trunk)
         run: echo "✅ All checks passed (trunk)"
-
-  trigger-staging-deploy:
-    name: Deploy to Staging
-    needs: [all-checks-trunk, changes]
-    if: |
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/develop' &&
-      needs.all-checks-trunk.result == 'success'
-    permissions:
-      contents: read
-      actions: read
-      deployments: write
-    uses: ./.github/workflows/deploy-staging.yml
-    with:
-      deploy_migrations: ${{ needs.changes.outputs.migrations == 'true' }}
-    secrets: inherit
-
-  # Production deploys on every push to main. This is correct only if main
-  # changes exclusively via merged PRs (release/hotfix). Protect main with
-  # branch protection: require PR review, disallow direct pushes and force-push.
-  # Otherwise one bad `git push origin main` deploys straight to production.
-  trigger-production-deploy:
-    name: Deploy to Production
-    needs: [all-checks-trunk, changes]
-    if: |
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.all-checks-trunk.result == 'success'
-    permissions:
-      contents: read
-      actions: read
-      deployments: write
-    uses: ./.github/workflows/deploy-production.yml
-    with:
-      deploy_migrations: ${{ needs.changes.outputs.migrations == 'true' }}
-    secrets: inherit

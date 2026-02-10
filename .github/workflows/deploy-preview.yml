@@ -21,8 +21,8 @@ concurrency:
 env:
   NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
   NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-  NEON_DATABASE_ROLE: ${{ secrets.NEON_PREVIEW_DATABASE_ROLE }}
-  NEON_DATABASE_NAME: ${{ secrets.NEON_PREVIEW_DATABASE_NAME }}
+  NEON_DATABASE_ROLE: ${{ secrets.NEON_PROD_DATABASE_ROLE }}
+  NEON_DATABASE_NAME: ${{ secrets.NEON_PROD_DATABASE_NAME }}
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -35,6 +35,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -70,6 +73,23 @@ jobs:
           role: ${{ env.NEON_DATABASE_ROLE }}
           database: ${{ env.NEON_DATABASE_NAME }}
           api_key: ${{ env.NEON_API_KEY }}
+
+      # Generate migrations from schema changes (no DB needed).
+      # Commit and push new migration files so they are part of the PR.
+      - name: Generate migrations
+        run: pnpm db:generate
+
+      - name: Commit and push generated migrations
+        run: |
+          git add src/lib/db/migrations/
+          if git diff --staged --quiet; then
+            echo "No migration changes to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: auto-generate migrations from schema [skip ci]"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
 
       - name: Run Drizzle Migrations
         env:

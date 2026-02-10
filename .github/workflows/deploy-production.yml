@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -41,6 +43,23 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Generate migrations from schema changes (no DB needed).
+      # Commit and push new migration files to main if schema changed without migrations.
+      - name: Generate migrations
+        run: pnpm db:generate
+
+      - name: Commit and push generated migrations
+        run: |
+          git add src/lib/db/migrations/
+          if git diff --staged --quiet; then
+            echo "No migration changes to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: auto-generate migrations from schema [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: Run Drizzle migrations
         run: pnpm db:migrate

@@ -26,7 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
-      migrations: ${{ steps.filter.outputs.migrations }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,12 +40,6 @@ jobs:
               - 'tsconfig.json'
               - 'package.json'
               - 'pnpm-lock.yaml'
-              - 'drizzle.config.ts'
-            migrations:
-              - 'src/lib/db/migrations/*.sql'
-              - 'src/lib/db/migrations/meta/**'
-              - 'src/lib/db/schema/**'
-              - 'src/lib/db/enums.ts'
               - 'drizzle.config.ts'
 
   lint-and-type-check:
@@ -97,7 +90,6 @@ jobs:
           version: 9
       - name: Run dependency audit
         run: pnpm audit --audit-level=high
-        continue-on-error: true
 
   build:
     name: Build
