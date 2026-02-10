@@ -10,7 +10,6 @@ on:
       - '**/*.txt'
       - '**/*.csv'
       - '**/*.log'
-  workflow_dispatch: # Allow manual re-runs
 
 permissions:
   contents: read
