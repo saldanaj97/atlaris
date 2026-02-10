@@ -113,5 +113,6 @@ export async function generateLearningPlan(
       : result.error instanceof Error
         ? result.error.message
         : 'Generation failed.';
+
   return { planId: plan.id, status: 'failure', error: message };
 }

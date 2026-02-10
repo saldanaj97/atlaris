@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import * as Sentry from '@sentry/nextjs';
+
 import type { Logger } from './logger';
 import { createLogger } from './logger';
 
@@ -17,6 +19,9 @@ export function createRequestContext(
   const incomingId = request.headers.get(REQUEST_ID_HEADER);
   const trimmedId = incomingId?.trim();
   const requestId = trimmedId ? trimmedId : randomUUID();
+
+  // Set isolation scope so Sentry logs include request_id (snake_case per Sentry docs)
+  Sentry.getIsolationScope().setAttributes({ request_id: requestId });
 
   return {
     requestId,

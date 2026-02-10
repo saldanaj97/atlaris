@@ -79,6 +79,12 @@ async function generateWithOpenRouter(
     prompt: userPrompt,
     maxOutputTokens: config.maxOutputTokens,
     temperature: config.temperature,
+    experimental_telemetry: {
+      isEnabled: true,
+      functionId: 'micro-explanation',
+      recordInputs: true,
+      recordOutputs: true,
+    },
   });
 
   return object;
