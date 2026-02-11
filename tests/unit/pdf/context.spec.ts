@@ -125,13 +125,13 @@ describe('pdf context utilities', () => {
   });
 
   it('trims to ≤max sections and ≤max chars when given 1 extra section', () => {
-    const { maxSecons, maxTotalChars } = PERSISTED_PDF_CONTEXT_CAPS;
-    const sectionsOveLmit = maxSections + 1;
+    const { maxSections, maxTotalChars } = PERSISTED_PDF_CONTEXT_CAPS;
+    const sectionsOverLimit = maxSections + 1;
     const contentPerSection = 800;
     const input = {
       mainTopic: 'Topic',
-      sections: Array.from({ enth: sectionsOverLimit }, (_, i) => ({
-        title `Sction ${i + 1}`,
+      sections: Array.from({ length: sectionsOverLimit }, (_, i) => ({
+        title: `Section ${i + 1}`,
         content: 'x'.repeat(contentPerSection),
         level: 1,
         suggestedTopic: undefined,
@@ -166,13 +166,17 @@ describe('pdf context utilities', () => {
 
     const section = result.sections[0];
     expect(section).toBeDefined();
-    expect(section!.content.length).toBeLessThan(contentOverLimit.length);
-    expect(section!.content.length).toBeLessThanOrEqual(maxSectionContentChars);
+    if (!section) {
+      throw new Error('Expected section to be present after sanitization');
+    }
+
+    expect(section.content.length).toBeLessThan(contentOverLimit.length);
+    expect(section.content.length).toBeLessThanOrEqual(maxSectionContentChars);
 
     const roundTripped = new TextDecoder().decode(
-      new TextEncoder().encode(section!.content)
+      new TextEncoder().encode(section.content)
     );
-    expect(roundTripped).toBe(section!.content);
+    expect(roundTripped).toBe(section.content);
   });
 
   describe('parsePersistedPdfContext', () => {

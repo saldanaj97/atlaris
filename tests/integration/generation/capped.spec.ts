@@ -116,9 +116,13 @@ describe('generation integration - capped attempts', () => {
     expect(attempts.length).toBeGreaterThan(0);
     expect(latestAttempt).toBeDefined(); // fail-fast when query returns no rows
 
-    expect(latestAttempt!.classification).toBe('capped');
-    expect(latestAttempt!.modulesCount).toBe(0);
-    expect(latestAttempt!.tasksCount).toBe(0);
+    if (!latestAttempt) {
+      throw new Error('Expected at least one generation attempt record');
+    }
+
+    expect(latestAttempt.classification).toBe('capped');
+    expect(latestAttempt.modulesCount).toBe(0);
+    expect(latestAttempt.tasksCount).toBe(0);
 
     const moduleRows = await db
       .select({ value: modules.id })

@@ -17,9 +17,9 @@ export interface GenerationInput {
   weeklyHours: number;
   learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
   /** ISO 8601 date (YYYY-MM-DD). Consumers must supply valid ISO dates. @example "2026-02-10" */
-  startDate?: IsoDateString | null;
+  startDate?: string | null;
   /** ISO 8601 date (YYYY-MM-DD). Consumers must supply valid ISO dates. @example "2026-02-10" */
-  deadlineDate?: IsoDateString | null;
+  deadlineDate?: string | null;
 }
 
 export interface ProviderUsage {

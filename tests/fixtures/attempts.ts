@@ -31,13 +31,18 @@ const FailedAttemptDefaults = {
 export function createFailedAttempt(
   overrides: CreateFailedAttemptParams
 ): InferInsertModel<typeof generationAttempts> {
-  const { planId, classification = 'timeout', durationMs = 10_000 } = overrides;
+  const {
+    planId,
+    classification = 'timeout',
+    durationMs = 10_000,
+    ...rest
+  } = overrides;
   return {
     ...FailedAttemptDefaults,
     planId,
     classification,
     durationMs,
-    ...overrides,
+    ...rest,
   };
 }
 

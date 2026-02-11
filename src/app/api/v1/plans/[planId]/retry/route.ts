@@ -1,6 +1,7 @@
 import { count, eq } from 'drizzle-orm';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import type { IsoDateString } from '@/lib/ai/provider';
 import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
@@ -21,6 +22,16 @@ import {
 } from '../../stream/helpers';
 
 export const maxDuration = 60;
+
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const toIsoDateString = (value: string | null): IsoDateString | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  return ISO_DATE_PATTERN.test(value) ? (value as IsoDateString) : undefined;
+};
 
 /**
  * POST /api/v1/plans/:planId/retry
@@ -119,8 +130,8 @@ export const POST = withErrorBoundary(
       skillLevel: planSkillLevel,
       weeklyHours: planWeeklyHours,
       learningStyle: planLearningStyle,
-      startDate: planStartDate ?? undefined,
-      deadlineDate: planDeadlineDate ?? undefined,
+      startDate: toIsoDateString(planStartDate),
+      deadlineDate: toIsoDateString(planDeadlineDate),
     };
 
     const stream = createEventStream(async (emit) => {

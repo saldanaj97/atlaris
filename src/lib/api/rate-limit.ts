@@ -39,11 +39,14 @@ export async function checkPlanGenerationRateLimit(
   } catch (err) {
     // Fail-closed: when we cannot verify the count, treat as rate-limited to
     // prevent abuse when DB is unavailable (expensive AI calls).
-    logger.error('countUserGenerationAttemptsSince failed, failing closed', {
-      error: err,
-      userId,
-      windowStart: windowStart.toISOString(),
-    });
+    logger.error(
+      {
+        error: err,
+        userId,
+        windowStart: windowStart.toISOString(),
+      },
+      'countUserGenerationAttemptsSince failed, failing closed'
+    );
     attemptCount = PLAN_GENERATION_LIMIT;
   }
 

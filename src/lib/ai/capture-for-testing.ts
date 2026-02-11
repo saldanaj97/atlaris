@@ -10,7 +10,6 @@ import type { AiPlanGenerationProvider, GenerationInput } from './provider';
 export type CapturedInput = { provider: string; input: GenerationInput };
 
 declare global {
-  // eslint-disable-next-line no-var
   var __capturedInputs: CapturedInput[] | undefined;
 }
 

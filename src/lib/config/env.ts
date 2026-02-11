@@ -32,27 +32,6 @@ const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
 const NEON_AUTH_COOKIE_SECRET_MIN_LENGTH = 32;
 const AV_METADEFENDER_DEFAULT_BASE_URL = 'https://api.metadefender.com/v4';
 
-const AvScannerEnvSchema = z
-  .object({
-    provider: z.string(),
-    metadefenderApiKey: z.string().optional(),
-    metadefenderBaseUrl: z.string().url(),
-    scanTimeoutMs: z.number().min(1000),
-  })
-  .superRefine((data, ctx) => {
-    if (data.provider === 'metadefender') {
-      const key = data.metadefenderApiKey?.trim();
-      if (!key) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['metadefenderApiKey'],
-          message:
-            'AV_METADEFENDER_API_KEY is required when AV_PROVIDER=metadefender',
-        });
-      }
-    }
-  });
-
 const NeonAuthEnvSchema = z
   .object({
     baseUrl: z.string().url(),
