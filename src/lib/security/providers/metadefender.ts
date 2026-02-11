@@ -59,9 +59,10 @@ function getErrorMessage(error: Error | string): string {
 function mapVerdict(result: string): ScanVerdict {
   const normalized = result.trim().toLowerCase();
   const cleanTokens = [
+    'clean',
+    'no threat detected',
     'no threats found',
     'skipped clean',
-    'no threat detected',
   ];
   if (cleanTokens.some((token) => normalized === token)) {
     return { clean: true };
