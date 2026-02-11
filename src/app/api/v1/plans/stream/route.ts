@@ -1,13 +1,5 @@
-import {
-  AI_DEFAULT_MODEL,
-  getModelsForTier,
-  isValidModelId,
-} from '@/lib/ai/ai-models';
+import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import {
-  getGenerationProvider,
-  getGenerationProviderWithModel,
-} from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
@@ -181,27 +173,10 @@ export const POST = withErrorBoundary(
       throw err;
     }
 
-    // TODO: [OPENROUTER-MIGRATION] Once preferredAiModel column exists:
-    // const userPreferredModel = user.preferredAiModel;
-
-    // TODO: Verify passing model as query param is safe and does not open abuse vectors
-    // Tier-gated model selection: only allow models the user's tier permits
-    const allowedModels = getModelsForTier(userTier);
+    // Tier-gated model selection via unified resolver
     const url = new URL(req.url);
     const modelOverride = url.searchParams.get('model');
-
-    // Validate model override against user's tier-allowed models
-    const model =
-      modelOverride &&
-      isValidModelId(modelOverride) &&
-      allowedModels.some((m) => m.id === modelOverride)
-        ? modelOverride
-        : AI_DEFAULT_MODEL;
-
-    const provider =
-      model !== AI_DEFAULT_MODEL
-        ? getGenerationProviderWithModel(model)
-        : getGenerationProvider();
+    const { provider } = resolveModelForTier(userTier, modelOverride);
     const normalizedInput: CreateLearningPlanInput = {
       ...body,
       startDate: generationInput.startDate ?? undefined,

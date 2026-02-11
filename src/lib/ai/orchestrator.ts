@@ -1,11 +1,13 @@
 import { appEnv } from '@/lib/config/env';
 import {
-  recordFailure,
-  recordSuccess,
-  startAttempt,
+  finalizeAttemptFailure,
+  finalizeAttemptSuccess,
+  reserveAttemptSlot,
+  type AttemptReservation,
   type AttemptsDbClient,
   type GenerationAttemptRecord,
 } from '@/lib/db/queries/attempts';
+import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 import * as Sentry from '@sentry/nextjs';
 
@@ -91,6 +93,14 @@ export interface RunGenerationOptions {
   dbClient: AttemptsDbClient;
   now?: () => Date;
   signal?: AbortSignal;
+  /**
+   * Pre-reserved attempt slot from {@link reserveAttemptSlot}.
+   * When provided, the orchestrator skips its internal reservation call and uses
+   * this reservation directly. This allows callers (e.g. retry route) to perform
+   * the reservation before starting a stream so they can return proper HTTP error
+   * codes for rejected attempts.
+   */
+  reservation?: AttemptReservation;
 }
 
 export interface GenerationSuccessResult {
@@ -114,12 +124,20 @@ export interface GenerationFailureResult {
   durationMs: number;
   extendedTimeout: boolean;
   timedOut: boolean;
-  attempt: GenerationAttemptRecord;
+  attempt: GenerationAttemptRecordForResponse;
 }
 
 export type GenerationResult =
   | GenerationSuccessResult
   | GenerationFailureResult;
+
+/**
+ * Failure responses can be synthetic when reservation is rejected before any
+ * attempt row exists in the database.
+ */
+export type GenerationAttemptRecordForResponse =
+  | GenerationAttemptRecord
+  | (Omit<GenerationAttemptRecord, 'id'> & { id: null });
 
 const DEFAULT_CLOCK = () => Date.now();
 
@@ -147,38 +165,69 @@ export async function runGenerationAttempt(
     );
   }
 
-  const preparation = await startAttempt({
-    planId: context.planId,
-    userId: context.userId,
-    input: context.input,
-    dbClient,
-    now: nowFn,
-  });
+  // Use pre-reserved slot if provided; otherwise reserve atomically now
+  const reservation =
+    options.reservation ??
+    (await reserveAttemptSlot({
+      planId: context.planId,
+      userId: context.userId,
+      input: context.input,
+      dbClient,
+      now: nowFn,
+    }));
 
   const attemptClockStart = clock();
 
-  if (preparation.capped) {
+  if (!reservation.reserved) {
     const durationMs = Math.max(0, clock() - attemptClockStart);
-    const attempt = await recordFailure({
+
+    // For rejected reservations we cannot finalize a row (none was created).
+    // Synthesize a minimal record for response shaping.
+    const classification: FailureClassification =
+      reservation.reason === 'capped'
+        ? 'capped'
+        : // Reuse existing retryable bucket for concurrency conflicts.
+          'rate_limit';
+    const errorMessage =
+      reservation.reason === 'capped'
+        ? 'Generation attempt cap reached'
+        : 'A generation is already in progress for this plan (concurrent conflict)';
+
+    // Create a synthetic attempt record for the response
+    const syntheticAttempt: GenerationAttemptRecordForResponse = {
+      id: null,
       planId: context.planId,
-      preparation,
-      classification: 'capped',
+      status: 'failure',
+      classification,
       durationMs,
-      timedOut: false,
-      extendedTimeout: false,
-      providerMetadata: undefined,
-      dbClient,
-      now: nowFn,
-    });
+      modulesCount: 0,
+      tasksCount: 0,
+      truncatedTopic: false,
+      truncatedNotes: false,
+      normalizedEffort: false,
+      promptHash: null,
+      metadata: null,
+      createdAt: nowFn(),
+    };
+
+    logger.warn(
+      {
+        planId: context.planId,
+        userId: context.userId,
+        reservationReason: reservation.reason,
+        attemptId: 'synthetic:no-db-row',
+      },
+      'Generation reservation rejected before attempt row creation'
+    );
 
     return {
       status: 'failure',
-      classification: 'capped',
-      error: new Error('Generation attempt cap reached'),
+      classification,
+      error: new Error(errorMessage),
       durationMs,
       extendedTimeout: false,
       timedOut: false,
-      attempt,
+      attempt: syntheticAttempt,
     };
   }
 
@@ -256,9 +305,10 @@ export async function runGenerationAttempt(
     cleanupTimeoutAbort();
     cleanupExternalAbort?.();
 
-    const attempt = await recordSuccess({
+    const attempt = await finalizeAttemptSuccess({
+      attemptId: reservation.attemptId,
       planId: context.planId,
-      preparation,
+      preparation: reservation,
       modules: pacedModules,
       providerMetadata: providerMetadata ?? {},
       durationMs,
@@ -287,9 +337,10 @@ export async function runGenerationAttempt(
 
     const classification = classifyFailure({ error, timedOut });
 
-    const attempt = await recordFailure({
+    const attempt = await finalizeAttemptFailure({
+      attemptId: reservation.attemptId,
       planId: context.planId,
-      preparation,
+      preparation: reservation,
       classification,
       durationMs,
       timedOut,

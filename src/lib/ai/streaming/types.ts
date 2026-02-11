@@ -46,9 +46,11 @@ export type ErrorEvent = {
   type: 'error';
   data: {
     planId?: string | null;
+    code: string;
     message: string;
     classification: string;
     retryable: boolean;
+    requestId?: string;
   };
 };
 
