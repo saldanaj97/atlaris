@@ -105,6 +105,21 @@ const planDeadlineDateOverrideSchema = z
   )
   .transform((value) => (value ? value : null));
 
+const pdfProofTokenSchema = z
+  .string()
+  .trim()
+  .min(16, 'pdfProofToken is invalid.')
+  .max(512, 'pdfProofToken is invalid.');
+
+const pdfExtractionHashSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^[a-f0-9]{64}$/i,
+    'pdfExtractionHash must be a 64-character SHA-256 hex digest.'
+  )
+  .transform((value) => value.toLowerCase());
+
 export const planRegenerationOverridesSchema = z
   .object({
     topic: planTopicOverrideSchema.optional(),
@@ -121,9 +136,9 @@ export type PlanRegenerationOverridesInput = z.infer<
   typeof planRegenerationOverridesSchema
 >;
 
-export const createLearningPlanSchema = z
+const createLearningPlanObject = z
   .object({
-    topic: topicSchema,
+    topic: topicSchema.optional(),
     skillLevel: SKILL_LEVEL_ENUM,
     weeklyHours: weeklyHoursSchema,
     learningStyle: LEARNING_STYLE_ENUM,
@@ -151,12 +166,15 @@ export const createLearningPlanSchema = z
         'Deadline date must be a valid ISO date string.'
       )
       .transform((value) => (value ? value : undefined)),
-    // Public visibility is intentionally disabled; field retained for compatibility.
     visibility: z.literal('private').optional().default('private'),
     origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const).default('ai'),
     extractedContent: pdfPreviewEditSchema.optional(),
+    pdfProofToken: pdfProofTokenSchema.optional(),
+    pdfExtractionHash: pdfExtractionHashSchema.optional(),
   })
-  .strict()
+  .strict();
+
+export const createLearningPlanSchema = createLearningPlanObject
   .superRefine((data, ctx) => {
     if (data.origin === 'pdf' && !data.extractedContent) {
       ctx.addIssue({
@@ -166,7 +184,33 @@ export const createLearningPlanSchema = z
       });
     }
 
-    // Forbid extractedContent when origin is NOT 'pdf'
+    if (data.origin === 'pdf' && !data.pdfProofToken) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pdfProofToken'],
+        message: 'pdfProofToken is required for PDF-based plans.',
+      });
+    }
+
+    if (data.origin === 'pdf' && !data.pdfExtractionHash) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pdfExtractionHash'],
+        message: 'pdfExtractionHash is required for PDF-based plans.',
+      });
+    }
+
+    if (
+      data.origin !== 'pdf' &&
+      (!data.topic || typeof data.topic !== 'string' || data.topic.length < 3)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['topic'],
+        message: 'Topic is required for non-PDF plans (at least 3 characters).',
+      });
+    }
+
     if (data.origin !== 'pdf' && data.extractedContent) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -174,6 +218,30 @@ export const createLearningPlanSchema = z
         message: 'extractedContent is only allowed for PDF-based plans.',
       });
     }
+
+    if (data.origin !== 'pdf' && data.pdfProofToken) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pdfProofToken'],
+        message: 'pdfProofToken is only allowed for PDF-based plans.',
+      });
+    }
+
+    if (data.origin !== 'pdf' && data.pdfExtractionHash) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pdfExtractionHash'],
+        message: 'pdfExtractionHash is only allowed for PDF-based plans.',
+      });
+    }
+  })
+  .transform((data) => {
+    const topic =
+      data.topic ??
+      (data.origin === 'pdf' && data.extractedContent
+        ? data.extractedContent.mainTopic
+        : undefined);
+    return { ...data, topic: topic ?? '' };
   });
 
 export type CreateLearningPlanInput = z.infer<typeof createLearningPlanSchema>;
@@ -188,7 +256,7 @@ export const learningPlanResourceSchema = z.object({
 
 export const onboardingFormSchema = z
   .object({
-    topic: createLearningPlanSchema.shape.topic,
+    topic: createLearningPlanObject.shape.topic,
     skillLevel: z
       .string()
       .trim()
@@ -199,7 +267,7 @@ export const onboardingFormSchema = z
       z.string().trim().min(1, 'Please select your weekly availability.'),
     ]),
     learningStyle: z.string().trim().min(1, 'Please choose a learning style.'),
-    notes: createLearningPlanSchema.shape.notes,
+    notes: createLearningPlanObject.shape.notes,
     startDate: z
       .string()
       .trim()

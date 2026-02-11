@@ -1,6 +1,7 @@
 import { count, eq } from 'drizzle-orm';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import type { IsoDateString } from '@/lib/ai/provider';
 import { getGenerationProvider } from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
@@ -11,6 +12,7 @@ import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { parsePersistedPdfContext } from '@/lib/pdf/context';
 
 import {
   buildPlanStartEvent,
@@ -20,6 +22,16 @@ import {
 } from '../../stream/helpers';
 
 export const maxDuration = 60;
+
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const toIsoDateString = (value: string | null): IsoDateString | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  return ISO_DATE_PATTERN.test(value) ? (value as IsoDateString) : undefined;
+};
 
 /**
  * POST /api/v1/plans/:planId/retry
@@ -105,16 +117,21 @@ export const POST = withErrorBoundary(
     const planLearningStyle = plan.learningStyle;
     const planStartDate = plan.startDate;
     const planDeadlineDate = plan.deadlineDate;
+    const planPdfContext =
+      plan.origin === 'pdf'
+        ? parsePersistedPdfContext(plan.extractedContext)
+        : null;
 
     const generationInput = {
       topic: planTopic,
       // Notes are not stored on the plan currently
       notes: undefined as string | undefined,
+      pdfContext: planPdfContext,
       skillLevel: planSkillLevel,
       weeklyHours: planWeeklyHours,
       learningStyle: planLearningStyle,
-      startDate: planStartDate ?? undefined,
-      deadlineDate: planDeadlineDate ?? undefined,
+      startDate: toIsoDateString(planStartDate),
+      deadlineDate: toIsoDateString(planDeadlineDate),
     };
 
     const stream = createEventStream(async (emit) => {
@@ -134,7 +151,7 @@ export const POST = withErrorBoundary(
             userId: user.id,
             input: generationInput,
           },
-          { provider, signal: req.signal }
+          { provider, signal: req.signal, dbClient: db }
         );
 
         if (result.status === 'success') {

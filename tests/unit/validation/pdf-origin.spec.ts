@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
-
-const baseInput = {
-  topic: 'Learn TypeScript',
-  skillLevel: 'beginner',
-  weeklyHours: 5,
-  learningStyle: 'reading',
-};
+import {
+  createBaseLearningPlanInput,
+  createExtractedContent,
+  createPdfProof,
+} from '../../fixtures/validation';
 
 describe('createLearningPlanSchema PDF origin', () => {
   it('requires extractedContent when origin is pdf', () => {
+    const baseInput = createBaseLearningPlanInput({ origin: 'pdf' });
+    const pdfProof = createPdfProof();
     const result = createLearningPlanSchema.safeParse({
       ...baseInput,
-      origin: 'pdf',
+      ...pdfProof,
     });
 
     expect(result.success).toBe(false);
@@ -23,38 +23,26 @@ describe('createLearningPlanSchema PDF origin', () => {
   });
 
   it('accepts extractedContent for pdf origin', () => {
+    const baseInput = createBaseLearningPlanInput({ origin: 'pdf' });
+    const pdfProof = createPdfProof();
+    const extractedContent = createExtractedContent();
     const result = createLearningPlanSchema.safeParse({
       ...baseInput,
-      origin: 'pdf',
-      extractedContent: {
-        mainTopic: 'Intro to TypeScript',
-        sections: [
-          {
-            title: 'Basics',
-            content: 'Types, interfaces, and functions.',
-            level: 1,
-          },
-        ],
-      },
+      ...pdfProof,
+      extractedContent,
     });
 
     expect(result.success).toBe(true);
   });
 
   it('rejects extractedContent for non-pdf origin', () => {
+    const baseInput = createBaseLearningPlanInput({ origin: 'ai' });
+    const pdfProof = createPdfProof();
+    const extractedContent = createExtractedContent();
     const result = createLearningPlanSchema.safeParse({
       ...baseInput,
-      origin: 'ai',
-      extractedContent: {
-        mainTopic: 'Intro to TypeScript',
-        sections: [
-          {
-            title: 'Basics',
-            content: 'Types, interfaces, and functions.',
-            level: 1,
-          },
-        ],
-      },
+      ...pdfProof,
+      extractedContent,
     });
 
     expect(result.success).toBe(false);
@@ -62,6 +50,32 @@ describe('createLearningPlanSchema PDF origin', () => {
       const flatErrors = result.error.flatten();
       expect(flatErrors.fieldErrors.extractedContent).toEqual([
         'extractedContent is only allowed for PDF-based plans.',
+      ]);
+      expect(flatErrors.fieldErrors.pdfProofToken).toEqual([
+        'pdfProofToken is only allowed for PDF-based plans.',
+      ]);
+      expect(flatErrors.fieldErrors.pdfExtractionHash).toEqual([
+        'pdfExtractionHash is only allowed for PDF-based plans.',
+      ]);
+    }
+  });
+
+  it('requires extraction proof fields for pdf origin', () => {
+    const baseInput = createBaseLearningPlanInput({ origin: 'pdf' });
+    const extractedContent = createExtractedContent();
+    const result = createLearningPlanSchema.safeParse({
+      ...baseInput,
+      extractedContent,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const flatErrors = result.error.flatten();
+      expect(flatErrors.fieldErrors.pdfProofToken).toEqual([
+        'pdfProofToken is required for PDF-based plans.',
+      ]);
+      expect(flatErrors.fieldErrors.pdfExtractionHash).toEqual([
+        'pdfExtractionHash is required for PDF-based plans.',
       ]);
     }
   });

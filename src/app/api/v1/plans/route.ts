@@ -17,6 +17,8 @@ import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
+import { sanitizePdfContextForPersistence } from '@/lib/pdf/context';
+import { verifyAndConsumePdfExtractionProof } from '@/lib/security/pdf-extraction-proof';
 import {
   atomicCheckAndIncrementPdfUsage,
   atomicCheckAndInsertPlan,
@@ -64,11 +66,12 @@ export const POST = withErrorBoundary(
       );
     }
 
+    const db = getDb();
+
     // Check rate limit before creating plan
-    await checkPlanGenerationRateLimit(user.id);
+    await checkPlanGenerationRateLimit(user.id, db);
 
     // Enforce plan duration cap based on user tier using the requested window
-    const db = getDb();
     const userTier = await resolveUserTier(user.id, db);
     const requestedWeeks = calculateTotalWeeks({
       startDate: body.startDate ?? null,
@@ -123,7 +126,26 @@ export const POST = withErrorBoundary(
     const origin = body.origin ?? 'ai';
     const extractedContent = body.extractedContent;
 
+    const invalidPdfProofResponse = () =>
+      jsonError('Invalid or expired PDF extraction proof.', { status: 403 });
+
     if (origin === 'pdf') {
+      if (!extractedContent || !body.pdfProofToken || !body.pdfExtractionHash) {
+        return invalidPdfProofResponse();
+      }
+
+      const proofVerified = await verifyAndConsumePdfExtractionProof({
+        authUserId: userId,
+        extractedContent,
+        extractionHash: body.pdfExtractionHash,
+        token: body.pdfProofToken,
+        dbClient: db,
+      });
+
+      if (!proofVerified) {
+        return invalidPdfProofResponse();
+      }
+
       const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id, db);
       if (!pdfUsage.allowed) {
         return jsonError('PDF plan quota exceeded for this month.', {
@@ -133,9 +155,17 @@ export const POST = withErrorBoundary(
       }
     }
 
-    const topic =
+    const extractedContext =
       origin === 'pdf' && extractedContent
-        ? extractedContent.mainTopic
+        ? sanitizePdfContextForPersistence(extractedContent)
+        : null;
+
+    const topic =
+      origin === 'pdf' &&
+      extractedContext &&
+      extractedContext.mainTopic &&
+      extractedContext.mainTopic.trim().length > 0
+        ? extractedContext.mainTopic.trim()
         : body.topic;
 
     let created: { id: string };
@@ -149,6 +179,7 @@ export const POST = withErrorBoundary(
           learningStyle: body.learningStyle,
           visibility: 'private',
           origin,
+          extractedContext,
           startDate: _startDate,
           deadlineDate: _deadlineDate,
         },

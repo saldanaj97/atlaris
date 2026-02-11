@@ -2,8 +2,9 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { db } from '@/lib/db/service-role';
+import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
@@ -63,14 +64,27 @@ describe('RLS attempt insertion', () => {
             learningStyle: 'reading',
           },
         },
-        { provider: mock.provider }
+        { provider: mock.provider, dbClient: getDb() }
       );
     } catch (e) {
       error = e;
     }
 
-    // Expect an error due to RLS violation
+    // Expect an RLS/permission-denied error or plan ownership check error
     expect(error).toBeTruthy();
+    const err = error as Error & { code?: string; cause?: unknown };
+    const msg = err.message ?? '';
+    const causeMsg = (err.cause as Error)?.message ?? '';
+    const combinedMsg = `${msg} ${causeMsg}`;
+    const hasPermissionCode =
+      err.code === '42501' ||
+      (err.cause as { code?: string })?.code === '42501';
+    const hasPermissionMessage =
+      /permission denied|row[- ]level security|not found or inaccessible/i.test(combinedMsg);
+    expect(
+      hasPermissionCode || hasPermissionMessage,
+      `Expected RLS/permission-denied error but got: ${msg}${causeMsg ? ` (cause: ${causeMsg})` : ''}`
+    ).toBe(true);
 
     const attempts = await db
       .select()

@@ -27,6 +27,16 @@ const TEST_MODEL = 'google/gemini-2.0-flash-exp:free';
 const SAMPLE_INPUT: GenerationInput = {
   topic: 'TypeScript Fundamentals',
   notes: 'Focus on type safety',
+  pdfContext: {
+    mainTopic: 'TypeScript Handbook',
+    sections: [
+      {
+        title: 'Generics',
+        content: 'Type parameters and constraints',
+        level: 1,
+      },
+    ],
+  },
   skillLevel: 'beginner',
   weeklyHours: 8,
   learningStyle: 'mixed',
@@ -189,7 +199,8 @@ describe('OpenRouterProvider', () => {
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'anthropic/claude-3-sonnet',
-        })
+        }),
+        expect.any(Object)
       );
     });
   });
@@ -325,7 +336,9 @@ describe('OpenRouterProvider', () => {
             expect.objectContaining({ role: 'system' }),
             expect.objectContaining({ role: 'user' }),
           ]),
-        })
+        }),
+        // requestOptions: {} when no GenerationOptions passed (no signal, no timeoutMs)
+        {}
       );
     });
 
@@ -350,6 +363,33 @@ describe('OpenRouterProvider', () => {
 
       expect(userMessage.content).toContain('TypeScript Fundamentals');
       expect(userMessage.content).toContain('beginner');
+    });
+
+    it('includes notes and PDF context in user prompt', async () => {
+      mockSend.mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify(VALID_PLAN_RESPONSE),
+            },
+          },
+        ],
+      });
+
+      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      await provider.generate(SAMPLE_INPUT);
+
+      const callArgs = mockSend.mock.calls[0][0];
+      const userMessage = callArgs.messages.find(
+        (m: { role: string }) => m.role === 'user'
+      );
+
+      expect(userMessage.content).toContain('Notes: Focus on type safety');
+      expect(userMessage.content).toContain('---BEGIN PDF CONTEXT---');
+      expect(userMessage.content).toContain(
+        'PDF main topic: TypeScript Handbook'
+      );
+      expect(userMessage.content).toContain('Section 1 title: Generics');
     });
   });
 

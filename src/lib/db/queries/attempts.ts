@@ -2,7 +2,7 @@ import { getCorrelationId } from '@/lib/api/context';
 import { appEnv, attemptsEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 import type { InferSelectModel } from 'drizzle-orm';
-import { count, eq } from 'drizzle-orm';
+import { and, asc, count, eq, gte } from 'drizzle-orm';
 
 import type { ParsedModule } from '@/lib/ai/parser';
 import type { ProviderMetadata } from '@/lib/ai/provider';
@@ -24,10 +24,19 @@ import {
 } from '@/lib/validation/learningPlans';
 
 import type { GenerationInput } from '@/lib/ai/provider';
-import { generationAttempts, learningPlans, modules, tasks } from '../schema';
-import { db } from '../service-role';
+import {
+  generationAttempts,
+  learningPlans,
+  modules,
+  tasks,
+} from '@/lib/db/schema';
 
 const ATTEMPT_CAP = attemptsEnv.cap;
+
+/** Db client for attempts. Must be request-scoped getDb() in API routes to enforce RLS. */
+export type AttemptsDbClient = ReturnType<
+  typeof import('@/lib/db/runtime').getDb
+>;
 
 interface SanitizedField {
   value: string | undefined;
@@ -58,7 +67,8 @@ export interface StartAttemptParams {
   planId: string;
   userId: string;
   input: GenerationInput;
-  dbClient?: typeof db;
+  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
+  dbClient: AttemptsDbClient;
   now?: () => Date;
 }
 
@@ -69,7 +79,8 @@ export interface RecordSuccessParams {
   providerMetadata?: ProviderMetadata;
   durationMs: number;
   extendedTimeout: boolean;
-  dbClient?: typeof db;
+  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
+  dbClient: AttemptsDbClient;
   now?: () => Date;
 }
 
@@ -81,7 +92,8 @@ export interface RecordFailureParams {
   timedOut?: boolean;
   extendedTimeout?: boolean;
   providerMetadata?: ProviderMetadata;
-  dbClient?: typeof db;
+  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
+  dbClient: AttemptsDbClient;
   now?: () => Date;
 }
 
@@ -256,7 +268,7 @@ export async function startAttempt({
   dbClient,
   now,
 }: StartAttemptParams): Promise<AttemptPreparation> {
-  const client = dbClient ?? db;
+  const client = dbClient;
   const nowFn = now ?? (() => new Date());
 
   const [planOwner] = await client
@@ -302,7 +314,7 @@ export async function recordSuccess({
   dbClient,
   now,
 }: RecordSuccessParams): Promise<GenerationAttemptRecord> {
-  const client = dbClient ?? db;
+  const client = dbClient;
   const nowFn = now ?? (() => new Date());
 
   const { normalizedModules, normalizationFlags } =
@@ -424,7 +436,7 @@ export async function recordFailure({
   dbClient,
   now,
 }: RecordFailureParams): Promise<GenerationAttemptRecord> {
-  const client = dbClient ?? db;
+  const client = dbClient;
   const nowFn = now ?? (() => new Date());
   const finishedAt = nowFn();
 
@@ -475,3 +487,62 @@ export async function recordFailure({
 }
 
 export { ATTEMPT_CAP };
+
+/**
+ * Counts generation attempts for the given user since the given timestamp.
+ * Joins with learning_plans to enforce ownership by ownerId (user id).
+ *
+ * @param userId - Internal user id (from users table) to enforce per-user limit
+ * @param dbClient - Database client for querying generation_attempts
+ * @param since - Start of the time window
+ * @returns Number of generation attempts in the window
+ */
+export async function countUserGenerationAttemptsSince(
+  userId: string,
+  dbClient: AttemptsDbClient,
+  since: Date
+): Promise<number> {
+  const [row] = await dbClient
+    .select({ value: count(generationAttempts.id) })
+    .from(generationAttempts)
+    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        gte(generationAttempts.createdAt, since)
+      )
+    );
+
+  return row?.value ?? 0;
+}
+
+/**
+ * Returns the createdAt timestamp of the oldest generation attempt for the user
+ * within the given window. Used to compute accurate retry-after when rate limit
+ * is exceeded (the oldest attempt determines when the window will free a slot).
+ *
+ * @param userId - Internal user id (from users table)
+ * @param dbClient - Database client for querying generation_attempts
+ * @param since - Start of the time window
+ * @returns The createdAt of the oldest attempt, or null if none exist
+ */
+export async function getOldestUserGenerationAttemptSince(
+  userId: string,
+  dbClient: AttemptsDbClient,
+  since: Date
+): Promise<Date | null> {
+  const [row] = await dbClient
+    .select({ createdAt: generationAttempts.createdAt })
+    .from(generationAttempts)
+    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        gte(generationAttempts.createdAt, since)
+      )
+    )
+    .orderBy(asc(generationAttempts.createdAt))
+    .limit(1);
+
+  return row?.createdAt ?? null;
+}

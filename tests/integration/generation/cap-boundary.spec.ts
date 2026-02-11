@@ -1,14 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  tasks,
-} from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
+import { createFailedAttempts } from '../../fixtures/attempts';
+import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
@@ -17,20 +14,7 @@ const authUserId = 'auth_generation_cap_boundary';
 const authEmail = 'generation-cap-boundary@example.com';
 
 async function seedFailureAttempts(planId: string, count: number) {
-  const attempts = Array.from({ length: count }, (_, index) => ({
-    planId,
-    status: 'failure' as const,
-    classification: index % 2 === 0 ? 'timeout' : 'validation',
-    durationMs: 1_000 + index * 100,
-    modulesCount: 0,
-    tasksCount: 0,
-    truncatedTopic: false,
-    truncatedNotes: false,
-    normalizedEffort: false,
-    promptHash: null,
-    metadata: null,
-  }));
-
+  const attempts = createFailedAttempts(planId, count);
   await db.insert(generationAttempts).values(attempts);
 }
 
@@ -42,18 +26,12 @@ describe('generation integration - attempt cap boundary', () => {
   it('allows the third attempt and caps the fourth', async () => {
     const userId = await ensureUser({ authUserId, email: authEmail });
 
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'Cap Boundary Topic',
-        skillLevel: 'intermediate',
-        weeklyHours: 4,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      })
-      .returning();
+    const plan = await createTestPlan({
+      userId,
+      topic: 'Cap Boundary Topic',
+      skillLevel: 'intermediate',
+      weeklyHours: 4,
+    });
 
     await seedFailureAttempts(plan.id, 2);
 
@@ -71,7 +49,7 @@ describe('generation integration - attempt cap boundary', () => {
           learningStyle: 'mixed',
         },
       },
-      { provider: mock.provider }
+      { provider: mock.provider, dbClient: db }
     );
 
     expect(thirdAttempt.status).toBe('success');
@@ -112,7 +90,7 @@ describe('generation integration - attempt cap boundary', () => {
           learningStyle: 'mixed',
         },
       },
-      { provider: mock.provider }
+      { provider: mock.provider, dbClient: db }
     );
 
     expect(fourthAttempt.status).toBe('failure');

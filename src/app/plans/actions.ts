@@ -67,19 +67,22 @@ export async function generateLearningPlan(
     return { planId: '', status: 'failure', error: message };
   }
 
-  const result = await runGenerationAttempt({
-    planId: plan.id,
-    userId: user.id,
-    input: {
-      topic: params.topic,
-      notes: params.notes ?? null,
-      skillLevel: params.skillLevel,
-      weeklyHours: params.weeklyHours,
-      learningStyle: params.learningStyle,
-      startDate: params.startDate ?? null,
-      deadlineDate: params.deadlineDate ?? null,
+  const result = await runGenerationAttempt(
+    {
+      planId: plan.id,
+      userId: user.id,
+      input: {
+        topic: params.topic,
+        notes: params.notes ?? null,
+        skillLevel: params.skillLevel,
+        weeklyHours: params.weeklyHours,
+        learningStyle: params.learningStyle,
+        startDate: params.startDate ?? null,
+        deadlineDate: params.deadlineDate ?? null,
+      },
     },
-  });
+    { dbClient: db }
+  );
 
   if (result.status === 'success') {
     await markPlanGenerationSuccess(plan.id, db);

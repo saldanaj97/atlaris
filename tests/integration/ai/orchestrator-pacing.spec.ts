@@ -38,7 +38,7 @@ describe('orchestrator pacing integration', () => {
 
   const mockOptions: RunGenerationOptions = {
     clock: vi.fn(() => Date.now()),
-    dbClient: {} as any,
+    dbClient: { select: vi.fn() } as any,
     now: vi.fn(() => new Date()),
   };
 

@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  tasks,
-} from '@/lib/db/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
+import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
@@ -20,19 +16,13 @@ describe('generation integration - success path', () => {
   it('persists modules/tasks and logs a successful attempt', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({ authUserId, email: authEmail });
-
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'Deep Learning Foundations',
-        skillLevel: 'intermediate',
-        weeklyHours: 6,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      })
-      .returning();
+    const plan = await createTestPlan({
+      userId,
+      topic: 'Deep Learning Foundations',
+      skillLevel: 'intermediate',
+      weeklyHours: 6,
+      learningStyle: 'mixed',
+    });
 
     const mock = createMockProvider({ scenario: 'success' });
 
@@ -48,7 +38,7 @@ describe('generation integration - success path', () => {
           learningStyle: 'mixed',
         },
       },
-      { provider: mock.provider }
+      { provider: mock.provider, dbClient: db }
     );
 
     expect(result.status).toBe('success');

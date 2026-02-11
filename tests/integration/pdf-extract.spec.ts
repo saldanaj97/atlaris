@@ -8,19 +8,23 @@ vi.mock('@/lib/security/malware-scanner', () => ({
   scanBufferForMalware: vi.fn(),
 }));
 
-import { POST } from '@/app/api/v1/plans/from-pdf/extract/route';
-import { scanBufferForMalware } from '@/lib/security/malware-scanner';
-import { extractTextFromPdf } from '@/lib/pdf/extract';
 import { clearTestUser, setTestUser } from '@/../tests/helpers/auth';
 import {
   ensureStripeWebhookEvents,
   ensureUser,
   resetDbForIntegrationTestFile,
 } from '@/../tests/helpers/db';
+import { POST } from '@/app/api/v1/plans/from-pdf/extract/route';
+import { extractTextFromPdf } from '@/lib/pdf/extract';
+import { scanBufferForMalware } from '@/lib/security/malware-scanner';
 
 const BASE_URL = 'http://localhost/api/v1/plans/from-pdf/extract';
 
-const createPdfRequest = () => {
+type PdfExtractTestRequest = Request & {
+  formData: () => Promise<FormData>;
+};
+
+const createPdfRequest = (): PdfExtractTestRequest => {
   const form = new FormData();
   const pdfHeader = '%PDF-1.4\n%%EOF';
   const buffer = Buffer.from(pdfHeader, 'utf8');
@@ -82,6 +86,12 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     expect(payload.success).toBe(true);
     expect(payload.extraction.text).toContain('Hello PDF');
     expect(payload.extraction.pageCount).toBe(1);
+    expect(payload.proof).toBeDefined();
+    expect(payload.proof.token).toBeTypeOf('string');
+    expect(payload.proof.token.length).toBeGreaterThan(20);
+    expect(payload.proof.extractionHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.proof.version).toBe(1);
+    expect(payload.proof.expiresAt).toBeTypeOf('string');
 
     expect(payload.extraction.structure.sections).toHaveLength(1);
     const section = payload.extraction.structure.sections[0];
@@ -108,6 +118,49 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     const payload = await response.json();
     expect(payload.success).toBe(false);
     expect(payload.code).toBe('NO_TEXT');
+  });
+
+  it('returns 400 when malware is detected before extraction', async () => {
+    const authUserId = `auth_pdf_malware_${Date.now()}`;
+    const authEmail = `pdf-malware-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    vi.mocked(scanBufferForMalware).mockResolvedValue({
+      clean: false,
+      threat: 'MetaDefender-Infected',
+    });
+
+    const request = createPdfRequest();
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const payload = await response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe('MALWARE_DETECTED');
+    expect(extractTextFromPdf).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 when malware scan fails (fail-closed)', async () => {
+    const authUserId = `auth_pdf_scanfail_${Date.now()}`;
+    const authEmail = `pdf-scanfail-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    vi.mocked(scanBufferForMalware).mockRejectedValue(
+      new Error('Scanner timeout')
+    );
+
+    const request = createPdfRequest();
+    const response = await POST(request);
+
+    expect(response.status).toBe(500);
+    const payload = await response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe('SCAN_FAILED');
+    expect(extractTextFromPdf).not.toHaveBeenCalled();
   });
 
   it('returns 401 when unauthenticated', async () => {

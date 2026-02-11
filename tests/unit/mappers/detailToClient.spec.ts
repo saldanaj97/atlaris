@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-import { describe, expect, it } from 'vitest';
+import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import {
-  mapDetailToClient,
   mapAttemptsToClient,
+  mapDetailToClient,
 } from '@/lib/mappers/detailToClient';
 import type {
   LearningPlan,
@@ -13,6 +13,15 @@ import type {
   TaskProgress,
   TaskResourceWithResource,
 } from '@/lib/types/db';
+import { describe, expect, it } from 'vitest';
+import {
+  buildModule,
+  buildPlan,
+  buildPlanDetail,
+  buildSuccessAttempt,
+  buildTask,
+  buildTaskResource,
+} from '../../fixtures/plan-detail';
 
 describe('mapDetailToClient', () => {
   it('should map complete plan detail to client format', () => {
@@ -438,33 +447,66 @@ describe('mapDetailToClient', () => {
   });
 
   it('should derive status as "failed" when attempts count exceeds cap', () => {
-    const plan = {
-      id: 'plan-1',
-      userId: 'user-1',
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const detail: LearningPlanDetail = {
-      plan: { ...(plan as any), modules: [] },
-      totalTasks: 0,
-      completedTasks: 0,
+    const detail = buildPlanDetail({
+      plan: buildPlan({ modules: [] }),
+      attemptsCount: ATTEMPT_CAP,
       latestAttempt: null,
-      attemptsCount: 5, // Assuming ATTEMPT_CAP is 5
-      latestJobStatus: null,
-      latestJobError: null,
-    };
+    });
 
     const result = mapDetailToClient(detail);
     expect(result!.status).toBe('failed');
+  });
+
+  it('should sort resources within tasks by order', () => {
+    const task = buildTask({
+      id: 'task-1',
+      moduleId: 'module-1',
+      order: 1,
+      resources: [
+        buildTaskResource({
+          id: 'resource-2',
+          taskId: 'task-1',
+          resourceId: 'res-2',
+          order: 2,
+        }),
+        buildTaskResource({
+          id: 'resource-1',
+          taskId: 'task-1',
+          resourceId: 'res-1',
+          order: 1,
+        }),
+      ],
+    });
+
+    const detail = buildPlanDetail({
+      plan: buildPlan({
+        modules: [buildModule({ id: 'module-1', tasks: [task] })],
+      }),
+    });
+
+    const result = mapDetailToClient(detail);
+    expect(result!.modules[0].tasks[0].resources.map((r) => r.order)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it('should mask classification to null for success attempts', () => {
+    const latestAttempt = buildSuccessAttempt({
+      status: 'success',
+      classification: 'validation',
+      metadata: { provider: { model: 'gpt-4o-mini' } },
+    });
+
+    const detail = buildPlanDetail({
+      plan: buildPlan({ modules: [] }),
+      latestAttempt,
+      attemptsCount: 1,
+    });
+
+    const result = mapDetailToClient(detail);
+    expect(result!.latestAttempt!.status).toBe('success');
+    expect(result!.latestAttempt!.classification).toBeNull();
+    expect(result!.latestAttempt!.model).toBe('gpt-4o-mini');
   });
 
   it('should derive status as "pending" by default', () => {
@@ -582,6 +624,60 @@ describe('mapAttemptsToClient', () => {
   it('should handle empty array', () => {
     const result = mapAttemptsToClient([]);
     expect(result).toHaveLength(0);
+  });
+
+  it('should serialize timestamps to ISO strings and preserve metadata', () => {
+    const successAttempt = buildSuccessAttempt();
+    const failureAttempt = buildSuccessAttempt({
+      id: 'attempt-2',
+      status: 'failure',
+      classification: 'rate_limit',
+      truncatedTopic: true,
+      truncatedNotes: true,
+      normalizedEffort: true,
+      metadata: {
+        provider: {
+          model: 'gpt-4o-mini',
+        },
+      },
+      createdAt: new Date('2025-01-02T00:00:00.000Z'),
+    });
+
+    const attempts = mapAttemptsToClient([successAttempt, failureAttempt]);
+
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toMatchObject({
+      id: 'attempt-1',
+      status: 'success',
+      classification: null,
+      durationMs: 1_200,
+      modulesCount: 2,
+      tasksCount: 4,
+      truncatedTopic: false,
+      truncatedNotes: false,
+      normalizedEffort: false,
+      promptHash: 'hash',
+      metadata: {
+        provider: {
+          model: 'gpt-4o',
+        },
+      },
+      createdAt: new Date('2025-01-01T00:00:00.000Z').toISOString(),
+    });
+    expect(attempts[1]).toMatchObject({
+      id: 'attempt-2',
+      status: 'failure',
+      classification: 'rate_limit',
+      truncatedTopic: true,
+      truncatedNotes: true,
+      normalizedEffort: true,
+      metadata: {
+        provider: {
+          model: 'gpt-4o-mini',
+        },
+      },
+      createdAt: new Date('2025-01-02T00:00:00.000Z').toISOString(),
+    });
   });
 
   it('should handle attempts without metadata', () => {

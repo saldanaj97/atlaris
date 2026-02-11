@@ -4,14 +4,18 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/v1/plans/stream/route';
 import { learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import {
+  computePdfExtractionHash,
+  issuePdfExtractionProof,
+} from '@/lib/security/pdf-extraction-proof';
 
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import {
   readStreamingResponse,
   type StreamingEvent,
 } from '../../helpers/streaming';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -244,5 +248,216 @@ describe('POST /api/v1/plans/stream', () => {
     const events = await readStreamingResponse(response);
     const completeEvent = events.find((event) => event.type === 'complete');
     expect(completeEvent?.data?.planId).toBeTruthy();
+  });
+
+  it('rejects PDF-origin stream request with forged extraction hash', async () => {
+    const authUserId = buildTestAuthUserId('stream-pdf-forged-hash');
+    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    setTestUser(authUserId);
+
+    const extractedContent = {
+      mainTopic: 'TypeScript from PDF',
+      sections: [
+        {
+          title: 'Intro',
+          content: 'Basics and setup',
+          level: 1,
+        },
+      ],
+    };
+
+    const validHash = computePdfExtractionHash(extractedContent);
+    const { token } = await issuePdfExtractionProof({
+      authUserId,
+      extractionHash: validHash,
+    });
+
+    const forgedHash =
+      'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+
+    const payload = {
+      origin: 'pdf',
+      extractedContent,
+      pdfProofToken: token,
+      pdfExtractionHash: forgedHash,
+      topic: extractedContent.mainTopic,
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-01-01',
+      visibility: 'private',
+    };
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toBe('Invalid or expired PDF extraction proof.');
+  });
+
+  it('rejects replayed PDF extraction proof token', async () => {
+    const authUserId = buildTestAuthUserId('stream-pdf-replay');
+    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    setTestUser(authUserId);
+
+    const extractedContent = {
+      mainTopic: 'React from PDF',
+      sections: [
+        {
+          title: 'Foundations',
+          content: 'Components and props',
+          level: 1,
+        },
+      ],
+    };
+
+    const extractionHash = computePdfExtractionHash(extractedContent);
+    const { token } = await issuePdfExtractionProof({
+      authUserId,
+      extractionHash,
+    });
+
+    const payload = {
+      origin: 'pdf',
+      extractedContent,
+      pdfProofToken: token,
+      pdfExtractionHash: extractionHash,
+      topic: extractedContent.mainTopic,
+      skillLevel: 'beginner',
+      weeklyHours: 4,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-02-01',
+      visibility: 'private',
+    };
+
+    const firstRequest = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const firstResponse = await POST(firstRequest);
+    expect(firstResponse.status).toBe(200);
+    await readStreamingResponse(firstResponse);
+
+    const replayRequest = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const replayResponse = await POST(replayRequest);
+    expect(replayResponse.status).toBe(403);
+    const body = (await replayResponse.json()) as { error?: string };
+    expect(body.error).toBe('Invalid or expired PDF extraction proof.');
+  });
+
+  it('persists PDF context and forwards it to generation input', async () => {
+    const authUserId = buildTestAuthUserId('stream-pdf-context');
+    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    setTestUser(authUserId);
+
+    const extractedContent = {
+      mainTopic: 'TypeScript from PDF context',
+      sections: [
+        {
+          title: 'Core concepts',
+          content: `${'x'.repeat(3_000)}TAIL_MARKER`,
+          level: 1,
+          suggestedTopic: 'Type system',
+        },
+      ],
+    };
+
+    const extractionHash = computePdfExtractionHash(extractedContent);
+    const { token } = await issuePdfExtractionProof({
+      authUserId,
+      extractionHash,
+    });
+
+    const orchestrator = await import('@/lib/ai/orchestrator');
+    const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
+
+    try {
+      const payload = {
+        origin: 'pdf',
+        extractedContent,
+        pdfProofToken: token,
+        pdfExtractionHash: extractionHash,
+        topic: extractedContent.mainTopic,
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        deadlineDate: '2030-04-01',
+        visibility: 'private',
+      };
+
+      const request = new Request('http://localhost/api/v1/plans/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(200);
+
+      const events = await readStreamingResponse(response);
+      const completeEvent = events.find((event) => event.type === 'complete');
+      expect(completeEvent?.data?.planId).toBeTruthy();
+      const planId = completeEvent?.data?.planId as string;
+
+      expect(runSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            pdfContext: expect.objectContaining({
+              mainTopic: 'TypeScript from PDF context',
+              sections: expect.arrayContaining([
+                expect.objectContaining({
+                  title: 'Core concepts',
+                  content: expect.any(String),
+                }),
+              ]),
+            }),
+          }),
+        }),
+        expect.anything()
+      );
+
+      const capturedInput = runSpy.mock.calls[0]?.[0]?.input;
+      expect(
+        capturedInput?.pdfContext?.sections[0]?.content.length
+      ).toBeLessThan(extractedContent.sections[0].content.length);
+
+      const [plan] = await db
+        .select()
+        .from(learningPlans)
+        .where(eq(learningPlans.id, planId))
+        .limit(1);
+
+      expect(plan?.extractedContext).toMatchObject({
+        mainTopic: 'TypeScript from PDF context',
+        sections: expect.arrayContaining([
+          expect.objectContaining({ title: 'Core concepts' }),
+        ]),
+      });
+      expect(
+        plan?.extractedContext?.sections?.[0]?.content.length
+      ).toBeLessThan(extractedContent.sections[0].content.length);
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
