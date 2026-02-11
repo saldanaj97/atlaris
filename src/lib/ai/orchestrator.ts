@@ -270,10 +270,11 @@ export async function runGenerationAttempt(
       preparation: reservation,
       classification,
       durationMs,
+      error: initError,
       dbClient,
       now: nowFn,
     });
-    return {
+    const result: GenerationFailureResult = {
       status: 'failure',
       classification,
       error: initError,
@@ -281,7 +282,8 @@ export async function runGenerationAttempt(
       extendedTimeout: false,
       timedOut: false,
       attempt,
-    } as GenerationFailureResult;
+    };
+    return result;
   }
 
   let providerMetadata: ProviderMetadata | undefined;
@@ -378,6 +380,7 @@ export async function runGenerationAttempt(
       timedOut,
       extendedTimeout: timeout.didExtend,
       providerMetadata,
+      error,
       dbClient,
       now: nowFn,
     });

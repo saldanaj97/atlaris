@@ -7,6 +7,7 @@
  * @module lib/ai/model-resolver
  */
 
+import { AppError } from '@/lib/api/errors';
 import {
   AI_DEFAULT_MODEL,
   getModelsForTier,
@@ -49,11 +50,15 @@ function getProviderSafe(
       ? getGenerationProviderWithModel(modelIdToUse)
       : getGenerationProvider();
   } catch (err) {
-    logger.error({ err, requestedModel, factory }, 'Provider factory failed');
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `Provider initialization failed (requestedModel=${String(requestedModel ?? 'default')}, factory=${factory}): ${message}`
+    logger.error(
+      { err, requestedModel: requestedModel ?? 'default', factory },
+      'Provider factory failed'
     );
+    throw new AppError('Provider initialization failed.', {
+      status: 500,
+      code: 'PROVIDER_INIT_FAILED',
+      details: err instanceof Error ? { cause: err } : undefined,
+    });
   }
 }
 

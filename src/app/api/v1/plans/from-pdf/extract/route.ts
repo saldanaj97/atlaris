@@ -78,6 +78,59 @@ function parseFormDataToObject(formData: FormData): Record<string, unknown> {
   return result;
 }
 
+type StreamSizeCheckResult =
+  | { ok: true; body: ArrayBuffer }
+  | { ok: false; code: 'FILE_TOO_LARGE'; status: 413 }
+  | { ok: false; code: 'MISSING_CONTENT_LENGTH'; status: 411 }
+  | { ok: false; code: 'INVALID_FILE'; status: 400 };
+
+/**
+ * Streams the request body and counts bytes against maxBytes.
+ * Aborts and returns error as soon as limit is exceeded.
+ * Never buffers more than maxBytes; prevents memory exhaustion from oversized uploads.
+ */
+async function streamedSizeCheck(
+  req: Request,
+  maxBytes: number
+): Promise<StreamSizeCheckResult> {
+  const contentType = req.headers.get('content-type');
+  if (!contentType?.toLowerCase().includes('multipart/form-data')) {
+    return { ok: false, code: 'INVALID_FILE', status: 400 };
+  }
+
+  const reader = req.body?.getReader();
+  if (!reader) {
+    return { ok: false, code: 'MISSING_CONTENT_LENGTH', status: 411 };
+  }
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.length;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return { ok: false, code: 'FILE_TOO_LARGE', status: 413 };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, code: 'INVALID_FILE', status: 400 };
+  }
+
+  const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
+  const merged = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const c of chunks) {
+    merged.set(c, offset);
+    offset += c.length;
+  }
+  return { ok: true, body: merged.buffer };
+}
+
 export const POST: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
     const user = await getUserByAuthId(userId);
@@ -87,29 +140,25 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
-    // Hard body size check before reading form data into memory.
-    // Reject early to avoid loading large bodies; tier checks happen later.
-    const rawContentLength = req.headers.get('content-length');
-    const parsedContentLength =
-      rawContentLength !== null ? Number.parseInt(rawContentLength, 10) : NaN;
-    if (
-      rawContentLength === null ||
-      !/^\d+$/.test(rawContentLength) ||
-      !Number.isFinite(parsedContentLength)
-    ) {
+    // Streamed body size check before any form parsing.
+    // Counts bytes as they arrive; aborts and returns 413 as soon as limit exceeded.
+    // Prevents memory exhaustion from oversized or forged Content-Length uploads.
+    const streamSizeResult = await streamedSizeCheck(
+      req,
+      ABSOLUTE_MAX_PDF_BYTES
+    );
+    if (!streamSizeResult.ok) {
       const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
+      const message =
+        streamSizeResult.code === 'FILE_TOO_LARGE'
+          ? `Request body exceeds absolute maximum of ${maxMb}MB.`
+          : streamSizeResult.code === 'MISSING_CONTENT_LENGTH'
+            ? `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`
+            : 'Invalid request body.';
       return errorResponse(
-        `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`,
-        'MISSING_CONTENT_LENGTH',
-        rawContentLength === null ? 411 : 400
-      );
-    }
-    const contentLength = parsedContentLength;
-    if (contentLength > ABSOLUTE_MAX_PDF_BYTES) {
-      return errorResponse(
-        `Request body exceeds absolute maximum of ${ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024)}MB.`,
-        'FILE_TOO_LARGE',
-        413
+        message,
+        streamSizeResult.code,
+        streamSizeResult.status
       );
     }
 
@@ -133,7 +182,11 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
-    const formData = await req.formData();
+    const formData = await new Request(req.url, {
+      method: req.method,
+      headers: { 'content-type': req.headers.get('content-type') ?? '' },
+      body: streamSizeResult.body,
+    }).formData();
     const formObject = parseFormDataToObject(formData);
 
     const parseResult = formDataSchema.safeParse(formObject);
@@ -160,13 +213,13 @@ export const POST: PlainHandler = withErrorBoundary(
       },
     };
 
-    const sizeCheck = await checkPdfSizeLimit(
+    const tierSizeCheck = await checkPdfSizeLimit(
       user.id,
       file.size,
       validationDeps
     );
-    if (!sizeCheck.allowed) {
-      return errorResponse(sizeCheck.reason, sizeCheck.code, 413);
+    if (!tierSizeCheck.allowed) {
+      return errorResponse(tierSizeCheck.reason, tierSizeCheck.code, 413);
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
