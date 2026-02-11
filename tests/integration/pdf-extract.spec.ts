@@ -28,9 +28,7 @@ type PdfExtractTestRequest = Request & {
   formData: () => Promise<FormData>;
 };
 
-const createPdfRequest = (opts?: {
-  contentLength?: string;
-}): PdfExtractTestRequest => {
+const createPdfRequest = (): PdfExtractTestRequest => {
   const form = new FormData();
   const pdfHeader = '%PDF-1.4\n%%EOF';
   const buffer = Buffer.from(pdfHeader, 'utf8');
@@ -41,14 +39,12 @@ const createPdfRequest = (opts?: {
   });
   form.append('file', fileWithArrayBuffer);
 
+  // Do not pass custom headers — let Request set Content-Type (multipart/form-data + boundary)
+  // and Content-Length from the FormData body. Overriding headers drops Content-Type and
+  // causes streamedSizeCheck to return INVALID_FILE.
   const request = new Request(BASE_URL, {
     method: 'POST',
     body: form,
-    // Keep Content-Length equal to payload bytes for test determinism; this route only
-    // needs a numeric header for early size checks and does not depend on multipart overhead.
-    headers: {
-      'content-length': opts?.contentLength ?? String(buffer.byteLength),
-    },
   });
 
   // Vitest/undici multipart parsing can drop File entries; override for stability.
