@@ -309,7 +309,6 @@ export async function runGenerationAttempt(
         preparation: reservation,
         classification,
         durationMs,
-        error: normalizedError,
         dbClient,
         now: nowFn,
       });
@@ -444,7 +443,6 @@ export async function runGenerationAttempt(
         timedOut,
         extendedTimeout: timeout.didExtend,
         providerMetadata,
-        error: normalizedError,
         dbClient,
         now: nowFn,
       });
