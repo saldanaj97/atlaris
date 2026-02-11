@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -145,6 +146,8 @@ describe('POST /api/v1/plans/stream', () => {
     const authUserId = buildTestAuthUserId('stream-sanitized-error');
     await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
     setTestUser(authUserId);
+    const mockedAttemptId = randomUUID();
+    const mockedPlanId = randomUUID();
 
     const orchestrator = await import('@/lib/ai/orchestrator');
     const mockedFailure: GenerationFailureResult = {
@@ -157,8 +160,8 @@ describe('POST /api/v1/plans/stream', () => {
       extendedTimeout: false,
       timedOut: false,
       attempt: {
-        id: 'attempt-sanitized-error',
-        planId: 'plan-sanitized-error',
+        id: mockedAttemptId,
+        planId: mockedPlanId,
         status: 'failure',
         classification: 'provider_error',
         durationMs: 250,

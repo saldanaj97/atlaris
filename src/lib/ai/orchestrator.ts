@@ -150,7 +150,22 @@ function toGenerationError(error: unknown): Error {
     return new Error(error);
   }
 
-  return new Error('Unknown generation error.');
+  let detail = 'no additional detail';
+  if (typeof error === 'number' || typeof error === 'boolean') {
+    detail = String(error);
+  } else if (typeof error === 'bigint') {
+    detail = `${error.toString()}n`;
+  } else if (typeof error === 'symbol') {
+    detail = error.description ?? 'symbol';
+  } else if (error && typeof error === 'object') {
+    try {
+      detail = JSON.stringify(error);
+    } catch {
+      detail = Object.prototype.toString.call(error);
+    }
+  }
+
+  return new Error(`Unknown generation error: ${detail}`);
 }
 
 function createSyntheticFailureAttempt(params: {

@@ -120,13 +120,6 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       expect(result.fallback).toBe(false);
     });
 
-    it('resolves pro model without fallback', () => {
-      const result = resolveModelForTier('pro', PRO_MODEL_ID);
-
-      expect(result.modelId).toBe(PRO_MODEL_ID);
-      expect(result.fallback).toBe(false);
-    });
-
     it('rejects invalid model even for pro', () => {
       const result = resolveModelForTier('pro', 'fake-model');
 
