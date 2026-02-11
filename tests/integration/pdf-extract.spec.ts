@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/pdf/extract', () => ({
   extractTextFromPdf: vi.fn(),
+  getPdfPageCountFromBuffer: vi.fn(),
 }));
 
 vi.mock('@/lib/security/malware-scanner', () => ({
@@ -15,7 +16,10 @@ import {
   resetDbForIntegrationTestFile,
 } from '@/../tests/helpers/db';
 import { POST } from '@/app/api/v1/plans/from-pdf/extract/route';
-import { extractTextFromPdf } from '@/lib/pdf/extract';
+import {
+  extractTextFromPdf,
+  getPdfPageCountFromBuffer,
+} from '@/lib/pdf/extract';
 import { scanBufferForMalware } from '@/lib/security/malware-scanner';
 
 const BASE_URL = 'http://localhost/api/v1/plans/from-pdf/extract';
@@ -51,6 +55,8 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     await resetDbForIntegrationTestFile();
     await ensureStripeWebhookEvents();
     vi.mocked(extractTextFromPdf).mockReset();
+    vi.mocked(getPdfPageCountFromBuffer).mockReset();
+    vi.mocked(getPdfPageCountFromBuffer).mockResolvedValue(1);
     vi.mocked(scanBufferForMalware).mockReset();
     vi.mocked(scanBufferForMalware).mockResolvedValue({ clean: true });
   });
