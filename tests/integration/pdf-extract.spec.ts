@@ -24,32 +24,52 @@ import { scanBufferForMalware } from '@/lib/security/malware-scanner';
 
 const BASE_URL = 'http://localhost/api/v1/plans/from-pdf/extract';
 
-type PdfExtractTestRequest = Request & {
-  formData: () => Promise<FormData>;
+const PDF_BYTES = Buffer.from('%PDF-1.4\n%%EOF', 'utf8');
+const PDF_FILE_NAME = 'sample.pdf';
+
+const createMultipartPdfBody = (
+  fileBytes: Buffer,
+  fileName: string
+): { body: ArrayBuffer; boundary: string } => {
+  const boundary = '----vitest-pdf-boundary';
+
+  const prefix = [
+    `--${boundary}`,
+    `Content-Disposition: form-data; name="file"; filename="${fileName}"`,
+    'Content-Type: application/pdf',
+    '',
+    '',
+  ].join('\r\n');
+
+  const suffix = `\r\n--${boundary}--\r\n`;
+
+  const bytes = Buffer.concat([
+    Buffer.from(prefix, 'utf8'),
+    fileBytes,
+    Buffer.from(suffix, 'utf8'),
+  ]);
+
+  const body = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength
+  );
+
+  return {
+    body,
+    boundary,
+  };
 };
 
-const createPdfRequest = (): PdfExtractTestRequest => {
-  const form = new FormData();
-  const pdfHeader = '%PDF-1.4\n%%EOF';
-  const buffer = Buffer.from(pdfHeader, 'utf8');
-  const file = new File([buffer], 'sample.pdf', { type: 'application/pdf' });
-  // Ensure arrayBuffer exists in the test runtime.
-  const fileWithArrayBuffer = Object.assign(file, {
-    arrayBuffer: async () => buffer,
-  });
-  form.append('file', fileWithArrayBuffer);
+const createPdfRequest = (): Request => {
+  const { body, boundary } = createMultipartPdfBody(PDF_BYTES, PDF_FILE_NAME);
 
-  // Do not pass custom headers — let Request set Content-Type (multipart/form-data + boundary)
-  // and Content-Length from the FormData body. Overriding headers drops Content-Type and
-  // causes streamedSizeCheck to return INVALID_FILE.
-  const request = new Request(BASE_URL, {
+  return new Request(BASE_URL, {
     method: 'POST',
-    body: form,
-  });
-
-  // Vitest/undici multipart parsing can drop File entries; override for stability.
-  return Object.assign(request, {
-    formData: async () => form,
+    headers: {
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+      'content-length': String(body.byteLength),
+    },
+    body,
   });
 };
 
