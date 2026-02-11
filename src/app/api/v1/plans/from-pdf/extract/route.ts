@@ -147,7 +147,20 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
-    const formData = await req.formData();
+    const contentType = req.headers.get('content-type') ?? '';
+    if (!contentType.toLowerCase().startsWith('multipart/form-data')) {
+      return toExtractionError(
+        'Request must be multipart/form-data with a PDF file.',
+        400
+      );
+    }
+
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch {
+      return toExtractionError('Invalid multipart form data.', 400);
+    }
     const formObject = parseFormDataToObject(formData);
 
     const parseResult = formDataSchema.safeParse(formObject);
