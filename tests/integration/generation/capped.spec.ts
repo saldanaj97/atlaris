@@ -67,7 +67,7 @@ describe('generation integration - capped attempts', () => {
     setTestUser(authUserId);
   });
 
-  it('records capped classification and skips provider invocation after three failures', async () => {
+  it('returns capped classification and skips provider invocation after three failures', async () => {
     const userId = await ensureUser({ authUserId, email: authEmail });
 
     const [plan] = await db
@@ -120,9 +120,14 @@ describe('generation integration - capped attempts', () => {
       throw new Error('Expected at least one generation attempt record');
     }
 
-    expect(latestAttempt.classification).toBe('capped');
-    expect(latestAttempt.modulesCount).toBe(0);
-    expect(latestAttempt.tasksCount).toBe(0);
+    // Cap rejections are synthetic failures from the orchestrator; no new DB row is written.
+    expect(attempts).toHaveLength(3);
+    expect(
+      attempts.some((attempt) => attempt.classification === 'capped')
+    ).toBe(false);
+    expect(
+      result.status === 'failure' ? result.attempt.id : 'unexpected-success'
+    ).toBeNull();
 
     const moduleRows = await db
       .select({ value: modules.id })

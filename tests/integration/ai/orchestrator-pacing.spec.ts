@@ -4,6 +4,8 @@ import { pacePlan } from '@/lib/ai/pacing';
 import { ProviderTimeoutError } from '@/lib/ai/provider';
 import type {
   GenerationAttemptContext,
+  GenerationFailureResult,
+  GenerationSuccessResult,
   RunGenerationOptions,
 } from '@/lib/ai/orchestrator';
 import type {
@@ -11,8 +13,10 @@ import type {
   GenerationInput,
 } from '@/lib/ai/provider';
 import type { ParsedGeneration } from '@/lib/ai/parser';
-import type { GenerationAttemptRecord } from '@/lib/db/queries/attempts';
-import type { GenerationSuccessResult } from '@/lib/ai/orchestrator';
+import type {
+  AttemptReservation,
+  GenerationAttemptRecord,
+} from '@/lib/db/queries/attempts';
 import * as attemptsModule from '@/lib/db/queries/attempts';
 import * as providerFactoryModule from '@/lib/ai/provider-factory';
 import * as parserModule from '@/lib/ai/parser';
@@ -38,11 +42,31 @@ describe('orchestrator pacing integration', () => {
 
   const mockOptions: RunGenerationOptions = {
     clock: vi.fn(() => Date.now()),
-    dbClient: {} as any,
+    dbClient: {
+      select: vi.fn(),
+    } as unknown as RunGenerationOptions['dbClient'],
     now: vi.fn(() => new Date()),
   };
 
-  const mockPreparation = { capped: false, attemptId: 'attempt-1' } as any;
+  const mockReservation: AttemptReservation = {
+    reserved: true,
+    attemptId: 'attempt-1',
+    attemptNumber: 1,
+    startedAt: new Date('2024-01-01T00:00:00.000Z'),
+    sanitized: {
+      topic: {
+        value: 'Test Topic',
+        truncated: false,
+        originalLength: 10,
+      },
+      notes: {
+        value: undefined,
+        truncated: false,
+        originalLength: undefined,
+      },
+    },
+    promptHash: 'hash_123',
+  };
   const mockProviderResult = {
     stream: vi.fn(async () => 'mock stream text'),
     metadata: { model: 'gpt-4' },
@@ -72,7 +96,9 @@ describe('orchestrator pacing integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(attemptsModule.startAttempt).mockResolvedValue(mockPreparation);
+    vi.mocked(attemptsModule.reserveAttemptSlot).mockResolvedValue(
+      mockReservation
+    );
     vi.mocked(providerFactoryModule.getGenerationProvider).mockReturnValue({
       generate: vi.fn().mockResolvedValue(mockProviderResult),
     } as unknown as AiPlanGenerationProvider);
@@ -83,9 +109,24 @@ describe('orchestrator pacing integration', () => {
       cancel: vi.fn(),
       timedOut: false,
       didExtend: false,
-    } as any);
-    vi.mocked(attemptsModule.recordSuccess).mockResolvedValue({
+    } as unknown as ReturnType<typeof timeoutModule.createAdaptiveTimeout>);
+    vi.mocked(attemptsModule.finalizeAttemptSuccess).mockResolvedValue({
       id: 'success-1',
+    } as GenerationAttemptRecord);
+    vi.mocked(attemptsModule.finalizeAttemptFailure).mockResolvedValue({
+      id: 'failure-1',
+      planId: 'plan-123',
+      status: 'failure',
+      classification: 'timeout',
+      durationMs: 1,
+      modulesCount: 0,
+      tasksCount: 0,
+      truncatedTopic: false,
+      truncatedNotes: false,
+      normalizedEffort: false,
+      promptHash: 'hash_123',
+      metadata: null,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
     } as GenerationAttemptRecord);
   });
 
@@ -96,10 +137,13 @@ describe('orchestrator pacing integration', () => {
       const result = await runGenerationAttempt(mockContext, mockOptions);
 
       expect(result.status).toBe('success');
-      const successResult = result as GenerationSuccessResult;
+      if (result.status !== 'success') {
+        throw new Error('Expected success result');
+      }
+      const successResult: GenerationSuccessResult = result;
       expect(successResult.modules).toEqual(expectedPaced); // Paced modules returned
       expect(parserModule.parseGenerationStream).toHaveBeenCalledTimes(1);
-      expect(attemptsModule.recordSuccess).toHaveBeenCalledWith(
+      expect(attemptsModule.finalizeAttemptSuccess).toHaveBeenCalledWith(
         expect.objectContaining({
           modules: expectedPaced, // Paced passed to DB
           providerMetadata: { model: 'gpt-4' },
@@ -157,7 +201,10 @@ describe('orchestrator pacing integration', () => {
       const result = await runGenerationAttempt(lowInputContext, mockOptions);
 
       expect(result.status).toBe('success');
-      const totalTasks = (result as GenerationSuccessResult).modules.reduce(
+      if (result.status !== 'success') {
+        throw new Error('Expected success result');
+      }
+      const totalTasks = result.modules.reduce(
         (sum: number, m) => sum + m.tasks.length,
         0
       );
@@ -169,15 +216,16 @@ describe('orchestrator pacing integration', () => {
 
   describe('failure paths', () => {
     it('does not apply pacing on capped preparation', async () => {
-      vi.mocked(attemptsModule.startAttempt).mockResolvedValue({
-        ...mockPreparation,
-        capped: true,
+      vi.mocked(attemptsModule.reserveAttemptSlot).mockResolvedValue({
+        reserved: false,
+        reason: 'capped',
       });
       const result = await runGenerationAttempt(mockContext, mockOptions);
 
       expect(result.status).toBe('failure');
       expect(result.classification).toBe('capped');
-      expect(attemptsModule.recordSuccess).not.toHaveBeenCalled();
+      expect(attemptsModule.finalizeAttemptSuccess).not.toHaveBeenCalled();
+      expect(attemptsModule.finalizeAttemptFailure).not.toHaveBeenCalled();
       expect(parserModule.parseGenerationStream).not.toHaveBeenCalled(); // No parsing if capped early
       // No pacing applied
     });
@@ -194,17 +242,19 @@ describe('orchestrator pacing integration', () => {
         cancel: vi.fn(),
         timedOut: true,
         didExtend: false,
-      } as any);
+      } as unknown as ReturnType<typeof timeoutModule.createAdaptiveTimeout>);
 
       const result = await runGenerationAttempt(mockContext, mockOptions);
 
       expect(result.status).toBe('failure');
-      if (result.status === 'failure') {
-        expect(result.error).toBe(mockError);
+      if (result.status !== 'failure') {
+        throw new Error('Expected failure result');
       }
+      const failureResult: GenerationFailureResult = result;
+      expect(failureResult.error).toBe(mockError);
       expect(result.timedOut).toBe(true);
       expect(parserModule.parseGenerationStream).not.toHaveBeenCalled(); // No parsing on error
-      expect(attemptsModule.recordSuccess).not.toHaveBeenCalled();
+      expect(attemptsModule.finalizeAttemptSuccess).not.toHaveBeenCalled();
       // Pacing not applied
     });
 
@@ -216,6 +266,9 @@ describe('orchestrator pacing integration', () => {
 
       const result = await runGenerationAttempt(mockContext, mockOptions);
 
+      if (result.status !== 'failure') {
+        throw new Error('Expected failure result');
+      }
       expect(result.classification).toBe('timeout'); // Assuming classifyFailure logic
       expect(result.status).toBe('failure'); // No modules in failure
     });
@@ -230,19 +283,21 @@ describe('orchestrator pacing integration', () => {
       const result = await runGenerationAttempt(nullDateContext, mockOptions);
 
       expect(result.status).toBe('success');
+      if (result.status !== 'success') {
+        throw new Error('Expected success result');
+      }
       // With no deadline, pacing should not trim the plan
-      expect((result as GenerationSuccessResult).modules).toEqual(
-        mockParsed.modules
-      );
+      expect(result.modules).toEqual(mockParsed.modules);
     });
 
     it('preserves rawText and metadata through pacing', async () => {
       const result = await runGenerationAttempt(mockContext, mockOptions);
 
-      expect((result as GenerationSuccessResult).rawText).toBe(
-        mockParsed.rawText
-      );
-      expect((result as GenerationSuccessResult).metadata).toEqual({
+      if (result.status !== 'success') {
+        throw new Error('Expected success result');
+      }
+      expect(result.rawText).toBe(mockParsed.rawText);
+      expect(result.metadata).toEqual({
         model: 'gpt-4',
       });
       expect(result.extendedTimeout).toBe(false);
