@@ -20,7 +20,11 @@ import { createMockProvider } from '../../helpers/mockProvider';
 const authUserId = 'auth_generation_validation';
 const authEmail = 'generation-validation@example.com';
 
-describe('generation integration - validation failure', () => {
+const describeWithDatabase = process.env.DATABASE_URL
+  ? describe
+  : describe.skip;
+
+describeWithDatabase('generation integration - validation failure', () => {
   beforeAll(async () => {
     await ensureStripeWebhookEvents();
   });
