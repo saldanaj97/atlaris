@@ -36,7 +36,39 @@ env:
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
 jobs:
+  # Only run deploy when the latest commit touches deploy-relevant paths.
+  # (GitHub's paths filter uses the full PR diff, so without this, every push
+  # would trigger a deploy if any earlier commit in the PR touched src/ etc.)
+  check-deploy-paths:
+    runs-on: ubuntu-latest
+    outputs:
+      run_deploy: ${{ steps.set.outputs.run_deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 2
+
+      - name: Set run_deploy from latest commit or event
+        id: set
+        run: |
+          if [ "${{ github.event_name }}" != "synchronize" ]; then
+            echo "run_deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git diff-tree --no-commit-id --name-only -r HEAD)
+          run_deploy="false"
+          for f in $files; do
+            case "$f" in
+              src/*|public/*|package.json|pnpm-lock.yaml|next.config.*|tsconfig.json|.github/workflows/deploy-preview.yml) run_deploy="true"; break ;;
+            esac
+          done
+          echo "run_deploy=$run_deploy" >> "$GITHUB_OUTPUT"
+
   deploy-preview:
+    needs: check-deploy-paths
+    if: needs.check-deploy-paths.outputs.run_deploy == 'true'
     permissions: write-all
     runs-on: ubuntu-latest
     timeout-minutes: 15
