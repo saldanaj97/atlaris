@@ -25,6 +25,10 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
 
   const FREE_MODEL_ID = getModelIdBy((model) => model.tier === 'free');
   const PRO_MODEL_ID = getModelIdBy((model) => model.tier === 'pro');
+  /** Second free model (non-default) to exercise getGenerationProviderWithModel path */
+  const SECOND_FREE_MODEL_ID = getModelIdBy(
+    (model) => model.tier === 'free' && model.id !== AI_DEFAULT_MODEL
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -110,13 +114,6 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     });
 
     it('allows pro models', () => {
-      const result = resolveModelForTier('pro', PRO_MODEL_ID);
-
-      expect(result.modelId).toBe(PRO_MODEL_ID);
-      expect(result.fallback).toBe(false);
-    });
-
-    it('resolves pro model without fallback', () => {
       const result = resolveModelForTier('pro', PRO_MODEL_ID);
 
       expect(result.modelId).toBe(PRO_MODEL_ID);
@@ -225,12 +222,12 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
         .spyOn(providerFactory, 'getGenerationProviderWithModel')
         .mockReturnValue(customProvider);
 
-      const result = resolveModelForTier('free', FREE_MODEL_ID);
+      const result = resolveModelForTier('free', SECOND_FREE_MODEL_ID);
 
-      expect(result.modelId).toBe(FREE_MODEL_ID);
+      expect(result.modelId).toBe(SECOND_FREE_MODEL_ID);
       expect(result.provider).toBe(customProvider);
       expect(result.fallback).toBe(false);
-      expect(customSpy).toHaveBeenCalledWith(FREE_MODEL_ID);
+      expect(customSpy).toHaveBeenCalledWith(SECOND_FREE_MODEL_ID);
       expect(defaultSpy).not.toHaveBeenCalled();
     });
   });

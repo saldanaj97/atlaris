@@ -28,6 +28,8 @@ import { resolveUserTier, type SubscriptionTier } from '@/lib/stripe/usage';
 
 /** Absolute maximum PDF upload size in bytes (50MB) — regardless of tier */
 const ABSOLUTE_MAX_PDF_BYTES = 50 * 1024 * 1024;
+// Intentionally route-level constants: keep explicit control here even though
+// extract.ts has matching defaults.
 const PDF_EXTRACTION_TIMEOUT_MS = 30_000;
 const PDF_EXTRACTION_MAX_CHARS = 500_000;
 
@@ -194,11 +196,24 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
-    const formData = await new Request(req.url, {
-      method: req.method,
-      headers: { 'content-type': req.headers.get('content-type') ?? '' },
-      body: streamSizeResult.body,
-    }).formData();
+    const contentType = req.headers.get('content-type') ?? '';
+    if (!contentType.toLowerCase().startsWith('multipart/form-data')) {
+      return toExtractionError(
+        'Request must be multipart/form-data with a PDF file.',
+        400
+      );
+    }
+
+    let formData: FormData;
+    try {
+      formData = await new Request(req.url, {
+        method: req.method,
+        headers: { 'content-type': contentType },
+        body: streamSizeResult.body,
+      }).formData();
+    } catch {
+      return toExtractionError('Invalid multipart form data.', 400);
+    }
     const formObject = parseFormDataToObject(formData);
 
     const parseResult = formDataSchema.safeParse(formObject);
@@ -219,6 +234,7 @@ export const POST: PlainHandler = withErrorBoundary(
         dbClient?: Parameters<typeof resolveUserTier>[1]
       ): Promise<SubscriptionTier> => {
         if (tierResolved) {
+          // Safety: resolveUserTier should always return a concrete tier per its contract.
           const resolvedTier = cachedTier;
           if (!resolvedTier) {
             throw new Error('resolveTier cache resolved without a valid tier');
@@ -226,6 +242,7 @@ export const POST: PlainHandler = withErrorBoundary(
           return resolvedTier;
         }
         cachedTier = await resolveUserTier(tierUserId, dbClient);
+        // Safety: resolveUserTier should always return a concrete tier per its contract.
         const resolvedTier = cachedTier;
         if (!resolvedTier) {
           throw new Error(

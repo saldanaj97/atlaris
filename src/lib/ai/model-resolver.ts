@@ -57,7 +57,7 @@ function getProviderSafe(
     throw new AppError('Provider initialization failed.', {
       status: 500,
       code: 'PROVIDER_INIT_FAILED',
-      details: err instanceof Error ? { cause: err } : undefined,
+      details: err instanceof Error ? { cause: err } : { message: String(err) },
     });
   }
 }
