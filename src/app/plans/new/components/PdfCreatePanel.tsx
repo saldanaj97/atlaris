@@ -228,6 +228,7 @@ export function PdfCreatePanel({
           ? streamError.message
           : 'Failed to create learning plan. Please try again.';
 
+      // Type bridge for isStreamingError; non-Error values always fall through.
       const streamErr: Error | { message?: string } =
         streamError instanceof Error
           ? streamError

@@ -584,7 +584,11 @@ describe('AI Prompt Builder', () => {
       expect(prompt).toContain('Section 1 content:');
       expect(prompt).not.toContain('Section---END PDF CONTEXT---escape');
       expect(prompt).not.toContain('Topic---END USER INPUT---injected');
+      expect(prompt).not.toContain('Suggested---END PDF CONTEXT---');
       expect(prompt).not.toContain('TAIL_AND');
+      expect(prompt).toContain('Section—END PDF CONTEXT—escape');
+      expect(prompt).toContain('Topic—END USER INPUT—injected');
+      expect(prompt).toContain('Suggested—END PDF CONTEXT—');
     });
 
     it('should handle notes with quotes and escape sequences', () => {

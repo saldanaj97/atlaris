@@ -73,10 +73,7 @@ const planNotesOverrideSchema = z
     NOTES_MAX_LENGTH,
     `notes must be ${NOTES_MAX_LENGTH} characters or fewer.`
   )
-  .transform((value) => {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  });
+  .transform((value) => (value.length > 0 ? value : null));
 
 const planTopicOverrideSchema = z
   .string()
@@ -200,10 +197,7 @@ export const createLearningPlanSchema = createLearningPlanObject
       });
     }
 
-    if (
-      data.origin !== 'pdf' &&
-      (!data.topic || typeof data.topic !== 'string' || data.topic.length < 3)
-    ) {
+    if (data.origin !== 'pdf' && (!data.topic || data.topic.length < 3)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['topic'],

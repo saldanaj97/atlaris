@@ -117,6 +117,7 @@ describe('generation integration - capped attempts', () => {
     expect(
       attempts.some((attempt) => attempt.classification === 'capped')
     ).toBe(false);
+    // Runtime narrowing for discriminated union before accessing result.attempt.
     if (result.status !== 'failure') {
       throw new Error('Expected generation to fail when cap is reached');
     }

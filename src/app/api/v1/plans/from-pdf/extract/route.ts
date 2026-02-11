@@ -135,8 +135,7 @@ async function streamedSizeCheck(
     return { ok: false, code: 'INVALID_FILE', status: 400 };
   }
 
-  const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
-  const merged = new Uint8Array(totalLength);
+  const merged = new Uint8Array(total);
   let offset = 0;
   for (const c of chunks) {
     merged.set(c, offset);
@@ -196,19 +195,11 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
-    const contentType = req.headers.get('content-type') ?? '';
-    if (!contentType.toLowerCase().startsWith('multipart/form-data')) {
-      return toExtractionError(
-        'Request must be multipart/form-data with a PDF file.',
-        400
-      );
-    }
-
     let formData: FormData;
     try {
       formData = await new Request(req.url, {
         method: req.method,
-        headers: { 'content-type': contentType },
+        headers: { 'content-type': req.headers.get('content-type') ?? '' },
         body: streamSizeResult.body,
       }).formData();
     } catch {

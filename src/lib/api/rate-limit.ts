@@ -55,6 +55,8 @@ export async function checkPlanGenerationRateLimit(
   if (attemptCount >= PLAN_GENERATION_LIMIT) {
     let retryAfter: number;
     if (countFailed) {
+      // Fail-closed policy: when count cannot be verified, return full-window
+      // retry-after to avoid under-throttling expensive generation requests.
       retryAfter = PLAN_GENERATION_WINDOW_MINUTES * 60;
     } else {
       try {

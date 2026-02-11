@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import {
@@ -21,9 +21,12 @@ const authUserId = 'auth_generation_validation';
 const authEmail = 'generation-validation@example.com';
 
 describe('generation integration - validation failure', () => {
+  beforeAll(async () => {
+    await ensureStripeWebhookEvents();
+  });
+
   beforeEach(async () => {
     await resetDbForIntegrationTestFile();
-    await ensureStripeWebhookEvents();
   });
 
   it('classifies attempt as validation when provider output is empty', async () => {

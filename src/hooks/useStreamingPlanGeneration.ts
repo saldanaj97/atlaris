@@ -51,18 +51,19 @@ export type StreamingError = Error & {
   code?: string;
 };
 
-/** Object shape compatible with Error for type guard (message, name, stack, index sig). */
-export type ErrorLike = {
-  message?: string;
-  name?: string;
-  stack?: string;
-  [key: string]: unknown;
-};
+export function isStreamingError(error: unknown): error is StreamingError {
+  if (error instanceof Error) {
+    return true;
+  }
 
-export function isStreamingError(
-  error: Error | ErrorLike
-): error is StreamingError {
-  return error instanceof Error && typeof error === 'object';
+  if (error === null || typeof error !== 'object') {
+    return false;
+  }
+
+  return (
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  );
 }
 
 const INITIAL_STATE: StreamingPlanState = {

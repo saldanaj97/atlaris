@@ -35,7 +35,7 @@ import {
 /** Validated attempt cap: always >= 1; invalid env falls back to DEFAULT_ATTEMPT_CAP. */
 const ATTEMPT_CAP = (() => {
   const raw = attemptsEnv.cap;
-  if (!Number.isFinite(raw) || raw <= 0 || Number.isNaN(raw)) {
+  if (!Number.isFinite(raw) || raw <= 0) {
     return DEFAULT_ATTEMPT_CAP;
   }
   return Math.floor(raw);
@@ -169,13 +169,37 @@ export interface FinalizeFailureParams {
  * Determines if a provider_error is retryable based on error metadata.
  * 5xx or unknown → retryable; 4xx → terminal.
  */
+interface ProviderErrorStatusShape {
+  status?: number;
+  statusCode?: number;
+  httpStatus?: number;
+  response?: { status?: number } | null;
+}
+
+function getProviderErrorStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+
+  const providerError = error as ProviderErrorStatusShape;
+  const candidates = [
+    providerError.status,
+    providerError.statusCode,
+    providerError.httpStatus,
+    providerError.response?.status,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
 function isProviderErrorRetryable(error: unknown): boolean {
   if (error == null) return true;
-  const status =
-    error && typeof error === 'object' && 'status' in error
-      ? (error as { status?: number }).status
-      : undefined;
-  if (typeof status !== 'number' || !Number.isFinite(status)) return true;
+  const status = getProviderErrorStatus(error);
+  if (status === undefined) return true;
   if (status >= 500) return true;
   if (status >= 400 && status < 500) return false;
   return true;

@@ -13,6 +13,14 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [develop, main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "next.config.*"
+      - "tsconfig.json"
+      - ".github/workflows/deploy-preview.yml"
 
 concurrency:
   group: preview-${{ github.event.number }}
@@ -74,8 +82,6 @@ jobs:
           database: ${{ env.NEON_DATABASE_NAME }}
           api_key: ${{ env.NEON_API_KEY }}
 
-      # Generate migrations from schema changes (no DB needed).
-      # Commit and push new migration files so they are part of the PR.
       - name: Generate migrations
         env:
           DATABASE_URL: ${{ steps.create-branch.outputs.db_url_pooled }}

@@ -2,8 +2,9 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
@@ -28,18 +29,14 @@ describe('RLS attempt insertion', () => {
       email: buildTestEmail(ownerAuthUserId),
     });
 
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId: ownerId,
-        topic: 'Insert Protection Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 3,
-        learningStyle: 'reading',
-        visibility: 'private',
-        origin: 'ai',
-      })
-      .returning();
+    const plan = await createTestPlan({
+      userId: ownerId,
+      topic: 'Insert Protection Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 3,
+      learningStyle: 'reading',
+      origin: 'ai',
+    });
 
     // Different user tries to run attempt
     setTestUser(attackerAuthUserId);

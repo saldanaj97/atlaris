@@ -73,10 +73,6 @@ export const learningPlans = pgTable(
       )`
     ),
     index('idx_learning_plans_user_id').on(table.userId),
-    index('idx_learning_plans_user_quota').on(
-      table.userId,
-      table.isQuotaEligible
-    ),
     index('idx_learning_plans_user_generation_status').on(
       table.userId,
       table.generationStatus

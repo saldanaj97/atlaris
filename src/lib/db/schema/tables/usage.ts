@@ -35,7 +35,6 @@ export const usageMetrics = pgTable(
     unique('usage_metrics_user_id_month_unique').on(table.userId, table.month),
     index('idx_usage_metrics_user_id').on(table.userId),
     index('idx_usage_metrics_month').on(table.month),
-    index('idx_usage_metrics_user_month').on(table.userId, table.month),
     check('plans_generated_nonneg', sql`${table.plansGenerated} >= 0`),
     check('pdf_plans_generated_nonneg', sql`${table.pdfPlansGenerated} >= 0`),
     check('regenerations_used_nonneg', sql`${table.regenerationsUsed} >= 0`),
