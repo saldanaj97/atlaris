@@ -89,6 +89,10 @@ export const aiUsageEvents = pgTable(
   (table) => [
     index('idx_ai_usage_user_id').on(table.userId),
     index('idx_ai_usage_created_at').on(table.createdAt),
+    index('idx_ai_usage_events_user_created_at').on(
+      table.userId,
+      table.createdAt
+    ),
 
     // RLS policies
     pgPolicy('ai_usage_events_select_own', {

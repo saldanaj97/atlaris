@@ -378,8 +378,11 @@ export const avScannerEnv = {
     const raw = getServerOptional('AV_PROVIDER');
     return raw?.toLowerCase() ?? 'none';
   },
-  /** MetaDefender Cloud API key */
+  /** MetaDefender Cloud API key. Required in production when AV_PROVIDER=metadefender. */
   get metadefenderApiKey() {
+    if (this.provider === 'metadefender') {
+      return getServerRequiredProdOnly('AV_METADEFENDER_API_KEY');
+    }
     return getServerOptional('AV_METADEFENDER_API_KEY');
   },
   /** MetaDefender Cloud base URL */

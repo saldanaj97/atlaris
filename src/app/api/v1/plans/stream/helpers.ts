@@ -184,7 +184,20 @@ function computeCostCents(
   outputTokens: number
 ): number {
   const model = getModelById(modelId);
-  if (!model || (inputTokens === 0 && outputTokens === 0)) return 0;
+  if (!model) {
+    logger.warn(
+      {
+        modelId,
+        inputTokens,
+        outputTokens,
+        source: 'computeCostCents',
+        lookup: 'getModelById',
+      },
+      'computeCostCents: getModelById returned null for unknown/misconfigured modelId, returning 0'
+    );
+    return 0;
+  }
+  if (inputTokens === 0 && outputTokens === 0) return 0;
   const totalUsd =
     (inputTokens / 1_000_000) * model.inputCostPerMillion +
     (outputTokens / 1_000_000) * model.outputCostPerMillion;

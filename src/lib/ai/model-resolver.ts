@@ -18,6 +18,7 @@ import {
 } from '@/lib/ai/provider-factory';
 import type { SubscriptionTier } from '@/lib/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
+import { AppError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 
 export interface ModelResolution {
@@ -49,11 +50,15 @@ function getProviderSafe(
       ? getGenerationProviderWithModel(modelIdToUse)
       : getGenerationProvider();
   } catch (err) {
-    logger.error({ err, requestedModel, factory }, 'Provider factory failed');
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `Provider initialization failed (requestedModel=${String(requestedModel ?? 'default')}, factory=${factory}): ${message}`
+    logger.error(
+      { err, requestedModel: requestedModel ?? 'default', factory },
+      'Provider factory failed'
     );
+    throw new AppError('Provider initialization failed.', {
+      status: 500,
+      code: 'PROVIDER_INIT_FAILED',
+      details: err instanceof Error ? { cause: err } : { message: String(err) },
+    });
   }
 }
 

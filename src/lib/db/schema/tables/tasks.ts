@@ -296,6 +296,7 @@ export const taskProgress = pgTable(
       ),
       index('idx_task_progress_user_id').on(table.userId),
       index('idx_task_progress_task_id').on(table.taskId),
+      index('idx_task_progress_user_task').on(table.userId, table.taskId),
 
       // RLS Policies
 

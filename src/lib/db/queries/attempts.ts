@@ -1,3 +1,4 @@
+import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
 import { getCorrelationId } from '@/lib/api/context';
 import { appEnv, attemptsEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
@@ -31,7 +32,14 @@ import {
   tasks,
 } from '@/lib/db/schema';
 
-const ATTEMPT_CAP = attemptsEnv.cap;
+/** Validated attempt cap: always >= 1; invalid env falls back to DEFAULT_ATTEMPT_CAP. */
+const ATTEMPT_CAP = (() => {
+  const raw = attemptsEnv.cap;
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return DEFAULT_ATTEMPT_CAP;
+  }
+  return Math.floor(raw);
+})();
 
 /**
  * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
@@ -146,9 +154,55 @@ export interface FinalizeFailureParams {
   timedOut?: boolean;
   extendedTimeout?: boolean;
   providerMetadata?: ProviderMetadata;
+  /**
+   * Optional error that caused the failure.
+   * When classification is 'provider_error', used to decide retryability
+   * (e.g. 5xx/transient → retryable, 4xx/validation-like → terminal).
+   */
+  error?: unknown;
   /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
   dbClient: AttemptsDbClient;
   now?: () => Date;
+}
+
+/**
+ * Determines if a provider_error is retryable based on error metadata.
+ * 5xx or unknown → retryable; 4xx → terminal.
+ */
+interface ProviderErrorStatusShape {
+  status?: number;
+  statusCode?: number;
+  httpStatus?: number;
+  response?: { status?: number } | null;
+}
+
+function getProviderErrorStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+
+  const providerError = error as ProviderErrorStatusShape;
+  const candidates = [
+    providerError.status,
+    providerError.statusCode,
+    providerError.httpStatus,
+    providerError.response?.status,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
+function isProviderErrorRetryable(error: unknown): boolean {
+  if (error == null) return true;
+  const status = getProviderErrorStatus(error);
+  if (status === undefined) return true;
+  if (status >= 500) return true;
+  if (status >= 400 && status < 500) return false;
+  return true;
 }
 
 function logAttemptEvent(
@@ -835,6 +889,7 @@ export async function finalizeAttemptFailure({
   timedOut = false,
   extendedTimeout = false,
   providerMetadata,
+  error,
   dbClient,
   now,
 }: FinalizeFailureParams): Promise<GenerationAttemptRecord> {
@@ -875,9 +930,13 @@ export async function finalizeAttemptFailure({
 
     // Only transition plan to failed when terminal or at attempt cap.
     // Retryable failures (rate_limit, timeout) with attempts < cap keep plan as generating.
+    // For provider_error: use error metadata (HTTP status) to decide retryability.
+    const effectiveRetryable =
+      classification === 'provider_error'
+        ? isProviderErrorRetryable(error)
+        : isRetryableClassification(classification);
     const isTerminal =
-      !isRetryableClassification(classification) ||
-      preparation.attemptNumber >= ATTEMPT_CAP;
+      !effectiveRetryable || preparation.attemptNumber >= ATTEMPT_CAP;
 
     if (isTerminal) {
       await tx

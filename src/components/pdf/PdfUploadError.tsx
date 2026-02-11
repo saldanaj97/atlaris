@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import React from 'react';
 
 import { Button } from '@/components/ui/button';
 
@@ -39,6 +39,12 @@ const ERROR_MESSAGES = {
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;
+
+const ERROR_CODES: ErrorCode[] = Object.keys(ERROR_MESSAGES) as ErrorCode[];
+
+export function isKnownErrorCode(code: string | undefined): code is ErrorCode {
+  return typeof code === 'string' && ERROR_CODES.includes(code as ErrorCode);
+}
 
 interface PdfUploadErrorProps {
   error: string;

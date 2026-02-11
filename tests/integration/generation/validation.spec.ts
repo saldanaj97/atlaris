@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import {
@@ -10,13 +10,25 @@ import {
 import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import {
+  ensureStripeWebhookEvents,
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 const authUserId = 'auth_generation_validation';
 const authEmail = 'generation-validation@example.com';
 
-describe('generation integration - validation failure', () => {
+const describeWithDatabase = process.env.DATABASE_URL
+  ? describe
+  : describe.skip;
+
+describeWithDatabase('generation integration - validation failure', () => {
+  beforeAll(async () => {
+    await ensureStripeWebhookEvents();
+  });
+
   beforeEach(async () => {
     await resetDbForIntegrationTestFile();
   });

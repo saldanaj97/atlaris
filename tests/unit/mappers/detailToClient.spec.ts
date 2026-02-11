@@ -627,7 +627,7 @@ describe('mapAttemptsToClient', () => {
   });
 
   it('should serialize timestamps to ISO strings and preserve metadata', () => {
-    const successAttempt = buildSuccessAttempt();
+    const successAttempt = buildSuccessAttempt({ id: 'attempt-1' });
     const failureAttempt = buildSuccessAttempt({
       id: 'attempt-2',
       status: 'failure',

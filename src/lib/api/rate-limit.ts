@@ -30,6 +30,7 @@ export async function checkPlanGenerationRateLimit(
   );
 
   let attemptCount: number;
+  let countFailed = false;
   try {
     attemptCount = await countUserGenerationAttemptsSince(
       userId,
@@ -48,23 +49,40 @@ export async function checkPlanGenerationRateLimit(
       'countUserGenerationAttemptsSince failed, failing closed'
     );
     attemptCount = PLAN_GENERATION_LIMIT;
+    countFailed = true;
   }
 
   if (attemptCount >= PLAN_GENERATION_LIMIT) {
-    const oldestAttempt = await getOldestUserGenerationAttemptSince(
-      userId,
-      dbClient,
-      windowStart
-    );
-    const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
-    const retryAfter = oldestAttempt
-      ? Math.max(
-          0,
-          Math.floor(
-            (oldestAttempt.getTime() + windowSeconds * 1000 - Date.now()) / 1000
-          )
-        )
-      : windowSeconds;
+    let retryAfter: number;
+    if (countFailed) {
+      // Fail-closed policy: when count cannot be verified, return full-window
+      // retry-after to avoid under-throttling expensive generation requests.
+      retryAfter = PLAN_GENERATION_WINDOW_MINUTES * 60;
+    } else {
+      try {
+        const oldestAttempt = await getOldestUserGenerationAttemptSince(
+          userId,
+          dbClient,
+          windowStart
+        );
+        const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
+        retryAfter = oldestAttempt
+          ? Math.max(
+              0,
+              Math.floor(
+                (oldestAttempt.getTime() + windowSeconds * 1000 - Date.now()) /
+                  1000
+              )
+            )
+          : windowSeconds;
+      } catch (err) {
+        logger.error(
+          { error: err, userId },
+          'getOldestUserGenerationAttemptSince failed, using fallback retry-after'
+        );
+        retryAfter = PLAN_GENERATION_WINDOW_MINUTES * 60;
+      }
+    }
     throw new RateLimitError(
       `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
       { retryAfter }

@@ -24,34 +24,52 @@ import { scanBufferForMalware } from '@/lib/security/malware-scanner';
 
 const BASE_URL = 'http://localhost/api/v1/plans/from-pdf/extract';
 
-type PdfExtractTestRequest = Request & {
-  formData: () => Promise<FormData>;
+const PDF_BYTES = Buffer.from('%PDF-1.4\n%%EOF', 'utf8');
+const PDF_FILE_NAME = 'sample.pdf';
+
+const createMultipartPdfBody = (
+  fileBytes: Buffer,
+  fileName: string
+): { body: ArrayBuffer; boundary: string } => {
+  const boundary = '----vitest-pdf-boundary';
+
+  const prefix = [
+    `--${boundary}`,
+    `Content-Disposition: form-data; name="file"; filename="${fileName}"`,
+    'Content-Type: application/pdf',
+    '',
+    '',
+  ].join('\r\n');
+
+  const suffix = `\r\n--${boundary}--\r\n`;
+
+  const bytes = Buffer.concat([
+    Buffer.from(prefix, 'utf8'),
+    fileBytes,
+    Buffer.from(suffix, 'utf8'),
+  ]);
+
+  const body = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength
+  );
+
+  return {
+    body,
+    boundary,
+  };
 };
 
-const createPdfRequest = (): PdfExtractTestRequest => {
-  const form = new FormData();
-  const pdfHeader = '%PDF-1.4\n%%EOF';
-  const buffer = Buffer.from(pdfHeader, 'utf8');
-  const file = new File([buffer], 'sample.pdf', { type: 'application/pdf' });
-  // Ensure arrayBuffer exists in the test runtime.
-  const fileWithArrayBuffer = Object.assign(file, {
-    arrayBuffer: async () => buffer,
-  });
-  form.append('file', fileWithArrayBuffer);
+const createPdfRequest = (): Request => {
+  const { body, boundary } = createMultipartPdfBody(PDF_BYTES, PDF_FILE_NAME);
 
-  const request = new Request(BASE_URL, {
+  return new Request(BASE_URL, {
     method: 'POST',
-    body: form,
-    // Keep Content-Length equal to payload bytes for test determinism; this route only
-    // needs a numeric header for early size checks and does not depend on multipart overhead.
     headers: {
-      'content-length': String(buffer.byteLength),
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+      'content-length': String(body.byteLength),
     },
-  });
-
-  // Vitest/undici multipart parsing can drop File entries; override for stability.
-  return Object.assign(request, {
-    formData: async () => form,
+    body,
   });
 };
 
@@ -181,5 +199,52 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(401);
+  });
+
+  it('returns 411 when multipart request body is missing', async () => {
+    const authUserId = `auth_pdf_missing_body_${Date.now()}`;
+    const authEmail = `pdf-missing-body-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    const request = new Request(BASE_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'multipart/form-data; boundary=test-boundary',
+      },
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(411);
+    const payload = await response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe('MISSING_CONTENT_LENGTH');
+  });
+
+  it('returns 400 when request body is invalid JSON (non-multipart)', async () => {
+    const authUserId = `auth_pdf_invalid_content_type_${Date.now()}`;
+    const authEmail = `pdf-invalid-content-type-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    const body = JSON.stringify({ file: 'not-a-pdf' });
+    const request = new Request(BASE_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'content-length': String(body.length),
+      },
+      body,
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const payload = await response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe('INVALID_FILE');
   });
 });

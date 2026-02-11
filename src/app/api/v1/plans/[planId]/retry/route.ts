@@ -24,7 +24,7 @@ import {
   handleFailedGeneration,
   handleSuccessfulGeneration,
   safeMarkPlanFailed,
-} from '../../stream/helpers';
+} from '@/app/api/v1/plans/stream/helpers';
 
 export const maxDuration = 60;
 
@@ -179,6 +179,7 @@ export const POST = withErrorBoundary(
             preparation: reservation,
             classification: 'provider_error',
             durationMs: Math.max(0, Date.now() - startedAt),
+            error: attemptError,
             dbClient: db,
           }).catch((finalizeErr) => {
             logger.error(
@@ -228,6 +229,7 @@ export const POST = withErrorBoundary(
         preparation: reservation,
         classification: 'provider_error',
         durationMs: 0,
+        error: setupError,
         dbClient: db,
       }).catch(async (finalizeErr) => {
         logger.error(
