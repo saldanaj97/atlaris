@@ -1,8 +1,12 @@
 import { PlansList } from '@/app/plans/components/PlansList';
-import type { PlanSummary } from '@/lib/types/db';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  buildModuleRows,
+  buildPlan,
+  buildPlanSummary,
+} from '../../fixtures/plan-detail';
 
 // Mock Next.js Link component
 vi.mock('next/link', () => ({
@@ -16,219 +20,74 @@ vi.mock('next/link', () => ({
 }));
 
 describe('PlansList', () => {
-  const mockCompletedPlan: PlanSummary = {
-    plan: {
+  const mockCompletedPlan = buildPlanSummary({
+    plan: buildPlan({
       id: 'plan-1',
-      userId: 'user-1',
       topic: 'Learn TypeScript',
       skillLevel: 'intermediate',
       weeklyHours: 10,
       learningStyle: 'mixed',
       startDate: '2024-01-15',
       deadlineDate: '2024-05-15',
-      visibility: 'private',
-      origin: 'ai',
       generationStatus: 'ready',
-      isQuotaEligible: false,
       finalizedAt: new Date('2024-01-15'),
       createdAt: new Date('2024-01-15'),
       updatedAt: new Date('2024-01-15'),
-    },
+    }),
     completion: 1.0,
     completedModules: 4,
     completedTasks: 20,
     totalTasks: 20,
     totalMinutes: 800,
     completedMinutes: 800,
-    modules: [
-      {
-        id: 'mod-1',
-        planId: 'plan-1',
-        order: 1,
-        title: 'Week 1',
-        description: 'Module 1',
-        estimatedMinutes: 200,
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-15'),
-      },
-      {
-        id: 'mod-2',
-        planId: 'plan-1',
-        order: 2,
-        title: 'Week 2',
-        description: 'Module 2',
-        estimatedMinutes: 200,
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-15'),
-      },
-      {
-        id: 'mod-3',
-        planId: 'plan-1',
-        order: 3,
-        title: 'Week 3',
-        description: 'Module 3',
-        estimatedMinutes: 200,
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-15'),
-      },
-      {
-        id: 'mod-4',
-        planId: 'plan-1',
-        order: 4,
-        title: 'Week 4',
-        description: 'Module 4',
-        estimatedMinutes: 200,
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-15'),
-      },
-    ],
-  };
+    modules: buildModuleRows('plan-1', 4, { estimatedMinutes: 200 }),
+  });
 
-  const mockActivePlan: PlanSummary = {
-    plan: {
+  const mockActivePlan = buildPlanSummary({
+    plan: buildPlan({
       id: 'plan-2',
-      userId: 'user-1',
       topic: 'Master React Hooks',
       skillLevel: 'advanced',
       weeklyHours: 5,
       learningStyle: 'practice',
       startDate: '2024-02-01',
       deadlineDate: null,
-      visibility: 'private',
-      origin: 'ai',
       generationStatus: 'ready',
       isQuotaEligible: true,
       finalizedAt: new Date('2024-02-01'),
       createdAt: new Date('2024-02-01'),
       updatedAt: new Date('2024-02-10'),
-    },
+    }),
     completion: 0.4,
     completedModules: 2,
     completedTasks: 8,
     totalTasks: 20,
     totalMinutes: 600,
     completedMinutes: 240,
-    modules: [
-      {
-        id: 'mod-1',
-        planId: 'plan-2',
-        order: 1,
-        title: 'Week 1',
-        description: 'Module 1',
-        estimatedMinutes: 100,
-        createdAt: new Date('2024-02-01'),
-        updatedAt: new Date('2024-02-01'),
-      },
-      {
-        id: 'mod-2',
-        planId: 'plan-2',
-        order: 2,
-        title: 'Week 2',
-        description: 'Module 2',
-        estimatedMinutes: 100,
-        createdAt: new Date('2024-02-01'),
-        updatedAt: new Date('2024-02-01'),
-      },
-      {
-        id: 'mod-3',
-        planId: 'plan-2',
-        order: 3,
-        title: 'Week 3',
-        description: 'Module 3',
-        estimatedMinutes: 100,
-        createdAt: new Date('2024-02-01'),
-        updatedAt: new Date('2024-02-01'),
-      },
-      {
-        id: 'mod-4',
-        planId: 'plan-2',
-        order: 4,
-        title: 'Week 4',
-        description: 'Module 4',
-        estimatedMinutes: 100,
-        createdAt: new Date('2024-02-01'),
-        updatedAt: new Date('2024-02-01'),
-      },
-      {
-        id: 'mod-5',
-        planId: 'plan-2',
-        order: 5,
-        title: 'Week 5',
-        description: 'Module 5',
-        estimatedMinutes: 100,
-        createdAt: new Date('2024-02-01'),
-        updatedAt: new Date('2024-02-01'),
-      },
-      {
-        id: 'mod-6',
-        planId: 'plan-2',
-        order: 6,
-        title: 'Week 6',
-        description: 'Module 6',
-        estimatedMinutes: 100,
-        createdAt: new Date('2024-02-01'),
-        updatedAt: new Date('2024-02-01'),
-      },
-    ],
-  };
+    modules: buildModuleRows('plan-2', 6, { estimatedMinutes: 100 }),
+  });
 
-  const mockBeginnerPlan: PlanSummary = {
-    plan: {
+  const mockBeginnerPlan = buildPlanSummary({
+    plan: buildPlan({
       id: 'plan-3',
-      userId: 'user-1',
       topic: 'Python Basics',
       skillLevel: 'beginner',
       weeklyHours: 3,
       learningStyle: 'reading',
       startDate: null,
       deadlineDate: null,
-      visibility: 'private',
-      origin: 'ai',
-      generationStatus: 'ready',
-      isQuotaEligible: false,
       finalizedAt: null,
       createdAt: new Date('2024-03-01'),
       updatedAt: new Date('2024-03-01'),
-    },
+    }),
     completion: 0.0,
     completedModules: 0,
     completedTasks: 0,
     totalTasks: 15,
     totalMinutes: 450,
     completedMinutes: 0,
-    modules: [
-      {
-        id: 'mod-1',
-        planId: 'plan-3',
-        order: 1,
-        title: 'Week 1',
-        description: 'Module 1',
-        estimatedMinutes: 150,
-        createdAt: new Date('2024-03-01'),
-        updatedAt: new Date('2024-03-01'),
-      },
-      {
-        id: 'mod-2',
-        planId: 'plan-3',
-        order: 2,
-        title: 'Week 2',
-        description: 'Module 2',
-        estimatedMinutes: 150,
-        createdAt: new Date('2024-03-01'),
-        updatedAt: new Date('2024-03-01'),
-      },
-      {
-        id: 'mod-3',
-        planId: 'plan-3',
-        order: 3,
-        title: 'Week 3',
-        description: 'Module 3',
-        estimatedMinutes: 150,
-        createdAt: new Date('2024-03-01'),
-        updatedAt: new Date('2024-03-01'),
-      },
-    ],
-  };
+    modules: buildModuleRows('plan-3', 3, { estimatedMinutes: 150 }),
+  });
 
   it('should render empty state when no plans provided', () => {
     render(<PlansList summaries={[]} />);
@@ -328,10 +187,10 @@ describe('PlansList', () => {
   });
 
   it('should handle plans with no modules gracefully', () => {
-    const emptyModulesPlan: PlanSummary = {
+    const emptyModulesPlan = buildPlanSummary({
       ...mockActivePlan,
       modules: [],
-    };
+    });
 
     render(<PlansList summaries={[emptyModulesPlan]} />);
 

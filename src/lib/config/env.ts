@@ -30,6 +30,28 @@ const normalize = (value: string | undefined | null): string | undefined => {
 const APP_URL_SCHEMA = z.string().url();
 const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
 const NEON_AUTH_COOKIE_SECRET_MIN_LENGTH = 32;
+const AV_METADEFENDER_DEFAULT_BASE_URL = 'https://api.metadefender.com/v4';
+
+const AvScannerEnvSchema = z
+  .object({
+    provider: z.string(),
+    metadefenderApiKey: z.string().optional(),
+    metadefenderBaseUrl: z.string().url(),
+    scanTimeoutMs: z.number().min(1000),
+  })
+  .superRefine((data, ctx) => {
+    if (data.provider === 'metadefender') {
+      const key = data.metadefenderApiKey?.trim();
+      if (!key) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['metadefenderApiKey'],
+          message:
+            'AV_METADEFENDER_API_KEY is required when AV_PROVIDER=metadefender',
+        });
+      }
+    }
+  });
 
 const NeonAuthEnvSchema = z
   .object({
@@ -343,8 +365,7 @@ export const stripeEnv = {
 export const aiEnv = {
   get provider() {
     const raw = getServerOptional('AI_PROVIDER');
-    const normalized = normalize(raw);
-    return normalized?.toLowerCase();
+    return raw?.toLowerCase();
   },
   get useMock() {
     return getServerOptional('AI_USE_MOCK');
@@ -366,6 +387,45 @@ export const aiEnv = {
    */
   get defaultModel() {
     return getServerOptional('AI_DEFAULT_MODEL') ?? AI_DEFAULT_MODEL;
+  },
+} as const;
+
+export const avScannerEnv = {
+  /**
+   * AV provider. Use 'metadefender' in production.
+   * Use 'none' for local development/testing when no external AV is configured.
+   */
+  get provider() {
+    const raw = getServerOptional('AV_PROVIDER');
+    return raw?.toLowerCase() ?? 'none';
+  },
+  /** MetaDefender Cloud API key */
+  get metadefenderApiKey() {
+    return getServerOptional('AV_METADEFENDER_API_KEY');
+  },
+  /** MetaDefender Cloud base URL */
+  get metadefenderBaseUrl() {
+    const configured = getServerOptional('AV_METADEFENDER_BASE_URL');
+    if (!configured) {
+      return AV_METADEFENDER_DEFAULT_BASE_URL;
+    }
+
+    const parsed = APP_URL_SCHEMA.safeParse(configured);
+    if (!parsed.success) {
+      throw new EnvValidationError(
+        `Invalid AV_METADEFENDER_BASE_URL: ${parsed.error.issues.map((i) => i.message).join('; ')}`,
+        'AV_METADEFENDER_BASE_URL'
+      );
+    }
+
+    return parsed.data;
+  },
+  /** End-to-end scan timeout in milliseconds */
+  get scanTimeoutMs() {
+    return Math.max(
+      1_000,
+      toNumber(getServerOptional('AV_SCAN_TIMEOUT_MS'), 30_000)
+    );
   },
 } as const;
 

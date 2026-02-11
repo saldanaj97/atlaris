@@ -1,10 +1,6 @@
 'use client';
 
 import {
-  deadlineWeeksToDate,
-  getTodayDateString,
-} from '@/app/plans/new/components/plan-form/helpers';
-import {
   PdfExtractionPreview,
   type PdfPlanSettings,
 } from '@/components/pdf/PdfExtractionPreview';
@@ -13,40 +9,61 @@ import {
   type ErrorCode,
 } from '@/components/pdf/PdfUploadError';
 import { PdfUploadZone } from '@/components/pdf/PdfUploadZone';
+import {
+  isStreamingError,
+  useStreamingPlanGeneration,
+} from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
+import { mapPdfSettingsToCreateInput } from '@/lib/mappers/learningPlans';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
+
+const extractionApiResponseSchema = z.object({
+  success: z.boolean(),
+  extraction: z
+    .object({
+      text: z.string(),
+      pageCount: z.number(),
+      metadata: z
+        .object({
+          title: z.string().optional(),
+          author: z.string().optional(),
+          subject: z.string().optional(),
+        })
+        .optional(),
+      structure: z.object({
+        sections: z.array(
+          z.object({
+            title: z.string(),
+            content: z.string(),
+            level: z.number(),
+            suggestedTopic: z.string().optional(),
+          })
+        ),
+        suggestedMainTopic: z.string(),
+        confidence: z.enum(['high', 'medium', 'low']),
+      }),
+    })
+    .optional(),
+  proof: z
+    .object({
+      token: z.string(),
+      extractionHash: z.string(),
+      expiresAt: z.string(),
+      version: z.literal(1),
+    })
+    .optional(),
+  error: z.string().optional(),
+  code: z.string().optional(),
+});
+
+type ExtractionApiResponse = z.infer<typeof extractionApiResponseSchema>;
 
 interface PdfCreatePanelProps {
   onSwitchToManual: (extractedTopic: string) => void;
-}
-
-interface ExtractionApiResponse {
-  success: boolean;
-  extraction?: {
-    text: string;
-    pageCount: number;
-    metadata: { title?: string; author?: string; subject?: string };
-    structure: {
-      sections: Array<{
-        title: string;
-        content: string;
-        level: number;
-        suggestedTopic?: string;
-      }>;
-      suggestedMainTopic: string;
-      confidence: 'high' | 'medium' | 'low';
-    };
-  };
-  error?: string;
-  code?: ErrorCode;
-}
-
-interface PlanCreationApiResponse {
-  id?: string;
-  error?: string | { message: string; code?: string };
 }
 
 interface ExtractionData {
@@ -61,10 +78,21 @@ interface ExtractionData {
   confidence: 'high' | 'medium' | 'low';
 }
 
+interface ExtractionProofData {
+  token: string;
+  extractionHash: string;
+  expiresAt: string;
+  version: 1;
+}
+
 type PageState =
   | { status: 'idle' }
   | { status: 'uploading' }
-  | { status: 'preview'; extraction: ExtractionData }
+  | {
+      status: 'preview';
+      extraction: ExtractionData;
+      proof: ExtractionProofData;
+    }
   | { status: 'generating' }
   | { status: 'error'; error: string; code?: ErrorCode };
 
@@ -74,6 +102,8 @@ export function PdfCreatePanel({
   const router = useRouter();
   const [state, setState] = useState<PageState>({ status: 'idle' });
   const isSubmittingRef = useRef(false);
+  const planIdRef = useRef<string | undefined>(undefined);
+  const { startGeneration } = useStreamingPlanGeneration();
 
   const handleFileSelect = async (file: File) => {
     if (file.type !== 'application/pdf') {
@@ -92,13 +122,28 @@ export function PdfCreatePanel({
         body: formData,
       });
 
-      const data = (await response.json()) as ExtractionApiResponse;
+      const rawData: unknown = await response.json();
+      const parseResult = extractionApiResponseSchema.safeParse(rawData);
 
-      if (!response.ok || !data.success || !data.extraction) {
+      if (!parseResult.success) {
+        clientLogger.error('PDF extraction response validation failed', {
+          error: parseResult.error.flatten(),
+          responseOk: response.ok,
+        });
+        setState({
+          status: 'error',
+          error: 'Invalid response from server. Please try again.',
+        });
+        return;
+      }
+
+      const data: ExtractionApiResponse = parseResult.data;
+
+      if (!response.ok || !data.success || !data.extraction || !data.proof) {
         setState({
           status: 'error',
           error: data.error ?? 'Failed to extract PDF content',
-          code: data.code,
+          code: (data.code as ErrorCode) ?? undefined,
         });
         return;
       }
@@ -111,6 +156,7 @@ export function PdfCreatePanel({
           pageCount: data.extraction.pageCount,
           confidence: data.extraction.structure.confidence,
         },
+        proof: data.proof,
       });
     } catch (error) {
       clientLogger.error('PDF extraction failed', error);
@@ -132,6 +178,13 @@ export function PdfCreatePanel({
     if (state.status === 'generating' || isSubmittingRef.current) {
       return;
     }
+
+    if (state.status !== 'preview') {
+      return;
+    }
+
+    const { proof } = state;
+
     isSubmittingRef.current = true;
     setState({ status: 'generating' });
 
@@ -139,64 +192,65 @@ export function PdfCreatePanel({
     const { skillLevel, weeklyHours, learningStyle, deadlineWeeks } = settings;
 
     try {
-      const response = await fetch('/api/v1/plans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          origin: 'pdf',
-          extractedContent: {
-            mainTopic,
-            sections,
-          },
-          skillLevel,
-          weeklyHours,
-          learningStyle,
-          startDate: getTodayDateString(),
-          deadlineDate: deadlineWeeksToDate(deadlineWeeks),
-        }),
+      const createInput = mapPdfSettingsToCreateInput({
+        mainTopic,
+        sections,
+        skillLevel,
+        weeklyHours,
+        learningStyle,
+        deadlineWeeks,
+        pdfProofToken: proof.token,
+        pdfExtractionHash: proof.extractionHash,
       });
+      const streamPlanId = await startGeneration(createInput);
 
-      const data = (await response.json()) as PlanCreationApiResponse;
-
-      if (!response.ok) {
-        // Handle structured error response with code field
-        const errorMessage =
-          typeof data.error === 'string'
-            ? data.error
-            : (data.error?.message ?? 'Failed to create learning plan');
-        const errorCode =
-          typeof data.error === 'object' && data.error?.code
-            ? (data.error.code as ErrorCode)
-            : undefined;
-
-        if (errorCode === 'QUOTA_EXCEEDED') {
-          setState({
-            status: 'error',
-            error: errorMessage,
-            code: 'QUOTA_EXCEEDED',
-          });
-          return;
-        }
-
-        throw new Error(errorMessage);
+      planIdRef.current = streamPlanId;
+      toast.success('Your learning plan is ready!');
+      router.push(`/plans/${streamPlanId}`);
+    } catch (streamError) {
+      const isAbort =
+        streamError instanceof DOMException &&
+        streamError.name === 'AbortError';
+      if (isAbort) {
+        toast.info('Generation cancelled');
+        setState({ status: 'idle' });
+        return;
       }
 
-      if (!data.id) {
-        throw new Error('Plan ID not returned from API');
+      clientLogger.error('Plan generation failed', streamError);
+
+      const message =
+        streamError instanceof Error
+          ? streamError.message
+          : 'Failed to create learning plan. Please try again.';
+
+      const extractedPlanId = isStreamingError(streamError)
+        ? (streamError.planId ?? streamError.data?.planId ?? planIdRef.current)
+        : planIdRef.current;
+
+      if (
+        extractedPlanId &&
+        typeof extractedPlanId === 'string' &&
+        extractedPlanId.length > 0
+      ) {
+        toast.error('Generation failed. You can retry from the plan page.');
+        router.push(`/plans/${extractedPlanId}`);
+        return;
       }
 
-      toast.success('Learning plan created! Generation starting...');
-      router.push(`/plans/${data.id}`);
-    } catch (error) {
-      isSubmittingRef.current = false;
-      clientLogger.error('Plan generation failed', error);
+      const errorCode = isStreamingError(streamError)
+        ? streamError.code === 'QUOTA_EXCEEDED'
+          ? ('QUOTA_EXCEEDED' as ErrorCode)
+          : undefined
+        : undefined;
+
       setState({
         status: 'error',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to create learning plan',
+        error: message,
+        code: errorCode,
       });
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 

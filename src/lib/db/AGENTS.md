@@ -88,14 +88,14 @@ export async function getPlanById(
 
 ## Key Tables
 
-| Table                 | Purpose                      | Notes                   |
-| --------------------- | ---------------------------- | ----------------------- |
-| `users`               | User accounts                | `auth_user_id` for auth |
-| `learning_plans`      | Plans with generation status | RLS by `user_id`        |
-| `modules`             | Plan sections                | `order` starts at 1     |
-| `tasks`               | Learning activities          | `order` starts at 1     |
-| `generation_attempts` | AI attempt audit log         | Max 3 per plan          |
-| `integration_tokens`  | OAuth tokens                 | Google Calendar         |
+| Table                 | Purpose                      | Notes                                                                |
+| --------------------- | ---------------------------- | -------------------------------------------------------------------- |
+| `users`               | User accounts                | `auth_user_id` for auth                                              |
+| `learning_plans`      | Plans with generation status | RLS by `user_id`; `extracted_context` has CHECK for PdfContext shape |
+| `modules`             | Plan sections                | `order` starts at 1                                                  |
+| `tasks`               | Learning activities          | `order` starts at 1                                                  |
+| `generation_attempts` | AI attempt audit log         | Max 3 per plan                                                       |
+| `integration_tokens`  | OAuth tokens                 | Google Calendar                                                      |
 
 ## Commands
 

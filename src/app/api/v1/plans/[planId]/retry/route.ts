@@ -11,6 +11,7 @@ import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { parsePersistedPdfContext } from '@/lib/pdf/context';
 
 import {
   buildPlanStartEvent,
@@ -105,11 +106,16 @@ export const POST = withErrorBoundary(
     const planLearningStyle = plan.learningStyle;
     const planStartDate = plan.startDate;
     const planDeadlineDate = plan.deadlineDate;
+    const planPdfContext =
+      plan.origin === 'pdf'
+        ? parsePersistedPdfContext(plan.extractedContext)
+        : null;
 
     const generationInput = {
       topic: planTopic,
       // Notes are not stored on the plan currently
       notes: undefined as string | undefined,
+      pdfContext: planPdfContext,
       skillLevel: planSkillLevel,
       weeklyHours: planWeeklyHours,
       learningStyle: planLearningStyle,
@@ -134,7 +140,7 @@ export const POST = withErrorBoundary(
             userId: user.id,
             input: generationInput,
           },
-          { provider, signal: req.signal }
+          { provider, signal: req.signal, dbClient: db }
         );
 
         if (result.status === 'success') {

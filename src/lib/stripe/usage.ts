@@ -1,6 +1,7 @@
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
+import type { PdfContext } from '@/lib/pdf/context';
 import { and, eq, sql } from 'drizzle-orm';
 
 import {
@@ -364,6 +365,7 @@ export async function atomicCheckAndInsertPlan(
     learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
     visibility: 'private';
     origin: 'ai' | 'manual' | 'template' | 'pdf';
+    extractedContext?: PdfContext | null;
     startDate?: string | null;
     deadlineDate?: string | null;
   },

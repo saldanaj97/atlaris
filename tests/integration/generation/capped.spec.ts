@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { db } from '@/lib/db/service-role';
+import { getDb } from '@/lib/db/runtime';
 import {
   generationAttempts,
   learningPlans,
   modules,
   tasks,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { desc, eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -98,7 +99,7 @@ describe('generation integration - capped attempts', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider }
+      { provider: mock.provider, dbClient: getDb() }
     );
 
     expect(result.status).toBe('failure');
@@ -112,9 +113,12 @@ describe('generation integration - capped attempts', () => {
       .orderBy(desc(generationAttempts.createdAt));
     const latestAttempt = attempts[0];
 
-    expect(latestAttempt?.classification).toBe('capped');
-    expect(latestAttempt?.modulesCount).toBe(0);
-    expect(latestAttempt?.tasksCount).toBe(0);
+    expect(attempts.length).toBeGreaterThan(0);
+    expect(latestAttempt).toBeDefined(); // fail-fast when query returns no rows
+
+    expect(latestAttempt!.classification).toBe('capped');
+    expect(latestAttempt!.modulesCount).toBe(0);
+    expect(latestAttempt!.tasksCount).toBe(0);
 
     const moduleRows = await db
       .select({ value: modules.id })

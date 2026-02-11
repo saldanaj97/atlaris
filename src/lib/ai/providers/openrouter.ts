@@ -14,6 +14,10 @@ import type {
 import { openRouterEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 
+export type OpenRouterChatResponse = Awaited<
+  ReturnType<OpenRouter['chat']['send']>
+>;
+
 export interface OpenRouterProviderConfig {
   apiKey?: string;
   model: string;
@@ -54,11 +58,13 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
   // NOTE: Track this improvement in an issue to follow up on streaming behavior.
   async generate(
     input: GenerationInput,
-    _options?: GenerationOptions
+    options?: GenerationOptions
   ): Promise<ProviderGenerateResult> {
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt({
       topic: input.topic,
+      notes: input.notes,
+      pdfContext: input.pdfContext,
       skillLevel: input.skillLevel,
       learningStyle: input.learningStyle,
       weeklyHours: input.weeklyHours,
@@ -82,16 +88,30 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         },
       },
       async (span) => {
-        let response;
+        const requestOptions: {
+          signal?: AbortSignal;
+          timeoutMs?: number;
+        } = {};
+        if (options?.signal) {
+          requestOptions.signal = options.signal;
+        }
+        if (options?.timeoutMs != null && options.timeoutMs > 0) {
+          requestOptions.timeoutMs = options.timeoutMs;
+        }
+
+        let response: OpenRouterChatResponse;
         try {
-          response = await this.client.chat.send({
-            model: this.model,
-            messages,
-            stream: false,
-            temperature: this.temperature,
-            responseFormat: { type: 'json_object' },
-            provider: { requireParameters: true },
-          });
+          response = await this.client.chat.send(
+            {
+              model: this.model,
+              messages,
+              stream: false,
+              temperature: this.temperature,
+              responseFormat: { type: 'json_object' },
+              provider: { requireParameters: true },
+            },
+            requestOptions
+          );
         } catch (err) {
           const errorDetails = {
             source: 'openrouter-provider',

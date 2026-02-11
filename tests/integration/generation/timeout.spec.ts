@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { db } from '@/lib/db/service-role';
 import {
   generationAttempts,
   learningPlans,
   modules,
   tasks,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -48,7 +48,7 @@ describe('generation integration - timeout classification', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider }
+      { provider: mock.provider, dbClient: db }
     );
 
     expect(result.status).toBe('failure');

@@ -65,6 +65,16 @@ const toLocalDateString = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+function deadlineWeeksToDate(weeks: string): string {
+  const weeksNum = parseInt(weeks, 10);
+  if (!Number.isFinite(weeksNum) || weeksNum < 0) {
+    throw new Error(`Invalid weeks value: ${weeks}`);
+  }
+  const date = new Date();
+  date.setDate(date.getDate() + weeksNum * 7);
+  return toLocalDateString(date);
+}
+
 export function normalizeOnboardingValues(values: OnboardingFormValues) {
   const parsed = onboardingFormSchema.parse(values);
   return {
@@ -90,6 +100,46 @@ export function mapOnboardingToCreateInput(
     deadlineDate: normalized.deadlineDate,
     visibility: 'private',
     origin: 'ai',
+  });
+}
+
+export interface PdfSettingsToCreateInputParams {
+  mainTopic: string;
+  sections: Array<{
+    title: string;
+    content: string;
+    level: number;
+    suggestedTopic?: string;
+  }>;
+  skillLevel: string;
+  weeklyHours: string;
+  learningStyle: string;
+  deadlineWeeks: string;
+  pdfProofToken: string;
+  pdfExtractionHash: string;
+}
+
+/**
+ * Maps PDF extraction preview settings to CreateLearningPlanInput for the stream endpoint.
+ */
+export function mapPdfSettingsToCreateInput(
+  params: PdfSettingsToCreateInputParams
+): CreateLearningPlanInput {
+  return createLearningPlanSchema.parse({
+    origin: 'pdf',
+    extractedContent: {
+      mainTopic: params.mainTopic,
+      sections: params.sections,
+    },
+    pdfProofToken: params.pdfProofToken,
+    pdfExtractionHash: params.pdfExtractionHash,
+    topic: params.mainTopic,
+    skillLevel: asSkillLevel(params.skillLevel),
+    weeklyHours: parseWeeklyHours(params.weeklyHours),
+    learningStyle: asLearningStyle(params.learningStyle),
+    startDate: toLocalDateString(new Date()),
+    deadlineDate: deadlineWeeksToDate(params.deadlineWeeks),
+    visibility: 'private',
   });
 }
 

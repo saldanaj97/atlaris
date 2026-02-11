@@ -5,6 +5,7 @@ export type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
+  IsoDateString,
   ProviderErrorKind,
   ProviderGenerateResult,
   ProviderMetadata,

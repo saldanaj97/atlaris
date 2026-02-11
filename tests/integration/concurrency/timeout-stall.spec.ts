@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { db } from '@/lib/db/service-role';
-import { learningPlans } from '@/lib/db/schema';
+import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
@@ -20,18 +20,15 @@ describe('Concurrency - provider stall timeout classification', () => {
       email: 'stall_user@example.com',
     });
 
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'Stall Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 2,
-        learningStyle: 'reading',
-        visibility: 'private',
-        origin: 'ai',
-      })
-      .returning();
+    const plan = await createTestPlan({
+      userId,
+      topic: 'Stall Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 2,
+      learningStyle: 'reading',
+      visibility: 'private',
+      origin: 'ai',
+    });
 
     // Custom mock provider variant: never sends data until aborted.
     const stallProvider = createMockProvider({ scenario: 'timeout' }).provider;
@@ -52,6 +49,7 @@ describe('Concurrency - provider stall timeout classification', () => {
         provider: stallProvider,
         timeoutConfig: { baseMs: 100, extensionMs: 0 },
         clock: () => Date.now(),
+        dbClient: db,
       }
     );
 

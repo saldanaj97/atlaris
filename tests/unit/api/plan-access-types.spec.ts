@@ -7,11 +7,6 @@
 
 import { describe, expect, it } from 'vitest';
 
-import type {
-  PlanAccessErrorCode,
-  PlanAccessResult,
-  ScheduleAccessResult,
-} from '@/app/plans/[id]/types';
 import {
   planError,
   planSuccess,
@@ -19,53 +14,12 @@ import {
   scheduleSuccess,
 } from '@/app/plans/[id]/helpers';
 import type {
-  LearningPlanDetail,
-  LearningPlanWithModules,
-} from '@/lib/types/db';
+  PlanAccessErrorCode,
+  PlanAccessResult,
+  ScheduleAccessResult,
+} from '@/app/plans/[id]/types';
 import type { ScheduleJson } from '@/lib/scheduling/types';
-
-const BASE_DATE = new Date('2025-01-01T00:00:00.000Z');
-
-// Builder function for creating mock plan (matches schema exactly)
-function buildPlan(
-  overrides: Partial<LearningPlanWithModules> = {}
-): LearningPlanWithModules {
-  return {
-    id: 'plan-123',
-    userId: 'user-456',
-    topic: 'TypeScript Fundamentals',
-    skillLevel: 'beginner',
-    weeklyHours: 10,
-    learningStyle: 'mixed',
-    startDate: null,
-    deadlineDate: null,
-    visibility: 'private',
-    origin: 'ai',
-    generationStatus: 'ready',
-    isQuotaEligible: true,
-    finalizedAt: BASE_DATE,
-    createdAt: BASE_DATE,
-    updatedAt: BASE_DATE,
-    modules: [],
-    ...overrides,
-  } satisfies LearningPlanWithModules;
-}
-
-// Builder function for creating mock plan detail
-function buildDetail(
-  overrides: Partial<LearningPlanDetail> = {}
-): LearningPlanDetail {
-  return {
-    plan: buildPlan(),
-    totalTasks: 0,
-    completedTasks: 0,
-    latestAttempt: null,
-    attemptsCount: 0,
-    latestJobStatus: null,
-    latestJobError: null,
-    ...overrides,
-  } satisfies LearningPlanDetail;
-}
+import { buildPlanDetail } from '../../fixtures/plan-detail';
 
 // Builder function for creating mock schedule data
 function buildSchedule(overrides: Partial<ScheduleJson> = {}): ScheduleJson {
@@ -80,20 +34,20 @@ function buildSchedule(overrides: Partial<ScheduleJson> = {}): ScheduleJson {
 describe('Plan Access Types', () => {
   describe('planSuccess', () => {
     it('should create a success result with plan data', () => {
-      const mockPlanData = buildDetail();
+      const mockPlanData = buildPlanDetail();
       const result = planSuccess(mockPlanData);
 
       expect(result.success).toBe(true);
       expect(result).toHaveProperty('data');
       if (result.success) {
         expect(result.data).toBe(mockPlanData);
-        expect(result.data.plan.id).toBe('plan-123');
-        expect(result.data.plan.topic).toBe('TypeScript Fundamentals');
+        expect(result.data.plan.id).toBe('plan-1');
+        expect(result.data.plan.topic).toBe('Machine Learning Fundamentals');
       }
     });
 
     it('should allow type narrowing via success discriminant', () => {
-      const mockPlanData = buildDetail();
+      const mockPlanData = buildPlanDetail();
       const result: PlanAccessResult = planSuccess(mockPlanData);
 
       // TypeScript should narrow the type correctly
@@ -108,7 +62,7 @@ describe('Plan Access Types', () => {
     });
 
     it('should preserve all plan properties', () => {
-      const mockPlanData = buildDetail({
+      const mockPlanData = buildPlanDetail({
         totalTasks: 10,
         completedTasks: 5,
         attemptsCount: 3,
@@ -354,7 +308,7 @@ describe('Plan Access Types', () => {
 
   describe('Discriminated Union Pattern', () => {
     it('success and error results should be mutually exclusive', () => {
-      const successResult = planSuccess(buildDetail());
+      const successResult = planSuccess(buildPlanDetail());
       const errorResult = planError('NOT_FOUND', 'Not found');
 
       // Success result should have data, not error
@@ -370,7 +324,7 @@ describe('Plan Access Types', () => {
 
     it('should support conditional data access patterns', () => {
       const results: PlanAccessResult[] = [
-        planSuccess(buildDetail()),
+        planSuccess(buildPlanDetail()),
         planError('UNAUTHORIZED', 'Not authenticated'),
         planError('NOT_FOUND', 'Not found'),
       ];
