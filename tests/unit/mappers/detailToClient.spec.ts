@@ -1,20 +1,18 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import {
   mapAttemptsToClient,
   mapDetailToClient,
 } from '@/lib/mappers/detailToClient';
 import type {
-  LearningPlan,
+  GenerationAttempt,
   LearningPlanDetail,
-  Module,
-  Task,
+  ModuleWithTasks,
   TaskProgress,
-  TaskResourceWithResource,
+  TaskWithRelations,
 } from '@/lib/types/db';
 import { describe, expect, it } from 'vitest';
 import {
+  buildGenerationAttempt,
   buildModule,
   buildPlan,
   buildPlanDetail,
@@ -25,108 +23,91 @@ import {
 
 describe('mapDetailToClient', () => {
   it('should map complete plan detail to client format', () => {
-    const plan = {
-      id: 'plan-1',
+    const progress: TaskProgress = {
+      id: 'progress-1',
+      taskId: 'task-1',
       userId: 'user-1',
-      topic: 'TypeScript',
-      skillLevel: 'intermediate',
-      weeklyHours: 10,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
+      status: 'completed',
+      completedAt: new Date('2024-01-02'),
       createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-02'),
     };
 
-    const module1: Module = {
-      id: 'module-1',
-      planId: 'plan-1',
-      order: 1,
-      title: 'Basics',
-      description: 'Introduction',
-      estimatedMinutes: 120,
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
+    const task1: TaskWithRelations = {
+      ...buildTask({
+        id: 'task-1',
+        moduleId: 'module-1',
+        order: 1,
+        title: 'Learn basics',
+        description: 'Basic concepts',
+        estimatedMinutes: 60,
+        resources: [
+          buildTaskResource({
+            id: 'task-resource-1',
+            taskId: 'task-1',
+            resourceId: 'resource-1',
+            order: 1,
+            resource: {
+              id: 'resource-1',
+              type: 'article',
+              title: 'TS Handbook',
+              url: 'https://example.com',
+              domain: null,
+              author: null,
+              durationMinutes: 30,
+              costCents: null,
+              currency: null,
+              tags: [],
+              createdAt: new Date('2024-01-01'),
+            },
+          }),
+        ],
+        progress,
+      }),
     };
 
-    const task1: Task & {
-      resources: TaskResourceWithResource[];
-      progress: TaskProgress | null;
-    } = {
-      id: 'task-1',
-      moduleId: 'module-1',
-      order: 1,
-      title: 'Learn basics',
-      description: 'Basic concepts',
-      estimatedMinutes: 60,
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-      resources: [
-        {
-          id: 'task-resource-1',
-          taskId: 'task-1',
-          resourceId: 'resource-1',
-          order: 1,
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
-          resource: {
-            id: 'resource-1',
-            type: 'article',
-            title: 'TS Handbook',
-            url: 'https://example.com',
-            durationMinutes: 30,
-            createdAt: new Date('2024-01-01'),
-          },
-        },
-      ],
-      progress: {
-        id: 'progress-1',
-        taskId: 'task-1',
-        userId: 'user-1',
-        status: 'completed',
-        completedAt: new Date('2024-01-02'),
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-02'),
-      },
+    const module1: ModuleWithTasks = {
+      ...buildModule({
+        id: 'module-1',
+        planId: 'plan-1',
+        order: 1,
+        title: 'Basics',
+        description: 'Introduction',
+        estimatedMinutes: 120,
+        tasks: [task1],
+      }),
     };
 
-    const latestAttempt = {
+    const latestAttempt = buildSuccessAttempt({
       id: 'attempt-1',
-      generationId: 'gen-1',
-      attemptNumber: 1,
+      planId: 'plan-1',
       status: 'success',
       classification: null,
       durationMs: 5000,
       modulesCount: 5,
       tasksCount: 20,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
-      promptHash: 'hash123',
       metadata: { provider: { model: 'gpt-4' } },
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
+    });
 
-    const detail: LearningPlanDetail = {
-      plan: {
-        ...plan,
-        modules: [
-          {
-            ...module1,
-            tasks: [task1],
-          },
-        ],
-      },
+    const detail: LearningPlanDetail = buildPlanDetail({
+      plan: buildPlan({
+        id: 'plan-1',
+        userId: 'user-1',
+        topic: 'TypeScript',
+        skillLevel: 'intermediate',
+        weeklyHours: 10,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+        startDate: '2024-01-01',
+        deadlineDate: '2024-03-01',
+        modules: [module1],
+      }),
       totalTasks: 1,
       completedTasks: 1,
       latestAttempt,
       attemptsCount: 1,
-      latestJobStatus: 'completed',
-      latestJobError: null,
-    };
+    });
 
     const result = mapDetailToClient(detail);
 
@@ -146,87 +127,70 @@ describe('mapDetailToClient', () => {
   });
 
   it('should return undefined for null detail', () => {
-    const result = mapDetailToClient(null as unknown as LearningPlanDetail);
+    const result = mapDetailToClient(null);
     expect(result).toBeUndefined();
   });
 
   it('should return undefined for undefined detail', () => {
-    const result = mapDetailToClient(
-      undefined as unknown as LearningPlanDetail
-    );
+    const result = mapDetailToClient(undefined);
     expect(result).toBeUndefined();
   });
 
   it('should return undefined if plan is missing', () => {
-    const detail = {
+    // Intentionally pass invalid input to test defensive handling (plan is null at runtime).
+    const detailWithNullPlan = {
       plan: null,
       totalTasks: 0,
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
     } as unknown as LearningPlanDetail;
 
-    const result = mapDetailToClient(detail);
+    const result = mapDetailToClient(detailWithNullPlan);
     expect(result).toBeUndefined();
   });
 
   it('should handle null descriptions', () => {
-    const plan = {
-      id: 'plan-1',
-      userId: 'user-1',
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const module1: Module = {
-      id: 'module-1',
-      planId: 'plan-1',
-      order: 1,
-      title: 'Module',
-      description: null,
-      estimatedMinutes: null,
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const task1: Task & {
-      resources: TaskResourceWithResource[];
-      progress: TaskProgress | null;
-    } = {
+    const task1: TaskWithRelations = buildTask({
       id: 'task-1',
       moduleId: 'module-1',
       order: 1,
       title: 'Task',
       description: null,
-      estimatedMinutes: null,
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
+      estimatedMinutes: 0,
       resources: [],
       progress: null,
-    };
+    });
 
-    const detail: LearningPlanDetail = {
-      plan: {
-        ...plan,
-        modules: [{ ...module1, tasks: [task1] }],
-      },
+    const detail: LearningPlanDetail = buildPlanDetail({
+      plan: buildPlan({
+        id: 'plan-1',
+        userId: 'user-1',
+        topic: 'Test',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+        startDate: '2024-01-01',
+        deadlineDate: '2024-03-01',
+        modules: [
+          buildModule({
+            id: 'module-1',
+            planId: 'plan-1',
+            order: 1,
+            title: 'Module',
+            description: null,
+            estimatedMinutes: 0,
+            tasks: [task1],
+          }),
+        ],
+      }),
       totalTasks: 1,
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
-    };
+    });
 
     const result = mapDetailToClient(detail);
 
@@ -239,80 +203,67 @@ describe('mapDetailToClient', () => {
   });
 
   it('should sort modules and tasks by order', () => {
-    const plan = {
-      id: 'plan-1',
-      userId: 'user-1',
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const modules = [
-      {
+    const modules: ModuleWithTasks[] = [
+      buildModule({
         id: 'module-2',
         planId: 'plan-1',
         order: 2,
         title: 'Second',
         description: null,
         estimatedMinutes: 60,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
         tasks: [],
-      },
-      {
+      }),
+      buildModule({
         id: 'module-1',
         planId: 'plan-1',
         order: 1,
         title: 'First',
         description: null,
         estimatedMinutes: 60,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
         tasks: [
-          {
+          buildTask({
             id: 'task-2',
             moduleId: 'module-1',
             order: 2,
             title: 'Second Task',
             description: null,
             estimatedMinutes: 30,
-            createdAt: new Date('2024-01-01'),
-            updatedAt: new Date('2024-01-01'),
             resources: [],
             progress: null,
-          },
-          {
+          }),
+          buildTask({
             id: 'task-1',
             moduleId: 'module-1',
             order: 1,
             title: 'First Task',
             description: null,
             estimatedMinutes: 30,
-            createdAt: new Date('2024-01-01'),
-            updatedAt: new Date('2024-01-01'),
             resources: [],
             progress: null,
-          },
+          }),
         ],
-      },
+      }),
     ];
 
-    const detail: LearningPlanDetail = {
-      plan: { ...(plan as LearningPlan), modules },
+    const detail: LearningPlanDetail = buildPlanDetail({
+      plan: buildPlan({
+        id: 'plan-1',
+        userId: 'user-1',
+        topic: 'Test',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+        startDate: '2024-01-01',
+        deadlineDate: '2024-03-01',
+        modules,
+      }),
       totalTasks: 2,
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
-    };
+    });
 
     const result = mapDetailToClient(detail);
 
@@ -324,123 +275,79 @@ describe('mapDetailToClient', () => {
   });
 
   it('should derive status as "ready" when modules exist', () => {
-    const plan = {
-      id: 'plan-1',
-      userId: 'user-1',
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const detail: LearningPlanDetail = {
-      plan: {
-        ...plan,
+    const detail: LearningPlanDetail = buildPlanDetail({
+      plan: buildPlan({
+        id: 'plan-1',
+        userId: 'user-1',
+        topic: 'Test',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+        startDate: '2024-01-01',
+        deadlineDate: '2024-03-01',
         modules: [
-          {
+          buildModule({
             id: 'module-1',
             planId: 'plan-1',
             order: 1,
             title: 'Module',
             description: null,
             estimatedMinutes: 60,
-            createdAt: new Date('2024-01-01'),
-            updatedAt: new Date('2024-01-01'),
             tasks: [],
-          },
+          }),
         ],
-      },
+      }),
       totalTasks: 0,
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
-    };
+    });
 
     const result = mapDetailToClient(detail);
     expect(result!.status).toBe('ready');
   });
 
-  it('should derive status as "failed" when job status is failed', () => {
-    const plan = {
-      id: 'plan-1',
-      userId: 'user-1',
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const detail: LearningPlanDetail = {
-      plan: { ...(plan as any), modules: [] },
-      totalTasks: 0,
-      completedTasks: 0,
-      latestAttempt: null,
-      attemptsCount: 0,
-      latestJobStatus: 'failed',
-      latestJobError: 'Timeout',
-    };
+  it('should derive status as "failed" when plan generation status is failed', () => {
+    const detail = buildPlanDetail({
+      plan: buildPlan({ generationStatus: 'failed', modules: [] }),
+    });
 
     const result = mapDetailToClient(detail);
     expect(result!.status).toBe('failed');
   });
 
   it('should derive status as "failed" when latest attempt is validation failure', () => {
-    const plan = {
-      id: 'plan-1',
-      userId: 'user-1',
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const latestAttempt = {
+    const latestAttempt = buildGenerationAttempt({
       id: 'attempt-1',
-      planId: 'gen-1',
-      attemptNumber: 1,
+      planId: 'plan-1',
       status: 'failure',
       classification: 'validation',
       durationMs: 1000,
       modulesCount: 0,
       tasksCount: 0,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
-      promptHash: 'hash',
-      metadata: null,
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
+    });
 
-    const detail: LearningPlanDetail = {
-      plan: { ...(plan as any), modules: [] },
+    const detail: LearningPlanDetail = buildPlanDetail({
+      plan: buildPlan({
+        id: 'plan-1',
+        userId: 'user-1',
+        topic: 'Test',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+        startDate: '2024-01-01',
+        deadlineDate: '2024-03-01',
+        modules: [],
+      }),
       totalTasks: 0,
       completedTasks: 0,
       latestAttempt,
       attemptsCount: 1,
-      latestJobStatus: null,
-      latestJobError: null,
-    };
+    });
 
     const result = mapDetailToClient(detail);
     expect(result!.status).toBe('failed');
@@ -510,60 +417,51 @@ describe('mapDetailToClient', () => {
   });
 
   it('should derive status as "pending" by default', () => {
-    const plan = {
-      id: 'plan-1',
-      userId: 'user-1',
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const detail: LearningPlanDetail = {
-      plan: { ...(plan as any), modules: [] },
+    const detail: LearningPlanDetail = buildPlanDetail({
+      plan: buildPlan({
+        id: 'plan-1',
+        userId: 'user-1',
+        topic: 'Test',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+        startDate: '2024-01-01',
+        deadlineDate: '2024-03-01',
+        generationStatus: 'ready',
+        modules: [],
+      }),
       totalTasks: 0,
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 1,
-      latestJobStatus: null,
-      latestJobError: null,
-    };
+    });
 
     const result = mapDetailToClient(detail);
     expect(result!.status).toBe('pending');
   });
 
   it('should handle null attempt gracefully', () => {
-    const plan = {
-      id: 'plan-1',
-      userId: 'user-1',
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
-
-    const detail: LearningPlanDetail = {
-      plan: { ...(plan as any), modules: [] },
+    const detail: LearningPlanDetail = buildPlanDetail({
+      plan: buildPlan({
+        id: 'plan-1',
+        userId: 'user-1',
+        topic: 'Test',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+        startDate: '2024-01-01',
+        deadlineDate: '2024-03-01',
+        modules: [],
+      }),
       totalTasks: 0,
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
-    };
+    });
 
     const result = mapDetailToClient(detail);
     expect(result!.latestAttempt).toBeNull();
@@ -572,41 +470,29 @@ describe('mapDetailToClient', () => {
 
 describe('mapAttemptsToClient', () => {
   it('should map array of attempts to client format', () => {
-    const attempts = [
-      {
+    const attempts: GenerationAttempt[] = [
+      buildSuccessAttempt({
         id: 'attempt-1',
         planId: 'gen-1',
-        attemptNumber: 1,
-        status: 'success',
-        classification: null,
         durationMs: 5000,
         modulesCount: 5,
         tasksCount: 20,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: false,
         promptHash: 'hash1',
         metadata: { provider: { model: 'gpt-4' } },
         createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
-      {
+      }),
+      buildGenerationAttempt({
         id: 'attempt-2',
         planId: 'gen-1',
-        attemptNumber: 2,
         status: 'failure',
         classification: 'timeout',
         durationMs: 30000,
         modulesCount: 0,
         tasksCount: 0,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: false,
         promptHash: 'hash2',
         metadata: null,
         createdAt: new Date('2024-01-02'),
-        updatedAt: new Date('2024-01-02'),
-      },
+      }),
     ];
 
     const result = mapAttemptsToClient(attempts);
@@ -681,24 +567,17 @@ describe('mapAttemptsToClient', () => {
   });
 
   it('should handle attempts without metadata', () => {
-    const attempts = [
-      {
+    const attempts: GenerationAttempt[] = [
+      buildSuccessAttempt({
         id: 'attempt-1',
         planId: 'gen-1',
-        attemptNumber: 1,
-        status: 'success',
-        classification: null,
         durationMs: 5000,
         modulesCount: 5,
         tasksCount: 20,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: false,
         promptHash: null,
         metadata: null,
         createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const result = mapAttemptsToClient(attempts);

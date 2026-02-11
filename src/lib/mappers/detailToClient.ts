@@ -117,7 +117,7 @@ function derivePlanStatus(detail: LearningPlanDetail): PlanStatus | undefined {
     return 'ready';
   }
 
-  if (detail.latestJobStatus === 'failed') {
+  if (detail.plan.generationStatus === 'failed') {
     return 'failed';
   }
 
@@ -134,11 +134,15 @@ function derivePlanStatus(detail: LearningPlanDetail): PlanStatus | undefined {
     return 'failed';
   }
 
+  if (detail.plan.generationStatus === 'generating') {
+    return 'processing';
+  }
+
   return 'pending';
 }
 
 export function mapDetailToClient(
-  detail: LearningPlanDetail
+  detail: LearningPlanDetail | null | undefined
 ): ClientPlanDetail | undefined {
   if (!detail) return undefined;
 

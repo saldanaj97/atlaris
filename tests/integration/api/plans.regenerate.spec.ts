@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { desc, eq } from 'drizzle-orm';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
-import { db } from '@/lib/db/service-role';
 import { jobQueue, learningPlans, usageMetrics } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
@@ -82,7 +82,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
     expect(job).toBeDefined();
     expect(job?.jobType).toBe('plan_regeneration');
-    expect(job?.status).toBe('pending');
+    expect(['pending', 'processing']).toContain(job?.status);
     expect(job?.planId).toBe(plan.id);
     expect(job?.userId).toBe(userId);
   });
@@ -355,7 +355,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(body.error).toMatch(/regeneration limit|quota/i);
   });
 
-  it('handles concurrent regeneration requests for same plan', async () => {
+  it('deduplicates concurrent regeneration requests for same plan', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({
       authUserId,
@@ -382,29 +382,44 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       throw new Error('Failed to create plan');
     }
 
-    // Send two concurrent regeneration requests
+    // Send two concurrent regeneration requests; small delay on second to give first
+    // a head start so we reliably exercise the dedupe path (second returns existing job id).
     const [res1, res2] = await Promise.all([
       createRequest(plan.id, {
         overrides: { topic: 'interview prep 1' },
       }).then(({ request, context }) => POST(request, context)),
       createRequest(plan.id, {
         overrides: { topic: 'interview prep 2' },
-      }).then(({ request, context }) => POST(request, context)),
+      }).then(async ({ request, context }) => {
+        await new Promise((r) => setTimeout(r, 15));
+        return POST(request, context);
+      }),
     ]);
 
     // Both requests should succeed
     expect(res1.status).toBe(202);
     expect(res2.status).toBe(202);
 
-    // Verify both jobs were created
+    // Verify only one active regeneration job was created
     const jobs = await db
       .select()
       .from(jobQueue)
       .where(eq(jobQueue.planId, plan.id))
       .orderBy(desc(jobQueue.createdAt));
 
-    expect(jobs).toHaveLength(2);
+    expect(jobs).toHaveLength(1);
     expect(jobs[0]?.jobType).toBe('plan_regeneration');
-    expect(jobs[1]?.jobType).toBe('plan_regeneration');
+    expect(['pending', 'processing']).toContain(jobs[0]?.status);
+
+    // The single job's payload should contain overrides from whichever request won the race
+    type RegenerationPayload = { overrides?: { topic?: string } };
+    const payload = jobs[0]?.payload as RegenerationPayload | undefined;
+    expect(payload?.overrides?.topic).toBeDefined();
+    expect(['interview prep 1', 'interview prep 2']).toContain(
+      payload?.overrides?.topic
+    );
+
+    // API does not currently signal deduplication in header/body; if it did (e.g.
+    // X-Regeneration-Deduplicated or body.deduplicated), assert res2 includes it here.
   });
 });

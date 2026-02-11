@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { db } from '@/lib/db/service-role';
 import { cleanupOldJobs, getFailedJobs, getJobStats } from '@/lib/db/queries';
 import { jobQueue } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { JOB_TYPES } from '@/lib/jobs/types';
 import { ensureUser } from '../helpers/db';
 
@@ -119,7 +119,7 @@ describe('Monitoring Queries', () => {
       await db.insert(jobQueue).values(failedJobs);
 
       // Query stats since 2 hours ago (should include all jobs)
-      const stats = await getJobStats(twoHoursAgo);
+      const stats = await getJobStats(twoHoursAgo, db);
 
       // Assert correct counts
       expect(stats.pendingCount).toBe(2);
@@ -171,7 +171,7 @@ describe('Monitoring Queries', () => {
       });
 
       // Query only jobs since 1 hour ago
-      const stats = await getJobStats(oneHourAgo);
+      const stats = await getJobStats(oneHourAgo, db);
 
       // Should only count the recent job
       expect(stats.completedCount).toBe(1);
@@ -210,7 +210,7 @@ describe('Monitoring Queries', () => {
       }
 
       // Request only 3 most recent failed jobs
-      const failedJobs = await getFailedJobs(3);
+      const failedJobs = await getFailedJobs(3, db);
 
       expect(failedJobs).toHaveLength(3);
 
@@ -243,7 +243,7 @@ describe('Monitoring Queries', () => {
         updatedAt: new Date(),
       });
 
-      const failedJobs = await getFailedJobs(10);
+      const failedJobs = await getFailedJobs(10, db);
 
       expect(failedJobs).toHaveLength(0);
     });
@@ -320,7 +320,7 @@ describe('Monitoring Queries', () => {
       });
 
       // Cleanup jobs older than 1 week
-      const deletedCount = await cleanupOldJobs(oneWeekAgo);
+      const deletedCount = await cleanupOldJobs(oneWeekAgo, db);
 
       expect(deletedCount).toBe(2); // Should delete 2 old completed/failed jobs
 
@@ -365,7 +365,7 @@ describe('Monitoring Queries', () => {
 
       // Try to cleanup jobs older than 1 year ago
       const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      const deletedCount = await cleanupOldJobs(oneYearAgo);
+      const deletedCount = await cleanupOldJobs(oneYearAgo, db);
 
       expect(deletedCount).toBe(0);
 

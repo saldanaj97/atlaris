@@ -41,7 +41,7 @@ describe('Plan Access Types', () => {
       expect(result).toHaveProperty('data');
       if (result.success) {
         expect(result.data).toBe(mockPlanData);
-        expect(result.data.plan.id).toBe('plan-1');
+        expect(result.data.plan.id).toBe(mockPlanData.plan.id);
         expect(result.data.plan.topic).toBe('Machine Learning Fundamentals');
       }
     });
@@ -66,7 +66,6 @@ describe('Plan Access Types', () => {
         totalTasks: 10,
         completedTasks: 5,
         attemptsCount: 3,
-        latestJobStatus: 'completed',
       });
       const result = planSuccess(mockPlanData);
 
@@ -74,7 +73,6 @@ describe('Plan Access Types', () => {
         expect(result.data.totalTasks).toBe(10);
         expect(result.data.completedTasks).toBe(5);
         expect(result.data.attemptsCount).toBe(3);
-        expect(result.data.latestJobStatus).toBe('completed');
       }
     });
   });
@@ -194,56 +192,6 @@ describe('Plan Access Types', () => {
       if (!result.success) {
         expect(result.error.code).toBe(code);
         expect(result.error.message).toBe(message);
-      }
-    });
-  });
-
-  describe('Error Code Semantics', () => {
-    it('UNAUTHORIZED should indicate authentication required', () => {
-      const result = planError(
-        'UNAUTHORIZED',
-        'You must be signed in to view this plan.'
-      );
-
-      if (!result.success) {
-        // UNAUTHORIZED (401) - redirect to sign-in
-        expect(result.error.code).toBe('UNAUTHORIZED');
-      }
-    });
-
-    it('NOT_FOUND should indicate plan does not exist', () => {
-      const result = planError(
-        'NOT_FOUND',
-        'This plan does not exist or you do not have access to it.'
-      );
-
-      if (!result.success) {
-        // NOT_FOUND (404) - show not found message
-        expect(result.error.code).toBe('NOT_FOUND');
-      }
-    });
-
-    it('FORBIDDEN should indicate access denied', () => {
-      const result = planError(
-        'FORBIDDEN',
-        'You do not have permission to access this plan.'
-      );
-
-      if (!result.success) {
-        // FORBIDDEN (403) - show access denied message
-        expect(result.error.code).toBe('FORBIDDEN');
-      }
-    });
-
-    it('INTERNAL_ERROR should indicate unexpected failure', () => {
-      const result = planError(
-        'INTERNAL_ERROR',
-        'An unexpected error occurred.'
-      );
-
-      if (!result.success) {
-        // INTERNAL_ERROR (500) - show generic error
-        expect(result.error.code).toBe('INTERNAL_ERROR');
       }
     });
   });

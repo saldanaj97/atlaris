@@ -22,6 +22,20 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+const truncationSchema = z.object({
+  truncated: z.boolean(),
+  maxBytes: z.number(),
+  returnedBytes: z.number(),
+  reasons: z.array(z.string()),
+  limits: z.object({
+    maxTextChars: z.number(),
+    maxSections: z.number(),
+    maxSectionChars: z.number(),
+  }),
+});
+
+type TruncationData = z.infer<typeof truncationSchema>;
+
 const extractionApiResponseSchema = z.object({
   success: z.boolean(),
   extraction: z
@@ -47,6 +61,7 @@ const extractionApiResponseSchema = z.object({
         suggestedMainTopic: z.string(),
         confidence: z.enum(['high', 'medium', 'low']),
       }),
+      truncation: truncationSchema.optional(),
     })
     .optional(),
   proof: z
@@ -77,6 +92,7 @@ interface ExtractionData {
   }>;
   pageCount: number;
   confidence: 'high' | 'medium' | 'low';
+  truncation?: TruncationData;
 }
 
 interface ExtractionProofData {
@@ -159,9 +175,16 @@ export function PdfCreatePanel({
           sections: data.extraction.structure.sections,
           pageCount: data.extraction.pageCount,
           confidence: data.extraction.structure.confidence,
+          truncation: data.extraction.truncation,
         },
         proof: data.proof,
       });
+
+      if (data.extraction.truncation?.truncated) {
+        toast.info(
+          'Large PDF content was trimmed for safety. You can still edit the extracted sections before generating.'
+        );
+      }
     } catch (error) {
       clientLogger.error('PDF extraction failed', error);
       setState({
