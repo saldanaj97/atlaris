@@ -1,4 +1,5 @@
 import {
+  PDF_SECTION_CONTENT_LIMIT,
   sanitizePdfContextForPrompt,
   type PdfContext,
 } from '@/lib/pdf/context';
@@ -18,6 +19,7 @@ export interface PromptParams {
 
 const NOTES_PROMPT_MAX_CHARS = 1_500;
 const TOPIC_PROMPT_MAX_CHARS = 500;
+const PDF_SECTION_TITLE_MAX_CHARS = 200;
 
 /**
  * Sanitizes user-provided text for prompt assembly to reduce prompt-injection risk.
@@ -39,22 +41,38 @@ function appendPdfContextBlock(lines: string[], pdfContext: PdfContext): void {
     return;
   }
 
+  const safeMainTopic = sanitizeUserInput(
+    boundedContext.mainTopic,
+    TOPIC_PROMPT_MAX_CHARS
+  );
   lines.push('---BEGIN PDF CONTEXT---');
-  lines.push(`PDF main topic: ${boundedContext.mainTopic}`);
+  lines.push(`PDF main topic: ${safeMainTopic}`);
 
   boundedContext.sections.forEach((section, index) => {
     const sectionIndex = index + 1;
+    const safeTitle = sanitizeUserInput(
+      section.title,
+      PDF_SECTION_TITLE_MAX_CHARS
+    );
+    const safeContent = sanitizeUserInput(
+      section.content,
+      PDF_SECTION_CONTENT_LIMIT
+    );
 
-    lines.push(`Section ${sectionIndex} title: ${section.title}`);
+    lines.push(`Section ${sectionIndex} title: ${safeTitle}`);
     lines.push(`Section ${sectionIndex} level: ${section.level}`);
 
     if (section.suggestedTopic) {
+      const safeSuggestedTopic = sanitizeUserInput(
+        section.suggestedTopic,
+        PDF_SECTION_TITLE_MAX_CHARS
+      );
       lines.push(
-        `Section ${sectionIndex} suggested topic: ${section.suggestedTopic}`
+        `Section ${sectionIndex} suggested topic: ${safeSuggestedTopic}`
       );
     }
 
-    lines.push(`Section ${sectionIndex} content: ${section.content}`);
+    lines.push(`Section ${sectionIndex} content: ${safeContent}`);
   });
 
   lines.push('---END PDF CONTEXT---');

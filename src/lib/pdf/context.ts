@@ -123,11 +123,12 @@ function applyPdfContextCaps(
     const firstSection = context.sections[0];
     if (firstSection) {
       const mainTopicLen = context.mainTopic?.length ?? 0;
-      const remainingBudget = Math.max(0, caps.maxTotalChars - mainTopicLen);
+      let remainingBudget = Math.max(0, caps.maxTotalChars - mainTopicLen);
       const fallbackTitle = firstSection.title.slice(
         0,
         Math.max(1, Math.min(firstSection.title.length, remainingBudget))
       );
+      remainingBudget = Math.max(0, remainingBudget - fallbackTitle.length);
 
       let suggestedTopic = firstSection.suggestedTopic;
       if (suggestedTopic && suggestedTopic.length > remainingBudget) {

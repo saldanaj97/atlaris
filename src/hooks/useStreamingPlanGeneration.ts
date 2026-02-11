@@ -52,7 +52,18 @@ export type StreamingError = Error & {
 };
 
 export function isStreamingError(error: unknown): error is StreamingError {
-  return error instanceof Error && typeof error === 'object';
+  if (error instanceof Error) {
+    return true;
+  }
+
+  if (error === null || typeof error !== 'object') {
+    return false;
+  }
+
+  return (
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  );
 }
 
 const INITIAL_STATE: StreamingPlanState = {

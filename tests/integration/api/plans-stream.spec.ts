@@ -1,6 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/stream/route';
 import type { GenerationFailureResult } from '@/lib/ai/orchestrator';
@@ -12,7 +20,7 @@ import {
 } from '@/lib/security/pdf-extraction-proof';
 
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import {
   readStreamingResponse,
   type StreamingEvent,
@@ -35,6 +43,10 @@ afterAll(() => {
 });
 
 describe('POST /api/v1/plans/stream', () => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+  });
+
   it('streams generation and persists plan data', async () => {
     const authUserId = buildTestAuthUserId('stream-user');
     await ensureUser({
@@ -520,9 +532,15 @@ describe('POST /api/v1/plans/stream', () => {
       );
 
       const capturedInput = runSpy.mock.calls[0]?.[0]?.input;
-      expect(
-        capturedInput?.pdfContext?.sections[0]?.content.length
-      ).toBeLessThan(extractedContent.sections[0].content.length);
+      const capturedSection = capturedInput?.pdfContext?.sections?.[0];
+      const extractedSection = extractedContent.sections?.[0];
+      expect(capturedSection).toBeDefined();
+      expect(extractedSection).toBeDefined();
+      if (extractedSection && capturedSection) {
+        expect(capturedSection.content.length).toBeLessThan(
+          extractedSection.content.length
+        );
+      }
 
       const [plan] = await db
         .select()

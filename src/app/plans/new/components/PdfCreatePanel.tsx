@@ -5,6 +5,7 @@ import {
   type PdfPlanSettings,
 } from '@/components/pdf/PdfExtractionPreview';
 import {
+  isKnownErrorCode,
   PdfUploadError,
   type ErrorCode,
 } from '@/components/pdf/PdfUploadError';
@@ -140,10 +141,13 @@ export function PdfCreatePanel({
       const data: ExtractionApiResponse = parseResult.data;
 
       if (!response.ok || !data.success || !data.extraction || !data.proof) {
+        const code: ErrorCode | undefined = isKnownErrorCode(data.code)
+          ? data.code
+          : undefined;
         setState({
           status: 'error',
           error: data.error ?? 'Failed to extract PDF content',
-          code: (data.code as ErrorCode) ?? undefined,
+          code,
         });
         return;
       }
@@ -224,8 +228,13 @@ export function PdfCreatePanel({
           ? streamError.message
           : 'Failed to create learning plan. Please try again.';
 
-      const extractedPlanId = isStreamingError(streamError)
-        ? (streamError.planId ?? streamError.data?.planId ?? planIdRef.current)
+      // Type bridge for isStreamingError; non-Error values always fall through.
+      const streamErr: Error | { message?: string } =
+        streamError instanceof Error
+          ? streamError
+          : { message: String(streamError) };
+      const extractedPlanId = isStreamingError(streamErr)
+        ? (streamErr.planId ?? streamErr.data?.planId ?? planIdRef.current)
         : planIdRef.current;
 
       if (
@@ -238,8 +247,8 @@ export function PdfCreatePanel({
         return;
       }
 
-      const errorCode = isStreamingError(streamError)
-        ? streamError.code === 'QUOTA_EXCEEDED'
+      const errorCode = isStreamingError(streamErr)
+        ? streamErr.code === 'QUOTA_EXCEEDED'
           ? ('QUOTA_EXCEEDED' as ErrorCode)
           : undefined
         : undefined;
