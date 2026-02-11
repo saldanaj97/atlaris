@@ -7,7 +7,6 @@
  * @module lib/ai/model-resolver
  */
 
-import { AppError } from '@/lib/api/errors';
 import {
   AI_DEFAULT_MODEL,
   getModelsForTier,
@@ -19,6 +18,7 @@ import {
 } from '@/lib/ai/provider-factory';
 import type { SubscriptionTier } from '@/lib/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
+import { AppError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 
 export interface ModelResolution {

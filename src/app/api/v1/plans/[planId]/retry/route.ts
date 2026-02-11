@@ -24,7 +24,7 @@ import {
   handleFailedGeneration,
   handleSuccessfulGeneration,
   safeMarkPlanFailed,
-} from '../../stream/helpers';
+} from '@/app/api/v1/plans/stream/helpers';
 
 export const maxDuration = 60;
 

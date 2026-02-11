@@ -112,6 +112,18 @@ describe('orchestrator pacing integration', () => {
     } as unknown as ReturnType<typeof timeoutModule.createAdaptiveTimeout>);
     vi.mocked(attemptsModule.finalizeAttemptSuccess).mockResolvedValue({
       id: 'success-1',
+      planId: 'plan-123',
+      status: 'success',
+      classification: null,
+      durationMs: 1,
+      modulesCount: 1,
+      tasksCount: 2,
+      truncatedTopic: false,
+      truncatedNotes: false,
+      normalizedEffort: false,
+      promptHash: 'hash_123',
+      metadata: null,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
     } as GenerationAttemptRecord);
     vi.mocked(attemptsModule.finalizeAttemptFailure).mockResolvedValue({
       id: 'failure-1',

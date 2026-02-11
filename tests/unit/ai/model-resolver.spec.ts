@@ -1,7 +1,7 @@
-import { AppError } from '@/lib/api/errors';
-import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
+import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import * as providerFactory from '@/lib/ai/provider-factory';
+import { AppError } from '@/lib/api/errors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/logging/logger', () => ({
@@ -13,6 +13,19 @@ vi.mock('@/lib/logging/logger', () => ({
 }));
 
 describe('Model resolver (Task 2 - Phase 2)', () => {
+  const getModelIdBy = (
+    predicate: (model: (typeof AVAILABLE_MODELS)[number]) => boolean
+  ): string => {
+    const model = AVAILABLE_MODELS.find(predicate);
+    if (!model) {
+      throw new Error('Expected model fixture to exist in AVAILABLE_MODELS');
+    }
+    return model.id;
+  };
+
+  const FREE_MODEL_ID = getModelIdBy((model) => model.tier === 'free');
+  const PRO_MODEL_ID = getModelIdBy((model) => model.tier === 'pro');
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -40,17 +53,14 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     });
 
     it('allows free tier model', () => {
-      const result = resolveModelForTier(
-        'free',
-        'google/gemini-2.0-flash-exp:free'
-      );
+      const result = resolveModelForTier('free', FREE_MODEL_ID);
 
-      expect(result.modelId).toBe('google/gemini-2.0-flash-exp:free');
+      expect(result.modelId).toBe(FREE_MODEL_ID);
       expect(result.fallback).toBe(false);
     });
 
     it('denies pro model and falls back to default', () => {
-      const result = resolveModelForTier('free', 'anthropic/claude-sonnet-4.5');
+      const result = resolveModelForTier('free', PRO_MODEL_ID);
 
       expect(result.modelId).toBe(AI_DEFAULT_MODEL);
       expect(result.fallback).toBe(true);
@@ -76,17 +86,14 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     });
 
     it('gets free models only (same as free tier)', () => {
-      const result = resolveModelForTier(
-        'starter',
-        'google/gemini-2.0-flash-exp:free'
-      );
+      const result = resolveModelForTier('starter', FREE_MODEL_ID);
 
-      expect(result.modelId).toBe('google/gemini-2.0-flash-exp:free');
+      expect(result.modelId).toBe(FREE_MODEL_ID);
       expect(result.fallback).toBe(false);
     });
 
     it('denies pro models', () => {
-      const result = resolveModelForTier('starter', 'openai/gpt-4o');
+      const result = resolveModelForTier('starter', PRO_MODEL_ID);
 
       expect(result.modelId).toBe(AI_DEFAULT_MODEL);
       expect(result.fallback).toBe(true);
@@ -96,26 +103,23 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
 
   describe('Pro tier users', () => {
     it('allows free models', () => {
-      const result = resolveModelForTier(
-        'pro',
-        'google/gemini-2.0-flash-exp:free'
-      );
+      const result = resolveModelForTier('pro', FREE_MODEL_ID);
 
-      expect(result.modelId).toBe('google/gemini-2.0-flash-exp:free');
+      expect(result.modelId).toBe(FREE_MODEL_ID);
       expect(result.fallback).toBe(false);
     });
 
     it('allows pro models', () => {
-      const result = resolveModelForTier('pro', 'anthropic/claude-sonnet-4.5');
+      const result = resolveModelForTier('pro', PRO_MODEL_ID);
 
-      expect(result.modelId).toBe('anthropic/claude-sonnet-4.5');
+      expect(result.modelId).toBe(PRO_MODEL_ID);
       expect(result.fallback).toBe(false);
     });
 
-    it('resolves pro model openai/gpt-4o without fallback', () => {
-      const result = resolveModelForTier('pro', 'openai/gpt-4o');
+    it('resolves pro model without fallback', () => {
+      const result = resolveModelForTier('pro', PRO_MODEL_ID);
 
-      expect(result.modelId).toBe('openai/gpt-4o');
+      expect(result.modelId).toBe(PRO_MODEL_ID);
       expect(result.fallback).toBe(false);
     });
 
@@ -177,7 +181,7 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       });
 
       try {
-        resolveModelForTier('pro', 'anthropic/claude-sonnet-4.5');
+        resolveModelForTier('pro', PRO_MODEL_ID);
         expect.fail('Should have thrown');
       } catch (err) {
         expect(err).toBeInstanceOf(AppError);
@@ -221,12 +225,12 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
         .spyOn(providerFactory, 'getGenerationProviderWithModel')
         .mockReturnValue(customProvider);
 
-      const result = resolveModelForTier('free', 'anthropic/claude-haiku-4.5');
+      const result = resolveModelForTier('free', FREE_MODEL_ID);
 
-      expect(result.modelId).toBe('anthropic/claude-haiku-4.5');
+      expect(result.modelId).toBe(FREE_MODEL_ID);
       expect(result.provider).toBe(customProvider);
       expect(result.fallback).toBe(false);
-      expect(customSpy).toHaveBeenCalledWith('anthropic/claude-haiku-4.5');
+      expect(customSpy).toHaveBeenCalledWith(FREE_MODEL_ID);
       expect(defaultSpy).not.toHaveBeenCalled();
     });
   });

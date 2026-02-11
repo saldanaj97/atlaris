@@ -91,8 +91,10 @@ export async function getPdfPageCountFromBuffer(
     parser = new PDFParse({ data: buffer });
     const infoPromise = parser.getInfo();
     const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      controller.signal.addEventListener('abort', () =>
-        reject(new Error('PAGE_COUNT_TIMEOUT'))
+      controller.signal.addEventListener(
+        'abort',
+        () => reject(new Error('PAGE_COUNT_TIMEOUT')),
+        { once: true }
       );
     });
     const infoResult = await Promise.race([infoPromise, timeoutPromise]);
@@ -157,12 +159,20 @@ export const extractTextFromPdf = async (
     })();
 
     const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      controller.signal.addEventListener('abort', () => {
-        reject(new Error('PDF_PARSE_TIMEOUT'));
-      });
-      options.signal?.addEventListener('abort', () => {
-        reject(new Error('PDF_PARSE_TIMEOUT'));
-      });
+      controller.signal.addEventListener(
+        'abort',
+        () => {
+          reject(new Error('PDF_PARSE_TIMEOUT'));
+        },
+        { once: true }
+      );
+      options.signal?.addEventListener(
+        'abort',
+        () => {
+          reject(new Error('PDF_PARSE_TIMEOUT'));
+        },
+        { once: true }
+      );
     });
 
     const { textResult, infoResult } = await Promise.race([

@@ -33,6 +33,8 @@ describe('stream helpers - failed generation sanitization', () => {
       },
     };
 
+    // Intentionally exercises a retryable classification so this unit test stays
+    // DB-free. Non-retryable classifications hit getDb()/markPlanGenerationFailure.
     await handleFailedGeneration(failureResult, {
       planId: 'plan-1',
       userId: 'user-1',
