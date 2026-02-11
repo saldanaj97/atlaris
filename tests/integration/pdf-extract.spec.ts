@@ -42,6 +42,10 @@ const createPdfRequest = (): PdfExtractTestRequest => {
   const request = new Request(BASE_URL, {
     method: 'POST',
     body: form,
+    // Route requires a numeric Content-Length for early body-size enforcement.
+    headers: {
+      'content-length': String(buffer.byteLength),
+    },
   });
 
   // Vitest/undici multipart parsing can drop File entries; override for stability.
