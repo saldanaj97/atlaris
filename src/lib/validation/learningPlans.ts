@@ -256,7 +256,7 @@ export const learningPlanResourceSchema = z.object({
 
 export const onboardingFormSchema = z
   .object({
-    topic: createLearningPlanObject.shape.topic,
+    topic: topicSchema,
     skillLevel: z
       .string()
       .trim()

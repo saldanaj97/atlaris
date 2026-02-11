@@ -233,6 +233,10 @@ export const taskResources = pgTable(
       ),
       index('idx_task_resources_task_id').on(table.taskId),
       index('idx_task_resources_resource_id').on(table.resourceId),
+      index('idx_task_resources_task_resource').on(
+        table.taskId,
+        table.resourceId
+      ),
 
       // RLS Policies
 
@@ -296,6 +300,7 @@ export const taskProgress = pgTable(
       ),
       index('idx_task_progress_user_id').on(table.userId),
       index('idx_task_progress_task_id').on(table.taskId),
+      index('idx_task_progress_user_task').on(table.userId, table.taskId),
 
       // RLS Policies
 

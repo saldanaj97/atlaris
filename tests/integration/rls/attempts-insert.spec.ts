@@ -2,12 +2,12 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
+import { createRlsDbForUser } from '../../helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 /**
@@ -49,6 +49,7 @@ describe('RLS attempt insertion', () => {
     });
 
     const mock = createMockProvider({ scenario: 'success' });
+    const rlsDb = await createRlsDbForUser(attackerAuthUserId);
     let error: unknown = null;
     try {
       await runGenerationAttempt(
@@ -64,7 +65,7 @@ describe('RLS attempt insertion', () => {
             learningStyle: 'reading',
           },
         },
-        { provider: mock.provider, dbClient: getDb() }
+        { provider: mock.provider, dbClient: rlsDb }
       );
     } catch (e) {
       error = e;
@@ -80,7 +81,9 @@ describe('RLS attempt insertion', () => {
       err.code === '42501' ||
       (err.cause as { code?: string })?.code === '42501';
     const hasPermissionMessage =
-      /permission denied|row[- ]level security|not found or inaccessible/i.test(combinedMsg);
+      /permission denied|row[- ]level security|not found or inaccessible/i.test(
+        combinedMsg
+      );
     expect(
       hasPermissionCode || hasPermissionMessage,
       `Expected RLS/permission-denied error but got: ${msg}${causeMsg ? ` (cause: ${causeMsg})` : ''}`

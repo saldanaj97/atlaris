@@ -10,7 +10,11 @@ import {
 import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import {
+  ensureUser,
+  ensureStripeWebhookEvents,
+  resetDbForIntegrationTestFile,
+} from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 const authUserId = 'auth_generation_validation';
@@ -19,6 +23,7 @@ const authEmail = 'generation-validation@example.com';
 describe('generation integration - validation failure', () => {
   beforeEach(async () => {
     await resetDbForIntegrationTestFile();
+    await ensureStripeWebhookEvents();
   });
 
   it('classifies attempt as validation when provider output is empty', async () => {

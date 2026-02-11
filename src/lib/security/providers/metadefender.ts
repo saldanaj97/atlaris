@@ -58,7 +58,12 @@ function getErrorMessage(error: Error | string): string {
 
 function mapVerdict(result: string): ScanVerdict {
   const normalized = result.trim().toLowerCase();
-  if (normalized === 'clean' || normalized === 'no threat detected') {
+  const cleanTokens = [
+    'no threats found',
+    'skipped clean',
+    'no threat detected',
+  ];
+  if (cleanTokens.some((token) => normalized === token)) {
     return { clean: true };
   }
   return { clean: false, threat: `MetaDefender-${result}` };

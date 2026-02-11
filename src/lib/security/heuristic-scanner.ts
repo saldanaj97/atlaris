@@ -97,8 +97,8 @@ export class HeuristicScanProvider implements ScanProvider {
 
   constructor(public readonly logger?: HeuristicScanLogger) {}
 
-  public scan(buffer: Buffer): Promise<ScanVerdict> {
-    return Promise.resolve(
+  public async scan(buffer: Buffer): Promise<ScanVerdict> {
+    return await Promise.resolve().then(() =>
       scanBufferWithHeuristics(buffer, this.logger ?? defaultLogger)
     );
   }

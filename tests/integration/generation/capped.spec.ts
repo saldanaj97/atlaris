@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { getDb } from '@/lib/db/runtime';
 import {
   generationAttempts,
   learningPlans,
@@ -99,7 +98,7 @@ describe('generation integration - capped attempts', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider, dbClient: getDb() }
+      { provider: mock.provider, dbClient: db }
     );
 
     expect(result.status).toBe('failure');

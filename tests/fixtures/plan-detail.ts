@@ -3,6 +3,8 @@
  * Used by mapper tests (detailToClient, derivation) and plan access tests.
  */
 
+import { nanoid } from 'nanoid';
+
 import type {
   GenerationAttempt,
   LearningPlanDetail,
@@ -16,13 +18,18 @@ import type {
 
 const BASE_DATE = new Date('2025-01-01T00:00:00.000Z');
 
+function makeId(prefix: string): string {
+  return `${prefix}-${nanoid(8)}`;
+}
+
 /** Builds a GenerationAttempt with failure defaults (for status-derivation tests). */
 export function buildGenerationAttempt(
   overrides: Partial<GenerationAttempt> = {}
 ): GenerationAttempt {
+  const planId = overrides.planId ?? makeId('plan');
   return {
-    id: 'attempt-1',
-    planId: 'plan-1',
+    id: overrides.id ?? makeId('attempt'),
+    planId,
     status: 'failure',
     classification: 'timeout',
     durationMs: 10_000,
@@ -42,9 +49,10 @@ export function buildGenerationAttempt(
 export function buildSuccessAttempt(
   overrides: Partial<GenerationAttempt> = {}
 ): GenerationAttempt {
+  const planId = overrides.planId ?? makeId('plan');
   return {
-    id: 'attempt-1',
-    planId: 'plan-1',
+    id: overrides.id ?? makeId('attempt'),
+    planId,
     status: 'success',
     classification: null,
     durationMs: 1_200,
@@ -68,15 +76,17 @@ export function buildSuccessAttempt(
 export function buildTaskResource(
   overrides: Partial<TaskResourceWithResource> = {}
 ): TaskResourceWithResource {
+  const taskId = overrides.taskId ?? makeId('task');
+  const resourceId = overrides.resourceId ?? makeId('resource');
   return {
-    id: 'task-resource-1',
-    taskId: 'task-1',
-    resourceId: 'resource-1',
+    id: overrides.id ?? makeId('task-resource'),
+    taskId,
+    resourceId,
     order: 1,
     notes: null,
     createdAt: BASE_DATE,
     resource: {
-      id: 'resource-1',
+      id: resourceId,
       type: 'article',
       title: 'Intro to ML',
       url: 'https://example.com/ml',
@@ -96,9 +106,12 @@ export function buildTaskResource(
 export function buildTask(
   overrides: Partial<TaskWithRelations> = {}
 ): TaskWithRelations {
+  const moduleId = overrides.moduleId ?? makeId('module');
+  const taskId = overrides.id ?? makeId('task');
+  const resourceId = makeId('resource');
   return {
-    id: 'task-1',
-    moduleId: 'module-1',
+    id: taskId,
+    moduleId,
     order: 1,
     title: 'Read intro article',
     description: 'Basics overview',
@@ -106,7 +119,7 @@ export function buildTask(
     hasMicroExplanation: false,
     createdAt: BASE_DATE,
     updatedAt: BASE_DATE,
-    resources: [buildTaskResource()],
+    resources: [buildTaskResource({ taskId, resourceId })],
     progress: null,
     ...overrides,
   } satisfies TaskWithRelations;
@@ -116,16 +129,18 @@ export function buildTask(
 export function buildModule(
   overrides: Partial<ModuleWithTasks> = {}
 ): ModuleWithTasks {
+  const planId = overrides.planId ?? makeId('plan');
+  const moduleId = overrides.id ?? makeId('module');
   return {
-    id: 'module-1',
-    planId: 'plan-1',
+    id: moduleId,
+    planId,
     order: 1,
     title: 'Module 1',
     description: 'Getting started',
     estimatedMinutes: 120,
     createdAt: BASE_DATE,
     updatedAt: BASE_DATE,
-    tasks: [buildTask()],
+    tasks: [buildTask({ moduleId })],
     ...overrides,
   } satisfies ModuleWithTasks;
 }
@@ -144,10 +159,10 @@ export function buildModuleRows(
 ): Module[] {
   return Array.from({ length: count }, (_, i) =>
     buildModuleRow({
-      id: `mod-${i + 1}`,
+      ...overrides,
+      id: makeId('module'),
       planId,
       order: i + 1,
-      ...overrides,
     })
   );
 }
@@ -157,8 +172,8 @@ export function buildPlan(
   overrides: Partial<LearningPlanWithModules> = {}
 ): LearningPlanWithModules {
   return {
-    id: 'plan-1',
-    userId: 'user-1',
+    id: overrides.id ?? makeId('plan'),
+    userId: overrides.userId ?? makeId('user'),
     topic: 'Machine Learning Fundamentals',
     skillLevel: 'beginner',
     weeklyHours: 6,

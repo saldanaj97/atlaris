@@ -35,6 +35,7 @@ export const usageMetrics = pgTable(
     unique('usage_metrics_user_id_month_unique').on(table.userId, table.month),
     index('idx_usage_metrics_user_id').on(table.userId),
     index('idx_usage_metrics_month').on(table.month),
+    index('idx_usage_metrics_user_month').on(table.userId, table.month),
     check('plans_generated_nonneg', sql`${table.plansGenerated} >= 0`),
     check('pdf_plans_generated_nonneg', sql`${table.pdfPlansGenerated} >= 0`),
     check('regenerations_used_nonneg', sql`${table.regenerationsUsed} >= 0`),
@@ -89,6 +90,10 @@ export const aiUsageEvents = pgTable(
   (table) => [
     index('idx_ai_usage_user_id').on(table.userId),
     index('idx_ai_usage_created_at').on(table.createdAt),
+    index('idx_ai_usage_events_user_created_at').on(
+      table.userId,
+      table.createdAt
+    ),
 
     // RLS policies
     pgPolicy('ai_usage_events_select_own', {

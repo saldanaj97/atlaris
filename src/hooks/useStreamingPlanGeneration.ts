@@ -51,7 +51,17 @@ export type StreamingError = Error & {
   code?: string;
 };
 
-export function isStreamingError(error: unknown): error is StreamingError {
+/** Object shape compatible with Error for type guard (message, name, stack, index sig). */
+export type ErrorLike = {
+  message?: string;
+  name?: string;
+  stack?: string;
+  [key: string]: unknown;
+};
+
+export function isStreamingError(
+  error: Error | ErrorLike
+): error is StreamingError {
   return error instanceof Error && typeof error === 'object';
 }
 

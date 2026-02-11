@@ -82,6 +82,11 @@ export const learningPlans = pgTable(
       table.generationStatus
     ),
     index('idx_learning_plans_user_origin').on(table.userId, table.origin),
+    index('idx_learning_plans_user_quota_generation_status').on(
+      table.userId,
+      table.isQuotaEligible,
+      table.generationStatus
+    ),
 
     // RLS Policies (session-variable-based for Neon)
     // Note: Learning plans are private-only product data.

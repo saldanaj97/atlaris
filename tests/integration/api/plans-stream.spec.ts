@@ -516,9 +516,15 @@ describe('POST /api/v1/plans/stream', () => {
       );
 
       const capturedInput = runSpy.mock.calls[0]?.[0]?.input;
-      expect(
-        capturedInput?.pdfContext?.sections[0]?.content.length
-      ).toBeLessThan(extractedContent.sections[0].content.length);
+      const capturedSection = capturedInput?.pdfContext?.sections?.[0];
+      const extractedSection = extractedContent.sections?.[0];
+      expect(capturedSection).toBeDefined();
+      expect(extractedSection).toBeDefined();
+      if (extractedSection && capturedSection) {
+        expect(capturedSection.content.length).toBeLessThan(
+          extractedSection.content.length
+        );
+      }
 
       const [plan] = await db
         .select()
