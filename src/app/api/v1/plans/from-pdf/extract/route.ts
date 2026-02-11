@@ -5,11 +5,18 @@ import {
   withAuthAndRateLimit,
   withErrorBoundary,
 } from '@/lib/api/auth';
-import { checkPdfSizeLimit, validatePdfUpload } from '@/lib/api/pdf-rate-limit';
+import {
+  checkPdfExtractionThrottle,
+  checkPdfSizeLimit,
+  validatePdfUpload,
+} from '@/lib/api/pdf-rate-limit';
 import { json } from '@/lib/api/response';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { logger } from '@/lib/logging/logger';
-import { extractTextFromPdf } from '@/lib/pdf/extract';
+import {
+  extractTextFromPdf,
+  getPdfPageCountFromBuffer,
+} from '@/lib/pdf/extract';
 import type { ExtractedSection } from '@/lib/pdf/types';
 import { scanBufferForMalware } from '@/lib/security/malware-scanner';
 import {
@@ -17,17 +24,23 @@ import {
   issuePdfExtractionProof,
   toPdfExtractionProofPayload,
 } from '@/lib/security/pdf-extraction-proof';
+import { resolveUserTier } from '@/lib/stripe/usage';
+
+/** Absolute maximum PDF upload size in bytes (50MB) — regardless of tier */
+const ABSOLUTE_MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 export type PdfErrorCode =
   | 'FILE_TOO_LARGE'
   | 'TOO_MANY_PAGES'
+  | 'MISSING_CONTENT_LENGTH'
   | 'NO_TEXT'
   | 'INVALID_FILE'
   | 'PASSWORD_PROTECTED'
   | 'QUOTA_EXCEEDED'
   | 'MALWARE_DETECTED'
   | 'SCAN_FAILED'
-  | 'PROOF_ISSUANCE_FAILED';
+  | 'PROOF_ISSUANCE_FAILED'
+  | 'THROTTLED';
 
 const errorResponse = (message: string, code: PdfErrorCode, status: number) =>
   json({ success: false, error: message, code }, { status });
@@ -74,6 +87,52 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
+    // Hard body size check before reading form data into memory.
+    // Reject early to avoid loading large bodies; tier checks happen later.
+    const rawContentLength = req.headers.get('content-length');
+    const parsedContentLength =
+      rawContentLength !== null ? Number.parseInt(rawContentLength, 10) : NaN;
+    if (
+      rawContentLength === null ||
+      !/^\d+$/.test(rawContentLength) ||
+      !Number.isFinite(parsedContentLength)
+    ) {
+      const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
+      return errorResponse(
+        `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`,
+        'MISSING_CONTENT_LENGTH',
+        rawContentLength === null ? 411 : 400
+      );
+    }
+    const contentLength = parsedContentLength;
+    if (contentLength > ABSOLUTE_MAX_PDF_BYTES) {
+      return errorResponse(
+        `Request body exceeds absolute maximum of ${ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024)}MB.`,
+        'FILE_TOO_LARGE',
+        413
+      );
+    }
+
+    // Per-user extraction throttle
+    const throttle = checkPdfExtractionThrottle(user.id);
+    if (!throttle.allowed) {
+      return json(
+        {
+          success: false,
+          error: 'Too many PDF extraction requests. Please try again later.',
+          code: 'THROTTLED' as const,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(
+              Math.ceil((throttle.retryAfterMs ?? 0) / 1000)
+            ),
+          },
+        }
+      );
+    }
+
     const formData = await req.formData();
     const formObject = parseFormDataToObject(formData);
 
@@ -87,7 +146,25 @@ export const POST: PlainHandler = withErrorBoundary(
 
     const { file } = parseResult.data;
 
-    const sizeCheck = await checkPdfSizeLimit(user.id, file.size);
+    let cachedTier: Awaited<ReturnType<typeof resolveUserTier>> | undefined;
+    const validationDeps = {
+      resolveTier: async (
+        tierUserId: string,
+        dbClient?: Parameters<typeof resolveUserTier>[1]
+      ) => {
+        if (cachedTier !== undefined) {
+          return cachedTier;
+        }
+        cachedTier = await resolveUserTier(tierUserId, dbClient);
+        return cachedTier;
+      },
+    };
+
+    const sizeCheck = await checkPdfSizeLimit(
+      user.id,
+      file.size,
+      validationDeps
+    );
     if (!sizeCheck.allowed) {
       return errorResponse(sizeCheck.reason, sizeCheck.code, 413);
     }
@@ -123,9 +200,30 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
-    const extraction = await extractTextFromPdf(buffer);
+    const pageCountForValidation = await getPdfPageCountFromBuffer(buffer);
+    const tierValidation = await validatePdfUpload(
+      user.id,
+      file.size,
+      pageCountForValidation,
+      validationDeps
+    );
+    if (!tierValidation.allowed) {
+      const status = tierValidation.code === 'FILE_TOO_LARGE' ? 413 : 400;
+      return errorResponse(tierValidation.reason, tierValidation.code, status);
+    }
+
+    const extraction = await extractTextFromPdf(buffer, {
+      timeoutMs: 30_000,
+      maxChars: 500_000,
+    });
 
     if (!extraction.success) {
+      if (extraction.error === 'parse_timeout') {
+        return errorResponse(extraction.message, 'INVALID_FILE', 408);
+      }
+      if (extraction.error === 'decompression_bomb') {
+        return errorResponse(extraction.message, 'INVALID_FILE', 400);
+      }
       if (extraction.error === 'no_text') {
         return errorResponse(extraction.message, 'NO_TEXT', 400);
       }
@@ -136,15 +234,31 @@ export const POST: PlainHandler = withErrorBoundary(
       return toExtractionError(extraction.message);
     }
 
-    const tierValidation = await validatePdfUpload(
-      user.id,
-      file.size,
-      extraction.pageCount
+    logger.info(
+      {
+        userId: user.id,
+        fileSize: file.size,
+        pageCount: extraction.pageCount,
+        textLength: extraction.text.length,
+        parseTimeMs: extraction.parseTimeMs,
+        truncatedText: extraction.truncatedText,
+      },
+      'PDF extraction completed'
     );
 
-    if (!tierValidation.allowed) {
-      const status = tierValidation.code === 'FILE_TOO_LARGE' ? 413 : 400;
-      return errorResponse(tierValidation.reason, tierValidation.code, status);
+    const finalTierValidation = await validatePdfUpload(
+      user.id,
+      file.size,
+      extraction.pageCount,
+      validationDeps
+    );
+    if (!finalTierValidation.allowed) {
+      const status = finalTierValidation.code === 'FILE_TOO_LARGE' ? 413 : 400;
+      return errorResponse(
+        finalTierValidation.reason,
+        finalTierValidation.code,
+        status
+      );
     }
 
     const extractionProofInput: {

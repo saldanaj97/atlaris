@@ -30,6 +30,8 @@ import { users } from './users';
 
 // Learning plans and related tables
 
+export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
+
 export const learningPlans = pgTable(
   'learning_plans',
   {
@@ -243,7 +245,7 @@ export const generationAttempts = pgTable(
     planId: uuid('plan_id')
       .notNull()
       .references(() => learningPlans.id, { onDelete: 'cascade' }),
-    status: text('status').notNull(), // 'success' | 'failure' (validated in app layer)
+    status: text('status').$type<GenerationAttemptStatus>().notNull(),
     classification: text('classification'), // nullable on success; failure-only classification
     durationMs: integer('duration_ms').notNull(),
     modulesCount: integer('modules_count').notNull(),
@@ -284,6 +286,22 @@ export const generationAttempts = pgTable(
         for: 'insert',
         to: 'authenticated',
         withCheck: planOwnership,
+      }),
+
+      // Users can update attempts only for plans they own
+      pgPolicy('generation_attempts_update', {
+        for: 'update',
+        to: 'authenticated',
+        using: planOwnership,
+        withCheck: planOwnership,
+      }),
+
+      // Immutable audit log: deletes explicitly denied for authenticated
+      pgPolicy('generation_attempts_delete_deny', {
+        as: 'restrictive',
+        for: 'delete',
+        to: 'authenticated',
+        using: sql`false`,
       }),
     ];
   }

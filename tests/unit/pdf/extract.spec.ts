@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  extractTextFromPdf,
+  getPdfPageCountFromBuffer,
+} from '@/lib/pdf/extract';
 import { detectStructure } from '@/lib/pdf/structure';
-import { extractTextFromPdf } from '@/lib/pdf/extract';
 import { validatePdfFile } from '@/lib/pdf/validate';
 
 const KB = 1024;
@@ -45,6 +48,20 @@ const buildPdfBuffer = (text: string) => {
 
   return Buffer.from(pdf, 'utf8');
 };
+
+describe('getPdfPageCountFromBuffer', () => {
+  it('returns page count from PDF metadata for a valid PDF', async () => {
+    const buffer = buildPdfBuffer('Hello PDF');
+    const count = await getPdfPageCountFromBuffer(buffer);
+    expect(count).toBe(1);
+  });
+
+  it('falls back to size-based estimate when metadata fetch fails', async () => {
+    const buffer = Buffer.from('not a valid PDF', 'utf8');
+    const count = await getPdfPageCountFromBuffer(buffer);
+    expect(count).toBeGreaterThanOrEqual(1);
+  });
+});
 
 describe('pdf extraction', () => {
   it('extracts text from a valid PDF', async () => {

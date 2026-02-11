@@ -1,6 +1,5 @@
-export { extractTextFromPdf } from './extract';
+export { extractTextFromPdf, getPdfPageCountFromBuffer } from './extract';
 export { detectStructure } from './structure';
-export { validatePdfFile } from './validate';
 export type {
   ExtractedSection,
   ExtractedStructure,
@@ -11,3 +10,4 @@ export type {
   PdfValidationLimits,
   PdfValidationResult,
 } from './types';
+export { validatePdfFile } from './validate';

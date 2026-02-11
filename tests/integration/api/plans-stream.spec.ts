@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/stream/route';
+import type { GenerationFailureResult } from '@/lib/ai/orchestrator';
 import { learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import {
@@ -138,6 +139,84 @@ describe('POST /api/v1/plans/stream', () => {
       .limit(1);
 
     expect(plan?.generationStatus).toBe('failed');
+  });
+
+  it('returns sanitized SSE error payloads to clients on generation failure', async () => {
+    const authUserId = buildTestAuthUserId('stream-sanitized-error');
+    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    setTestUser(authUserId);
+
+    const orchestrator = await import('@/lib/ai/orchestrator');
+    const mockedFailure: GenerationFailureResult = {
+      status: 'failure',
+      classification: 'provider_error',
+      error: new Error(
+        'OpenRouter upstream failure: api_key=sk-live-secret-value'
+      ),
+      durationMs: 250,
+      extendedTimeout: false,
+      timedOut: false,
+      attempt: {
+        id: 'attempt-sanitized-error',
+        planId: 'plan-sanitized-error',
+        status: 'failure',
+        classification: 'provider_error',
+        durationMs: 250,
+        modulesCount: 0,
+        tasksCount: 0,
+        truncatedTopic: false,
+        truncatedNotes: false,
+        normalizedEffort: false,
+        promptHash: null,
+        metadata: null,
+        createdAt: new Date(),
+      },
+    };
+
+    vi.spyOn(orchestrator, 'runGenerationAttempt').mockResolvedValue(
+      mockedFailure
+    );
+
+    const payload = {
+      topic: 'Sanitized Failure Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 2,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-01-01',
+      visibility: 'private',
+      origin: 'ai',
+    };
+
+    try {
+      const request = new Request('http://localhost/api/v1/plans/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(200);
+
+      const events = await readStreamingResponse(response);
+      const errorEvent = events.find((event) => event.type === 'error');
+
+      expect(errorEvent?.data).toMatchObject({
+        code: 'GENERATION_FAILED',
+        message: 'Plan generation encountered an error. Please try again.',
+        classification: 'provider_error',
+        retryable: true,
+      });
+      const errorMessage =
+        typeof errorEvent?.data?.message === 'string'
+          ? errorEvent.data.message
+          : '';
+      expect(errorMessage).not.toContain('api_key');
+      expect(errorMessage).not.toContain('sk-live-secret-value');
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 
   it('accepts valid model override via query param', async () => {

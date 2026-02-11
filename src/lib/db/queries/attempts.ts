@@ -4,8 +4,9 @@ import { logger } from '@/lib/logging/logger';
 import type { InferSelectModel } from 'drizzle-orm';
 import { and, asc, count, eq, gte } from 'drizzle-orm';
 
+import { isRetryableClassification } from '@/lib/ai/failures';
 import type { ParsedModule } from '@/lib/ai/parser';
-import type { ProviderMetadata } from '@/lib/ai/provider';
+import type { GenerationInput, ProviderMetadata } from '@/lib/ai/provider';
 import {
   recordAttemptFailure as trackAttemptFailure,
   recordAttemptSuccess as trackAttemptSuccess,
@@ -23,7 +24,6 @@ import {
   TOPIC_MAX_LENGTH,
 } from '@/lib/validation/learningPlans';
 
-import type { GenerationInput } from '@/lib/ai/provider';
 import {
   generationAttempts,
   learningPlans,
@@ -33,7 +33,14 @@ import {
 
 const ATTEMPT_CAP = attemptsEnv.cap;
 
-/** Db client for attempts. Must be request-scoped getDb() in API routes to enforce RLS. */
+/**
+ * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
+ *
+ * When using the RLS client returned by {@link getDb}, callers are responsible for releasing
+ * it by calling its `cleanup()` method. Do this in a `finally` block.
+ *
+ * When using RLS client, always call cleanup() in a finally block to release the database connection.
+ */
 export type AttemptsDbClient = ReturnType<
   typeof import('@/lib/db/runtime').getDb
 >;
@@ -87,6 +94,53 @@ export interface RecordSuccessParams {
 export interface RecordFailureParams {
   planId: string;
   preparation: AttemptPreparation;
+  classification: FailureClassification;
+  durationMs: number;
+  timedOut?: boolean;
+  extendedTimeout?: boolean;
+  providerMetadata?: ProviderMetadata;
+  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
+  dbClient: AttemptsDbClient;
+  now?: () => Date;
+}
+
+// ---------------------------------------------------------------------------
+// Atomic reservation types (Phase 2 – concurrency-safe attempt cap)
+// ---------------------------------------------------------------------------
+
+export interface AttemptReservation {
+  reserved: true;
+  attemptId: string;
+  attemptNumber: number;
+  startedAt: Date;
+  sanitized: SanitizedInput;
+  promptHash: string;
+}
+
+export interface AttemptRejection {
+  reserved: false;
+  reason: 'capped' | 'in_progress';
+}
+
+export type ReserveAttemptResult = AttemptReservation | AttemptRejection;
+
+export interface FinalizeSuccessParams {
+  attemptId: string;
+  planId: string;
+  preparation: AttemptReservation;
+  modules: ParsedModule[];
+  providerMetadata?: ProviderMetadata;
+  durationMs: number;
+  extendedTimeout: boolean;
+  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
+  dbClient: AttemptsDbClient;
+  now?: () => Date;
+}
+
+export interface FinalizeFailureParams {
+  attemptId: string;
+  planId: string;
+  preparation: AttemptReservation;
   classification: FailureClassification;
   durationMs: number;
   timedOut?: boolean;
@@ -261,6 +315,10 @@ function normalizeParsedModules(modulesInput: ParsedModule[]) {
   return { normalizedModules, normalizationFlags };
 }
 
+/**
+ * @deprecated Use {@link reserveAttemptSlot} for atomic cap enforcement.
+ * Retained for backward compatibility with existing tests.
+ */
 export async function startAttempt({
   planId,
   userId,
@@ -304,6 +362,10 @@ export async function startAttempt({
   };
 }
 
+/**
+ * @deprecated Use {@link finalizeAttemptSuccess} with atomic reservation flow.
+ * Retained for backward compatibility with existing tests.
+ */
 export async function recordSuccess({
   planId,
   preparation,
@@ -425,6 +487,10 @@ export async function recordSuccess({
   return insertedAttempt;
 }
 
+/**
+ * @deprecated Use {@link finalizeAttemptFailure} with atomic reservation flow.
+ * Retained for backward compatibility with existing tests.
+ */
 export async function recordFailure({
   planId,
   preparation,
@@ -486,7 +552,376 @@ export async function recordFailure({
   return attempt;
 }
 
+// ---------------------------------------------------------------------------
+// Atomic reservation flow (Phase 2 – concurrency-safe attempt cap)
+// ---------------------------------------------------------------------------
+
+/**
+ * Atomically reserves an attempt slot for a plan within a single transaction.
+ *
+ * 1. Locks the plan row with FOR UPDATE to prevent concurrent reservations.
+ * 2. Verifies ownership and counts existing attempts (cap enforcement).
+ * 3. Rejects if an in-progress attempt already exists for the plan.
+ * 4. Inserts a placeholder attempt with status 'in_progress'.
+ * 5. Sets the plan's generation_status to 'generating'.
+ *
+ * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
+ */
+export async function reserveAttemptSlot(params: {
+  planId: string;
+  userId: string;
+  input: GenerationInput;
+  dbClient: AttemptsDbClient;
+  now?: () => Date;
+}): Promise<ReserveAttemptResult> {
+  const { planId, userId, input, dbClient } = params;
+  const nowFn = params.now ?? (() => new Date());
+
+  const sanitized = sanitizeInput(input);
+  const promptHash = hashSha256(
+    JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
+  );
+
+  return dbClient.transaction(async (tx) => {
+    // Lock the plan row to serialize concurrent reservation attempts
+    const [plan] = await tx
+      .select({
+        id: learningPlans.id,
+        userId: learningPlans.userId,
+      })
+      .from(learningPlans)
+      .where(eq(learningPlans.id, planId))
+      .for('update');
+
+    if (!plan || plan.userId !== userId) {
+      throw new Error('Learning plan not found or inaccessible for user');
+    }
+
+    // Count ALL existing attempts (including any lingering in_progress ones)
+    const [{ value: existingAttempts = 0 } = { value: 0 }] = await tx
+      .select({ value: count(generationAttempts.id) })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId));
+
+    if (existingAttempts >= ATTEMPT_CAP) {
+      return { reserved: false, reason: 'capped' } as const;
+    }
+
+    // Reject if another attempt is already in-progress for this plan
+    const [inProgressAttempt] = await tx
+      .select({ id: generationAttempts.id })
+      .from(generationAttempts)
+      .where(
+        and(
+          eq(generationAttempts.planId, planId),
+          eq(generationAttempts.status, 'in_progress')
+        )
+      )
+      .limit(1);
+
+    if (inProgressAttempt) {
+      return { reserved: false, reason: 'in_progress' } as const;
+    }
+
+    const startedAt = nowFn();
+
+    // Insert a placeholder attempt record
+    const [attempt] = await tx
+      .insert(generationAttempts)
+      .values({
+        planId,
+        status: 'in_progress',
+        classification: null,
+        durationMs: 0,
+        modulesCount: 0,
+        tasksCount: 0,
+        truncatedTopic: sanitized.topic.truncated,
+        truncatedNotes: sanitized.notes.truncated ?? false,
+        normalizedEffort: false,
+        promptHash,
+        metadata: null,
+      })
+      .returning();
+
+    if (!attempt) {
+      throw new Error('Failed to reserve generation attempt slot.');
+    }
+
+    // Transition plan to 'generating' (idempotent if already generating)
+    await tx
+      .update(learningPlans)
+      .set({
+        generationStatus: 'generating',
+        updatedAt: startedAt,
+      })
+      .where(eq(learningPlans.id, planId));
+
+    return {
+      reserved: true,
+      attemptId: attempt.id,
+      attemptNumber: existingAttempts + 1,
+      startedAt,
+      sanitized,
+      promptHash,
+    } as const;
+  });
+}
+
+/**
+ * Finalizes a previously reserved attempt as successful.
+ * Updates the in-progress attempt row, replaces plan modules/tasks,
+ * and records metrics — all within a single transaction.
+ */
+export async function finalizeAttemptSuccess({
+  attemptId,
+  planId,
+  preparation,
+  modules: parsedModules,
+  providerMetadata,
+  durationMs,
+  extendedTimeout,
+  dbClient,
+  now,
+}: FinalizeSuccessParams): Promise<GenerationAttemptRecord> {
+  assertAttemptIdMatchesReservation(attemptId, preparation);
+
+  const nowFn = now ?? (() => new Date());
+
+  const { normalizedModules, normalizationFlags } =
+    normalizeParsedModules(parsedModules);
+
+  const modulesCount = normalizedModules.length;
+  const tasksCount = normalizedModules.reduce(
+    (sum, module) => sum + module.tasks.length,
+    0
+  );
+
+  const finishedAt = nowFn();
+
+  const metadata = buildMetadata({
+    sanitized: preparation.sanitized,
+    providerMetadata,
+    modulesClamped: normalizationFlags.modulesClamped,
+    tasksClamped: normalizationFlags.tasksClamped,
+    startedAt: preparation.startedAt,
+    finishedAt,
+    extendedTimeout,
+  });
+
+  const updatedAttempt = await dbClient.transaction(async (tx) => {
+    // Replace existing modules for the plan
+    await tx.delete(modules).where(eq(modules.planId, planId));
+
+    // Bulk insert modules
+    const moduleValues = normalizedModules.map((normalizedModule, index) => ({
+      planId,
+      order: index + 1,
+      title: normalizedModule.title,
+      description: normalizedModule.description,
+      estimatedMinutes: normalizedModule.estimatedMinutes,
+    }));
+    const insertedModuleRows =
+      moduleValues.length > 0
+        ? await tx
+            .insert(modules)
+            .values(moduleValues)
+            .returning({ id: modules.id })
+        : [];
+
+    if (insertedModuleRows.length !== normalizedModules.length) {
+      throw new Error('Failed to insert all modules for generation attempt.');
+    }
+
+    // Bulk insert tasks across all modules in one statement.
+    const taskValues: Array<{
+      moduleId: string;
+      order: number;
+      title: string;
+      description: string | null;
+      estimatedMinutes: number;
+    }> = [];
+
+    for (let i = 0; i < insertedModuleRows.length; i++) {
+      const moduleRow = insertedModuleRows[i];
+      const moduleEntry = normalizedModules[i];
+
+      if (!moduleRow || !moduleEntry) {
+        throw new Error('Failed to map inserted modules to generated tasks.');
+      }
+
+      for (
+        let taskIndex = 0;
+        taskIndex < moduleEntry.tasks.length;
+        taskIndex++
+      ) {
+        const task = moduleEntry.tasks[taskIndex];
+        if (!task) {
+          throw new Error('Failed to map generated task for insertion.');
+        }
+
+        taskValues.push({
+          moduleId: moduleRow.id,
+          order: taskIndex + 1,
+          title: task.title,
+          description: task.description,
+          estimatedMinutes: task.estimatedMinutes,
+        });
+      }
+    }
+
+    if (taskValues.length > 0) {
+      await tx.insert(tasks).values(taskValues);
+    }
+
+    // Finalize the reserved attempt record
+    const [attempt] = await tx
+      .update(generationAttempts)
+      .set({
+        status: 'success',
+        classification: null,
+        durationMs: Math.max(0, Math.round(durationMs)),
+        modulesCount,
+        tasksCount,
+        truncatedTopic: preparation.sanitized.topic.truncated,
+        truncatedNotes: preparation.sanitized.notes.truncated ?? false,
+        normalizedEffort:
+          normalizationFlags.modulesClamped || normalizationFlags.tasksClamped,
+        metadata,
+      })
+      .where(eq(generationAttempts.id, attemptId))
+      .returning();
+
+    if (!attempt) {
+      throw new Error('Failed to finalize generation attempt as success.');
+    }
+
+    // Keep plan status and attempt finalization atomic.
+    await tx
+      .update(learningPlans)
+      .set({
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+        finalizedAt: finishedAt,
+        updatedAt: finishedAt,
+      })
+      .where(eq(learningPlans.id, planId));
+
+    return attempt;
+  });
+
+  trackAttemptSuccess(updatedAttempt);
+
+  logAttemptEvent('success', {
+    planId,
+    attemptId: updatedAttempt.id,
+    durationMs: updatedAttempt.durationMs,
+    modulesCount,
+    tasksCount,
+  });
+
+  return updatedAttempt;
+}
+
+/**
+ * Finalizes a previously reserved attempt as failed.
+ * Updates the in-progress attempt row and plan status in one transaction, then records metrics.
+ */
+export async function finalizeAttemptFailure({
+  attemptId,
+  planId,
+  preparation,
+  classification,
+  durationMs,
+  timedOut = false,
+  extendedTimeout = false,
+  providerMetadata,
+  dbClient,
+  now,
+}: FinalizeFailureParams): Promise<GenerationAttemptRecord> {
+  assertAttemptIdMatchesReservation(attemptId, preparation);
+
+  const nowFn = now ?? (() => new Date());
+  const finishedAt = nowFn();
+
+  const metadata = buildMetadata({
+    sanitized: preparation.sanitized,
+    providerMetadata,
+    modulesClamped: false,
+    tasksClamped: false,
+    startedAt: preparation.startedAt,
+    finishedAt,
+    extendedTimeout,
+    failure: { classification, timedOut },
+  });
+
+  const attempt = await dbClient.transaction(async (tx) => {
+    const [updatedAttempt] = await tx
+      .update(generationAttempts)
+      .set({
+        status: 'failure',
+        classification,
+        durationMs: Math.max(0, Math.round(durationMs)),
+        modulesCount: 0,
+        tasksCount: 0,
+        normalizedEffort: false,
+        metadata,
+      })
+      .where(eq(generationAttempts.id, attemptId))
+      .returning();
+
+    if (!updatedAttempt) {
+      throw new Error('Failed to finalize generation attempt as failure.');
+    }
+
+    // Only transition plan to failed when terminal or at attempt cap.
+    // Retryable failures (rate_limit, timeout) with attempts < cap keep plan as generating.
+    const isTerminal =
+      !isRetryableClassification(classification) ||
+      preparation.attemptNumber >= ATTEMPT_CAP;
+
+    if (isTerminal) {
+      await tx
+        .update(learningPlans)
+        .set({
+          generationStatus: 'failed',
+          isQuotaEligible: false,
+          updatedAt: finishedAt,
+        })
+        .where(eq(learningPlans.id, planId));
+    } else {
+      await tx
+        .update(learningPlans)
+        .set({ updatedAt: finishedAt })
+        .where(eq(learningPlans.id, planId));
+    }
+
+    return updatedAttempt;
+  });
+
+  trackAttemptFailure(attempt);
+
+  logAttemptEvent('failure', {
+    planId,
+    attemptId: attempt.id,
+    classification,
+    durationMs: attempt.durationMs,
+    timedOut,
+    extendedTimeout,
+  });
+
+  return attempt;
+}
+
 export { ATTEMPT_CAP };
+
+function assertAttemptIdMatchesReservation(
+  attemptId: string,
+  preparation: AttemptReservation
+): void {
+  if (attemptId !== preparation.attemptId) {
+    throw new Error('Attempt ID mismatch between params and reserved attempt.');
+  }
+}
 
 /**
  * Counts generation attempts for the given user since the given timestamp.
