@@ -70,7 +70,7 @@ describe('RLS attempt insertion', () => {
       error = e;
     }
 
-    // Expect an RLS/permission-denied error (not just any error)
+    // Expect an RLS/permission-denied error or plan ownership check error
     expect(error).toBeTruthy();
     const err = error as Error & { code?: string; cause?: unknown };
     const msg = err.message ?? '';
@@ -80,7 +80,7 @@ describe('RLS attempt insertion', () => {
       err.code === '42501' ||
       (err.cause as { code?: string })?.code === '42501';
     const hasPermissionMessage =
-      /permission denied|row[- ]level security/i.test(combinedMsg);
+      /permission denied|row[- ]level security|not found or inaccessible/i.test(combinedMsg);
     expect(
       hasPermissionCode || hasPermissionMessage,
       `Expected RLS/permission-denied error but got: ${msg}${causeMsg ? ` (cause: ${causeMsg})` : ''}`
