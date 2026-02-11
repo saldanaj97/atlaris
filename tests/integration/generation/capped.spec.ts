@@ -111,23 +111,16 @@ describe('generation integration - capped attempts', () => {
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, plan.id))
       .orderBy(desc(generationAttempts.createdAt));
-    const latestAttempt = attempts[0];
-
-    expect(attempts.length).toBeGreaterThan(0);
-    expect(latestAttempt).toBeDefined(); // fail-fast when query returns no rows
-
-    if (!latestAttempt) {
-      throw new Error('Expected at least one generation attempt record');
-    }
 
     // Cap rejections are synthetic failures from the orchestrator; no new DB row is written.
     expect(attempts).toHaveLength(3);
     expect(
       attempts.some((attempt) => attempt.classification === 'capped')
     ).toBe(false);
-    expect(
-      result.status === 'failure' ? result.attempt.id : 'unexpected-success'
-    ).toBeNull();
+    if (result.status !== 'failure') {
+      throw new Error('Expected generation to fail when cap is reached');
+    }
+    expect(result.attempt.id).toBeNull();
 
     const moduleRows = await db
       .select({ value: modules.id })

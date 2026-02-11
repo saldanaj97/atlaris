@@ -171,12 +171,6 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
       });
     }
 
-    // Reset plan status (normally done by retry route)
-    await db
-      .update(learningPlans)
-      .set({ generationStatus: 'failed' })
-      .where(eq(learningPlans.id, planId));
-
     // Try to reserve again - should succeed
     const second = await reserveAttemptSlot({
       planId,

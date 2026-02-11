@@ -91,7 +91,7 @@ export async function handleFailedGeneration(
     planId,
     userId,
   });
-  const requestId = getCorrelationId() ?? undefined;
+  const requestId = getCorrelationId();
 
   emit({
     type: 'error',

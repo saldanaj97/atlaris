@@ -42,7 +42,8 @@ const createPdfRequest = (): PdfExtractTestRequest => {
   const request = new Request(BASE_URL, {
     method: 'POST',
     body: form,
-    // Route requires a numeric Content-Length for early body-size enforcement.
+    // Keep Content-Length equal to payload bytes for test determinism; this route only
+    // needs a numeric header for early size checks and does not depend on multipart overhead.
     headers: {
       'content-length': String(buffer.byteLength),
     },

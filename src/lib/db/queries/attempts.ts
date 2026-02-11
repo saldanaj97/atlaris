@@ -4,14 +4,14 @@ import { logger } from '@/lib/logging/logger';
 import type { InferSelectModel } from 'drizzle-orm';
 import { and, asc, count, eq, gte } from 'drizzle-orm';
 
+import { isRetryableClassification } from '@/lib/ai/failures';
 import type { ParsedModule } from '@/lib/ai/parser';
-import type { ProviderMetadata } from '@/lib/ai/provider';
+import type { GenerationInput, ProviderMetadata } from '@/lib/ai/provider';
 import {
   recordAttemptFailure as trackAttemptFailure,
   recordAttemptSuccess as trackAttemptSuccess,
 } from '@/lib/metrics/attempts';
 import type { FailureClassification } from '@/lib/types/client';
-import { isRetryableClassification } from '@/lib/ai/failures';
 import {
   aggregateNormalizationFlags,
   normalizeModuleMinutes,
@@ -24,7 +24,6 @@ import {
   TOPIC_MAX_LENGTH,
 } from '@/lib/validation/learningPlans';
 
-import type { GenerationInput } from '@/lib/ai/provider';
 import {
   generationAttempts,
   learningPlans,
@@ -589,7 +588,6 @@ export async function reserveAttemptSlot(params: {
       .select({
         id: learningPlans.id,
         userId: learningPlans.userId,
-        generationStatus: learningPlans.generationStatus,
       })
       .from(learningPlans)
       .where(eq(learningPlans.id, planId))
@@ -685,6 +683,8 @@ export async function finalizeAttemptSuccess({
   dbClient,
   now,
 }: FinalizeSuccessParams): Promise<GenerationAttemptRecord> {
+  assertAttemptIdMatchesReservation(attemptId, preparation);
+
   const nowFn = now ?? (() => new Date());
 
   const { normalizedModules, normalizationFlags } =
@@ -732,19 +732,45 @@ export async function finalizeAttemptSuccess({
       throw new Error('Failed to insert all modules for generation attempt.');
     }
 
-    // Insert tasks for each module
+    // Bulk insert tasks across all modules in one statement.
+    const taskValues: Array<{
+      moduleId: string;
+      order: number;
+      title: string;
+      description: string | null;
+      estimatedMinutes: number;
+    }> = [];
+
     for (let i = 0; i < insertedModuleRows.length; i++) {
-      const moduleTasks = normalizedModules[i].tasks;
-      if (moduleTasks.length === 0) continue;
-      await tx.insert(tasks).values(
-        moduleTasks.map((task, taskIndex) => ({
-          moduleId: insertedModuleRows[i].id,
+      const moduleRow = insertedModuleRows[i];
+      const moduleEntry = normalizedModules[i];
+
+      if (!moduleRow || !moduleEntry) {
+        throw new Error('Failed to map inserted modules to generated tasks.');
+      }
+
+      for (
+        let taskIndex = 0;
+        taskIndex < moduleEntry.tasks.length;
+        taskIndex++
+      ) {
+        const task = moduleEntry.tasks[taskIndex];
+        if (!task) {
+          throw new Error('Failed to map generated task for insertion.');
+        }
+
+        taskValues.push({
+          moduleId: moduleRow.id,
           order: taskIndex + 1,
           title: task.title,
           description: task.description,
           estimatedMinutes: task.estimatedMinutes,
-        }))
-      );
+        });
+      }
+    }
+
+    if (taskValues.length > 0) {
+      await tx.insert(tasks).values(taskValues);
     }
 
     // Finalize the reserved attempt record
@@ -812,6 +838,8 @@ export async function finalizeAttemptFailure({
   dbClient,
   now,
 }: FinalizeFailureParams): Promise<GenerationAttemptRecord> {
+  assertAttemptIdMatchesReservation(attemptId, preparation);
+
   const nowFn = now ?? (() => new Date());
   const finishedAt = nowFn();
 
@@ -885,6 +913,15 @@ export async function finalizeAttemptFailure({
 }
 
 export { ATTEMPT_CAP };
+
+function assertAttemptIdMatchesReservation(
+  attemptId: string,
+  preparation: AttemptReservation
+): void {
+  if (attemptId !== preparation.attemptId) {
+    throw new Error('Attempt ID mismatch between params and reserved attempt.');
+  }
+}
 
 /**
  * Counts generation attempts for the given user since the given timestamp.

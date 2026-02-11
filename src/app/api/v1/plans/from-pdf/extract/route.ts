@@ -24,6 +24,7 @@ import {
   issuePdfExtractionProof,
   toPdfExtractionProofPayload,
 } from '@/lib/security/pdf-extraction-proof';
+import { resolveUserTier } from '@/lib/stripe/usage';
 
 /** Absolute maximum PDF upload size in bytes (50MB) — regardless of tier */
 const ABSOLUTE_MAX_PDF_BYTES = 50 * 1024 * 1024;
@@ -145,7 +146,25 @@ export const POST: PlainHandler = withErrorBoundary(
 
     const { file } = parseResult.data;
 
-    const sizeCheck = await checkPdfSizeLimit(user.id, file.size);
+    let cachedTier: Awaited<ReturnType<typeof resolveUserTier>> | undefined;
+    const validationDeps = {
+      resolveTier: async (
+        tierUserId: string,
+        dbClient?: Parameters<typeof resolveUserTier>[1]
+      ) => {
+        if (cachedTier !== undefined) {
+          return cachedTier;
+        }
+        cachedTier = await resolveUserTier(tierUserId, dbClient);
+        return cachedTier;
+      },
+    };
+
+    const sizeCheck = await checkPdfSizeLimit(
+      user.id,
+      file.size,
+      validationDeps
+    );
     if (!sizeCheck.allowed) {
       return errorResponse(sizeCheck.reason, sizeCheck.code, 413);
     }
@@ -185,7 +204,8 @@ export const POST: PlainHandler = withErrorBoundary(
     const tierValidation = await validatePdfUpload(
       user.id,
       file.size,
-      pageCountForValidation
+      pageCountForValidation,
+      validationDeps
     );
     if (!tierValidation.allowed) {
       const status = tierValidation.code === 'FILE_TOO_LARGE' ? 413 : 400;
@@ -229,7 +249,8 @@ export const POST: PlainHandler = withErrorBoundary(
     const finalTierValidation = await validatePdfUpload(
       user.id,
       file.size,
-      extraction.pageCount
+      extraction.pageCount,
+      validationDeps
     );
     if (!finalTierValidation.allowed) {
       const status = finalTierValidation.code === 'FILE_TOO_LARGE' ? 413 : 400;

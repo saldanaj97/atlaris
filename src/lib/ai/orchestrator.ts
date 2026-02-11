@@ -186,7 +186,8 @@ export async function runGenerationAttempt(
     const classification: FailureClassification =
       reservation.reason === 'capped'
         ? 'capped'
-        : // Reuse existing retryable bucket for concurrency conflicts.
+        : // "in_progress" means a concurrent generation is already running for this plan;
+          // surface it as retryable `rate_limit` for client/backoff handling.
           'rate_limit';
     const errorMessage =
       reservation.reason === 'capped'

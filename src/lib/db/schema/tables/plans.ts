@@ -30,6 +30,8 @@ import { users } from './users';
 
 // Learning plans and related tables
 
+export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
+
 export const learningPlans = pgTable(
   'learning_plans',
   {
@@ -243,7 +245,7 @@ export const generationAttempts = pgTable(
     planId: uuid('plan_id')
       .notNull()
       .references(() => learningPlans.id, { onDelete: 'cascade' }),
-    status: text('status').notNull(), // 'success' | 'failure' (validated in app layer)
+    status: text('status').$type<GenerationAttemptStatus>().notNull(),
     classification: text('classification'), // nullable on success; failure-only classification
     durationMs: integer('duration_ms').notNull(),
     modulesCount: integer('modules_count').notNull(),

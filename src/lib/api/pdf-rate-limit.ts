@@ -53,8 +53,8 @@ export async function checkPdfSizeLimit(
   sizeBytes: number,
   deps: PdfUploadValidationDeps = {}
 ): Promise<PdfSizeLimitResult> {
-  if (!Number.isFinite(sizeBytes) || sizeBytes < 0) {
-    throw new Error('sizeBytes must be a non-negative finite number');
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+    throw new Error('sizeBytes must be a positive finite number');
   }
 
   let tier: SubscriptionTier;
