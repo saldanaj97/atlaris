@@ -28,7 +28,9 @@ type PdfExtractTestRequest = Request & {
   formData: () => Promise<FormData>;
 };
 
-const createPdfRequest = (): PdfExtractTestRequest => {
+const createPdfRequest = (opts?: {
+  contentLength?: string;
+}): PdfExtractTestRequest => {
   const form = new FormData();
   const pdfHeader = '%PDF-1.4\n%%EOF';
   const buffer = Buffer.from(pdfHeader, 'utf8');
@@ -45,7 +47,7 @@ const createPdfRequest = (): PdfExtractTestRequest => {
     // Keep Content-Length equal to payload bytes for test determinism; this route only
     // needs a numeric header for early size checks and does not depend on multipart overhead.
     headers: {
-      'content-length': String(buffer.byteLength),
+      'content-length': opts?.contentLength ?? String(buffer.byteLength),
     },
   });
 
@@ -181,5 +183,50 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(401);
+  });
+
+  it('returns 411 when multipart request body is missing', async () => {
+    const authUserId = `auth_pdf_missing_body_${Date.now()}`;
+    const authEmail = `pdf-missing-body-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    const request = new Request(BASE_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'multipart/form-data; boundary=test-boundary',
+      },
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(411);
+    const payload = await response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe('MISSING_CONTENT_LENGTH');
+  });
+
+  it('returns 400 for non-multipart request content type', async () => {
+    const authUserId = `auth_pdf_invalid_content_type_${Date.now()}`;
+    const authEmail = `pdf-invalid-content-type-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    const request = new Request(BASE_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ file: 'not-a-pdf' }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const payload = await response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe('INVALID_FILE');
   });
 });

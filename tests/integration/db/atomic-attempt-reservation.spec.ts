@@ -37,6 +37,9 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
       })
       .returning();
 
+    if (!plan) {
+      throw new Error('Test setup failed: plan insert returned no rows');
+    }
     planId = plan.id;
   });
 

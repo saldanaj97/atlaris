@@ -208,6 +208,7 @@ describe('POST /api/v1/plans/stream', () => {
         classification: 'provider_error',
         retryable: true,
       });
+      expect(errorEvent?.data?.requestId).toEqual(expect.any(String));
       const errorMessage =
         typeof errorEvent?.data?.message === 'string'
           ? errorEvent.data.message

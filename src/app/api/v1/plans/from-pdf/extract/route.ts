@@ -6,7 +6,7 @@ import {
   withErrorBoundary,
 } from '@/lib/api/auth';
 import {
-  checkPdfExtractionThrottle,
+  acquirePdfExtractionSlot,
   checkPdfSizeLimit,
   validatePdfUpload,
 } from '@/lib/api/pdf-rate-limit';
@@ -24,10 +24,12 @@ import {
   issuePdfExtractionProof,
   toPdfExtractionProofPayload,
 } from '@/lib/security/pdf-extraction-proof';
-import { resolveUserTier } from '@/lib/stripe/usage';
+import { resolveUserTier, type SubscriptionTier } from '@/lib/stripe/usage';
 
 /** Absolute maximum PDF upload size in bytes (50MB) — regardless of tier */
 const ABSOLUTE_MAX_PDF_BYTES = 50 * 1024 * 1024;
+const PDF_EXTRACTION_TIMEOUT_MS = 30_000;
+const PDF_EXTRACTION_MAX_CHARS = 500_000;
 
 export type PdfErrorCode =
   | 'FILE_TOO_LARGE'
@@ -47,6 +49,16 @@ const errorResponse = (message: string, code: PdfErrorCode, status: number) =>
 
 const toExtractionError = (message: string, status = 400) =>
   errorResponse(message, 'INVALID_FILE', status);
+
+const toUploadValidationError = (
+  result: Extract<
+    Awaited<ReturnType<typeof validatePdfUpload>>,
+    { allowed: false }
+  >
+) => {
+  const status = result.code === 'FILE_TOO_LARGE' ? 413 : 400;
+  return errorResponse(result.reason, result.code, status);
+};
 
 const fileSchema = z
   .instanceof(File)
@@ -114,7 +126,7 @@ export const POST: PlainHandler = withErrorBoundary(
     }
 
     // Per-user extraction throttle
-    const throttle = checkPdfExtractionThrottle(user.id);
+    const throttle = acquirePdfExtractionSlot(user.id);
     if (!throttle.allowed) {
       return json(
         {
@@ -147,16 +159,28 @@ export const POST: PlainHandler = withErrorBoundary(
     const { file } = parseResult.data;
 
     let cachedTier: Awaited<ReturnType<typeof resolveUserTier>> | undefined;
+    let tierResolved = false;
     const validationDeps = {
       resolveTier: async (
         tierUserId: string,
         dbClient?: Parameters<typeof resolveUserTier>[1]
-      ) => {
-        if (cachedTier !== undefined) {
-          return cachedTier;
+      ): Promise<SubscriptionTier> => {
+        if (tierResolved) {
+          const resolvedTier = cachedTier;
+          if (!resolvedTier) {
+            throw new Error('resolveTier cache resolved without a valid tier');
+          }
+          return resolvedTier;
         }
         cachedTier = await resolveUserTier(tierUserId, dbClient);
-        return cachedTier;
+        const resolvedTier = cachedTier;
+        if (!resolvedTier) {
+          throw new Error(
+            'Unable to resolve user tier for PDF upload validation'
+          );
+        }
+        tierResolved = true;
+        return resolvedTier;
       },
     };
 
@@ -208,13 +232,12 @@ export const POST: PlainHandler = withErrorBoundary(
       validationDeps
     );
     if (!tierValidation.allowed) {
-      const status = tierValidation.code === 'FILE_TOO_LARGE' ? 413 : 400;
-      return errorResponse(tierValidation.reason, tierValidation.code, status);
+      return toUploadValidationError(tierValidation);
     }
 
     const extraction = await extractTextFromPdf(buffer, {
-      timeoutMs: 30_000,
-      maxChars: 500_000,
+      timeoutMs: PDF_EXTRACTION_TIMEOUT_MS,
+      maxChars: PDF_EXTRACTION_MAX_CHARS,
     });
 
     if (!extraction.success) {
@@ -253,12 +276,7 @@ export const POST: PlainHandler = withErrorBoundary(
       validationDeps
     );
     if (!finalTierValidation.allowed) {
-      const status = finalTierValidation.code === 'FILE_TOO_LARGE' ? 413 : 400;
-      return errorResponse(
-        finalTierValidation.reason,
-        finalTierValidation.code,
-        status
-      );
+      return toUploadValidationError(finalTierValidation);
     }
 
     const extractionProofInput: {
