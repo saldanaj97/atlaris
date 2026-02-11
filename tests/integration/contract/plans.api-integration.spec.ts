@@ -5,7 +5,6 @@ import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { POST } from '@/app/api/v1/plans/route';
 import {
   generationAttempts,
-  jobQueue,
   learningPlans,
   modules,
 } from '@/lib/db/schema';
@@ -39,7 +38,6 @@ describe('Phase 4: API Integration', () => {
     // Clean up test data (order matters due to foreign key constraints)
     await db.delete(generationAttempts);
     await db.delete(modules);
-    await db.delete(jobQueue);
     await db.delete(learningPlans);
   });
 
@@ -176,8 +174,8 @@ describe('Phase 4: API Integration', () => {
       setTestUser(authUserId);
       const userId = await ensureUser({ authUserId, email: authEmail });
 
-      // Create 10 jobs (the limit) within the time window
-      const jobPromises = [];
+      // Create 10 generation attempts (the limit) within the time window
+      const attemptPromises = [];
       for (let i = 0; i < 10; i++) {
         const [plan] = await db
           .insert(learningPlans)
@@ -192,23 +190,18 @@ describe('Phase 4: API Integration', () => {
           })
           .returning();
 
-        jobPromises.push(
-          db.insert(jobQueue).values({
+        attemptPromises.push(
+          db.insert(generationAttempts).values({
             planId: plan.id,
-            userId,
-            jobType: 'plan_generation',
-            status: 'pending',
-            payload: {
-              topic: `Plan ${i}`,
-              notes: null,
-              skillLevel: 'beginner',
-              weeklyHours: 4,
-              learningStyle: 'reading',
-            },
+            status: 'success',
+            classification: null,
+            durationMs: 1000,
+            modulesCount: 1,
+            tasksCount: 1,
           })
         );
       }
-      await Promise.all(jobPromises);
+      await Promise.all(attemptPromises);
 
       // Try to create one more plan (should exceed rate limit)
       const request = await createPlanRequest({
@@ -232,11 +225,11 @@ describe('Phase 4: API Integration', () => {
   });
 
   describe('T043: Malformed plan creation input test', () => {
-    it('returns validation error for invalid skillLevel without inserting job', async () => {
+    it('returns validation error for invalid skillLevel without creating plan', async () => {
       setTestUser(authUserId);
       await ensureUser({ authUserId, email: authEmail });
 
-      const initialJobCount = await db.query.jobQueue.findMany();
+      const initialPlanCount = await db.query.learningPlans.findMany();
 
       const request = await createPlanRequest({
         topic: 'Invalid Plan',
@@ -254,16 +247,16 @@ describe('Phase 4: API Integration', () => {
       expect(payload).toHaveProperty('error');
       expect(payload.code).toBe('VALIDATION_ERROR');
 
-      // Verify no job was created
-      const finalJobCount = await db.query.jobQueue.findMany();
-      expect(finalJobCount.length).toBe(initialJobCount.length);
+      // Verify no plan was created
+      const finalPlanCount = await db.query.learningPlans.findMany();
+      expect(finalPlanCount.length).toBe(initialPlanCount.length);
     });
 
-    it('returns validation error for missing topic without inserting job', async () => {
+    it('returns validation error for missing topic without creating plan', async () => {
       setTestUser(authUserId);
       await ensureUser({ authUserId, email: authEmail });
 
-      const initialJobCount = await db.query.jobQueue.findMany();
+      const initialPlanCount = await db.query.learningPlans.findMany();
 
       const request = await createPlanRequest({
         // topic is missing
@@ -281,9 +274,9 @@ describe('Phase 4: API Integration', () => {
       expect(payload).toHaveProperty('error');
       expect(payload.code).toBe('VALIDATION_ERROR');
 
-      // Verify no job was created
-      const finalJobCount = await db.query.jobQueue.findMany();
-      expect(finalJobCount.length).toBe(initialJobCount.length);
+      // Verify no plan was created
+      const finalPlanCount = await db.query.learningPlans.findMany();
+      expect(finalPlanCount.length).toBe(initialPlanCount.length);
     });
   });
 });
