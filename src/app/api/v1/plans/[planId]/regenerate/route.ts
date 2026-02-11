@@ -7,6 +7,8 @@ import { isUuid } from '@/lib/api/route-helpers';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
+import { regenerationQueueEnv } from '@/lib/config/env';
+import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
 import { enqueueJob } from '@/lib/jobs/queue';
 import {
   JOB_TYPES,
@@ -19,9 +21,10 @@ import {
   resolveUserTier,
 } from '@/lib/stripe/usage';
 import {
-  planRegenerationOverridesSchema,
+  planRegenerationRequestSchema,
   type PlanRegenerationOverridesInput,
 } from '@/lib/validation/learningPlans';
+import { logger } from '@/lib/logging/logger';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -30,6 +33,16 @@ import { eq } from 'drizzle-orm';
  */
 export const POST = withErrorBoundary(
   withAuthAndRateLimit('aiGeneration', async ({ req, userId, params }) => {
+    if (!regenerationQueueEnv.enabled) {
+      return jsonError(
+        'Plan regeneration is temporarily disabled while queue workers are unavailable.',
+        {
+          status: 503,
+          code: 'SERVICE_UNAVAILABLE',
+        }
+      );
+    }
+
     const planId = params.planId;
     if (!planId) {
       throw new ValidationError('Plan id is required in the request path.');
@@ -58,23 +71,20 @@ export const POST = withErrorBoundary(
     // Parse request body for overrides (before quota check to fail fast on validation)
     let body: { overrides?: unknown } = {};
     try {
-      body = (await req.json().catch(() => ({}))) as {
-        overrides?: unknown;
-      };
+      body = (await req.json().catch(() => ({}))) as { overrides?: unknown };
     } catch {
       throw new ValidationError('Invalid request body.');
     }
 
     let overrides: PlanRegenerationOverridesInput | undefined;
-    if (body.overrides !== undefined) {
-      try {
-        overrides = planRegenerationOverridesSchema.parse(body.overrides);
-      } catch (error) {
-        if (error instanceof ZodError) {
-          throw new ValidationError('Invalid overrides.', error.flatten());
-        }
-        throw new ValidationError('Invalid overrides.', error);
+    try {
+      const parsed = planRegenerationRequestSchema.parse(body);
+      overrides = parsed.overrides;
+    } catch (error) {
+      if (error instanceof ZodError) {
+        throw new ValidationError('Invalid overrides.', error.flatten());
       }
+      throw new ValidationError('Invalid overrides.', error);
     }
 
     // Atomically check and increment regeneration quota (prevents TOCTOU race)
@@ -106,6 +116,15 @@ export const POST = withErrorBoundary(
       payload,
       priority
     );
+
+    if (regenerationQueueEnv.inlineProcessingEnabled) {
+      void drainRegenerationQueue({ maxJobs: 1 }).catch((error) => {
+        logger.error(
+          { planId, userId: user.id, error },
+          'Inline regeneration queue drain failed'
+        );
+      });
+    }
 
     return json(
       { generationId: planId, planId, status: 'pending' },

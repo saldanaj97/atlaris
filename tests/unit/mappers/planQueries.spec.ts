@@ -423,8 +423,6 @@ describe('mapLearningPlanDetail', () => {
       resourceRows,
       latestAttempt,
       attemptsCount: 1,
-      latestJobStatus: 'completed',
-      latestJobError: null,
     });
 
     expect(result.plan.id).toBe('plan-1');
@@ -436,8 +434,6 @@ describe('mapLearningPlanDetail', () => {
     expect(result.completedTasks).toBe(1);
     expect(result.latestAttempt).toEqual(latestAttempt);
     expect(result.attemptsCount).toBe(1);
-    expect(result.latestJobStatus).toBe('completed');
-    expect(result.latestJobError).toBeNull();
   });
 
   it('should handle null progress gracefully', () => {
@@ -492,8 +488,6 @@ describe('mapLearningPlanDetail', () => {
       resourceRows: [],
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
     });
 
     expect(result.plan.modules[0].tasks[0].progress).toBeNull();
@@ -525,8 +519,6 @@ describe('mapLearningPlanDetail', () => {
       resourceRows: [],
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: 'pending',
-      latestJobError: null,
     });
 
     expect(result.plan.modules).toHaveLength(0);
@@ -628,8 +620,6 @@ describe('mapLearningPlanDetail', () => {
       resourceRows: [],
       latestAttempt: null,
       attemptsCount: 2,
-      latestJobStatus: 'completed',
-      latestJobError: null,
     });
 
     expect(result.plan.modules).toHaveLength(2);
@@ -639,7 +629,7 @@ describe('mapLearningPlanDetail', () => {
     expect(result.completedTasks).toBe(1);
   });
 
-  it('should handle job error information', () => {
+  it('should preserve attempt information when no modules exist', () => {
     const plan = {
       id: 'plan-1',
       userId: 'user-1',
@@ -663,11 +653,8 @@ describe('mapLearningPlanDetail', () => {
       resourceRows: [],
       latestAttempt: null,
       attemptsCount: 3,
-      latestJobStatus: 'failed',
-      latestJobError: 'Generation timeout',
     });
 
-    expect(result.latestJobStatus).toBe('failed');
-    expect(result.latestJobError).toBe('Generation timeout');
+    expect(result.attemptsCount).toBe(3);
   });
 });

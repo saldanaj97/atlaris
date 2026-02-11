@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 import {
   type PlainHandler,
   withAuthAndRateLimit,
@@ -17,6 +15,7 @@ import {
   extractTextFromPdf,
   getPdfPageCountFromBuffer,
 } from '@/lib/pdf/extract';
+import { capExtractionResponsePayload } from '@/lib/pdf/structure';
 import type { ExtractedSection } from '@/lib/pdf/types';
 import { scanBufferForMalware } from '@/lib/security/malware-scanner';
 import {
@@ -25,6 +24,7 @@ import {
   toPdfExtractionProofPayload,
 } from '@/lib/security/pdf-extraction-proof';
 import { resolveUserTier, type SubscriptionTier } from '@/lib/stripe/usage';
+import { pdfExtractionFormDataSchema } from '@/lib/validation/pdf';
 
 /** Absolute maximum PDF upload size in bytes (50MB) — regardless of tier */
 const ABSOLUTE_MAX_PDF_BYTES = 50 * 1024 * 1024;
@@ -61,47 +61,6 @@ const toUploadValidationError = (
   const status = result.code === 'FILE_TOO_LARGE' ? 413 : 400;
   return errorResponse(result.reason, result.code, status);
 };
-
-type PdfUploadFile = {
-  size: number;
-  type: string;
-  arrayBuffer: () => Promise<ArrayBuffer>;
-};
-
-const isPdfUploadFile = (value: unknown): value is PdfUploadFile => {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  const candidate = value as {
-    size?: unknown;
-    type?: unknown;
-    arrayBuffer?: unknown;
-  };
-
-  return (
-    typeof candidate.size === 'number' &&
-    Number.isFinite(candidate.size) &&
-    typeof candidate.type === 'string' &&
-    typeof candidate.arrayBuffer === 'function'
-  );
-};
-
-const fileSchema = z
-  .custom<PdfUploadFile>(isPdfUploadFile, {
-    message: 'A PDF file is required.',
-  })
-  .refine((file) => file.size > 0, 'PDF file is empty.')
-  .refine(
-    (file) => file.type === 'application/pdf',
-    'Only PDF files are supported.'
-  );
-
-const formDataSchema = z
-  .object({
-    file: fileSchema,
-  })
-  .strict();
 
 const isPdfMagicBytes = (buffer: Buffer): boolean => {
   const signature = Buffer.from('%PDF-', 'utf8');
@@ -234,7 +193,7 @@ export const POST: PlainHandler = withErrorBoundary(
     }
     const formObject = parseFormDataToObject(formData);
 
-    const parseResult = formDataSchema.safeParse(formObject);
+    const parseResult = pdfExtractionFormDataSchema.safeParse(formObject);
     if (!parseResult.success) {
       const firstError = parseResult.error.issues[0];
       const message = firstError?.message ?? 'Invalid request.';
@@ -367,12 +326,19 @@ export const POST: PlainHandler = withErrorBoundary(
       return toUploadValidationError(finalTierValidation);
     }
 
+    const boundedExtraction = capExtractionResponsePayload({
+      text: extraction.text,
+      pageCount: extraction.pageCount,
+      metadata: extraction.metadata,
+      structure: extraction.structure,
+    });
+
     const extractionProofInput: {
       mainTopic: string;
       sections: ExtractedSection[];
     } = {
-      mainTopic: extraction.structure.suggestedMainTopic,
-      sections: extraction.structure.sections,
+      mainTopic: boundedExtraction.payload.structure.suggestedMainTopic,
+      sections: boundedExtraction.payload.structure.sections,
     };
     const extractionHash = computePdfExtractionHash(extractionProofInput);
     let issuedProof: { token: string; expiresAt: Date };
@@ -396,10 +362,11 @@ export const POST: PlainHandler = withErrorBoundary(
     return json({
       success: true,
       extraction: {
-        text: extraction.text,
-        pageCount: extraction.pageCount,
-        metadata: extraction.metadata,
-        structure: extraction.structure,
+        text: boundedExtraction.payload.text,
+        pageCount: boundedExtraction.payload.pageCount,
+        metadata: boundedExtraction.payload.metadata,
+        structure: boundedExtraction.payload.structure,
+        truncation: boundedExtraction.truncation,
       },
       proof: toPdfExtractionProofPayload({
         token: issuedProof.token,

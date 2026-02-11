@@ -124,8 +124,6 @@ describe('mapDetailToClient', () => {
       completedTasks: 1,
       latestAttempt,
       attemptsCount: 1,
-      latestJobStatus: 'completed',
-      latestJobError: null,
     };
 
     const result = mapDetailToClient(detail);
@@ -164,8 +162,6 @@ describe('mapDetailToClient', () => {
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
     } as unknown as LearningPlanDetail;
 
     const result = mapDetailToClient(detail);
@@ -224,8 +220,6 @@ describe('mapDetailToClient', () => {
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
     };
 
     const result = mapDetailToClient(detail);
@@ -310,8 +304,6 @@ describe('mapDetailToClient', () => {
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
     };
 
     const result = mapDetailToClient(detail);
@@ -360,15 +352,13 @@ describe('mapDetailToClient', () => {
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
     };
 
     const result = mapDetailToClient(detail);
     expect(result!.status).toBe('ready');
   });
 
-  it('should derive status as "failed" when job status is failed', () => {
+  it('should derive status as "failed" when plan generation status is failed', () => {
     const plan = {
       id: 'plan-1',
       userId: 'user-1',
@@ -385,13 +375,11 @@ describe('mapDetailToClient', () => {
     };
 
     const detail: LearningPlanDetail = {
-      plan: { ...(plan as any), modules: [] },
+      plan: { ...(plan as any), generationStatus: 'failed', modules: [] },
       totalTasks: 0,
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: 'failed',
-      latestJobError: 'Timeout',
     };
 
     const result = mapDetailToClient(detail);
@@ -438,8 +426,6 @@ describe('mapDetailToClient', () => {
       completedTasks: 0,
       latestAttempt,
       attemptsCount: 1,
-      latestJobStatus: null,
-      latestJobError: null,
     };
 
     const result = mapDetailToClient(detail);
@@ -531,8 +517,6 @@ describe('mapDetailToClient', () => {
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 1,
-      latestJobStatus: null,
-      latestJobError: null,
     };
 
     const result = mapDetailToClient(detail);
@@ -561,8 +545,6 @@ describe('mapDetailToClient', () => {
       completedTasks: 0,
       latestAttempt: null,
       attemptsCount: 0,
-      latestJobStatus: null,
-      latestJobError: null,
     };
 
     const result = mapDetailToClient(detail);

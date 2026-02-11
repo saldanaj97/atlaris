@@ -11,6 +11,10 @@ import {
   markPlanGenerationSuccess,
 } from '@/lib/stripe/usage';
 
+/**
+ * @deprecated Keep only for backwards-compatible tests.
+ * Use API routes `/api/v1/plans` + `/api/v1/plans/stream` for new callsites.
+ */
 export interface GenerateLearningPlanParams {
   topic: string;
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
@@ -29,6 +33,10 @@ export interface GenerateLearningPlanResult {
   tasksCount?: number;
 }
 
+/**
+ * @deprecated Keep only for backwards-compatible tests.
+ * Use API routes `/api/v1/plans` + `/api/v1/plans/stream` for new callsites.
+ */
 export async function generateLearningPlan(
   params: GenerateLearningPlanParams
 ): Promise<GenerateLearningPlanResult> {
@@ -42,8 +50,6 @@ export async function generateLearningPlan(
     return { planId: '', status: 'failure', error: 'User not found.' };
   }
 
-  // Atomically check plan limit and insert plan (prevents race conditions)
-  // This uses a database transaction with row-level locking
   const db = getDb();
   let plan: { id: string };
   try {
@@ -106,8 +112,6 @@ export async function generateLearningPlan(
     };
   }
 
-  // Intentionally do not record usage on failure for this action.
-  // Tests assert zero ai_usage_events when generation fails.
   await markPlanGenerationFailure(plan.id, db);
 
   const message =

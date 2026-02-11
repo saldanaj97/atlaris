@@ -117,7 +117,7 @@ function derivePlanStatus(detail: LearningPlanDetail): PlanStatus | undefined {
     return 'ready';
   }
 
-  if (detail.latestJobStatus === 'failed') {
+  if (detail.plan.generationStatus === 'failed') {
     return 'failed';
   }
 
@@ -132,6 +132,10 @@ function derivePlanStatus(detail: LearningPlanDetail): PlanStatus | undefined {
 
   if (detail.attemptsCount >= ATTEMPT_CAP) {
     return 'failed';
+  }
+
+  if (detail.plan.generationStatus === 'generating') {
+    return 'processing';
   }
 
   return 'pending';

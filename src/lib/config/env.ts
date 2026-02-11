@@ -70,6 +70,14 @@ function toNumber(
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+function toBoolean(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value.toLowerCase() === 'true';
+}
+
 export function optionalEnv(key: string): string | undefined {
   return normalize(process.env[key]);
 }
@@ -494,6 +502,44 @@ export const devAuthEnv = {
 export const attemptsEnv = {
   get cap() {
     return toNumber(getServerOptional('ATTEMPT_CAP'), DEFAULT_ATTEMPT_CAP);
+  },
+} as const;
+
+export const regenerationQueueEnv = {
+  /**
+   * Master switch for regeneration queue endpoint availability.
+   */
+  get enabled() {
+    return toBoolean(getServerOptional('REGENERATION_QUEUE_ENABLED'), true);
+  },
+  /**
+   * Optional inline processing mode for local/test environments.
+   * In production this should remain disabled and be replaced by a dedicated worker trigger.
+   */
+  get inlineProcessingEnabled() {
+    return toBoolean(
+      getServerOptional('REGENERATION_INLINE_PROCESSING'),
+      !isProdRuntime
+    );
+  },
+  /**
+   * Maximum jobs to process per worker drain invocation.
+   */
+  get maxJobsPerDrain() {
+    const parsed = toNumber(
+      getServerOptional('REGENERATION_MAX_JOBS_PER_DRAIN')
+    );
+    if (!parsed || !Number.isFinite(parsed) || parsed < 1) {
+      return 1;
+    }
+
+    return Math.floor(parsed);
+  },
+  /**
+   * Shared bearer token used by scheduled worker trigger calls.
+   */
+  get workerToken() {
+    return getServerOptional('REGENERATION_WORKER_TOKEN');
   },
 } as const;
 

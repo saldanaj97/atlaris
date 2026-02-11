@@ -41,7 +41,7 @@ describe('Plan Access Types', () => {
       expect(result).toHaveProperty('data');
       if (result.success) {
         expect(result.data).toBe(mockPlanData);
-        expect(result.data.plan.id).toBe('plan-1');
+        expect(result.data.plan.id).toBe(mockPlanData.plan.id);
         expect(result.data.plan.topic).toBe('Machine Learning Fundamentals');
       }
     });
@@ -66,7 +66,6 @@ describe('Plan Access Types', () => {
         totalTasks: 10,
         completedTasks: 5,
         attemptsCount: 3,
-        latestJobStatus: 'completed',
       });
       const result = planSuccess(mockPlanData);
 
@@ -74,7 +73,6 @@ describe('Plan Access Types', () => {
         expect(result.data.totalTasks).toBe(10);
         expect(result.data.completedTasks).toBe(5);
         expect(result.data.attemptsCount).toBe(3);
-        expect(result.data.latestJobStatus).toBe('completed');
       }
     });
   });

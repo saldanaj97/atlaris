@@ -355,7 +355,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(body.error).toMatch(/regeneration limit|quota/i);
   });
 
-  it('handles concurrent regeneration requests for same plan', async () => {
+  it('deduplicates concurrent regeneration requests for same plan', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({
       authUserId,
@@ -396,15 +396,15 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(res1.status).toBe(202);
     expect(res2.status).toBe(202);
 
-    // Verify both jobs were created
+    // Verify only one active regeneration job was created
     const jobs = await db
       .select()
       .from(jobQueue)
       .where(eq(jobQueue.planId, plan.id))
       .orderBy(desc(jobQueue.createdAt));
 
-    expect(jobs).toHaveLength(2);
+    expect(jobs).toHaveLength(1);
     expect(jobs[0]?.jobType).toBe('plan_regeneration');
-    expect(jobs[1]?.jobType).toBe('plan_regeneration');
+    expect(jobs[0]?.status).toBe('pending');
   });
 });

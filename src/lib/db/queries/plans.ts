@@ -6,7 +6,6 @@ import {
   learningPlans,
   modules,
   resources,
-  jobQueue,
   taskProgress,
   taskResources,
   tasks,
@@ -172,13 +171,6 @@ export async function getLearningPlanDetail(
 
   const attemptsCount = Number(attemptCount ?? 0);
 
-  const [latestJob] = await db
-    .select({ status: jobQueue.status, error: jobQueue.error })
-    .from(jobQueue)
-    .where(eq(jobQueue.planId, planId))
-    .orderBy(desc(jobQueue.createdAt))
-    .limit(1);
-
   let latestAttempt = null;
   if (attemptsCount > 0) {
     const [attempt] = await db
@@ -207,8 +199,6 @@ export async function getLearningPlanDetail(
     })),
     latestAttempt,
     attemptsCount,
-    latestJobStatus: latestJob?.status ?? null,
-    latestJobError: latestJob?.error ?? null,
   });
 }
 

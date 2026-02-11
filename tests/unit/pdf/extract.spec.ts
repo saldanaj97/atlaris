@@ -4,7 +4,10 @@ import {
   extractTextFromPdf,
   getPdfPageCountFromBuffer,
 } from '@/lib/pdf/extract';
-import { detectStructure } from '@/lib/pdf/structure';
+import {
+  capExtractionResponsePayload,
+  detectStructure,
+} from '@/lib/pdf/structure';
 import { validatePdfFile } from '@/lib/pdf/validate';
 
 const KB = 1024;
@@ -117,6 +120,103 @@ describe('pdf structure detection', () => {
     expect(structure.sections[1].title).toContain('Getting Started');
     expect(structure.sections[2].title).toContain('Next Steps');
     expect(structure.confidence).toBe('high');
+  });
+});
+
+describe('pdf extraction response caps', () => {
+  const basePayload = {
+    text: 'Hello PDF',
+    pageCount: 1,
+    metadata: { title: 'Sample' },
+    structure: {
+      suggestedMainTopic: 'Sample',
+      confidence: 'medium' as const,
+      sections: [{ title: 'Section 1', content: 'Body', level: 1 }],
+    },
+  };
+
+  it('keeps payload intact when under configured limits', () => {
+    const result = capExtractionResponsePayload(basePayload, {
+      maxBytes: 10_000,
+      maxTextChars: 1_000,
+      maxSections: 10,
+      maxSectionChars: 500,
+      maxSectionTitleChars: 100,
+      maxSuggestedTopicChars: 100,
+    });
+
+    expect(result.truncation.truncated).toBe(false);
+    expect(result.truncation.reasons).toHaveLength(0);
+    expect(result.payload.text).toBe(basePayload.text);
+    expect(result.payload.structure.sections).toHaveLength(1);
+    expect(result.truncation.returnedBytes).toBeLessThanOrEqual(10_000);
+  });
+
+  it('caps text and section counts at configured limits', () => {
+    const result = capExtractionResponsePayload(
+      {
+        ...basePayload,
+        text: 'x'.repeat(500),
+        structure: {
+          ...basePayload.structure,
+          sections: Array.from({ length: 5 }, (_, i) => ({
+            title: `Section ${i + 1}`,
+            content: 'y'.repeat(300),
+            level: 1,
+          })),
+        },
+      },
+      {
+        maxBytes: 100_000,
+        maxTextChars: 100,
+        maxSections: 2,
+        maxSectionChars: 50,
+        maxSectionTitleChars: 50,
+        maxSuggestedTopicChars: 50,
+      }
+    );
+
+    expect(result.truncation.truncated).toBe(true);
+    expect(result.truncation.reasons).toEqual(
+      expect.arrayContaining(['text_char_cap', 'section_count_cap'])
+    );
+    expect(result.payload.text.length).toBeLessThanOrEqual(100);
+    expect(result.payload.structure.sections).toHaveLength(2);
+    expect(
+      result.payload.structure.sections[0]?.content.length
+    ).toBeLessThanOrEqual(50);
+  });
+
+  it('enforces byte cap metadata for oversized payloads', () => {
+    const result = capExtractionResponsePayload(
+      {
+        ...basePayload,
+        text: 'a'.repeat(2_000),
+        structure: {
+          ...basePayload.structure,
+          sections: Array.from({ length: 20 }, (_, i) => ({
+            title: `Section ${i + 1}`,
+            content: 'b'.repeat(500),
+            level: 1,
+          })),
+        },
+      },
+      {
+        maxBytes: 800,
+        maxTextChars: 2_000,
+        maxSections: 20,
+        maxSectionChars: 500,
+        maxSectionTitleChars: 200,
+        maxSuggestedTopicChars: 200,
+      }
+    );
+
+    expect(result.truncation.truncated).toBe(true);
+    expect(result.truncation.maxBytes).toBe(800);
+    expect(result.truncation.returnedBytes).toBeLessThanOrEqual(800);
+    expect(
+      result.truncation.reasons.some((reason) => reason.startsWith('byte_cap'))
+    ).toBe(true);
   });
 });
 

@@ -125,6 +125,43 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     expect(payload.extraction.structure.sections).toHaveLength(1);
     const section = payload.extraction.structure.sections[0];
     expect(section.content).toContain('Hello PDF');
+    expect(payload.extraction.truncation).toBeDefined();
+    expect(payload.extraction.truncation.truncated).toBe(false);
+  });
+
+  it('returns truncation metadata when extraction payload is capped', async () => {
+    const authUserId = `auth_pdf_extract_truncated_${Date.now()}`;
+    const authEmail = `pdf-extract-truncated-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    vi.mocked(extractTextFromPdf).mockResolvedValue({
+      success: true,
+      text: 'x'.repeat(200_000),
+      pageCount: 1,
+      metadata: { title: undefined, author: undefined, subject: undefined },
+      structure: {
+        sections: Array.from({ length: 40 }, (_, idx) => ({
+          title: `Section ${idx + 1}`,
+          content: 'y'.repeat(4_000),
+          level: 1,
+        })),
+        suggestedMainTopic: 'Very large document',
+        confidence: 'high',
+      },
+    });
+
+    const request = createPdfRequest();
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.success).toBe(true);
+    expect(payload.extraction.truncation.truncated).toBe(true);
+    expect(payload.extraction.truncation.returnedBytes).toBeLessThanOrEqual(
+      payload.extraction.truncation.maxBytes
+    );
   });
 
   it('returns 400 when extraction finds no text', async () => {

@@ -47,6 +47,19 @@ const extractionApiResponseSchema = z.object({
         suggestedMainTopic: z.string(),
         confidence: z.enum(['high', 'medium', 'low']),
       }),
+      truncation: z
+        .object({
+          truncated: z.boolean(),
+          maxBytes: z.number(),
+          returnedBytes: z.number(),
+          reasons: z.array(z.string()),
+          limits: z.object({
+            maxTextChars: z.number(),
+            maxSections: z.number(),
+            maxSectionChars: z.number(),
+          }),
+        })
+        .optional(),
     })
     .optional(),
   proof: z
@@ -77,6 +90,17 @@ interface ExtractionData {
   }>;
   pageCount: number;
   confidence: 'high' | 'medium' | 'low';
+  truncation?: {
+    truncated: boolean;
+    maxBytes: number;
+    returnedBytes: number;
+    reasons: string[];
+    limits: {
+      maxTextChars: number;
+      maxSections: number;
+      maxSectionChars: number;
+    };
+  };
 }
 
 interface ExtractionProofData {
@@ -159,9 +183,16 @@ export function PdfCreatePanel({
           sections: data.extraction.structure.sections,
           pageCount: data.extraction.pageCount,
           confidence: data.extraction.structure.confidence,
+          truncation: data.extraction.truncation,
         },
         proof: data.proof,
       });
+
+      if (data.extraction.truncation?.truncated) {
+        toast.info(
+          'Large PDF content was trimmed for safety. You can still edit the extracted sections before generating.'
+        );
+      }
     } catch (error) {
       clientLogger.error('PDF extraction failed', error);
       setState({

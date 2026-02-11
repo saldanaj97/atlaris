@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm';
 
 import { db } from '@/lib/db/service-role';
-import { jobQueue } from '@/lib/db/schema';
+import { jobQueue, learningPlans } from '@/lib/db/schema';
 import {
   JOB_TYPES,
   type Job,
@@ -200,23 +200,60 @@ export async function insertJobRecord({
   data: unknown;
   priority: number;
 }): Promise<string> {
-  const [inserted] = await db
-    .insert(jobQueue)
-    .values({
-      jobType: type,
-      planId: planId ?? null,
-      userId,
-      status: 'pending',
-      priority,
-      payload: data,
-    })
-    .returning({ id: jobQueue.id });
+  return db.transaction(async (tx) => {
+    const shouldDeduplicateRegeneration =
+      type === JOB_TYPES.PLAN_REGENERATION && planId !== null;
 
-  if (!inserted?.id) {
-    throw new Error('Failed to enqueue job');
-  }
+    if (shouldDeduplicateRegeneration) {
+      // Serialize enqueue attempts per plan so concurrent requests cannot create
+      // duplicate pending/processing regeneration jobs.
+      await tx
+        .select({ id: learningPlans.id })
+        .from(learningPlans)
+        .where(eq(learningPlans.id, planId))
+        .limit(1)
+        .for('update');
 
-  return inserted.id;
+      const [existingActiveJob] = await tx
+        .select({ id: jobQueue.id })
+        .from(jobQueue)
+        .where(
+          and(
+            eq(jobQueue.planId, planId),
+            eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+            or(
+              eq(jobQueue.status, 'pending'),
+              eq(jobQueue.status, 'processing')
+            )
+          )
+        )
+        .orderBy(desc(jobQueue.createdAt))
+        .limit(1)
+        .for('update');
+
+      if (existingActiveJob?.id) {
+        return existingActiveJob.id;
+      }
+    }
+
+    const [inserted] = await tx
+      .insert(jobQueue)
+      .values({
+        jobType: type,
+        planId: planId ?? null,
+        userId,
+        status: 'pending',
+        priority,
+        payload: data,
+      })
+      .returning({ id: jobQueue.id });
+
+    if (!inserted?.id) {
+      throw new Error('Failed to enqueue job');
+    }
+
+    return inserted.id;
+  });
 }
 
 export async function claimNextPendingJob(

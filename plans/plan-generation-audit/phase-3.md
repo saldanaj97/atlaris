@@ -6,13 +6,13 @@ This phase maps to post-launch cleanup items from `plans/plan-generation-audit/a
 
 > Instruction: check off each item immediately after implementation + tests + staging/production-safe validation are complete.
 
-- [ ] Remove or merge redundant manual generation server action path
-- [ ] Resolve regeneration queue drift (worker-backed execution and disable behavior)
-- [ ] Remove legacy job-queue coupling from plan status derivation
-- [ ] Consolidate duplicated validation surfaces to a single source of truth
-- [ ] Cap extraction response payload size and return explicit truncation metadata
-- [ ] Update regression/contract tests for all changed flows
-- [ ] Update runbook/changelog with final architecture and fallback notes
+- [x] Remove or merge redundant manual generation server action path
+- [x] Resolve regeneration queue drift (worker-backed execution and disable behavior)
+- [x] Remove legacy job-queue coupling from plan status derivation
+- [x] Consolidate duplicated validation surfaces to a single source of truth
+- [x] Cap extraction response payload size and return explicit truncation metadata
+- [x] Update regression/contract tests for all changed flows
+- [x] Update runbook/changelog with final architecture and fallback notes
 
 ---
 
