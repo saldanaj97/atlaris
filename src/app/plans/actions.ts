@@ -44,9 +44,11 @@ const NOTES_MAX_LENGTH = 2000;
 export async function generateLearningPlan(
   params: GenerateLearningPlanParams
 ): Promise<GenerateLearningPlanResult> {
+  const topicForLogs = params.topic.slice(0, Math.min(80, TOPIC_MAX_LENGTH));
+
   logger.info(
     {
-      topic: params.topic,
+      topic: topicForLogs,
       skillLevel: params.skillLevel,
       learningStyle: params.learningStyle,
       weeklyHours: params.weeklyHours,
@@ -82,7 +84,7 @@ export async function generateLearningPlan(
   try {
     logger.debug(
       {
-        topic: params.topic.slice(0, 80),
+        topic: topicForLogs,
         skillLevel: params.skillLevel,
         weeklyHours: params.weeklyHours,
       },

@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { toErrorResponse } from '@/lib/api/errors';
@@ -48,56 +48,19 @@ export async function GET(request: Request) {
   // Health checks need to see all jobs across all users, not just the authenticated user's jobs
 
   try {
-    const [stuckJobsResult] = await db
+    const [agg] = await db
       .select({
-        count: sql<number>`count(*)::int`,
+        stuckJobCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.startedAt} < ${stuckThreshold})::int`,
+        backlogCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending')::int`,
+        pendingRegenerationCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION})::int`,
+        stuckRegenerationCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION} and ${jobQueue.startedAt} < ${stuckThreshold})::int`,
       })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'processing'),
-          lt(jobQueue.startedAt, stuckThreshold)
-        )
-      );
+      .from(jobQueue);
 
-    const stuckJobCount = stuckJobsResult?.count ?? 0;
-
-    const [backlogResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(eq(jobQueue.status, 'pending'));
-
-    const backlogCount = backlogResult?.count ?? 0;
-
-    const [pendingRegenerationResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'pending'),
-          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION)
-        )
-      );
-
-    const [stuckRegenerationResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'processing'),
-          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-          lt(jobQueue.startedAt, stuckThreshold)
-        )
-      );
-
-    const pendingRegenerationCount = pendingRegenerationResult?.count ?? 0;
-    const stuckRegenerationCount = stuckRegenerationResult?.count ?? 0;
+    const stuckJobCount = agg?.stuckJobCount ?? 0;
+    const backlogCount = agg?.backlogCount ?? 0;
+    const pendingRegenerationCount = agg?.pendingRegenerationCount ?? 0;
+    const stuckRegenerationCount = agg?.stuckRegenerationCount ?? 0;
 
     const stuckJobsCheck = {
       status: stuckJobCount > 0 ? ('fail' as const) : ('ok' as const),

@@ -252,7 +252,6 @@ describe('pdf extraction response caps', () => {
       'byte_cap_section_content_trim',
       'byte_cap_topic_trim',
       'byte_cap_hard_reset',
-      'byte_cap_hard_reset_warning',
       'section_title_cap',
       'suggested_topic_cap',
     ] as const;
@@ -261,11 +260,10 @@ describe('pdf extraction response caps', () => {
     expect(result.truncation.maxBytes).toBe(800);
     expect(result.truncation.returnedBytes).toBeLessThanOrEqual(800);
     expect(result.truncation.reasons.length).toBeGreaterThan(0);
-    expect(
-      result.truncation.reasons.every((r) =>
-        (allowedReasons as readonly string[]).includes(r)
-      )
-    ).toBe(true);
+    const invalidReasons = result.truncation.reasons.filter(
+      (r) => !(allowedReasons as readonly string[]).includes(r)
+    );
+    expect(invalidReasons).toEqual([]);
     expect(result.truncation.reasons).toEqual(
       expect.arrayContaining(['section_title_cap', 'suggested_topic_cap'])
     );
@@ -281,9 +279,10 @@ describe('pdf extraction response caps', () => {
     const maxSectionTitleChars = 20;
     const maxSuggestedTopicChars = 15;
     const longTitle = 'A very long section title that exceeds twenty chars';
+    const secondLongTitle = 'Another long section title here';
     const longTopic = 'A long suggested main topic';
 
-    const result = capExtractionResponsePayload(
+    const result: CapExtractionResponse = capExtractionResponsePayload(
       {
         ...basePayload,
         structure: {
@@ -292,7 +291,7 @@ describe('pdf extraction response caps', () => {
           sections: [
             { title: longTitle, content: 'Short', level: 1 },
             {
-              title: 'Another long section title here',
+              title: secondLongTitle,
               content: 'Body',
               level: 1,
             },
@@ -326,7 +325,7 @@ describe('pdf extraction response caps', () => {
       longTitle.slice(0, maxSectionTitleChars)
     );
     expect(result.payload.structure.sections[1]?.title).toBe(
-      'Another long section '.slice(0, maxSectionTitleChars)
+      secondLongTitle.slice(0, maxSectionTitleChars)
     );
   });
 });

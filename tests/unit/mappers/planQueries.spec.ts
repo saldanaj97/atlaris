@@ -14,13 +14,9 @@ import type {
   TaskProgress,
   TaskResourceWithResource,
 } from '@/lib/types/db';
-import { nanoid } from 'nanoid';
 import { describe, expect, it } from 'vitest';
 
-/** Generates a unique ID per test to avoid collisions. */
-function createId(prefix: string): string {
-  return `${prefix}-${nanoid(8)}`;
-}
+import { createId } from '../../fixtures/ids';
 
 describe('mapPlanSummaries', () => {
   it('should map plans with modules and tasks to summaries', () => {

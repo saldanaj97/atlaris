@@ -29,6 +29,13 @@ export function createRequestContext(
   };
 }
 
+export function getRequestContext(
+  request: Pick<Request, 'headers'>,
+  context: Record<string, unknown> = {}
+): RequestContext {
+  return createRequestContext(request, context);
+}
+
 export function attachRequestIdHeader(
   response: Response,
   requestId: string
@@ -46,3 +53,5 @@ export function attachRequestIdHeader(
     statusText: response.statusText,
   });
 }
+
+export default getRequestContext;

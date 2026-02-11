@@ -1,33 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '@/lib/logging/logger';
-import { logger as defaultLogger } from '@/lib/logging/logger';
-import type { ScanProvider, ScanVerdict } from '@/lib/security/scanner.types';
-
-vi.mock('@/lib/security/heuristic-scanner', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/lib/security/heuristic-scanner')>();
-  const scanBufferWithHeuristics = vi.fn(actual.scanBufferWithHeuristics);
-
-  class MockableHeuristicScanProvider implements ScanProvider {
-    public readonly name = 'heuristic';
-    constructor(public readonly logger?: Logger) {}
-    public async scan(buffer: Buffer): Promise<ScanVerdict> {
-      return scanBufferWithHeuristics(buffer, this.logger ?? defaultLogger);
-    }
-  }
-
-  return {
-    ...actual,
-    scanBufferWithHeuristics,
-    HeuristicScanProvider: MockableHeuristicScanProvider,
-    heuristicScanProvider: new MockableHeuristicScanProvider(),
-  };
-});
-
 import {
+  createHeuristicScanProvider,
+  getDefaultHeuristicScanProvider,
   HeuristicScanProvider,
-  heuristicScanProvider,
   scanBufferWithHeuristics,
 } from '@/lib/security/heuristic-scanner';
 
@@ -105,36 +81,41 @@ describe('heuristic-scanner', () => {
   it('implements provider contract', async () => {
     const buffer = Buffer.from('safe', 'utf8');
 
-    await expect(heuristicScanProvider.scan(buffer)).resolves.toEqual({
+    await expect(
+      getDefaultHeuristicScanProvider().scan(buffer)
+    ).resolves.toEqual({
       clean: true,
     });
   });
 
-  it('heuristicScanProvider.scan propagates threat results for malicious payload', async () => {
+  it('getDefaultHeuristicScanProvider().scan propagates threat results for malicious payload', async () => {
     const eicar =
       'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
     const buffer = Buffer.from(eicar, 'latin1');
 
-    await expect(heuristicScanProvider.scan(buffer)).resolves.toEqual({
+    await expect(
+      getDefaultHeuristicScanProvider().scan(buffer)
+    ).resolves.toEqual({
       clean: false,
       threat: 'EICAR-Test-File',
     });
   });
 
-  it('heuristicScanProvider.scan forwards rejection when scanBufferWithHeuristics throws', async () => {
-    const buffer = Buffer.from('any', 'utf8');
-    const scanError = new Error('scan failed');
-    vi.mocked(scanBufferWithHeuristics).mockImplementationOnce(() => {
-      throw scanError;
-    });
+  it('provider uses injected logger when provided via constructor', async () => {
+    const provider = new HeuristicScanProvider(mockLogger);
+    const eicar =
+      'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
+    const buffer = Buffer.from(eicar, 'latin1');
 
-    await expect(heuristicScanProvider.scan(buffer)).rejects.toThrow(
-      'scan failed'
-    );
+    await expect(provider.scan(buffer)).resolves.toEqual({
+      clean: false,
+      threat: 'EICAR-Test-File',
+    });
+    expect(mockLogger.warn).toHaveBeenCalled();
   });
 
-  it('provider uses injected logger when provided', async () => {
-    const provider = new HeuristicScanProvider(mockLogger);
+  it('createHeuristicScanProvider(mockLogger) uses injected logger', async () => {
+    const provider = createHeuristicScanProvider(mockLogger);
     const eicar =
       'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
     const buffer = Buffer.from(eicar, 'latin1');

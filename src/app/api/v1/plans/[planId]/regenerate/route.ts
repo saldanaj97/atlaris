@@ -9,7 +9,11 @@ import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 import { enqueueJob } from '@/lib/jobs/queue';
-import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
+import {
+  drainRegenerationQueue,
+  releaseInlineDrainLock,
+  tryAcquireInlineDrainLock,
+} from '@/lib/jobs/regeneration-worker';
 import {
   JOB_TYPES,
   type JobType,
@@ -91,7 +95,7 @@ export const POST = withErrorBoundary(
           fieldErrors: err.flatten(),
         });
       }
-      throw new ValidationError('Invalid overrides.', errDetail);
+      throw new ValidationError('Invalid overrides.', { cause: errDetail });
     }
 
     // Atomically check and increment regeneration quota (prevents TOCTOU race)
@@ -125,12 +129,39 @@ export const POST = withErrorBoundary(
     );
 
     if (regenerationQueueEnv.inlineProcessingEnabled) {
-      void drainRegenerationQueue({ maxJobs: 1 }).catch((error) => {
-        logger.error(
-          { planId, userId: user.id, error },
-          'Inline regeneration queue drain failed'
-        );
-      });
+      if (tryAcquireInlineDrainLock()) {
+        try {
+          const drainPromise = drainRegenerationQueue({ maxJobs: 1 });
+          void drainPromise
+            .catch((error: unknown) => {
+              logger.error(
+                {
+                  planId,
+                  userId: user.id,
+                  error,
+                  inlineProcessingEnabled:
+                    regenerationQueueEnv.inlineProcessingEnabled,
+                  drainFn: 'drainRegenerationQueue',
+                },
+                'Inline regeneration queue drain failed'
+              );
+            })
+            .finally(releaseInlineDrainLock);
+        } catch (syncError: unknown) {
+          releaseInlineDrainLock();
+          logger.error(
+            {
+              planId,
+              userId: user.id,
+              error: syncError,
+              inlineProcessingEnabled:
+                regenerationQueueEnv.inlineProcessingEnabled,
+              drainFn: 'drainRegenerationQueue',
+            },
+            'Inline regeneration queue drain failed (sync throw)'
+          );
+        }
+      }
     }
 
     return json(

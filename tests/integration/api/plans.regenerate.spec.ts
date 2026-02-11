@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { desc, eq } from 'drizzle-orm';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { jobQueue, learningPlans, usageMetrics } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { createPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
@@ -39,25 +40,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       subscriptionTier: 'pro',
     });
 
-    // Create a plan for the user
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'machine learning',
-        skillLevel: 'intermediate',
-        weeklyHours: 5,
-        learningStyle: 'practice',
-        visibility: 'private',
-        origin: 'ai',
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-      })
-      .returning();
-
-    if (!plan) {
-      throw new Error('Failed to create plan');
-    }
+    const plan = await createPlan(userId);
 
     const { request, context } = await createRequest(plan.id, {
       overrides: { topic: 'interview prep' },
@@ -120,24 +103,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       email: 'api-regen-other@example.com',
     });
 
-    const [otherPlan] = await db
-      .insert(learningPlans)
-      .values({
-        userId: otherUserId,
-        topic: 'machine learning',
-        skillLevel: 'intermediate',
-        weeklyHours: 5,
-        learningStyle: 'practice',
-        visibility: 'private',
-        origin: 'ai',
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-      })
-      .returning();
-
-    if (!otherPlan) {
-      throw new Error('Failed to create plan');
-    }
+    const otherPlan = await createPlan(otherUserId);
 
     // Try to regenerate the other user's plan
     const { request, context } = await createRequest(otherPlan.id, {
@@ -159,24 +125,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
         email: authEmail,
       });
 
-      const [plan] = await db
-        .insert(learningPlans)
-        .values({
-          userId,
-          topic: 'machine learning',
-          skillLevel: 'intermediate',
-          weeklyHours: 5,
-          learningStyle: 'practice',
-          visibility: 'private',
-          origin: 'ai',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-        })
-        .returning();
-
-      if (!plan) {
-        throw new Error('Failed to create plan');
-      }
+      const plan = await createPlan(userId);
 
       const { request, context } = await createRequest(plan.id, {
         overrides: { topic: 'ab' }, // Too short (< 3 chars)
@@ -196,24 +145,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
         email: authEmail,
       });
 
-      const [plan] = await db
-        .insert(learningPlans)
-        .values({
-          userId,
-          topic: 'machine learning',
-          skillLevel: 'intermediate',
-          weeklyHours: 5,
-          learningStyle: 'practice',
-          visibility: 'private',
-          origin: 'ai',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-        })
-        .returning();
-
-      if (!plan) {
-        throw new Error('Failed to create plan');
-      }
+      const plan = await createPlan(userId);
 
       const { request, context } = await createRequest(plan.id, {
         overrides: { weeklyHours: -5 }, // Negative hours
@@ -233,24 +165,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
         email: authEmail,
       });
 
-      const [plan] = await db
-        .insert(learningPlans)
-        .values({
-          userId,
-          topic: 'machine learning',
-          skillLevel: 'intermediate',
-          weeklyHours: 5,
-          learningStyle: 'practice',
-          visibility: 'private',
-          origin: 'ai',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-        })
-        .returning();
-
-      if (!plan) {
-        throw new Error('Failed to create plan');
-      }
+      const plan = await createPlan(userId);
 
       const { request, context } = await createRequest(plan.id, {
         overrides: { skillLevel: 'expert' }, // Invalid enum value
@@ -270,24 +185,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
         email: authEmail,
       });
 
-      const [plan] = await db
-        .insert(learningPlans)
-        .values({
-          userId,
-          topic: 'machine learning',
-          skillLevel: 'intermediate',
-          weeklyHours: 5,
-          learningStyle: 'practice',
-          visibility: 'private',
-          origin: 'ai',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-        })
-        .returning();
-
-      if (!plan) {
-        throw new Error('Failed to create plan');
-      }
+      const plan = await createPlan(userId);
 
       const { request, context } = await createRequest(plan.id, {
         overrides: { topic: 'new topic', extraField: 'not allowed' },
@@ -309,24 +207,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       subscriptionTier: 'free', // Free tier has 5 regenerations/month
     });
 
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'machine learning',
-        skillLevel: 'intermediate',
-        weeklyHours: 5,
-        learningStyle: 'practice',
-        visibility: 'private',
-        origin: 'ai',
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-      })
-      .returning();
-
-    if (!plan) {
-      throw new Error('Failed to create plan');
-    }
+    const plan = await createPlan(userId);
 
     // Use up all 5 regenerations by directly updating usage metrics
     const month = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -363,38 +244,25 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       subscriptionTier: 'pro',
     });
 
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'machine learning',
-        skillLevel: 'intermediate',
-        weeklyHours: 5,
-        learningStyle: 'practice',
-        visibility: 'private',
-        origin: 'ai',
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-      })
-      .returning();
+    const plan = await createPlan(userId);
 
-    if (!plan) {
-      throw new Error('Failed to create plan');
-    }
+    const firstRequestPromise = createRequest(plan.id, {
+      overrides: { topic: 'interview prep 1' },
+    }).then(({ request, context }) => POST(request, context));
 
-    // Send two concurrent regeneration requests; small delay on second to give first
-    // a head start so we reliably exercise the dedupe path (second returns existing job id).
-    const [res1, res2] = await Promise.all([
-      createRequest(plan.id, {
-        overrides: { topic: 'interview prep 1' },
-      }).then(({ request, context }) => POST(request, context)),
-      createRequest(plan.id, {
-        overrides: { topic: 'interview prep 2' },
-      }).then(async ({ request, context }) => {
-        await new Promise((r) => setTimeout(r, 15));
-        return POST(request, context);
-      }),
-    ]);
+    await vi.waitFor(async () => {
+      const jobs = await db
+        .select()
+        .from(jobQueue)
+        .where(eq(jobQueue.planId, plan.id));
+
+      expect(jobs.length).toBeGreaterThan(0);
+    });
+
+    const res2 = await createRequest(plan.id, {
+      overrides: { topic: 'interview prep 2' },
+    }).then(({ request, context }) => POST(request, context));
+    const res1 = await firstRequestPromise;
 
     // Both requests should succeed
     expect(res1.status).toBe(202);

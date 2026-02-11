@@ -3,7 +3,11 @@ import type { ScanProvider, ScanVerdict } from '@/lib/security/scanner.types';
 
 /** Minimal logger interface for DI; callers may pass a full Logger or a mock. */
 export interface HeuristicScanLogger {
+  // Variadic logger APIs (Pino-style: msg, ...args or obj, msg) require a rest type; unknown[] is
+  // the deliberate exception to the no-any/unknown guideline so the interface stays assignable.
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- documented exception: variadic logger (debug/warn) */
   debug(...args: unknown[]): void;
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- documented exception: variadic logger (debug/warn) */
   warn(...args: unknown[]): void;
 }
 
@@ -97,11 +101,31 @@ export class HeuristicScanProvider implements ScanProvider {
 
   constructor(public readonly logger?: HeuristicScanLogger) {}
 
-  public scan(buffer: Buffer): Promise<ScanVerdict> {
-    return Promise.resolve(
-      scanBufferWithHeuristics(buffer, this.logger ?? defaultLogger)
-    );
+  public async scan(buffer: Buffer): Promise<ScanVerdict> {
+    return await scanBufferWithHeuristics(buffer, this.logger ?? defaultLogger);
   }
 }
 
-export const heuristicScanProvider = new HeuristicScanProvider();
+/**
+ * Factory for creating a HeuristicScanProvider with an optional logger.
+ * Use in tests: createHeuristicScanProvider(mockLogger) or new HeuristicScanProvider(mockLogger).
+ */
+export function createHeuristicScanProvider(
+  logger?: HeuristicScanLogger
+): HeuristicScanProvider {
+  return new HeuristicScanProvider(logger);
+}
+
+/** Cached default instance for production. Use createHeuristicScanProvider(mockLogger) in tests. */
+let defaultHeuristicScanProvider: HeuristicScanProvider | null = null;
+
+/**
+ * Returns the default heuristic scan provider (shared instance with app logger).
+ * For tests that need a mock logger, use createHeuristicScanProvider(mockLogger) instead.
+ */
+export function getDefaultHeuristicScanProvider(): HeuristicScanProvider {
+  if (defaultHeuristicScanProvider === null) {
+    defaultHeuristicScanProvider = new HeuristicScanProvider(defaultLogger);
+  }
+  return defaultHeuristicScanProvider;
+}

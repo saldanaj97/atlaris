@@ -11,7 +11,11 @@ import {
   getNextJob,
   getUserJobCount,
 } from '@/lib/jobs/queue';
-import { JOB_TYPES, type JobType } from '@/lib/jobs/types';
+import {
+  JOB_TYPES,
+  type JobType,
+  type PlanGenerationJobData,
+} from '@/lib/jobs/types';
 import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
 
 import { ensureUser } from '../../../../tests/helpers/db';
@@ -25,6 +29,21 @@ type PlanFixture = {
   userId: string;
   authUserId: string;
 };
+
+function buildPlanGenerationPayload(
+  plan: InsertedPlan,
+  overrides: Partial<PlanGenerationJobData> = {}
+): PlanGenerationJobData {
+  return {
+    topic: overrides.topic ?? plan.topic,
+    notes: overrides.notes ?? null,
+    skillLevel: overrides.skillLevel ?? plan.skillLevel,
+    weeklyHours: overrides.weeklyHours ?? plan.weeklyHours,
+    learningStyle: overrides.learningStyle ?? plan.learningStyle,
+    startDate: overrides.startDate ?? null,
+    deadlineDate: overrides.deadlineDate ?? null,
+  };
+}
 
 async function createPlanFixture(key: string): Promise<PlanFixture> {
   const authUserId = `queue-${key}`;
@@ -60,6 +79,8 @@ describe('Job queue service', () => {
       skillLevel: plan.skillLevel,
       weeklyHours: plan.weeklyHours,
       learningStyle: plan.learningStyle,
+      startDate: null,
+      deadlineDate: null,
     };
 
     const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, payload);
@@ -83,8 +104,18 @@ describe('Job queue service', () => {
     const { plan, userId } = await createPlanFixture('lock');
 
     const jobIds = await Promise.all([
-      enqueueJob(JOB_TYPE, plan.id, userId, { job: 1 }),
-      enqueueJob(JOB_TYPE, plan.id, userId, { job: 2 }),
+      enqueueJob(
+        JOB_TYPE,
+        plan.id,
+        userId,
+        buildPlanGenerationPayload(plan, { topic: 'job-1' })
+      ),
+      enqueueJob(
+        JOB_TYPE,
+        plan.id,
+        userId,
+        buildPlanGenerationPayload(plan, { topic: 'job-2' })
+      ),
     ]);
 
     const [first, second] = await Promise.all([
@@ -118,28 +149,28 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      { order: 'low' },
+      buildPlanGenerationPayload(plan, { topic: 'low-order' }),
       0
     );
     const midA = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      { order: 'midA' },
+      buildPlanGenerationPayload(plan, { topic: 'mid-a-order' }),
       5
     );
     const midB = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      { order: 'midB' },
+      buildPlanGenerationPayload(plan, { topic: 'mid-b-order' }),
       5
     );
     const high = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      { order: 'high' },
+      buildPlanGenerationPayload(plan, { topic: 'high-order' }),
       10
     );
 
@@ -231,9 +262,12 @@ describe('Job queue service', () => {
       freeUser.userId,
       {
         topic: freeTopic,
+        notes: null,
         skillLevel: 'beginner',
         weeklyHours: 5,
         learningStyle: 'mixed',
+        startDate: null,
+        deadlineDate: null,
       },
       freePriority
     );
@@ -244,9 +278,12 @@ describe('Job queue service', () => {
       paidUser.userId,
       {
         topic: paidTopic,
+        notes: null,
         skillLevel: 'intermediate',
         weeklyHours: 5,
         learningStyle: 'mixed',
+        startDate: null,
+        deadlineDate: null,
       },
       paidPriority
     );
@@ -266,7 +303,12 @@ describe('Job queue service', () => {
 
   it('handles retry transitions and terminal failure', async () => {
     const { plan, userId } = await createPlanFixture('retry');
-    const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, { retry: true });
+    const jobId = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanGenerationPayload(plan, { topic: 'retry-topic' })
+    );
 
     await getNextJob([JOB_TYPE]);
     const first = await failJob(jobId, 'transient error');
@@ -290,10 +332,15 @@ describe('Job queue service', () => {
 
   it('completes jobs and preserves attempt counter', async () => {
     const { plan, userId } = await createPlanFixture('complete');
-    const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, { done: true });
+    const jobId = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanGenerationPayload(plan, { topic: 'complete-topic' })
+    );
 
     await getNextJob([JOB_TYPE]);
-    const payload = { modulesCount: 3, tasksCount: 9 };
+    const payload = { modulesCount: 3, tasksCount: 9, durationMs: 100 };
     const completed = await completeJob(jobId, payload);
 
     expect(completed?.status).toBe('completed');
@@ -302,7 +349,11 @@ describe('Job queue service', () => {
     expect(completed?.error).toBeNull();
     expect(completed?.completedAt).toBeInstanceOf(Date);
 
-    const duplicate = await completeJob(jobId, { modulesCount: 1 });
+    const duplicate = await completeJob(jobId, {
+      modulesCount: 1,
+      tasksCount: 1,
+      durationMs: 10,
+    });
     expect(duplicate?.result).toEqual(payload);
   });
 
@@ -310,10 +361,30 @@ describe('Job queue service', () => {
     const { plan, userId } = await createPlanFixture('plan-jobs');
     const other = await createPlanFixture('plan-other');
 
-    const jobA = await enqueueJob(JOB_TYPE, plan.id, userId, { order: 'A' });
-    const jobB = await enqueueJob(JOB_TYPE, plan.id, userId, { order: 'B' });
-    const jobC = await enqueueJob(JOB_TYPE, plan.id, userId, { order: 'C' });
-    await enqueueJob(JOB_TYPE, other.plan.id, other.userId, { ignore: true });
+    const jobA = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanGenerationPayload(plan, { topic: 'order-a' })
+    );
+    const jobB = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanGenerationPayload(plan, { topic: 'order-b' })
+    );
+    const jobC = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanGenerationPayload(plan, { topic: 'order-c' })
+    );
+    await enqueueJob(
+      JOB_TYPE,
+      other.plan.id,
+      other.userId,
+      buildPlanGenerationPayload(other.plan, { topic: 'ignore-order' })
+    );
 
     const now = Date.now();
     await db
@@ -336,13 +407,24 @@ describe('Job queue service', () => {
   it('counts user jobs within the provided window', async () => {
     const { plan, userId } = await createPlanFixture('rate');
 
-    const jobRecent = await enqueueJob(JOB_TYPE, plan.id, userId, {
-      window: 1,
-    });
-    const jobOlder = await enqueueJob(JOB_TYPE, plan.id, userId, { window: 2 });
-    const jobOldest = await enqueueJob(JOB_TYPE, plan.id, userId, {
-      window: 3,
-    });
+    const jobRecent = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanGenerationPayload(plan, { topic: 'window-1' })
+    );
+    const jobOlder = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanGenerationPayload(plan, { topic: 'window-2' })
+    );
+    const jobOldest = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanGenerationPayload(plan, { topic: 'window-3' })
+    );
 
     const now = new Date();
 

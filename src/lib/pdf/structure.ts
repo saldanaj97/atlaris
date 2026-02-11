@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 
-import type { ExtractedSection, ExtractedStructure } from './types';
+import { logger } from '@/lib/logging/logger';
+import type { ExtractedSection, ExtractedStructure } from '@/lib/pdf/types';
 
 const HEADER_MAX_LENGTH = 120;
 const UTF8_ENCODER = new TextEncoder();
@@ -68,23 +69,38 @@ const payloadSizeBytes = (payload: ExtractionResponsePayload): number => {
   return UTF8_ENCODER.encode(JSON.stringify(payload)).length;
 };
 
+/**
+ * UTF-8 byte length of the JSON-encoded string value (matches how "text" is
+ * serialized inside payloadSizeBytes / JSON.stringify(payload)).
+ */
+const utf8JsonStringValueBytes = (text: string): number => {
+  return UTF8_ENCODER.encode(JSON.stringify(text)).length;
+};
+
+/**
+ * Trims payload.text so that the full payload fits in maxBytes. Uses
+ * payloadSizeBytes once for base overhead; loop uses utf8JsonStringValueBytes
+ * instead of re-serializing the whole payload each iteration.
+ */
 const trimTextToFitByteCap = (
   payload: ExtractionResponsePayload,
   maxBytes: number
 ): string => {
   const originalText = payload.text;
+  const basePayload: ExtractionResponsePayload = { ...payload, text: '' };
+  const baseBytes = payloadSizeBytes(basePayload);
+  const emptyTextBytes = utf8JsonStringValueBytes('');
   let low = 0;
   let high = originalText.length;
   let best = 0;
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
-    const candidate: ExtractionResponsePayload = {
-      ...payload,
-      text: originalText.slice(0, mid),
-    };
+    const candidateText = originalText.slice(0, mid);
+    const candidateTextBytes = utf8JsonStringValueBytes(candidateText);
+    const totalBytes = baseBytes - emptyTextBytes + candidateTextBytes;
 
-    if (payloadSizeBytes(candidate) <= maxBytes) {
+    if (totalBytes <= maxBytes) {
       best = mid;
       low = mid + 1;
     } else {
@@ -146,10 +162,14 @@ export function capExtractionResponsePayload(
   ) {
     reasons.push('suggested_topic_cap');
   }
-  const anySectionTitleTruncated = payload.structure.sections.some(
-    (s, i) =>
-      (boundedPayload.structure.sections[i]?.title.length ?? 0) < s.title.length
-  );
+  const anySectionTitleTruncated = payload.structure.sections.some((s, i) => {
+    const boundedSection = boundedPayload.structure.sections[i];
+    if (!boundedSection) {
+      return false;
+    }
+
+    return boundedSection.title.length < s.title.length;
+  });
   if (anySectionTitleTruncated) {
     reasons.push('section_title_cap');
   }
@@ -227,7 +247,10 @@ export function capExtractionResponsePayload(
           ...boundedPayload.structure,
           sections: boundedPayload.structure.sections.slice(
             0,
-            Math.ceil(boundedPayload.structure.sections.length / 2)
+            Math.max(
+              1,
+              Math.floor(boundedPayload.structure.sections.length / 2)
+            )
           ),
         },
       };
@@ -290,6 +313,7 @@ export function capExtractionResponsePayload(
 
   if (returnedBytes > config.maxBytes) {
     hardResetBytesBeforeReset = returnedBytes;
+    reasons.push('byte_cap_hard_reset');
     boundedPayload = {
       ...boundedPayload,
       text: '',
@@ -300,18 +324,25 @@ export function capExtractionResponsePayload(
         suggestedMainTopic: '',
       },
     };
-    reasons.push('byte_cap_hard_reset');
-    reasons.push('byte_cap_hard_reset_warning');
     returnedBytes = payloadSizeBytes(boundedPayload);
+    logger.warn(
+      {
+        hardResetBytesBeforeReset,
+        maxBytes: config.maxBytes,
+      },
+      'byte_cap_hard_reset: payload exceeded maxBytes after trim, zeroed structure/text/metadata'
+    );
   }
 
+  const dedupedReasons = Array.from(new Set(reasons));
+
   const truncation: ExtractionTruncationMetadata = {
-    truncated: reasons.length > 0,
+    truncated: dedupedReasons.length > 0,
     maxBytes: config.maxBytes,
     returnedBytes,
     hardResetApplied: hardResetBytesBeforeReset !== undefined,
     hardResetBytesBeforeReset,
-    reasons,
+    reasons: dedupedReasons,
     limits: {
       maxTextChars: config.maxTextChars,
       maxSections: config.maxSections,

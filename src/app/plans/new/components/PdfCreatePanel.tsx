@@ -36,6 +36,34 @@ const truncationSchema = z.object({
 
 type TruncationData = z.infer<typeof truncationSchema>;
 
+const TRUNCATION_REASON_LABELS: Record<string, string> = {
+  text_char_cap: 'raw text length limit',
+  section_count_cap: 'section count limit',
+  suggested_topic_cap: 'main topic length limit',
+  section_title_cap: 'section title length limit',
+  section_content_cap: 'section content length limit',
+  byte_cap_text_trim: 'total size (text trimmed)',
+  byte_cap_section_trim: 'total size (sections reduced)',
+  byte_cap_section_content_trim: 'total size (section content trimmed)',
+  byte_cap_topic_trim: 'total size (topic trimmed)',
+  byte_cap_hard_reset: 'size limit (heavy trim)',
+  byte_cap_hard_reset_warning: 'content heavily reduced',
+};
+
+const MAX_TRUNCATION_REASONS_IN_TOAST = 3;
+
+function truncationReasonsSummary(
+  reasons: string[] | undefined
+): string | null {
+  if (!reasons?.length) return null;
+  const labels = reasons
+    .slice(0, MAX_TRUNCATION_REASONS_IN_TOAST)
+    .map((code) => TRUNCATION_REASON_LABELS[code] ?? code)
+    .filter(Boolean);
+  if (labels.length === 0) return null;
+  return labels.join('; ');
+}
+
 const extractionApiResponseSchema = z.object({
   success: z.boolean(),
   extraction: z
@@ -181,9 +209,13 @@ export function PdfCreatePanel({
       });
 
       if (data.extraction.truncation?.truncated) {
-        toast.info(
-          'Large PDF content was trimmed for safety. You can still edit the extracted sections before generating.'
+        const summary = truncationReasonsSummary(
+          data.extraction.truncation.reasons
         );
+        const message = summary
+          ? `Content trimmed: ${summary}. You can still edit the extracted sections before generating.`
+          : 'Large PDF content was trimmed for safety. You can still edit the extracted sections before generating.';
+        toast.info(message);
       }
     } catch (error) {
       clientLogger.error('PDF extraction failed', error);
