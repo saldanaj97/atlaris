@@ -11,8 +11,8 @@ import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
 import {
-  ensureUser,
   ensureStripeWebhookEvents,
+  ensureUser,
   resetDbForIntegrationTestFile,
 } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
