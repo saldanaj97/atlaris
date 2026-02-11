@@ -173,9 +173,12 @@ export const POST = withErrorBoundary(
       throw err;
     }
 
-    // Tier-gated model selection via unified resolver
+    // Tier-gated model selection via unified resolver.
+    // Pass undefined when param is absent so resolver treats it as not_specified, not invalid_model.
     const url = new URL(req.url);
-    const modelOverride = url.searchParams.get('model');
+    const modelOverride = url.searchParams.has('model')
+      ? url.searchParams.get('model')
+      : undefined;
     const { provider } = resolveModelForTier(userTier, modelOverride);
     const normalizedInput: CreateLearningPlanInput = {
       ...body,

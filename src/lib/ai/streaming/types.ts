@@ -8,6 +8,7 @@ export type PlanStartEvent = {
     weeklyHours: number;
     startDate: string | null;
     deadlineDate: string | null;
+    origin?: 'ai' | 'manual' | 'template' | 'pdf';
   };
 };
 

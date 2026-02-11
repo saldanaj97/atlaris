@@ -86,7 +86,8 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
-    // Hard body size check before reading form data into memory
+    // Hard body size check before reading form data into memory.
+    // Reject early to avoid loading large bodies; tier checks happen later.
     const rawContentLength = req.headers.get('content-length');
     const parsedContentLength =
       rawContentLength !== null ? Number.parseInt(rawContentLength, 10) : NaN;
@@ -95,8 +96,9 @@ export const POST: PlainHandler = withErrorBoundary(
       !/^\d+$/.test(rawContentLength) ||
       !Number.isFinite(parsedContentLength)
     ) {
+      const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
       return errorResponse(
-        `Missing or invalid Content-Length header. A numeric Content-Length is required to enforce the ${ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024)}MB absolute upload cap before form parsing and tier checks (checkPdfSizeLimit).`,
+        `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`,
         'MISSING_CONTENT_LENGTH',
         rawContentLength === null ? 411 : 400
       );

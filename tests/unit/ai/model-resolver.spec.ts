@@ -126,8 +126,15 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       expect(result.fallbackReason).toBe('invalid_model');
     });
 
+    it('treats undefined as not_specified for pro tier', () => {
+      const result = resolveModelForTier('pro', undefined);
+
+      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
+      expect(result.fallback).toBe(true);
+      expect(result.fallbackReason).toBe('not_specified');
+    });
+
     it.each([
-      ['undefined', undefined],
       ["empty string ''", ''],
       ['null', null],
     ] as const)(

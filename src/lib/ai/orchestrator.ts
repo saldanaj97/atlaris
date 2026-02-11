@@ -231,26 +231,57 @@ export async function runGenerationAttempt(
     };
   }
 
-  const provider = getProvider(options.provider);
-  const timeout = createAdaptiveTimeout({
-    ...options.timeoutConfig,
-    now: clock,
-  });
+  let provider: AiPlanGenerationProvider;
+  let timeout: ReturnType<typeof createAdaptiveTimeout>;
+  let controller: AbortController;
+  let cleanupTimeoutAbort: () => void;
+  let cleanupExternalAbort: (() => void) | undefined;
   const startedAt = attemptClockStart;
 
-  if (appEnv.isTest) {
-    const { captureForTesting } = await import('./capture-for-testing');
-    captureForTesting(provider, context.input);
-  }
+  try {
+    provider = getProvider(options.provider);
+    timeout = createAdaptiveTimeout({
+      ...options.timeoutConfig,
+      now: clock,
+    });
 
-  // Combine timeout signal with external shutdown signal if provided
-  const externalSignal = options.signal;
-  const controller = new AbortController();
-  const onAbort = () => controller.abort();
-  const cleanupTimeoutAbort = attachAbortListener(timeout.signal, onAbort);
-  const cleanupExternalAbort = externalSignal
-    ? attachAbortListener(externalSignal, onAbort)
-    : undefined;
+    if (appEnv.isTest) {
+      const { captureForTesting } = await import('./capture-for-testing');
+      captureForTesting(provider, context.input);
+    }
+
+    const externalSignal = options.signal;
+    controller = new AbortController();
+    const onAbort = () => controller.abort();
+    cleanupTimeoutAbort = attachAbortListener(timeout.signal, onAbort);
+    cleanupExternalAbort = externalSignal
+      ? attachAbortListener(externalSignal, onAbort)
+      : undefined;
+  } catch (initError) {
+    const classification = classifyFailure({
+      error: initError,
+      timedOut: false,
+    });
+    const durationMs = Math.max(0, clock() - startedAt);
+    const attempt = await finalizeAttemptFailure({
+      attemptId: reservation.attemptId,
+      planId: context.planId,
+      preparation: reservation,
+      classification,
+      durationMs,
+      dbClient,
+      now: nowFn,
+    });
+    return {
+      status: 'failure',
+      classification,
+      error: initError,
+      durationMs,
+      extendedTimeout: false,
+      timedOut: false,
+      attempt,
+    } as GenerationFailureResult;
+  }
 
   let providerMetadata: ProviderMetadata | undefined;
   let rawText: string | undefined;

@@ -167,6 +167,7 @@ export function buildPlanStartEvent({
       weeklyHours: input.weeklyHours,
       startDate: input.startDate ?? null,
       deadlineDate: input.deadlineDate ?? null,
+      ...(input.origin && { origin: input.origin }),
     },
   };
 }

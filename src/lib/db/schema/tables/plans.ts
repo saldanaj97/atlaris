@@ -293,6 +293,14 @@ export const generationAttempts = pgTable(
         using: planOwnership,
         withCheck: planOwnership,
       }),
+
+      // Immutable audit log: deletes explicitly denied for authenticated
+      pgPolicy('generation_attempts_delete_deny', {
+        as: 'restrictive',
+        for: 'delete',
+        to: 'authenticated',
+        using: sql`false`,
+      }),
     ];
   }
 ).enableRLS();

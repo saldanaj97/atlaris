@@ -8,7 +8,10 @@ import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { jsonError } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
-import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
+import {
+  finalizeAttemptFailure,
+  reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
@@ -137,35 +140,70 @@ export const POST = withErrorBoundary(
       });
     }
 
-    const stream = createEventStream(async (emit) => {
-      emit(
-        buildPlanStartEvent({
-          planId,
-          input: {
-            topic: generationInput.topic,
-            skillLevel: generationInput.skillLevel,
-            weeklyHours: generationInput.weeklyHours,
-            learningStyle: generationInput.learningStyle,
-            notes: generationInput.notes ?? undefined,
-            startDate: generationInput.startDate ?? undefined,
-            deadlineDate: generationInput.deadlineDate ?? undefined,
-            visibility: 'private',
-            origin: 'ai',
-          },
-        })
-      );
-
-      const startedAt = Date.now();
-
-      try {
-        const result = await runGenerationAttempt(
-          {
-            planId: plan.id,
-            userId: user.id,
-            input: generationInput,
-          },
-          { provider, signal: req.signal, dbClient: db, reservation }
+    let stream: ReadableStream<Uint8Array>;
+    try {
+      stream = createEventStream(async (emit) => {
+        emit(
+          buildPlanStartEvent({
+            planId,
+            input: {
+              topic: generationInput.topic,
+              skillLevel: generationInput.skillLevel,
+              weeklyHours: generationInput.weeklyHours,
+              learningStyle: generationInput.learningStyle,
+              notes: generationInput.notes ?? undefined,
+              startDate: generationInput.startDate ?? undefined,
+              deadlineDate: generationInput.deadlineDate ?? undefined,
+              visibility: 'private',
+              origin: plan.origin ?? 'ai',
+            },
+          })
         );
+
+        const startedAt = Date.now();
+
+        let result;
+        try {
+          result = await runGenerationAttempt(
+            {
+              planId: plan.id,
+              userId: user.id,
+              input: generationInput,
+            },
+            { provider, signal: req.signal, dbClient: db, reservation }
+          );
+        } catch (attemptError) {
+          await finalizeAttemptFailure({
+            attemptId: reservation.attemptId,
+            planId: plan.id,
+            preparation: reservation,
+            classification: 'provider_error',
+            durationMs: Math.max(0, Date.now() - startedAt),
+            dbClient: db,
+          }).catch((finalizeErr) => {
+            logger.error(
+              {
+                planId: plan.id,
+                attemptId: reservation.attemptId,
+                finalizeErr,
+                originalError: attemptError,
+              },
+              'Failed to finalize attempt on retry error; falling back to plan-level cleanup'
+            );
+            return safeMarkPlanFailed(plan.id, user.id);
+          });
+          logger.error(
+            {
+              planId: plan.id,
+              userId: user.id,
+              error: attemptError,
+              stack:
+                attemptError instanceof Error ? attemptError.stack : undefined,
+            },
+            'Plan retry generation failed'
+          );
+          throw attemptError;
+        }
 
         if (result.status === 'success') {
           await handleSuccessfulGeneration(result, {
@@ -182,20 +220,29 @@ export const POST = withErrorBoundary(
           userId: user.id,
           emit,
         });
-      } catch (error) {
-        await safeMarkPlanFailed(plan.id, user.id);
+      });
+    } catch (setupError) {
+      await finalizeAttemptFailure({
+        attemptId: reservation.attemptId,
+        planId: plan.id,
+        preparation: reservation,
+        classification: 'provider_error',
+        durationMs: 0,
+        dbClient: db,
+      }).catch(async (finalizeErr) => {
         logger.error(
           {
             planId: plan.id,
-            userId: user.id,
-            error,
-            stack: error instanceof Error ? error.stack : undefined,
+            attemptId: reservation.attemptId,
+            finalizeErr,
+            setupError,
           },
-          'Plan retry generation failed'
+          'Failed to finalize attempt after stream setup error'
         );
-        throw error;
-      }
-    });
+        await safeMarkPlanFailed(plan.id, user.id);
+      });
+      throw setupError;
+    }
 
     return new Response(stream, {
       status: 200,

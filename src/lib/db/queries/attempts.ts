@@ -11,6 +11,7 @@ import {
   recordAttemptSuccess as trackAttemptSuccess,
 } from '@/lib/metrics/attempts';
 import type { FailureClassification } from '@/lib/types/client';
+import { isRetryableClassification } from '@/lib/ai/failures';
 import {
   aggregateNormalizationFlags,
   normalizeModuleMinutes,
@@ -844,14 +845,27 @@ export async function finalizeAttemptFailure({
       throw new Error('Failed to finalize generation attempt as failure.');
     }
 
-    await tx
-      .update(learningPlans)
-      .set({
-        generationStatus: 'failed',
-        isQuotaEligible: false,
-        updatedAt: finishedAt,
-      })
-      .where(eq(learningPlans.id, planId));
+    // Only transition plan to failed when terminal or at attempt cap.
+    // Retryable failures (rate_limit, timeout) with attempts < cap keep plan as generating.
+    const isTerminal =
+      !isRetryableClassification(classification) ||
+      preparation.attemptNumber >= ATTEMPT_CAP;
+
+    if (isTerminal) {
+      await tx
+        .update(learningPlans)
+        .set({
+          generationStatus: 'failed',
+          isQuotaEligible: false,
+          updatedAt: finishedAt,
+        })
+        .where(eq(learningPlans.id, planId));
+    } else {
+      await tx
+        .update(learningPlans)
+        .set({ updatedAt: finishedAt })
+        .where(eq(learningPlans.id, planId));
+    }
 
     return updatedAttempt;
   });

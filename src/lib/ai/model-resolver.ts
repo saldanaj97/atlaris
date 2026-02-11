@@ -62,15 +62,18 @@ function getProviderSafe(
  * All generation entry points (stream, retry, default) MUST use this function.
  *
  * @param userTier - The user's subscription tier
- * @param requestedModel - Optional model ID from request (query param, user preference, etc.)
+ * @param requestedModel - Optional model ID from request. Pass undefined when param absent
+ *   (not_specified fallback). Null/empty string means invalid_model fallback.
  * @returns ModelResolution with the resolved provider and metadata
  */
 export function resolveModelForTier(
   userTier: SubscriptionTier,
   requestedModel?: string | null
 ): ModelResolution {
-  // Truly omitted (single arg) → default fallback with explicit not_specified reason.
-  if (arguments.length < 2) {
+  // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
+  const modelSpecified = requestedModel !== undefined;
+
+  if (!modelSpecified) {
     return {
       modelId: AI_DEFAULT_MODEL,
       provider: getProviderSafe(AI_DEFAULT_MODEL, requestedModel),
@@ -79,12 +82,8 @@ export function resolveModelForTier(
     };
   }
 
-  // Explicit undefined, null, or empty string → invalid_model
-  if (
-    requestedModel === undefined ||
-    requestedModel === null ||
-    requestedModel === ''
-  ) {
+  // Explicit null or empty string → invalid_model
+  if (requestedModel === null || requestedModel === '') {
     logger.warn(
       { requestedModel, userTier },
       'Invalid model requested, falling back to default'

@@ -9,13 +9,14 @@ import { db } from '@/lib/db/service-role';
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
   let userId: string;
   let planId: string;
 
   beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
     const authUserId = `auth-${randomUUID()}`;
     userId = await ensureUser({
       authUserId,
