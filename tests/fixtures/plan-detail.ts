@@ -77,11 +77,12 @@ export function buildTaskResource(
   overrides: Partial<TaskResourceWithResource> = {}
 ): TaskResourceWithResource {
   const taskId = overrides.taskId ?? makeId('task');
-  const resourceId = overrides.resourceId ?? makeId('resource');
+  const resourceId =
+    overrides.resourceId ?? overrides.resource?.id ?? makeId('resource');
+  const { resource: resourceOverrides, ...rowOverrides } = overrides;
   return {
     id: overrides.id ?? makeId('task-resource'),
     taskId,
-    resourceId,
     order: 1,
     notes: null,
     createdAt: BASE_DATE,
@@ -97,8 +98,10 @@ export function buildTaskResource(
       currency: null,
       tags: ['ml'],
       createdAt: BASE_DATE,
+      ...resourceOverrides,
     },
-    ...overrides,
+    ...rowOverrides,
+    resourceId,
   } satisfies TaskResourceWithResource;
 }
 
@@ -160,7 +163,7 @@ export function buildModuleRows(
   return Array.from({ length: count }, (_, i) =>
     buildModuleRow({
       ...overrides,
-      id: makeId('module'),
+      id: overrides.id ?? makeId('module'),
       planId,
       order: i + 1,
     })
