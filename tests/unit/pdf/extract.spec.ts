@@ -7,6 +7,7 @@ import {
 import {
   capExtractionResponsePayload,
   detectStructure,
+  type CapExtractionResponse,
 } from '@/lib/pdf/structure';
 import { validatePdfFile } from '@/lib/pdf/validate';
 
@@ -136,14 +137,17 @@ describe('pdf extraction response caps', () => {
   };
 
   it('keeps payload intact when under configured limits', () => {
-    const result = capExtractionResponsePayload(basePayload, {
-      maxBytes: 10_000,
-      maxTextChars: 1_000,
-      maxSections: 10,
-      maxSectionChars: 500,
-      maxSectionTitleChars: 100,
-      maxSuggestedTopicChars: 100,
-    });
+    const result: CapExtractionResponse = capExtractionResponsePayload(
+      basePayload,
+      {
+        maxBytes: 10_000,
+        maxTextChars: 1_000,
+        maxSections: 10,
+        maxSectionChars: 500,
+        maxSectionTitleChars: 100,
+        maxSuggestedTopicChars: 100,
+      }
+    );
 
     expect(result.truncation.truncated).toBe(false);
     expect(result.truncation.reasons).toHaveLength(0);
@@ -153,14 +157,24 @@ describe('pdf extraction response caps', () => {
   });
 
   it('caps text and section counts at configured limits', () => {
-    const result = capExtractionResponsePayload(
+    const sectionTitleCap = 50;
+    const suggestedTopicCap = 50;
+    const oversizedTitle =
+      'Section with a very long title that exceeds the cap';
+    const oversizedTopic =
+      'An oversized suggested main topic string for testing';
+    expect(oversizedTitle.length).toBeGreaterThan(sectionTitleCap);
+    expect(oversizedTopic.length).toBeGreaterThan(suggestedTopicCap);
+
+    const result: CapExtractionResponse = capExtractionResponsePayload(
       {
         ...basePayload,
         text: 'x'.repeat(500),
         structure: {
           ...basePayload.structure,
+          suggestedMainTopic: oversizedTopic,
           sections: Array.from({ length: 5 }, (_, i) => ({
-            title: `Section ${i + 1}`,
+            title: i === 0 ? oversizedTitle : `Section ${i + 1}`,
             content: 'y'.repeat(300),
             level: 1,
           })),
@@ -171,31 +185,52 @@ describe('pdf extraction response caps', () => {
         maxTextChars: 100,
         maxSections: 2,
         maxSectionChars: 50,
-        maxSectionTitleChars: 50,
-        maxSuggestedTopicChars: 50,
+        maxSectionTitleChars: sectionTitleCap,
+        maxSuggestedTopicChars: suggestedTopicCap,
       }
     );
 
     expect(result.truncation.truncated).toBe(true);
     expect(result.truncation.reasons).toEqual(
-      expect.arrayContaining(['text_char_cap', 'section_count_cap'])
+      expect.arrayContaining([
+        'text_char_cap',
+        'section_count_cap',
+        'section_content_cap',
+        'section_title_cap',
+        'suggested_topic_cap',
+      ])
     );
     expect(result.payload.text.length).toBeLessThanOrEqual(100);
     expect(result.payload.structure.sections).toHaveLength(2);
     expect(
+      result.payload.structure.suggestedMainTopic.length
+    ).toBeLessThanOrEqual(suggestedTopicCap);
+    for (const section of result.payload.structure.sections) {
+      expect(section.title.length).toBeLessThanOrEqual(sectionTitleCap);
+    }
+    expect(
       result.payload.structure.sections[0]?.content.length
+    ).toBeLessThanOrEqual(50);
+    expect(
+      result.payload.structure.sections[1]?.content.length
     ).toBeLessThanOrEqual(50);
   });
 
   it('enforces byte cap metadata for oversized payloads', () => {
-    const result = capExtractionResponsePayload(
+    const titleCap = 200;
+    const topicCap = 200;
+    const oversizedTitle = 'x'.repeat(250);
+    const oversizedTopic = 'y'.repeat(250);
+
+    const result: CapExtractionResponse = capExtractionResponsePayload(
       {
         ...basePayload,
         text: 'a'.repeat(2_000),
         structure: {
           ...basePayload.structure,
+          suggestedMainTopic: oversizedTopic,
           sections: Array.from({ length: 20 }, (_, i) => ({
-            title: `Section ${i + 1}`,
+            title: i === 0 ? oversizedTitle : `Section ${i + 1}`,
             content: 'b'.repeat(500),
             level: 1,
           })),
@@ -206,17 +241,93 @@ describe('pdf extraction response caps', () => {
         maxTextChars: 2_000,
         maxSections: 20,
         maxSectionChars: 500,
-        maxSectionTitleChars: 200,
-        maxSuggestedTopicChars: 200,
+        maxSectionTitleChars: titleCap,
+        maxSuggestedTopicChars: topicCap,
       }
     );
+
+    const allowedReasons = [
+      'byte_cap_text_trim',
+      'byte_cap_section_trim',
+      'byte_cap_section_content_trim',
+      'byte_cap_topic_trim',
+      'byte_cap_hard_reset',
+      'byte_cap_hard_reset_warning',
+      'section_title_cap',
+      'suggested_topic_cap',
+    ] as const;
 
     expect(result.truncation.truncated).toBe(true);
     expect(result.truncation.maxBytes).toBe(800);
     expect(result.truncation.returnedBytes).toBeLessThanOrEqual(800);
+    expect(result.truncation.reasons.length).toBeGreaterThan(0);
     expect(
-      result.truncation.reasons.some((reason) => reason.startsWith('byte_cap'))
+      result.truncation.reasons.every((r) =>
+        (allowedReasons as readonly string[]).includes(r)
+      )
     ).toBe(true);
+    expect(result.truncation.reasons).toEqual(
+      expect.arrayContaining(['section_title_cap', 'suggested_topic_cap'])
+    );
+    expect(
+      result.payload.structure.suggestedMainTopic.length
+    ).toBeLessThanOrEqual(topicCap);
+    for (const section of result.payload.structure.sections) {
+      expect(section.title.length).toBeLessThanOrEqual(titleCap);
+    }
+  });
+
+  it('truncates section titles and suggestedMainTopic to maxSectionTitleChars and maxSuggestedTopicChars', () => {
+    const maxSectionTitleChars = 20;
+    const maxSuggestedTopicChars = 15;
+    const longTitle = 'A very long section title that exceeds twenty chars';
+    const longTopic = 'A long suggested main topic';
+
+    const result = capExtractionResponsePayload(
+      {
+        ...basePayload,
+        structure: {
+          ...basePayload.structure,
+          suggestedMainTopic: longTopic,
+          sections: [
+            { title: longTitle, content: 'Short', level: 1 },
+            {
+              title: 'Another long section title here',
+              content: 'Body',
+              level: 1,
+            },
+          ],
+        },
+      },
+      {
+        maxBytes: 50_000,
+        maxTextChars: 10_000,
+        maxSections: 10,
+        maxSectionChars: 1_000,
+        maxSectionTitleChars: maxSectionTitleChars,
+        maxSuggestedTopicChars: maxSuggestedTopicChars,
+      }
+    );
+
+    expect(result.truncation.truncated).toBe(true);
+    expect(result.truncation.reasons).toEqual(
+      expect.arrayContaining(['section_title_cap', 'suggested_topic_cap'])
+    );
+    expect(
+      result.payload.structure.suggestedMainTopic.length
+    ).toBeLessThanOrEqual(maxSuggestedTopicChars);
+    expect(result.payload.structure.suggestedMainTopic).toBe(
+      longTopic.slice(0, maxSuggestedTopicChars)
+    );
+    for (const section of result.payload.structure.sections) {
+      expect(section.title.length).toBeLessThanOrEqual(maxSectionTitleChars);
+    }
+    expect(result.payload.structure.sections[0]?.title).toBe(
+      longTitle.slice(0, maxSectionTitleChars)
+    );
+    expect(result.payload.structure.sections[1]?.title).toBe(
+      'Another long section '.slice(0, maxSectionTitleChars)
+    );
   });
 });
 

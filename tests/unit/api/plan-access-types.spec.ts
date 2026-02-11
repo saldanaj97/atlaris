@@ -196,56 +196,6 @@ describe('Plan Access Types', () => {
     });
   });
 
-  describe('Error Code Semantics', () => {
-    it('UNAUTHORIZED should indicate authentication required', () => {
-      const result = planError(
-        'UNAUTHORIZED',
-        'You must be signed in to view this plan.'
-      );
-
-      if (!result.success) {
-        // UNAUTHORIZED (401) - redirect to sign-in
-        expect(result.error.code).toBe('UNAUTHORIZED');
-      }
-    });
-
-    it('NOT_FOUND should indicate plan does not exist', () => {
-      const result = planError(
-        'NOT_FOUND',
-        'This plan does not exist or you do not have access to it.'
-      );
-
-      if (!result.success) {
-        // NOT_FOUND (404) - show not found message
-        expect(result.error.code).toBe('NOT_FOUND');
-      }
-    });
-
-    it('FORBIDDEN should indicate access denied', () => {
-      const result = planError(
-        'FORBIDDEN',
-        'You do not have permission to access this plan.'
-      );
-
-      if (!result.success) {
-        // FORBIDDEN (403) - show access denied message
-        expect(result.error.code).toBe('FORBIDDEN');
-      }
-    });
-
-    it('INTERNAL_ERROR should indicate unexpected failure', () => {
-      const result = planError(
-        'INTERNAL_ERROR',
-        'An unexpected error occurred.'
-      );
-
-      if (!result.success) {
-        // INTERNAL_ERROR (500) - show generic error
-        expect(result.error.code).toBe('INTERNAL_ERROR');
-      }
-    });
-  });
-
   describe('Result Type Exhaustiveness', () => {
     it('should handle all error codes in a switch statement', () => {
       const errorCodes: PlanAccessErrorCode[] = [

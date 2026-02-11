@@ -1,7 +1,7 @@
 import {
-  type PlainHandler,
   withAuthAndRateLimit,
   withErrorBoundary,
+  type PlainHandler,
 } from '@/lib/api/auth';
 import {
   acquirePdfExtractionSlot,
@@ -12,12 +12,15 @@ import { json } from '@/lib/api/response';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { logger } from '@/lib/logging/logger';
 import {
-  extractTextFromPdf,
-  getPdfPageCountFromBuffer,
+  extractTextFromPdf as defaultExtractTextFromPdf,
+  getPdfPageCountFromBuffer as defaultGetPdfPageCountFromBuffer,
 } from '@/lib/pdf/extract';
-import { capExtractionResponsePayload } from '@/lib/pdf/structure';
+import {
+  capExtractionResponsePayload,
+  type CapExtractionResponse,
+} from '@/lib/pdf/structure';
 import type { ExtractedSection } from '@/lib/pdf/types';
-import { scanBufferForMalware } from '@/lib/security/malware-scanner';
+import { scanBufferForMalware as defaultScanBufferForMalware } from '@/lib/security/malware-scanner';
 import {
   computePdfExtractionHash,
   issuePdfExtractionProof,
@@ -25,6 +28,13 @@ import {
 } from '@/lib/security/pdf-extraction-proof';
 import { resolveUserTier, type SubscriptionTier } from '@/lib/stripe/usage';
 import { pdfExtractionFormDataSchema } from '@/lib/validation/pdf';
+
+/** Dependencies for PDF extract POST handler; inject for testing. */
+export type PdfExtractRouteDeps = {
+  extractTextFromPdf: typeof defaultExtractTextFromPdf;
+  getPdfPageCountFromBuffer: typeof defaultGetPdfPageCountFromBuffer;
+  scanBufferForMalware: typeof defaultScanBufferForMalware;
+};
 
 /** Absolute maximum PDF upload size in bytes (50MB) — regardless of tier */
 const ABSOLUTE_MAX_PDF_BYTES = 50 * 1024 * 1024;
@@ -117,7 +127,14 @@ async function streamedSizeCheck(
       }
       chunks.push(value);
     }
-  } catch {
+  } catch (err) {
+    logger.error(
+      {
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      },
+      'extract route: invalid request body'
+    );
     return { ok: false, code: 'INVALID_FILE', status: 400 };
   }
 
@@ -130,249 +147,261 @@ async function streamedSizeCheck(
   return { ok: true, body: merged.buffer };
 }
 
-export const POST: PlainHandler = withErrorBoundary(
-  withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
+type PdfExtractHandlerCtx = { req: Request; userId: string };
 
-    // Streamed body size check before any form parsing.
-    // Counts bytes as they arrive; aborts and returns 413 as soon as limit exceeded.
-    // Prevents memory exhaustion from oversized or forged Content-Length uploads.
-    const streamSizeResult = await streamedSizeCheck(
-      req,
-      ABSOLUTE_MAX_PDF_BYTES
+async function postHandlerImpl(
+  ctx: PdfExtractHandlerCtx,
+  deps: PdfExtractRouteDeps
+): Promise<Response> {
+  const { req, userId } = ctx;
+  const user = await getUserByAuthId(userId);
+  if (!user) {
+    throw new Error('Authenticated user record missing despite provisioning.');
+  }
+
+  // Streamed body size check before any form parsing.
+  // Counts bytes as they arrive; aborts and returns 413 as soon as limit exceeded.
+  // Prevents memory exhaustion from oversized or forged Content-Length uploads.
+  const streamSizeResult = await streamedSizeCheck(req, ABSOLUTE_MAX_PDF_BYTES);
+  if (!streamSizeResult.ok) {
+    const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
+    const message =
+      streamSizeResult.code === 'FILE_TOO_LARGE'
+        ? `Request body exceeds absolute maximum of ${maxMb}MB.`
+        : streamSizeResult.code === 'MISSING_CONTENT_LENGTH'
+          ? `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`
+          : 'Invalid request body.';
+    return errorResponse(
+      message,
+      streamSizeResult.code,
+      streamSizeResult.status
     );
-    if (!streamSizeResult.ok) {
-      const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
-      const message =
-        streamSizeResult.code === 'FILE_TOO_LARGE'
-          ? `Request body exceeds absolute maximum of ${maxMb}MB.`
-          : streamSizeResult.code === 'MISSING_CONTENT_LENGTH'
-            ? `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`
-            : 'Invalid request body.';
-      return errorResponse(
-        message,
-        streamSizeResult.code,
-        streamSizeResult.status
-      );
-    }
+  }
 
-    // Per-user extraction throttle
-    const throttle = acquirePdfExtractionSlot(user.id);
-    if (!throttle.allowed) {
-      return json(
-        {
-          success: false,
-          error: 'Too many PDF extraction requests. Please try again later.',
-          code: 'THROTTLED' as const,
+  // Per-user extraction throttle
+  const throttle = acquirePdfExtractionSlot(user.id);
+  if (!throttle.allowed) {
+    return json(
+      {
+        success: false,
+        error: 'Too many PDF extraction requests. Please try again later.',
+        code: 'THROTTLED' as const,
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil((throttle.retryAfterMs ?? 0) / 1000)),
         },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': String(
-              Math.ceil((throttle.retryAfterMs ?? 0) / 1000)
-            ),
-          },
-        }
-      );
-    }
+      }
+    );
+  }
 
-    let formData: FormData;
-    try {
-      formData = await new Request(req.url, {
-        method: req.method,
-        headers: { 'content-type': req.headers.get('content-type') ?? '' },
-        body: streamSizeResult.body,
-      }).formData();
-    } catch {
-      return toExtractionError('Invalid multipart form data.', 400);
-    }
-    const formObject = parseFormDataToObject(formData);
+  let formData: FormData;
+  try {
+    formData = await new Request(req.url, {
+      method: req.method,
+      headers: { 'content-type': req.headers.get('content-type') ?? '' },
+      body: streamSizeResult.body,
+    }).formData();
+  } catch (err) {
+    logger.error({ err }, 'FormData parse failed in PDF extract route');
+    return toExtractionError('Invalid multipart form data.', 400);
+  }
+  const formObject = parseFormDataToObject(formData);
 
-    const parseResult = pdfExtractionFormDataSchema.safeParse(formObject);
-    if (!parseResult.success) {
-      const firstError = parseResult.error.issues[0];
-      const message = firstError?.message ?? 'Invalid request.';
-      const isMimeError = message.includes('PDF files');
-      return toExtractionError(message, isMimeError ? 415 : 400);
-    }
+  const parseResult = pdfExtractionFormDataSchema.safeParse(formObject);
+  if (!parseResult.success) {
+    const firstError = parseResult.error.issues[0];
+    const message = firstError?.message ?? 'Invalid request.';
+    const isMimeError = message.includes('PDF files');
+    return toExtractionError(message, isMimeError ? 415 : 400);
+  }
 
-    const { file } = parseResult.data;
+  const { file } = parseResult.data;
 
-    let cachedTier: Awaited<ReturnType<typeof resolveUserTier>> | undefined;
-    let tierResolved = false;
-    const validationDeps = {
-      resolveTier: async (
-        tierUserId: string,
-        dbClient?: Parameters<typeof resolveUserTier>[1]
-      ): Promise<SubscriptionTier> => {
-        if (tierResolved) {
-          // Safety: resolveUserTier should always return a concrete tier per its contract.
-          const resolvedTier = cachedTier;
-          if (!resolvedTier) {
-            throw new Error('resolveTier cache resolved without a valid tier');
-          }
-          return resolvedTier;
-        }
-        cachedTier = await resolveUserTier(tierUserId, dbClient);
+  let cachedTier: Awaited<ReturnType<typeof resolveUserTier>> | undefined;
+  let tierResolved = false;
+  const validationDeps = {
+    resolveTier: async (
+      tierUserId: string,
+      dbClient?: Parameters<typeof resolveUserTier>[1]
+    ): Promise<SubscriptionTier> => {
+      if (tierResolved) {
         // Safety: resolveUserTier should always return a concrete tier per its contract.
         const resolvedTier = cachedTier;
         if (!resolvedTier) {
-          throw new Error(
-            'Unable to resolve user tier for PDF upload validation'
-          );
+          throw new Error('resolveTier cache resolved without a valid tier');
         }
-        tierResolved = true;
         return resolvedTier;
-      },
-    };
-
-    const tierSizeCheck = await checkPdfSizeLimit(
-      user.id,
-      file.size,
-      validationDeps
-    );
-    if (!tierSizeCheck.allowed) {
-      return errorResponse(tierSizeCheck.reason, tierSizeCheck.code, 413);
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    if (!isPdfMagicBytes(buffer)) {
-      return toExtractionError('Invalid PDF file format.', 415);
-    }
-
-    try {
-      const scanResult = await scanBufferForMalware(buffer);
-      if (!scanResult.clean) {
-        logger.warn(
-          { userId: user.id, threat: scanResult.threat, fileSize: file.size },
-          'Malware detected in uploaded PDF'
-        );
-        return errorResponse(
-          'File rejected due to security concerns.',
-          'MALWARE_DETECTED',
-          400
+      }
+      cachedTier = await resolveUserTier(tierUserId, dbClient);
+      // Safety: resolveUserTier should always return a concrete tier per its contract.
+      const resolvedTier = cachedTier;
+      if (!resolvedTier) {
+        throw new Error(
+          'Unable to resolve user tier for PDF upload validation'
         );
       }
-    } catch (error) {
-      logger.error(
-        { userId: user.id, error, fileSize: file.size },
-        'Malware scan failed for uploaded PDF'
+      tierResolved = true;
+      return resolvedTier;
+    },
+  };
+
+  const tierSizeCheck = await checkPdfSizeLimit(
+    user.id,
+    file.size,
+    validationDeps
+  );
+  if (!tierSizeCheck.allowed) {
+    return errorResponse(tierSizeCheck.reason, tierSizeCheck.code, 413);
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  if (!isPdfMagicBytes(buffer)) {
+    return toExtractionError('Invalid PDF file format.', 415);
+  }
+
+  try {
+    const scanResult = await deps.scanBufferForMalware(buffer);
+    if (!scanResult.clean) {
+      logger.warn(
+        { userId: user.id, threat: scanResult.threat, fileSize: file.size },
+        'Malware detected in uploaded PDF'
       );
       return errorResponse(
-        'Unable to verify file security. Please try again.',
-        'SCAN_FAILED',
-        500
+        'File rejected due to security concerns.',
+        'MALWARE_DETECTED',
+        400
       );
     }
-
-    const pageCountForValidation = await getPdfPageCountFromBuffer(buffer);
-    const tierValidation = await validatePdfUpload(
-      user.id,
-      file.size,
-      pageCountForValidation,
-      validationDeps
+  } catch (error) {
+    logger.error(
+      { userId: user.id, error, fileSize: file.size },
+      'Malware scan failed for uploaded PDF'
     );
-    if (!tierValidation.allowed) {
-      return toUploadValidationError(tierValidation);
+    return errorResponse(
+      'Unable to verify file security. Please try again.',
+      'SCAN_FAILED',
+      500
+    );
+  }
+
+  const pageCountForValidation = await deps.getPdfPageCountFromBuffer(buffer);
+  const tierValidation = await validatePdfUpload(
+    user.id,
+    file.size,
+    pageCountForValidation,
+    validationDeps
+  );
+  if (!tierValidation.allowed) {
+    return toUploadValidationError(tierValidation);
+  }
+
+  const extraction = await deps.extractTextFromPdf(buffer, {
+    timeoutMs: PDF_EXTRACTION_TIMEOUT_MS,
+    maxChars: PDF_EXTRACTION_MAX_CHARS,
+  });
+
+  if (!extraction.success) {
+    if (extraction.error === 'parse_timeout') {
+      return errorResponse(extraction.message, 'INVALID_FILE', 408);
+    }
+    if (extraction.error === 'decompression_bomb') {
+      return errorResponse(extraction.message, 'INVALID_FILE', 400);
+    }
+    if (extraction.error === 'no_text') {
+      return errorResponse(extraction.message, 'NO_TEXT', 400);
+    }
+    if (extraction.error === 'password_protected') {
+      return errorResponse(extraction.message, 'PASSWORD_PROTECTED', 400);
     }
 
-    const extraction = await extractTextFromPdf(buffer, {
-      timeoutMs: PDF_EXTRACTION_TIMEOUT_MS,
-      maxChars: PDF_EXTRACTION_MAX_CHARS,
-    });
+    return toExtractionError(extraction.message);
+  }
 
-    if (!extraction.success) {
-      if (extraction.error === 'parse_timeout') {
-        return errorResponse(extraction.message, 'INVALID_FILE', 408);
-      }
-      if (extraction.error === 'decompression_bomb') {
-        return errorResponse(extraction.message, 'INVALID_FILE', 400);
-      }
-      if (extraction.error === 'no_text') {
-        return errorResponse(extraction.message, 'NO_TEXT', 400);
-      }
-      if (extraction.error === 'password_protected') {
-        return errorResponse(extraction.message, 'PASSWORD_PROTECTED', 400);
-      }
+  logger.info(
+    {
+      userId: user.id,
+      fileSize: file.size,
+      pageCount: extraction.pageCount,
+      textLength: extraction.text.length,
+      parseTimeMs: extraction.parseTimeMs,
+      truncatedText: extraction.truncatedText,
+    },
+    'PDF extraction completed'
+  );
 
-      return toExtractionError(extraction.message);
-    }
+  const finalTierValidation = await validatePdfUpload(
+    user.id,
+    file.size,
+    extraction.pageCount,
+    validationDeps
+  );
+  if (!finalTierValidation.allowed) {
+    return toUploadValidationError(finalTierValidation);
+  }
 
-    logger.info(
-      {
-        userId: user.id,
-        fileSize: file.size,
-        pageCount: extraction.pageCount,
-        textLength: extraction.text.length,
-        parseTimeMs: extraction.parseTimeMs,
-        truncatedText: extraction.truncatedText,
-      },
-      'PDF extraction completed'
-    );
-
-    const finalTierValidation = await validatePdfUpload(
-      user.id,
-      file.size,
-      extraction.pageCount,
-      validationDeps
-    );
-    if (!finalTierValidation.allowed) {
-      return toUploadValidationError(finalTierValidation);
-    }
-
-    const boundedExtraction = capExtractionResponsePayload({
+  const boundedExtraction: CapExtractionResponse = capExtractionResponsePayload(
+    {
       text: extraction.text,
       pageCount: extraction.pageCount,
       metadata: extraction.metadata,
       structure: extraction.structure,
-    });
-
-    const extractionProofInput: {
-      mainTopic: string;
-      sections: ExtractedSection[];
-    } = {
-      mainTopic: boundedExtraction.payload.structure.suggestedMainTopic,
-      sections: boundedExtraction.payload.structure.sections,
-    };
-    const extractionHash = computePdfExtractionHash(extractionProofInput);
-    let issuedProof: { token: string; expiresAt: Date };
-    try {
-      issuedProof = await issuePdfExtractionProof({
-        authUserId: userId,
-        extractionHash,
-      });
-    } catch (error) {
-      logger.error(
-        { userId: user.id, extractionHash, error },
-        'Proof issuance failed for PDF extraction'
-      );
-      return errorResponse(
-        'Proof generation failed, please retry',
-        'PROOF_ISSUANCE_FAILED',
-        500
-      );
     }
+  );
 
-    return json({
-      success: true,
-      extraction: {
-        text: boundedExtraction.payload.text,
-        pageCount: boundedExtraction.payload.pageCount,
-        metadata: boundedExtraction.payload.metadata,
-        structure: boundedExtraction.payload.structure,
-        truncation: boundedExtraction.truncation,
-      },
-      proof: toPdfExtractionProofPayload({
-        token: issuedProof.token,
-        extractionHash,
-        expiresAt: issuedProof.expiresAt,
-      }),
+  const extractionProofInput: {
+    mainTopic: string;
+    sections: ExtractedSection[];
+  } = {
+    mainTopic: boundedExtraction.payload.structure.suggestedMainTopic,
+    sections: boundedExtraction.payload.structure.sections,
+  };
+  const extractionHash = computePdfExtractionHash(extractionProofInput);
+  let issuedProof: { token: string; expiresAt: Date };
+  try {
+    issuedProof = await issuePdfExtractionProof({
+      authUserId: userId,
+      extractionHash,
     });
-  })
-);
+  } catch (error) {
+    logger.error(
+      { userId: user.id, extractionHash, error },
+      'Proof issuance failed for PDF extraction'
+    );
+    return errorResponse(
+      'Proof generation failed, please retry',
+      'PROOF_ISSUANCE_FAILED',
+      500
+    );
+  }
+
+  return json({
+    success: true,
+    extraction: {
+      text: boundedExtraction.payload.text,
+      pageCount: boundedExtraction.payload.pageCount,
+      metadata: boundedExtraction.payload.metadata,
+      structure: boundedExtraction.payload.structure,
+      truncation: boundedExtraction.truncation,
+    },
+    proof: toPdfExtractionProofPayload({
+      token: issuedProof.token,
+      extractionHash,
+      expiresAt: issuedProof.expiresAt,
+    }),
+  });
+}
+
+export function createPostHandler(deps: PdfExtractRouteDeps): PlainHandler {
+  return withErrorBoundary(
+    withAuthAndRateLimit('aiGeneration', (ctx) => postHandlerImpl(ctx, deps))
+  );
+}
+
+export const POST = createPostHandler({
+  extractTextFromPdf: defaultExtractTextFromPdf,
+  getPdfPageCountFromBuffer: defaultGetPdfPageCountFromBuffer,
+  scanBufferForMalware: defaultScanBufferForMalware,
+});

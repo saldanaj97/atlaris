@@ -22,6 +22,20 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+const truncationSchema = z.object({
+  truncated: z.boolean(),
+  maxBytes: z.number(),
+  returnedBytes: z.number(),
+  reasons: z.array(z.string()),
+  limits: z.object({
+    maxTextChars: z.number(),
+    maxSections: z.number(),
+    maxSectionChars: z.number(),
+  }),
+});
+
+type TruncationData = z.infer<typeof truncationSchema>;
+
 const extractionApiResponseSchema = z.object({
   success: z.boolean(),
   extraction: z
@@ -47,19 +61,7 @@ const extractionApiResponseSchema = z.object({
         suggestedMainTopic: z.string(),
         confidence: z.enum(['high', 'medium', 'low']),
       }),
-      truncation: z
-        .object({
-          truncated: z.boolean(),
-          maxBytes: z.number(),
-          returnedBytes: z.number(),
-          reasons: z.array(z.string()),
-          limits: z.object({
-            maxTextChars: z.number(),
-            maxSections: z.number(),
-            maxSectionChars: z.number(),
-          }),
-        })
-        .optional(),
+      truncation: truncationSchema.optional(),
     })
     .optional(),
   proof: z
@@ -90,17 +92,7 @@ interface ExtractionData {
   }>;
   pageCount: number;
   confidence: 'high' | 'medium' | 'low';
-  truncation?: {
-    truncated: boolean;
-    maxBytes: number;
-    returnedBytes: number;
-    reasons: string[];
-    limits: {
-      maxTextChars: number;
-      maxSections: number;
-      maxSectionChars: number;
-    };
-  };
+  truncation?: TruncationData;
 }
 
 interface ExtractionProofData {

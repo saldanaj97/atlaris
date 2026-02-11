@@ -142,7 +142,7 @@ function derivePlanStatus(detail: LearningPlanDetail): PlanStatus | undefined {
 }
 
 export function mapDetailToClient(
-  detail: LearningPlanDetail
+  detail: LearningPlanDetail | null | undefined
 ): ClientPlanDetail | undefined {
   if (!detail) return undefined;
 

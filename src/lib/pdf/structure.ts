@@ -3,6 +3,10 @@ import { nanoid } from 'nanoid';
 import type { ExtractedSection, ExtractedStructure } from './types';
 
 const HEADER_MAX_LENGTH = 120;
+const UTF8_ENCODER = new TextEncoder();
+
+/** Max iterations for the byte-cap trim loop to avoid runaway trimming. */
+const MAX_TRIM_ITERATIONS = 20;
 
 export interface ExtractionResponseCapConfig {
   maxBytes: number;
@@ -37,12 +41,19 @@ export interface ExtractionTruncationMetadata {
   truncated: boolean;
   maxBytes: number;
   returnedBytes: number;
+  hardResetApplied: boolean;
+  hardResetBytesBeforeReset?: number;
   reasons: string[];
   limits: {
     maxTextChars: number;
     maxSections: number;
     maxSectionChars: number;
   };
+}
+
+export interface CapExtractionResponse {
+  payload: ExtractionResponsePayload;
+  truncation: ExtractionTruncationMetadata;
 }
 
 const truncateToMaxChars = (value: string, maxChars: number): string => {
@@ -54,16 +65,40 @@ const truncateToMaxChars = (value: string, maxChars: number): string => {
 };
 
 const payloadSizeBytes = (payload: ExtractionResponsePayload): number => {
-  return Buffer.byteLength(JSON.stringify(payload), 'utf8');
+  return UTF8_ENCODER.encode(JSON.stringify(payload)).length;
+};
+
+const trimTextToFitByteCap = (
+  payload: ExtractionResponsePayload,
+  maxBytes: number
+): string => {
+  const originalText = payload.text;
+  let low = 0;
+  let high = originalText.length;
+  let best = 0;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const candidate: ExtractionResponsePayload = {
+      ...payload,
+      text: originalText.slice(0, mid),
+    };
+
+    if (payloadSizeBytes(candidate) <= maxBytes) {
+      best = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return originalText.slice(0, best);
 };
 
 export function capExtractionResponsePayload(
   payload: ExtractionResponsePayload,
   config: ExtractionResponseCapConfig = DEFAULT_EXTRACTION_RESPONSE_CAPS
-): {
-  payload: ExtractionResponsePayload;
-  truncation: ExtractionTruncationMetadata;
-} {
+): CapExtractionResponse {
   const reasons: string[] = [];
 
   let boundedPayload: ExtractionResponsePayload = {
@@ -105,20 +140,49 @@ export function capExtractionResponsePayload(
   ) {
     reasons.push('section_count_cap');
   }
+  if (
+    boundedPayload.structure.suggestedMainTopic.length !==
+    payload.structure.suggestedMainTopic.length
+  ) {
+    reasons.push('suggested_topic_cap');
+  }
+  const anySectionTitleTruncated = payload.structure.sections.some(
+    (s, i) =>
+      (boundedPayload.structure.sections[i]?.title.length ?? 0) < s.title.length
+  );
+  if (anySectionTitleTruncated) {
+    reasons.push('section_title_cap');
+  }
+
+  const sectionContentTruncated = boundedPayload.structure.sections.some(
+    (bounded, i) => {
+      const original = payload.structure.sections[i];
+      return (
+        original !== undefined &&
+        original.content.length > bounded.content.length
+      );
+    }
+  );
+  if (sectionContentTruncated) {
+    reasons.push('section_content_cap');
+  }
 
   let returnedBytes = payloadSizeBytes(boundedPayload);
+  let hardResetBytesBeforeReset: number | undefined;
 
   if (returnedBytes > config.maxBytes && boundedPayload.text.length > 0) {
-    const overflow = returnedBytes - config.maxBytes;
-    boundedPayload = {
-      ...boundedPayload,
-      text: boundedPayload.text.slice(
-        0,
-        Math.max(0, boundedPayload.text.length - overflow)
-      ),
-    };
-    reasons.push('byte_cap_text_trim');
-    returnedBytes = payloadSizeBytes(boundedPayload);
+    const byteBoundedText = trimTextToFitByteCap(
+      boundedPayload,
+      config.maxBytes
+    );
+    if (byteBoundedText.length !== boundedPayload.text.length) {
+      boundedPayload = {
+        ...boundedPayload,
+        text: byteBoundedText,
+      };
+      reasons.push('byte_cap_text_trim');
+      returnedBytes = payloadSizeBytes(boundedPayload);
+    }
   }
 
   if (
@@ -139,8 +203,9 @@ export function capExtractionResponsePayload(
     returnedBytes = payloadSizeBytes(boundedPayload);
   }
 
+  const trimReasonCounts = new Map<string, number>();
   let guard = 0;
-  while (returnedBytes > config.maxBytes && guard < 20) {
+  while (returnedBytes > config.maxBytes && guard < MAX_TRIM_ITERATIONS) {
     guard += 1;
 
     if (boundedPayload.text.length > 0) {
@@ -151,7 +216,10 @@ export function capExtractionResponsePayload(
           Math.floor(boundedPayload.text.length / 2)
         ),
       };
-      reasons.push('byte_cap_text_trim');
+      trimReasonCounts.set(
+        'byte_cap_text_trim',
+        (trimReasonCounts.get('byte_cap_text_trim') ?? 0) + 1
+      );
     } else if (boundedPayload.structure.sections.length > 1) {
       boundedPayload = {
         ...boundedPayload,
@@ -163,7 +231,10 @@ export function capExtractionResponsePayload(
           ),
         },
       };
-      reasons.push('byte_cap_section_trim');
+      trimReasonCounts.set(
+        'byte_cap_section_trim',
+        (trimReasonCounts.get('byte_cap_section_trim') ?? 0) + 1
+      );
     } else if (
       (boundedPayload.structure.sections[0]?.content.length ?? 0) > 0
     ) {
@@ -187,7 +258,10 @@ export function capExtractionResponsePayload(
           ],
         },
       };
-      reasons.push('byte_cap_section_content_trim');
+      trimReasonCounts.set(
+        'byte_cap_section_content_trim',
+        (trimReasonCounts.get('byte_cap_section_content_trim') ?? 0) + 1
+      );
     } else if (boundedPayload.structure.suggestedMainTopic.length > 0) {
       boundedPayload = {
         ...boundedPayload,
@@ -199,7 +273,10 @@ export function capExtractionResponsePayload(
           ),
         },
       };
-      reasons.push('byte_cap_topic_trim');
+      trimReasonCounts.set(
+        'byte_cap_topic_trim',
+        (trimReasonCounts.get('byte_cap_topic_trim') ?? 0) + 1
+      );
     } else {
       break;
     }
@@ -207,7 +284,12 @@ export function capExtractionResponsePayload(
     returnedBytes = payloadSizeBytes(boundedPayload);
   }
 
+  for (const [reason] of trimReasonCounts) {
+    reasons.push(reason);
+  }
+
   if (returnedBytes > config.maxBytes) {
+    hardResetBytesBeforeReset = returnedBytes;
     boundedPayload = {
       ...boundedPayload,
       text: '',
@@ -219,6 +301,7 @@ export function capExtractionResponsePayload(
       },
     };
     reasons.push('byte_cap_hard_reset');
+    reasons.push('byte_cap_hard_reset_warning');
     returnedBytes = payloadSizeBytes(boundedPayload);
   }
 
@@ -226,6 +309,8 @@ export function capExtractionResponsePayload(
     truncated: reasons.length > 0,
     maxBytes: config.maxBytes,
     returnedBytes,
+    hardResetApplied: hardResetBytesBeforeReset !== undefined,
+    hardResetBytesBeforeReset,
     reasons,
     limits: {
       maxTextChars: config.maxTextChars,

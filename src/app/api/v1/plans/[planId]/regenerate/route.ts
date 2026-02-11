@@ -4,17 +4,18 @@ import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { json, jsonError } from '@/lib/api/response';
 import { isUuid } from '@/lib/api/route-helpers';
+import { regenerationQueueEnv } from '@/lib/config/env';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
-import { regenerationQueueEnv } from '@/lib/config/env';
-import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
 import { enqueueJob } from '@/lib/jobs/queue';
+import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
 import {
   JOB_TYPES,
   type JobType,
   type PlanRegenerationJobData,
 } from '@/lib/jobs/types';
+import { logger } from '@/lib/logging/logger';
 import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
 import {
   atomicCheckAndIncrementUsage,
@@ -24,7 +25,6 @@ import {
   planRegenerationRequestSchema,
   type PlanRegenerationOverridesInput,
 } from '@/lib/validation/learningPlans';
-import { logger } from '@/lib/logging/logger';
 import { eq } from 'drizzle-orm';
 
 /**
@@ -69,22 +69,29 @@ export const POST = withErrorBoundary(
     }
 
     // Parse request body for overrides (before quota check to fail fast on validation)
-    let body: { overrides?: unknown } = {};
+    let body: unknown;
     try {
-      body = (await req.json().catch(() => ({}))) as { overrides?: unknown };
+      body = await req.json();
     } catch {
-      throw new ValidationError('Invalid request body.');
+      return jsonError('Invalid JSON in request body.', {
+        status: 400,
+        code: 'VALIDATION_ERROR',
+      });
     }
 
     let overrides: PlanRegenerationOverridesInput | undefined;
     try {
       const parsed = planRegenerationRequestSchema.parse(body);
       overrides = parsed.overrides;
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new ValidationError('Invalid overrides.', error.flatten());
+    } catch (err: unknown) {
+      const errDetail = err instanceof Error ? err : new Error(String(err));
+      if (err instanceof ZodError) {
+        throw new ValidationError('Invalid overrides.', {
+          cause: errDetail,
+          fieldErrors: err.flatten(),
+        });
       }
-      throw new ValidationError('Invalid overrides.', error);
+      throw new ValidationError('Invalid overrides.', errDetail);
     }
 
     // Atomically check and increment regeneration quota (prevents TOCTOU race)

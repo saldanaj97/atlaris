@@ -4,15 +4,15 @@ import {
   eq,
   gte,
   inArray,
-  type InferSelectModel,
   isNotNull,
   lt,
   lte,
   or,
   sql,
+  type InferSelectModel,
 } from 'drizzle-orm';
 
-import { db } from '@/lib/db/service-role';
+import { getDb } from '@/lib/db/runtime';
 import { jobQueue, learningPlans } from '@/lib/db/schema';
 import {
   JOB_TYPES,
@@ -30,6 +30,8 @@ type JobQueueRow = InferSelectModel<typeof jobQueue>;
 const ALLOWED_JOB_TYPES: ReadonlySet<JobType> = Object.freeze(
   new Set(Object.values(JOB_TYPES) as JobType[])
 );
+
+export type JobsDbClient = ReturnType<typeof getDb>;
 
 /**
  * Type guard to validate job type values at runtime.
@@ -72,8 +74,11 @@ function mapRowToJob(row: JobQueueRow): Job {
 /**
  * Retrieve recent failed jobs for debugging and monitoring
  */
-export async function getFailedJobs(limit: number): Promise<Job[]> {
-  const rows = await db
+export async function getFailedJobs(
+  limit: number,
+  dbClient: JobsDbClient = getDb()
+): Promise<Job[]> {
+  const rows = await dbClient
     .select()
     .from(jobQueue)
     .where(eq(jobQueue.status, 'failed'))
@@ -95,9 +100,12 @@ export interface JobStats {
 /**
  * Calculate job statistics since a given timestamp
  */
-export async function getJobStats(since: Date): Promise<JobStats> {
+export async function getJobStats(
+  since: Date,
+  dbClient: JobsDbClient = getDb()
+): Promise<JobStats> {
   // Get all status counts
-  const allCounts = await db
+  const allCounts = await dbClient
     .select({
       status: jobQueue.status,
       count: sql<number>`count(*)::int`,
@@ -120,7 +128,7 @@ export async function getJobStats(since: Date): Promise<JobStats> {
   );
 
   // Calculate average processing time for completed jobs
-  const [avgResult] = await db
+  const [avgResult] = await dbClient
     .select({
       avgDuration: sql<number | null>`avg(
         extract(epoch from (${jobQueue.completedAt} - ${jobQueue.startedAt})) * 1000
@@ -161,8 +169,11 @@ export async function getJobStats(since: Date): Promise<JobStats> {
  * Delete completed and failed jobs older than a given threshold
  * Used for retention management
  */
-export async function cleanupOldJobs(olderThan: Date): Promise<number> {
-  const result = await db
+export async function cleanupOldJobs(
+  olderThan: Date,
+  dbClient: JobsDbClient = getDb()
+): Promise<number> {
+  const result = await dbClient
     .delete(jobQueue)
     .where(
       and(
@@ -187,32 +198,40 @@ function assertValidJobTypes(
   }
 }
 
-export async function insertJobRecord({
-  type,
-  planId,
-  userId,
-  data,
-  priority,
-}: {
-  type: JobType;
-  planId: string | null;
-  userId: string;
-  data: unknown;
-  priority: number;
-}): Promise<string> {
-  return db.transaction(async (tx) => {
+export async function insertJobRecord(
+  {
+    type,
+    planId,
+    userId,
+    data,
+    priority,
+  }: {
+    type: JobType;
+    planId: string | null;
+    userId: string;
+    data: unknown;
+    priority: number;
+  },
+  dbClient: JobsDbClient = getDb()
+): Promise<string> {
+  return dbClient.transaction(async (tx) => {
     const shouldDeduplicateRegeneration =
       type === JOB_TYPES.PLAN_REGENERATION && planId !== null;
 
     if (shouldDeduplicateRegeneration) {
       // Serialize enqueue attempts per plan so concurrent requests cannot create
-      // duplicate pending/processing regeneration jobs.
-      await tx
+      // duplicate pending/processing regeneration jobs. Lock the plan row first;
+      // if it doesn't exist, abort to avoid creating jobQueue rows for non-existent plans.
+      const [lockedPlan] = await tx
         .select({ id: learningPlans.id })
         .from(learningPlans)
         .where(eq(learningPlans.id, planId))
         .limit(1)
         .for('update');
+
+      if (!lockedPlan?.id) {
+        throw new Error(`Plan not found: ${planId}`);
+      }
 
       const [existingActiveJob] = await tx
         .select({ id: jobQueue.id })
@@ -257,7 +276,8 @@ export async function insertJobRecord({
 }
 
 export async function claimNextPendingJob(
-  types: JobType[]
+  types: JobType[],
+  dbClient: JobsDbClient = getDb()
 ): Promise<Job | null> {
   if (types.length === 0) {
     return null;
@@ -266,7 +286,7 @@ export async function claimNextPendingJob(
 
   const startTime = new Date();
 
-  const result = await db.transaction(async (tx) => {
+  const result = await dbClient.transaction(async (tx) => {
     const rows = await tx
       .select({ id: jobQueue.id })
       .from(jobQueue)
@@ -304,9 +324,10 @@ export async function claimNextPendingJob(
 
 export async function completeJobRecord(
   jobId: string,
-  result: unknown
+  result: unknown,
+  dbClient: JobsDbClient = getDb()
 ): Promise<Job | null> {
-  return db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     const [current] = await tx
       .select()
       .from(jobQueue)
@@ -352,9 +373,10 @@ type ErrorHistoryEntry = {
 export async function failJobRecord(
   jobId: string,
   error: string,
-  options: FailJobOptions = {}
+  options: FailJobOptions = {},
+  dbClient: JobsDbClient = getDb()
 ): Promise<Job | null> {
-  return db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     const [current] = await tx
       .select()
       .from(jobQueue)
@@ -461,8 +483,11 @@ function appendErrorHistoryEntry(
   };
 }
 
-export async function findJobsByPlan(planId: string): Promise<Job[]> {
-  const rows = await db
+export async function findJobsByPlan(
+  planId: string,
+  dbClient: JobsDbClient = getDb()
+): Promise<Job[]> {
+  const rows = await dbClient
     .select()
     .from(jobQueue)
     .where(eq(jobQueue.planId, planId))
@@ -474,9 +499,10 @@ export async function findJobsByPlan(planId: string): Promise<Job[]> {
 export async function countUserJobsSince(
   userId: string,
   type: JobType,
-  since: Date
+  since: Date,
+  dbClient: JobsDbClient = getDb()
 ): Promise<number> {
-  const [row] = await db
+  const [row] = await dbClient
     .select({ value: sql<number>`count(*)::int` })
     .from(jobQueue)
     .where(

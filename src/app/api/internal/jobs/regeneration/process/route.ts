@@ -19,11 +19,18 @@ function tokensMatch(expectedToken: string, providedToken: string): boolean {
   const expected = Buffer.from(expectedToken);
   const provided = Buffer.from(providedToken);
 
-  if (expected.length !== provided.length) {
-    return false;
-  }
+  const paddedProvided =
+    provided.length === expected.length
+      ? provided
+      : provided.length > expected.length
+        ? provided.subarray(0, expected.length)
+        : Buffer.concat([
+            provided,
+            Buffer.alloc(expected.length - provided.length),
+          ]);
+  const matched = timingSafeEqual(expected, paddedProvided);
 
-  return timingSafeEqual(expected, provided);
+  return provided.length === expected.length && matched;
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -88,7 +95,9 @@ export async function POST(request: Request): Promise<Response> {
       'Failed to drain regeneration queue from internal route'
     );
 
-    const message = error instanceof Error ? error.message : 'drain failed';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'regeneration failed' },
+      { status: 500 }
+    );
   }
 }

@@ -1,13 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('@/lib/pdf/extract', () => ({
-  extractTextFromPdf: vi.fn(),
-  getPdfPageCountFromBuffer: vi.fn(),
-}));
-
-vi.mock('@/lib/security/malware-scanner', () => ({
-  scanBufferForMalware: vi.fn(),
-}));
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from 'vitest';
 
 import { clearTestUser, setTestUser } from '@/../tests/helpers/auth';
 import {
@@ -15,17 +14,22 @@ import {
   ensureUser,
   resetDbForIntegrationTestFile,
 } from '@/../tests/helpers/db';
-import { POST } from '@/app/api/v1/plans/from-pdf/extract/route';
 import {
-  extractTextFromPdf,
-  getPdfPageCountFromBuffer,
-} from '@/lib/pdf/extract';
-import { scanBufferForMalware } from '@/lib/security/malware-scanner';
+  createPostHandler,
+  type PdfExtractRouteDeps,
+} from '@/app/api/v1/plans/from-pdf/extract/route';
 
 const BASE_URL = 'http://localhost/api/v1/plans/from-pdf/extract';
 
 const PDF_BYTES = Buffer.from('%PDF-1.4\n%%EOF', 'utf8');
 const PDF_FILE_NAME = 'sample.pdf';
+
+let mockExtractTextFromPdf: Mock<PdfExtractRouteDeps['extractTextFromPdf']>;
+let mockGetPdfPageCountFromBuffer: Mock<
+  PdfExtractRouteDeps['getPdfPageCountFromBuffer']
+>;
+let mockScanBufferForMalware: Mock<PdfExtractRouteDeps['scanBufferForMalware']>;
+let postHandler: ReturnType<typeof createPostHandler>;
 
 const createMultipartPdfBody = (
   fileBytes: Buffer,
@@ -77,11 +81,16 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
   beforeEach(async () => {
     await resetDbForIntegrationTestFile();
     await ensureStripeWebhookEvents();
-    vi.mocked(extractTextFromPdf).mockReset();
-    vi.mocked(getPdfPageCountFromBuffer).mockReset();
-    vi.mocked(getPdfPageCountFromBuffer).mockResolvedValue(1);
-    vi.mocked(scanBufferForMalware).mockReset();
-    vi.mocked(scanBufferForMalware).mockResolvedValue({ clean: true });
+    mockExtractTextFromPdf = vi.fn();
+    mockGetPdfPageCountFromBuffer = vi.fn();
+    mockScanBufferForMalware = vi.fn();
+    mockGetPdfPageCountFromBuffer.mockResolvedValue(1);
+    mockScanBufferForMalware.mockResolvedValue({ clean: true });
+    postHandler = createPostHandler({
+      extractTextFromPdf: mockExtractTextFromPdf,
+      getPdfPageCountFromBuffer: mockGetPdfPageCountFromBuffer,
+      scanBufferForMalware: mockScanBufferForMalware,
+    });
   });
 
   afterEach(() => {
@@ -95,7 +104,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     setTestUser(authUserId);
     await ensureUser({ authUserId, email: authEmail });
 
-    vi.mocked(extractTextFromPdf).mockResolvedValue({
+    mockExtractTextFromPdf.mockResolvedValue({
       success: true,
       text: 'Hello PDF',
       pageCount: 1,
@@ -108,7 +117,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     });
 
     const request = createPdfRequest();
-    const response = await POST(request);
+    const response = await postHandler(request);
 
     expect(response.status).toBe(200);
     const payload = await response.json();
@@ -136,7 +145,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     setTestUser(authUserId);
     await ensureUser({ authUserId, email: authEmail });
 
-    vi.mocked(extractTextFromPdf).mockResolvedValue({
+    mockExtractTextFromPdf.mockResolvedValue({
       success: true,
       text: 'x'.repeat(200_000),
       pageCount: 1,
@@ -153,12 +162,19 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     });
 
     const request = createPdfRequest();
-    const response = await POST(request);
+    const response = await postHandler(request);
 
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.success).toBe(true);
     expect(payload.extraction.truncation.truncated).toBe(true);
+    expect(payload.extraction.truncation.maxBytes).toSatisfy(
+      (value: unknown) =>
+        typeof value === 'number' && Number.isFinite(value) && value > 0
+    );
+    expect(payload.extraction.truncation.returnedBytes).toSatisfy(
+      (value: unknown) => typeof value === 'number' && Number.isFinite(value)
+    );
     expect(payload.extraction.truncation.returnedBytes).toBeLessThanOrEqual(
       payload.extraction.truncation.maxBytes
     );
@@ -171,14 +187,14 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     setTestUser(authUserId);
     await ensureUser({ authUserId, email: authEmail });
 
-    vi.mocked(extractTextFromPdf).mockResolvedValue({
+    mockExtractTextFromPdf.mockResolvedValue({
       success: false,
       error: 'no_text',
       message: 'PDF does not contain extractable text.',
     });
 
     const request = createPdfRequest();
-    const response = await POST(request);
+    const response = await postHandler(request);
 
     expect(response.status).toBe(400);
     const payload = await response.json();
@@ -193,19 +209,19 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     setTestUser(authUserId);
     await ensureUser({ authUserId, email: authEmail });
 
-    vi.mocked(scanBufferForMalware).mockResolvedValue({
+    mockScanBufferForMalware.mockResolvedValue({
       clean: false,
       threat: 'MetaDefender-Infected',
     });
 
     const request = createPdfRequest();
-    const response = await POST(request);
+    const response = await postHandler(request);
 
     expect(response.status).toBe(400);
     const payload = await response.json();
     expect(payload.success).toBe(false);
     expect(payload.code).toBe('MALWARE_DETECTED');
-    expect(extractTextFromPdf).not.toHaveBeenCalled();
+    expect(mockExtractTextFromPdf).not.toHaveBeenCalled();
   });
 
   it('returns 500 when malware scan fails (fail-closed)', async () => {
@@ -215,25 +231,23 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     setTestUser(authUserId);
     await ensureUser({ authUserId, email: authEmail });
 
-    vi.mocked(scanBufferForMalware).mockRejectedValue(
-      new Error('Scanner timeout')
-    );
+    mockScanBufferForMalware.mockRejectedValue(new Error('Scanner timeout'));
 
     const request = createPdfRequest();
-    const response = await POST(request);
+    const response = await postHandler(request);
 
     expect(response.status).toBe(500);
     const payload = await response.json();
     expect(payload.success).toBe(false);
     expect(payload.code).toBe('SCAN_FAILED');
-    expect(extractTextFromPdf).not.toHaveBeenCalled();
+    expect(mockExtractTextFromPdf).not.toHaveBeenCalled();
   });
 
   it('returns 401 when unauthenticated', async () => {
     clearTestUser();
 
     const request = createPdfRequest();
-    const response = await POST(request);
+    const response = await postHandler(request);
 
     expect(response.status).toBe(401);
   });
@@ -252,7 +266,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
       },
     });
 
-    const response = await POST(request);
+    const response = await postHandler(request);
 
     expect(response.status).toBe(411);
     const payload = await response.json();
@@ -277,7 +291,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
       body,
     });
 
-    const response = await POST(request);
+    const response = await postHandler(request);
 
     expect(response.status).toBe(400);
     const payload = await response.json();

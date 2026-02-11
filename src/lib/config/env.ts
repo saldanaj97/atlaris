@@ -70,12 +70,22 @@ function toNumber(
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+/**
+ * Parses a string to a boolean. Use for consistent env boolean parsing.
+ * Truthy (case-insensitive, trimmed): 'true' | '1'. All other non-empty values are false.
+ * TODO: Prefer toBoolean for all boolean env vars; migrate any ad-hoc parsers (e.g. webhookDevMode was migrated) for consistency.
+ *
+ * @param value - Raw string (e.g. from process.env)
+ * @param fallback - Returned when value is undefined
+ * @returns Parsed boolean
+ */
 function toBoolean(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined) {
     return fallback;
   }
 
-  return value.toLowerCase() === 'true';
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'true' || normalized === '1';
 }
 
 export function optionalEnv(key: string): string | undefined {
@@ -331,7 +341,7 @@ export const stripeEnv = {
     return getServerOptional('STRIPE_WEBHOOK_SECRET');
   },
   get webhookDevMode() {
-    return getServerOptional('STRIPE_WEBHOOK_DEV_MODE') === '1';
+    return toBoolean(getServerOptional('STRIPE_WEBHOOK_DEV_MODE'), false);
   },
   pricing: {
     get starterMonthly() {
@@ -524,22 +534,26 @@ export const regenerationQueueEnv = {
   },
   /**
    * Maximum jobs to process per worker drain invocation.
+   * Explicit 0 means no work per drain (caller can use this to disable processing).
    */
   get maxJobsPerDrain() {
     const parsed = toNumber(
       getServerOptional('REGENERATION_MAX_JOBS_PER_DRAIN')
     );
-    if (!parsed || !Number.isFinite(parsed) || parsed < 1) {
+    // toNumber returns undefined for NaN; Number.isFinite rejects Infinity.
+    if (parsed === undefined || !Number.isFinite(parsed) || parsed < 0) {
       return 1;
     }
-
+    if (parsed === 0) {
+      return 0;
+    }
     return Math.floor(parsed);
   },
   /**
    * Shared bearer token used by scheduled worker trigger calls.
    */
   get workerToken() {
-    return getServerOptional('REGENERATION_WORKER_TOKEN');
+    return getServerRequiredProdOnly('REGENERATION_WORKER_TOKEN');
   },
 } as const;
 
