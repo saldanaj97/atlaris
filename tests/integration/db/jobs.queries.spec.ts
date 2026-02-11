@@ -1,12 +1,12 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { db } from '@/lib/db/service-role';
 import {
+  cleanupOldJobs,
   getFailedJobs,
   getJobStats,
-  cleanupOldJobs,
 } from '@/lib/db/queries/jobs';
 import { jobQueue, learningPlans } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { ensureUser } from '../../helpers/db';
 
 describe('Job Queries', () => {
@@ -68,7 +68,7 @@ describe('Job Queries', () => {
         },
       ]);
 
-      const failedJobs = await getFailedJobs(10);
+      const failedJobs = await getFailedJobs(10, db);
 
       expect(failedJobs.length).toBe(1);
       expect(failedJobs[0].status).toBe('failed');
@@ -93,7 +93,7 @@ describe('Job Queries', () => {
 
       await db.insert(jobQueue).values(jobValues);
 
-      const failedJobs = await getFailedJobs(3);
+      const failedJobs = await getFailedJobs(3, db);
 
       expect(failedJobs.length).toBe(3);
     });
@@ -129,7 +129,7 @@ describe('Job Queries', () => {
         },
       ]);
 
-      const failedJobs = await getFailedJobs(10);
+      const failedJobs = await getFailedJobs(10, db);
 
       expect(failedJobs.length).toBeGreaterThanOrEqual(2);
       expect(failedJobs[0].error).toBe('Recent error');
@@ -174,7 +174,7 @@ describe('Job Queries', () => {
         },
       ]);
 
-      const failedJobs = await getFailedJobs(10);
+      const failedJobs = await getFailedJobs(10, db);
 
       expect(failedJobs.length).toBe(0);
     });
@@ -236,7 +236,7 @@ describe('Job Queries', () => {
         },
       ]);
 
-      const stats = await getJobStats(since);
+      const stats = await getJobStats(since, db);
 
       expect(stats.pendingCount).toBe(1);
       expect(stats.processingCount).toBe(1);
@@ -280,7 +280,7 @@ describe('Job Queries', () => {
       });
 
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000); // Last 24 hours
-      const stats = await getJobStats(since);
+      const stats = await getJobStats(since, db);
 
       // Should only count the recent job
       expect(stats.completedCount).toBe(1);
@@ -320,7 +320,7 @@ describe('Job Queries', () => {
         },
       ]);
 
-      const stats = await getJobStats(since);
+      const stats = await getJobStats(since, db);
 
       expect(stats.averageProcessingTimeMs).not.toBeNull();
       // Average should be around 3000ms (2000 + 4000) / 2
@@ -358,7 +358,7 @@ describe('Job Queries', () => {
         },
       ]);
 
-      const stats = await getJobStats(since);
+      const stats = await getJobStats(since, db);
 
       expect(stats.failureRate).toBe(0);
     });
@@ -398,7 +398,7 @@ describe('Job Queries', () => {
       });
 
       const threshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-      const deletedCount = await cleanupOldJobs(threshold);
+      const deletedCount = await cleanupOldJobs(threshold, db);
 
       expect(deletedCount).toBeGreaterThanOrEqual(1);
 
@@ -430,7 +430,7 @@ describe('Job Queries', () => {
       });
 
       const threshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const deletedCount = await cleanupOldJobs(threshold);
+      const deletedCount = await cleanupOldJobs(threshold, db);
 
       expect(deletedCount).toBeGreaterThanOrEqual(1);
     });
@@ -467,7 +467,7 @@ describe('Job Queries', () => {
       ]);
 
       const threshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      await cleanupOldJobs(threshold);
+      await cleanupOldJobs(threshold, db);
 
       // Should not delete these jobs
       const remainingJobs = await db.select().from(jobQueue);
@@ -481,7 +481,7 @@ describe('Job Queries', () => {
 
     it('should return zero when no jobs to clean up', async () => {
       const threshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const deletedCount = await cleanupOldJobs(threshold);
+      const deletedCount = await cleanupOldJobs(threshold, db);
 
       expect(deletedCount).toBe(0);
     });
@@ -506,7 +506,7 @@ describe('Job Queries', () => {
       await db.insert(jobQueue).values(jobValues);
 
       const threshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const deletedCount = await cleanupOldJobs(threshold);
+      const deletedCount = await cleanupOldJobs(threshold, db);
 
       expect(deletedCount).toBe(20);
     });

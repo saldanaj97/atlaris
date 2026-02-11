@@ -3,8 +3,10 @@ import { NextResponse } from 'next/server';
 
 import { toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
-import { db } from '@/lib/db/service-role';
+// Intentional: service-role bypasses RLS for system-wide metrics; see comment in GET handler below.
 import { jobQueue } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
+import { JOB_TYPES } from '@/lib/jobs/types';
 
 const STUCK_JOB_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
 const BACKLOG_THRESHOLD = 100; // pending jobs threshold
@@ -21,6 +23,12 @@ interface HealthCheckResponse {
     backlog: {
       status: 'ok' | 'fail';
       count: number;
+      threshold: number;
+    };
+    regeneration: {
+      status: 'ok' | 'fail';
+      pendingCount: number;
+      stuckProcessingCount: number;
       threshold: number;
     };
   };
@@ -40,7 +48,6 @@ export async function GET(request: Request) {
   // Health checks need to see all jobs across all users, not just the authenticated user's jobs
 
   try {
-    // Check for stuck jobs (processing for > 10 minutes)
     const [stuckJobsResult] = await db
       .select({
         count: sql<number>`count(*)::int`,
@@ -55,7 +62,6 @@ export async function GET(request: Request) {
 
     const stuckJobCount = stuckJobsResult?.count ?? 0;
 
-    // Check for backlog (pending jobs)
     const [backlogResult] = await db
       .select({
         count: sql<number>`count(*)::int`,
@@ -64,6 +70,34 @@ export async function GET(request: Request) {
       .where(eq(jobQueue.status, 'pending'));
 
     const backlogCount = backlogResult?.count ?? 0;
+
+    const [pendingRegenerationResult] = await db
+      .select({
+        count: sql<number>`count(*)::int`,
+      })
+      .from(jobQueue)
+      .where(
+        and(
+          eq(jobQueue.status, 'pending'),
+          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION)
+        )
+      );
+
+    const [stuckRegenerationResult] = await db
+      .select({
+        count: sql<number>`count(*)::int`,
+      })
+      .from(jobQueue)
+      .where(
+        and(
+          eq(jobQueue.status, 'processing'),
+          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+          lt(jobQueue.startedAt, stuckThreshold)
+        )
+      );
+
+    const pendingRegenerationCount = pendingRegenerationResult?.count ?? 0;
+    const stuckRegenerationCount = stuckRegenerationResult?.count ?? 0;
 
     const stuckJobsCheck = {
       status: stuckJobCount > 0 ? ('fail' as const) : ('ok' as const),
@@ -78,8 +112,17 @@ export async function GET(request: Request) {
       threshold: BACKLOG_THRESHOLD,
     };
 
+    const regenerationCheck = {
+      status: stuckRegenerationCount > 0 ? ('fail' as const) : ('ok' as const),
+      pendingCount: pendingRegenerationCount,
+      stuckProcessingCount: stuckRegenerationCount,
+      threshold: STUCK_JOB_THRESHOLD_MS,
+    };
+
     const isHealthy =
-      stuckJobsCheck.status === 'ok' && backlogCheck.status === 'ok';
+      stuckJobsCheck.status === 'ok' &&
+      backlogCheck.status === 'ok' &&
+      regenerationCheck.status === 'ok';
 
     const response: HealthCheckResponse = {
       status: isHealthy ? 'healthy' : 'unhealthy',
@@ -87,6 +130,7 @@ export async function GET(request: Request) {
       checks: {
         stuckJobs: stuckJobsCheck,
         backlog: backlogCheck,
+        regeneration: regenerationCheck,
       },
     };
 
@@ -98,6 +142,11 @@ export async function GET(request: Request) {
       if (backlogCheck.status === 'fail') {
         reasons.push(
           `backlog of ${backlogCount} pending jobs exceeds threshold`
+        );
+      }
+      if (regenerationCheck.status === 'fail') {
+        reasons.push(
+          `${stuckRegenerationCount} stuck regeneration job(s) detected`
         );
       }
       response.reason = reasons.join('; ');
@@ -121,6 +170,12 @@ export async function GET(request: Request) {
             threshold: STUCK_JOB_THRESHOLD_MS,
           },
           backlog: { status: 'fail', count: 0, threshold: BACKLOG_THRESHOLD },
+          regeneration: {
+            status: 'fail',
+            pendingCount: 0,
+            stuckProcessingCount: 0,
+            threshold: STUCK_JOB_THRESHOLD_MS,
+          },
         },
         reason: `Health check failed: ${errorMessage}`,
       } satisfies HealthCheckResponse,

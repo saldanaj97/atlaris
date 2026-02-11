@@ -133,6 +133,16 @@ export type PlanRegenerationOverridesInput = z.infer<
   typeof planRegenerationOverridesSchema
 >;
 
+export const planRegenerationRequestSchema = z
+  .object({
+    overrides: planRegenerationOverridesSchema.optional(),
+  })
+  .strict();
+
+export type PlanRegenerationRequestInput = z.infer<
+  typeof planRegenerationRequestSchema
+>;
+
 const createLearningPlanObject = z
   .object({
     topic: topicSchema.optional(),

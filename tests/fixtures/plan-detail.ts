@@ -206,8 +206,6 @@ export function buildPlanDetail(
     completedTasks: 0,
     latestAttempt: null,
     attemptsCount: 0,
-    latestJobStatus: null,
-    latestJobError: null,
     ...overrides,
   } satisfies LearningPlanDetail;
 }

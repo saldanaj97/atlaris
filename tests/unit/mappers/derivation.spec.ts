@@ -11,7 +11,10 @@ import {
 
 describe('derived plan status mapping', () => {
   it('returns pending when no modules and attempts below cap', () => {
-    const detail = buildPlanDetail({ attemptsCount: 2 });
+    const detail = buildPlanDetail({
+      attemptsCount: 2,
+      plan: buildPlan({ generationStatus: 'ready', modules: [] }),
+    });
     const client = mapDetailToClient(detail);
     expect(client?.status).toBe('pending');
   });
@@ -49,7 +52,6 @@ describe('derived plan status mapping', () => {
         classification: 'capped',
         status: 'failure',
       }),
-      latestJobStatus: 'failed',
     });
     const client = mapDetailToClient(detail);
     expect(client?.status).toBe('failed');
@@ -67,7 +69,6 @@ describe('derived plan status mapping', () => {
         classification: 'capped',
         status: 'failure',
       }),
-      latestJobStatus: 'failed',
     });
     const client = mapDetailToClient(detail);
     expect(client?.status).toBe('failed');
