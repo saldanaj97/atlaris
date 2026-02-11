@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
 import type { GenerationInput, IsoDateString } from '@/lib/ai/types';
-import { db } from '@/lib/db/service-role';
 import { learningPlans } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import { parsePersistedPdfContext } from '@/lib/pdf/context';
 import { resolveUserTier } from '@/lib/stripe/usage';
@@ -43,7 +43,21 @@ const toIsoDateString = (value: string | null): IsoDateString | undefined => {
 };
 
 const isRetryableClassification = (classification: string): boolean => {
-  return classification === 'timeout' || classification === 'rate_limit';
+  return (
+    classification === 'timeout' ||
+    classification === 'rate_limit' ||
+    classification === 'provider_error'
+  );
+};
+
+const resolveRegenerationNotes = (
+  overrides: PlanRegenerationJobPayload['overrides']
+): GenerationInput['notes'] => {
+  if (!overrides || overrides.notes === undefined) {
+    return undefined;
+  }
+
+  return overrides.notes;
 };
 
 function buildGenerationInput(
@@ -61,7 +75,7 @@ function buildGenerationInput(
 
   return {
     topic: overrides?.topic ?? plan.topic,
-    notes: overrides?.notes ?? undefined,
+    notes: resolveRegenerationNotes(overrides),
     pdfContext:
       plan.origin === 'pdf'
         ? parsePersistedPdfContext(plan.extractedContext)
@@ -114,14 +128,22 @@ export async function processNextRegenerationJob(): Promise<ProcessRegenerationJ
     );
 
     if (result.status === 'success') {
+      const modules: ParsedModule[] = result.modules;
+      const modulesCount = modules.length;
+      const tasksCount = modules.reduce(
+        (total, module) => total + module.tasks.length,
+        0
+      );
+      const durationMs =
+        Number.isFinite(result.durationMs) && result.durationMs >= 0
+          ? result.durationMs
+          : 0;
+
       await completeJob(job.id, {
         planId: plan.id,
-        modulesCount: result.modules.length,
-        tasksCount: result.modules.reduce(
-          (total, module) => total + module.tasks.length,
-          0
-        ),
-        durationMs: result.durationMs,
+        modulesCount,
+        tasksCount,
+        durationMs,
       });
 
       return {
@@ -179,7 +201,8 @@ export interface DrainRegenerationQueueResult {
 export async function drainRegenerationQueue(options?: {
   maxJobs?: number;
 }): Promise<DrainRegenerationQueueResult> {
-  const maxJobs = Math.max(1, options?.maxJobs ?? 1);
+  // Explicit maxJobs === 0 is a no-op: no jobs are processed.
+  const maxJobs = Math.max(0, options?.maxJobs ?? 1);
 
   let processedCount = 0;
   let completedCount = 0;
