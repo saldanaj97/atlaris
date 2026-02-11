@@ -285,6 +285,14 @@ export const generationAttempts = pgTable(
         to: 'authenticated',
         withCheck: planOwnership,
       }),
+
+      // Users can update attempts only for plans they own
+      pgPolicy('generation_attempts_update', {
+        for: 'update',
+        to: 'authenticated',
+        using: planOwnership,
+        withCheck: planOwnership,
+      }),
     ];
   }
 ).enableRLS();
