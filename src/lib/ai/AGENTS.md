@@ -107,10 +107,11 @@ onFirstModuleDetected: () => timeout.notifyFirstModule();
 // Mock provider with deterministic output:
 const provider = new MockGenerationProvider({ deterministicSeed: 42 });
 
-// Test captures input sent to provider:
+// Test captures input sent to provider (when appEnv.isTest):
 globalThis.__capturedInputs = [];
 await runGenerationAttempt(...);
 expect(globalThis.__capturedInputs[0].input.topic).toBe('TypeScript');
+// Capture is performed by captureForTesting in src/lib/ai/capture-for-testing.ts
 ```
 
 ## Anti-Patterns

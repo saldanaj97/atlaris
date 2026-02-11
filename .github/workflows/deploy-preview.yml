@@ -77,6 +77,9 @@ jobs:
       # Generate migrations from schema changes (no DB needed).
       # Commit and push new migration files so they are part of the PR.
       - name: Generate migrations
+        env:
+          DATABASE_URL: ${{ steps.create-branch.outputs.db_url_pooled }}
+          DATABASE_URL_NON_POOLING: ${{ steps.create-branch.outputs.db_url }}
         run: pnpm db:generate
 
       - name: Commit and push generated migrations

@@ -9,7 +9,7 @@ import {
   getGenerationProviderWithModel,
 } from '@/lib/ai/provider-factory';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import {
   ensurePlanDurationAllowed,
@@ -20,8 +20,16 @@ import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
+import { logger } from '@/lib/logging/logger';
+import { sanitizePdfContextForPersistence } from '@/lib/pdf/context';
+import { verifyAndConsumePdfExtractionProof } from '@/lib/security/pdf-extraction-proof';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
+import {
+  atomicCheckAndIncrementPdfUsage,
+  atomicCheckAndInsertPlan,
+  decrementPdfPlanUsage,
+  resolveUserTier,
+} from '@/lib/stripe/usage';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
@@ -35,7 +43,7 @@ import {
 } from './helpers';
 
 export const POST = withErrorBoundary(
-  withAuth(async ({ req, userId }) => {
+  withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
     let body: CreateLearningPlanInput;
     try {
       body = createLearningPlanSchema.parse(await req.json());
@@ -53,9 +61,9 @@ export const POST = withErrorBoundary(
       );
     }
 
-    await checkPlanGenerationRateLimit(user.id);
-
     const db = getDb();
+    await checkPlanGenerationRateLimit(user.id, db);
+
     const userTier: SubscriptionTier = await resolveUserTier(user.id, db);
     const normalization = normalizePlanDurationForTier({
       tier: userTier,
@@ -83,9 +91,58 @@ export const POST = withErrorBoundary(
       });
     }
 
+    const origin = body.origin ?? 'ai';
+
+    const invalidPdfProofResponse = () =>
+      jsonError('Invalid or expired PDF extraction proof.', { status: 403 });
+
+    if (origin === 'pdf') {
+      if (
+        !body.extractedContent ||
+        !body.pdfProofToken ||
+        !body.pdfExtractionHash
+      ) {
+        return invalidPdfProofResponse();
+      }
+
+      const proofVerified = await verifyAndConsumePdfExtractionProof({
+        authUserId: userId,
+        extractedContent: body.extractedContent,
+        extractionHash: body.pdfExtractionHash,
+        token: body.pdfProofToken,
+        dbClient: db,
+      });
+
+      if (!proofVerified) {
+        return invalidPdfProofResponse();
+      }
+
+      const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id, db);
+      if (!pdfUsage.allowed) {
+        return jsonError('PDF plan quota exceeded for this month.', {
+          status: 403,
+          code: 'QUOTA_EXCEEDED',
+        });
+      }
+    }
+
+    const extractedContext =
+      origin === 'pdf' && body.extractedContent
+        ? sanitizePdfContextForPersistence(body.extractedContent)
+        : null;
+
+    const topic =
+      origin === 'pdf' &&
+      extractedContext &&
+      extractedContext.mainTopic &&
+      extractedContext.mainTopic.trim().length > 0
+        ? extractedContext.mainTopic.trim()
+        : body.topic;
+
     const generationInput = {
-      topic: body.topic,
+      topic,
       notes: body.notes ?? null,
+      pdfContext: extractedContext,
       skillLevel: body.skillLevel,
       weeklyHours: body.weeklyHours,
       learningStyle: body.learningStyle,
@@ -93,20 +150,36 @@ export const POST = withErrorBoundary(
       deadlineDate,
     };
 
-    const plan = await atomicCheckAndInsertPlan(
-      user.id,
-      {
-        topic: generationInput.topic,
-        skillLevel: generationInput.skillLevel,
-        weeklyHours: generationInput.weeklyHours,
-        learningStyle: generationInput.learningStyle,
-        visibility: 'private',
-        origin: 'ai',
-        startDate: generationInput.startDate,
-        deadlineDate: generationInput.deadlineDate,
-      },
-      db
-    );
+    let plan: { id: string };
+    try {
+      plan = await atomicCheckAndInsertPlan(
+        user.id,
+        {
+          topic: generationInput.topic,
+          skillLevel: generationInput.skillLevel,
+          weeklyHours: generationInput.weeklyHours,
+          learningStyle: generationInput.learningStyle,
+          visibility: 'private',
+          origin,
+          extractedContext,
+          startDate: generationInput.startDate,
+          deadlineDate: generationInput.deadlineDate,
+        },
+        db
+      );
+    } catch (err) {
+      if (origin === 'pdf') {
+        try {
+          await decrementPdfPlanUsage(user.id, db);
+        } catch (rollbackErr) {
+          logger.error(
+            { rollbackErr, userId: user.id },
+            'Failed to rollback pdf plan usage'
+          );
+        }
+      }
+      throw err;
+    }
 
     // TODO: [OPENROUTER-MIGRATION] Once preferredAiModel column exists:
     // const userPreferredModel = user.preferredAiModel;
@@ -143,7 +216,7 @@ export const POST = withErrorBoundary(
       try {
         const result = await runGenerationAttempt(
           { planId: plan.id, userId: user.id, input: generationInput },
-          { provider, signal: req.signal }
+          { provider, signal: req.signal, dbClient: db }
         );
 
         if (result.status === 'success') {

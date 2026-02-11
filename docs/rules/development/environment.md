@@ -16,6 +16,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `neonEnv` - Neon-specific configuration
 - `stripeEnv` - Stripe API keys and settings
 - `aiEnv` - AI/LLM provider configuration
+- `avScannerEnv` - PDF upload malware scanning configuration
 - `loggingEnv` - Logging configuration
 
 ### Adding New Variables
@@ -33,6 +34,36 @@ If you need a new variable:
 | `CLERK_SESSION_TOKEN` | Manual API testing authentication | No       |
 
 > **Note**: `CLERK_SESSION_TOKEN` is only for `scripts/test-plan-generation.sh`. Not required for normal development.
+
+### AV Scanner Variables
+
+| Variable                   | Purpose                                        | Required                                           |
+| -------------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| `AV_PROVIDER`              | AV backend selector (`metadefender` or `none`) | Yes                                                |
+| `AV_METADEFENDER_API_KEY`  | API key for MetaDefender Cloud                 | Required when `AV_PROVIDER=metadefender`           |
+| `AV_METADEFENDER_BASE_URL` | MetaDefender API base URL                      | No (defaults to `https://api.metadefender.com/v4`) |
+| `AV_SCAN_TIMEOUT_MS`       | End-to-end scan timeout in milliseconds        | No (defaults to `30000`)                           |
+
+Production guidance:
+
+- Do not run with `AV_PROVIDER=none` in production.
+- Keep fail-closed behavior enabled on scan timeout/error.
+- Rotate `AV_METADEFENDER_API_KEY` as part of normal secret hygiene.
+
+### Vercel AV Rollout Runbook
+
+Use this sequence to safely enable AV in Vercel environments:
+
+1. Add `AV_METADEFENDER_API_KEY` in Vercel Project Settings for Preview and Production.
+2. Set `AV_PROVIDER=metadefender` in Preview only.
+3. Optionally set `AV_SCAN_TIMEOUT_MS` (start with `30000`).
+4. Deploy to Preview and verify PDF upload behavior:
+   - clean PDF succeeds
+   - mocked infected sample returns `MALWARE_DETECTED`
+   - scan failure returns `SCAN_FAILED` (fail-closed)
+5. Monitor server logs for `provider`, `latencyMs`, and verdict fields.
+6. Promote same env settings to Production after Preview checks pass.
+7. Keep rollback ready: switch `AV_PROVIDER=none` only for emergency mitigation windows.
 
 ## Logging
 

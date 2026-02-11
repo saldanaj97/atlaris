@@ -13,6 +13,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import type { PdfContext } from '@/lib/pdf/context';
+
 import {
   generationStatus,
   learningStyle,
@@ -43,6 +45,9 @@ export const learningPlans = pgTable(
     deadlineDate: date('deadline_date'),
     visibility: text('visibility').notNull().default('private'),
     origin: planOrigin('origin').notNull().default('ai'),
+    // extracted_context: PdfContext | null. DB CHECK enforces shape when non-null;
+    // all writes must go through typed Drizzle client using sanitizePdfContextForPersistence.
+    extractedContext: jsonb('extracted_context').$type<PdfContext | null>(),
     generationStatus: generationStatus('generation_status')
       .notNull()
       .default('generating'),
@@ -52,6 +57,19 @@ export const learningPlans = pgTable(
   },
   (table) => [
     check('weekly_hours_check', sql`${table.weeklyHours} >= 0`),
+    check(
+      'extracted_context_pdf_shape',
+      sql`(
+        ${table.extractedContext} IS NULL
+        OR (
+          jsonb_typeof(${table.extractedContext}) = 'object'
+          AND (${table.extractedContext} ? 'mainTopic')
+          AND (${table.extractedContext} ? 'sections')
+          AND jsonb_typeof(${table.extractedContext}->'sections') = 'array'
+          AND jsonb_typeof(${table.extractedContext}->'mainTopic') = 'string'
+        )
+      )`
+    ),
     index('idx_learning_plans_user_id').on(table.userId),
     index('idx_learning_plans_user_quota').on(
       table.userId,

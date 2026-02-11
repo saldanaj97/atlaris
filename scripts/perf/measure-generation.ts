@@ -17,10 +17,11 @@ import {
   type ProviderGenerateResult,
   type ProviderMetadata,
 } from '@/lib/ai/provider';
-import { client, db, isClientInitialized } from '@/lib/db/service-role';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
+import { client, db, isClientInitialized } from '@/lib/db/service-role';
 
 interface Stats {
   count: number;
@@ -315,11 +316,14 @@ async function measureGenerationResponse(
       learningStyle: 'mixed',
     };
 
-    const result = await runGenerationAttempt({
-      planId: plan.id,
-      userId,
-      input,
-    });
+    const result = await runGenerationAttempt(
+      {
+        planId: plan.id,
+        userId,
+        input,
+      },
+      { dbClient: getDb() }
+    );
 
     attemptDurations.push(result.durationMs);
 
@@ -366,6 +370,7 @@ async function runSimulatedScenarios(userId: string) {
         extensionMs: 10_000,
         extensionThresholdMs: 9_500,
       },
+      dbClient: getDb(),
     }
   );
 
@@ -416,6 +421,7 @@ async function runSimulatedScenarios(userId: string) {
         extensionMs: 10_000,
         extensionThresholdMs: 9_500,
       },
+      dbClient: getDb(),
     }
   );
 

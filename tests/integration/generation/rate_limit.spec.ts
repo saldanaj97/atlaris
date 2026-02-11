@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { db } from '@/lib/db/service-role';
+import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -43,7 +44,7 @@ describe('generation integration - rate limit classification', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider }
+      { provider: mock.provider, dbClient: getDb() }
     );
 
     expect(result.status).toBe('failure');

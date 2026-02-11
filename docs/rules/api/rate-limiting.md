@@ -17,9 +17,9 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 
 ### Plan Generation Rate Limit
 
-| Limit   | Window     | Scope                   |
-| ------- | ---------- | ----------------------- |
-| 10 jobs | 60 minutes | Per user (DB-persisted) |
+| Limit       | Window     | Scope                          |
+| ----------- | ---------- | ------------------------------ |
+| 10 attempts | 60 minutes | Per user (generation_attempts) |
 
 ## Architecture
 
@@ -36,9 +36,9 @@ Located in `src/lib/api/user-rate-limit.ts`.
 
 Located in `src/lib/api/rate-limit.ts`.
 
-- **Storage**: Database (job_queue table)
-- **Key**: Internal user ID
-- **Scope**: Plan generation jobs only
+- **Storage**: Database (generation_attempts table)
+- **Key**: RLS-scoped (current user via session)
+- **Scope**: Actual generation attempts (stream + retry paths)
 - **Multi-instance note**: Globally consistent (database-backed)
 
 ## Usage in API Routes
@@ -82,9 +82,11 @@ Plan generation has an additional database-backed rate limit:
 
 ```typescript
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
+import { getDb } from '@/lib/db/runtime';
 
 // Inside handler, after user-based rate limit passes
-await checkPlanGenerationRateLimit(user.id); // Uses internal user ID
+const db = getDb();
+await checkPlanGenerationRateLimit(db); // Uses RLS-scoped generation_attempts count
 ```
 
 ## Response Headers

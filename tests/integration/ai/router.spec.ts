@@ -1,6 +1,7 @@
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { db } from '@/lib/db/service-role';
+import { getDb } from '@/lib/db/runtime';
 import { learningPlans, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
@@ -53,17 +54,20 @@ describe('AI Router (mock in tests)', () => {
       })
       .returning();
 
-    const result = await runGenerationAttempt({
-      planId: planRow.id,
-      userId,
-      input: {
-        topic: 'TypeScript',
-        skillLevel: 'beginner',
-        weeklyHours: 4,
-        learningStyle: 'mixed',
-        notes: null,
+    const result = await runGenerationAttempt(
+      {
+        planId: planRow.id,
+        userId,
+        input: {
+          topic: 'TypeScript',
+          skillLevel: 'beginner',
+          weeklyHours: 4,
+          learningStyle: 'mixed',
+          notes: null,
+        },
       },
-    });
+      { dbClient: getDb() }
+    );
 
     // In test setup, DB is truncated and direct insertion is allowed, but here we only assert result shape
     expect(result.status).toBe('success');

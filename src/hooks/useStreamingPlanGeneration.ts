@@ -42,13 +42,18 @@ export type StreamingPlanState = {
 
 /**
  * Extended Error type for streaming generation failures.
- * Includes optional HTTP status and planId for error recovery flows.
+ * Includes optional HTTP status, planId, and code for error recovery flows.
  */
 export type StreamingError = Error & {
   status?: number;
   planId?: string;
   data?: { planId?: string };
+  code?: string;
 };
+
+export function isStreamingError(error: unknown): error is StreamingError {
+  return error instanceof Error && typeof error === 'object';
+}
 
 const INITIAL_STATE: StreamingPlanState = {
   status: 'idle',
@@ -103,17 +108,26 @@ export function useStreamingPlanGeneration() {
       if (!response.ok || !response.body) {
         const fallbackMessage = 'Unable to start streaming plan generation.';
         let message = fallbackMessage;
+        let code: string | undefined;
         try {
-          const json = (await response.json()) as { error?: string };
+          const json = (await response.json()) as {
+            error?: string;
+            code?: string;
+          };
           if (json?.error) {
             message = json.error;
+          }
+          if (json?.code) {
+            code = json.code;
           }
         } catch {
           // ignore parse errors; use fallback
         }
-        const error = new Error(message);
-        // Attach status for callers that want to branch on HTTP codes
-        (error as Error & { status?: number }).status = response.status;
+        const error = new Error(message) as StreamingError;
+        error.status = response.status;
+        if (code) {
+          error.code = code;
+        }
         throw error;
       }
 
@@ -175,6 +189,7 @@ export function useStreamingPlanGeneration() {
               break;
             case 'error':
               errored = true;
+              const errorPlanId = event.data.planId ?? latestPlanId;
               setState((prev) => ({
                 ...prev,
                 status: 'error',
@@ -185,12 +200,13 @@ export function useStreamingPlanGeneration() {
                   retryable: event.data.retryable,
                 },
               }));
-              reject(
-                new Error(
-                  event.data.message ||
-                    'Plan generation failed. Please try again.'
-                )
-              );
+              const streamErr = new Error(
+                event.data.message ||
+                  'Plan generation failed. Please try again.'
+              ) as StreamingError;
+              streamErr.planId = errorPlanId ?? undefined;
+              streamErr.data = { planId: errorPlanId ?? undefined };
+              reject(streamErr);
               break;
           }
         };

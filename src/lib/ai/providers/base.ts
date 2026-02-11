@@ -7,12 +7,18 @@ import {
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
 import type { GenerationInput } from '@/lib/ai/provider';
 import { PlanSchema, type PlanOutput } from '@/lib/ai/schema';
+import type { ProviderUsage } from '@/lib/ai/types/provider.types';
 import { toStream } from '@/lib/ai/utils';
 
 export type PlanGenerationUsage = Pick<
   NonNullable<GenerateObjectResult<PlanOutput>['usage']>,
   'inputTokens' | 'outputTokens' | 'totalTokens'
 >;
+
+export interface GeneratePlanObjectResult {
+  plan: PlanOutput;
+  usage: PlanGenerationUsage | undefined;
+}
 
 type GeneratePlanObjectParams = {
   model: LanguageModel;
@@ -26,13 +32,15 @@ export async function generatePlanObject({
   input,
   maxOutputTokens,
   temperature,
-}: GeneratePlanObjectParams) {
+}: GeneratePlanObjectParams): Promise<GeneratePlanObjectResult> {
   const { object, usage } = await generateObject({
     model,
     schema: PlanSchema,
     system: buildSystemPrompt(),
     prompt: buildUserPrompt({
       topic: input.topic,
+      notes: input.notes,
+      pdfContext: input.pdfContext,
       skillLevel: input.skillLevel,
       learningStyle: input.learningStyle,
       weeklyHours: input.weeklyHours,
@@ -56,12 +64,23 @@ export type BuildPlanProviderResultParams = {
   model: string;
 };
 
+export interface BuildPlanProviderResultMetadata {
+  provider: string;
+  model: string;
+  usage: ProviderUsage;
+}
+
+export interface BuildPlanProviderResult {
+  stream: AsyncIterable<string>;
+  metadata: BuildPlanProviderResultMetadata;
+}
+
 export const buildPlanProviderResult = ({
   plan,
   usage,
   provider,
   model,
-}: BuildPlanProviderResultParams) => ({
+}: BuildPlanProviderResultParams): BuildPlanProviderResult => ({
   stream: toStream(plan),
   metadata: {
     provider,

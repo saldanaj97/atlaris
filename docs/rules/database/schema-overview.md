@@ -32,6 +32,7 @@ Defined in `src/lib/db/enums.ts`:
 - **Primary Keys**: UUID on all tables; `users.id` is internal PK
 - **Unique Constraints**: `users.clerk_user_id`, `users.email`
 - **Foreign Keys**: Generally `ON DELETE CASCADE`
+- **JSONB `extracted_context` (learning_plans)**: Enforces PdfContext shape when non-null via CHECK `extracted_context_pdf_shape`. All writes must go through the typed Drizzle client using `sanitizePdfContextForPersistence` from `@/lib/pdf/context`—raw SQL, migrations, or background jobs that insert invalid shapes will fail.
 - **Ordering**: `unique(plan_id, order)` on modules; `unique(module_id, order)` on tasks (order starts at 1)
 - **CHECK Constraints**: Non-negative integers for `weekly_hours`, `estimated_minutes`, `duration_minutes`, `cost_cents`, `attempts`, `max_attempts`
 - **Timestamps**: `created_at` defaults to `now()`; maintain `updated_at` in app logic

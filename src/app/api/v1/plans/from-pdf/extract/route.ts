@@ -10,7 +10,13 @@ import { json } from '@/lib/api/response';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { logger } from '@/lib/logging/logger';
 import { extractTextFromPdf } from '@/lib/pdf/extract';
+import type { ExtractedSection } from '@/lib/pdf/types';
 import { scanBufferForMalware } from '@/lib/security/malware-scanner';
+import {
+  computePdfExtractionHash,
+  issuePdfExtractionProof,
+  toPdfExtractionProofPayload,
+} from '@/lib/security/pdf-extraction-proof';
 
 export type PdfErrorCode =
   | 'FILE_TOO_LARGE'
@@ -20,7 +26,8 @@ export type PdfErrorCode =
   | 'PASSWORD_PROTECTED'
   | 'QUOTA_EXCEEDED'
   | 'MALWARE_DETECTED'
-  | 'SCAN_FAILED';
+  | 'SCAN_FAILED'
+  | 'PROOF_ISSUANCE_FAILED';
 
 const errorResponse = (message: string, code: PdfErrorCode, status: number) =>
   json({ success: false, error: message, code }, { status });
@@ -140,6 +147,32 @@ export const POST: PlainHandler = withErrorBoundary(
       return errorResponse(tierValidation.reason, tierValidation.code, status);
     }
 
+    const extractionProofInput: {
+      mainTopic: string;
+      sections: ExtractedSection[];
+    } = {
+      mainTopic: extraction.structure.suggestedMainTopic,
+      sections: extraction.structure.sections,
+    };
+    const extractionHash = computePdfExtractionHash(extractionProofInput);
+    let issuedProof: { token: string; expiresAt: Date };
+    try {
+      issuedProof = await issuePdfExtractionProof({
+        authUserId: userId,
+        extractionHash,
+      });
+    } catch (error) {
+      logger.error(
+        { userId: user.id, extractionHash, error },
+        'Proof issuance failed for PDF extraction'
+      );
+      return errorResponse(
+        'Proof generation failed, please retry',
+        'PROOF_ISSUANCE_FAILED',
+        500
+      );
+    }
+
     return json({
       success: true,
       extraction: {
@@ -148,6 +181,11 @@ export const POST: PlainHandler = withErrorBoundary(
         metadata: extraction.metadata,
         structure: extraction.structure,
       },
+      proof: toPdfExtractionProofPayload({
+        token: issuedProof.token,
+        extractionHash,
+        expiresAt: issuedProof.expiresAt,
+      }),
     });
   })
 );

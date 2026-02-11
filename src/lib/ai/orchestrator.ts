@@ -3,6 +3,7 @@ import {
   recordFailure,
   recordSuccess,
   startAttempt,
+  type AttemptsDbClient,
   type GenerationAttemptRecord,
 } from '@/lib/db/queries/attempts';
 import type { FailureClassification } from '@/lib/types/client';
@@ -81,7 +82,13 @@ export interface RunGenerationOptions {
   provider?: AiPlanGenerationProvider;
   timeoutConfig?: Partial<AdaptiveTimeoutConfig>;
   clock?: () => number;
-  dbClient?: Parameters<typeof startAttempt>[0]['dbClient'];
+  /**
+   * Required. Database client for attempt operations.
+   * Use request-scoped getDb() from @/lib/db/runtime in API routes to enforce RLS;
+   * use service-role db from @/lib/db/service-role for tests/workers/jobs.
+   * @see AttemptsDbClient
+   */
+  dbClient: AttemptsDbClient;
   now?: () => Date;
   signal?: AbortSignal;
 }
@@ -124,11 +131,21 @@ function getProvider(
 
 export async function runGenerationAttempt(
   context: GenerationAttemptContext,
-  options: RunGenerationOptions = {}
+  options: RunGenerationOptions
 ): Promise<GenerationResult> {
   const clock = options.clock ?? DEFAULT_CLOCK;
   const nowFn = options.now ?? (() => new Date());
   const dbClient = options.dbClient;
+
+  if (
+    dbClient == null ||
+    typeof dbClient !== 'object' ||
+    typeof (dbClient as { select?: unknown }).select !== 'function'
+  ) {
+    throw new Error(
+      'runGenerationAttempt requires dbClient (pass request-scoped getDb() from API routes)'
+    );
+  }
 
   const preparation = await startAttempt({
     planId: context.planId,
@@ -172,29 +189,9 @@ export async function runGenerationAttempt(
   });
   const startedAt = attemptClockStart;
 
-  // Test-only capture hook to aid E2E/integration tests that
-  // assert the exact input passed to providers without relying
-  // on provider-level mocks. No-op outside tests.
-  try {
-    if (appEnv.isTest) {
-      // Assert we're truly in a test environment
-      if (appEnv.isProduction) {
-        throw new Error('Test capture hook invoked in production');
-      }
-      type CapturedInput = { provider: string; input: GenerationInput };
-      const g = globalThis as unknown as {
-        __capturedInputs?: CapturedInput[];
-      };
-      const arr = g.__capturedInputs;
-      if (arr) {
-        arr.push({
-          provider: provider.constructor?.name ?? 'unknown',
-          input: context.input,
-        });
-      }
-    }
-  } catch {
-    // ignore capture errors in production paths
+  if (appEnv.isTest) {
+    const { captureForTesting } = await import('./capture-for-testing');
+    captureForTesting(provider, context.input);
   }
 
   // Combine timeout signal with external shutdown signal if provided
