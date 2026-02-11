@@ -207,7 +207,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     expect(payload.code).toBe('MISSING_CONTENT_LENGTH');
   });
 
-  it('returns 400 for non-multipart request content type', async () => {
+  it('returns 411 for non-multipart request without content-length header', async () => {
     const authUserId = `auth_pdf_invalid_content_type_${Date.now()}`;
     const authEmail = `pdf-invalid-content-type-${Date.now()}@test.local`;
 
@@ -224,9 +224,9 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
 
     const response = await POST(request);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(411);
     const payload = await response.json();
     expect(payload.success).toBe(false);
-    expect(payload.code).toBe('INVALID_FILE');
+    expect(payload.code).toBe('MISSING_CONTENT_LENGTH');
   });
 });
