@@ -103,7 +103,13 @@ describe('generation integration - attempt cap boundary', () => {
       .where(eq(generationAttempts.planId, plan.id))
       .orderBy(desc(generationAttempts.createdAt));
 
-    expect(cappedAttempts).toHaveLength(4);
-    expect(cappedAttempts[0]?.classification).toBe('capped');
+    // Cap rejection is synthetic; no fourth attempt row is persisted.
+    expect(cappedAttempts).toHaveLength(3);
+    expect(
+      cappedAttempts.some((attempt) => attempt.classification === 'capped')
+    ).toBe(false);
+    if (fourthAttempt.status === 'failure') {
+      expect(fourthAttempt.attempt.id).toBeNull();
+    }
   });
 });

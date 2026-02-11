@@ -8,6 +8,7 @@ export type PlanStartEvent = {
     weeklyHours: number;
     startDate: string | null;
     deadlineDate: string | null;
+    origin?: 'ai' | 'manual' | 'template' | 'pdf';
   };
 };
 
@@ -46,9 +47,11 @@ export type ErrorEvent = {
   type: 'error';
   data: {
     planId?: string | null;
+    code: string;
     message: string;
     classification: string;
     retryable: boolean;
+    requestId?: string;
   };
 };
 

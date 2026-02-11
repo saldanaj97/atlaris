@@ -2,13 +2,13 @@
 // Stream Result Handlers
 // ─────────────────────────────────────────────────────────────────────────────
 
-import {
-  formatGenerationError,
-  isRetryableClassification,
-} from '@/lib/ai/failures';
-import { GenerationResult } from '@/lib/ai/orchestrator';
-import { ParsedModule } from '@/lib/ai/parser';
-import { StreamingEvent } from '@/lib/ai/streaming/types';
+import { getModelById } from '@/lib/ai/ai-models';
+import { isRetryableClassification } from '@/lib/ai/failures';
+import type { GenerationResult } from '@/lib/ai/orchestrator';
+import type { ParsedModule } from '@/lib/ai/parser';
+import { sanitizeSseError } from '@/lib/ai/streaming/error-sanitizer';
+import type { StreamingEvent } from '@/lib/ai/streaming/types';
+import { getCorrelationId } from '@/lib/api/context';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
@@ -16,7 +16,7 @@ import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/lib/stripe/usage';
-import { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 
 type EmitFn = (event: StreamingEvent) => void;
 
@@ -87,14 +87,22 @@ export async function handleFailedGeneration(
     await tryRecordUsage(userId, result);
   }
 
-  const message = formatGenerationError(
-    result.error,
-    'Plan generation failed.'
-  );
+  const sanitized = sanitizeSseError(result.error, classification, {
+    planId,
+    userId,
+  });
+  const requestId = getCorrelationId();
 
   emit({
     type: 'error',
-    data: { planId, message, classification, retryable },
+    data: {
+      planId,
+      code: sanitized.code,
+      message: sanitized.message,
+      classification,
+      retryable: sanitized.retryable,
+      ...(requestId ? { requestId } : {}),
+    },
   });
 }
 
@@ -159,6 +167,7 @@ export function buildPlanStartEvent({
       weeklyHours: input.weeklyHours,
       startDate: input.startDate ?? null,
       deadlineDate: input.deadlineDate ?? null,
+      ...(input.origin && { origin: input.origin }),
     },
   };
 }
@@ -169,19 +178,42 @@ export function buildPlanStartEvent({
  * @param userId - ID of the user to associate usage with
  * @param result - GenerationResult containing metadata and usage information
  */
+function computeCostCents(
+  modelId: string,
+  inputTokens: number,
+  outputTokens: number
+): number {
+  const model = getModelById(modelId);
+  if (!model || (inputTokens === 0 && outputTokens === 0)) return 0;
+  const totalUsd =
+    (inputTokens / 1_000_000) * model.inputCostPerMillion +
+    (outputTokens / 1_000_000) * model.outputCostPerMillion;
+  return Math.round(totalUsd * 100);
+}
+
 export async function tryRecordUsage(
   userId: string,
   result: GenerationResult
 ): Promise<void> {
   try {
     const usage = result.metadata?.usage;
+    const modelId = result.metadata?.model ?? 'unknown';
+    const inputTokens = usage?.promptTokens;
+    const outputTokens = usage?.completionTokens;
+    const costCents =
+      modelId !== 'unknown' &&
+      typeof inputTokens === 'number' &&
+      typeof outputTokens === 'number'
+        ? computeCostCents(modelId, inputTokens, outputTokens)
+        : 0;
+
     await recordUsage({
       userId,
       provider: result.metadata?.provider ?? 'unknown',
-      model: result.metadata?.model ?? 'unknown',
-      inputTokens: usage?.promptTokens ?? undefined,
-      outputTokens: usage?.completionTokens ?? undefined,
-      costCents: 0, // TODO: Calculate actual cost based on model pricing
+      model: modelId,
+      inputTokens,
+      outputTokens,
+      costCents,
       kind: 'plan',
     });
   } catch (usageError) {

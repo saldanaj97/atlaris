@@ -8,6 +8,8 @@ export interface PdfExtractionResult {
     subject?: string;
   };
   structure: ExtractedStructure;
+  parseTimeMs?: number;
+  truncatedText?: boolean;
 }
 
 export interface PdfExtractionError {
@@ -16,11 +18,22 @@ export interface PdfExtractionError {
     | 'invalid_file'
     | 'password_protected'
     | 'no_text'
-    | 'extraction_failed';
+    | 'extraction_failed'
+    | 'parse_timeout'
+    | 'decompression_bomb';
   message: string;
 }
 
 export type PdfExtractionResponse = PdfExtractionResult | PdfExtractionError;
+
+export interface PdfExtractionOptions {
+  /** Maximum characters to extract. Must be positive if provided. */
+  maxChars?: number;
+  /** Timeout in milliseconds. Must be positive if provided. */
+  timeoutMs?: number;
+  /** AbortSignal for cancellation. */
+  signal?: AbortSignal;
+}
 
 export interface ExtractedSection {
   id?: string;
