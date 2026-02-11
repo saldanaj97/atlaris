@@ -118,7 +118,7 @@ export interface GenerationSuccessResult {
 export interface GenerationFailureResult {
   status: 'failure';
   classification: FailureClassification;
-  error: unknown;
+  error: Error;
   metadata?: ProviderMetadata;
   rawText?: string;
   durationMs: number;
@@ -140,6 +140,57 @@ export type GenerationAttemptRecordForResponse =
   | (Omit<GenerationAttemptRecord, 'id'> & { id: null });
 
 const DEFAULT_CLOCK = () => Date.now();
+
+function toGenerationError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return new Error(error);
+  }
+
+  let detail = 'no additional detail';
+  if (typeof error === 'number' || typeof error === 'boolean') {
+    detail = String(error);
+  } else if (typeof error === 'bigint') {
+    detail = `${error.toString()}n`;
+  } else if (typeof error === 'symbol') {
+    detail = error.description ?? 'symbol';
+  } else if (error && typeof error === 'object') {
+    try {
+      detail = JSON.stringify(error);
+    } catch {
+      detail = Object.prototype.toString.call(error);
+    }
+  }
+
+  return new Error(`Unknown generation error: ${detail}`);
+}
+
+function createSyntheticFailureAttempt(params: {
+  planId: string;
+  classification: FailureClassification;
+  durationMs: number;
+  promptHash: string;
+  now: () => Date;
+}): GenerationAttemptRecordForResponse {
+  return {
+    id: null,
+    planId: params.planId,
+    status: 'failure',
+    classification: params.classification,
+    durationMs: params.durationMs,
+    modulesCount: 0,
+    tasksCount: 0,
+    truncatedTopic: false,
+    truncatedNotes: false,
+    normalizedEffort: false,
+    promptHash: params.promptHash,
+    metadata: null,
+    createdAt: params.now(),
+  };
+}
 
 function getProvider(
   provider?: AiPlanGenerationProvider
@@ -259,29 +310,51 @@ export async function runGenerationAttempt(
       ? attachAbortListener(externalSignal, onAbort)
       : undefined;
   } catch (initError) {
+    const normalizedError = toGenerationError(initError);
     const classification = classifyFailure({
-      error: initError,
+      error: normalizedError,
       timedOut: false,
     });
     const durationMs = Math.max(0, clock() - startedAt);
-    const attempt = await finalizeAttemptFailure({
-      attemptId: reservation.attemptId,
-      planId: context.planId,
-      preparation: reservation,
-      classification,
-      durationMs,
-      dbClient,
-      now: nowFn,
-    });
-    return {
+    let attempt: GenerationAttemptRecordForResponse;
+    try {
+      attempt = await finalizeAttemptFailure({
+        attemptId: reservation.attemptId,
+        planId: context.planId,
+        preparation: reservation,
+        classification,
+        durationMs,
+        dbClient,
+        now: nowFn,
+      });
+    } catch (finalizeError) {
+      logger.error(
+        {
+          planId: context.planId,
+          attemptId: reservation.attemptId,
+          finalizeError,
+          originalError: normalizedError,
+        },
+        'Failed to finalize generation attempt during initialization failure'
+      );
+      attempt = createSyntheticFailureAttempt({
+        planId: context.planId,
+        classification,
+        durationMs,
+        promptHash: reservation.promptHash,
+        now: nowFn,
+      });
+    }
+    const result: GenerationFailureResult = {
       status: 'failure',
       classification,
-      error: initError,
+      error: normalizedError,
       durationMs,
       extendedTimeout: false,
       timedOut: false,
       attempt,
-    } as GenerationFailureResult;
+    };
+    return result;
   }
 
   let providerMetadata: ProviderMetadata | undefined;
@@ -332,7 +405,7 @@ export async function runGenerationAttempt(
     // Apply pacing to trim modules to fit user's time capacity
     const pacedModules = pacePlan(parsed.modules, context.input);
 
-    const durationMs = clock() - startedAt;
+    const durationMs = Math.max(0, clock() - startedAt);
     timeout.cancel();
     cleanupTimeoutAbort();
     cleanupExternalAbort?.();
@@ -364,28 +437,53 @@ export async function runGenerationAttempt(
     timeout.cancel();
     cleanupTimeoutAbort();
     cleanupExternalAbort?.();
-    const durationMs = clock() - startedAt;
-    const timedOut = timeout.timedOut || error instanceof ProviderTimeoutError;
+    const durationMs = Math.max(0, clock() - startedAt);
+    const normalizedError = toGenerationError(error);
+    const timedOut =
+      timeout.timedOut || normalizedError instanceof ProviderTimeoutError;
 
-    const classification = classifyFailure({ error, timedOut });
-
-    const attempt = await finalizeAttemptFailure({
-      attemptId: reservation.attemptId,
-      planId: context.planId,
-      preparation: reservation,
-      classification,
-      durationMs,
+    const classification = classifyFailure({
+      error: normalizedError,
       timedOut,
-      extendedTimeout: timeout.didExtend,
-      providerMetadata,
-      dbClient,
-      now: nowFn,
     });
+
+    let attempt: GenerationAttemptRecordForResponse;
+    try {
+      attempt = await finalizeAttemptFailure({
+        attemptId: reservation.attemptId,
+        planId: context.planId,
+        preparation: reservation,
+        classification,
+        durationMs,
+        timedOut,
+        extendedTimeout: timeout.didExtend,
+        providerMetadata,
+        dbClient,
+        now: nowFn,
+      });
+    } catch (finalizeError) {
+      logger.error(
+        {
+          planId: context.planId,
+          attemptId: reservation.attemptId,
+          finalizeError,
+          originalError: normalizedError,
+        },
+        'Failed to finalize generation attempt failure'
+      );
+      attempt = createSyntheticFailureAttempt({
+        planId: context.planId,
+        classification,
+        durationMs,
+        promptHash: reservation.promptHash,
+        now: nowFn,
+      });
+    }
 
     const failure: GenerationFailureResult = {
       status: 'failure',
       classification,
-      error,
+      error: normalizedError,
       metadata: providerMetadata,
       rawText,
       durationMs,

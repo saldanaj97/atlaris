@@ -11,7 +11,7 @@ import {
 import { db } from '@/lib/db/service-role';
 import { desc, eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
@@ -63,7 +63,8 @@ async function seedCappedAttempts(planId: string) {
 }
 
 describe('generation integration - capped attempts', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
     setTestUser(authUserId);
   });
 
@@ -128,7 +129,11 @@ describe('generation integration - capped attempts', () => {
       .where(eq(modules.planId, plan.id));
     expect(moduleRows.length).toBe(0);
 
-    const taskRows = await db.select({ value: tasks.id }).from(tasks);
+    const taskRows = await db
+      .select({ value: tasks.id })
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .where(eq(modules.planId, plan.id));
     expect(taskRows.length).toBe(0);
   });
 });

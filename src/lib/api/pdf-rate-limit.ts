@@ -154,7 +154,7 @@ function pruneRecentTimestamps(
   return timestamps.filter((ts) => ts > windowStart);
 }
 
-export function checkPdfExtractionThrottle(
+export function acquirePdfExtractionSlot(
   userId: string,
   deps: PdfThrottleDeps = {}
 ): PdfThrottleResult {
@@ -186,4 +186,14 @@ export function checkPdfExtractionThrottle(
   store.set(userId, recent);
 
   return { allowed: true };
+}
+
+/**
+ * @deprecated Use acquirePdfExtractionSlot to make side effects explicit.
+ */
+export function checkPdfExtractionThrottle(
+  userId: string,
+  deps: PdfThrottleDeps = {}
+): PdfThrottleResult {
+  return acquirePdfExtractionSlot(userId, deps);
 }

@@ -7,7 +7,7 @@ import { desc, eq } from 'drizzle-orm';
 import { createFailedAttempts } from '../../fixtures/attempts';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 const authUserId = 'auth_generation_cap_boundary';
@@ -19,7 +19,8 @@ async function seedFailureAttempts(planId: string, count: number) {
 }
 
 describe('generation integration - attempt cap boundary', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
     setTestUser(authUserId);
   });
 
@@ -108,8 +109,6 @@ describe('generation integration - attempt cap boundary', () => {
     expect(
       cappedAttempts.some((attempt) => attempt.classification === 'capped')
     ).toBe(false);
-    if (fourthAttempt.status === 'failure') {
-      expect(fourthAttempt.attempt.id).toBeNull();
-    }
+    expect(fourthAttempt.attempt.id).toBeNull();
   });
 });
