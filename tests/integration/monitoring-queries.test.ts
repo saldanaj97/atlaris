@@ -195,19 +195,18 @@ describe('Monitoring Queries', () => {
         new Date(now.getTime() - 10 * 1000), // 10s ago (most recent)
       ];
 
-      // Create 5 failed jobs with different timestamps
-      for (let i = 0; i < 5; i++) {
-        await db.insert(jobQueue).values({
-          userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
-          status: 'failed',
-          payload: { test: `data${i}` },
-          error: `Error message ${i}`,
-          completedAt: timestamps[i],
-          createdAt: timestamps[i],
-          updatedAt: timestamps[i],
-        });
-      }
+      // Create 5 failed jobs with different timestamps (batched insert)
+      const failedJobsRows = timestamps.map((ts, i) => ({
+        userId,
+        jobType: JOB_TYPES.PLAN_GENERATION,
+        status: 'failed' as const,
+        payload: { test: `data${i}` },
+        error: `Error message ${i}`,
+        completedAt: ts,
+        createdAt: ts,
+        updatedAt: ts,
+      }));
+      await db.insert(jobQueue).values(failedJobsRows);
 
       // Request only 3 most recent failed jobs
       const failedJobs = await getFailedJobs(3, db);

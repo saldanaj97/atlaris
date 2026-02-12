@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
 import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
-import { logger } from '@/lib/logging/logger';
+import getRequestContext from '@/lib/logging/request-context';
 
 function readWorkerToken(request: Request): string | null {
   const authHeader = request.headers.get('authorization');
@@ -19,21 +19,24 @@ function tokensMatch(expectedToken: string, providedToken: string): boolean {
   const expected = Buffer.from(expectedToken);
   const provided = Buffer.from(providedToken);
 
-  const paddedProvided =
-    provided.length === expected.length
-      ? provided
-      : provided.length > expected.length
-        ? provided.subarray(0, expected.length)
-        : Buffer.concat([
-            provided,
-            Buffer.alloc(expected.length - provided.length),
-          ]);
+  const lengthMatch = provided.length === expected.length;
+  const paddedProvided = lengthMatch
+    ? provided
+    : provided.length > expected.length
+      ? provided.subarray(0, expected.length)
+      : Buffer.concat([
+          provided,
+          Buffer.alloc(expected.length - provided.length),
+        ]);
   const matched = timingSafeEqual(expected, paddedProvided);
 
-  return provided.length === expected.length && matched;
+  return Boolean(Number(lengthMatch) & Number(matched));
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const { logger } = getRequestContext(request);
+  const pathname = new URL(request.url).pathname;
+
   if (!regenerationQueueEnv.enabled) {
     return NextResponse.json(
       {
@@ -51,7 +54,7 @@ export async function POST(request: Request): Promise<Response> {
     if (!providedToken || !tokensMatch(expectedToken, providedToken)) {
       logger.warn(
         {
-          path: new URL(request.url).pathname,
+          path: pathname,
           method: request.method,
           hasToken: Boolean(providedToken),
         },
@@ -65,7 +68,7 @@ export async function POST(request: Request): Promise<Response> {
     }
   } else if (appEnv.isProduction) {
     logger.error(
-      { path: new URL(request.url).pathname, method: request.method },
+      { path: pathname, method: request.method },
       'Regeneration worker token missing in production'
     );
 
@@ -95,9 +98,9 @@ export async function POST(request: Request): Promise<Response> {
       'Failed to drain regeneration queue from internal route'
     );
 
-    return NextResponse.json(
-      { ok: false, error: 'regeneration failed' },
-      { status: 500 }
-    );
+    const errorCode =
+      error instanceof Error ? error.name || 'UnknownError' : 'UnknownError';
+
+    return NextResponse.json({ ok: false, error: errorCode }, { status: 500 });
   }
 }

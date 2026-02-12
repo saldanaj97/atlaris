@@ -17,6 +17,8 @@ import { jobQueue, learningPlans } from '@/lib/db/schema';
 import {
   JOB_TYPES,
   type Job,
+  type JobPayload,
+  type JobResult,
   type JobStatus,
   type JobType,
 } from '@/lib/jobs/types';
@@ -61,8 +63,8 @@ function mapRowToJob(row: JobQueueRow): Job {
     priority: row.priority,
     attempts: row.attempts,
     maxAttempts: row.maxAttempts,
-    data: row.payload,
-    result: row.result ?? null,
+    data: row.payload as JobPayload,
+    result: (row.result as JobResult | null) ?? null,
     error: row.error ?? null,
     processingStartedAt: row.startedAt ?? null,
     completedAt: row.completedAt ?? null,
@@ -209,7 +211,7 @@ export async function insertJobRecord(
     type: JobType;
     planId: string | null;
     userId: string;
-    data: unknown;
+    data: JobPayload;
     priority: number;
   },
   dbClient: JobsDbClient = getDb()
@@ -324,7 +326,7 @@ export async function claimNextPendingJob(
 
 export async function completeJobRecord(
   jobId: string,
-  result: unknown,
+  result: JobResult,
   dbClient: JobsDbClient = getDb()
 ): Promise<Job | null> {
   return dbClient.transaction(async (tx) => {
@@ -362,6 +364,7 @@ export async function completeJobRecord(
 
 export interface FailJobOptions {
   retryable?: boolean;
+  dbClient?: JobsDbClient;
 }
 
 type ErrorHistoryEntry = {
@@ -373,9 +376,9 @@ type ErrorHistoryEntry = {
 export async function failJobRecord(
   jobId: string,
   error: string,
-  options: FailJobOptions = {},
-  dbClient: JobsDbClient = getDb()
+  options: FailJobOptions = {}
 ): Promise<Job | null> {
+  const { retryable, dbClient = getDb() } = options;
   return dbClient.transaction(async (tx) => {
     const [current] = await tx
       .select()
@@ -394,7 +397,7 @@ export async function failJobRecord(
     const nextAttempts = current.attempts + 1;
     const now = new Date();
     const reachedMaxAttempts = nextAttempts >= current.maxAttempts;
-    const shouldRetry = options.retryable ?? !reachedMaxAttempts;
+    const shouldRetry = retryable ?? !reachedMaxAttempts;
 
     const retryDelaySeconds = Math.min(60, Math.pow(2, nextAttempts));
     const scheduledForRetry = new Date(

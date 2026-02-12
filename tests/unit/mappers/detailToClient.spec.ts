@@ -33,50 +33,46 @@ describe('mapDetailToClient', () => {
       updatedAt: new Date('2024-01-02'),
     };
 
-    const task1: TaskWithRelations = {
-      ...buildTask({
-        id: 'task-1',
-        moduleId: 'module-1',
-        order: 1,
-        title: 'Learn basics',
-        description: 'Basic concepts',
-        estimatedMinutes: 60,
-        resources: [
-          buildTaskResource({
-            id: 'task-resource-1',
-            taskId: 'task-1',
-            resourceId: 'resource-1',
-            order: 1,
-            resource: {
-              id: 'resource-1',
-              type: 'article',
-              title: 'TS Handbook',
-              url: 'https://example.com',
-              domain: null,
-              author: null,
-              durationMinutes: 30,
-              costCents: null,
-              currency: null,
-              tags: [],
-              createdAt: new Date('2024-01-01'),
-            },
-          }),
-        ],
-        progress,
-      }),
-    };
+    const task1: TaskWithRelations = buildTask({
+      id: 'task-1',
+      moduleId: 'module-1',
+      order: 1,
+      title: 'Learn basics',
+      description: 'Basic concepts',
+      estimatedMinutes: 60,
+      resources: [
+        buildTaskResource({
+          id: 'task-resource-1',
+          taskId: 'task-1',
+          resourceId: 'resource-1',
+          order: 1,
+          resource: {
+            id: 'resource-1',
+            type: 'article',
+            title: 'TS Handbook',
+            url: 'https://example.com',
+            domain: null,
+            author: null,
+            durationMinutes: 30,
+            costCents: null,
+            currency: null,
+            tags: [],
+            createdAt: new Date('2024-01-01'),
+          },
+        }),
+      ],
+      progress,
+    });
 
-    const module1: ModuleWithTasks = {
-      ...buildModule({
-        id: 'module-1',
-        planId: 'plan-1',
-        order: 1,
-        title: 'Basics',
-        description: 'Introduction',
-        estimatedMinutes: 120,
-        tasks: [task1],
-      }),
-    };
+    const module1: ModuleWithTasks = buildModule({
+      id: 'module-1',
+      planId: 'plan-1',
+      order: 1,
+      title: 'Basics',
+      description: 'Introduction',
+      estimatedMinutes: 120,
+      tasks: [task1],
+    });
 
     const latestAttempt = buildSuccessAttempt({
       id: 'attempt-1',
@@ -514,7 +510,7 @@ describe('mapAttemptsToClient', () => {
 
   it('should serialize timestamps to ISO strings and preserve metadata', () => {
     const successAttempt = buildSuccessAttempt({ id: 'attempt-1' });
-    const failureAttempt = buildSuccessAttempt({
+    const failureAttempt = buildGenerationAttempt({
       id: 'attempt-2',
       status: 'failure',
       classification: 'rate_limit',

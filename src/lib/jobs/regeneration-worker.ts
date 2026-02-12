@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
-import type { GenerationInput, IsoDateString } from '@/lib/ai/types';
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
@@ -11,8 +10,8 @@ import { resolveUserTier } from '@/lib/stripe/usage';
 import { planRegenerationOverridesSchema } from '@/lib/validation/learningPlans';
 import { eq } from 'drizzle-orm';
 
-import { completeJob, failJob, getNextJob } from './queue';
-import { JOB_TYPES } from './types';
+import { completeJob, failJob, getNextJob } from '@/lib/jobs/queue';
+import { JOB_TYPES } from '@/lib/jobs/types';
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -34,12 +33,12 @@ export interface ProcessRegenerationJobResult {
   reason?: string;
 }
 
-const toIsoDateString = (value: string | null): IsoDateString | undefined => {
+const toIsoDateString = (value: string | null): string | undefined => {
   if (!value) {
     return undefined;
   }
 
-  return ISO_DATE_PATTERN.test(value) ? (value as IsoDateString) : undefined;
+  return ISO_DATE_PATTERN.test(value) ? value : undefined;
 };
 
 const isRetryableClassification = (classification: string): boolean => {
@@ -52,7 +51,7 @@ const isRetryableClassification = (classification: string): boolean => {
 
 const resolveRegenerationNotes = (
   overrides: PlanRegenerationJobPayload['overrides']
-): GenerationInput['notes'] => {
+) => {
   if (!overrides || overrides.notes === undefined) {
     return undefined;
   }
@@ -63,9 +62,10 @@ const resolveRegenerationNotes = (
 function buildGenerationInput(
   payload: PlanRegenerationJobPayload,
   plan: typeof learningPlans.$inferSelect
-): GenerationInput {
+) {
   const overrides = payload.overrides;
 
+  // startDateValue/deadlineDateValue: overrides undefined → use plan; null → explicit clear. Do not use ?? or falsy.
   const startDateValue =
     overrides?.startDate === undefined ? plan.startDate : overrides.startDate;
   const deadlineDateValue =
@@ -102,6 +102,9 @@ export async function processNextRegenerationJob(): Promise<ProcessRegenerationJ
       where: eq(learningPlans.id, payload.planId),
     });
 
+    // Combined error is deliberate for security (prevents account/plan enumeration).
+    // Distinguishable errors (missing vs wrong user) were intentionally suppressed;
+    // change only after security review.
     if (!plan || plan.userId !== job.userId) {
       await failJob(job.id, 'Plan not found for queued regeneration.', {
         retryable: false,
@@ -198,18 +201,42 @@ export interface DrainRegenerationQueueResult {
   failedCount: number;
 }
 
-export async function drainRegenerationQueue(options?: {
+export interface DrainRegenerationQueueOptions {
   maxJobs?: number;
-}): Promise<DrainRegenerationQueueResult> {
+  processNextJob?: () => Promise<ProcessRegenerationJobResult>;
+}
+
+/** In-memory guard to prevent concurrent inline drains (thundering herd). */
+let inlineDrainLockHeld = false;
+
+/**
+ * Tries to acquire the inline drain lock. Returns true if acquired, false if another drain is in progress.
+ * Call {@link releaseInlineDrainLock} when the drain promise settles (success or failure).
+ */
+export function tryAcquireInlineDrainLock(): boolean {
+  if (inlineDrainLockHeld) return false;
+  inlineDrainLockHeld = true;
+  return true;
+}
+
+/** Releases the inline drain lock. Must be called when drain finishes (e.g. in promise .finally). */
+export function releaseInlineDrainLock(): void {
+  inlineDrainLockHeld = false;
+}
+
+export async function drainRegenerationQueue(
+  options?: DrainRegenerationQueueOptions
+): Promise<DrainRegenerationQueueResult> {
   // Explicit maxJobs === 0 is a no-op: no jobs are processed.
   const maxJobs = Math.max(0, options?.maxJobs ?? 1);
+  const processNextJob = options?.processNextJob ?? processNextRegenerationJob;
 
   let processedCount = 0;
   let completedCount = 0;
   let failedCount = 0;
 
   for (let i = 0; i < maxJobs; i += 1) {
-    const result = await processNextRegenerationJob();
+    const result = await processNextJob();
 
     if (!result.processed) {
       break;

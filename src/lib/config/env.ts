@@ -551,6 +551,9 @@ export const regenerationQueueEnv = {
   },
   /**
    * Shared bearer token used by scheduled worker trigger calls.
+   * This getter delegates to {@link getServerRequiredProdOnly}('REGENERATION_WORKER_TOKEN'),
+   * which returns `undefined` in non-production (dev/test) environments. Callers must handle
+   * a possibly undefined token when using this value outside production.
    */
   get workerToken() {
     return getServerRequiredProdOnly('REGENERATION_WORKER_TOKEN');

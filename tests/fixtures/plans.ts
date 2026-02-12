@@ -10,6 +10,41 @@ import { db } from '@/lib/db/service-role';
 
 type LearningPlanRow = InferSelectModel<typeof learningPlans>;
 
+const DEFAULT_PLAN_INSERT = {
+  topic: 'machine learning',
+  skillLevel: 'intermediate' as const,
+  weeklyHours: 5,
+  learningStyle: 'practice' as const,
+  visibility: 'private' as const,
+  origin: 'ai' as const,
+  generationStatus: 'ready' as const,
+  isQuotaEligible: true,
+};
+
+/**
+ * Inserts a learning plan with defaults suitable for regeneration tests.
+ * Uses db.insert(learningPlans), spreads overrides, returns the created plan; throws on failure.
+ */
+export async function createPlan(
+  userId: string,
+  overrides?: Partial<typeof learningPlans.$inferInsert>
+): Promise<LearningPlanRow> {
+  const [plan] = await db
+    .insert(learningPlans)
+    .values({
+      userId,
+      ...DEFAULT_PLAN_INSERT,
+      ...overrides,
+    })
+    .returning();
+
+  if (!plan) {
+    throw new Error('Failed to create plan');
+  }
+
+  return plan;
+}
+
 export type CreateTestPlanParams = {
   userId: string;
   topic?: string;

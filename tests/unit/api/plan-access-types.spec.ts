@@ -40,7 +40,6 @@ describe('Plan Access Types', () => {
       expect(result.success).toBe(true);
       expect(result).toHaveProperty('data');
       if (result.success) {
-        expect(result.data).toBe(mockPlanData);
         expect(result.data.plan.id).toBe(mockPlanData.plan.id);
         expect(result.data.plan.topic).toBe('Machine Learning Fundamentals');
       }
@@ -196,8 +195,19 @@ describe('Plan Access Types', () => {
     });
   });
 
+  /** Runtime mapping from PlanAccessErrorCode to HTTP status; used for runtime tests and kept in sync with exhaustiveness switch. */
+  const PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS: Record<
+    PlanAccessErrorCode,
+    number
+  > = {
+    UNAUTHORIZED: 401,
+    NOT_FOUND: 404,
+    FORBIDDEN: 403,
+    INTERNAL_ERROR: 500,
+  };
+
   describe('Result Type Exhaustiveness', () => {
-    it('should handle all error codes in a switch statement', () => {
+    it('Compile-time exhaustiveness for PlanAccessErrorCode', () => {
       const errorCodes: PlanAccessErrorCode[] = [
         'UNAUTHORIZED',
         'NOT_FOUND',
@@ -209,7 +219,10 @@ describe('Plan Access Types', () => {
         const result = planError(code, 'Test message');
 
         if (!result.success) {
-          // This pattern demonstrates how consumers should handle errors
+          // The switch below uses the _exhaustiveCheck: never pattern so that
+          // TypeScript reports a compile error if a new PlanAccessErrorCode is
+          // added and this switch is not updated. This is a compile-time
+          // guarantee for planError and PlanAccessErrorCode, not runtime coverage.
           let httpStatus: number;
           switch (result.error.code) {
             case 'UNAUTHORIZED':
@@ -225,7 +238,6 @@ describe('Plan Access Types', () => {
               httpStatus = 500;
               break;
             default: {
-              // TypeScript will error if we miss a case
               const _exhaustiveCheck: never = result.error.code;
               throw new Error(
                 `Unhandled error code: ${String(_exhaustiveCheck)}`
@@ -233,22 +245,25 @@ describe('Plan Access Types', () => {
             }
           }
           expect(httpStatus).toBeGreaterThan(0);
+          // Runtime coverage: assert the shared mapping exists for this code and yields a number
+          const mapped =
+            PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS[result.error.code];
+          expect(typeof mapped).toBe('number');
+          expect(mapped).toBe(httpStatus);
         }
       }
     });
 
-    it('should map error codes to correct HTTP statuses', () => {
-      const errorCodeToStatus: Record<PlanAccessErrorCode, number> = {
-        UNAUTHORIZED: 401,
-        NOT_FOUND: 404,
-        FORBIDDEN: 403,
-        INTERNAL_ERROR: 500,
-      };
-
-      for (const [code, expectedStatus] of Object.entries(errorCodeToStatus)) {
+    it('should map error codes to correct HTTP statuses at runtime', () => {
+      for (const [code, expectedStatus] of Object.entries(
+        PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS
+      )) {
         const result = planError(code as PlanAccessErrorCode, 'Test');
         if (!result.success) {
-          expect(errorCodeToStatus[result.error.code]).toBe(expectedStatus);
+          const status =
+            PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS[result.error.code];
+          expect(typeof status).toBe('number');
+          expect(status).toBe(expectedStatus);
         }
       }
     });

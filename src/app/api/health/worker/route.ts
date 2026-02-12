@@ -60,16 +60,12 @@ export async function GET(request: Request) {
         )
       );
 
-    const stuckJobCount = stuckJobsResult?.count ?? 0;
-
     const [backlogResult] = await db
       .select({
         count: sql<number>`count(*)::int`,
       })
       .from(jobQueue)
       .where(eq(jobQueue.status, 'pending'));
-
-    const backlogCount = backlogResult?.count ?? 0;
 
     const [pendingRegenerationResult] = await db
       .select({
@@ -96,6 +92,8 @@ export async function GET(request: Request) {
         )
       );
 
+    const stuckJobCount = stuckJobsResult?.count ?? 0;
+    const backlogCount = backlogResult?.count ?? 0;
     const pendingRegenerationCount = pendingRegenerationResult?.count ?? 0;
     const stuckRegenerationCount = stuckRegenerationResult?.count ?? 0;
 

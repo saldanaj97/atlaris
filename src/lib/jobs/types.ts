@@ -13,6 +13,12 @@ export type JobType = JobTypeValue;
 
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
+export interface JobErrorHistoryEntry {
+  attempt: number;
+  error: string;
+  timestamp: string;
+}
+
 export interface PlanGenerationJobData {
   topic: string;
   notes: string | null;
@@ -46,7 +52,29 @@ export interface PlanRegenerationJobData {
   }>;
 }
 
-export interface Job {
+export interface PlanRegenerationJobResult {
+  planId: string;
+  modulesCount: number;
+  tasksCount: number;
+  durationMs: number;
+}
+
+export type PlanGenerationJobPayload = PlanGenerationJobData & {
+  errorHistory?: JobErrorHistoryEntry[];
+};
+
+export type PlanRegenerationJobPayload = PlanRegenerationJobData & {
+  errorHistory?: JobErrorHistoryEntry[];
+};
+
+export type JobPayload = PlanGenerationJobPayload | PlanRegenerationJobPayload;
+
+export type JobResult = PlanGenerationJobResult | PlanRegenerationJobResult;
+
+export interface Job<
+  TPayload extends JobPayload = JobPayload,
+  TResult extends JobResult | null = JobResult | null,
+> {
   id: string;
   type: JobType;
   planId: string | null;
@@ -55,8 +83,8 @@ export interface Job {
   priority: number;
   attempts: number;
   maxAttempts: number;
-  data: unknown;
-  result: unknown;
+  data: TPayload;
+  result: TResult;
   error: string | null;
   processingStartedAt: Date | null;
   completedAt: Date | null;

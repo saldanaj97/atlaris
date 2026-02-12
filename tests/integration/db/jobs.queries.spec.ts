@@ -1,3 +1,4 @@
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -9,9 +10,32 @@ import { jobQueue, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { ensureUser } from '../../helpers/db';
 
+type JobInsert = InferInsertModel<typeof jobQueue>;
+
 describe('Job Queries', () => {
   let userId: string;
   let planId: string;
+
+  async function createJob(
+    overrides: Partial<JobInsert> = {}
+  ): Promise<InferSelectModel<typeof jobQueue>> {
+    const defaults: Partial<JobInsert> = {
+      jobType: 'plan_generation',
+      planId,
+      userId,
+      priority: 0,
+      attempts: 0,
+      maxAttempts: 3,
+      payload: {},
+      scheduledFor: new Date(),
+    };
+    const [row] = await db
+      .insert(jobQueue)
+      .values({ ...defaults, ...overrides } as JobInsert)
+      .returning();
+    if (!row) throw new Error('createJob: no row returned');
+    return row;
+  }
 
   beforeEach(async () => {
     // Create a user and plan for testing
@@ -39,34 +63,18 @@ describe('Job Queries', () => {
 
   describe('getFailedJobs', () => {
     it('should return failed jobs', async () => {
-      // Create some jobs
-      await db.insert(jobQueue).values([
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'failed',
-          priority: 0,
-          attempts: 3,
-          maxAttempts: 3,
-          payload: {},
-          error: 'Generation failed',
-          scheduledFor: new Date(),
-          completedAt: new Date(),
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'completed',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-          completedAt: new Date(),
-        },
-      ]);
+      await createJob({
+        status: 'failed',
+        attempts: 3,
+        maxAttempts: 3,
+        error: 'Generation failed',
+        completedAt: new Date(),
+      });
+      await createJob({
+        status: 'completed',
+        attempts: 1,
+        completedAt: new Date(),
+      });
 
       const failedJobs = await getFailedJobs(10, db);
 
@@ -76,22 +84,15 @@ describe('Job Queries', () => {
     });
 
     it('should respect limit parameter', async () => {
-      // Create multiple failed jobs
-      const jobValues = Array.from({ length: 5 }, (_, i) => ({
-        jobType: 'plan_generation' as const,
-        planId,
-        userId,
-        status: 'failed' as const,
-        priority: 0,
-        attempts: 3,
-        maxAttempts: 3,
-        payload: {},
-        error: `Error ${i}`,
-        scheduledFor: new Date(),
-        completedAt: new Date(Date.now() - i * 1000), // Different completion times
-      }));
-
-      await db.insert(jobQueue).values(jobValues);
+      for (let i = 0; i < 5; i++) {
+        await createJob({
+          status: 'failed',
+          attempts: 3,
+          maxAttempts: 3,
+          error: `Error ${i}`,
+          completedAt: new Date(Date.now() - i * 1000),
+        });
+      }
 
       const failedJobs = await getFailedJobs(3, db);
 
@@ -99,35 +100,20 @@ describe('Job Queries', () => {
     });
 
     it('should return most recent failed jobs first', async () => {
-      // Create failed jobs with different completion times
-      await db.insert(jobQueue).values([
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'failed',
-          priority: 0,
-          attempts: 3,
-          maxAttempts: 3,
-          payload: {},
-          error: 'Old error',
-          scheduledFor: new Date(),
-          completedAt: new Date(Date.now() - 60000), // 1 minute ago
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'failed',
-          priority: 0,
-          attempts: 3,
-          maxAttempts: 3,
-          payload: {},
-          error: 'Recent error',
-          scheduledFor: new Date(),
-          completedAt: new Date(), // Now
-        },
-      ]);
+      await createJob({
+        status: 'failed',
+        attempts: 3,
+        maxAttempts: 3,
+        error: 'Old error',
+        completedAt: new Date(Date.now() - 60000),
+      });
+      await createJob({
+        status: 'failed',
+        attempts: 3,
+        maxAttempts: 3,
+        error: 'Recent error',
+        completedAt: new Date(),
+      });
 
       const failedJobs = await getFailedJobs(10, db);
 
@@ -136,43 +122,17 @@ describe('Job Queries', () => {
     });
 
     it('should not return non-failed jobs', async () => {
-      await db.insert(jobQueue).values([
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'pending',
-          priority: 0,
-          attempts: 0,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'processing',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-          startedAt: new Date(),
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'completed',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-          completedAt: new Date(),
-        },
-      ]);
+      await createJob({ status: 'pending' });
+      await createJob({
+        status: 'processing',
+        attempts: 1,
+        startedAt: new Date(),
+      });
+      await createJob({
+        status: 'completed',
+        attempts: 1,
+        completedAt: new Date(),
+      });
 
       const failedJobs = await getFailedJobs(10, db);
 
@@ -184,57 +144,24 @@ describe('Job Queries', () => {
     it('should return correct job statistics', async () => {
       const since = new Date(Date.now() - 3600000); // 1 hour ago
 
-      // Create jobs with different statuses
-      await db.insert(jobQueue).values([
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'pending',
-          priority: 0,
-          attempts: 0,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'processing',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-          startedAt: new Date(),
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'completed',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-          startedAt: new Date(Date.now() - 5000),
-          completedAt: new Date(),
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'failed',
-          priority: 0,
-          attempts: 3,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-          completedAt: new Date(),
-        },
-      ]);
+      await createJob({ status: 'pending' });
+      await createJob({
+        status: 'processing',
+        attempts: 1,
+        startedAt: new Date(),
+      });
+      await createJob({
+        status: 'completed',
+        attempts: 1,
+        startedAt: new Date(Date.now() - 5000),
+        completedAt: new Date(),
+      });
+      await createJob({
+        status: 'failed',
+        attempts: 3,
+        maxAttempts: 3,
+        completedAt: new Date(),
+      });
 
       const stats = await getJobStats(since, db);
 
@@ -249,31 +176,16 @@ describe('Job Queries', () => {
       const recentDate = new Date();
       const oldDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
 
-      // Create old job
-      await db.insert(jobQueue).values({
-        jobType: 'plan_generation',
-        planId,
-        userId,
+      await createJob({
         status: 'completed',
-        priority: 0,
         attempts: 1,
-        maxAttempts: 3,
-        payload: {},
         scheduledFor: oldDate,
         createdAt: oldDate,
         completedAt: oldDate,
       });
-
-      // Create recent job
-      await db.insert(jobQueue).values({
-        jobType: 'plan_generation',
-        planId,
-        userId,
+      await createJob({
         status: 'completed',
-        priority: 0,
         attempts: 1,
-        maxAttempts: 3,
-        payload: {},
         scheduledFor: recentDate,
         createdAt: recentDate,
         completedAt: recentDate,
@@ -290,35 +202,20 @@ describe('Job Queries', () => {
       const now = new Date();
       const since = new Date(Date.now() - 3600000);
 
-      // Create completed jobs with known processing times
-      await db.insert(jobQueue).values([
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'completed',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: now,
-          startedAt: new Date(now.getTime() - 2000), // Started 2 seconds before completion
-          completedAt: now,
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'completed',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: now,
-          startedAt: new Date(now.getTime() - 4000), // Started 4 seconds before completion
-          completedAt: now,
-        },
-      ]);
+      await createJob({
+        status: 'completed',
+        attempts: 1,
+        scheduledFor: now,
+        startedAt: new Date(now.getTime() - 2000),
+        completedAt: now,
+      });
+      await createJob({
+        status: 'completed',
+        attempts: 1,
+        scheduledFor: now,
+        startedAt: new Date(now.getTime() - 4000),
+        completedAt: now,
+      });
 
       const stats = await getJobStats(since, db);
 
@@ -331,32 +228,16 @@ describe('Job Queries', () => {
     it('should return zero failure rate when all jobs succeed', async () => {
       const since = new Date(Date.now() - 3600000);
 
-      await db.insert(jobQueue).values([
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'completed',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-          completedAt: new Date(),
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'completed',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: new Date(),
-          completedAt: new Date(),
-        },
-      ]);
+      await createJob({
+        status: 'completed',
+        attempts: 1,
+        completedAt: new Date(),
+      });
+      await createJob({
+        status: 'completed',
+        attempts: 1,
+        completedAt: new Date(),
+      });
 
       const stats = await getJobStats(since, db);
 
@@ -369,30 +250,15 @@ describe('Job Queries', () => {
       const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
       const recentDate = new Date();
 
-      // Create old completed job
-      await db.insert(jobQueue).values({
-        jobType: 'plan_generation',
-        planId,
-        userId,
+      await createJob({
         status: 'completed',
-        priority: 0,
         attempts: 1,
-        maxAttempts: 3,
-        payload: {},
         scheduledFor: oldDate,
         completedAt: oldDate,
       });
-
-      // Create recent completed job
-      await db.insert(jobQueue).values({
-        jobType: 'plan_generation',
-        planId,
-        userId,
+      await createJob({
         status: 'completed',
-        priority: 0,
         attempts: 1,
-        maxAttempts: 3,
-        payload: {},
         scheduledFor: recentDate,
         completedAt: recentDate,
       });
@@ -415,15 +281,10 @@ describe('Job Queries', () => {
     it('should delete old failed jobs', async () => {
       const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
 
-      await db.insert(jobQueue).values({
-        jobType: 'plan_generation',
-        planId,
-        userId,
+      await createJob({
         status: 'failed',
-        priority: 0,
         attempts: 3,
         maxAttempts: 3,
-        payload: {},
         error: 'Test error',
         scheduledFor: oldDate,
         completedAt: oldDate,
@@ -438,33 +299,13 @@ describe('Job Queries', () => {
     it('should not delete pending or processing jobs', async () => {
       const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
 
-      await db.insert(jobQueue).values([
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'pending',
-          priority: 0,
-          attempts: 0,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: oldDate,
-          createdAt: oldDate,
-        },
-        {
-          jobType: 'plan_generation',
-          planId,
-          userId,
-          status: 'processing',
-          priority: 0,
-          attempts: 1,
-          maxAttempts: 3,
-          payload: {},
-          scheduledFor: oldDate,
-          createdAt: oldDate,
-          startedAt: oldDate,
-        },
-      ]);
+      await createJob({ status: 'pending', scheduledFor: oldDate });
+      await createJob({
+        status: 'processing',
+        attempts: 1,
+        scheduledFor: oldDate,
+        startedAt: oldDate,
+      });
 
       const threshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       await cleanupOldJobs(threshold, db);
@@ -476,7 +317,8 @@ describe('Job Queries', () => {
         (job) => job.status === 'processing'
       );
 
-      expect(hasPending || hasProcessing).toBe(true);
+      expect(hasPending).toBe(true);
+      expect(hasProcessing).toBe(true);
     });
 
     it('should return zero when no jobs to clean up', async () => {
@@ -489,21 +331,14 @@ describe('Job Queries', () => {
     it('should handle cleanup of large number of jobs', async () => {
       const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
 
-      // Create many old completed jobs
-      const jobValues = Array.from({ length: 20 }, () => ({
-        jobType: 'plan_generation' as const,
-        planId,
-        userId,
-        status: 'completed' as const,
-        priority: 0,
-        attempts: 1,
-        maxAttempts: 3,
-        payload: {},
-        scheduledFor: oldDate,
-        completedAt: oldDate,
-      }));
-
-      await db.insert(jobQueue).values(jobValues);
+      for (let i = 0; i < 20; i++) {
+        await createJob({
+          status: 'completed',
+          attempts: 1,
+          scheduledFor: oldDate,
+          completedAt: oldDate,
+        });
+      }
 
       const threshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const deletedCount = await cleanupOldJobs(threshold, db);

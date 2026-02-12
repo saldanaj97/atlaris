@@ -185,7 +185,7 @@ async function postHandlerImpl(
       {
         success: false,
         error: 'Too many PDF extraction requests. Please try again later.',
-        code: 'THROTTLED' as const,
+        code: 'THROTTLED',
       },
       {
         status: 429,
@@ -204,7 +204,12 @@ async function postHandlerImpl(
       body: streamSizeResult.body,
     }).formData();
   } catch (err) {
-    logger.error({ err }, 'FormData parse failed in PDF extract route');
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    logger.error(
+      { error: message, stack },
+      'FormData parse failed in PDF extract route'
+    );
     return toExtractionError('Invalid multipart form data.', 400);
   }
   const formObject = parseFormDataToObject(formData);
@@ -219,31 +224,17 @@ async function postHandlerImpl(
 
   const { file } = parseResult.data;
 
-  let cachedTier: Awaited<ReturnType<typeof resolveUserTier>> | undefined;
+  let cachedTier: SubscriptionTier | undefined;
   let tierResolved = false;
   const validationDeps = {
     resolveTier: async (
       tierUserId: string,
       dbClient?: Parameters<typeof resolveUserTier>[1]
     ): Promise<SubscriptionTier> => {
-      if (tierResolved) {
-        // Safety: resolveUserTier should always return a concrete tier per its contract.
-        const resolvedTier = cachedTier;
-        if (!resolvedTier) {
-          throw new Error('resolveTier cache resolved without a valid tier');
-        }
-        return resolvedTier;
-      }
+      if (tierResolved) return cachedTier as SubscriptionTier;
       cachedTier = await resolveUserTier(tierUserId, dbClient);
-      // Safety: resolveUserTier should always return a concrete tier per its contract.
-      const resolvedTier = cachedTier;
-      if (!resolvedTier) {
-        throw new Error(
-          'Unable to resolve user tier for PDF upload validation'
-        );
-      }
       tierResolved = true;
-      return resolvedTier;
+      return cachedTier;
     },
   };
 
@@ -324,7 +315,7 @@ async function postHandlerImpl(
     {
       userId: user.id,
       fileSize: file.size,
-      pageCount: extraction.pageCount,
+      pageCount: pageCountForValidation,
       textLength: extraction.text.length,
       parseTimeMs: extraction.parseTimeMs,
       truncatedText: extraction.truncatedText,
@@ -332,20 +323,10 @@ async function postHandlerImpl(
     'PDF extraction completed'
   );
 
-  const finalTierValidation = await validatePdfUpload(
-    user.id,
-    file.size,
-    extraction.pageCount,
-    validationDeps
-  );
-  if (!finalTierValidation.allowed) {
-    return toUploadValidationError(finalTierValidation);
-  }
-
   const boundedExtraction: CapExtractionResponse = capExtractionResponsePayload(
     {
       text: extraction.text,
-      pageCount: extraction.pageCount,
+      pageCount: pageCountForValidation,
       metadata: extraction.metadata,
       structure: extraction.structure,
     }
@@ -366,8 +347,10 @@ async function postHandlerImpl(
       extractionHash,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
     logger.error(
-      { userId: user.id, extractionHash, error },
+      { userId: user.id, extractionHash, message, stack },
       'Proof issuance failed for PDF extraction'
     );
     return errorResponse(
