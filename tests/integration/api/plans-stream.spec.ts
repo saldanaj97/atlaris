@@ -75,9 +75,17 @@ describe('POST /api/v1/plans/stream', () => {
 
     const response = await POST(request);
     expect(response.status).toBe(200);
-    expect(response.headers.get('X-RateLimit-Remaining')).toEqual(
-      expect.any(String)
-    );
+
+    const numericHeaderPattern = /^\d+$/;
+    const limit = response.headers.get('X-RateLimit-Limit');
+    const remaining = response.headers.get('X-RateLimit-Remaining');
+    const reset = response.headers.get('X-RateLimit-Reset');
+    expect(limit).toBeTruthy();
+    expect(limit).toMatch(numericHeaderPattern);
+    expect(remaining).toBeTruthy();
+    expect(remaining).toMatch(numericHeaderPattern);
+    expect(reset).toBeTruthy();
+    expect(reset).toMatch(numericHeaderPattern);
 
     const events = await readStreamingResponse(response);
     const completeEvent = events.find((event) => event.type === 'complete');
@@ -106,7 +114,9 @@ describe('POST /api/v1/plans/stream', () => {
     await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
     setTestUser(authUserId);
 
-    // Mock the orchestrator to throw during generation
+    // Mock the orchestrator to throw during generation.
+    // Implicit contract: route catch block treats unstructured exceptions as
+    // classification=provider_error, retryable=true (hardcoded in route.ts).
     const orchestrator = await import('@/lib/ai/orchestrator');
     vi.spyOn(orchestrator, 'runGenerationAttempt').mockImplementation(
       async () => {
@@ -138,8 +148,12 @@ describe('POST /api/v1/plans/stream', () => {
     let events: StreamingEvent[] = [];
     try {
       events = await readStreamingResponse(response);
-    } catch {
-      // Stream may error after marking failure; swallow the stream error
+      const errorEvent = events.find((event) => event.type === 'error');
+      expect(errorEvent?.data).toMatchObject({
+        code: 'GENERATION_FAILED',
+        classification: 'provider_error',
+        retryable: true,
+      });
     } finally {
       vi.restoreAllMocks();
     }

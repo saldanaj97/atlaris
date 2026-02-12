@@ -6,7 +6,11 @@ import { getModelById } from '@/lib/ai/ai-models';
 import { isRetryableClassification } from '@/lib/ai/failures';
 import type { GenerationResult } from '@/lib/ai/orchestrator';
 import type { ParsedModule } from '@/lib/ai/parser';
-import { sanitizeSseError } from '@/lib/ai/streaming/error-sanitizer';
+import {
+  sanitizeSseError,
+  type ErrorLike,
+  type GenerationError,
+} from '@/lib/ai/streaming/error-sanitizer';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/attempts';
@@ -17,11 +21,19 @@ import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/lib/stripe/usage';
+import type { FailureClassification } from '@/lib/types/client';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 
 type EmitFn = (event: StreamingEvent) => void;
 
-interface GenerationContext {
+export interface StreamingHelperDependencies {
+  markPlanGenerationFailure?: typeof markPlanGenerationFailure;
+  markPlanGenerationSuccess?: typeof markPlanGenerationSuccess;
+  recordUsage?: typeof recordUsage;
+  getCorrelationId?: typeof getCorrelationId;
+}
+
+interface GenerationContext extends StreamingHelperDependencies {
   planId: string;
   userId: string;
   dbClient: AttemptsDbClient;
@@ -30,6 +42,62 @@ interface GenerationContext {
 
 interface SuccessContext extends GenerationContext {
   startedAt: number;
+}
+
+interface EmitSanitizedFailureEventParams {
+  emit: EmitFn;
+  error: GenerationError | ErrorLike;
+  classification: FailureClassification | 'unknown';
+  planId: string;
+  userId: string;
+  getCorrelationId?: typeof getCorrelationId;
+}
+
+/**
+ * Sanitizes a generation error and emits a client-safe SSE `error` event.
+ *
+ * @param params.emit - Event emitter used to push a `StreamingEvent` into the SSE stream
+ * @param params.error - Raw generation error (provider, parser, timeout, or domain error shape)
+ * @param params.classification - Failure kind used for safe client mapping:
+ * - `validation`: model output is invalid (non-retryable)
+ * - `provider_error`: upstream provider/API failure (usually retryable)
+ * - `rate_limit`: provider throttled request (retryable)
+ * - `timeout`: generation timed out (retryable)
+ * - `capped`: attempt cap reached (non-retryable)
+ * - `in_progress`: generation already running for plan (retryable)
+ * - `unknown`: fallback when no specific classification exists
+ * @param params.planId - Learning plan id associated with the error
+ * @param params.userId - User id associated with the error
+ * @param params.getCorrelationId - Optional request-id resolver override for tests
+ *
+ * @remarks The emitted payload is sanitized via `sanitizeSseError` before calling `emit`,
+ * so raw internal/provider details are never sent to the client.
+ */
+export function emitSanitizedFailureEvent({
+  emit,
+  error,
+  classification,
+  planId,
+  userId,
+  getCorrelationId: getCorrelationIdOverride,
+}: EmitSanitizedFailureEventParams): void {
+  const sanitized = sanitizeSseError(error, classification, {
+    planId,
+    userId,
+  });
+  const requestId = (getCorrelationIdOverride ?? getCorrelationId)();
+
+  emit({
+    type: 'error',
+    data: {
+      planId,
+      code: sanitized.code,
+      message: sanitized.message,
+      classification,
+      retryable: sanitized.retryable,
+      ...(requestId ? { requestId } : {}),
+    },
+  });
 }
 
 /**
@@ -45,14 +113,16 @@ export async function handleSuccessfulGeneration(
   ctx: SuccessContext
 ): Promise<void> {
   const { planId, userId, startedAt, emit, dbClient } = ctx;
+  const markSuccess =
+    ctx.markPlanGenerationSuccess ?? markPlanGenerationSuccess;
   const modules = result.modules;
   const modulesCount = modules.length;
   const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
 
   emitModuleSummaries(modules, planId, emit);
 
-  await markPlanGenerationSuccess(planId, dbClient);
-  await tryRecordUsage(userId, result, dbClient);
+  await markSuccess(planId, dbClient);
+  await tryRecordUsage(userId, result, dbClient, ctx);
 
   emit({
     type: 'complete',
@@ -78,31 +148,29 @@ export async function handleFailedGeneration(
   ctx: GenerationContext
 ): Promise<void> {
   const { planId, userId, emit, dbClient } = ctx;
+  const markFailure =
+    ctx.markPlanGenerationFailure ?? markPlanGenerationFailure;
 
   const classification = result.classification ?? 'unknown';
   const retryable = isRetryableClassification(classification);
 
   if (!retryable) {
-    await markPlanGenerationFailure(planId, dbClient);
-    await tryRecordUsage(userId, result, dbClient);
+    await markFailure(planId, dbClient, {
+      failureContext: {
+        classification,
+        error: result.error,
+      },
+    });
+    await tryRecordUsage(userId, result, dbClient, ctx);
   }
 
-  const sanitized = sanitizeSseError(result.error, classification, {
+  emitSanitizedFailureEvent({
+    emit,
+    error: result.error,
+    classification,
     planId,
     userId,
-  });
-  const requestId = getCorrelationId();
-
-  emit({
-    type: 'error',
-    data: {
-      planId,
-      code: sanitized.code,
-      message: sanitized.message,
-      classification,
-      retryable: sanitized.retryable,
-      ...(requestId ? { requestId } : {}),
-    },
+    getCorrelationId: ctx.getCorrelationId,
   });
 }
 
@@ -207,9 +275,11 @@ function computeCostCents(
 export async function tryRecordUsage(
   userId: string,
   result: GenerationResult,
-  dbClient?: AttemptsDbClient
+  dbClient?: AttemptsDbClient,
+  deps?: Pick<StreamingHelperDependencies, 'recordUsage'>
 ): Promise<void> {
   try {
+    const usageRecorder = deps?.recordUsage ?? recordUsage;
     const usage = result.metadata?.usage;
     const modelId = result.metadata?.model ?? 'unknown';
     const inputTokens = usage?.promptTokens;
@@ -221,7 +291,7 @@ export async function tryRecordUsage(
         ? computeCostCents(modelId, inputTokens, outputTokens)
         : 0;
 
-    await recordUsage(
+    await usageRecorder(
       {
         userId,
         provider: result.metadata?.provider ?? 'unknown',
@@ -247,6 +317,59 @@ export async function tryRecordUsage(
 }
 
 /**
+ * Context for {@link withFallbackCleanup} used when logging primary/fallback errors.
+ */
+export interface WithFallbackCleanupContext {
+  planId: string;
+  attemptId: string;
+  originalError: unknown;
+  messageFinalize: string;
+  messageBoth: string;
+}
+
+/**
+ * Runs primary cleanup; on failure runs fallback and logs. If fallback also fails,
+ * logs both errors (finalizeErr, originalError, markFailedErr) with messageBoth.
+ *
+ * @param primary - Async cleanup to run first (e.g. finalizeAttemptFailure)
+ * @param fallback - Async cleanup to run if primary throws (e.g. safeMarkPlanFailed)
+ * @param context - planId, attemptId, originalError, and log messages for both failure cases
+ */
+export async function withFallbackCleanup(
+  primary: () => Promise<void>,
+  fallback: () => Promise<void>,
+  context: WithFallbackCleanupContext
+): Promise<void> {
+  try {
+    await primary();
+  } catch (finalizeErr) {
+    logger.error(
+      {
+        planId: context.planId,
+        attemptId: context.attemptId,
+        finalizeErr,
+        originalError: context.originalError,
+      },
+      context.messageFinalize
+    );
+    try {
+      await fallback();
+    } catch (markFailedErr) {
+      logger.error(
+        {
+          planId: context.planId,
+          attemptId: context.attemptId,
+          finalizeErr,
+          attemptError: context.originalError,
+          markFailedErr,
+        },
+        context.messageBoth
+      );
+    }
+  }
+}
+
+/**
  * Safely mark a plan as failed, logging errors if marking fails.
  *
  * @param planId - ID of the plan to mark failed
@@ -256,10 +379,13 @@ export async function tryRecordUsage(
 export async function safeMarkPlanFailed(
   planId: string,
   userId: string,
-  dbClient: AttemptsDbClient = getDb()
+  dbClient: AttemptsDbClient = getDb(),
+  deps?: Pick<StreamingHelperDependencies, 'markPlanGenerationFailure'>
 ): Promise<void> {
   try {
-    await markPlanGenerationFailure(planId, dbClient);
+    const markFailure =
+      deps?.markPlanGenerationFailure ?? markPlanGenerationFailure;
+    await markFailure(planId, dbClient);
   } catch (markErr) {
     logger.error(
       { error: markErr, planId, userId },

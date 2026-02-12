@@ -5,7 +5,7 @@ import {
   type PacingParams,
 } from '@/lib/ai/pacing';
 import type { ParsedModule, ParsedTask } from '@/lib/ai/parser';
-import type { GenerationInput } from '@/lib/ai/provider';
+import type { GenerationInput } from '@/lib/ai/types/provider.types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('pacing module', () => {

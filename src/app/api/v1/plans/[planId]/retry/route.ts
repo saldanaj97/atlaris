@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 
+import { attachAbortListener } from '@/lib/ai/abort';
 import {
   PLAN_GENERATION_LIMIT,
   PLAN_GENERATION_WINDOW_MINUTES,
@@ -33,9 +34,11 @@ import { resolveUserTier } from '@/lib/stripe/usage';
 
 import {
   buildPlanStartEvent,
+  emitSanitizedFailureEvent,
   handleFailedGeneration,
   handleSuccessfulGeneration,
   safeMarkPlanFailed,
+  withFallbackCleanup,
 } from '@/app/api/v1/plans/stream/helpers';
 
 export const maxDuration = 60;
@@ -49,6 +52,84 @@ const toIsoDateString = (value: string | null): IsoDateString | undefined => {
 
   return ISO_DATE_PATTERN.test(value) ? (value as IsoDateString) : undefined;
 };
+
+interface AttemptErrorLike {
+  message?: string;
+  status?: number;
+  statusCode?: number;
+  httpStatus?: number;
+}
+
+function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
+  if (obj === null || typeof obj !== 'object') {
+    return false;
+  }
+  const o = obj as AttemptErrorLike;
+  if (o.message !== undefined && typeof o.message !== 'string') {
+    return false;
+  }
+  if (o.status !== undefined && typeof o.status !== 'number') {
+    return false;
+  }
+  if (o.statusCode !== undefined && typeof o.statusCode !== 'number') {
+    return false;
+  }
+  if (o.httpStatus !== undefined && typeof o.httpStatus !== 'number') {
+    return false;
+  }
+  return true;
+}
+
+type AttemptErrorResult = {
+  message: string;
+  status?: number;
+  statusCode?: number;
+  httpStatus?: number;
+};
+
+function toAttemptError(error: unknown): AttemptErrorResult {
+  if (typeof error === 'string') {
+    return { message: error };
+  }
+
+  if (error instanceof Error) {
+    const errWithStatus = error as Error & AttemptErrorLike;
+    const status =
+      isAttemptErrorLike(error) && typeof errWithStatus.status === 'number'
+        ? errWithStatus.status
+        : undefined;
+    const statusCode =
+      isAttemptErrorLike(error) && typeof errWithStatus.statusCode === 'number'
+        ? errWithStatus.statusCode
+        : undefined;
+    const httpStatus =
+      isAttemptErrorLike(error) && typeof errWithStatus.httpStatus === 'number'
+        ? errWithStatus.httpStatus
+        : undefined;
+
+    const result: AttemptErrorResult = { message: error.message };
+    if (status !== undefined) result.status = status;
+    if (statusCode !== undefined) result.statusCode = statusCode;
+    if (httpStatus !== undefined) result.httpStatus = httpStatus;
+    return result;
+  }
+
+  if (isAttemptErrorLike(error)) {
+    const message =
+      typeof error.message === 'string'
+        ? error.message
+        : 'Unknown retry generation error';
+    const result: AttemptErrorResult = { message };
+    if (typeof error.status === 'number') result.status = error.status;
+    if (typeof error.statusCode === 'number')
+      result.statusCode = error.statusCode;
+    if (typeof error.httpStatus === 'number')
+      result.httpStatus = error.httpStatus;
+    return result;
+  }
+
+  return { message: 'Unknown retry generation error' };
+}
 
 /**
  * POST /api/v1/plans/:planId/retry
@@ -165,7 +246,7 @@ export const POST = withErrorBoundary(
 
     let stream: ReadableStream<Uint8Array>;
     try {
-      stream = createEventStream(async (emit) => {
+      stream = createEventStream(async (emit, _controller, streamContext) => {
         emit(
           buildPlanStartEvent({
             planId,
@@ -184,6 +265,14 @@ export const POST = withErrorBoundary(
         );
 
         const startedAt = Date.now();
+        const abortController = new AbortController();
+        const cleanupRequestAbort = attachAbortListener(req.signal, () =>
+          abortController.abort()
+        );
+        const cleanupStreamAbort = attachAbortListener(
+          streamContext.signal,
+          () => abortController.abort()
+        );
 
         let result: Awaited<ReturnType<typeof runGenerationAttempt>>;
         try {
@@ -193,42 +282,39 @@ export const POST = withErrorBoundary(
               userId: user.id,
               input: generationInput,
             },
-            { provider, signal: req.signal, dbClient: db, reservation }
+            {
+              provider,
+              signal: abortController.signal,
+              dbClient: db,
+              reservation,
+            }
           );
         } catch (attemptError) {
-          await finalizeAttemptFailure({
-            attemptId: reservation.attemptId,
-            planId: plan.id,
-            preparation: reservation,
-            classification: 'provider_error',
-            durationMs: Math.max(0, Date.now() - startedAt),
-            error: attemptError,
-            dbClient: db,
-          }).catch(async (finalizeErr) => {
-            logger.error(
-              {
-                planId: plan.id,
+          if (streamContext.signal.aborted) {
+            return;
+          }
+          await withFallbackCleanup(
+            () =>
+              finalizeAttemptFailure({
                 attemptId: reservation.attemptId,
-                finalizeErr,
-                originalError: attemptError,
-              },
-              'Failed to finalize attempt on retry error; falling back to plan-level cleanup'
-            );
-            try {
-              await safeMarkPlanFailed(plan.id, user.id, db);
-            } catch (markFailedErr) {
-              logger.error(
-                {
-                  planId: plan.id,
-                  attemptId: reservation.attemptId,
-                  finalizeErr,
-                  attemptError,
-                  markFailedErr,
-                },
-                'Plan-level cleanup (safeMarkPlanFailed) failed after finalize error'
-              );
+                planId: plan.id,
+                preparation: reservation,
+                classification: 'provider_error',
+                durationMs: Math.max(0, Date.now() - startedAt),
+                error: toAttemptError(attemptError),
+                dbClient: db,
+              }),
+            () => safeMarkPlanFailed(plan.id, user.id, db),
+            {
+              planId: plan.id,
+              attemptId: reservation.attemptId,
+              originalError: attemptError,
+              messageFinalize:
+                'Failed to finalize attempt on retry error; falling back to plan-level cleanup',
+              messageBoth:
+                'Plan-level cleanup (safeMarkPlanFailed) failed after finalize error',
             }
-          });
+          );
           logger.error(
             {
               planId: plan.id,
@@ -239,7 +325,17 @@ export const POST = withErrorBoundary(
             },
             'Plan retry generation failed'
           );
-          throw attemptError;
+          emitSanitizedFailureEvent({
+            emit,
+            error: attemptError,
+            classification: 'provider_error',
+            planId: plan.id,
+            userId: user.id,
+          });
+          return;
+        } finally {
+          cleanupRequestAbort();
+          cleanupStreamAbort();
         }
 
         if (result.status === 'success') {
@@ -267,7 +363,7 @@ export const POST = withErrorBoundary(
         preparation: reservation,
         classification: 'provider_error',
         durationMs: 0,
-        error: setupError,
+        error: toAttemptError(setupError),
         dbClient: db,
       }).catch(async (finalizeErr) => {
         logger.error(

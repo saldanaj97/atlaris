@@ -12,7 +12,10 @@ import { and, asc, count, eq, gte } from 'drizzle-orm';
 
 import { isRetryableClassification } from '@/lib/ai/failures';
 import type { ParsedModule } from '@/lib/ai/parser';
-import type { GenerationInput, ProviderMetadata } from '@/lib/ai/provider';
+import type {
+  GenerationInput,
+  ProviderMetadata,
+} from '@/lib/ai/types/provider.types';
 import {
   recordAttemptFailure as trackAttemptFailure,
   recordAttemptSuccess as trackAttemptSuccess,
@@ -39,6 +42,13 @@ import {
 } from '@/lib/db/schema';
 
 /**
+ * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
+ * This file requires explicit dbClient (AttemptsDbClient) in all params (e.g. StartAttemptParams);
+ * do not add default getDb() or make dbClient optional — callers must pass request-scoped getDb()
+ * so RLS claims are preserved. See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
+ */
+
+/**
  * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
  *
  * When using the RLS client returned by {@link getDb}, callers are responsible for releasing
@@ -49,6 +59,29 @@ import {
 export type AttemptsDbClient = ReturnType<
   typeof import('@/lib/db/runtime').getDb
 >;
+
+/** Drizzle-like methods required by attempt operations (reserve, finalize). */
+const ATTEMPTS_DB_METHODS = [
+  'select',
+  'insert',
+  'update',
+  'delete',
+  'transaction',
+] as const;
+
+/**
+ * Type guard for AttemptsDbClient. Use when accepting db from unknown (e.g. options bags)
+ * to fail fast with a clear error instead of obscure Drizzle errors later.
+ */
+export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
+  if (db == null || typeof db !== 'object') {
+    return false;
+  }
+  const obj = db as Record<string, unknown>;
+  return ATTEMPTS_DB_METHODS.every(
+    (method) => typeof obj[method] === 'function'
+  );
+}
 
 interface SanitizedField {
   value: string | undefined;
@@ -180,14 +213,23 @@ interface ProviderErrorStatusShape {
   response?: { status?: number } | null;
 }
 
-interface AttemptErrorFallbackShape {
+export interface AttemptErrorFallbackShape {
   message: string;
   code?: string;
 }
 
-export type AttemptError =
-  | (ProviderErrorStatusShape & Partial<AttemptErrorFallbackShape>)
-  | AttemptErrorFallbackShape;
+/** Error with at least one identifying status field for retryability. */
+export type AttemptErrorWithStatus =
+  | (ProviderErrorStatusShape &
+      Partial<AttemptErrorFallbackShape> & { status: number })
+  | (ProviderErrorStatusShape &
+      Partial<AttemptErrorFallbackShape> & { statusCode: number })
+  | (ProviderErrorStatusShape &
+      Partial<AttemptErrorFallbackShape> & { httpStatus: number })
+  | (ProviderErrorStatusShape &
+      Partial<AttemptErrorFallbackShape> & { response: { status: number } });
+
+export type AttemptError = AttemptErrorWithStatus | AttemptErrorFallbackShape;
 
 function getProviderErrorStatus(
   error: AttemptError | null | undefined

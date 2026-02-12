@@ -44,4 +44,31 @@ describe('streaming events', () => {
     expect(done).toBe(false);
     expect(decoder.decode(value)).toContain('"type":"complete"');
   });
+
+  it('invokes cancellation handlers when reader cancels stream', async () => {
+    let cancelCalled = false;
+    let markReady: (() => void) | null = null;
+    const ready = new Promise<void>((resolve) => {
+      markReady = resolve;
+    });
+
+    const stream = createEventStream(async (_emit, _controller, context) => {
+      context.onCancel(() => {
+        cancelCalled = true;
+      });
+      markReady?.();
+
+      await new Promise(() => {
+        // Never resolves; test cancels reader.
+      });
+    });
+
+    const reader = stream.getReader();
+    const firstRead = reader.read();
+    await ready;
+    await reader.cancel();
+    await firstRead.catch(() => undefined);
+
+    expect(cancelCalled).toBe(true);
+  });
 });

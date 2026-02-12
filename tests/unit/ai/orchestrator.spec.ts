@@ -24,7 +24,7 @@ describe('runGenerationAttempt reservation rejection handling', () => {
       },
       {
         dbClient: db,
-        reservation,
+        reservation: reservation as unknown as RunGenerationReservation,
       }
     );
 
@@ -36,3 +36,11 @@ describe('runGenerationAttempt reservation rejection handling', () => {
     expect(result.attempt.classification).toBe('rate_limit');
   });
 });
+
+type RunGenerationReservation = Parameters<
+  typeof runGenerationAttempt
+>[1] extends {
+  reservation?: infer Reservation;
+}
+  ? Reservation
+  : never;

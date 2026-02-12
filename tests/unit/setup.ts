@@ -18,6 +18,7 @@ vi.mock('@/lib/db/service-role', () => {
       insert: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn({})),
       execute: vi.fn(),
       query: {
         learningPlans: {

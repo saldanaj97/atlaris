@@ -3,9 +3,12 @@
  * Only call when appEnv.isTest. Validates env and guards against production.
  * Never use in production paths.
  */
+import type {
+  AiPlanGenerationProvider,
+  GenerationInput,
+} from '@/lib/ai/types/provider.types';
 import { appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-import type { AiPlanGenerationProvider, GenerationInput } from './provider';
 
 export type CapturedInput = { provider: string; input: GenerationInput };
 

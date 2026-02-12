@@ -1,7 +1,8 @@
-import { appEnv } from '@/lib/config/env';
+import { aiTimeoutEnv, appEnv } from '@/lib/config/env';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
+  isAttemptsDbClient,
   reserveAttemptSlot,
   type AttemptRejection,
   type AttemptReservation,
@@ -12,6 +13,7 @@ import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 import * as Sentry from '@sentry/nextjs';
 
+import { attachAbortListener } from './abort';
 import { classifyFailure } from './classification';
 import { pacePlan } from './pacing';
 import {
@@ -27,53 +29,6 @@ import {
 } from './provider';
 import { getGenerationProvider } from './provider-factory';
 import { createAdaptiveTimeout, type AdaptiveTimeoutConfig } from './timeout';
-
-// Helper to safely attach an abort listener across environments where
-// AbortSignal may not implement addEventListener (e.g., some jsdom/polyfills).
-function attachAbortListener(
-  signal: AbortSignal,
-  listener: () => void
-): () => void {
-  if (signal.aborted) {
-    listener();
-    return () => {};
-  }
-
-  // Preferred path: EventTarget-style listeners
-  if (
-    'addEventListener' in signal &&
-    typeof signal.addEventListener === 'function'
-  ) {
-    const handler = (_ev: Event) => listener();
-    signal.addEventListener('abort', handler as EventListener);
-    return () => {
-      try {
-        signal.removeEventListener?.('abort', handler as EventListener);
-      } catch {
-        // ignore cleanup failures
-      }
-    };
-  }
-
-  // Fallback: onabort handler
-  if ('onabort' in signal) {
-    const prev = signal.onabort;
-    signal.onabort = function (this: AbortSignal, ev: Event) {
-      try {
-        if (typeof prev === 'function') prev.call(this, ev);
-      } finally {
-        listener();
-      }
-    };
-    return () => {
-      // Restore previous handler
-      signal.onabort = prev ?? null;
-    };
-  }
-
-  // Last resort: no-op cleanup if neither API is present
-  return () => {};
-}
 
 export interface GenerationAttemptContext {
   planId: string;
@@ -142,6 +97,38 @@ export type GenerationAttemptRecordForResponse =
 
 const DEFAULT_CLOCK = () => Date.now();
 
+type ReserveAttemptSlotFn = typeof reserveAttemptSlot;
+type FinalizeAttemptSuccessFn = typeof finalizeAttemptSuccess;
+type FinalizeAttemptFailureFn = typeof finalizeAttemptFailure;
+
+interface AttemptOperationOverrides {
+  reserveAttemptSlot: ReserveAttemptSlotFn;
+  finalizeAttemptSuccess: FinalizeAttemptSuccessFn;
+  finalizeAttemptFailure: FinalizeAttemptFailureFn;
+}
+
+function resolveAttemptOperations(
+  dbClient: AttemptsDbClient
+): AttemptOperationOverrides {
+  const typedDbClient = dbClient as AttemptsDbClient &
+    Partial<AttemptOperationOverrides>;
+
+  return {
+    reserveAttemptSlot:
+      typeof typedDbClient.reserveAttemptSlot === 'function'
+        ? typedDbClient.reserveAttemptSlot
+        : reserveAttemptSlot,
+    finalizeAttemptSuccess:
+      typeof typedDbClient.finalizeAttemptSuccess === 'function'
+        ? typedDbClient.finalizeAttemptSuccess
+        : finalizeAttemptSuccess,
+    finalizeAttemptFailure:
+      typeof typedDbClient.finalizeAttemptFailure === 'function'
+        ? typedDbClient.finalizeAttemptFailure
+        : finalizeAttemptFailure,
+  };
+}
+
 /** User-facing messages for reservation rejection reasons; fallback used for invalid_status and future reasons. */
 const ERROR_MESSAGES: Partial<Record<AttemptRejection['reason'], string>> = {
   capped: 'Generation attempt cap reached',
@@ -207,6 +194,19 @@ function getProvider(
   return provider ?? getGenerationProvider();
 }
 
+function resolveTimeoutConfig(
+  timeoutConfig?: Partial<AdaptiveTimeoutConfig>,
+  now?: () => number
+): AdaptiveTimeoutConfig {
+  return {
+    baseMs: timeoutConfig?.baseMs ?? aiTimeoutEnv.baseMs,
+    extensionMs: timeoutConfig?.extensionMs ?? aiTimeoutEnv.extensionMs,
+    extensionThresholdMs:
+      timeoutConfig?.extensionThresholdMs ?? aiTimeoutEnv.extensionThresholdMs,
+    now,
+  };
+}
+
 export async function runGenerationAttempt(
   context: GenerationAttemptContext,
   options: RunGenerationOptions
@@ -214,12 +214,10 @@ export async function runGenerationAttempt(
   const clock = options.clock ?? DEFAULT_CLOCK;
   const nowFn = options.now ?? (() => new Date());
   const dbClient = options.dbClient;
+  const attemptOps = resolveAttemptOperations(dbClient);
+  const timeoutConfig = resolveTimeoutConfig(options.timeoutConfig, clock);
 
-  if (
-    dbClient == null ||
-    typeof dbClient !== 'object' ||
-    typeof (dbClient as { select?: unknown }).select !== 'function'
-  ) {
+  if (!isAttemptsDbClient(dbClient)) {
     throw new Error(
       'runGenerationAttempt requires dbClient (pass request-scoped getDb() from API routes)'
     );
@@ -228,7 +226,7 @@ export async function runGenerationAttempt(
   // Use pre-reserved slot if provided; otherwise reserve atomically now
   const reservation =
     options.reservation ??
-    (await reserveAttemptSlot({
+    (await attemptOps.reserveAttemptSlot({
       planId: context.planId,
       userId: context.userId,
       input: context.input,
@@ -249,7 +247,7 @@ export async function runGenerationAttempt(
         : reservation.reason === 'rate_limited'
           ? 'rate_limit'
           : reservation.reason === 'in_progress'
-            ? 'rate_limit'
+            ? 'rate_limit' // concurrent-conflict: same retry/backoff as rate_limit; semantically different, intentionally same classification
             : 'validation';
     const errorMessage =
       ERROR_MESSAGES[reservation.reason] ??
@@ -296,10 +294,7 @@ export async function runGenerationAttempt(
 
   try {
     provider = getProvider(options.provider);
-    timeout = createAdaptiveTimeout({
-      ...options.timeoutConfig,
-      now: clock,
-    });
+    timeout = createAdaptiveTimeout(timeoutConfig);
 
     if (appEnv.isTest) {
       const { captureForTesting } = await import('./capture-for-testing');
@@ -322,7 +317,7 @@ export async function runGenerationAttempt(
     const durationMs = Math.max(0, clock() - startedAt);
     let attempt: GenerationAttemptRecordForResponse;
     try {
-      attempt = await finalizeAttemptFailure({
+      attempt = await attemptOps.finalizeAttemptFailure({
         attemptId: reservation.attemptId,
         planId: context.planId,
         preparation: reservation,
@@ -377,7 +372,7 @@ export async function runGenerationAttempt(
       async (span) => {
         const result = await provider.generate(context.input, {
           signal: controller.signal,
-          timeoutMs: options.timeoutConfig?.baseMs,
+          timeoutMs: timeoutConfig.baseMs,
         });
         const meta = result.metadata;
         if (meta.model) {
@@ -403,6 +398,7 @@ export async function runGenerationAttempt(
 
     const parsed = await parseGenerationStream(providerResult.stream, {
       onFirstModuleDetected: () => timeout.notifyFirstModule(),
+      signal: controller.signal,
     });
 
     rawText = parsed.rawText;
@@ -415,7 +411,7 @@ export async function runGenerationAttempt(
     cleanupTimeoutAbort();
     cleanupExternalAbort?.();
 
-    const attempt = await finalizeAttemptSuccess({
+    const attempt = await attemptOps.finalizeAttemptSuccess({
       attemptId: reservation.attemptId,
       planId: context.planId,
       preparation: reservation,
@@ -454,7 +450,7 @@ export async function runGenerationAttempt(
 
     let attempt: GenerationAttemptRecordForResponse;
     try {
-      attempt = await finalizeAttemptFailure({
+      attempt = await attemptOps.finalizeAttemptFailure({
         attemptId: reservation.attemptId,
         planId: context.planId,
         preparation: reservation,

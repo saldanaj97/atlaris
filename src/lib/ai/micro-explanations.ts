@@ -2,7 +2,7 @@
  * Micro-explanations generation for learning plan tasks
  * Generates concise explanations and practice exercises
  *
- * Uses OpenRouter as the sole AI provider (Google AI deprecated as of December 2025).
+ * Uses the injected provider's config for auth; throws when provider reports unconfigured.
  */
 
 import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
@@ -10,7 +10,12 @@ import {
   buildMicroExplanationSystemPrompt,
   buildMicroExplanationUserPrompt,
 } from '@/lib/ai/prompts';
-import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
+import { getRetryBackoffConfig } from '@/lib/ai/timeout';
+import type {
+  AiPlanGenerationProvider,
+  MicroExplanationAuthConfig,
+  MicroExplanationConfigSupplier,
+} from '@/lib/ai/types/provider.types';
 import { aiMicroExplanationEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -43,34 +48,36 @@ interface MicroExplanationProviderConfig {
 }
 
 /**
- * Generate micro-explanation using OpenRouter
+ * Create an OpenRouter-backed OpenAI client with standard headers.
+ */
+function createOpenRouterClient(
+  apiKey: string,
+  baseURL: string,
+  siteUrl?: string,
+  appName?: string
+) {
+  const headers: Record<string, string> = {};
+  if (siteUrl) headers['HTTP-Referer'] = siteUrl;
+  if (appName) headers['X-Title'] = appName;
+
+  return createOpenAI({ apiKey, baseURL, headers });
+}
+
+/**
+ * Generate micro-explanation using provider-supplied auth config
  */
 async function generateWithOpenRouter(
+  authConfig: MicroExplanationAuthConfig,
   config: MicroExplanationProviderConfig,
   systemPrompt: string,
   userPrompt: string
 ): Promise<MicroExplanation> {
-  const { apiKey, baseUrl, siteUrl, appName } =
-    aiMicroExplanationEnv.openRouter;
-  if (!apiKey) {
-    throw new Error('OpenRouter API key is not configured');
-  }
-
-  const openai = createOpenRouterClient(apiKey, baseUrl, siteUrl, appName);
-
-  // Helper: create an OpenRouter-backed OpenAI client with standard headers
-  function createOpenRouterClient(
-    apiKey: string,
-    baseURL: string,
-    siteUrl?: string,
-    appName?: string
-  ) {
-    const headers: Record<string, string> = {};
-    if (siteUrl) headers['HTTP-Referer'] = siteUrl;
-    if (appName) headers['X-Title'] = appName;
-
-    return createOpenAI({ apiKey, baseURL, headers });
-  }
+  const openai = createOpenRouterClient(
+    authConfig.apiKey,
+    authConfig.baseUrl,
+    authConfig.siteUrl,
+    authConfig.appName
+  );
 
   const { object } = await generateObject({
     model: openai(config.model),
@@ -91,18 +98,28 @@ async function generateWithOpenRouter(
 }
 
 /**
+ * Get auth config from provider if it supports micro-explanations.
+ */
+function getAuthConfigFromProvider(
+  provider: AiPlanGenerationProvider
+): MicroExplanationAuthConfig | null {
+  const supplier = provider as Partial<MicroExplanationConfigSupplier>;
+  if (typeof supplier.getMicroExplanationConfig === 'function') {
+    return supplier.getMicroExplanationConfig();
+  }
+  return null;
+}
+
+/**
  * Generate a micro-explanation for a task
- * Uses OpenRouter as the sole AI provider.
+ * Uses the injected provider's config for auth; throws when provider reports unconfigured.
  *
- * @param _provider AI provider instance - UNUSED but kept for backwards compatibility.
- *   This parameter exists to maintain API compatibility with older code that passed
- *   a provider instance. The function internally uses OpenRouter directly.
- *   TODO: Remove this parameter in the next major version.
+ * @param provider AI provider instance - must implement getMicroExplanationConfig when OpenRouter auth is needed
  * @param args Task details for explanation generation
  * @returns Micro-explanation markdown with explanation and optional practice
  */
 export async function generateMicroExplanation(
-  _provider: AiPlanGenerationProvider,
+  provider: AiPlanGenerationProvider,
   args: {
     topic: string;
     moduleTitle?: string;
@@ -110,6 +127,11 @@ export async function generateMicroExplanation(
     skillLevel: 'beginner' | 'intermediate' | 'advanced';
   }
 ): Promise<string> {
+  const authConfig = getAuthConfigFromProvider(provider);
+  if (!authConfig?.apiKey) {
+    throw new Error('OpenRouter API key is not configured');
+  }
+
   const systemPrompt = buildMicroExplanationSystemPrompt();
   const userPrompt = buildMicroExplanationUserPrompt(args);
 
@@ -139,11 +161,11 @@ export async function generateMicroExplanation(
   try {
     // Light retry on transient failures
     const explanation = await pRetry(
-      () => generateWithOpenRouter(config, systemPrompt, userPrompt),
+      () =>
+        generateWithOpenRouter(authConfig, config, systemPrompt, userPrompt),
       {
         retries: 1,
-        minTimeout: 300,
-        maxTimeout: 700,
+        ...getRetryBackoffConfig(),
         randomize: true,
       }
     );

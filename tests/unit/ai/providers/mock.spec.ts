@@ -1,16 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { parseGenerationStream } from '@/lib/ai/parser';
-import { getGenerationProvider, type GenerationInput } from '@/lib/ai/provider';
+import { getGenerationProvider } from '@/lib/ai/provider';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
+import { createGenerationInput } from '../../../fixtures/generation-input';
 
-const SAMPLE_INPUT: GenerationInput = {
+const SAMPLE_INPUT = createGenerationInput({
   topic: 'Machine Learning',
   notes: 'Focus on practical applications',
   skillLevel: 'intermediate',
   weeklyHours: 10,
   learningStyle: 'mixed',
-};
+});
 
 async function collectStream(stream: AsyncIterable<string>): Promise<string> {
   let output = '';

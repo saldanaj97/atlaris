@@ -73,7 +73,7 @@ try {
 
 ## Queries Pattern
 
-All query functions accept optional `dbClient` parameter for DI:
+Most query functions accept optional `dbClient` parameter for DI (default `getDb()`). **Exception:** RLS-sensitive modules (see below).
 
 ```typescript
 export async function getPlanById(
@@ -85,6 +85,14 @@ export async function getPlanById(
   });
 }
 ```
+
+### RLS-sensitive query modules (required dbClient)
+
+Query modules that must enforce RLS on every call (e.g. generation attempts, audit flows) **must require** an explicit `dbClient` in their params and **must not** default to `getDb()` internally. This forces callers to pass the request-scoped client from `getDb()` so RLS claims flow through; making `dbClient` optional or defaulting to `getDb()` inside the module would mask missing dependency injection and is a security footgun.
+
+- **Rule:** Params types (e.g. `StartAttemptParams`) and function signatures that use a db client type (e.g. `AttemptsDbClient`) in these modules must declare `dbClient` as **required**.
+- **Example:** `src/lib/db/queries/attempts.ts` — `StartAttemptParams.dbClient`, `AttemptsDbClient`; callers pass `getDb()` from the request handler.
+- **Do not:** Add `dbClient = getDb()` or make `dbClient` optional in these modules.
 
 ## Key Tables
 
@@ -112,3 +120,4 @@ pnpm db:push       # Push schema directly (dev only)
 - Forgetting `cleanup()` after RLS client use
 - Direct SQL without parameterization
 - Hardcoding user IDs instead of using session context
+- In RLS-sensitive query modules (e.g. attempts): making `dbClient` optional or defaulting to `getDb()` — keep `dbClient` required so callers pass request-scoped `getDb()` and RLS is preserved

@@ -11,6 +11,18 @@
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 
+export interface ErrorLike {
+  name?: string;
+  message?: string;
+  stack?: string;
+  cause?: unknown;
+  status?: number;
+  statusCode?: number;
+  response?: { status?: number } | null;
+}
+
+export type GenerationError = Error | DOMException | string | ErrorLike;
+
 export interface SanitizedSseError {
   code: string;
   message: string;
@@ -69,7 +81,7 @@ const ERROR_MAP: Record<FailureClassification | 'unknown', SanitizedSseError> =
  * @returns A safe, deterministic error payload for the SSE stream
  */
 export function sanitizeSseError(
-  error: unknown,
+  error: GenerationError | ErrorLike,
   classification: FailureClassification | 'unknown',
   context?: { planId?: string; userId?: string }
 ): SanitizedSseError {

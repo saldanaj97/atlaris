@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  ProviderError,
-  ProviderRateLimitError,
-  type GenerationInput,
-} from '@/lib/ai/provider';
+import { ProviderError, ProviderRateLimitError } from '@/lib/ai/provider';
+import type { GenerationInput } from '@/lib/ai/types/provider.types';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 const SAMPLE_INPUT: GenerationInput = {

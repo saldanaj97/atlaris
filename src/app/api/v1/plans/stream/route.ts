@@ -1,3 +1,4 @@
+import { attachAbortListener } from '@/lib/ai/abort';
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
@@ -36,6 +37,7 @@ import {
 import { ZodError } from 'zod';
 import {
   buildPlanStartEvent,
+  emitSanitizedFailureEvent,
   handleFailedGeneration,
   handleSuccessfulGeneration,
   safeMarkPlanFailed,
@@ -195,39 +197,64 @@ export const POST: PlainHandler = withErrorBoundary(
       deadlineDate: generationInput.deadlineDate ?? undefined,
     };
 
-    const stream = createEventStream(async (emit) => {
-      emit(buildPlanStartEvent({ planId: plan.id, input: normalizedInput }));
+    const stream = createEventStream(
+      async (emit, _controller, streamContext) => {
+        emit(buildPlanStartEvent({ planId: plan.id, input: normalizedInput }));
 
-      const startedAt = Date.now();
-
-      try {
-        const result = await runGenerationAttempt(
-          { planId: plan.id, userId: user.id, input: generationInput },
-          { provider, signal: req.signal, dbClient: db }
+        const startedAt = Date.now();
+        const abortController = new AbortController();
+        const cleanupRequestAbort = attachAbortListener(req.signal, () =>
+          abortController.abort()
+        );
+        const cleanupStreamAbort = attachAbortListener(
+          streamContext.signal,
+          () => abortController.abort()
         );
 
-        if (result.status === 'success') {
-          await handleSuccessfulGeneration(result, {
+        try {
+          const result = await runGenerationAttempt(
+            { planId: plan.id, userId: user.id, input: generationInput },
+            { provider, signal: abortController.signal, dbClient: db }
+          );
+
+          if (result.status === 'success') {
+            await handleSuccessfulGeneration(result, {
+              planId: plan.id,
+              userId: user.id,
+              dbClient: db,
+              startedAt,
+              emit,
+            });
+            return;
+          }
+
+          await handleFailedGeneration(result, {
             planId: plan.id,
             userId: user.id,
             dbClient: db,
-            startedAt,
             emit,
           });
-          return;
+        } catch (error: unknown) {
+          if (abortController.signal.aborted) {
+            return;
+          }
+          await safeMarkPlanFailed(plan.id, user.id, db);
+          emitSanitizedFailureEvent({
+            emit,
+            error:
+              error instanceof Error
+                ? error
+                : { name: 'UnknownGenerationError', message: String(error) },
+            classification: 'provider_error',
+            planId: plan.id,
+            userId: user.id,
+          });
+        } finally {
+          cleanupRequestAbort();
+          cleanupStreamAbort();
         }
-
-        await handleFailedGeneration(result, {
-          planId: plan.id,
-          userId: user.id,
-          dbClient: db,
-          emit,
-        });
-      } catch (error) {
-        await safeMarkPlanFailed(plan.id, user.id, db);
-        throw error;
       }
-    });
+    );
 
     return new Response(stream, {
       status: 200,

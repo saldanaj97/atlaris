@@ -1,25 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { GenerationInput } from '@/lib/ai/provider';
 import { ProviderInvalidResponseError } from '@/lib/ai/provider';
 import {
   OpenRouterProvider,
+  type OpenRouterClient,
   type OpenRouterProviderConfig,
 } from '@/lib/ai/providers/openrouter';
+import type { GenerationInput } from '@/lib/ai/types/provider.types';
 
-const mockSend = vi.fn();
-const mockConstructor = vi.fn();
-
-vi.mock('@openrouter/sdk', () => {
-  return {
-    OpenRouter: class {
-      constructor(config: unknown) {
-        mockConstructor(config);
-      }
-      chat = { send: mockSend };
-    },
+function createMockClient(): {
+  client: OpenRouterClient;
+  send: ReturnType<typeof vi.fn>;
+} {
+  const send = vi.fn();
+  const client: OpenRouterClient = {
+    chat: { send },
   };
-});
+  return { client, send };
+}
 
 // Default test model for OpenRouter tests
 const TEST_MODEL = 'google/gemini-2.0-flash-exp:free';
@@ -116,10 +114,15 @@ const VALID_PLAN_RESPONSE = {
   ],
 };
 
-async function collectStream(stream: AsyncIterable<string>): Promise<string> {
+async function collectStream(stream: ReadableStream<string>): Promise<string> {
   let output = '';
-  for await (const chunk of stream) {
-    output += chunk;
+  const reader = stream.getReader();
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
+    }
+    output += value;
   }
   return output;
 }
@@ -136,51 +139,22 @@ describe('OpenRouterProvider', () => {
 
   describe('constructor', () => {
     it('throws error when model is not provided', () => {
+      const { client } = createMockClient();
       expect(
-        () => new OpenRouterProvider({} as OpenRouterProviderConfig)
+        () => new OpenRouterProvider({} as OpenRouterProviderConfig, client)
       ).toThrow('OpenRouterProvider requires a model to be specified');
     });
 
     it('throws error when API key is not provided', () => {
-      delete process.env.OPENROUTER_API_KEY;
-
+      vi.stubEnv('OPENROUTER_API_KEY', '');
       expect(() => new OpenRouterProvider({ model: TEST_MODEL })).toThrow(
         'OPENROUTER_API_KEY is not set'
       );
     });
 
-    it('creates client with API key from environment', () => {
-      new OpenRouterProvider({ model: TEST_MODEL });
-
-      expect(mockConstructor).toHaveBeenCalledWith(
-        expect.objectContaining({
-          apiKey: 'test-api-key',
-        })
-      );
-    });
-
-    it('creates client with custom config', () => {
-      const config: OpenRouterProviderConfig = {
-        apiKey: 'custom-api-key',
-        siteUrl: 'https://myapp.com',
-        appName: 'My App',
-        model: 'anthropic/claude-3-sonnet',
-        temperature: 0.5,
-      };
-
-      new OpenRouterProvider(config);
-
-      expect(mockConstructor).toHaveBeenCalledWith(
-        expect.objectContaining({
-          apiKey: 'custom-api-key',
-          siteUrl: 'https://myapp.com',
-          appName: 'My App',
-        })
-      );
-    });
-
     it('uses custom model when specified', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -190,13 +164,14 @@ describe('OpenRouterProvider', () => {
         ],
       });
 
-      const provider = new OpenRouterProvider({
-        model: 'anthropic/claude-3-sonnet',
-      });
+      const provider = new OpenRouterProvider(
+        { model: 'anthropic/claude-3-sonnet' },
+        client
+      );
 
       await provider.generate(SAMPLE_INPUT);
 
-      expect(mockSend).toHaveBeenCalledWith(
+      expect(send).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'anthropic/claude-3-sonnet',
         }),
@@ -207,7 +182,8 @@ describe('OpenRouterProvider', () => {
 
   describe('generate', () => {
     it('generates a valid plan from string content response', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -222,7 +198,7 @@ describe('OpenRouterProvider', () => {
         },
       });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
       const result = await provider.generate(SAMPLE_INPUT);
 
       const rawText = await collectStream(result.stream);
@@ -235,7 +211,8 @@ describe('OpenRouterProvider', () => {
     });
 
     it('generates a valid plan from array content response', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -252,7 +229,7 @@ describe('OpenRouterProvider', () => {
         },
       });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
       const result = await provider.generate(SAMPLE_INPUT);
 
       const rawText = await collectStream(result.stream);
@@ -262,7 +239,8 @@ describe('OpenRouterProvider', () => {
     });
 
     it('returns correct usage metadata', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -277,7 +255,7 @@ describe('OpenRouterProvider', () => {
         },
       });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
       const result = await provider.generate(SAMPLE_INPUT);
 
       expect(result.metadata.usage).toEqual({
@@ -288,7 +266,8 @@ describe('OpenRouterProvider', () => {
     });
 
     it('handles missing usage data gracefully', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -298,18 +277,19 @@ describe('OpenRouterProvider', () => {
         ],
       });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
       const result = await provider.generate(SAMPLE_INPUT);
 
       expect(result.metadata.usage).toEqual({
-        promptTokens: undefined,
-        completionTokens: undefined,
-        totalTokens: undefined,
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
       });
     });
 
     it('calls SDK with correct parameters', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -319,31 +299,34 @@ describe('OpenRouterProvider', () => {
         ],
       });
 
-      const provider = new OpenRouterProvider({
-        model: 'anthropic/claude-3-opus',
-        temperature: 0.7,
-      });
+      const provider = new OpenRouterProvider(
+        {
+          model: 'anthropic/claude-3-opus',
+          temperature: 0.7,
+        },
+        client
+      );
 
       await provider.generate(SAMPLE_INPUT);
 
-      expect(mockSend).toHaveBeenCalledWith(
+      expect(send).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'anthropic/claude-3-opus',
           temperature: 0.7,
-          stream: false,
+          stream: true,
           responseFormat: { type: 'json_object' },
           messages: expect.arrayContaining([
             expect.objectContaining({ role: 'system' }),
             expect.objectContaining({ role: 'user' }),
           ]),
         }),
-        // requestOptions: {} when no GenerationOptions passed (no signal, no timeoutMs)
-        {}
+        expect.any(Object)
       );
     });
 
     it('includes topic in user prompt', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -353,10 +336,10 @@ describe('OpenRouterProvider', () => {
         ],
       });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
       await provider.generate(SAMPLE_INPUT);
 
-      const callArgs = mockSend.mock.calls[0][0];
+      const callArgs = send.mock.calls[0][0];
       const userMessage = callArgs.messages.find(
         (m: { role: string }) => m.role === 'user'
       );
@@ -366,7 +349,8 @@ describe('OpenRouterProvider', () => {
     });
 
     it('includes notes and PDF context in user prompt', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -376,10 +360,10 @@ describe('OpenRouterProvider', () => {
         ],
       });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
       await provider.generate(SAMPLE_INPUT);
 
-      const callArgs = mockSend.mock.calls[0][0];
+      const callArgs = send.mock.calls[0][0];
       const userMessage = callArgs.messages.find(
         (m: { role: string }) => m.role === 'user'
       );
@@ -395,8 +379,8 @@ describe('OpenRouterProvider', () => {
 
   describe('error handling', () => {
     it('throws ProviderInvalidResponseError when response is empty', async () => {
-      // Use mockResolvedValueOnce for each assertion to make expectations explicit
-      mockSend
+      const { client, send } = createMockClient();
+      send
         .mockResolvedValueOnce({
           choices: [],
         })
@@ -404,7 +388,7 @@ describe('OpenRouterProvider', () => {
           choices: [],
         });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
 
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
         ProviderInvalidResponseError
@@ -415,7 +399,8 @@ describe('OpenRouterProvider', () => {
     });
 
     it('throws ProviderInvalidResponseError when content is null', async () => {
-      mockSend.mockResolvedValueOnce({
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
@@ -425,97 +410,34 @@ describe('OpenRouterProvider', () => {
         ],
       });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
 
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
         ProviderInvalidResponseError
       );
     });
 
-    it('throws ProviderInvalidResponseError when JSON is invalid', async () => {
-      // Use mockResolvedValueOnce for each assertion to make expectations explicit
-      mockSend
-        .mockResolvedValueOnce({
-          choices: [
-            {
-              message: {
-                content: 'not valid json { broken',
-              },
-            },
-          ],
-        })
-        .mockResolvedValueOnce({
-          choices: [
-            {
-              message: {
-                content: 'not valid json { broken',
-              },
-            },
-          ],
-        });
-
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
-
-      await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        ProviderInvalidResponseError
-      );
-      await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        'OpenRouter returned invalid JSON'
-      );
-    });
-
-    it('throws ProviderInvalidResponseError when schema validation fails', async () => {
-      // Use mockResolvedValueOnce for each assertion to make expectations explicit
-      mockSend
-        .mockResolvedValueOnce({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({ modules: 'not an array' }),
-              },
-            },
-          ],
-        })
-        .mockResolvedValueOnce({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({ modules: 'not an array' }),
-              },
-            },
-          ],
-        });
-
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
-
-      await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        ProviderInvalidResponseError
-      );
-      await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        'schema validation'
-      );
-    });
-
-    it('throws ProviderInvalidResponseError when modules array is empty', async () => {
-      mockSend.mockResolvedValueOnce({
+    it('passes raw response text through without provider-level schema validation', async () => {
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
         choices: [
           {
             message: {
-              content: JSON.stringify({ modules: [] }),
+              content: 'not valid json { broken',
             },
           },
         ],
       });
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
+      const result = await provider.generate(SAMPLE_INPUT);
+      const rawText = await collectStream(result.stream);
 
-      await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        ProviderInvalidResponseError
-      );
+      expect(rawText).toBe('not valid json { broken');
     });
 
     it('throws ProviderInvalidResponseError when array content has no text items', async () => {
-      // Use mockResolvedValueOnce for each assertion to make expectations explicit
+      const { client, send } = createMockClient();
       const noTextContent = {
         choices: [
           {
@@ -527,11 +449,11 @@ describe('OpenRouterProvider', () => {
           },
         ],
       };
-      mockSend
+      send
         .mockResolvedValueOnce(noTextContent)
         .mockResolvedValueOnce(noTextContent);
 
-      const provider = new OpenRouterProvider({ model: TEST_MODEL });
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
 
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
         ProviderInvalidResponseError

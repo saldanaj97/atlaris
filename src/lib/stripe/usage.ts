@@ -2,6 +2,7 @@ import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { PdfContext } from '@/lib/pdf/context';
+import type { FailureClassification } from '@/lib/types/client';
 import { and, eq, sql } from 'drizzle-orm';
 
 import {
@@ -434,12 +435,20 @@ export async function markPlanGenerationSuccess(
     .where(eq(learningPlans.id, planId));
 }
 
+export type MarkPlanFailureOptions = {
+  now?: () => Date;
+  failureContext?: {
+    classification: FailureClassification | 'unknown';
+    error: Error;
+  };
+};
+
 export async function markPlanGenerationFailure(
   planId: string,
   dbClient: DbClient = getDb(),
-  now: () => Date = () => new Date()
+  options?: MarkPlanFailureOptions
 ): Promise<void> {
-  const timestamp = now();
+  const timestamp = (options?.now ?? (() => new Date()))();
 
   await dbClient
     .update(learningPlans)

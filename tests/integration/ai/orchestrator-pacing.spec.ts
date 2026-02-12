@@ -11,7 +11,7 @@ import type {
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
-} from '@/lib/ai/provider';
+} from '@/lib/ai/types/provider.types';
 import type { ParsedGeneration } from '@/lib/ai/parser';
 import type {
   AttemptReservation,

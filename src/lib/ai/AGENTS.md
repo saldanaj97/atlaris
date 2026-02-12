@@ -11,19 +11,26 @@ Default: OpenRouter. Tests: MockGenerationProvider.
 
 ```
 ai/
+├── abort.ts             # Abort listener helpers
+├── provider.ts          # Backward-compat shim + provider errors
 ├── provider-factory.ts  # Provider selection logic
 ├── orchestrator.ts      # runGenerationAttempt() - main entry
-├── parser.ts            # Stream parsing → structured modules
+├── parser.ts            # Stream parsing -> structured modules
 ├── pacing.ts            # Trim modules to fit user's time
-├── schema.ts            # Zod schemas for AI output
+├── schema.ts            # Legacy schema helpers (base provider adapters/tests)
 ├── classification.ts    # Failure classification
-├── timeout.ts           # Adaptive timeout with extension
+├── timeout.ts           # Adaptive timeout + retry backoff config
+├── streaming/
+│   ├── events.ts        # SSE stream wrapper + cancel propagation
+│   ├── error-sanitizer.ts # Client-safe SSE error mapping
+│   └── types.ts         # Stream event contracts
 ├── providers/
-│   ├── base.ts          # AiPlanGenerationProvider interface
-│   ├── router.ts        # OpenRouter implementation
+│   ├── base.ts          # Provider contract adapters
+│   ├── router.ts        # Provider routing + transient retry policy
+│   ├── openrouter.ts    # OpenRouter transport adapter (streaming)
 │   └── mock.ts          # Test provider (deterministic)
 └── types/
-    ├── provider.types.ts
+    ├── provider.types.ts # Canonical provider types
     └── model.types.ts
 ```
 
@@ -36,7 +43,7 @@ interface AiPlanGenerationProvider {
   generate(
     input: GenerationInput,
     options?: { signal?: AbortSignal; timeoutMs?: number }
-  ): Promise<{ stream: ReadableStream; metadata: ProviderMetadata }>;
+  ): Promise<{ stream: ReadableStream<string>; metadata: ProviderMetadata }>;
 }
 ```
 
@@ -47,7 +54,7 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 
 const result = await runGenerationAttempt(
   { planId, userId, input: { topic, skillLevel, weeklyHours, ... } },
-  { provider, timeoutConfig, signal }
+  { provider, timeoutConfig, signal, dbClient }
 );
 
 if (result.status === 'success') {
@@ -79,17 +86,36 @@ Environment controls:
 
 ## Timeout Strategy
 
-Adaptive timeout with extension on first module detection:
+Orchestrator timeout defaults come from `aiTimeoutEnv` and can be overridden per call:
 
 ```typescript
 const timeout = createAdaptiveTimeout({
-  baseMs: 15_000, // Initial timeout
-  extensionMs: 10_000, // Added when first module detected
+  baseMs: 30_000,
+  extensionMs: 15_000,
+  extensionThresholdMs: 25_000,
 });
 
 // In orchestrator:
 onFirstModuleDetected: () => timeout.notifyFirstModule();
 ```
+
+The provider call always receives an explicit timeout budget from orchestrator (`timeoutMs: baseMs`).
+
+## Stream Error Contract
+
+`/plans/stream` emits sanitized terminal `error` events with stable fields:
+
+```typescript
+{
+  code: string,
+  message: string,
+  classification: string,
+  retryable: boolean,
+  requestId?: string,
+}
+```
+
+Routes should emit this terminal event and close gracefully for expected generation failures.
 
 ## Failure Classification
 
@@ -119,4 +145,5 @@ expect(globalThis.__capturedInputs[0].input.topic).toBe('TypeScript');
 - Calling OpenRouter directly (use provider abstraction)
 - Ignoring `signal` parameter (breaks cancellation)
 - Hardcoding timeout values (use `createAdaptiveTimeout`)
+- Returning raw provider/internal error messages to SSE clients
 - Not handling all failure classifications
