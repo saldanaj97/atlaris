@@ -252,7 +252,7 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     };
   }
 
-  async generate(
+  generate(
     input: GenerationInput,
     options?: GenerationOptions
   ): Promise<ProviderGenerateResult> {
@@ -265,9 +265,11 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     // Simulate random failures based on configured rate
     const failureCheck = rng ? rng.next() : Math.random();
     if (failureCheck < this.config.failureRate) {
-      throw new ProviderError(
-        'unknown',
-        'Mock provider simulated failure for testing'
+      return Promise.reject(
+        new ProviderError(
+          'unknown',
+          'Mock provider simulated failure for testing'
+        )
       );
     }
 
@@ -289,7 +291,7 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
         ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
         : baseDelay;
 
-    return {
+    return Promise.resolve({
       stream: createMockStream(payload, actualDelay, options?.signal),
       metadata: {
         provider: 'mock',
@@ -300,6 +302,6 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
           totalTokens: 600,
         },
       },
-    };
+    });
   }
 }

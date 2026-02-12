@@ -10,6 +10,7 @@ import { count, eq, inArray } from 'drizzle-orm';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { ProviderTimeoutError } from '@/lib/ai/provider';
+import { asyncIterableToReadableStream } from '@/lib/ai/utils';
 import {
   type AiPlanGenerationProvider,
   type GenerationInput,
@@ -103,7 +104,7 @@ class SimulatedSuccessProvider implements AiPlanGenerationProvider {
     }
 
     return {
-      stream: iterator(),
+      stream: asyncIterableToReadableStream(iterator()),
       metadata: this.metadata,
     };
   }

@@ -44,21 +44,30 @@ export function readableStreamToAsyncIterable(
 export function asyncIterableToReadableStream(
   iterable: AsyncIterable<string>
 ): ReadableStream<string> {
-  const iterator = iterable[Symbol.asyncIterator]();
+  let cancelled = false;
+  let pump: Promise<void> | null = null;
 
   return new ReadableStream<string>({
-    async pull(controller) {
-      const { done, value } = await iterator.next();
-      if (done) {
-        controller.close();
-        return;
-      }
-      if (typeof value === 'string') {
-        controller.enqueue(value);
-      }
+    start(controller) {
+      pump = (async () => {
+        try {
+          for await (const chunk of iterable) {
+            if (cancelled) {
+              return;
+            }
+            controller.enqueue(chunk);
+          }
+          controller.close();
+        } catch (error) {
+          if (!cancelled) {
+            controller.error(error);
+          }
+        }
+      })();
     },
     async cancel() {
-      await iterator.return?.();
+      cancelled = true;
+      await pump;
     },
   });
 }

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { parseGenerationStream } from '@/lib/ai/parser';
 import { getGenerationProvider } from '@/lib/ai/provider';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
+import { readableStreamToAsyncIterable } from '@/lib/ai/utils';
 import { createGenerationInput } from '../../../fixtures/generation-input';
 
 const SAMPLE_INPUT = createGenerationInput({
@@ -13,9 +14,15 @@ const SAMPLE_INPUT = createGenerationInput({
   learningStyle: 'mixed',
 });
 
-async function collectStream(stream: AsyncIterable<string>): Promise<string> {
+async function collectStream(
+  stream: AsyncIterable<string> | ReadableStream<string>
+): Promise<string> {
+  const source =
+    stream instanceof ReadableStream
+      ? readableStreamToAsyncIterable(stream)
+      : stream;
   let output = '';
-  for await (const chunk of stream) {
+  for await (const chunk of source) {
     output += chunk;
   }
   return output;
@@ -130,7 +137,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       const result = await provider.generate(SAMPLE_INPUT);
 
       const chunks: string[] = [];
-      for await (const chunk of result.stream) {
+      for await (const chunk of readableStreamToAsyncIterable(result.stream)) {
         chunks.push(chunk);
       }
 
@@ -339,7 +346,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       let buffer = '';
       const chunks: string[] = [];
 
-      for await (const chunk of result.stream) {
+      for await (const chunk of readableStreamToAsyncIterable(result.stream)) {
         chunks.push(chunk);
         buffer += chunk;
       }

@@ -5,6 +5,10 @@ import { eq } from 'drizzle-orm';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import {
+  preparePlanInputWithPdfOrigin,
+  rollbackPdfUsageIfReserved,
+} from '@/lib/api/plans/pdf-origin';
+import {
   calculateTotalWeeks,
   ensurePlanDurationAllowed,
   findCappedPlanWithoutModules,
@@ -16,14 +20,7 @@ import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { sanitizePdfContextForPersistence } from '@/lib/pdf/context';
-import { verifyAndConsumePdfExtractionProof } from '@/lib/security/pdf-extraction-proof';
-import {
-  atomicCheckAndIncrementPdfUsage,
-  atomicCheckAndInsertPlan,
-  decrementPdfPlanUsage,
-  resolveUserTier,
-} from '@/lib/stripe/usage';
+import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
@@ -55,7 +52,8 @@ export const POST = withErrorBoundary(
       if (error instanceof ZodError) {
         throw new ValidationError('Invalid request body.', error.flatten());
       }
-      throw new ValidationError('Invalid request body.', error);
+      const details = error instanceof Error ? error : String(error);
+      throw new ValidationError('Invalid request body.', details);
     }
 
     const user = await getUserByAuthId(userId);
@@ -119,50 +117,19 @@ export const POST = withErrorBoundary(
       });
     }
 
-    const origin = body.origin ?? 'ai';
-    const extractedContent = body.extractedContent;
+    const preparedInput = await preparePlanInputWithPdfOrigin({
+      body,
+      authUserId: userId,
+      internalUserId: user.id,
+      dbClient: db,
+    });
 
-    const invalidPdfProofResponse = () =>
-      jsonError('Invalid or expired PDF extraction proof.', { status: 403 });
-
-    if (origin === 'pdf') {
-      if (!extractedContent || !body.pdfProofToken || !body.pdfExtractionHash) {
-        return invalidPdfProofResponse();
-      }
-
-      const proofVerified = await verifyAndConsumePdfExtractionProof({
-        authUserId: userId,
-        extractedContent,
-        extractionHash: body.pdfExtractionHash,
-        token: body.pdfProofToken,
-        dbClient: db,
-      });
-
-      if (!proofVerified) {
-        return invalidPdfProofResponse();
-      }
-
-      const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id, db);
-      if (!pdfUsage.allowed) {
-        return jsonError('PDF plan quota exceeded for this month.', {
-          status: 403,
-          code: 'QUOTA_EXCEEDED',
-        });
-      }
+    if (!preparedInput.ok) {
+      return preparedInput.response;
     }
 
-    const extractedContext =
-      origin === 'pdf' && extractedContent
-        ? sanitizePdfContextForPersistence(extractedContent)
-        : null;
-
-    const topic =
-      origin === 'pdf' &&
-      extractedContext &&
-      extractedContext.mainTopic &&
-      extractedContext.mainTopic.trim().length > 0
-        ? extractedContext.mainTopic.trim()
-        : body.topic;
+    const { origin, extractedContext, topic, pdfUsageReserved } =
+      preparedInput.data;
 
     let created: { id: string };
     try {
@@ -182,9 +149,13 @@ export const POST = withErrorBoundary(
         db
       );
     } catch (err) {
-      if (origin === 'pdf') {
+      if (pdfUsageReserved) {
         try {
-          await decrementPdfPlanUsage(user.id, db);
+          await rollbackPdfUsageIfReserved({
+            internalUserId: user.id,
+            dbClient: db,
+            reserved: pdfUsageReserved,
+          });
         } catch (rollbackErr) {
           logger.error(
             { rollbackErr, userId: user.id },

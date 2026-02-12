@@ -13,6 +13,8 @@ export interface GenerationInput {
   topic: string;
   notes?: string | null;
   pdfContext?: PdfContext | null;
+  pdfExtractionHash?: string;
+  pdfProofVersion?: 1;
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
   weeklyHours: number;
   learningStyle: 'reading' | 'video' | 'practice' | 'mixed';

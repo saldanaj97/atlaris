@@ -1,13 +1,22 @@
 import { attachAbortListener } from '@/lib/ai/abort';
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import {
+  runGenerationAttempt,
+  type GenerationAttemptContext,
+  type GenerationResult,
+  type RunGenerationOptions,
+} from '@/lib/ai/orchestrator';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import {
-  type PlainHandler,
   withAuthAndRateLimit,
   withErrorBoundary,
+  type PlainHandler,
 } from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
+import {
+  preparePlanInputWithPdfOrigin,
+  rollbackPdfUsageIfReserved,
+} from '@/lib/api/plans/pdf-origin';
 import {
   ensurePlanDurationAllowed,
   findCappedPlanWithoutModules,
@@ -21,19 +30,10 @@ import { jsonError } from '@/lib/api/response';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import { sanitizePdfContextForPersistence } from '@/lib/pdf/context';
-import { verifyAndConsumePdfExtractionProof } from '@/lib/security/pdf-extraction-proof';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-import {
-  atomicCheckAndIncrementPdfUsage,
-  atomicCheckAndInsertPlan,
-  decrementPdfPlanUsage,
-  resolveUserTier,
-} from '@/lib/stripe/usage';
-import {
-  CreateLearningPlanInput,
-  createLearningPlanSchema,
-} from '@/lib/validation/learningPlans';
+import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
 import { ZodError } from 'zod';
 import {
   buildPlanStartEvent,
@@ -43,225 +43,234 @@ import {
   safeMarkPlanFailed,
 } from './helpers';
 
-export const POST: PlainHandler = withErrorBoundary(
-  withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
-    let body: CreateLearningPlanInput;
-    try {
-      body = createLearningPlanSchema.parse(await req.json());
-    } catch (error) {
-      if (error instanceof ZodError) {
-        throw new ValidationError('Invalid request body.', error.flatten());
-      }
-      throw new ValidationError('Invalid request body.', error);
-    }
+/** Classification used when an unstructured exception occurs in the generation catch block. */
+export const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
 
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
+/** Retryable flag for unstructured exceptions (matches sanitizeSseError for provider_error). */
+export const UNSTRUCTURED_EXCEPTION_RETRYABLE = true;
 
-    const db = getDb();
-    const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
-    const generationRateLimitHeaders =
-      getPlanGenerationRateLimitHeaders(remaining);
+export interface StreamOrchestrator {
+  runGenerationAttempt(
+    context: GenerationAttemptContext,
+    options: RunGenerationOptions
+  ): Promise<GenerationResult>;
+}
 
-    const userTier: SubscriptionTier = await resolveUserTier(user.id, db);
-    const normalization = normalizePlanDurationForTier({
-      tier: userTier,
-      weeklyHours: body.weeklyHours,
-      startDate: body.startDate ?? null,
-      deadlineDate: body.deadlineDate ?? null,
-    });
-    const { startDate, deadlineDate, totalWeeks } = normalization;
-    const cap = ensurePlanDurationAllowed({
-      userTier,
-      weeklyHours: body.weeklyHours,
-      totalWeeks,
-    });
+const defaultOrchestrator: StreamOrchestrator = {
+  runGenerationAttempt,
+};
 
-    if (!cap.allowed) {
-      return jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
-        status: 403,
-      });
-    }
+/**
+ * Creates the stream POST handler with an injectable orchestrator.
+ * Used by integration tests to supply mocks; production uses the default orchestrator.
+ */
+export function createStreamHandler(deps?: {
+  orchestrator?: StreamOrchestrator;
+}): PlainHandler {
+  const orchestrator = deps?.orchestrator ?? defaultOrchestrator;
+  const runGen = orchestrator.runGenerationAttempt.bind(orchestrator);
 
-    const cappedPlanId = await findCappedPlanWithoutModules(user.id);
-    if (cappedPlanId) {
-      throw new AttemptCapExceededError('attempt cap reached', {
-        planId: cappedPlanId,
-      });
-    }
-
-    const origin = body.origin ?? 'ai';
-
-    const invalidPdfProofResponse = () =>
-      jsonError('Invalid or expired PDF extraction proof.', { status: 403 });
-
-    if (origin === 'pdf') {
-      if (
-        !body.extractedContent ||
-        !body.pdfProofToken ||
-        !body.pdfExtractionHash
-      ) {
-        return invalidPdfProofResponse();
+  return withErrorBoundary(
+    withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
+      let body: CreateLearningPlanInput;
+      try {
+        body = createLearningPlanSchema.parse(await req.json());
+      } catch (error) {
+        if (error instanceof ZodError) {
+          throw new ValidationError('Invalid request body.', error.flatten());
+        }
+        throw new ValidationError('Invalid request body.', error);
       }
 
-      const proofVerified = await verifyAndConsumePdfExtractionProof({
+      const user = await getUserByAuthId(userId);
+      if (!user) {
+        throw new Error(
+          'Authenticated user record missing despite provisioning.'
+        );
+      }
+
+      const db = getDb();
+      const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
+      const generationRateLimitHeaders =
+        getPlanGenerationRateLimitHeaders(remaining);
+
+      const userTier: SubscriptionTier = await resolveUserTier(user.id, db);
+      const normalization = normalizePlanDurationForTier({
+        tier: userTier,
+        weeklyHours: body.weeklyHours,
+        startDate: body.startDate ?? null,
+        deadlineDate: body.deadlineDate ?? null,
+      });
+      const { startDate, deadlineDate, totalWeeks } = normalization;
+      const cap = ensurePlanDurationAllowed({
+        userTier,
+        weeklyHours: body.weeklyHours,
+        totalWeeks,
+      });
+
+      if (!cap.allowed) {
+        return jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
+          status: 403,
+        });
+      }
+
+      const cappedPlanId = await findCappedPlanWithoutModules(user.id);
+      if (cappedPlanId) {
+        throw new AttemptCapExceededError('attempt cap reached', {
+          planId: cappedPlanId,
+        });
+      }
+
+      const preparedInput = await preparePlanInputWithPdfOrigin({
+        body,
         authUserId: userId,
-        extractedContent: body.extractedContent,
-        extractionHash: body.pdfExtractionHash,
-        token: body.pdfProofToken,
+        internalUserId: user.id,
         dbClient: db,
       });
 
-      if (!proofVerified) {
-        return invalidPdfProofResponse();
+      if (!preparedInput.ok) {
+        return preparedInput.response;
       }
 
-      const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id, db);
-      if (!pdfUsage.allowed) {
-        return jsonError('PDF plan quota exceeded for this month.', {
-          status: 403,
-          code: 'QUOTA_EXCEEDED',
-        });
-      }
-    }
+      const {
+        origin,
+        extractedContext,
+        topic,
+        pdfUsageReserved,
+        pdfProvenance,
+      } = preparedInput.data;
 
-    const extractedContext =
-      origin === 'pdf' && body.extractedContent
-        ? sanitizePdfContextForPersistence(body.extractedContent)
-        : null;
+      const generationInput = {
+        topic,
+        notes: body.notes ?? null,
+        pdfContext: extractedContext,
+        pdfExtractionHash: pdfProvenance?.extractionHash,
+        pdfProofVersion: pdfProvenance?.proofVersion,
+        skillLevel: body.skillLevel,
+        weeklyHours: body.weeklyHours,
+        learningStyle: body.learningStyle,
+        startDate,
+        deadlineDate,
+      };
 
-    const topic =
-      origin === 'pdf' &&
-      extractedContext &&
-      extractedContext.mainTopic &&
-      extractedContext.mainTopic.trim().length > 0
-        ? extractedContext.mainTopic.trim()
-        : body.topic;
-
-    const generationInput = {
-      topic,
-      notes: body.notes ?? null,
-      pdfContext: extractedContext,
-      skillLevel: body.skillLevel,
-      weeklyHours: body.weeklyHours,
-      learningStyle: body.learningStyle,
-      startDate,
-      deadlineDate,
-    };
-
-    let plan: { id: string };
-    try {
-      plan = await atomicCheckAndInsertPlan(
-        user.id,
-        {
-          topic: generationInput.topic,
-          skillLevel: generationInput.skillLevel,
-          weeklyHours: generationInput.weeklyHours,
-          learningStyle: generationInput.learningStyle,
-          visibility: 'private',
-          origin,
-          extractedContext,
-          startDate: generationInput.startDate,
-          deadlineDate: generationInput.deadlineDate,
-        },
-        db
-      );
-    } catch (err) {
-      if (origin === 'pdf') {
-        try {
-          await decrementPdfPlanUsage(user.id, db);
-        } catch (rollbackErr) {
-          logger.error(
-            { rollbackErr, userId: user.id },
-            'Failed to rollback pdf plan usage'
-          );
+      let plan: { id: string };
+      try {
+        plan = await atomicCheckAndInsertPlan(
+          user.id,
+          {
+            topic: generationInput.topic,
+            skillLevel: generationInput.skillLevel,
+            weeklyHours: generationInput.weeklyHours,
+            learningStyle: generationInput.learningStyle,
+            visibility: 'private',
+            origin,
+            extractedContext,
+            startDate: generationInput.startDate,
+            deadlineDate: generationInput.deadlineDate,
+          },
+          db
+        );
+      } catch (err) {
+        if (pdfUsageReserved) {
+          try {
+            await rollbackPdfUsageIfReserved({
+              internalUserId: user.id,
+              dbClient: db,
+              reserved: pdfUsageReserved,
+            });
+          } catch (rollbackErr) {
+            logger.error(
+              { rollbackErr, userId: user.id },
+              'Failed to rollback pdf plan usage'
+            );
+          }
         }
+        throw err;
       }
-      throw err;
-    }
 
-    // Tier-gated model selection via unified resolver.
-    // Pass undefined when param is absent so resolver treats it as not_specified, not invalid_model.
-    const url = new URL(req.url);
-    const modelOverride = url.searchParams.has('model')
-      ? url.searchParams.get('model')
-      : undefined;
-    const { provider } = resolveModelForTier(userTier, modelOverride);
-    const normalizedInput: CreateLearningPlanInput = {
-      ...body,
-      startDate: generationInput.startDate ?? undefined,
-      deadlineDate: generationInput.deadlineDate ?? undefined,
-    };
+      // Tier-gated model selection via unified resolver.
+      // Pass undefined when param is absent so resolver treats it as not_specified, not invalid_model.
+      const url = new URL(req.url);
+      const modelOverride = url.searchParams.has('model')
+        ? url.searchParams.get('model')
+        : undefined;
+      const { provider } = resolveModelForTier(userTier, modelOverride);
+      const normalizedInput: CreateLearningPlanInput = {
+        ...body,
+        startDate: generationInput.startDate ?? undefined,
+        deadlineDate: generationInput.deadlineDate ?? undefined,
+      };
 
-    const stream = createEventStream(
-      async (emit, _controller, streamContext) => {
-        emit(buildPlanStartEvent({ planId: plan.id, input: normalizedInput }));
-
-        const startedAt = Date.now();
-        const abortController = new AbortController();
-        const cleanupRequestAbort = attachAbortListener(req.signal, () =>
-          abortController.abort()
-        );
-        const cleanupStreamAbort = attachAbortListener(
-          streamContext.signal,
-          () => abortController.abort()
-        );
-
-        try {
-          const result = await runGenerationAttempt(
-            { planId: plan.id, userId: user.id, input: generationInput },
-            { provider, signal: abortController.signal, dbClient: db }
+      const stream = createEventStream(
+        async (emit, _controller, streamContext) => {
+          emit(
+            buildPlanStartEvent({ planId: plan.id, input: normalizedInput })
           );
 
-          if (result.status === 'success') {
-            await handleSuccessfulGeneration(result, {
+          const startedAt = Date.now();
+          const abortController = new AbortController();
+          const cleanupRequestAbort = attachAbortListener(req.signal, () =>
+            abortController.abort()
+          );
+          const cleanupStreamAbort = attachAbortListener(
+            streamContext.signal,
+            () => abortController.abort()
+          );
+
+          try {
+            const result = await runGen(
+              { planId: plan.id, userId: user.id, input: generationInput },
+              { provider, signal: abortController.signal, dbClient: db }
+            );
+
+            if (result.status === 'success') {
+              await handleSuccessfulGeneration(result, {
+                planId: plan.id,
+                userId: user.id,
+                dbClient: db,
+                startedAt,
+                emit,
+              });
+              return;
+            }
+
+            await handleFailedGeneration(result, {
               planId: plan.id,
               userId: user.id,
               dbClient: db,
-              startedAt,
               emit,
             });
-            return;
+          } catch (error: unknown) {
+            if (abortController.signal.aborted) {
+              return;
+            }
+            await safeMarkPlanFailed(plan.id, user.id, db);
+            emitSanitizedFailureEvent({
+              emit,
+              error:
+                error instanceof Error
+                  ? error
+                  : { name: 'UnknownGenerationError', message: String(error) },
+              classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
+              planId: plan.id,
+              userId: user.id,
+            });
+          } finally {
+            cleanupRequestAbort();
+            cleanupStreamAbort();
           }
-
-          await handleFailedGeneration(result, {
-            planId: plan.id,
-            userId: user.id,
-            dbClient: db,
-            emit,
-          });
-        } catch (error: unknown) {
-          if (abortController.signal.aborted) {
-            return;
-          }
-          await safeMarkPlanFailed(plan.id, user.id, db);
-          emitSanitizedFailureEvent({
-            emit,
-            error:
-              error instanceof Error
-                ? error
-                : { name: 'UnknownGenerationError', message: String(error) },
-            classification: 'provider_error',
-            planId: plan.id,
-            userId: user.id,
-          });
-        } finally {
-          cleanupRequestAbort();
-          cleanupStreamAbort();
         }
-      }
-    );
+      );
 
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        ...streamHeaders,
-        ...generationRateLimitHeaders,
-      },
-    });
-  })
-);
+      return new Response(stream, {
+        status: 200,
+        headers: {
+          ...streamHeaders,
+          ...generationRateLimitHeaders,
+        },
+      });
+    })
+  );
+}
+
+export const POST = createStreamHandler();

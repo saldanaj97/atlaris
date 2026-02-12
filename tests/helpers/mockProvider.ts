@@ -9,6 +9,7 @@ import {
   type GenerationOptions,
   type ProviderGenerateResult,
 } from '../../src/lib/ai/provider';
+import { asyncIterableToReadableStream } from '../../src/lib/ai/utils';
 
 export type MockProviderScenario =
   | 'success'
@@ -65,20 +66,20 @@ function createChunkStream(
   payload: unknown,
   chunkSize: number,
   delayBetweenChunksMs: number
-): AsyncIterable<string> {
+): ReadableStream<string> {
   const serialized = JSON.stringify(payload);
-  return {
-    async *[Symbol.asyncIterator]() {
-      for (let index = 0; index < serialized.length; index += chunkSize) {
-        if (delayBetweenChunksMs > 0) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, delayBetweenChunksMs)
-          );
-        }
-        yield serialized.slice(index, index + chunkSize);
+  async function* iterator(): AsyncIterable<string> {
+    for (let index = 0; index < serialized.length; index += chunkSize) {
+      if (index > 0 && delayBetweenChunksMs > 0) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, delayBetweenChunksMs)
+        );
       }
-    },
-  };
+      yield serialized.slice(index, index + chunkSize);
+    }
+  }
+
+  return asyncIterableToReadableStream(iterator());
 }
 
 function buildResult(

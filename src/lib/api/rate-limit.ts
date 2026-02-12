@@ -41,11 +41,11 @@ export async function checkPlanGenerationRateLimit(
   let attemptCount: number;
   let countFailed = false;
   try {
-    attemptCount = await countUserGenerationAttemptsSince(
+    attemptCount = await countUserGenerationAttemptsSince({
       userId,
       dbClient,
-      windowStart
-    );
+      since: windowStart,
+    });
   } catch (err) {
     // Fail-closed: when we cannot verify the count, treat as rate-limited to
     // prevent abuse when DB is unavailable (expensive AI calls).
@@ -69,11 +69,11 @@ export async function checkPlanGenerationRateLimit(
       retryAfter = PLAN_GENERATION_WINDOW_MINUTES * 60;
     } else {
       try {
-        const oldestAttempt = await getOldestUserGenerationAttemptSince(
+        const oldestAttempt = await getOldestUserGenerationAttemptSince({
           userId,
           dbClient,
-          windowStart
-        );
+          since: windowStart,
+        });
         const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
         retryAfter = oldestAttempt
           ? Math.max(

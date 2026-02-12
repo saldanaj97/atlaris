@@ -37,12 +37,6 @@ export type ModelResolverLogger = Pick<Logger, 'warn' | 'info' | 'error'>;
 export type ProviderGetter =
   typeof providerFactory.getGenerationProviderWithModel;
 
-function isModelResolverLogger(
-  candidate: ModelResolverLogger | ProviderGetter
-): candidate is ModelResolverLogger {
-  return typeof candidate !== 'function';
-}
-
 /**
  * Validates whether a requested model is both known and allowed for a tier.
  */
@@ -79,11 +73,12 @@ function getProviderSafe(
     // cannot be silently redirected by aiEnv.defaultModel.
     return providerGetter(modelIdToUse);
   } catch (err) {
+    const factoryName = providerGetter.name || 'unknownFactory';
     requestLogger.error(
       {
         err,
         requestedModel: requestedModel ?? 'default',
-        factory: 'getGenerationProviderWithModel',
+        factory: factoryName,
       },
       'Provider factory failed'
     );
@@ -102,24 +97,17 @@ function getProviderSafe(
  * @param userTier - The user's subscription tier
  * @param requestedModel - Optional model ID from request. Pass undefined when param absent
  *   (not_specified fallback). Null/empty string means invalid_model fallback.
- * @param requestLoggerOrProviderGetter - Optional logger injection for tests/callers that need
- *   log isolation. Backward-compatible: also accepts provider getter as 3rd arg.
- * @param providerGetterArg - Optional provider getter; used when logger is passed as 3rd arg.
+ * @param providerGetter - Optional provider getter for dependency injection in tests.
+ *   Defaults to providerFactory.getGenerationProviderWithModel.
+ * @param requestLogger - Optional logger injection for tests/callers that need log isolation.
  * @returns ModelResolution with the resolved provider and metadata
  */
 export function resolveModelForTier(
   userTier: SubscriptionTier,
   requestedModel?: string | null,
-  requestLoggerOrProviderGetter: ModelResolverLogger | ProviderGetter = logger,
-  providerGetterArg?: ProviderGetter
+  providerGetter: ProviderGetter = providerFactory.getGenerationProviderWithModel,
+  requestLogger: ModelResolverLogger = logger
 ): ModelResolution {
-  const requestLogger = isModelResolverLogger(requestLoggerOrProviderGetter)
-    ? requestLoggerOrProviderGetter
-    : logger;
-  const providerGetter = isModelResolverLogger(requestLoggerOrProviderGetter)
-    ? (providerGetterArg ?? providerFactory.getGenerationProviderWithModel)
-    : requestLoggerOrProviderGetter;
-
   const defaultModelForTier = getDefaultModelForTier(userTier);
 
   // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model

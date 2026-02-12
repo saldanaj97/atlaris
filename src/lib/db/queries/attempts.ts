@@ -104,6 +104,12 @@ export interface AttemptPreparation {
   promptHash: string;
 }
 
+interface PdfProvenanceData {
+  extractionHash: string;
+  proofVersion: 1;
+  contextDigest: string;
+}
+
 export type GenerationAttemptRecord = InferSelectModel<
   typeof generationAttempts
 >;
@@ -158,6 +164,7 @@ export interface AttemptReservation {
   startedAt: Date;
   sanitized: SanitizedInput;
   promptHash: string;
+  pdfProvenance?: PdfProvenanceData | null;
 }
 
 export interface AttemptRejection {
@@ -308,7 +315,51 @@ interface MetadataParams {
   startedAt: Date;
   finishedAt: Date;
   extendedTimeout: boolean;
+  pdfProvenance?: PdfProvenanceData | null;
   failure?: { classification: FailureClassification; timedOut: boolean };
+}
+
+function stableSerialize(value: unknown): string {
+  if (value === undefined) {
+    return 'null';
+  }
+
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(',')}]`;
+  }
+
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`).join(',')}}`;
+}
+
+function getPdfContextDigest(input: GenerationInput): string | null {
+  if (!input.pdfContext) {
+    return null;
+  }
+
+  return hashSha256(stableSerialize(input.pdfContext));
+}
+
+function getPdfProvenance(input: GenerationInput): PdfProvenanceData | null {
+  if (!input.pdfContext || !input.pdfExtractionHash) {
+    return null;
+  }
+
+  const contextDigest = getPdfContextDigest(input);
+  if (!contextDigest) {
+    return null;
+  }
+
+  return {
+    extractionHash: input.pdfExtractionHash,
+    proofVersion: input.pdfProofVersion ?? 1,
+    contextDigest,
+  };
 }
 
 function buildMetadata(params: MetadataParams) {
@@ -320,6 +371,7 @@ function buildMetadata(params: MetadataParams) {
     startedAt,
     finishedAt,
     extendedTimeout,
+    pdfProvenance,
     failure,
   } = params;
 
@@ -350,6 +402,13 @@ function buildMetadata(params: MetadataParams) {
       ),
       extended_timeout: extendedTimeout,
     },
+    pdf: pdfProvenance
+      ? {
+          extraction_hash: pdfProvenance.extractionHash,
+          proof_version: pdfProvenance.proofVersion,
+          context_digest: pdfProvenance.contextDigest,
+        }
+      : null,
     provider: providerMetadata ?? null,
     failure: failure ?? null,
   } satisfies Record<string, unknown>;
@@ -392,6 +451,8 @@ function toPromptHashPayload(
   input: GenerationInput,
   sanitized: SanitizedInput
 ) {
+  const pdfContextDigest = getPdfContextDigest(input);
+
   return {
     planId,
     userId,
@@ -400,6 +461,9 @@ function toPromptHashPayload(
     skillLevel: input.skillLevel,
     weeklyHours: input.weeklyHours,
     learningStyle: input.learningStyle,
+    pdfExtractionHash: input.pdfExtractionHash ?? null,
+    pdfProofVersion: input.pdfProofVersion ?? null,
+    pdfContextDigest,
   } satisfies Record<string, unknown>;
 }
 
@@ -520,6 +584,7 @@ export async function recordSuccess({
     startedAt: preparation.startedAt,
     finishedAt,
     extendedTimeout,
+    pdfProvenance: null,
   });
 
   const insertedAttempt = await client.transaction(async (tx) => {
@@ -636,6 +701,7 @@ export async function recordFailure({
     startedAt: preparation.startedAt,
     finishedAt,
     extendedTimeout,
+    pdfProvenance: null,
     failure: { classification, timedOut },
   });
 
@@ -701,6 +767,7 @@ export async function reserveAttemptSlot(params: {
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
+  const pdfProvenance = getPdfProvenance(input);
   const promptHash = hashSha256(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
   );
@@ -870,6 +937,7 @@ export async function reserveAttemptSlot(params: {
       startedAt,
       sanitized,
       promptHash,
+      pdfProvenance,
     } as const;
   });
 }
@@ -913,6 +981,7 @@ export async function finalizeAttemptSuccess({
     startedAt: preparation.startedAt,
     finishedAt,
     extendedTimeout,
+    pdfProvenance: preparation.pdfProvenance ?? null,
   });
 
   const updatedAttempt = await dbClient.transaction(async (tx) => {
@@ -1059,6 +1128,7 @@ export async function finalizeAttemptFailure({
     startedAt: preparation.startedAt,
     finishedAt,
     extendedTimeout,
+    pdfProvenance: preparation.pdfProvenance ?? null,
     failure: { classification, timedOut },
   });
 
@@ -1135,20 +1205,23 @@ function assertAttemptIdMatchesReservation(
   }
 }
 
+export interface UserGenerationAttemptsSinceParams {
+  userId: string;
+  dbClient: AttemptsDbClient;
+  since: Date;
+}
+
 /**
  * Counts generation attempts for the given user since the given timestamp.
  * Joins with learning_plans to enforce ownership by ownerId (user id).
  *
- * @param userId - Internal user id (from users table) to enforce per-user limit
- * @param dbClient - Database client for querying generation_attempts
- * @param since - Start of the time window
+ * @param params - Options object containing userId, dbClient, and since
  * @returns Number of generation attempts in the window
  */
 export async function countUserGenerationAttemptsSince(
-  userId: string,
-  dbClient: AttemptsDbClient,
-  since: Date
+  params: UserGenerationAttemptsSinceParams
 ): Promise<number> {
+  const { userId, dbClient, since } = params;
   const [row] = await dbClient
     .select({ value: count(generationAttempts.id) })
     .from(generationAttempts)
@@ -1168,16 +1241,13 @@ export async function countUserGenerationAttemptsSince(
  * within the given window. Used to compute accurate retry-after when rate limit
  * is exceeded (the oldest attempt determines when the window will free a slot).
  *
- * @param userId - Internal user id (from users table)
- * @param dbClient - Database client for querying generation_attempts
- * @param since - Start of the time window
+ * @param params - Options object containing userId, dbClient, and since
  * @returns The createdAt of the oldest attempt, or null if none exist
  */
 export async function getOldestUserGenerationAttemptSince(
-  userId: string,
-  dbClient: AttemptsDbClient,
-  since: Date
+  params: UserGenerationAttemptsSinceParams
 ): Promise<Date | null> {
+  const { userId, dbClient, since } = params;
   const [row] = await dbClient
     .select({ createdAt: generationAttempts.createdAt })
     .from(generationAttempts)

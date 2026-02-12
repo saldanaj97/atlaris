@@ -93,24 +93,17 @@ function toAttemptError(error: unknown): AttemptErrorResult {
   }
 
   if (error instanceof Error) {
-    const errWithStatus = error as Error & AttemptErrorLike;
-    const status =
-      isAttemptErrorLike(error) && typeof errWithStatus.status === 'number'
-        ? errWithStatus.status
-        : undefined;
-    const statusCode =
-      isAttemptErrorLike(error) && typeof errWithStatus.statusCode === 'number'
-        ? errWithStatus.statusCode
-        : undefined;
-    const httpStatus =
-      isAttemptErrorLike(error) && typeof errWithStatus.httpStatus === 'number'
-        ? errWithStatus.httpStatus
-        : undefined;
-
+    const isAttempt = isAttemptErrorLike(error);
     const result: AttemptErrorResult = { message: error.message };
-    if (status !== undefined) result.status = status;
-    if (statusCode !== undefined) result.statusCode = statusCode;
-    if (httpStatus !== undefined) result.httpStatus = httpStatus;
+    if (isAttempt) {
+      const errWithStatus = error as Error & AttemptErrorLike;
+      if (typeof errWithStatus.status === 'number')
+        result.status = errWithStatus.status;
+      if (typeof errWithStatus.statusCode === 'number')
+        result.statusCode = errWithStatus.statusCode;
+      if (typeof errWithStatus.httpStatus === 'number')
+        result.httpStatus = errWithStatus.httpStatus;
+    }
     return result;
   }
 
@@ -294,8 +287,8 @@ export const POST = withErrorBoundary(
             return;
           }
           await withFallbackCleanup(
-            () =>
-              finalizeAttemptFailure({
+            async () => {
+              await finalizeAttemptFailure({
                 attemptId: reservation.attemptId,
                 planId: plan.id,
                 preparation: reservation,
@@ -303,7 +296,8 @@ export const POST = withErrorBoundary(
                 durationMs: Math.max(0, Date.now() - startedAt),
                 error: toAttemptError(attemptError),
                 dbClient: db,
-              }),
+              });
+            },
             () => safeMarkPlanFailed(plan.id, user.id, db),
             {
               planId: plan.id,
@@ -327,7 +321,7 @@ export const POST = withErrorBoundary(
           );
           emitSanitizedFailureEvent({
             emit,
-            error: attemptError,
+            error: toAttemptError(attemptError),
             classification: 'provider_error',
             planId: plan.id,
             userId: user.id,

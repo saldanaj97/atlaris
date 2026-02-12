@@ -29,6 +29,36 @@ export interface SanitizedSseError {
   retryable: boolean;
 }
 
+function stringifyUnknownError(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint' ||
+    typeof value === 'symbol' ||
+    value === null ||
+    value === undefined
+  ) {
+    return String(value);
+  }
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'message' in value &&
+    typeof (value as { message?: unknown }).message === 'string'
+  ) {
+    return (value as { message: string }).message;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return 'Unserializable error value';
+  }
+}
+
 /** Classification-based safe error mapping */
 const ERROR_MAP: Record<FailureClassification | 'unknown', SanitizedSseError> =
   {
@@ -91,7 +121,7 @@ export function sanitizeSseError(
       error:
         error instanceof Error
           ? { message: error.message, name: error.name, stack: error.stack }
-          : String(error),
+          : stringifyUnknownError(error),
       classification,
       ...(context ? { context } : {}),
     },

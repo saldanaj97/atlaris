@@ -57,6 +57,9 @@ describe('createLearningPlanSchema PDF origin', () => {
       expect(flatErrors.fieldErrors.pdfExtractionHash).toEqual([
         'pdfExtractionHash is only allowed for PDF-based plans.',
       ]);
+      expect(flatErrors.fieldErrors.pdfProofVersion).toEqual([
+        'pdfProofVersion is only allowed for PDF-based plans.',
+      ]);
     }
   });
 

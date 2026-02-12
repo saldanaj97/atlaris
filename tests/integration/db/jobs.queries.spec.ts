@@ -362,7 +362,7 @@ describe('Job Queries', () => {
           type: JOB_TYPES.PLAN_REGENERATION,
           planId,
           userId,
-          data: {},
+          data: { planId },
           priority: 0,
         },
         db
@@ -373,7 +373,7 @@ describe('Job Queries', () => {
           type: JOB_TYPES.PLAN_REGENERATION,
           planId,
           userId,
-          data: {},
+          data: { planId },
           priority: 0,
         },
         db
@@ -384,7 +384,7 @@ describe('Job Queries', () => {
           type: JOB_TYPES.PLAN_REGENERATION,
           planId,
           userId: secondUserId,
-          data: {},
+          data: { planId },
           priority: 0,
         },
         db

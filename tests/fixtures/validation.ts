@@ -37,17 +37,27 @@ export function createBaseLearningPlanInput(
   };
 }
 
-/** Builds pdfProofToken and pdfExtractionHash with unique values per call. */
+const DEFAULT_PDF_PROOF_VERSION = 1 as const;
+
+/** Builds pdfProofToken, pdfExtractionHash, and pdfProofVersion with unique values per call. */
 export function createPdfProof(overrides?: {
   pdfProofToken?: string;
   pdfExtractionHash?: string;
-}): { pdfProofToken: string; pdfExtractionHash: string } {
+  pdfProofVersion?: typeof DEFAULT_PDF_PROOF_VERSION;
+}): {
+  pdfProofToken: string;
+  pdfExtractionHash: string;
+  pdfProofVersion: typeof DEFAULT_PDF_PROOF_VERSION;
+} {
   return {
     pdfProofToken: overrides?.pdfProofToken ?? nanoid(32),
     pdfExtractionHash:
       overrides?.pdfExtractionHash ?? randomBytes(32).toString('hex'),
+    pdfProofVersion: overrides?.pdfProofVersion ?? DEFAULT_PDF_PROOF_VERSION,
   };
 }
+
+export { DEFAULT_PDF_PROOF_VERSION };
 
 /** Builds extractedContent for pdf origin. Generates unique mainTopic per call. */
 export function createExtractedContent(

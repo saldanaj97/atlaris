@@ -18,6 +18,10 @@ import {
   createPostHandler,
   type PdfExtractRouteDeps,
 } from '@/app/api/v1/plans/from-pdf/extract/route';
+import {
+  _dangerousResetPdfExtractionThrottleForTests,
+  acquireGlobalPdfExtractionSlot,
+} from '@/lib/api/pdf-rate-limit';
 
 const BASE_URL = 'http://localhost/api/v1/plans/from-pdf/extract';
 
@@ -95,6 +99,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
 
   afterEach(() => {
     clearTestUser();
+    _dangerousResetPdfExtractionThrottleForTests();
   });
 
   it('extracts text and structure from a PDF', async () => {
@@ -241,6 +246,63 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     expect(payload.success).toBe(false);
     expect(payload.code).toBe('SCAN_FAILED');
     expect(mockExtractTextFromPdf).not.toHaveBeenCalled();
+  });
+
+  it('returns 408 when extraction times out', async () => {
+    const authUserId = `auth_pdf_timeout_${Date.now()}`;
+    const authEmail = `pdf-timeout-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    mockExtractTextFromPdf.mockResolvedValue({
+      success: false,
+      error: 'parse_timeout',
+      message: 'PDF parsing timed out. The file may be too complex.',
+    });
+
+    const request = createPdfRequest();
+    const response = await postHandler(request);
+
+    expect(response.status).toBe(408);
+    const payload = await response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe('INVALID_FILE');
+  });
+
+  it('returns 429 when global extraction concurrency is saturated', async () => {
+    const authUserId = `auth_pdf_global_throttle_${Date.now()}`;
+    const authEmail = `pdf-global-throttle-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    // Saturate the throttle: acquire slots via acquireGlobalPdfExtractionSlot() until
+    // it returns allowed === false (throttle limit). Keeps test resilient to config changes.
+    const slots: ReturnType<typeof acquireGlobalPdfExtractionSlot>[] = [];
+    let slot = acquireGlobalPdfExtractionSlot();
+    while (slot.allowed) {
+      slots.push(slot);
+      slot = acquireGlobalPdfExtractionSlot();
+    }
+
+    try {
+      const request = createPdfRequest();
+      const response = await postHandler(request);
+
+      expect(response.status).toBe(429);
+      expect(response.headers.get('Retry-After')).toBeTruthy();
+      const payload = await response.json();
+      expect(payload.success).toBe(false);
+      expect(payload.code).toBe('THROTTLED');
+      expect(mockExtractTextFromPdf).not.toHaveBeenCalled();
+    } finally {
+      for (const slot of slots) {
+        if (slot.allowed) {
+          slot.release();
+        }
+      }
+    }
   });
 
   it('returns 401 when unauthenticated', async () => {

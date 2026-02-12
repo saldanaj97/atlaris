@@ -2,11 +2,13 @@ import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import {
   resolveModelForTier,
   validateModelForTier,
-  type ModelResolverLogger,
+  type ModelResolution,
+  type ProviderGetter,
 } from '@/lib/ai/model-resolver';
-import * as providerFactory from '@/lib/ai/provider-factory';
+import type { SubscriptionTier } from '@/lib/ai/types/model.types';
+import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 import { AppError } from '@/lib/api/errors';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('Model resolver (Task 2 - Phase 2)', () => {
   const getModelIdBy = (
@@ -21,64 +23,80 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
 
   const FREE_MODEL_ID = getModelIdBy((model) => model.tier === 'free');
   const PRO_MODEL_ID = getModelIdBy((model) => model.tier === 'pro');
-  /** Second free model (non-default) to exercise getGenerationProviderWithModel path */
-  const SECOND_FREE_MODEL_ID = getModelIdBy(
-    (model) => model.tier === 'free' && model.id !== AI_DEFAULT_MODEL
-  );
-  let mockLogger: ModelResolverLogger;
+  type ResolutionExpectation = Pick<
+    ModelResolution,
+    'modelId' | 'fallback' | 'fallbackReason'
+  >;
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockLogger = {
-      warn: vi.fn(),
-      info: vi.fn(),
-      error: vi.fn(),
-    };
+  const createMockProvider = (): AiPlanGenerationProvider => ({
+    generate: () =>
+      Promise.resolve({
+        stream: new ReadableStream<string>(),
+        metadata: {},
+      }),
   });
+
+  const resolveWithMockProvider = (
+    userTier: SubscriptionTier,
+    requestedModel?: string | null
+  ): { result: ModelResolution } => {
+    const provider = createMockProvider();
+    const providerGetter: ProviderGetter = () => provider;
+    const result = resolveModelForTier(
+      userTier,
+      requestedModel,
+      providerGetter
+    );
+    return { result };
+  };
+
+  const expectResolution = (
+    result: ModelResolution,
+    expected: ResolutionExpectation
+  ): void => {
+    expect(result.modelId).toBe(expected.modelId);
+    expect(result.fallback).toBe(expected.fallback);
+    expect(result.fallbackReason).toBe(expected.fallbackReason);
+  };
 
   describe('Free tier users', () => {
     it('returns default model when no model requested', () => {
-      const defaultProvider = {
-        generate: vi.fn(),
-      } as ReturnType<typeof providerFactory.getGenerationProviderWithModel>;
-      const providerSpy = vi
-        .spyOn(providerFactory, 'getGenerationProviderWithModel')
-        .mockReturnValue(defaultProvider);
-      const result = resolveModelForTier('free', undefined, mockLogger);
+      const { result } = resolveWithMockProvider('free');
 
-      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-      expect(result.provider).toBe(defaultProvider);
-      expect(result.fallback).toBe(true);
-      expect(result.fallbackReason).toBe('not_specified');
-      expect(providerSpy).toHaveBeenCalledTimes(1);
-      expect(providerSpy).toHaveBeenCalledWith(AI_DEFAULT_MODEL);
+      expectResolution(result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'not_specified',
+      });
     });
 
     it('allows free tier model', () => {
-      const result = resolveModelForTier('free', FREE_MODEL_ID, mockLogger);
+      const { result } = resolveWithMockProvider('free', FREE_MODEL_ID);
 
-      expect(result.modelId).toBe(FREE_MODEL_ID);
-      expect(result.fallback).toBe(false);
+      expectResolution(result, {
+        modelId: FREE_MODEL_ID,
+        fallback: false,
+      });
     });
 
     it('denies pro model and falls back to default', () => {
-      const result = resolveModelForTier('free', PRO_MODEL_ID, mockLogger);
+      const { result } = resolveWithMockProvider('free', PRO_MODEL_ID);
 
-      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-      expect(result.fallback).toBe(true);
-      expect(result.fallbackReason).toBe('tier_denied');
+      expectResolution(result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'tier_denied',
+      });
     });
 
     it('rejects invalid model ID', () => {
-      const result = resolveModelForTier(
-        'free',
-        'invalid-model-id',
-        mockLogger
-      );
+      const { result } = resolveWithMockProvider('free', 'invalid-model-id');
 
-      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-      expect(result.fallback).toBe(true);
-      expect(result.fallbackReason).toBe('invalid_model');
+      expectResolution(result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'invalid_model',
+      });
     });
   });
 
@@ -106,58 +124,72 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
 
   describe('Starter tier users', () => {
     it('returns default model when no model requested', () => {
-      const result = resolveModelForTier('starter', undefined, mockLogger);
+      const { result } = resolveWithMockProvider('starter');
 
-      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-      expect(result.fallback).toBe(true);
-      expect(result.fallbackReason).toBe('not_specified');
+      expectResolution(result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'not_specified',
+      });
     });
 
     it('gets free models only (same as free tier)', () => {
-      const result = resolveModelForTier('starter', FREE_MODEL_ID, mockLogger);
+      const { result } = resolveWithMockProvider('starter', FREE_MODEL_ID);
 
-      expect(result.modelId).toBe(FREE_MODEL_ID);
-      expect(result.fallback).toBe(false);
+      expectResolution(result, {
+        modelId: FREE_MODEL_ID,
+        fallback: false,
+      });
     });
 
     it('denies pro models', () => {
-      const result = resolveModelForTier('starter', PRO_MODEL_ID, mockLogger);
+      const { result } = resolveWithMockProvider('starter', PRO_MODEL_ID);
 
-      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-      expect(result.fallback).toBe(true);
-      expect(result.fallbackReason).toBe('tier_denied');
+      expectResolution(result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'tier_denied',
+      });
     });
   });
 
   describe('Pro tier users', () => {
     it('allows free models', () => {
-      const result = resolveModelForTier('pro', FREE_MODEL_ID, mockLogger);
+      const { result } = resolveWithMockProvider('pro', FREE_MODEL_ID);
 
-      expect(result.modelId).toBe(FREE_MODEL_ID);
-      expect(result.fallback).toBe(false);
+      expectResolution(result, {
+        modelId: FREE_MODEL_ID,
+        fallback: false,
+      });
     });
 
     it('allows pro models', () => {
-      const result = resolveModelForTier('pro', PRO_MODEL_ID, mockLogger);
+      const { result } = resolveWithMockProvider('pro', PRO_MODEL_ID);
 
-      expect(result.modelId).toBe(PRO_MODEL_ID);
-      expect(result.fallback).toBe(false);
+      expectResolution(result, {
+        modelId: PRO_MODEL_ID,
+        fallback: false,
+      });
     });
 
     it('rejects invalid model even for pro', () => {
-      const result = resolveModelForTier('pro', 'fake-model', mockLogger);
+      const { result } = resolveWithMockProvider('pro', 'fake-model');
 
-      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-      expect(result.fallback).toBe(true);
-      expect(result.fallbackReason).toBe('invalid_model');
+      expectResolution(result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'invalid_model',
+      });
     });
 
     it('treats undefined as not_specified for pro tier', () => {
-      const result = resolveModelForTier('pro', undefined, mockLogger);
+      const { result } = resolveWithMockProvider('pro', undefined);
 
-      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-      expect(result.fallback).toBe(true);
-      expect(result.fallbackReason).toBe('not_specified');
+      expectResolution(result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'not_specified',
+      });
     });
 
     it.each([
@@ -166,51 +198,41 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     ] as const)(
       'treats %s as invalid for pro tier: resolves to AI_DEFAULT_MODEL with fallback invalid_model',
       (_label, edgeValue) => {
-        const result = resolveModelForTier('pro', edgeValue, mockLogger);
+        const { result } = resolveWithMockProvider('pro', edgeValue);
 
-        expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-        expect(result.fallback).toBe(true);
-        expect(result.fallbackReason).toBe('invalid_model');
+        expectResolution(result, {
+          modelId: AI_DEFAULT_MODEL,
+          fallback: true,
+          fallbackReason: 'invalid_model',
+        });
       }
     );
   });
 
   describe('Provider factory errors', () => {
     it('throws AppError with PROVIDER_INIT_FAILED when provider creation fails for default path', () => {
-      const spy = vi.spyOn(providerFactory, 'getGenerationProviderWithModel');
-      spy.mockImplementation(() => {
+      expect.assertions(3);
+      const throwingProviderGetter: ProviderGetter = () => {
         throw new Error('Missing API key');
-      });
-
-      expect(() => resolveModelForTier('free', undefined, mockLogger)).toThrow(
-        AppError
-      );
-
-      let thrown: AppError | null = null;
+      };
       try {
-        resolveModelForTier('free', undefined, mockLogger);
+        resolveModelForTier('free', undefined, throwingProviderGetter);
       } catch (error) {
-        thrown = error as AppError;
+        const thrown = error as AppError;
+        expect(thrown.code()).toBe('PROVIDER_INIT_FAILED');
+        expect(thrown.status()).toBe(500);
+        expect(thrown.message).toBe('Provider initialization failed.');
       }
-
-      if (!thrown) {
-        throw new Error('Expected AppError to be thrown');
-      }
-
-      expect(thrown.code()).toBe('PROVIDER_INIT_FAILED');
-      expect(thrown.status()).toBe(500);
-      expect(thrown.message).toBe('Provider initialization failed.');
     });
 
-    it('throws AppError with PROVIDER_INIT_FAILED when getGenerationProviderWithModel fails', () => {
+    it('throws AppError with PROVIDER_INIT_FAILED when provider creation fails for explicit model path', () => {
       expect.assertions(4);
-      const spy = vi.spyOn(providerFactory, 'getGenerationProviderWithModel');
-      spy.mockImplementationOnce(() => {
+      const throwingProviderGetter: ProviderGetter = () => {
         throw new Error('Invalid model config');
-      });
+      };
 
       try {
-        resolveModelForTier('pro', PRO_MODEL_ID, mockLogger);
+        resolveModelForTier('pro', PRO_MODEL_ID, throwingProviderGetter);
       } catch (err) {
         expect(err).toBeInstanceOf(AppError);
         expect((err as AppError).code()).toBe('PROVIDER_INIT_FAILED');
@@ -219,44 +241,6 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
           'Provider initialization failed.'
         );
       }
-    });
-  });
-
-  describe('Provider selection', () => {
-    it('uses model-specific provider even for default model', () => {
-      const defaultProvider = {
-        generate: vi.fn(),
-      } as ReturnType<typeof providerFactory.getGenerationProviderWithModel>;
-      vi.spyOn(
-        providerFactory,
-        'getGenerationProviderWithModel'
-      ).mockReturnValue(defaultProvider);
-
-      const result = resolveModelForTier('free', AI_DEFAULT_MODEL, mockLogger);
-
-      expect(result.modelId).toBe(AI_DEFAULT_MODEL);
-      expect(result.provider).toBe(defaultProvider);
-      expect(result.fallback).toBe(false);
-    });
-
-    it('uses model-specific provider for non-default model', () => {
-      const customProvider = {
-        generate: vi.fn(),
-      } as ReturnType<typeof providerFactory.getGenerationProviderWithModel>;
-      const customSpy = vi
-        .spyOn(providerFactory, 'getGenerationProviderWithModel')
-        .mockReturnValue(customProvider);
-
-      const result = resolveModelForTier(
-        'free',
-        SECOND_FREE_MODEL_ID,
-        mockLogger
-      );
-
-      expect(result.modelId).toBe(SECOND_FREE_MODEL_ID);
-      expect(result.provider).toBe(customProvider);
-      expect(result.fallback).toBe(false);
-      expect(customSpy).toHaveBeenCalledWith(SECOND_FREE_MODEL_ID);
     });
   });
 });

@@ -6,8 +6,4 @@ export type {
   PdfExtractionError,
   PdfExtractionResponse,
   PdfExtractionResult,
-  PdfValidationInput,
-  PdfValidationLimits,
-  PdfValidationResult,
 } from './types';
-export { validatePdfFile } from './validate';

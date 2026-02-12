@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/route';
-import { db } from '@/lib/db/service-role';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { ensureUser } from '../../helpers/db';
+import { db } from '@/lib/db/service-role';
+import {
+  computePdfExtractionHash,
+  issuePdfExtractionProof,
+} from '@/lib/security/pdf-extraction-proof';
+import { createPdfProof } from '../../fixtures/validation';
 import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
@@ -17,8 +23,8 @@ async function createRequest(body: unknown) {
 }
 
 describe('POST /api/v1/plans', () => {
-  const authUserId = 'auth_post_contract_user';
-  const authEmail = 'contract-post@example.com';
+  const authUserId = buildTestAuthUserId('contract-post');
+  const authEmail = buildTestEmail(authUserId);
 
   afterEach(async () => {
     // ensure we do not leak plans across tests in case truncate hook is bypassed
@@ -147,5 +153,143 @@ describe('POST /api/v1/plans', () => {
 
     const payload = await response.json();
     expect(payload).toMatchObject({ classification: 'capped' });
+  });
+
+  it('accepts PDF-origin create request with valid proof', async () => {
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    const extractedContent = {
+      mainTopic: 'Data Structures from PDF',
+      sections: [
+        {
+          title: 'Arrays',
+          content: 'Time complexity and traversal.',
+          level: 1,
+        },
+      ],
+    };
+    const extractionHash = computePdfExtractionHash(extractedContent);
+    const { token } = await issuePdfExtractionProof({
+      authUserId,
+      extractionHash,
+      dbClient: db,
+    });
+
+    const pdfProof = createPdfProof({
+      pdfProofToken: token,
+      pdfExtractionHash: extractionHash,
+    });
+    const request = await createRequest({
+      origin: 'pdf',
+      extractedContent,
+      ...pdfProof,
+      topic: extractedContent.mainTopic,
+      skillLevel: 'beginner',
+      weeklyHours: 4,
+      learningStyle: 'mixed',
+      visibility: 'private',
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    const payload = await response.json();
+    expect(payload.origin).toBe('pdf');
+    expect(payload.topic).toBe(extractedContent.mainTopic);
+  });
+
+  it('rejects PDF-origin create request with wrong-user proof token', async () => {
+    const ownerAuthUserId = buildTestAuthUserId('contract-pdf-owner');
+    const attackerAuthUserId = buildTestAuthUserId('contract-pdf-attacker');
+    await ensureUser({
+      authUserId: ownerAuthUserId,
+      email: buildTestEmail(ownerAuthUserId),
+    });
+    await ensureUser({
+      authUserId: attackerAuthUserId,
+      email: buildTestEmail(attackerAuthUserId),
+    });
+    setTestUser(attackerAuthUserId);
+
+    const extractedContent = {
+      mainTopic: 'Algorithms from PDF',
+      sections: [
+        {
+          title: 'Sorting',
+          content: 'Merge sort and quicksort.',
+          level: 1,
+        },
+      ],
+    };
+    const extractionHash = computePdfExtractionHash(extractedContent);
+    const { token } = await issuePdfExtractionProof({
+      authUserId: ownerAuthUserId,
+      extractionHash,
+      dbClient: db,
+    });
+
+    const pdfProof = createPdfProof({
+      pdfProofToken: token,
+      pdfExtractionHash: extractionHash,
+    });
+    const request = await createRequest({
+      origin: 'pdf',
+      extractedContent,
+      ...pdfProof,
+      topic: extractedContent.mainTopic,
+      skillLevel: 'beginner',
+      weeklyHours: 4,
+      learningStyle: 'mixed',
+      visibility: 'private',
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    const payload = await response.json();
+    expect(payload.error).toBe('Invalid or expired PDF extraction proof.');
+  });
+
+  it('rejects PDF-origin create request with expired proof token', async () => {
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    const extractedContent = {
+      mainTopic: 'Networking from PDF',
+      sections: [
+        {
+          title: 'OSI Model',
+          content: 'Layer responsibilities and examples.',
+          level: 1,
+        },
+      ],
+    };
+    const extractionHash = computePdfExtractionHash(extractedContent);
+    const { token } = await issuePdfExtractionProof({
+      authUserId,
+      extractionHash,
+      dbClient: db,
+      now: () => new Date(0),
+    });
+
+    const pdfProof = createPdfProof({
+      pdfProofToken: token,
+      pdfExtractionHash: extractionHash,
+    });
+    const request = await createRequest({
+      origin: 'pdf',
+      extractedContent,
+      ...pdfProof,
+      topic: extractedContent.mainTopic,
+      skillLevel: 'beginner',
+      weeklyHours: 4,
+      learningStyle: 'mixed',
+      visibility: 'private',
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    const payload = await response.json();
+    expect(payload.error).toBe('Invalid or expired PDF extraction proof.');
   });
 });

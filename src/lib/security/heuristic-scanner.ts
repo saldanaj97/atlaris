@@ -4,10 +4,8 @@ import type { ScanProvider, ScanVerdict } from '@/lib/security/scanner.types';
 /** Minimal logger interface for DI; callers may pass a full Logger or a mock. */
 export interface HeuristicScanLogger {
   // Variadic logger APIs (Pino-style: msg, ...args or obj, msg) require a rest type; unknown[] is
-  // the deliberate exception to the no-any/unknown guideline so the interface stays assignable.
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- documented exception: variadic logger (debug/warn) */
+  // the deliberate exception to strict argument typing so the interface stays assignable.
   debug(...args: unknown[]): void;
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any -- documented exception: variadic logger (debug/warn) */
   warn(...args: unknown[]): void;
 }
 
