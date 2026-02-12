@@ -129,7 +129,7 @@ This document explains the complete flow from user request to persisted plan.
 
 // API does:
 1. Authenticate user (Clerk)
-2. Rate limit check (10 requests / 60 minutes)
+2. User rate limit check (`mutation`: 60 requests / minute)
 3. Validate input with Zod
 4. Truncate if needed (topic ≤200 chars, notes ≤2000 chars)
 5. Insert plan record with status: 'generating'
@@ -142,10 +142,12 @@ This document explains the complete flow from user request to persisted plan.
 // Client calls with planId
 // API does:
 1. Verify plan exists and belongs to user
-2. Check plan isn't already 'ready' or at max attempts
-3. Start SSE stream response
-4. Call runGenerationAttempt()
-5. Stream events as generation progresses
+2. User rate limit check (`aiGeneration`)
+3. Durable generation window check (`PLAN_GENERATION_LIMIT` per `PLAN_GENERATION_WINDOW_MINUTES`)
+4. Check plan isn't already 'ready' or at max attempts
+5. Start SSE stream response
+6. Call runGenerationAttempt()
+7. Stream events as generation progresses
 ```
 
 ### Step 3: AI Generation (`orchestrator.ts`)

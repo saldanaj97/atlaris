@@ -3,11 +3,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   cleanupOldJobs,
+  getActiveRegenerationJob,
   getFailedJobs,
   getJobStats,
+  insertJobRecord,
 } from '@/lib/db/queries/jobs';
 import { jobQueue, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { JOB_TYPES } from '@/lib/jobs/types';
 import { ensureUser } from '../../helpers/db';
 
 type JobInsert = InferInsertModel<typeof jobQueue>;
@@ -344,6 +347,68 @@ describe('Job Queries', () => {
       const deletedCount = await cleanupOldJobs(threshold, db);
 
       expect(deletedCount).toBe(20);
+    });
+  });
+
+  describe('insertJobRecord deduplication', () => {
+    it('deduplicates regeneration jobs per user and plan', async () => {
+      const secondUserId = await ensureUser({
+        authUserId: 'auth_job_test_user_2',
+        email: 'jobtest-2@example.com',
+      });
+
+      const firstInsert = await insertJobRecord(
+        {
+          type: JOB_TYPES.PLAN_REGENERATION,
+          planId,
+          userId,
+          data: {},
+          priority: 0,
+        },
+        db
+      );
+
+      const dedupedForSameUser = await insertJobRecord(
+        {
+          type: JOB_TYPES.PLAN_REGENERATION,
+          planId,
+          userId,
+          data: {},
+          priority: 0,
+        },
+        db
+      );
+
+      const secondUserInsert = await insertJobRecord(
+        {
+          type: JOB_TYPES.PLAN_REGENERATION,
+          planId,
+          userId: secondUserId,
+          data: {},
+          priority: 0,
+        },
+        db
+      );
+
+      expect(firstInsert.deduplicated).toBe(false);
+      expect(dedupedForSameUser.deduplicated).toBe(true);
+      expect(dedupedForSameUser.id).toBe(firstInsert.id);
+      expect(secondUserInsert.deduplicated).toBe(false);
+      expect(secondUserInsert.id).not.toBe(firstInsert.id);
+
+      const activeForFirstUser = await getActiveRegenerationJob(
+        planId,
+        userId,
+        db
+      );
+      const activeForSecondUser = await getActiveRegenerationJob(
+        planId,
+        secondUserId,
+        db
+      );
+
+      expect(activeForFirstUser?.id).toBe(firstInsert.id);
+      expect(activeForSecondUser?.id).toBe(secondUserInsert.id);
     });
   });
 });

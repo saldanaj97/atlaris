@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
 import {
   afterAll,
   beforeAll,
@@ -75,6 +75,9 @@ describe('POST /api/v1/plans/stream', () => {
 
     const response = await POST(request);
     expect(response.status).toBe(200);
+    expect(response.headers.get('X-RateLimit-Remaining')).toEqual(
+      expect.any(String)
+    );
 
     const events = await readStreamingResponse(response);
     const completeEvent = events.find((event) => event.type === 'complete');

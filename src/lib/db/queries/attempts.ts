@@ -1,6 +1,11 @@
-import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
+import {
+  ATTEMPT_CAP,
+  getPlanGenerationWindowStart,
+  PLAN_GENERATION_LIMIT,
+  PLAN_GENERATION_WINDOW_MS,
+} from '@/lib/ai/generation-policy';
 import { getCorrelationId } from '@/lib/api/context';
-import { appEnv, attemptsEnv } from '@/lib/config/env';
+import { appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 import type { InferSelectModel } from 'drizzle-orm';
 import { and, asc, count, eq, gte } from 'drizzle-orm';
@@ -30,16 +35,8 @@ import {
   learningPlans,
   modules,
   tasks,
+  users,
 } from '@/lib/db/schema';
-
-/** Validated attempt cap: always >= 1; invalid env falls back to DEFAULT_ATTEMPT_CAP. */
-const ATTEMPT_CAP = (() => {
-  const raw = attemptsEnv.cap;
-  if (!Number.isFinite(raw) || raw <= 0) {
-    return DEFAULT_ATTEMPT_CAP;
-  }
-  return Math.floor(raw);
-})();
 
 /**
  * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
@@ -78,6 +75,11 @@ export type GenerationAttemptRecord = InferSelectModel<
   typeof generationAttempts
 >;
 
+/**
+ * Security guardrail: keep `dbClient` required.
+ * Callers must pass request-scoped `getDb()` so RLS claims flow through.
+ * Reverting to optional `dbClient = getDb()` masks missing DI and is a security footgun.
+ */
 export interface StartAttemptParams {
   planId: string;
   userId: string;
@@ -127,8 +129,9 @@ export interface AttemptReservation {
 
 export interface AttemptRejection {
   reserved: false;
-  reason: 'capped' | 'in_progress' | 'invalid_status';
+  reason: 'capped' | 'in_progress' | 'invalid_status' | 'rate_limited';
   currentStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
+  retryAfter?: number;
 }
 
 export type ReserveAttemptResult = AttemptReservation | AttemptRejection;
@@ -160,7 +163,7 @@ export interface FinalizeFailureParams {
    * When classification is 'provider_error', used to decide retryability
    * (e.g. 5xx/transient → retryable, 4xx/validation-like → terminal).
    */
-  error?: unknown;
+  error?: AttemptError;
   /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
   dbClient: AttemptsDbClient;
   now?: () => Date;
@@ -177,15 +180,35 @@ interface ProviderErrorStatusShape {
   response?: { status?: number } | null;
 }
 
-function getProviderErrorStatus(error: unknown): number | undefined {
-  if (!error || typeof error !== 'object') return undefined;
+interface AttemptErrorFallbackShape {
+  message: string;
+  code?: string;
+}
 
-  const providerError = error as ProviderErrorStatusShape;
+export type AttemptError =
+  | (ProviderErrorStatusShape & Partial<AttemptErrorFallbackShape>)
+  | AttemptErrorFallbackShape;
+
+function getProviderErrorStatus(
+  error: AttemptError | null | undefined
+): number | undefined {
+  if (!error) return undefined;
+
+  const responseStatus =
+    'response' in error &&
+    typeof error.response === 'object' &&
+    error.response !== null &&
+    'status' in error.response &&
+    typeof error.response.status === 'number' &&
+    Number.isFinite(error.response.status)
+      ? error.response.status
+      : undefined;
+
   const candidates = [
-    providerError.status,
-    providerError.statusCode,
-    providerError.httpStatus,
-    providerError.response?.status,
+    'status' in error ? error.status : undefined,
+    'statusCode' in error ? error.statusCode : undefined,
+    'httpStatus' in error ? error.httpStatus : undefined,
+    responseStatus,
   ];
 
   for (const candidate of candidates) {
@@ -197,7 +220,9 @@ function getProviderErrorStatus(error: unknown): number | undefined {
   return undefined;
 }
 
-function isProviderErrorRetryable(error: unknown): boolean {
+function isProviderErrorRetryable(
+  error: AttemptError | null | undefined
+): boolean {
   if (error == null) return true;
   const status = getProviderErrorStatus(error);
   if (status === undefined) return true;
@@ -614,9 +639,9 @@ export async function recordFailure({
 /**
  * Atomically reserves an attempt slot for a plan within a single transaction.
  *
- * 1. Locks the plan row with FOR UPDATE to prevent concurrent reservations.
- * 2. Verifies ownership and counts existing attempts (cap enforcement).
- * 3. Rejects if an in-progress attempt already exists for the plan.
+ * 1. Locks user + plan rows with FOR UPDATE to serialize per-user reservations.
+ * 2. Verifies ownership and durable per-user window limit.
+ * 3. Enforces per-plan attempt cap and rejects in-progress duplicates.
  * 4. Inserts a placeholder attempt with status 'in_progress'.
  * 5. Sets the plan's generation_status to 'generating'.
  *
@@ -639,6 +664,21 @@ export async function reserveAttemptSlot(params: {
   );
 
   return dbClient.transaction(async (tx) => {
+    const startedAt = nowFn();
+
+    // Lock user row first so per-user durable throttling is serialized across
+    // all plans owned by the same user.
+    const [lockedUser] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .for('update');
+
+    if (!lockedUser?.id) {
+      throw new Error('User not found for generation attempt reservation');
+    }
+
     // Lock the plan row to serialize concurrent reservation attempts
     const [plan] = await tx
       .select({
@@ -673,6 +713,57 @@ export async function reserveAttemptSlot(params: {
       } as const;
     }
 
+    const windowStart = getPlanGenerationWindowStart(startedAt);
+
+    // Enforce durable per-user generation window cap inside this transaction so
+    // concurrent requests cannot overrun the limit.
+    const [{ value: attemptsInWindow = 0 } = { value: 0 }] = await tx
+      .select({ value: count(generationAttempts.id) })
+      .from(generationAttempts)
+      .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
+      .where(
+        and(
+          eq(learningPlans.userId, userId),
+          gte(generationAttempts.createdAt, windowStart)
+        )
+      );
+
+    if (attemptsInWindow >= PLAN_GENERATION_LIMIT) {
+      const [oldestAttempt] = await tx
+        .select({ createdAt: generationAttempts.createdAt })
+        .from(generationAttempts)
+        .innerJoin(
+          learningPlans,
+          eq(generationAttempts.planId, learningPlans.id)
+        )
+        .where(
+          and(
+            eq(learningPlans.userId, userId),
+            gte(generationAttempts.createdAt, windowStart)
+          )
+        )
+        .orderBy(asc(generationAttempts.createdAt))
+        .limit(1);
+
+      const retryAfter = oldestAttempt
+        ? Math.max(
+            0,
+            Math.floor(
+              (oldestAttempt.createdAt.getTime() +
+                PLAN_GENERATION_WINDOW_MS -
+                startedAt.getTime()) /
+                1000
+            )
+          )
+        : Math.floor(PLAN_GENERATION_WINDOW_MS / 1000);
+
+      return {
+        reserved: false,
+        reason: 'rate_limited',
+        retryAfter,
+      } as const;
+    }
+
     // Count ALL existing attempts (including any lingering in_progress ones)
     const [{ value: existingAttempts = 0 } = { value: 0 }] = await tx
       .select({ value: count(generationAttempts.id) })
@@ -698,8 +789,6 @@ export async function reserveAttemptSlot(params: {
     if (inProgressAttempt) {
       return { reserved: false, reason: 'in_progress' } as const;
     }
-
-    const startedAt = nowFn();
 
     // Insert a placeholder attempt record
     const [attempt] = await tx
@@ -993,7 +1082,7 @@ export async function finalizeAttemptFailure({
   return attempt;
 }
 
-export { ATTEMPT_CAP };
+export { ATTEMPT_CAP, PLAN_GENERATION_LIMIT };
 
 function assertAttemptIdMatchesReservation(
   attemptId: string,

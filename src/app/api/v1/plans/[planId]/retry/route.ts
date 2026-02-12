@@ -1,12 +1,23 @@
 import { eq } from 'drizzle-orm';
 
+import {
+  PLAN_GENERATION_LIMIT,
+  PLAN_GENERATION_WINDOW_MINUTES,
+} from '@/lib/ai/generation-policy';
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import type { GenerationInput, IsoDateString } from '@/lib/ai/types';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { NotFoundError, ValidationError } from '@/lib/api/errors';
-import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
+import {
+  NotFoundError,
+  RateLimitError,
+  ValidationError,
+} from '@/lib/api/errors';
+import {
+  checkPlanGenerationRateLimit,
+  getPlanGenerationRateLimitHeaders,
+} from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import {
@@ -81,7 +92,9 @@ export const POST = withErrorBoundary(
       throw new NotFoundError('Learning plan not found.');
     }
 
-    await checkPlanGenerationRateLimit(user.id, db);
+    const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
+    const generationRateLimitHeaders =
+      getPlanGenerationRateLimitHeaders(remaining);
 
     // Tier-gated provider resolution (retries use default model for the tier)
     const userTier = await resolveUserTier(user.id, db);
@@ -127,19 +140,26 @@ export const POST = withErrorBoundary(
       if (reservation.reason === 'capped') {
         return jsonError(
           'Maximum retry attempts reached for this plan. Please create a new plan.',
-          { status: 429 }
+          { status: 429, headers: generationRateLimitHeaders }
+        );
+      }
+      if (reservation.reason === 'rate_limited') {
+        throw new RateLimitError(
+          `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
+          { retryAfter: reservation.retryAfter, remaining: 0 }
         );
       }
       if (reservation.reason === 'invalid_status') {
         return jsonError(
           'Plan is not in a failed state. Only failed plans can be retried.',
-          { status: 400 }
+          { status: 400, headers: generationRateLimitHeaders }
         );
       }
 
       // reason === 'in_progress'
       return jsonError('A generation is already in progress for this plan.', {
         status: 409,
+        headers: generationRateLimitHeaders,
       });
     }
 
@@ -194,7 +214,20 @@ export const POST = withErrorBoundary(
               },
               'Failed to finalize attempt on retry error; falling back to plan-level cleanup'
             );
-            await safeMarkPlanFailed(plan.id, user.id, db);
+            try {
+              await safeMarkPlanFailed(plan.id, user.id, db);
+            } catch (markFailedErr) {
+              logger.error(
+                {
+                  planId: plan.id,
+                  attemptId: reservation.attemptId,
+                  finalizeErr,
+                  attemptError,
+                  markFailedErr,
+                },
+                'Plan-level cleanup (safeMarkPlanFailed) failed after finalize error'
+              );
+            }
           });
           logger.error(
             {
@@ -253,7 +286,10 @@ export const POST = withErrorBoundary(
 
     return new Response(stream, {
       status: 200,
-      headers: streamHeaders,
+      headers: {
+        ...streamHeaders,
+        ...generationRateLimitHeaders,
+      },
     });
   })
 );

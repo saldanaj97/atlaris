@@ -613,6 +613,45 @@ export async function decrementPdfPlanUsage(
   );
 }
 
+/**
+ * Decrement regeneration usage counter (used to roll back quota when an enqueue
+ * request deduplicates against an already active regeneration job).
+ * Counter is clamped at 0 to prevent negative values.
+ */
+export async function decrementRegenerationUsage(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<void> {
+  const month = getCurrentMonth();
+
+  const [updated] = await dbClient
+    .update(usageMetrics)
+    .set({
+      regenerationsUsed: sql`GREATEST(0, ${usageMetrics.regenerationsUsed} - 1)`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .returning({ regenerationsUsed: usageMetrics.regenerationsUsed });
+
+  if (!updated) {
+    logger.warn(
+      { userId, month, action: 'decrementRegenerationUsage' },
+      'No usage metrics found to decrement'
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      userId,
+      month,
+      action: 'decrementRegenerationUsage',
+      newCount: updated.regenerationsUsed,
+    },
+    'Regeneration usage decremented'
+  );
+}
+
 export async function atomicCheckAndIncrementUsage(
   userId: string,
   type: AtomicUsageType,

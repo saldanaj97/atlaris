@@ -140,6 +140,8 @@ export async function createTestUser(overrides = {}) {
 
 Always use factories, never hardcoded IDs.
 
+For durable generation-window tests, use `seedFailedAttemptsForDurableWindow()` and `getDurableWindowSeedCount()` from `tests/fixtures/attempts.ts` instead of hardcoded numeric caps.
+
 ## Mocking
 
 Prefer dependency injection over `vi.mock()`:

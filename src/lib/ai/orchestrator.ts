@@ -3,6 +3,7 @@ import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,
+  type AttemptRejection,
   type AttemptReservation,
   type AttemptsDbClient,
   type GenerationAttemptRecord,
@@ -141,6 +142,14 @@ export type GenerationAttemptRecordForResponse =
 
 const DEFAULT_CLOCK = () => Date.now();
 
+/** User-facing messages for reservation rejection reasons; fallback used for invalid_status and future reasons. */
+const ERROR_MESSAGES: Partial<Record<AttemptRejection['reason'], string>> = {
+  capped: 'Generation attempt cap reached',
+  rate_limited: 'Generation rate limit exceeded for this user',
+  in_progress:
+    'A generation is already in progress for this plan (concurrent conflict)',
+};
+
 function toGenerationError(error: unknown): Error {
   if (error instanceof Error) {
     return error;
@@ -237,15 +246,14 @@ export async function runGenerationAttempt(
     const classification: FailureClassification =
       reservation.reason === 'capped'
         ? 'capped'
-        : reservation.reason === 'in_progress'
-          ? 'in_progress'
-          : 'validation';
+        : reservation.reason === 'rate_limited'
+          ? 'rate_limit'
+          : reservation.reason === 'in_progress'
+            ? 'rate_limit'
+            : 'validation';
     const errorMessage =
-      reservation.reason === 'capped'
-        ? 'Generation attempt cap reached'
-        : reservation.reason === 'in_progress'
-          ? 'A generation is already in progress for this plan (concurrent conflict)'
-          : `Generation attempt is not allowed for plan status: ${reservation.currentStatus ?? 'unknown'}`;
+      ERROR_MESSAGES[reservation.reason] ??
+      `Generation attempt is not allowed for plan status: ${reservation.currentStatus ?? 'unknown'}`;
 
     const syntheticAttempt = createSyntheticFailureAttempt({
       planId: context.planId,

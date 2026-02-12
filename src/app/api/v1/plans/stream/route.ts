@@ -12,7 +12,10 @@ import {
   findCappedPlanWithoutModules,
   normalizePlanDurationForTier,
 } from '@/lib/api/plans/shared';
-import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
+import {
+  checkPlanGenerationRateLimit,
+  getPlanGenerationRateLimitHeaders,
+} from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
@@ -58,7 +61,9 @@ export const POST: PlainHandler = withErrorBoundary(
     }
 
     const db = getDb();
-    await checkPlanGenerationRateLimit(user.id, db);
+    const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
+    const generationRateLimitHeaders =
+      getPlanGenerationRateLimitHeaders(remaining);
 
     const userTier: SubscriptionTier = await resolveUserTier(user.id, db);
     const normalization = normalizePlanDurationForTier({
@@ -226,7 +231,10 @@ export const POST: PlainHandler = withErrorBoundary(
 
     return new Response(stream, {
       status: 200,
-      headers: streamHeaders,
+      headers: {
+        ...streamHeaders,
+        ...generationRateLimitHeaders,
+      },
     });
   })
 );

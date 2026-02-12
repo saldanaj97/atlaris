@@ -1,12 +1,14 @@
-import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
+import { getModelsForTier } from '@/lib/ai/ai-models';
+import { validateModelForTier } from '@/lib/ai/model-resolver';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
+import { resolveUserTier } from '@/lib/stripe/usage';
 import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
 
 /**
@@ -33,12 +35,15 @@ export const GET = withErrorBoundary(
 
     logger.debug('User preferences retrieved successfully');
 
+    const userTier = await resolveUserTier(user.id);
+    const availableModels = getModelsForTier(userTier);
+
     // TODO: [OPENROUTER-MIGRATION] Return actual user preferences when column exists:
     // return json({ preferredAiModel: user.preferredAiModel ?? DEFAULT_MODEL });
 
     const response = json({
       preferredAiModel: null, // Not yet implemented
-      availableModels: AVAILABLE_MODELS,
+      availableModels,
     });
 
     return attachRequestIdHeader(response, requestId);
@@ -49,7 +54,7 @@ export const GET = withErrorBoundary(
  * PATCH /api/v1/user/preferences
  *
  * Updates the authenticated user's AI model preference.
- * Validates the model ID and performs tier-gating (when implemented).
+ * Validates the model ID and enforces tier-gating.
  */
 export const PATCH = withErrorBoundary(
   withAuthAndRateLimit('mutation', async ({ req, userId }) => {
@@ -82,12 +87,66 @@ export const PATCH = withErrorBoundary(
       throw new NotFoundError('User not found');
     }
 
-    // TODO: [OPENROUTER-MIGRATION] Implement tier-gating check:
-    // const userTier = await resolveUserTier(user.id);
-    // const model = getModelById(parsed.data.preferredAiModel);
-    // if (model && model.tier === 'pro' && userTier === 'free') {
-    //   throw new ValidationError('Model requires Pro subscription');
-    // }
+    const userTier = await resolveUserTier(user.id);
+    const modelValidation = validateModelForTier(
+      userTier,
+      parsed.data.preferredAiModel
+    );
+
+    // Enumerate every known reason from validateModelForTier (see ModelValidationResult in
+    // @/lib/ai/model-resolver). When adding a new reason there, add a case here and keep
+    // the default branch for unexpected values. AppError: @/lib/api/errors.
+    if (!modelValidation.valid) {
+      const reason = modelValidation.reason;
+      switch (reason) {
+        case 'invalid_model':
+          throw new AppError('Model is not recognized.', {
+            status: 400,
+            code: 'MODEL_INVALID',
+            details: {
+              preferredAiModel: parsed.data.preferredAiModel,
+            },
+          });
+        case 'tier_denied':
+          throw new AppError(
+            'Model is not allowed for your subscription tier.',
+            {
+              status: 403,
+              code: 'MODEL_NOT_ALLOWED_FOR_TIER',
+              details: {
+                preferredAiModel: parsed.data.preferredAiModel,
+                tier: userTier,
+              },
+            }
+          );
+        default: {
+          const unexpectedReason = (
+            modelValidation as {
+              valid: false;
+              reason: string;
+            }
+          ).reason;
+          logger.warn(
+            {
+              reason: unexpectedReason,
+              preferredAiModel: parsed.data.preferredAiModel,
+            },
+            'Unexpected model validation reason from validateModelForTier'
+          );
+          throw new AppError(
+            'Model validation failed for an unexpected reason.',
+            {
+              status: 500,
+              code: 'UNKNOWN_MODEL_VALIDATION_REASON',
+              details: {
+                reason: unexpectedReason,
+                preferredAiModel: parsed.data.preferredAiModel,
+              },
+            }
+          );
+        }
+      }
+    }
 
     // TODO: [OPENROUTER-MIGRATION] Save preference when column exists:
     // await updateUserModelPreference(user.id, parsed.data.preferredAiModel);

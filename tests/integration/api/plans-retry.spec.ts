@@ -1,8 +1,9 @@
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { describe, expect, it, vi } from 'vitest';
 
+import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 
@@ -35,21 +36,7 @@ describe('POST /api/v1/plans/:planId/retry', () => {
       throw new Error('Expected plan to be created for retry test.');
     }
 
-    await db.insert(generationAttempts).values(
-      Array.from({ length: 10 }, () => ({
-        planId: plan.id,
-        status: 'failure' as const,
-        classification: 'timeout',
-        durationMs: 1_000,
-        modulesCount: 0,
-        tasksCount: 0,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: false,
-        promptHash: null,
-        metadata: null,
-      }))
-    );
+    await seedFailedAttemptsForDurableWindow(plan.id);
 
     const orchestrator = await import('@/lib/ai/orchestrator');
     const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
@@ -64,6 +51,7 @@ describe('POST /api/v1/plans/:planId/retry', () => {
 
       const response = await POST(request);
       expect(response.status).toBe(429);
+      expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
 
       const body = (await response.json()) as {
         code?: string;

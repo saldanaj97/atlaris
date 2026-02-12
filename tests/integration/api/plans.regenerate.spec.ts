@@ -5,6 +5,7 @@ import { desc, eq } from 'drizzle-orm';
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { jobQueue, learningPlans, usageMetrics } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -48,6 +49,9 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
     const res = await POST(request, context);
     expect(res.status).toBe(202);
+    expect(res.headers.get('X-RateLimit-Remaining')).toEqual(
+      expect.any(String)
+    );
 
     const body = await res.json();
     expect(body.status).toBe('pending');
@@ -236,7 +240,34 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(body.error).toMatch(/regeneration limit|quota/i);
   });
 
-  it('deduplicates concurrent regeneration requests for same plan', async () => {
+  it('returns 429 when durable generation window limit is exceeded', async () => {
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: authEmail,
+      subscriptionTier: 'pro',
+    });
+
+    const plan = await createPlan(userId);
+
+    await seedFailedAttemptsForDurableWindow(plan.id, {
+      promptHashPrefix: 'regen-rate-limit',
+    });
+
+    const { request, context } = await createRequest(plan.id, {
+      overrides: { topic: 'blocked by durable limit' },
+    });
+
+    const response = await POST(request, context);
+    expect(response.status).toBe(429);
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
+
+    const body = await response.json();
+    expect(body.code).toBe('RATE_LIMITED');
+    expect(typeof body.retryAfter).toBe('number');
+  });
+
+  it('returns conflict when regeneration is already queued for same plan', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({
       authUserId,
@@ -264,9 +295,14 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     }).then(({ request, context }) => POST(request, context));
     const res1 = await firstRequestPromise;
 
-    // Both requests should succeed
+    // First request queues the job.
     expect(res1.status).toBe(202);
-    expect(res2.status).toBe(202);
+
+    // Second request should now be rejected as duplicate active regeneration.
+    expect(res2.status).toBe(409);
+    const secondBody = await res2.json();
+    expect(secondBody.code).toBe('REGENERATION_ALREADY_QUEUED');
+    expect(secondBody.details?.jobId).toEqual(expect.any(String));
 
     // Verify only one active regeneration job was created
     const jobs = await db
@@ -286,8 +322,5 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(['interview prep 1', 'interview prep 2']).toContain(
       payload?.overrides?.topic
     );
-
-    // API does not currently signal deduplication in header/body; if it did (e.g.
-    // X-Regeneration-Deduplicated or body.deduplicated), assert res2 includes it here.
   });
 });

@@ -9,6 +9,12 @@ import { db } from '@/lib/db/service-role';
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  createFailedAttemptsInDb,
+  getDurableWindowSeedCount,
+  seedFailedAttemptsForDurableWindow,
+} from '../../fixtures/attempts';
+import { createPlan } from '../../fixtures/plans';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
@@ -23,23 +29,15 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
       email: `${authUserId}@example.com`,
     });
 
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'Test Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-        generationStatus: 'failed',
-      })
-      .returning();
-
-    if (!plan) {
-      throw new Error('Test setup failed: plan insert returned no rows');
-    }
+    const plan = await createPlan(userId, {
+      topic: 'Test Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      visibility: 'private',
+      origin: 'ai',
+      generationStatus: 'failed',
+    });
     planId = plan.id;
   });
 
@@ -109,23 +107,75 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     }
   });
 
+  it('enforces durable user window cap atomically across plans', async () => {
+    const secondPlan = await createPlan(userId, {
+      topic: 'Second Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      visibility: 'private',
+      origin: 'ai',
+      generationStatus: 'failed',
+    });
+
+    // Seed attempts to leave exactly one slot in the durable window.
+    const slotsToFill = getDurableWindowSeedCount(1);
+    const seededAttempts = await seedFailedAttemptsForDurableWindow(planId, {
+      slotsRemaining: 1,
+      durationMs: 500,
+      metadata: null,
+      promptHashPrefix: 'seed',
+    });
+    expect(seededAttempts).toHaveLength(slotsToFill);
+
+    const input = {
+      topic: 'Durable Limit Test',
+      skillLevel: 'beginner' as const,
+      weeklyHours: 5,
+      learningStyle: 'mixed' as const,
+    };
+
+    const [first, second] = await Promise.all([
+      reserveAttemptSlot({
+        planId,
+        userId,
+        input,
+        dbClient: db,
+      }),
+      reserveAttemptSlot({
+        planId: secondPlan.id,
+        userId,
+        input,
+        dbClient: db,
+      }),
+    ]);
+
+    const reservedCount = [first, second].filter((r) => r.reserved).length;
+    expect(reservedCount).toBe(1);
+
+    const rateLimited = [first, second].find(
+      (r) => !r.reserved && r.reason === 'rate_limited'
+    );
+    expect(rateLimited).toBeDefined();
+    if (rateLimited && !rateLimited.reserved) {
+      expect(typeof rateLimited.retryAfter).toBe('number');
+      expect(rateLimited.retryAfter).toBeGreaterThanOrEqual(0);
+    }
+  });
+
   it('enforces attempt cap', async () => {
     // Create ATTEMPT_CAP failed attempts
-    for (let i = 0; i < ATTEMPT_CAP; i++) {
-      await db.insert(generationAttempts).values({
-        planId,
-        status: 'failure',
+    const failedAttempts = await createFailedAttemptsInDb(
+      planId,
+      ATTEMPT_CAP,
+      (i) => ({
         classification: 'timeout',
         durationMs: 1000,
-        modulesCount: 0,
-        tasksCount: 0,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: false,
         promptHash: `hash-${i}`,
         metadata: {},
-      });
-    }
+      })
+    );
+    expect(failedAttempts).toHaveLength(ATTEMPT_CAP);
 
     // Try to reserve another
     const result = await reserveAttemptSlot({

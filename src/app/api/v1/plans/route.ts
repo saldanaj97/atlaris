@@ -10,7 +10,6 @@ import {
   findCappedPlanWithoutModules,
   normalizePlanDurationForTier,
 } from '@/lib/api/plans/shared';
-import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { json, jsonError } from '@/lib/api/response';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getUserByAuthId } from '@/lib/db/queries/users';
@@ -67,9 +66,6 @@ export const POST = withErrorBoundary(
     }
 
     const db = getDb();
-
-    // Check rate limit before creating plan
-    await checkPlanGenerationRateLimit(user.id, db);
 
     // Enforce plan duration cap based on user tier using the requested window
     const userTier = await resolveUserTier(user.id, db);
