@@ -7,6 +7,8 @@ import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
+import { derivePlanStatus } from '@/lib/plans/status';
 
 /**
  * GET /api/v1/plans/:planId/status
@@ -15,8 +17,6 @@ import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
  * Uses learning_plans.generationStatus column (updated by streaming route)
  * instead of the legacy job_queue table.
  */
-
-type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req, userId }) => {
@@ -27,6 +27,8 @@ export const GET = withErrorBoundary(
     if (!isUuid(planId)) {
       throw new ValidationError('Invalid plan id format.');
     }
+
+    logger.debug({ planId, userId }, 'Plan status request received');
 
     const user = await getUserByAuthId(userId);
     if (!user) {
@@ -47,6 +49,10 @@ export const GET = withErrorBoundary(
 
     // Verify ownership
     if (plan.userId !== user.id) {
+      logger.warn(
+        { planId, planUserId: plan.userId, requestUserId: user.id },
+        'Plan status ownership check failed'
+      );
       throw new NotFoundError('Learning plan not found.');
     }
 
@@ -78,24 +84,10 @@ export const GET = withErrorBoundary(
       .orderBy(desc(generationAttempts.createdAt))
       .limit(1);
 
-    // Determine status based on generationStatus column and modules
-    let status: PlanStatus;
-    const generationStatus = plan.generationStatus;
-
-    if (generationStatus === 'ready' && hasModules) {
-      status = 'ready';
-    } else if (generationStatus === 'failed') {
-      status = 'failed';
-    } else if (generationStatus === 'generating') {
-      // 'generating' maps to 'processing' for the frontend
-      status = 'processing';
-    } else if (hasModules) {
-      // Has modules but status not 'ready' - treat as ready
-      status = 'ready';
-    } else {
-      // No modules and not failed - still pending/processing
-      status = 'pending';
-    }
+    const status = derivePlanStatus({
+      generationStatus: plan.generationStatus,
+      hasModules,
+    });
 
     // Build error message from latest attempt classification
     let latestError: string | null = null;
@@ -105,6 +97,7 @@ export const GET = withErrorBoundary(
       const errorMessages: Record<string, string> = {
         timeout: 'Generation timed out. Please try again.',
         rate_limit: 'Rate limit exceeded. Please wait and try again.',
+        in_progress: 'A generation is already in progress for this plan.',
         validation: 'Invalid response from AI. Please try again.',
         parse_error: 'Failed to parse AI response. Please try again.',
         network: 'Network error occurred. Please try again.',
@@ -112,6 +105,19 @@ export const GET = withErrorBoundary(
         unknown: 'An unexpected error occurred. Please try again.',
       };
       latestError = errorMessages[classification] ?? errorMessages.unknown;
+    }
+    if (status === 'failed') {
+      logger.warn(
+        {
+          planId,
+          userId: user.id,
+          status,
+          attempts,
+          classification: latestAttempt?.classification ?? null,
+          latestError,
+        },
+        'Plan generation failed'
+      );
     }
 
     return json({

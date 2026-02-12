@@ -6,6 +6,7 @@ import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import type { GenerationInput, IsoDateString } from '@/lib/ai/types';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import {
@@ -42,8 +43,8 @@ const toIsoDateString = (value: string | null): IsoDateString | undefined => {
  * POST /api/v1/plans/:planId/retry
  *
  * Retries generation for a failed plan. Returns a streaming response.
- * Attempt cap and in-progress checks are enforced atomically inside
- * reserveAttemptSlot (called by runGenerationAttempt).
+ * Attempt cap, failed-state requirement, and in-progress checks are enforced
+ * atomically inside reserveAttemptSlot before streaming starts.
  */
 export const POST = withErrorBoundary(
   withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
@@ -80,13 +81,7 @@ export const POST = withErrorBoundary(
       throw new NotFoundError('Learning plan not found.');
     }
 
-    // Check if plan is in a failed state (only allow retry for failed plans)
-    if (plan.generationStatus !== 'failed') {
-      return jsonError(
-        'Plan is not in a failed state. Only failed plans can be retried.',
-        { status: 400 }
-      );
-    }
+    await checkPlanGenerationRateLimit(user.id, db);
 
     // Tier-gated provider resolution (retries use default model for the tier)
     const userTier = await resolveUserTier(user.id, db);
@@ -125,6 +120,7 @@ export const POST = withErrorBoundary(
       userId: user.id,
       input: generationInput,
       dbClient: db,
+      requiredGenerationStatus: 'failed',
     });
 
     if (!reservation.reserved) {
@@ -134,6 +130,13 @@ export const POST = withErrorBoundary(
           { status: 429 }
         );
       }
+      if (reservation.reason === 'invalid_status') {
+        return jsonError(
+          'Plan is not in a failed state. Only failed plans can be retried.',
+          { status: 400 }
+        );
+      }
+
       // reason === 'in_progress'
       return jsonError('A generation is already in progress for this plan.', {
         status: 409,
@@ -162,7 +165,7 @@ export const POST = withErrorBoundary(
 
         const startedAt = Date.now();
 
-        let result;
+        let result: Awaited<ReturnType<typeof runGenerationAttempt>>;
         try {
           result = await runGenerationAttempt(
             {
@@ -181,7 +184,7 @@ export const POST = withErrorBoundary(
             durationMs: Math.max(0, Date.now() - startedAt),
             error: attemptError,
             dbClient: db,
-          }).catch((finalizeErr) => {
+          }).catch(async (finalizeErr) => {
             logger.error(
               {
                 planId: plan.id,
@@ -191,7 +194,7 @@ export const POST = withErrorBoundary(
               },
               'Failed to finalize attempt on retry error; falling back to plan-level cleanup'
             );
-            return safeMarkPlanFailed(plan.id, user.id);
+            await safeMarkPlanFailed(plan.id, user.id, db);
           });
           logger.error(
             {
@@ -210,6 +213,7 @@ export const POST = withErrorBoundary(
           await handleSuccessfulGeneration(result, {
             planId: plan.id,
             userId: user.id,
+            dbClient: db,
             startedAt,
             emit,
           });
@@ -219,6 +223,7 @@ export const POST = withErrorBoundary(
         await handleFailedGeneration(result, {
           planId: plan.id,
           userId: user.id,
+          dbClient: db,
           emit,
         });
       });
@@ -241,7 +246,7 @@ export const POST = withErrorBoundary(
           },
           'Failed to finalize attempt after stream setup error'
         );
-        await safeMarkPlanFailed(plan.id, user.id);
+        await safeMarkPlanFailed(plan.id, user.id, db);
       });
       throw setupError;
     }

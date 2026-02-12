@@ -1,10 +1,16 @@
 import { handleFailedGeneration } from '@/app/api/v1/plans/stream/helpers';
 import type { GenerationFailureResult } from '@/lib/ai/orchestrator';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
+import type { AttemptsDbClient } from '@/lib/db/queries/attempts';
 import { describe, expect, it } from 'vitest';
+
+import { createId } from '../../../fixtures/ids';
 
 describe('stream helpers - failed generation sanitization', () => {
   it('emits a sanitized error payload for retryable failures', async () => {
+    const planId = createId('plan');
+    const userId = createId('user');
+    const attemptId = createId('attempt');
     const emittedEvents: StreamingEvent[] = [];
 
     const failureResult: GenerationFailureResult = {
@@ -17,8 +23,8 @@ describe('stream helpers - failed generation sanitization', () => {
       extendedTimeout: false,
       timedOut: false,
       attempt: {
-        id: 'attempt-1',
-        planId: 'plan-1',
+        id: attemptId,
+        planId,
         status: 'failure',
         classification: 'provider_error',
         durationMs: 120,
@@ -36,15 +42,16 @@ describe('stream helpers - failed generation sanitization', () => {
     // Intentionally exercises a retryable classification so this unit test stays
     // DB-free. Non-retryable classifications hit getDb()/markPlanGenerationFailure.
     await handleFailedGeneration(failureResult, {
-      planId: 'plan-1',
-      userId: 'user-1',
+      planId,
+      userId,
+      dbClient: {} as AttemptsDbClient,
       emit: (event) => emittedEvents.push(event),
     });
 
     const errorEvent = emittedEvents.find((event) => event.type === 'error');
     expect(errorEvent).toBeTruthy();
     expect(errorEvent?.data).toMatchObject({
-      planId: 'plan-1',
+      planId,
       code: 'GENERATION_FAILED',
       classification: 'provider_error',
       retryable: true,

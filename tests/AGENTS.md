@@ -56,6 +56,10 @@ RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/  # Secur
 ./scripts/test-unit.sh path/to/file    # Single file
 ```
 
+## Local Development Testing
+
+**NEVER run integration tests locally unless specifically requested by the user.**
+
 **NEVER run `pnpm test:all` unless absolutely necessary.**
 
 ## DB Lifecycle (Integration/E2E/Security)

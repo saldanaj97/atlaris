@@ -172,7 +172,7 @@ function createSyntheticFailureAttempt(params: {
   planId: string;
   classification: FailureClassification;
   durationMs: number;
-  promptHash: string;
+  promptHash: string | null;
   now: () => Date;
 }): GenerationAttemptRecordForResponse {
   return {
@@ -237,36 +237,32 @@ export async function runGenerationAttempt(
     const classification: FailureClassification =
       reservation.reason === 'capped'
         ? 'capped'
-        : // "in_progress" means a concurrent generation is already running for this plan;
-          // surface it as retryable `rate_limit` for client/backoff handling.
-          'rate_limit';
+        : reservation.reason === 'in_progress'
+          ? 'in_progress'
+          : 'validation';
     const errorMessage =
       reservation.reason === 'capped'
         ? 'Generation attempt cap reached'
-        : 'A generation is already in progress for this plan (concurrent conflict)';
+        : reservation.reason === 'in_progress'
+          ? 'A generation is already in progress for this plan (concurrent conflict)'
+          : `Generation attempt is not allowed for plan status: ${reservation.currentStatus ?? 'unknown'}`;
 
-    // Create a synthetic attempt record for the response
-    const syntheticAttempt: GenerationAttemptRecordForResponse = {
-      id: null,
+    const syntheticAttempt = createSyntheticFailureAttempt({
       planId: context.planId,
-      status: 'failure',
       classification,
       durationMs,
-      modulesCount: 0,
-      tasksCount: 0,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
       promptHash: null,
-      metadata: null,
-      createdAt: nowFn(),
-    };
+      now: nowFn,
+    });
 
     logger.warn(
       {
         planId: context.planId,
         userId: context.userId,
+        classification,
+        errorMessage,
         reservationReason: reservation.reason,
+        reservationCurrentStatus: reservation.currentStatus,
         attemptId: 'synthetic:no-db-row',
       },
       'Generation reservation rejected before attempt row creation'

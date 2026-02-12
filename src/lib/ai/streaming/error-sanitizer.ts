@@ -46,6 +46,12 @@ const ERROR_MAP: Record<FailureClassification | 'unknown', SanitizedSseError> =
       message: 'Maximum generation attempts reached. Please create a new plan.',
       retryable: false,
     },
+    in_progress: {
+      code: 'GENERATION_IN_PROGRESS',
+      message:
+        'A generation is already in progress for this plan. Please wait and try again.',
+      retryable: true,
+    },
     unknown: {
       code: 'GENERATION_FAILED',
       message: 'An unexpected error occurred during plan generation.',

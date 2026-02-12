@@ -1,16 +1,29 @@
 import { getAuthUserId, withErrorBoundary } from '@/lib/api/auth';
+import {
+  createRequestContext as createApiRequestContext,
+  withRequestContext,
+} from '@/lib/api/context';
 import { googleOAuthEnv } from '@/lib/config/env';
+import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { storeOAuthTokens } from '@/lib/integrations/oauth';
 import { validateOAuthStateToken } from '@/lib/integrations/oauth-state';
 import {
   attachRequestIdHeader,
-  createRequestContext,
+  createRequestContext as createLoggingRequestContext,
 } from '@/lib/logging/request-context';
 import { eq } from 'drizzle-orm';
 import { google } from 'googleapis';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const GoogleTokensSchema = z.object({
+  access_token: z.string().min(1),
+  refresh_token: z.string().min(1).optional(),
+  expiry_date: z.number().finite().optional(),
+  scope: z.string().min(1).optional(),
+});
 
 export const GET = withErrorBoundary(async (req) => {
   const request = req as NextRequest;
@@ -25,7 +38,7 @@ export const GET = withErrorBoundary(async (req) => {
     );
   }
 
-  const { requestId, logger } = createRequestContext(req, {
+  const { requestId, logger } = createLoggingRequestContext(req, {
     route: 'google_oauth_callback',
     authUserId,
   });
@@ -70,45 +83,62 @@ export const GET = withErrorBoundary(async (req) => {
     );
   }
 
-  // Query users.authUserId to find the application user
-  const db = getDb();
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.authUserId, authUserId))
-    .limit(1);
-
-  if (!user) {
-    return redirectWithRequestId(
-      new URL('/settings/integrations?error=invalid_user', baseUrl)
-    );
-  }
-
-  const oauth2Client = new google.auth.OAuth2(
-    clientId,
-    clientSecret,
-    redirectUri
-  );
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
+  const apiRequestContext = createApiRequestContext(req, authUserId, rlsDb);
 
   try {
-    const { tokens } = await oauth2Client.getToken(code);
+    const [user] = await withRequestContext(apiRequestContext, () => {
+      const db = getDb();
+      return db
+        .select()
+        .from(users)
+        .where(eq(users.authUserId, authUserId))
+        .limit(1);
+    });
 
-    if (!tokens.access_token) {
-      throw new Error('No access token received');
+    if (!user) {
+      return redirectWithRequestId(
+        new URL('/settings/integrations?error=invalid_user', baseUrl)
+      );
     }
 
-    await storeOAuthTokens({
-      userId: user.id,
-      provider: 'google_calendar',
-      tokenData: {
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token ?? undefined,
-        expiresAt: tokens.expiry_date
-          ? new Date(tokens.expiry_date)
-          : undefined,
-        scope: tokens.scope || 'calendar',
-      },
-    });
+    const oauth2Client = new google.auth.OAuth2(
+      clientId,
+      clientSecret,
+      redirectUri
+    );
+
+    const { tokens: tokensRaw } = await oauth2Client.getToken(code);
+    const parsedTokens = GoogleTokensSchema.safeParse(tokensRaw);
+    if (!parsedTokens.success) {
+      logger.error(
+        {
+          error: parsedTokens.error.flatten(),
+        },
+        'Invalid Google OAuth token response payload'
+      );
+      throw new Error('Google OAuth token response validation failed');
+    }
+
+    const tokens = parsedTokens.data;
+    const accessToken = tokens.access_token;
+    const refreshToken = tokens.refresh_token ?? undefined;
+    const expiresAt = tokens.expiry_date
+      ? new Date(tokens.expiry_date)
+      : undefined;
+
+    await withRequestContext(apiRequestContext, () =>
+      storeOAuthTokens({
+        userId: user.id,
+        provider: 'google_calendar',
+        tokenData: {
+          accessToken,
+          refreshToken,
+          expiresAt,
+          scope: tokens.scope ?? 'calendar',
+        },
+      })
+    );
 
     return redirectWithRequestId(
       new URL('/settings/integrations?google=connected', baseUrl)
@@ -118,5 +148,7 @@ export const GET = withErrorBoundary(async (req) => {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=token_exchange_failed', baseUrl)
     );
+  } finally {
+    await cleanup();
   }
 });

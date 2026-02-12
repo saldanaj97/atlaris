@@ -1,10 +1,10 @@
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import {
   mapAttemptsToClient,
   mapDetailToClient,
 } from '@/lib/mappers/detailToClient';
 import type {
   GenerationAttempt,
+  GenerationStatus,
   LearningPlanDetail,
   ModuleWithTasks,
   TaskProgress,
@@ -314,50 +314,13 @@ describe('mapDetailToClient', () => {
     expect(result!.status).toBe('failed');
   });
 
-  it('should derive status as "failed" when latest attempt is validation failure', () => {
-    const latestAttempt = buildGenerationAttempt({
-      id: 'attempt-1',
-      planId: 'plan-1',
-      status: 'failure',
-      classification: 'validation',
-      durationMs: 1000,
-      modulesCount: 0,
-      tasksCount: 0,
-    });
-
-    const detail: LearningPlanDetail = buildPlanDetail({
-      plan: buildPlan({
-        id: 'plan-1',
-        userId: 'user-1',
-        topic: 'Test',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-        startDate: '2024-01-01',
-        deadlineDate: '2024-03-01',
-        modules: [],
-      }),
-      totalTasks: 0,
-      completedTasks: 0,
-      latestAttempt,
-      attemptsCount: 1,
-    });
-
-    const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('failed');
-  });
-
-  it('should derive status as "failed" when attempts count exceeds cap', () => {
+  it('should derive status as "processing" when generation is in progress with no modules', () => {
     const detail = buildPlanDetail({
-      plan: buildPlan({ modules: [] }),
-      attemptsCount: ATTEMPT_CAP,
-      latestAttempt: null,
+      plan: buildPlan({ generationStatus: 'generating', modules: [] }),
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('failed');
+    expect(result!.status).toBe('processing');
   });
 
   it('should sort resources within tasks by order', () => {
@@ -412,7 +375,7 @@ describe('mapDetailToClient', () => {
     expect(result!.latestAttempt!.model).toBe('gpt-4o-mini');
   });
 
-  it('should derive status as "pending" by default', () => {
+  it('should derive status as "ready" when generation status is ready, even without modules', () => {
     const detail: LearningPlanDetail = buildPlanDetail({
       plan: buildPlan({
         id: 'plan-1',
@@ -430,8 +393,20 @@ describe('mapDetailToClient', () => {
       }),
       totalTasks: 0,
       completedTasks: 0,
-      latestAttempt: null,
+      latestAttempt: buildGenerationAttempt(),
       attemptsCount: 1,
+    });
+
+    const result = mapDetailToClient(detail);
+    expect(result!.status).toBe('ready');
+  });
+
+  it('should derive status as "pending" for unknown generation status fallback', () => {
+    const detail = buildPlanDetail({
+      plan: buildPlan({
+        generationStatus: 'unexpected_status' as unknown as GenerationStatus,
+        modules: [],
+      }),
     });
 
     const result = mapDetailToClient(detail);

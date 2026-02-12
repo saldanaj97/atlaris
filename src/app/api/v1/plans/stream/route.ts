@@ -1,7 +1,11 @@
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import {
+  type PlainHandler,
+  withAuthAndRateLimit,
+  withErrorBoundary,
+} from '@/lib/api/auth';
 import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
 import {
   ensurePlanDurationAllowed,
@@ -34,7 +38,7 @@ import {
   safeMarkPlanFailed,
 } from './helpers';
 
-export const POST = withErrorBoundary(
+export const POST: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
     let body: CreateLearningPlanInput;
     try {
@@ -201,6 +205,7 @@ export const POST = withErrorBoundary(
           await handleSuccessfulGeneration(result, {
             planId: plan.id,
             userId: user.id,
+            dbClient: db,
             startedAt,
             emit,
           });
@@ -210,10 +215,11 @@ export const POST = withErrorBoundary(
         await handleFailedGeneration(result, {
           planId: plan.id,
           userId: user.id,
+          dbClient: db,
           emit,
         });
       } catch (error) {
-        await safeMarkPlanFailed(plan.id, user.id);
+        await safeMarkPlanFailed(plan.id, user.id, db);
         throw error;
       }
     });

@@ -127,7 +127,8 @@ export interface AttemptReservation {
 
 export interface AttemptRejection {
   reserved: false;
-  reason: 'capped' | 'in_progress';
+  reason: 'capped' | 'in_progress' | 'invalid_status';
+  currentStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
 }
 
 export type ReserveAttemptResult = AttemptReservation | AttemptRejection;
@@ -626,9 +627,10 @@ export async function reserveAttemptSlot(params: {
   userId: string;
   input: GenerationInput;
   dbClient: AttemptsDbClient;
+  requiredGenerationStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
   now?: () => Date;
 }): Promise<ReserveAttemptResult> {
-  const { planId, userId, input, dbClient } = params;
+  const { planId, userId, input, dbClient, requiredGenerationStatus } = params;
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
@@ -642,6 +644,7 @@ export async function reserveAttemptSlot(params: {
       .select({
         id: learningPlans.id,
         userId: learningPlans.userId,
+        generationStatus: learningPlans.generationStatus,
       })
       .from(learningPlans)
       .where(eq(learningPlans.id, planId))
@@ -649,6 +652,25 @@ export async function reserveAttemptSlot(params: {
 
     if (!plan || plan.userId !== userId) {
       throw new Error('Learning plan not found or inaccessible for user');
+    }
+
+    if (
+      requiredGenerationStatus !== undefined &&
+      plan.generationStatus !== requiredGenerationStatus
+    ) {
+      logger.debug(
+        {
+          planId,
+          expectedStatus: requiredGenerationStatus,
+          actualStatus: plan.generationStatus,
+        },
+        'Plan reservation aborted: generation status mismatch'
+      );
+      return {
+        reserved: false,
+        reason: 'invalid_status',
+        currentStatus: plan.generationStatus,
+      } as const;
     }
 
     // Count ALL existing attempts (including any lingering in_progress ones)

@@ -25,13 +25,14 @@
 // ============================================================================
 // RLS-ENFORCED CLIENTS (DEFAULT)
 // ============================================================================
-export { createAuthenticatedRlsClient, createAnonymousRlsClient } from './rls';
+export { createAnonymousRlsClient, createAuthenticatedRlsClient } from './rls';
 
 // ============================================================================
 // SCHEMA AND TYPES
 // ============================================================================
-export * from './schema';
 export * from './enums';
+export * from './schema';
+export type { DbClient } from './types';
 
 // ============================================================================
 // QUERY UTILITIES

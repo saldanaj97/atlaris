@@ -9,6 +9,7 @@ import type { ParsedModule } from '@/lib/ai/parser';
 import { sanitizeSseError } from '@/lib/ai/streaming/error-sanitizer';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { getCorrelationId } from '@/lib/api/context';
+import type { AttemptsDbClient } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
@@ -23,6 +24,7 @@ type EmitFn = (event: StreamingEvent) => void;
 interface GenerationContext {
   planId: string;
   userId: string;
+  dbClient: AttemptsDbClient;
   emit: EmitFn;
 }
 
@@ -42,16 +44,15 @@ export async function handleSuccessfulGeneration(
   result: Extract<GenerationResult, { status: 'success' }>,
   ctx: SuccessContext
 ): Promise<void> {
-  const { planId, userId, startedAt, emit } = ctx;
+  const { planId, userId, startedAt, emit, dbClient } = ctx;
   const modules = result.modules;
   const modulesCount = modules.length;
   const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
 
   emitModuleSummaries(modules, planId, emit);
 
-  const db = getDb();
-  await markPlanGenerationSuccess(planId, db);
-  await tryRecordUsage(userId, result);
+  await markPlanGenerationSuccess(planId, dbClient);
+  await tryRecordUsage(userId, result, dbClient);
 
   emit({
     type: 'complete',
@@ -76,15 +77,14 @@ export async function handleFailedGeneration(
   result: Extract<GenerationResult, { status: 'failure' }>,
   ctx: GenerationContext
 ): Promise<void> {
-  const { planId, userId, emit } = ctx;
+  const { planId, userId, emit, dbClient } = ctx;
 
   const classification = result.classification ?? 'unknown';
   const retryable = isRetryableClassification(classification);
 
   if (!retryable) {
-    const db = getDb();
-    await markPlanGenerationFailure(planId, db);
-    await tryRecordUsage(userId, result);
+    await markPlanGenerationFailure(planId, dbClient);
+    await tryRecordUsage(userId, result, dbClient);
   }
 
   const sanitized = sanitizeSseError(result.error, classification, {
@@ -206,7 +206,8 @@ function computeCostCents(
 
 export async function tryRecordUsage(
   userId: string,
-  result: GenerationResult
+  result: GenerationResult,
+  dbClient?: AttemptsDbClient
 ): Promise<void> {
   try {
     const usage = result.metadata?.usage;
@@ -220,15 +221,18 @@ export async function tryRecordUsage(
         ? computeCostCents(modelId, inputTokens, outputTokens)
         : 0;
 
-    await recordUsage({
-      userId,
-      provider: result.metadata?.provider ?? 'unknown',
-      model: modelId,
-      inputTokens,
-      outputTokens,
-      costCents,
-      kind: 'plan',
-    });
+    await recordUsage(
+      {
+        userId,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: modelId,
+        inputTokens,
+        outputTokens,
+        costCents,
+        kind: 'plan',
+      },
+      dbClient
+    );
   } catch (usageError) {
     logger.error(
       {
@@ -247,14 +251,15 @@ export async function tryRecordUsage(
  *
  * @param planId - ID of the plan to mark failed
  * @param userId - ID of the user owning the plan (for logging)
+ * @param dbClient - Optional RLS client; defaults to getDb() for module-style usage
  */
 export async function safeMarkPlanFailed(
   planId: string,
-  userId: string
+  userId: string,
+  dbClient: AttemptsDbClient = getDb()
 ): Promise<void> {
   try {
-    const db = getDb();
-    await markPlanGenerationFailure(planId, db);
+    await markPlanGenerationFailure(planId, dbClient);
   } catch (markErr) {
     logger.error(
       { error: markErr, planId, userId },
