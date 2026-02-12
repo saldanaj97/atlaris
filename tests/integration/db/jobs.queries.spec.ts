@@ -180,12 +180,14 @@ describe('Job Queries', () => {
         status: 'completed',
         attempts: 1,
         scheduledFor: oldDate,
+        createdAt: oldDate,
         completedAt: oldDate,
       });
       await createJob({
         status: 'completed',
         attempts: 1,
         scheduledFor: recentDate,
+        createdAt: recentDate,
         completedAt: recentDate,
       });
 
