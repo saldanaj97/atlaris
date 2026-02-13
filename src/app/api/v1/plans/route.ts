@@ -3,24 +3,16 @@ import { ZodError } from 'zod';
 import { eq } from 'drizzle-orm';
 
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
+import { ValidationError } from '@/lib/api/errors';
 import {
-  preparePlanInputWithPdfOrigin,
-  rollbackPdfUsageIfReserved,
-} from '@/lib/api/plans/pdf-origin';
-import {
-  calculateTotalWeeks,
-  ensurePlanDurationAllowed,
-  findCappedPlanWithoutModules,
-  normalizePlanDurationForTier,
-} from '@/lib/api/plans/shared';
-import { json, jsonError } from '@/lib/api/response';
+  insertPlanWithRollback,
+  preparePlanCreationPreflight,
+} from '@/lib/api/plans/preflight';
+import { requireInternalUserByAuthId } from '@/lib/api/plans/route-context';
+import { json } from '@/lib/api/response';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
-import { logger } from '@/lib/logging/logger';
-import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
 import {
   CreateLearningPlanInput,
   createLearningPlanSchema,
@@ -28,14 +20,8 @@ import {
 
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ userId }) => {
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
-
     const db = getDb();
+    const user = await requireInternalUserByAuthId(userId);
     const summaries = await getPlanSummariesForUser(user.id, db);
     return json(summaries);
   })
@@ -56,115 +42,22 @@ export const POST = withErrorBoundary(
       throw new ValidationError('Invalid request body.', details);
     }
 
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
-
     const db = getDb();
-
-    // Enforce plan duration cap based on user tier using the requested window
-    const userTier = await resolveUserTier(user.id, db);
-    const requestedWeeks = calculateTotalWeeks({
-      startDate: body.startDate ?? null,
-      deadlineDate: body.deadlineDate ?? null,
-    });
-    const requestedCap = ensurePlanDurationAllowed({
-      userTier,
-      weeklyHours: body.weeklyHours,
-      totalWeeks: requestedWeeks,
-    });
-
-    if (!requestedCap.allowed) {
-      return jsonError(
-        requestedCap.reason ?? 'Plan duration exceeds tier cap',
-        {
-          status: 403,
-        }
-      );
-    }
-
-    // Normalize persisted dates to tier limits while keeping requested cap validation strict
-    const {
-      startDate: _startDate,
-      deadlineDate: _deadlineDate,
-      totalWeeks,
-    } = normalizePlanDurationForTier({
-      tier: userTier,
-      weeklyHours: body.weeklyHours,
-      startDate: body.startDate ?? null,
-      deadlineDate: body.deadlineDate ?? null,
-    });
-
-    const cap = ensurePlanDurationAllowed({
-      userTier,
-      weeklyHours: body.weeklyHours,
-      totalWeeks,
-    });
-
-    if (!cap.allowed) {
-      return jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
-        status: 403,
-      });
-    }
-
-    const cappedPlanId = await findCappedPlanWithoutModules(user.id);
-    if (cappedPlanId) {
-      throw new AttemptCapExceededError('attempt cap reached', {
-        planId: cappedPlanId,
-      });
-    }
-
-    const preparedInput = await preparePlanInputWithPdfOrigin({
+    const preflight = await preparePlanCreationPreflight({
       body,
       authUserId: userId,
-      internalUserId: user.id,
       dbClient: db,
     });
 
-    if (!preparedInput.ok) {
-      return preparedInput.response;
+    if (!preflight.ok) {
+      return preflight.response;
     }
 
-    const { origin, extractedContext, topic, pdfUsageReserved } =
-      preparedInput.data;
-
-    let created: { id: string };
-    try {
-      created = await atomicCheckAndInsertPlan(
-        user.id,
-        {
-          topic,
-          skillLevel: body.skillLevel,
-          weeklyHours: body.weeklyHours,
-          learningStyle: body.learningStyle,
-          visibility: 'private',
-          origin,
-          extractedContext,
-          startDate: _startDate,
-          deadlineDate: _deadlineDate,
-        },
-        db
-      );
-    } catch (err) {
-      if (pdfUsageReserved) {
-        try {
-          await rollbackPdfUsageIfReserved({
-            internalUserId: user.id,
-            dbClient: db,
-            reserved: pdfUsageReserved,
-          });
-        } catch (rollbackErr) {
-          logger.error(
-            { rollbackErr, userId: user.id },
-            'Failed to rollback pdf plan usage'
-          );
-        }
-      }
-      throw err;
-    }
+    const created = await insertPlanWithRollback({
+      body,
+      preflight: preflight.data,
+      dbClient: db,
+    });
     const [plan] = await db
       .select()
       .from(learningPlans)

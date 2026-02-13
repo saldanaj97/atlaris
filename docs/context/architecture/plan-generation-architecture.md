@@ -630,3 +630,4 @@ expect(globalThis.__capturedInputs[0].topic).toBe('TypeScript');
 - [Database Client Usage](../database/client-usage.md) - RLS-enforced vs service-role
 - [Rate Limiting](../api/rate-limiting.md) - Request limits per endpoint
 - [Available Models](./available-models.md) - Model IDs and pricing
+- [Regeneration Worker Runbook](./regeneration-worker-runbook.md) - Queue drain operations and alerts

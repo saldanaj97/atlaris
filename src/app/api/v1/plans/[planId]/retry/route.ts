@@ -1,6 +1,3 @@
-import { eq } from 'drizzle-orm';
-
-import { attachAbortListener } from '@/lib/ai/abort';
 import {
   PLAN_GENERATION_LIMIT,
   PLAN_GENERATION_WINDOW_MINUTES,
@@ -10,33 +7,29 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import type { GenerationInput, IsoDateString } from '@/lib/ai/types';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { RateLimitError } from '@/lib/api/errors';
 import {
-  NotFoundError,
-  RateLimitError,
-  ValidationError,
-} from '@/lib/api/errors';
+  requireInternalUserByAuthId,
+  requireOwnedPlanById,
+  requirePlanIdFromRequest,
+} from '@/lib/api/plans/route-context';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
 import { jsonError } from '@/lib/api/response';
-import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import {
   finalizeAttemptFailure,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
-import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
-import { learningPlans } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import { parsePersistedPdfContext } from '@/lib/pdf/context';
 import { resolveUserTier } from '@/lib/stripe/usage';
 
 import {
   buildPlanStartEvent,
-  emitSanitizedFailureEvent,
-  handleFailedGeneration,
-  handleSuccessfulGeneration,
+  executeGenerationStream,
   safeMarkPlanFailed,
   withFallbackCleanup,
 } from '@/app/api/v1/plans/stream/helpers';
@@ -87,6 +80,22 @@ type AttemptErrorResult = {
   httpStatus?: number;
 };
 
+function extractStatusFields(
+  obj: AttemptErrorLike
+): Partial<AttemptErrorResult> {
+  const fields: Partial<AttemptErrorResult> = {};
+  if (typeof obj.status === 'number') {
+    fields.status = obj.status;
+  }
+  if (typeof obj.statusCode === 'number') {
+    fields.statusCode = obj.statusCode;
+  }
+  if (typeof obj.httpStatus === 'number') {
+    fields.httpStatus = obj.httpStatus;
+  }
+  return fields;
+}
+
 function toAttemptError(error: unknown): AttemptErrorResult {
   if (typeof error === 'string') {
     return { message: error };
@@ -97,12 +106,7 @@ function toAttemptError(error: unknown): AttemptErrorResult {
     const result: AttemptErrorResult = { message: error.message };
     if (isAttempt) {
       const errWithStatus = error as Error & AttemptErrorLike;
-      if (typeof errWithStatus.status === 'number')
-        result.status = errWithStatus.status;
-      if (typeof errWithStatus.statusCode === 'number')
-        result.statusCode = errWithStatus.statusCode;
-      if (typeof errWithStatus.httpStatus === 'number')
-        result.httpStatus = errWithStatus.httpStatus;
+      Object.assign(result, extractStatusFields(errWithStatus));
     }
     return result;
   }
@@ -113,15 +117,50 @@ function toAttemptError(error: unknown): AttemptErrorResult {
         ? error.message
         : 'Unknown retry generation error';
     const result: AttemptErrorResult = { message };
-    if (typeof error.status === 'number') result.status = error.status;
-    if (typeof error.statusCode === 'number')
-      result.statusCode = error.statusCode;
-    if (typeof error.httpStatus === 'number')
-      result.httpStatus = error.httpStatus;
+    Object.assign(result, extractStatusFields(error));
     return result;
   }
 
   return { message: 'Unknown retry generation error' };
+}
+
+function stringifyThrownValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    value === null ||
+    value === undefined
+  ) {
+    return String(value);
+  }
+
+  if (
+    typeof value === 'object' &&
+    'message' in value &&
+    typeof (value as { message?: unknown }).message === 'string'
+  ) {
+    return (value as { message: string }).message;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return 'Unserializable thrown value';
+  }
+}
+
+function normalizeThrownError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error(
+    `Non-Error thrown during retry generation: ${stringifyThrownValue(error)}`
+  );
 }
 
 /**
@@ -133,38 +172,15 @@ function toAttemptError(error: unknown): AttemptErrorResult {
  */
 export const POST = withErrorBoundary(
   withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
-    const rawPlanId = getPlanIdFromUrl(req, 'second-to-last');
-    if (!rawPlanId) {
-      throw new ValidationError('Plan id is required in the request path.');
-    }
-    if (!isUuid(rawPlanId)) {
-      throw new ValidationError('Invalid plan id format.');
-    }
-    // Re-assign to a const to ensure TypeScript narrows the type for closures
-    const planId: string = rawPlanId;
-
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new NotFoundError(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
+    const planId = requirePlanIdFromRequest(req, 'second-to-last');
+    const user = await requireInternalUserByAuthId(userId);
 
     const db = getDb();
-
-    // Fetch the plan
-    const plan = await db.query.learningPlans.findFirst({
-      where: eq(learningPlans.id, planId),
+    const plan = await requireOwnedPlanById({
+      planId,
+      ownerUserId: user.id,
+      dbClient: db,
     });
-
-    if (!plan) {
-      throw new NotFoundError('Learning plan not found.');
-    }
-
-    // Verify ownership
-    if (plan.userId !== user.id) {
-      throw new NotFoundError('Learning plan not found.');
-    }
 
     const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
     const generationRateLimitHeaders =
@@ -257,97 +273,66 @@ export const POST = withErrorBoundary(
           })
         );
 
-        const startedAt = Date.now();
-        const abortController = new AbortController();
-        const cleanupRequestAbort = attachAbortListener(req.signal, () =>
-          abortController.abort()
-        );
-        const cleanupStreamAbort = attachAbortListener(
-          streamContext.signal,
-          () => abortController.abort()
-        );
-
-        let result: Awaited<ReturnType<typeof runGenerationAttempt>>;
-        try {
-          result = await runGenerationAttempt(
-            {
-              planId: plan.id,
-              userId: user.id,
-              input: generationInput,
-            },
-            {
-              provider,
-              signal: abortController.signal,
-              dbClient: db,
-              reservation,
-            }
-          );
-        } catch (attemptError) {
-          if (streamContext.signal.aborted) {
-            return;
-          }
-          await withFallbackCleanup(
-            async () => {
-              await finalizeAttemptFailure({
-                attemptId: reservation.attemptId,
-                planId: plan.id,
-                preparation: reservation,
-                classification: 'provider_error',
-                durationMs: Math.max(0, Date.now() - startedAt),
-                error: toAttemptError(attemptError),
-                dbClient: db,
-              });
-            },
-            () => safeMarkPlanFailed(plan.id, user.id, db),
-            {
-              planId: plan.id,
-              attemptId: reservation.attemptId,
-              originalError: attemptError,
-              messageFinalize:
-                'Failed to finalize attempt on retry error; falling back to plan-level cleanup',
-              messageBoth:
-                'Plan-level cleanup (safeMarkPlanFailed) failed after finalize error',
-            }
-          );
-          logger.error(
-            {
-              planId: plan.id,
-              userId: user.id,
-              error: attemptError,
-              stack:
-                attemptError instanceof Error ? attemptError.stack : undefined,
-            },
-            'Plan retry generation failed'
-          );
-          emitSanitizedFailureEvent({
-            emit,
-            error: toAttemptError(attemptError),
-            classification: 'provider_error',
-            planId: plan.id,
-            userId: user.id,
-          });
-          return;
-        } finally {
-          cleanupRequestAbort();
-          cleanupStreamAbort();
-        }
-
-        if (result.status === 'success') {
-          await handleSuccessfulGeneration(result, {
-            planId: plan.id,
-            userId: user.id,
-            dbClient: db,
-            startedAt,
-            emit,
-          });
-          return;
-        }
-
-        await handleFailedGeneration(result, {
+        await executeGenerationStream({
+          reqSignal: req.signal,
+          streamSignal: streamContext.signal,
           planId: plan.id,
           userId: user.id,
           dbClient: db,
           emit,
+          runGeneration: (signal) =>
+            runGenerationAttempt(
+              {
+                planId: plan.id,
+                userId: user.id,
+                input: generationInput,
+              },
+              {
+                provider,
+                signal,
+                dbClient: db,
+                reservation,
+              }
+            ),
+          onUnhandledError: async (attemptError, startedAt) => {
+            const normalizedAttemptError = normalizeThrownError(attemptError);
+
+            await withFallbackCleanup(
+              async () => {
+                await finalizeAttemptFailure({
+                  attemptId: reservation.attemptId,
+                  planId: plan.id,
+                  preparation: reservation,
+                  classification: 'provider_error',
+                  durationMs: Math.max(0, Date.now() - startedAt),
+                  error: toAttemptError(normalizedAttemptError),
+                  dbClient: db,
+                });
+              },
+              () => safeMarkPlanFailed(plan.id, user.id, db),
+              {
+                planId: plan.id,
+                attemptId: reservation.attemptId,
+                originalError: normalizedAttemptError,
+                messageFinalize:
+                  'Failed to finalize attempt on retry error; falling back to plan-level cleanup',
+                messageBoth:
+                  'Plan-level cleanup (safeMarkPlanFailed) failed after finalize error',
+              }
+            );
+
+            logger.error(
+              {
+                planId: plan.id,
+                userId: user.id,
+                error: normalizedAttemptError,
+                stack: normalizedAttemptError.stack,
+              },
+              'Plan retry generation failed'
+            );
+          },
+          mapUnhandledErrorToClientError: toAttemptError,
+          fallbackClassification: 'provider_error',
         });
       });
     } catch (setupError) {

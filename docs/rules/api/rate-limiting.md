@@ -140,7 +140,6 @@ When rate limit is exceeded, the API returns:
 - `POST /api/v1/plans/[planId]/retry`
 - `POST /api/v1/plans/[planId]/regenerate`
 - `POST /api/v1/ai/enhance-content`
-- `POST /api/v1/ai/generate-plan`
 
 ### Integration (`integration`)
 
