@@ -63,6 +63,7 @@ describe('POST /api/v1/plans/stream', () => {
     await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
     });
     setTestUser(authUserId);
 
@@ -120,7 +121,11 @@ describe('POST /api/v1/plans/stream', () => {
 
   it('marks plan failed on generation error', async () => {
     const authUserId = buildTestAuthUserId('stream-failure');
-    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
     setTestUser(authUserId);
 
     const postWithFailingOrchestrator = createStreamHandler({
@@ -175,7 +180,11 @@ describe('POST /api/v1/plans/stream', () => {
 
   it('returns sanitized SSE error payloads to clients on generation failure', async () => {
     const authUserId = buildTestAuthUserId('stream-sanitized-error');
-    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
     setTestUser(authUserId);
     const mockedAttemptId = randomUUID();
     const mockedPlanId = randomUUID();
@@ -256,6 +265,7 @@ describe('POST /api/v1/plans/stream', () => {
     await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
     });
     setTestUser(authUserId);
 
@@ -294,6 +304,7 @@ describe('POST /api/v1/plans/stream', () => {
     await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
     });
     setTestUser(authUserId);
 
@@ -332,6 +343,7 @@ describe('POST /api/v1/plans/stream', () => {
     await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
     });
     setTestUser(authUserId);
 
@@ -363,7 +375,11 @@ describe('POST /api/v1/plans/stream', () => {
 
   it('rejects PDF-origin stream request with forged extraction hash', async () => {
     const authUserId = buildTestAuthUserId('stream-pdf-forged-hash');
-    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
     setTestUser(authUserId);
 
     const extractedContent = {
@@ -415,7 +431,11 @@ describe('POST /api/v1/plans/stream', () => {
 
   it('rejects replayed PDF extraction proof token', async () => {
     const authUserId = buildTestAuthUserId('stream-pdf-replay');
-    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
     setTestUser(authUserId);
 
     const extractedContent = {
@@ -483,10 +503,12 @@ describe('POST /api/v1/plans/stream', () => {
     await ensureUser({
       authUserId: ownerAuthUserId,
       email: buildTestEmail(ownerAuthUserId),
+      subscriptionTier: 'pro',
     });
     await ensureUser({
       authUserId: attackerAuthUserId,
       email: buildTestEmail(attackerAuthUserId),
+      subscriptionTier: 'pro',
     });
 
     const extractedContent = {
@@ -539,7 +561,11 @@ describe('POST /api/v1/plans/stream', () => {
 
   it('rejects expired PDF proof token', async () => {
     const authUserId = buildTestAuthUserId('stream-pdf-expired');
-    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
     setTestUser(authUserId);
 
     const extractedContent = {
@@ -592,7 +618,11 @@ describe('POST /api/v1/plans/stream', () => {
 
   it('persists PDF context and forwards it to generation input', async () => {
     const authUserId = buildTestAuthUserId('stream-pdf-context');
-    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
     setTestUser(authUserId);
 
     const extractedContent = {

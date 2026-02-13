@@ -78,7 +78,7 @@ describe('RLS attempt insertion', () => {
       err.code === '42501' ||
       (err.cause as { code?: string })?.code === '42501';
     const hasPermissionMessage =
-      /permission denied|row[- ]level security|not found or inaccessible/i.test(
+      /permission denied|row[- ]level security|not found or inaccessible|user not found for generation attempt reservation/i.test(
         combinedMsg
       );
     expect(

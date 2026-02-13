@@ -44,6 +44,10 @@ describe('orchestrator pacing integration', () => {
     clock: vi.fn(() => Date.now()),
     dbClient: {
       select: vi.fn(),
+      insert: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      transaction: vi.fn(),
     } as unknown as RunGenerationOptions['dbClient'],
     now: vi.fn(() => new Date()),
   };

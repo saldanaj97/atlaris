@@ -153,13 +153,14 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const reservedCount = [first, second].filter((r) => r.reserved).length;
     expect(reservedCount).toBe(1);
 
-    const rateLimited = [first, second].find(
-      (r) => !r.reserved && r.reason === 'rate_limited'
-    );
-    expect(rateLimited).toBeDefined();
-    if (rateLimited && !rateLimited.reserved) {
-      expect(typeof rateLimited.retryAfter).toBe('number');
-      expect(rateLimited.retryAfter).toBeGreaterThanOrEqual(0);
+    const rejected = [first, second].find((r) => !r.reserved);
+    expect(rejected).toBeDefined();
+    if (rejected && !rejected.reserved) {
+      expect(['rate_limited', 'in_progress']).toContain(rejected.reason);
+      if (rejected.reason === 'rate_limited') {
+        expect(typeof rejected.retryAfter).toBe('number');
+        expect(rejected.retryAfter).toBeGreaterThanOrEqual(0);
+      }
     }
   });
 

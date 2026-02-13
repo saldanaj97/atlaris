@@ -109,6 +109,9 @@ describe('attempt service – success path', () => {
         skillLevel: input.skillLevel,
         weeklyHours: input.weeklyHours,
         learningStyle: input.learningStyle,
+        pdfExtractionHash: null,
+        pdfProofVersion: null,
+        pdfContextDigest: null,
       })
     );
     expect(preparation.promptHash).toBe(expectedHash);

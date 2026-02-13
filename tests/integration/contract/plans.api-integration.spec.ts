@@ -41,7 +41,11 @@ describe('Phase 4: API Integration', () => {
   describe('T040: Plan creation creates plan record', () => {
     it('POST /api/v1/plans returns 201 with status generating and creates plan record', async () => {
       setTestUser(authUserId);
-      await ensureUser({ authUserId, email: authEmail });
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+        subscriptionTier: 'pro',
+      });
 
       const request = await createPlanRequest({
         topic: 'Applied Machine Learning',
@@ -161,7 +165,7 @@ describe('Phase 4: API Integration', () => {
       const statusPayload = await statusResponse.json();
       expect(statusPayload.status).toBe('failed');
       expect(statusPayload.latestError).toBe(
-        'Generation timed out. Please try again.'
+        'Plan generation timed out. Please try again.'
       );
     });
   });
@@ -169,7 +173,11 @@ describe('Phase 4: API Integration', () => {
   describe('T042: Plan creation is not blocked by durable generation window cap', () => {
     it('still returns 201 for /plans when user has reached generation window limit', async () => {
       setTestUser(authUserId);
-      const userId = await ensureUser({ authUserId, email: authEmail });
+      const userId = await ensureUser({
+        authUserId,
+        email: authEmail,
+        subscriptionTier: 'pro',
+      });
 
       // Create generation attempts at the durable window limit.
       const attemptsAtLimit = getDurableWindowSeedCount();

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { desc, eq } from 'drizzle-orm';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
+import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
 import { jobQueue, learningPlans, usageMetrics } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
@@ -28,6 +29,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   const authEmail = 'api-regen@example.com';
 
   afterEach(async () => {
+    clearAllUserRateLimiters();
     await db.delete(jobQueue);
     await db.delete(learningPlans);
     await db.delete(usageMetrics);

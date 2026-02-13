@@ -33,7 +33,7 @@ describe('POST /api/v1/plans', () => {
 
   it('creates a new plan and returns 201 with persisted payload', async () => {
     setTestUser(authUserId);
-    await ensureUser({ authUserId, email: authEmail });
+    await ensureUser({ authUserId, email: authEmail, subscriptionTier: 'pro' });
 
     const request = await createRequest({
       topic: 'Applied Machine Learning',
@@ -82,7 +82,11 @@ describe('POST /api/v1/plans', () => {
 
   it('returns 429 when generation attempts are capped for follow-up requests', async () => {
     setTestUser(authUserId);
-    const userId = await ensureUser({ authUserId, email: authEmail });
+    const userId = await ensureUser({
+      authUserId,
+      email: authEmail,
+      subscriptionTier: 'pro',
+    });
     const [plan] = await db
       .insert(learningPlans)
       .values({
@@ -157,7 +161,7 @@ describe('POST /api/v1/plans', () => {
 
   it('accepts PDF-origin create request with valid proof', async () => {
     setTestUser(authUserId);
-    await ensureUser({ authUserId, email: authEmail });
+    await ensureUser({ authUserId, email: authEmail, subscriptionTier: 'pro' });
 
     const extractedContent = {
       mainTopic: 'Data Structures from PDF',
@@ -205,10 +209,12 @@ describe('POST /api/v1/plans', () => {
     await ensureUser({
       authUserId: ownerAuthUserId,
       email: buildTestEmail(ownerAuthUserId),
+      subscriptionTier: 'pro',
     });
     await ensureUser({
       authUserId: attackerAuthUserId,
       email: buildTestEmail(attackerAuthUserId),
+      subscriptionTier: 'pro',
     });
     setTestUser(attackerAuthUserId);
 
@@ -252,7 +258,7 @@ describe('POST /api/v1/plans', () => {
 
   it('rejects PDF-origin create request with expired proof token', async () => {
     setTestUser(authUserId);
-    await ensureUser({ authUserId, email: authEmail });
+    await ensureUser({ authUserId, email: authEmail, subscriptionTier: 'pro' });
 
     const extractedContent = {
       mainTopic: 'Networking from PDF',
