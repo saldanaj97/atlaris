@@ -100,6 +100,7 @@ describe('orchestrator pacing integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(attemptsModule.isAttemptsDbClient).mockReturnValue(true);
     vi.mocked(attemptsModule.reserveAttemptSlot).mockResolvedValue(
       mockReservation
     );

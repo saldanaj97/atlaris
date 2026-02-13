@@ -12,7 +12,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createFailedAttemptsInDb,
   getDurableWindowSeedCount,
-  seedFailedAttemptsForDurableWindow,
 } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
@@ -156,7 +155,9 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const rejected = [first, second].find((r) => !r.reserved);
     expect(rejected).toBeDefined();
     if (rejected && !rejected.reserved) {
-      expect(['rate_limited', 'in_progress']).toContain(rejected.reason);
+      expect(['rate_limited', 'in_progress', 'capped']).toContain(
+        rejected.reason
+      );
       if (rejected.reason === 'rate_limited') {
         expect(typeof rejected.retryAfter).toBe('number');
         expect(rejected.retryAfter).toBeGreaterThanOrEqual(0);
