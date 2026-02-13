@@ -8,6 +8,7 @@ import {
   requirePlanIdFromRequest,
 } from '@/lib/api/plans/route-context';
 import { json } from '@/lib/api/response';
+import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, modules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
@@ -63,6 +64,8 @@ export const GET = withErrorBoundary(
     const status = derivePlanStatus({
       generationStatus: plan.generationStatus,
       hasModules,
+      attemptsCount: attempts,
+      attemptCap: ATTEMPT_CAP,
     });
 
     let latestError: string | null = null;

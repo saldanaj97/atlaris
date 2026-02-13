@@ -192,7 +192,12 @@ export async function handleFailedGeneration(
   const retryable = isRetryableClassification(classification);
 
   if (!retryable) {
-    await markFailure(planId, dbClient);
+    await markFailure(planId, dbClient, {
+      failureContext: {
+        classification,
+        error: result.error,
+      },
+    });
     await tryRecordUsage(userId, result, dbClient, { recordUsage });
   }
 

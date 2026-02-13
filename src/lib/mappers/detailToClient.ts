@@ -1,3 +1,4 @@
+import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { logger } from '@/lib/logging/logger';
 import { derivePlanStatus } from '@/lib/plans/status';
 import {
@@ -169,6 +170,8 @@ export function mapDetailToClient(
     status: derivePlanStatus({
       generationStatus: plan.generationStatus,
       hasModules: modules.length > 0,
+      attemptsCount: detail.attemptsCount,
+      attemptCap: ATTEMPT_CAP,
     }),
     latestAttempt,
   };

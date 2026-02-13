@@ -375,7 +375,7 @@ describe('mapDetailToClient', () => {
     expect(result!.latestAttempt!.model).toBe('gpt-4o-mini');
   });
 
-  it('should derive status as "ready" when generation status is ready, even without modules', () => {
+  it('should derive status as "pending" when generation status is ready without modules and attempts are below cap', () => {
     const detail: LearningPlanDetail = buildPlanDetail({
       plan: buildPlan({
         id: 'plan-1',
@@ -398,7 +398,7 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('ready');
+    expect(result!.status).toBe('pending');
   });
 
   it('should derive status as "pending" for unknown generation status fallback', () => {
