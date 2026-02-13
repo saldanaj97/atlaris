@@ -19,7 +19,8 @@ export type FailureClassification =
   | 'provider_error'
   | 'rate_limit'
   | 'timeout'
-  | 'capped';
+  | 'capped'
+  | 'in_progress';
 
 export interface ClientGenerationAttempt {
   id: string;

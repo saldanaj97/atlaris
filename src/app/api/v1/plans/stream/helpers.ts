@@ -2,13 +2,19 @@
 // Stream Result Handlers
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { attachAbortListener } from '@/lib/ai/abort';
 import { getModelById } from '@/lib/ai/ai-models';
 import { isRetryableClassification } from '@/lib/ai/failures';
 import type { GenerationResult } from '@/lib/ai/orchestrator';
 import type { ParsedModule } from '@/lib/ai/parser';
-import { sanitizeSseError } from '@/lib/ai/streaming/error-sanitizer';
+import {
+  sanitizeSseError,
+  type ErrorLike,
+  type GenerationError,
+} from '@/lib/ai/streaming/error-sanitizer';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { getCorrelationId } from '@/lib/api/context';
+import type { AttemptsDbClient } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
@@ -16,18 +22,117 @@ import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/lib/stripe/usage';
+import type { FailureClassification } from '@/lib/types/client';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 
 type EmitFn = (event: StreamingEvent) => void;
 
-interface GenerationContext {
+export interface StreamingHelperDependencies {
+  markPlanGenerationFailure?: typeof markPlanGenerationFailure;
+  markPlanGenerationSuccess?: typeof markPlanGenerationSuccess;
+  recordUsage?: typeof recordUsage;
+  getCorrelationId?: typeof getCorrelationId;
+}
+
+interface GenerationContext extends StreamingHelperDependencies {
   planId: string;
   userId: string;
+  dbClient: AttemptsDbClient;
   emit: EmitFn;
 }
 
 interface SuccessContext extends GenerationContext {
   startedAt: number;
+}
+
+interface EmitSanitizedFailureEventParams {
+  emit: EmitFn;
+  error: GenerationError | ErrorLike;
+  classification: FailureClassification | 'unknown';
+  planId: string;
+  userId: string;
+  getCorrelationId?: typeof getCorrelationId;
+}
+
+interface EmitCancelledEventParams {
+  emit: EmitFn;
+  error: GenerationError | ErrorLike;
+  planId: string;
+  userId: string;
+  getCorrelationId?: typeof getCorrelationId;
+}
+
+/**
+ * Sanitizes a generation error and emits a client-safe SSE `error` event.
+ *
+ * @param params.emit - Event emitter used to push a `StreamingEvent` into the SSE stream
+ * @param params.error - Raw generation error (provider, parser, timeout, or domain error shape)
+ * @param params.classification - Failure kind used for safe client mapping:
+ * - `validation`: model output is invalid (non-retryable)
+ * - `provider_error`: upstream provider/API failure (usually retryable)
+ * - `rate_limit`: provider throttled request (retryable)
+ * - `timeout`: generation timed out (retryable)
+ * - `capped`: attempt cap reached (non-retryable)
+ * - `in_progress`: generation already running for plan (retryable)
+ * - `unknown`: fallback when no specific classification exists
+ * @param params.planId - Learning plan id associated with the error
+ * @param params.userId - User id associated with the error
+ * @param params.getCorrelationId - Optional request-id resolver override for tests
+ *
+ * @remarks The emitted payload is sanitized via `sanitizeSseError` before calling `emit`,
+ * so raw internal/provider details are never sent to the client.
+ */
+export function emitSanitizedFailureEvent({
+  emit,
+  error,
+  classification,
+  planId,
+  userId,
+  getCorrelationId: getCorrelationIdOverride,
+}: EmitSanitizedFailureEventParams): void {
+  const sanitized = sanitizeSseError(error, classification, {
+    planId,
+    userId,
+  });
+  const requestId = (getCorrelationIdOverride ?? getCorrelationId)();
+
+  emit({
+    type: 'error',
+    data: {
+      planId,
+      code: sanitized.code,
+      message: sanitized.message,
+      classification,
+      retryable: sanitized.retryable,
+      ...(requestId ? { requestId } : {}),
+    },
+  });
+}
+
+/**
+ * Emits a dedicated `cancelled` event when generation is aborted/cancelled.
+ * This intentionally does not emit a terminal `error` event.
+ */
+export function emitCancelledEvent({
+  emit,
+  error: _error,
+  planId,
+  userId,
+  getCorrelationId: getCorrelationIdOverride,
+}: EmitCancelledEventParams): void {
+  const requestId = (getCorrelationIdOverride ?? getCorrelationId)();
+
+  emit({
+    type: 'cancelled',
+    data: {
+      planId,
+      userId,
+      classification: 'cancelled',
+      retryable: true,
+      message: 'Plan generation was cancelled.',
+      ...(requestId ? { requestId } : {}),
+    },
+  });
 }
 
 /**
@@ -42,16 +147,18 @@ export async function handleSuccessfulGeneration(
   result: Extract<GenerationResult, { status: 'success' }>,
   ctx: SuccessContext
 ): Promise<void> {
-  const { planId, userId, startedAt, emit } = ctx;
+  const { planId, userId, startedAt, emit, dbClient } = ctx;
+  const { recordUsage } = ctx;
+  const markSuccess =
+    ctx.markPlanGenerationSuccess ?? markPlanGenerationSuccess;
   const modules = result.modules;
   const modulesCount = modules.length;
   const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
 
   emitModuleSummaries(modules, planId, emit);
 
-  const db = getDb();
-  await markPlanGenerationSuccess(planId, db);
-  await tryRecordUsage(userId, result);
+  await markSuccess(planId, dbClient);
+  await tryRecordUsage(userId, result, dbClient, { recordUsage });
 
   emit({
     type: 'complete',
@@ -76,33 +183,31 @@ export async function handleFailedGeneration(
   result: Extract<GenerationResult, { status: 'failure' }>,
   ctx: GenerationContext
 ): Promise<void> {
-  const { planId, userId, emit } = ctx;
+  const { planId, userId, emit, dbClient } = ctx;
+  const { recordUsage } = ctx;
+  const markFailure =
+    ctx.markPlanGenerationFailure ?? markPlanGenerationFailure;
 
   const classification = result.classification ?? 'unknown';
   const retryable = isRetryableClassification(classification);
 
   if (!retryable) {
-    const db = getDb();
-    await markPlanGenerationFailure(planId, db);
-    await tryRecordUsage(userId, result);
+    await markFailure(planId, dbClient, {
+      failureContext: {
+        classification,
+        error: result.error,
+      },
+    });
+    await tryRecordUsage(userId, result, dbClient, { recordUsage });
   }
 
-  const sanitized = sanitizeSseError(result.error, classification, {
+  emitSanitizedFailureEvent({
+    emit,
+    error: result.error,
+    classification,
     planId,
     userId,
-  });
-  const requestId = getCorrelationId();
-
-  emit({
-    type: 'error',
-    data: {
-      planId,
-      code: sanitized.code,
-      message: sanitized.message,
-      classification,
-      retryable: sanitized.retryable,
-      ...(requestId ? { requestId } : {}),
-    },
+    getCorrelationId: ctx.getCorrelationId,
   });
 }
 
@@ -206,9 +311,12 @@ function computeCostCents(
 
 export async function tryRecordUsage(
   userId: string,
-  result: GenerationResult
+  result: GenerationResult,
+  dbClient?: AttemptsDbClient,
+  deps?: Pick<StreamingHelperDependencies, 'recordUsage'>
 ): Promise<void> {
   try {
+    const usageRecorder = deps?.recordUsage ?? recordUsage;
     const usage = result.metadata?.usage;
     const modelId = result.metadata?.model ?? 'unknown';
     const inputTokens = usage?.promptTokens;
@@ -220,15 +328,18 @@ export async function tryRecordUsage(
         ? computeCostCents(modelId, inputTokens, outputTokens)
         : 0;
 
-    await recordUsage({
-      userId,
-      provider: result.metadata?.provider ?? 'unknown',
-      model: modelId,
-      inputTokens,
-      outputTokens,
-      costCents,
-      kind: 'plan',
-    });
+    await usageRecorder(
+      {
+        userId,
+        provider: result.metadata?.provider ?? 'unknown',
+        model: modelId,
+        inputTokens,
+        outputTokens,
+        costCents,
+        kind: 'plan',
+      },
+      dbClient
+    );
   } catch (usageError) {
     logger.error(
       {
@@ -243,22 +354,205 @@ export async function tryRecordUsage(
 }
 
 /**
+ * Context for {@link withFallbackCleanup} used when logging primary/fallback errors.
+ */
+export interface WithFallbackCleanupContext {
+  planId: string;
+  attemptId: string;
+  originalError: Error;
+  messageFinalize: string;
+  messageBoth: string;
+}
+
+/**
+ * Runs primary cleanup; on failure runs fallback and logs. If fallback also fails,
+ * logs both errors (finalizeErr, originalError, markFailedErr) with messageBoth.
+ *
+ * @param primary - Async cleanup to run first (e.g. finalizeAttemptFailure)
+ * @param fallback - Async cleanup to run if primary throws (e.g. safeMarkPlanFailed)
+ * @param context - planId, attemptId, normalized originalError (`Error`), and log messages
+ */
+export async function withFallbackCleanup(
+  primary: () => Promise<void>,
+  fallback: () => Promise<void>,
+  context: WithFallbackCleanupContext
+): Promise<void> {
+  try {
+    await primary();
+  } catch (finalizeErr) {
+    logger.error(
+      {
+        planId: context.planId,
+        attemptId: context.attemptId,
+        finalizeErr,
+        originalError: context.originalError,
+      },
+      context.messageFinalize
+    );
+    try {
+      await fallback();
+    } catch (markFailedErr) {
+      logger.error(
+        {
+          planId: context.planId,
+          attemptId: context.attemptId,
+          finalizeErr,
+          attemptError: context.originalError,
+          markFailedErr,
+        },
+        context.messageBoth
+      );
+    }
+  }
+}
+
+/**
  * Safely mark a plan as failed, logging errors if marking fails.
  *
  * @param planId - ID of the plan to mark failed
  * @param userId - ID of the user owning the plan (for logging)
+ * @param dbClient - Optional RLS client; defaults to getDb() for module-style usage
  */
 export async function safeMarkPlanFailed(
   planId: string,
-  userId: string
+  userId: string,
+  dbClient: AttemptsDbClient = getDb(),
+  deps?: Pick<StreamingHelperDependencies, 'markPlanGenerationFailure'>
 ): Promise<void> {
   try {
-    const db = getDb();
-    await markPlanGenerationFailure(planId, db);
+    const markFailure =
+      deps?.markPlanGenerationFailure ?? markPlanGenerationFailure;
+    await markFailure(planId, dbClient);
   } catch (markErr) {
     logger.error(
       { error: markErr, planId, userId },
       'Failed to mark plan as failed after generation error.'
     );
+  }
+}
+
+interface ExecuteGenerationStreamParams {
+  reqSignal: AbortSignal;
+  streamSignal: AbortSignal;
+  planId: string;
+  userId: string;
+  dbClient: AttemptsDbClient;
+  emit: EmitFn;
+  runGeneration: (signal: AbortSignal) => Promise<GenerationResult>;
+  onUnhandledError: (error: unknown, startedAt: number) => Promise<void>;
+  mapUnhandledErrorToClientError?: (
+    error: unknown
+  ) => GenerationError | ErrorLike;
+  fallbackClassification?: FailureClassification | 'unknown';
+}
+
+function toFallbackErrorLike(error: unknown): ErrorLike {
+  if (error instanceof Error) {
+    const errorLike: ErrorLike = {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+
+    const cause = error.cause;
+    if (
+      cause === null ||
+      typeof cause === 'string' ||
+      cause instanceof Error ||
+      (typeof cause === 'object' && cause !== null)
+    ) {
+      errorLike.cause = cause;
+    }
+
+    return errorLike;
+  }
+
+  return {
+    name: 'UnknownGenerationError',
+    message: String(error),
+  };
+}
+
+export async function executeGenerationStream({
+  reqSignal,
+  streamSignal,
+  planId,
+  userId,
+  dbClient,
+  emit,
+  runGeneration,
+  onUnhandledError,
+  mapUnhandledErrorToClientError,
+  fallbackClassification = 'provider_error',
+}: ExecuteGenerationStreamParams): Promise<void> {
+  const startedAt = Date.now();
+  const abortController = new AbortController();
+  const cleanupRequestAbort = attachAbortListener(reqSignal, () =>
+    abortController.abort()
+  );
+  const cleanupStreamAbort = attachAbortListener(streamSignal, () =>
+    abortController.abort()
+  );
+
+  try {
+    const result = await runGeneration(abortController.signal);
+
+    if (result.status === 'success') {
+      await handleSuccessfulGeneration(result, {
+        planId,
+        userId,
+        dbClient,
+        startedAt,
+        emit,
+      });
+      return;
+    }
+
+    await handleFailedGeneration(result, {
+      planId,
+      userId,
+      dbClient,
+      emit,
+    });
+  } catch (error: unknown) {
+    if (abortController.signal.aborted) {
+      try {
+        await onUnhandledError(error, startedAt);
+      } catch (cleanupError) {
+        logger.error(
+          {
+            error: cleanupError,
+            planId,
+            userId,
+            sourceError: error,
+          },
+          'Failed cleanup after aborted generation stream'
+        );
+      }
+
+      emitCancelledEvent({
+        emit,
+        error: mapUnhandledErrorToClientError
+          ? mapUnhandledErrorToClientError(error)
+          : toFallbackErrorLike(error),
+        planId,
+        userId,
+      });
+      return;
+    }
+
+    await onUnhandledError(error, startedAt);
+    emitSanitizedFailureEvent({
+      emit,
+      error: mapUnhandledErrorToClientError
+        ? mapUnhandledErrorToClientError(error)
+        : toFallbackErrorLike(error),
+      classification: fallbackClassification,
+      planId,
+      userId,
+    });
+  } finally {
+    cleanupRequestAbort();
+    cleanupStreamAbort();
   }
 }

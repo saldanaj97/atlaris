@@ -5,9 +5,11 @@ import {
 } from 'ai';
 
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
-import type { GenerationInput } from '@/lib/ai/provider';
 import { PlanSchema, type PlanOutput } from '@/lib/ai/schema';
-import type { ProviderUsage } from '@/lib/ai/types/provider.types';
+import type {
+  GenerationInput,
+  ProviderUsage,
+} from '@/lib/ai/types/provider.types';
 import { toStream } from '@/lib/ai/utils';
 
 export type PlanGenerationUsage = Pick<
@@ -71,7 +73,7 @@ export interface BuildPlanProviderResultMetadata {
 }
 
 export interface BuildPlanProviderResult {
-  stream: AsyncIterable<string>;
+  stream: ReadableStream<string>;
   metadata: BuildPlanProviderResultMetadata;
 }
 

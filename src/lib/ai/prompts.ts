@@ -17,9 +17,43 @@ export interface PromptParams {
   deadlineDate?: string | null;
 }
 
+interface PromptSchemaField {
+  readonly name: string;
+  readonly type: 'string' | 'int>=0' | 'Task[]';
+  readonly required: boolean;
+}
+
+interface LearningPlanPromptSchema {
+  readonly module: readonly PromptSchemaField[];
+  readonly task: readonly PromptSchemaField[];
+}
+
+export const LEARNING_PLAN_PROMPT_SCHEMA: LearningPlanPromptSchema = {
+  module: [
+    { name: 'title', type: 'string', required: true },
+    { name: 'description', type: 'string', required: false },
+    { name: 'estimated_minutes', type: 'int>=0', required: true },
+    { name: 'tasks', type: 'Task[]', required: true },
+  ],
+  task: [
+    { name: 'title', type: 'string', required: true },
+    { name: 'description', type: 'string', required: false },
+    { name: 'estimated_minutes', type: 'int>=0', required: true },
+  ],
+};
+
 const NOTES_PROMPT_MAX_CHARS = 1_500;
 const TOPIC_PROMPT_MAX_CHARS = 500;
 const PDF_SECTION_TITLE_MAX_CHARS = 200;
+
+function formatSchemaFields(fields: readonly PromptSchemaField[]): string {
+  return fields
+    .map((field) => {
+      const optionalMarker = field.required ? '' : '?';
+      return `${field.name}${optionalMarker}: ${field.type}`;
+    })
+    .join(', ');
+}
 
 /**
  * Sanitizes user-provided text for prompt assembly to reduce prompt-injection risk.
@@ -81,36 +115,33 @@ function appendPdfContextBlock(lines: string[], pdfContext: PdfContext): void {
 /**
  * Build the system prompt that instructs an AI to produce a curriculum as strict JSON following a defined schema and constraints.
  *
- * The generated prompt requires a top-level object { "modules": Module[] } and defines the Module, Task, and Resource schemas, including:
+ * The generated prompt requires a top-level object { "modules": Module[] } and defines the Module and Task schemas, including:
  * - Module: title, optional description, estimated_minutes (integer >= 0), tasks (3–6 tasks per module)
- * - Task: title, optional description, estimated_minutes (integer >= 0), resources (one or more Resource entries)
- * - Resource: title, url, type ("youtube" | "article" | "course" | "doc" | "other")
+ * - Task: title, optional description, estimated_minutes (integer >= 0)
  *
- * It also enforces overall constraints (3–6 modules total, action-oriented titles, integer non-negative time estimates), time-estimate guidelines by skill level, resource requirements (at least one linked resource per task, mixed resource types, prefer high-quality/free), timeline distribution when start/deadline are provided, and prohibits any non-JSON output (no markdown, code fences, or commentary).
+ * It also enforces overall constraints (3–6 modules total, action-oriented titles, integer non-negative time estimates), time-estimate guidelines by skill level, timeline distribution when start/deadline are provided, and prohibits any non-JSON output (no markdown, code fences, or commentary).
  *
- * @returns A single string containing the system prompt that mandates JSON-only output adhering to the Module/Task/Resource schemas and the listed constraints
+ * @returns A single string containing the system prompt that mandates JSON-only output adhering to the Module/Task schemas and the listed constraints
  */
 export function buildSystemPrompt(): string {
+  const moduleSchema = formatSchemaFields(LEARNING_PLAN_PROMPT_SCHEMA.module);
+  const taskSchema = formatSchemaFields(LEARNING_PLAN_PROMPT_SCHEMA.task);
+
   return [
     'You are an expert curriculum designer. Output strictly JSON only.',
     'Return an object: {"modules": Array<Module>}. No extra text.',
-    'Module: { title: string, description?: string, estimated_minutes: int>=0, tasks: Task[] }',
-    'Task: { title: string, description?: string, estimated_minutes: int>=0, resources: Resource[] }',
-    'Resource: { title: string, url: string, type: "youtube" | "article" | "course" | "doc" | "other" }',
+    `Module: { ${moduleSchema} }`,
+    `Task: { ${taskSchema} }`,
     'IMPORTANT: For each task, you MUST include:',
     '1. A clear, actionable title',
     '2. A detailed description',
     '3. An estimated_minutes field (integer) indicating how long the task should take',
-    '4. At least one resource URL (preferably multiple) relevant to the task',
+    '4. A realistic estimated_minutes value that matches task scope',
     'Time Estimate Guidelines:',
     '- Beginner tasks: typically 30-90 minutes',
     '- Intermediate tasks: typically 60-180 minutes',
     '- Advanced tasks: typically 90-240 minutes',
     '- Adjust based on task complexity and scope',
-    'Resource Requirements:',
-    '- Every task MUST have at least one linked resource',
-    '- Prefer high-quality, free resources when possible',
-    '- Include a mix of resource types: videos, articles, documentation, interactive tutorials',
     'Constraints:',
     '- Provide 3-6 modules total.',
     '- Each module must include 3-6 tasks.',

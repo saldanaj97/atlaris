@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
 import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
 
 /**
@@ -383,7 +383,19 @@ export const aiEnv = {
    * AI_DEFAULT_MODEL env var overrides the hardcoded default from ai-models.ts.
    */
   get defaultModel() {
-    return getServerOptional('AI_DEFAULT_MODEL') ?? AI_DEFAULT_MODEL;
+    const configured = getServerOptional('AI_DEFAULT_MODEL');
+    if (!configured) {
+      return AI_DEFAULT_MODEL;
+    }
+
+    if (!isValidModelId(configured)) {
+      throw new EnvValidationError(
+        `AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids. Received: ${configured}`,
+        'AI_DEFAULT_MODEL'
+      );
+    }
+
+    return configured;
   },
 } as const;
 

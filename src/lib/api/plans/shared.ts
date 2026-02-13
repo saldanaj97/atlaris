@@ -128,9 +128,9 @@ export function normalizePlanDurationForTier({
 }
 
 export async function findCappedPlanWithoutModules(
-  userDbId: string
+  userDbId: string,
+  db: ReturnType<typeof getDb> = getDb()
 ): Promise<string | null> {
-  const db = getDb();
   const planRows = await db
     .select({ id: learningPlans.id })
     .from(learningPlans)

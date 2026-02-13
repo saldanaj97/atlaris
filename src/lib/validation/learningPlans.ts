@@ -117,6 +117,8 @@ const pdfExtractionHashSchema = z
   )
   .transform((value) => value.toLowerCase());
 
+const pdfProofVersionSchema = z.literal(1);
+
 export const planRegenerationOverridesSchema = z
   .object({
     topic: planTopicOverrideSchema.optional(),
@@ -178,6 +180,7 @@ const createLearningPlanObject = z
     extractedContent: pdfPreviewEditSchema.optional(),
     pdfProofToken: pdfProofTokenSchema.optional(),
     pdfExtractionHash: pdfExtractionHashSchema.optional(),
+    pdfProofVersion: pdfProofVersionSchema.optional(),
   })
   .strict();
 
@@ -205,6 +208,16 @@ export const createLearningPlanSchema = createLearningPlanObject
         path: ['pdfExtractionHash'],
         message: 'pdfExtractionHash is required for PDF-based plans.',
       });
+    }
+
+    if (data.origin === 'pdf' && data.pdfProofVersion !== undefined) {
+      if (data.pdfProofVersion !== 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['pdfProofVersion'],
+          message: 'pdfProofVersion is invalid.',
+        });
+      }
     }
 
     if (data.origin !== 'pdf' && (!data.topic || data.topic.length < 3)) {
@@ -236,6 +249,14 @@ export const createLearningPlanSchema = createLearningPlanObject
         code: z.ZodIssueCode.custom,
         path: ['pdfExtractionHash'],
         message: 'pdfExtractionHash is only allowed for PDF-based plans.',
+      });
+    }
+
+    if (data.origin !== 'pdf' && data.pdfProofVersion !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pdfProofVersion'],
+        message: 'pdfProofVersion is only allowed for PDF-based plans.',
       });
     }
   })

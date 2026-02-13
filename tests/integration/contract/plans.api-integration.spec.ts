@@ -3,12 +3,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { POST } from '@/app/api/v1/plans/route';
-import {
-  generationAttempts,
-  learningPlans,
-  modules,
-} from '@/lib/db/schema';
+import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { getDurableWindowSeedCount } from '../../fixtures/attempts';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
@@ -169,41 +166,41 @@ describe('Phase 4: API Integration', () => {
     });
   });
 
-  describe('T042: Rate limit exceeded test', () => {
-    it('returns 429 with retryAfter when rate limit is exceeded', async () => {
+  describe('T042: Plan creation is not blocked by durable generation window cap', () => {
+    it('still returns 201 for /plans when user has reached generation window limit', async () => {
       setTestUser(authUserId);
       const userId = await ensureUser({ authUserId, email: authEmail });
 
-      // Create 10 generation attempts (the limit) within the time window
-      const attemptPromises = [];
-      for (let i = 0; i < 10; i++) {
-        const [plan] = await db
-          .insert(learningPlans)
-          .values({
-            userId,
-            topic: `Plan ${i}`,
-            skillLevel: 'beginner',
-            weeklyHours: 4,
-            learningStyle: 'reading',
-            visibility: 'private',
-            origin: 'ai',
-          })
-          .returning();
+      // Create generation attempts at the durable window limit.
+      const attemptsAtLimit = getDurableWindowSeedCount();
+      const plansToCreate = Array.from({ length: attemptsAtLimit }, (_, i) => ({
+        userId,
+        topic: `Plan ${i}`,
+        skillLevel: 'beginner' as const,
+        weeklyHours: 4,
+        learningStyle: 'reading' as const,
+        visibility: 'private' as const,
+        origin: 'ai' as const,
+      }));
 
-        attemptPromises.push(
-          db.insert(generationAttempts).values({
-            planId: plan.id,
-            status: 'success',
-            classification: null,
-            durationMs: 1000,
-            modulesCount: 1,
-            tasksCount: 1,
-          })
-        );
-      }
-      await Promise.all(attemptPromises);
+      const createdPlans = await db
+        .insert(learningPlans)
+        .values(plansToCreate)
+        .returning();
 
-      // Try to create one more plan (should exceed rate limit)
+      await db.insert(generationAttempts).values(
+        createdPlans.map((plan) => ({
+          planId: plan.id,
+          status: 'success' as const,
+          classification: null,
+          durationMs: 1000,
+          modulesCount: 1,
+          tasksCount: 1,
+        }))
+      );
+
+      // Creating a draft plan should still be allowed; generation enforcement
+      // happens at execution boundaries (/plans/stream, retry, worker).
       const request = await createPlanRequest({
         topic: 'Rate Limited Plan',
         skillLevel: 'beginner',
@@ -214,13 +211,14 @@ describe('Phase 4: API Integration', () => {
       });
 
       const response = await POST(request);
-      expect(response.status).toBe(429);
+      expect(response.status).toBe(201);
 
       const payload = await response.json();
-      expect(payload).toHaveProperty('error');
-      expect(payload).toHaveProperty('retryAfter');
-      expect(payload.code).toBe('RATE_LIMITED');
-      expect(typeof payload.retryAfter).toBe('number');
+      expect(payload).toMatchObject({
+        topic: 'Rate Limited Plan',
+        status: 'generating',
+      });
+      expect(payload).toHaveProperty('id');
     });
   });
 

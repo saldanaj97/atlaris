@@ -6,10 +6,27 @@ export interface AdaptiveTimeoutConfig {
 }
 
 const DEFAULT_CONFIG: AdaptiveTimeoutConfig = {
-  baseMs: 10_000,
-  extensionMs: 10_000,
-  extensionThresholdMs: 9_500,
+  baseMs: 30_000,
+  extensionMs: 15_000,
+  extensionThresholdMs: 25_000,
 };
+
+/** Backoff limits for p-retry (light retries). Used by micro-explanations and router. */
+const RETRY_BACKOFF_MS = { min: 300, max: 700 } as const;
+
+/**
+ * Returns p-retry backoff options (minTimeout, maxTimeout).
+ * Use with pRetry options alongside retries and randomize.
+ */
+export function getRetryBackoffConfig(): {
+  minTimeout: number;
+  maxTimeout: number;
+} {
+  return {
+    minTimeout: RETRY_BACKOFF_MS.min,
+    maxTimeout: RETRY_BACKOFF_MS.max,
+  };
+}
 
 export interface AdaptiveTimeoutController {
   readonly signal: AbortSignal;

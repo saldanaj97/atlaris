@@ -270,7 +270,10 @@ export const generationAttempts = pgTable(
 
     return [
       index('idx_generation_attempts_plan_id').on(table.planId),
-      index('idx_generation_attempts_created_at').on(table.createdAt),
+      index('idx_generation_attempts_created_at_plan_id').on(
+        table.createdAt,
+        table.planId
+      ),
       // classification NULL only when status = success (app-enforced; CHECK constraint added in migration)
 
       // RLS Policies (session-variable-based)

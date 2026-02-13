@@ -1,3 +1,5 @@
+import { readableStreamToAsyncIterable } from '@/lib/ai/utils';
+
 export type ParserErrorKind = 'invalid_json' | 'validation';
 
 export class ParserError extends Error {
@@ -31,6 +33,7 @@ export interface ParsedGeneration {
 
 export interface ParserCallbacks {
   onFirstModuleDetected?: () => void;
+  signal?: AbortSignal;
 }
 
 function hasDetectedModule(buffer: string): boolean {
@@ -125,13 +128,20 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
 }
 
 export async function parseGenerationStream(
-  stream: AsyncIterable<string>,
+  stream: AsyncIterable<string> | ReadableStream<string>,
   callbacks: ParserCallbacks = {}
 ): Promise<ParsedGeneration> {
   let buffer = '';
   let moduleDetected = false;
+  const source =
+    stream instanceof ReadableStream
+      ? readableStreamToAsyncIterable(stream)
+      : stream;
 
-  for await (const chunk of stream) {
+  callbacks.signal?.throwIfAborted();
+
+  for await (const chunk of source) {
+    callbacks.signal?.throwIfAborted();
     buffer += chunk;
     if (
       !moduleDetected &&
@@ -143,6 +153,8 @@ export async function parseGenerationStream(
     }
   }
 
+  callbacks.signal?.throwIfAborted();
+
   if (!buffer.trim()) {
     throw new ParserError(
       'invalid_json',
@@ -153,7 +165,9 @@ export async function parseGenerationStream(
   let parsed: unknown;
   try {
     parsed = JSON.parse(buffer);
+    callbacks.signal?.throwIfAborted();
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error;
     throw new ParserError(
       'invalid_json',
       'AI provider returned invalid JSON.',
@@ -179,9 +193,11 @@ export async function parseGenerationStream(
     throw new ParserError('validation', 'AI provider returned zero modules.');
   }
 
-  const modules = modulesRaw.map((module, index) =>
-    toParsedModule(module, index)
-  );
+  const modules: ParsedModule[] = [];
+  for (let index = 0; index < modulesRaw.length; index++) {
+    callbacks.signal?.throwIfAborted();
+    modules.push(toParsedModule(modulesRaw[index], index));
+  }
 
   return {
     modules,

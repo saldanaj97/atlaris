@@ -1,0 +1,211 @@
+import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
+import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { generationAttempts } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
+import { describe, expect, it, vi } from 'vitest';
+
+import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
+import { createPlanForRetryTest } from '../../fixtures/plans';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+
+type RetryAttemptOverrides = Partial<
+  Omit<typeof generationAttempts.$inferInsert, 'planId'>
+>;
+
+type CreateTestPlanWithAttemptOptions = {
+  userId: string;
+  planOverrides?: Parameters<typeof createPlanForRetryTest>[1];
+  attemptOverrides?: RetryAttemptOverrides;
+};
+
+async function createTestPlanWithAttempt({
+  userId,
+  planOverrides,
+  attemptOverrides,
+}: CreateTestPlanWithAttemptOptions) {
+  const plan = await createPlanForRetryTest(userId, planOverrides);
+
+  if (attemptOverrides) {
+    await db.insert(generationAttempts).values({
+      planId: plan.id,
+      status: 'in_progress',
+      classification: null,
+      durationMs: 0,
+      modulesCount: 0,
+      tasksCount: 0,
+      promptHash: 'retry-in-progress',
+      ...attemptOverrides,
+    });
+  }
+
+  return plan;
+}
+
+describe('POST /api/v1/plans/:planId/retry', () => {
+  it('applies durable generation_attempts rate limit before retry starts', async () => {
+    await resetDbForIntegrationTestFile();
+
+    const authUserId = 'auth_retry_rate_limit';
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: 'retry-rate-limit@example.com',
+    });
+
+    const plan = await createTestPlanWithAttempt({ userId });
+
+    await seedFailedAttemptsForDurableWindow(plan.id);
+
+    const orchestrator = await import('@/lib/ai/orchestrator');
+    const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
+
+    try {
+      const request = new Request(
+        `http://localhost/api/v1/plans/${plan.id}/retry`,
+        {
+          method: 'POST',
+        }
+      );
+
+      const response = await POST(request);
+      expect(response.status).toBe(429);
+      expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
+
+      const body = (await response.json()) as {
+        code?: string;
+        retryAfter?: number;
+      };
+
+      expect(body.code).toBe('RATE_LIMITED');
+      expect(typeof body.retryAfter).toBe('number');
+      expect(runSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('returns 400 when plan is not in failed state', async () => {
+    await resetDbForIntegrationTestFile();
+
+    const authUserId = 'auth_retry_invalid_status';
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: 'retry-invalid-status@example.com',
+    });
+
+    const plan = await createTestPlanWithAttempt({
+      userId,
+      planOverrides: {
+        topic: 'Ready plan',
+        generationStatus: 'ready',
+      },
+    });
+
+    const orchestrator = await import('@/lib/ai/orchestrator');
+    const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
+
+    try {
+      const response = await POST(
+        new Request(`http://localhost/api/v1/plans/${plan.id}/retry`, {
+          method: 'POST',
+        })
+      );
+
+      expect(response.status).toBe(400);
+      const body = (await response.json()) as { error?: string };
+      expect(body.error).toContain('not in a failed state');
+      expect(runSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('returns 429 when plan attempt cap is already reached', async () => {
+    await resetDbForIntegrationTestFile();
+
+    const authUserId = 'auth_retry_capped';
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: 'retry-capped@example.com',
+    });
+
+    const plan = await createTestPlanWithAttempt({
+      userId,
+      planOverrides: {
+        topic: 'Capped plan',
+      },
+    });
+
+    await db.insert(generationAttempts).values(
+      Array.from({ length: ATTEMPT_CAP }, (_, index) => ({
+        planId: plan.id,
+        status: 'failure' as const,
+        classification: 'validation' as const,
+        durationMs: 500 + index,
+        modulesCount: 0,
+        tasksCount: 0,
+        promptHash: `retry-capped-${index}`,
+      }))
+    );
+
+    const orchestrator = await import('@/lib/ai/orchestrator');
+    const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
+
+    try {
+      const response = await POST(
+        new Request(`http://localhost/api/v1/plans/${plan.id}/retry`, {
+          method: 'POST',
+        })
+      );
+
+      expect(response.status).toBe(429);
+      const body = (await response.json()) as { error?: string };
+      expect(body.error).toContain('Maximum retry attempts reached');
+      expect(runSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('returns 409 when another attempt is already in progress', async () => {
+    await resetDbForIntegrationTestFile();
+
+    const authUserId = 'auth_retry_in_progress';
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: 'retry-in-progress@example.com',
+    });
+
+    const plan = await createTestPlanWithAttempt({
+      userId,
+      planOverrides: {
+        topic: 'Plan in progress',
+      },
+      attemptOverrides: {
+        status: 'in_progress',
+      },
+    });
+
+    const orchestrator = await import('@/lib/ai/orchestrator');
+    const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
+
+    try {
+      const response = await POST(
+        new Request(`http://localhost/api/v1/plans/${plan.id}/retry`, {
+          method: 'POST',
+        })
+      );
+
+      expect(response.status).toBe(409);
+      const body = (await response.json()) as { error?: string };
+      expect(body.error).toContain('already in progress');
+      expect(runSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+});

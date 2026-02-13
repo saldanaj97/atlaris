@@ -8,8 +8,25 @@
  * @module lib/ai/streaming/error-sanitizer
  */
 
+import {
+  getFailurePresentation,
+  type FailurePresentation,
+} from '@/lib/ai/failure-presentation';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
+
+export interface ErrorLike {
+  name?: string;
+  message?: string;
+  stack?: string;
+  // Native Error.cause can carry arbitrary values; keep this broad but bounded.
+  cause?: Error | string | object | null;
+  status?: number;
+  statusCode?: number;
+  response?: { status?: number } | null;
+}
+
+export type GenerationError = Error | DOMException | string | ErrorLike;
 
 export interface SanitizedSseError {
   code: string;
@@ -17,41 +34,62 @@ export interface SanitizedSseError {
   retryable: boolean;
 }
 
-/** Classification-based safe error mapping */
-const ERROR_MAP: Record<FailureClassification | 'unknown', SanitizedSseError> =
-  {
-    timeout: {
-      code: 'GENERATION_TIMEOUT',
-      message: 'Plan generation timed out. Please try again.',
-      retryable: true,
-    },
-    rate_limit: {
-      code: 'RATE_LIMITED',
-      message: 'Too many requests. Please wait a moment and try again.',
-      retryable: true,
-    },
-    provider_error: {
-      code: 'GENERATION_FAILED',
-      message: 'Plan generation encountered an error. Please try again.',
-      retryable: true,
-    },
-    validation: {
-      code: 'INVALID_OUTPUT',
-      message:
-        'Plan generation produced invalid output. Please try with different parameters.',
-      retryable: false,
-    },
-    capped: {
-      code: 'ATTEMPTS_EXHAUSTED',
-      message: 'Maximum generation attempts reached. Please create a new plan.',
-      retryable: false,
-    },
-    unknown: {
-      code: 'GENERATION_FAILED',
-      message: 'An unexpected error occurred during plan generation.',
-      retryable: false,
-    },
-  };
+type PrimitiveErrorValue = string | number | boolean | null | undefined;
+
+type Serializable =
+  | PrimitiveErrorValue
+  | Serializable[]
+  | { [key: string]: Serializable };
+
+type MessageErrorShape = { message: string };
+type ToStringErrorShape = { toString(): string };
+
+type StringifyErrorValue =
+  | PrimitiveErrorValue
+  | MessageErrorShape
+  | ToStringErrorShape
+  | Serializable;
+
+function stringifyUnknownError(value: StringifyErrorValue): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    value === null ||
+    value === undefined
+  ) {
+    return String(value);
+  }
+  if (
+    typeof value === 'object' &&
+    'message' in value &&
+    typeof (value as { message?: unknown }).message === 'string'
+  ) {
+    return (value as { message: string }).message;
+  }
+  if (
+    typeof value === 'object' &&
+    'toString' in value &&
+    value.toString !== Object.prototype.toString
+  ) {
+    const toStringResult = (value as { toString(): unknown }).toString();
+    if (
+      typeof toStringResult === 'string' &&
+      toStringResult.length > 0 &&
+      toStringResult !== '[object Object]'
+    ) {
+      return toStringResult;
+    }
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return 'Unserializable error value';
+  }
+}
 
 /**
  * Sanitize an error for SSE output. Maps internal errors to safe public messages.
@@ -63,7 +101,7 @@ const ERROR_MAP: Record<FailureClassification | 'unknown', SanitizedSseError> =
  * @returns A safe, deterministic error payload for the SSE stream
  */
 export function sanitizeSseError(
-  error: unknown,
+  error: GenerationError | ErrorLike,
   classification: FailureClassification | 'unknown',
   context?: { planId?: string; userId?: string }
 ): SanitizedSseError {
@@ -73,12 +111,19 @@ export function sanitizeSseError(
       error:
         error instanceof Error
           ? { message: error.message, name: error.name, stack: error.stack }
-          : String(error),
+          : stringifyUnknownError(error),
       classification,
       ...(context ? { context } : {}),
     },
     'Generation error (sanitized for client)'
   );
 
-  return ERROR_MAP[classification] ?? ERROR_MAP.unknown;
+  const presentation: FailurePresentation =
+    getFailurePresentation(classification);
+
+  return {
+    code: presentation.code,
+    message: presentation.message,
+    retryable: presentation.retryable,
+  };
 }

@@ -9,14 +9,15 @@ import { performance } from 'node:perf_hooks';
 import { count, eq, inArray } from 'drizzle-orm';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { ProviderTimeoutError } from '@/lib/ai/provider';
+import { asyncIterableToReadableStream } from '@/lib/ai/utils';
 import {
-  ProviderTimeoutError,
   type AiPlanGenerationProvider,
   type GenerationInput,
   type GenerationOptions,
   type ProviderGenerateResult,
   type ProviderMetadata,
-} from '@/lib/ai/provider';
+} from '@/lib/ai/types/provider.types';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
@@ -103,7 +104,7 @@ class SimulatedSuccessProvider implements AiPlanGenerationProvider {
     }
 
     return {
-      stream: iterator(),
+      stream: asyncIterableToReadableStream(iterator()),
       metadata: this.metadata,
     };
   }

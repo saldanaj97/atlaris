@@ -1,3 +1,5 @@
+import { createAbortError } from '@/lib/ai/abort';
+import { asyncIterableToReadableStream } from '@/lib/ai/utils';
 import { aiEnv } from '@/lib/config/env';
 import type {
   AiPlanGenerationProvider,
@@ -161,10 +163,50 @@ function generateModules(input: GenerationInput, rng?: SeededRandom): unknown {
   return { modules };
 }
 
-async function* createMockStream(
+async function* createMockChunks(
   payload: unknown,
-  delayMs: number
+  delayMs: number,
+  signal?: AbortSignal
 ): AsyncIterable<string> {
+  const throwIfAborted = () => {
+    if (signal?.aborted) {
+      throw createAbortError('Mock provider generation aborted');
+    }
+  };
+
+  const sleep = async (ms: number): Promise<void> => {
+    if (ms <= 0) {
+      return;
+    }
+
+    if (signal?.aborted) {
+      throw createAbortError('Mock provider generation aborted');
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, ms);
+
+      const onAbort = () => {
+        clearTimeout(timeout);
+        cleanup();
+        reject(createAbortError('Mock provider generation aborted'));
+      };
+
+      const cleanup = () => {
+        if (signal) {
+          signal.removeEventListener('abort', onAbort);
+        }
+      };
+
+      if (signal) {
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
+    });
+  };
+
   const serialized = JSON.stringify(payload);
   const chunkSize = 80;
   // Skip inter-chunk delays in fast test mode
@@ -172,17 +214,29 @@ async function* createMockStream(
 
   // Simulate streaming with realistic delay
   for (let i = 0; i < serialized.length; i += chunkSize) {
+    throwIfAborted();
     if (i > 0 && chunkDelay > 0) {
       // Add small delay between chunks to simulate network
-      await new Promise((resolve) => setTimeout(resolve, chunkDelay));
+      await sleep(chunkDelay);
     }
+    throwIfAborted();
     yield serialized.slice(i, i + chunkSize);
   }
 
   // Final delay to simulate total generation time
   if (delayMs > 0) {
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    await sleep(delayMs);
   }
+}
+
+function createMockStream(
+  payload: unknown,
+  delayMs: number,
+  signal?: AbortSignal
+): ReadableStream<string> {
+  return asyncIterableToReadableStream(
+    createMockChunks(payload, delayMs, signal)
+  );
 }
 
 export class MockGenerationProvider implements AiPlanGenerationProvider {
@@ -198,10 +252,9 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async generate(
+  generate(
     input: GenerationInput,
-    _options?: GenerationOptions
+    options?: GenerationOptions
   ): Promise<ProviderGenerateResult> {
     // Create seeded RNG if seed is provided
     const rng =
@@ -212,9 +265,11 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     // Simulate random failures based on configured rate
     const failureCheck = rng ? rng.next() : Math.random();
     if (failureCheck < this.config.failureRate) {
-      throw new ProviderError(
-        'unknown',
-        'Mock provider simulated failure for testing'
+      return Promise.reject(
+        new ProviderError(
+          'unknown',
+          'Mock provider simulated failure for testing'
+        )
       );
     }
 
@@ -236,8 +291,8 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
         ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
         : baseDelay;
 
-    return {
-      stream: createMockStream(payload, actualDelay),
+    return Promise.resolve({
+      stream: createMockStream(payload, actualDelay, options?.signal),
       metadata: {
         provider: 'mock',
         model: 'mock-generator-v1',
@@ -247,6 +302,6 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
           totalTokens: 600,
         },
       },
-    };
+    });
   }
 }

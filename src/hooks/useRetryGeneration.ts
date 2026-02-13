@@ -143,6 +143,12 @@ export function useRetryGeneration(
             setError(errorData?.message ?? 'Generation failed.');
             return;
           }
+
+          if (event.type === 'cancelled') {
+            setStatus('idle');
+            setError(null);
+            return;
+          }
         }
       }
 

@@ -17,10 +17,10 @@ type DbTaskProgress = InferSelectModel<typeof taskProgress>;
  */
 export async function getAllTasksInPlan(
   userId: string,
-  planId: string
+  planId: string,
+  dbClient: ReturnType<typeof getDb> = getDb()
 ): Promise<DbTask[]> {
-  const db = getDb();
-  const rows = await db
+  const rows = await dbClient
     .select({ task: tasks })
     .from(tasks)
     .innerJoin(modules, eq(tasks.moduleId, modules.id))

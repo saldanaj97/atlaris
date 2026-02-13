@@ -3,12 +3,13 @@
  * Use these instead of direct db.insert calls to centralize schema changes.
  */
 
-import type { InferSelectModel } from 'drizzle-orm';
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 type LearningPlanRow = InferSelectModel<typeof learningPlans>;
+type LearningPlanInsert = InferInsertModel<typeof learningPlans>;
 
 const DEFAULT_PLAN_INSERT = {
   topic: 'machine learning',
@@ -18,6 +19,27 @@ const DEFAULT_PLAN_INSERT = {
   visibility: 'private' as const,
   origin: 'ai' as const,
   generationStatus: 'ready' as const,
+  isQuotaEligible: true,
+};
+
+const RETRY_TEST_PLAN_DEFAULTS: Pick<
+  LearningPlanInsert,
+  | 'topic'
+  | 'skillLevel'
+  | 'weeklyHours'
+  | 'learningStyle'
+  | 'visibility'
+  | 'origin'
+  | 'generationStatus'
+  | 'isQuotaEligible'
+> = {
+  topic: 'Retry me',
+  skillLevel: 'beginner',
+  weeklyHours: 4,
+  learningStyle: 'mixed',
+  visibility: 'private',
+  origin: 'ai',
+  generationStatus: 'failed',
   isQuotaEligible: true,
 };
 
@@ -40,6 +62,30 @@ export async function createPlan(
 
   if (!plan) {
     throw new Error('Failed to create plan');
+  }
+
+  return plan;
+}
+
+/**
+ * Inserts a learning plan with defaults tuned for retry endpoint integration tests.
+ * Accepts field overrides so tests can customize status, topic, and related columns.
+ */
+export async function createPlanForRetryTest(
+  userId: string,
+  overrides: Partial<LearningPlanInsert> = {}
+): Promise<LearningPlanRow> {
+  const [plan] = await db
+    .insert(learningPlans)
+    .values({
+      userId,
+      ...RETRY_TEST_PLAN_DEFAULTS,
+      ...overrides,
+    })
+    .returning();
+
+  if (!plan) {
+    throw new Error('Failed to create retry test plan');
   }
 
   return plan;

@@ -52,6 +52,10 @@ const TRUNCATION_REASON_LABELS: Record<string, string> = {
 
 const MAX_TRUNCATION_REASONS_IN_TOAST = 3;
 
+function normalizeThrown(value: unknown): Error | { message?: string } {
+  return value instanceof Error ? value : { message: String(value) };
+}
+
 function truncationReasonsSummary(
   reasons: string[] | undefined
 ): string | null {
@@ -260,6 +264,7 @@ export function PdfCreatePanel({
         deadlineWeeks,
         pdfProofToken: proof.token,
         pdfExtractionHash: proof.extractionHash,
+        pdfProofVersion: proof.version,
       });
       const streamPlanId = await startGeneration(createInput);
 
@@ -278,16 +283,12 @@ export function PdfCreatePanel({
 
       clientLogger.error('Plan generation failed', streamError);
 
+      const streamErr = normalizeThrown(streamError);
       const message =
-        streamError instanceof Error
-          ? streamError.message
+        streamErr instanceof Error
+          ? streamErr.message
           : 'Failed to create learning plan. Please try again.';
 
-      // Type bridge for isStreamingError; non-Error values always fall through.
-      const streamErr: Error | { message?: string } =
-        streamError instanceof Error
-          ? streamError
-          : { message: String(streamError) };
       const extractedPlanId = isStreamingError(streamErr)
         ? (streamErr.planId ?? streamErr.data?.planId ?? planIdRef.current)
         : planIdRef.current;

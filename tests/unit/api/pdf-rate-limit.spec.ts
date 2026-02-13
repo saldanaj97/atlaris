@@ -1,7 +1,10 @@
 import {
+  acquireGlobalPdfExtractionSlot,
   checkPdfExtractionThrottle,
   checkPdfSizeLimit,
+  type GlobalExtractionState,
   validatePdfUpload,
+  withGlobalPdfSlot,
 } from '@/lib/api/pdf-rate-limit';
 import { describe, expect, it } from 'vitest';
 
@@ -132,6 +135,92 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
         },
       });
       expect(blocked.allowed).toBe(false);
+    });
+  });
+
+  describe('Global extraction concurrency', () => {
+    const createTracker = (): GlobalExtractionState => ({ inFlight: 0 });
+
+    it('blocks when global extraction slots are exhausted', () => {
+      const tracker = createTracker();
+
+      const acquired = [
+        acquireGlobalPdfExtractionSlot({ tracker }),
+        acquireGlobalPdfExtractionSlot({ tracker }),
+        acquireGlobalPdfExtractionSlot({ tracker }),
+        acquireGlobalPdfExtractionSlot({ tracker }),
+      ];
+
+      for (const slot of acquired) {
+        expect(slot.allowed).toBe(true);
+      }
+
+      const blocked = acquireGlobalPdfExtractionSlot({ tracker });
+      expect(blocked.allowed).toBe(false);
+      if (!blocked.allowed) {
+        expect(blocked.retryAfterMs).toBeGreaterThan(0);
+      }
+
+      for (const slot of acquired) {
+        if (!slot.allowed) {
+          throw new Error('Expected slot to be allowed');
+        }
+        slot.release();
+      }
+    });
+
+    it('releases slot idempotently and allows next extraction', () => {
+      const tracker = createTracker();
+
+      const slot = acquireGlobalPdfExtractionSlot({ tracker });
+      expect(slot.allowed).toBe(true);
+      if (!slot.allowed) {
+        throw new Error('Expected slot to be allowed');
+      }
+
+      slot.release();
+      slot.release();
+
+      const next = acquireGlobalPdfExtractionSlot({ tracker });
+      expect(next.allowed).toBe(true);
+      if (!next.allowed) {
+        throw new Error('Expected next slot to be allowed');
+      }
+      next.release();
+      next.release();
+    });
+
+    it('automatically reclaims leaked slots after lease timeout', async () => {
+      const tracker = createTracker();
+      const slot = acquireGlobalPdfExtractionSlot({ tracker, leaseMs: 5 });
+      expect(slot.allowed).toBe(true);
+      if (!slot.allowed) {
+        throw new Error('Expected slot to be allowed');
+      }
+      expect(tracker.inFlight).toBe(1);
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(tracker.inFlight).toBe(0);
+
+      slot.release();
+      expect(tracker.inFlight).toBe(0);
+    });
+
+    it('withGlobalPdfSlot always releases the slot in finally', async () => {
+      expect.assertions(3);
+      const tracker = createTracker();
+
+      await expect(
+        withGlobalPdfSlot(
+          async () => {
+            expect(tracker.inFlight).toBe(1);
+            throw new Error('boom');
+          },
+          { tracker }
+        )
+      ).rejects.toThrow('boom');
+
+      expect(tracker.inFlight).toBe(0);
     });
   });
 

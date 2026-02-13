@@ -1,24 +1,25 @@
-import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { POST } from '@/app/api/v1/plans/stream/route';
-import type { GenerationFailureResult } from '@/lib/ai/orchestrator';
-import { learningPlans, modules } from '@/lib/db/schema';
+import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
+import {
+  runGenerationAttempt,
+  type GenerationAttemptContext,
+  type GenerationFailureResult,
+  type RunGenerationOptions,
+} from '@/lib/ai/orchestrator';
+import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import {
   computePdfExtractionHash,
   issuePdfExtractionProof,
 } from '@/lib/security/pdf-extraction-proof';
 
+import {
+  createPdfProof,
+  DEFAULT_PDF_PROOF_VERSION,
+} from '../../fixtures/validation';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import {
@@ -26,6 +27,16 @@ import {
   type StreamingEvent,
 } from '../../helpers/streaming';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+
+const NUMERIC_HEADER_PATTERN = /^\d+$/;
+
+function assertNumericHeader(response: Response, name: string): void {
+  const value = response.headers.get(name);
+  expect(value, `Header ${name} should be present`).toBeTruthy();
+  expect(value ?? '', `Header ${name} should be numeric`).toMatch(
+    NUMERIC_HEADER_PATTERN
+  );
+}
 
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -76,6 +87,15 @@ describe('POST /api/v1/plans/stream', () => {
     const response = await POST(request);
     expect(response.status).toBe(200);
 
+    const rateLimitHeaders = [
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+    ];
+    for (const name of rateLimitHeaders) {
+      assertNumericHeader(response, name);
+    }
+
     const events = await readStreamingResponse(response);
     const completeEvent = events.find((event) => event.type === 'complete');
     expect(completeEvent?.data?.planId).toBeTruthy();
@@ -103,13 +123,13 @@ describe('POST /api/v1/plans/stream', () => {
     await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
     setTestUser(authUserId);
 
-    // Mock the orchestrator to throw during generation
-    const orchestrator = await import('@/lib/ai/orchestrator');
-    vi.spyOn(orchestrator, 'runGenerationAttempt').mockImplementation(
-      async () => {
-        throw new Error('boom');
-      }
-    );
+    const postWithFailingOrchestrator = createStreamHandler({
+      orchestrator: {
+        runGenerationAttempt: async () => {
+          throw new Error('boom');
+        },
+      },
+    });
 
     const payload = {
       topic: 'Failing Plan',
@@ -129,17 +149,16 @@ describe('POST /api/v1/plans/stream', () => {
       body: JSON.stringify(payload),
     });
 
-    const response = await POST(request);
+    const response = await postWithFailingOrchestrator(request);
     expect(response.status).toBe(200);
 
-    let events: StreamingEvent[] = [];
-    try {
-      events = await readStreamingResponse(response);
-    } catch {
-      // Stream may error after marking failure; swallow the stream error
-    } finally {
-      vi.restoreAllMocks();
-    }
+    const events: StreamingEvent[] = await readStreamingResponse(response);
+    const errorEvent = events.find((event) => event.type === 'error');
+    expect(errorEvent?.data).toMatchObject({
+      code: 'GENERATION_FAILED',
+      classification: 'provider_error',
+      retryable: true,
+    });
 
     const startEvent = events.find((e) => e.type === 'plan_start');
     expect(startEvent?.data?.planId).toBeTruthy();
@@ -161,7 +180,6 @@ describe('POST /api/v1/plans/stream', () => {
     const mockedAttemptId = randomUUID();
     const mockedPlanId = randomUUID();
 
-    const orchestrator = await import('@/lib/ai/orchestrator');
     const mockedFailure: GenerationFailureResult = {
       status: 'failure',
       classification: 'provider_error',
@@ -188,9 +206,11 @@ describe('POST /api/v1/plans/stream', () => {
       },
     };
 
-    vi.spyOn(orchestrator, 'runGenerationAttempt').mockResolvedValue(
-      mockedFailure
-    );
+    const postWithMockedFailure = createStreamHandler({
+      orchestrator: {
+        runGenerationAttempt: async () => mockedFailure,
+      },
+    });
 
     const payload = {
       topic: 'Sanitized Failure Plan',
@@ -202,37 +222,33 @@ describe('POST /api/v1/plans/stream', () => {
       origin: 'ai',
     };
 
-    try {
-      const request = new Request('http://localhost/api/v1/plans/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-      const response = await POST(request);
-      expect(response.status).toBe(200);
+    const response = await postWithMockedFailure(request);
+    expect(response.status).toBe(200);
 
-      const events = await readStreamingResponse(response);
-      const errorEvent = events.find((event) => event.type === 'error');
+    const events = await readStreamingResponse(response);
+    const errorEvent = events.find((event) => event.type === 'error');
 
-      expect(errorEvent?.data).toMatchObject({
-        code: 'GENERATION_FAILED',
-        message: 'Plan generation encountered an error. Please try again.',
-        classification: 'provider_error',
-        retryable: true,
-      });
-      expect(errorEvent?.data?.requestId).toEqual(expect.any(String));
-      const errorMessage =
-        typeof errorEvent?.data?.message === 'string'
-          ? errorEvent.data.message
-          : '';
-      expect(errorMessage).not.toContain('api_key');
-      expect(errorMessage).not.toContain('sk-live-secret-value');
-    } finally {
-      vi.restoreAllMocks();
-    }
+    expect(errorEvent?.data).toMatchObject({
+      code: 'GENERATION_FAILED',
+      message: 'Plan generation encountered an error. Please try again.',
+      classification: 'provider_error',
+      retryable: true,
+    });
+    expect(errorEvent?.data?.requestId).toEqual(expect.any(String));
+    const errorMessage =
+      typeof errorEvent?.data?.message === 'string'
+        ? errorEvent.data.message
+        : '';
+    expect(errorMessage).not.toContain('api_key');
+    expect(errorMessage).not.toContain('sk-live-secret-value');
   });
 
   it('accepts valid model override via query param', async () => {
@@ -442,6 +458,9 @@ describe('POST /api/v1/plans/stream', () => {
 
     const firstResponse = await POST(firstRequest);
     expect(firstResponse.status).toBe(200);
+    // Drain firstResponse stream intentionally before replay test (from POST(firstRequest) above).
+    // readStreamingResponse(firstResponse) ensures the server connection/state is settled before we
+    // attempt the replay POST; the discarded result is deliberate.
     await readStreamingResponse(firstResponse);
 
     const replayRequest = new Request('http://localhost/api/v1/plans/stream', {
@@ -455,6 +474,119 @@ describe('POST /api/v1/plans/stream', () => {
     const replayResponse = await POST(replayRequest);
     expect(replayResponse.status).toBe(403);
     const body = (await replayResponse.json()) as { error?: string };
+    expect(body.error).toBe('Invalid or expired PDF extraction proof.');
+  });
+
+  it('rejects PDF proof token issued for a different user', async () => {
+    const ownerAuthUserId = buildTestAuthUserId('stream-pdf-owner');
+    const attackerAuthUserId = buildTestAuthUserId('stream-pdf-attacker');
+    await ensureUser({
+      authUserId: ownerAuthUserId,
+      email: buildTestEmail(ownerAuthUserId),
+    });
+    await ensureUser({
+      authUserId: attackerAuthUserId,
+      email: buildTestEmail(attackerAuthUserId),
+    });
+
+    const extractedContent = {
+      mainTopic: 'Python from PDF',
+      sections: [
+        {
+          title: 'Basics',
+          content: 'Variables and loops',
+          level: 1,
+        },
+      ],
+    };
+
+    const extractionHash = computePdfExtractionHash(extractedContent);
+    const { token } = await issuePdfExtractionProof({
+      authUserId: ownerAuthUserId,
+      extractionHash,
+    });
+
+    setTestUser(attackerAuthUserId);
+    const pdfProof = createPdfProof({
+      pdfProofToken: token,
+      pdfExtractionHash: extractionHash,
+    });
+    const payload = {
+      origin: 'pdf',
+      extractedContent,
+      ...pdfProof,
+      topic: extractedContent.mainTopic,
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-01-01',
+      visibility: 'private',
+    };
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toBe('Invalid or expired PDF extraction proof.');
+  });
+
+  it('rejects expired PDF proof token', async () => {
+    const authUserId = buildTestAuthUserId('stream-pdf-expired');
+    await ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    setTestUser(authUserId);
+
+    const extractedContent = {
+      mainTopic: 'Rust from PDF',
+      sections: [
+        {
+          title: 'Ownership',
+          content: 'Borrow checker fundamentals',
+          level: 1,
+        },
+      ],
+    };
+
+    const extractionHash = computePdfExtractionHash(extractedContent);
+    const { token } = await issuePdfExtractionProof({
+      authUserId,
+      extractionHash,
+      now: () => new Date(0),
+    });
+
+    const pdfProof = createPdfProof({
+      pdfProofToken: token,
+      pdfExtractionHash: extractionHash,
+    });
+    const payload = {
+      origin: 'pdf',
+      extractedContent,
+      ...pdfProof,
+      topic: extractedContent.mainTopic,
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-01-01',
+      visibility: 'private',
+    };
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    const body = (await response.json()) as { error?: string };
     expect(body.error).toBe('Invalid or expired PDF extraction proof.');
   });
 
@@ -481,84 +613,107 @@ describe('POST /api/v1/plans/stream', () => {
       extractionHash,
     });
 
-    const orchestrator = await import('@/lib/ai/orchestrator');
-    const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
-
-    try {
-      const payload = {
-        origin: 'pdf',
-        extractedContent,
-        pdfProofToken: token,
-        pdfExtractionHash: extractionHash,
-        topic: extractedContent.mainTopic,
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        deadlineDate: '2030-04-01',
-        visibility: 'private',
-      };
-
-      const request = new Request('http://localhost/api/v1/plans/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    const capturedCalls: Array<{
+      context: GenerationAttemptContext;
+      options: RunGenerationOptions;
+    }> = [];
+    const postWithCapturingOrchestrator = createStreamHandler({
+      orchestrator: {
+        runGenerationAttempt: async (
+          context: GenerationAttemptContext,
+          options: RunGenerationOptions
+        ) => {
+          capturedCalls.push({ context, options });
+          return runGenerationAttempt(context, options);
         },
-        body: JSON.stringify(payload),
-      });
+      },
+    });
 
-      const response = await POST(request);
-      expect(response.status).toBe(200);
+    const payload = {
+      origin: 'pdf',
+      extractedContent,
+      pdfProofToken: token,
+      pdfExtractionHash: extractionHash,
+      topic: extractedContent.mainTopic,
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-04-01',
+      visibility: 'private',
+    };
 
-      const events = await readStreamingResponse(response);
-      const completeEvent = events.find((event) => event.type === 'complete');
-      expect(completeEvent?.data?.planId).toBeTruthy();
-      const planId = completeEvent?.data?.planId as string;
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-      expect(runSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          input: expect.objectContaining({
-            pdfContext: expect.objectContaining({
-              mainTopic: 'TypeScript from PDF context',
-              sections: expect.arrayContaining([
-                expect.objectContaining({
-                  title: 'Core concepts',
-                  content: expect.any(String),
-                }),
-              ]),
+    const response = await postWithCapturingOrchestrator(request);
+    expect(response.status).toBe(200);
+
+    const events = await readStreamingResponse(response);
+    const completeEvent = events.find((event) => event.type === 'complete');
+    expect(completeEvent?.data?.planId).toBeTruthy();
+    const planId = completeEvent?.data?.planId as string;
+
+    expect(capturedCalls).toHaveLength(1);
+    expect(capturedCalls[0]?.context).toMatchObject({
+      input: expect.objectContaining({
+        pdfContext: expect.objectContaining({
+          mainTopic: 'TypeScript from PDF context',
+          sections: expect.arrayContaining([
+            expect.objectContaining({
+              title: 'Core concepts',
+              content: expect.any(String),
             }),
-          }),
+          ]),
         }),
-        expect.anything()
+        pdfExtractionHash: extractionHash,
+        pdfProofVersion: DEFAULT_PDF_PROOF_VERSION,
+      }),
+    });
+
+    const capturedInput = capturedCalls[0]?.context?.input;
+    const capturedSection = capturedInput?.pdfContext?.sections?.[0];
+    const extractedSection = extractedContent.sections?.[0];
+    expect(capturedSection).toBeDefined();
+    expect(extractedSection).toBeDefined();
+    if (extractedSection && capturedSection) {
+      expect(capturedSection.content.length).toBeLessThan(
+        extractedSection.content.length
       );
-
-      const capturedInput = runSpy.mock.calls[0]?.[0]?.input;
-      const capturedSection = capturedInput?.pdfContext?.sections?.[0];
-      const extractedSection = extractedContent.sections?.[0];
-      expect(capturedSection).toBeDefined();
-      expect(extractedSection).toBeDefined();
-      if (extractedSection && capturedSection) {
-        expect(capturedSection.content.length).toBeLessThan(
-          extractedSection.content.length
-        );
-      }
-
-      const [plan] = await db
-        .select()
-        .from(learningPlans)
-        .where(eq(learningPlans.id, planId))
-        .limit(1);
-
-      expect(plan?.extractedContext).toMatchObject({
-        mainTopic: 'TypeScript from PDF context',
-        sections: expect.arrayContaining([
-          expect.objectContaining({ title: 'Core concepts' }),
-        ]),
-      });
-      expect(
-        plan?.extractedContext?.sections?.[0]?.content.length
-      ).toBeLessThan(extractedContent.sections[0].content.length);
-    } finally {
-      vi.restoreAllMocks();
     }
+
+    const [plan] = await db
+      .select()
+      .from(learningPlans)
+      .where(eq(learningPlans.id, planId))
+      .limit(1);
+
+    expect(plan?.extractedContext).toMatchObject({
+      mainTopic: 'TypeScript from PDF context',
+      sections: expect.arrayContaining([
+        expect.objectContaining({ title: 'Core concepts' }),
+      ]),
+    });
+    expect(plan?.extractedContext?.sections?.[0]?.content.length).toBeLessThan(
+      extractedContent.sections[0].content.length
+    );
+
+    const [attempt] = await db
+      .select({ metadata: generationAttempts.metadata })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId))
+      .limit(1);
+
+    expect(attempt?.metadata).toMatchObject({
+      pdf: {
+        extraction_hash: extractionHash,
+        proof_version: 1,
+        context_digest: expect.any(String),
+      },
+    });
   });
 });

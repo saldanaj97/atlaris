@@ -4,6 +4,7 @@ import {
   type PlainHandler,
 } from '@/lib/api/auth';
 import {
+  acquireGlobalPdfExtractionSlot,
   acquirePdfExtractionSlot,
   checkPdfSizeLimit,
   validatePdfUpload,
@@ -253,128 +254,151 @@ async function postHandlerImpl(
     return toExtractionError('Invalid PDF file format.', 415);
   }
 
+  const globalSlot = acquireGlobalPdfExtractionSlot();
+  if (!globalSlot.allowed) {
+    return json(
+      {
+        success: false,
+        error: 'PDF extraction is busy. Please retry shortly.',
+        code: 'THROTTLED',
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(
+            Math.ceil((globalSlot.retryAfterMs ?? 0) / 1000)
+          ),
+        },
+      }
+    );
+  }
+
   try {
-    const scanResult = await deps.scanBufferForMalware(buffer);
-    if (!scanResult.clean) {
-      logger.warn(
-        { userId: user.id, threat: scanResult.threat, fileSize: file.size },
-        'Malware detected in uploaded PDF'
+    try {
+      const scanResult = await deps.scanBufferForMalware(buffer);
+      if (!scanResult.clean) {
+        logger.warn(
+          { userId: user.id, threat: scanResult.threat, fileSize: file.size },
+          'Malware detected in uploaded PDF'
+        );
+        return errorResponse(
+          'File rejected due to security concerns.',
+          'MALWARE_DETECTED',
+          400
+        );
+      }
+    } catch (error) {
+      logger.error(
+        { userId: user.id, error, fileSize: file.size },
+        'Malware scan failed for uploaded PDF'
       );
       return errorResponse(
-        'File rejected due to security concerns.',
-        'MALWARE_DETECTED',
-        400
+        'Unable to verify file security. Please try again.',
+        'SCAN_FAILED',
+        500
       );
     }
-  } catch (error) {
-    logger.error(
-      { userId: user.id, error, fileSize: file.size },
-      'Malware scan failed for uploaded PDF'
+
+    const pageCountForValidation = await deps.getPdfPageCountFromBuffer(buffer);
+    const tierValidation = await validatePdfUpload(
+      user.id,
+      file.size,
+      pageCountForValidation,
+      validationDeps
     );
-    return errorResponse(
-      'Unable to verify file security. Please try again.',
-      'SCAN_FAILED',
-      500
-    );
-  }
-
-  const pageCountForValidation = await deps.getPdfPageCountFromBuffer(buffer);
-  const tierValidation = await validatePdfUpload(
-    user.id,
-    file.size,
-    pageCountForValidation,
-    validationDeps
-  );
-  if (!tierValidation.allowed) {
-    return toUploadValidationError(tierValidation);
-  }
-
-  const extraction = await deps.extractTextFromPdf(buffer, {
-    timeoutMs: PDF_EXTRACTION_TIMEOUT_MS,
-    maxChars: PDF_EXTRACTION_MAX_CHARS,
-  });
-
-  if (!extraction.success) {
-    if (extraction.error === 'parse_timeout') {
-      return errorResponse(extraction.message, 'INVALID_FILE', 408);
-    }
-    if (extraction.error === 'decompression_bomb') {
-      return errorResponse(extraction.message, 'INVALID_FILE', 400);
-    }
-    if (extraction.error === 'no_text') {
-      return errorResponse(extraction.message, 'NO_TEXT', 400);
-    }
-    if (extraction.error === 'password_protected') {
-      return errorResponse(extraction.message, 'PASSWORD_PROTECTED', 400);
+    if (!tierValidation.allowed) {
+      return toUploadValidationError(tierValidation);
     }
 
-    return toExtractionError(extraction.message);
-  }
-
-  logger.info(
-    {
-      userId: user.id,
-      fileSize: file.size,
-      pageCount: pageCountForValidation,
-      textLength: extraction.text.length,
-      parseTimeMs: extraction.parseTimeMs,
-      truncatedText: extraction.truncatedText,
-    },
-    'PDF extraction completed'
-  );
-
-  const boundedExtraction: CapExtractionResponse = capExtractionResponsePayload(
-    {
-      text: extraction.text,
-      pageCount: pageCountForValidation,
-      metadata: extraction.metadata,
-      structure: extraction.structure,
-    }
-  );
-
-  const extractionProofInput: {
-    mainTopic: string;
-    sections: ExtractedSection[];
-  } = {
-    mainTopic: boundedExtraction.payload.structure.suggestedMainTopic,
-    sections: boundedExtraction.payload.structure.sections,
-  };
-  const extractionHash = computePdfExtractionHash(extractionProofInput);
-  let issuedProof: { token: string; expiresAt: Date };
-  try {
-    issuedProof = await issuePdfExtractionProof({
-      authUserId: userId,
-      extractionHash,
+    const extraction = await deps.extractTextFromPdf(buffer, {
+      timeoutMs: PDF_EXTRACTION_TIMEOUT_MS,
+      maxChars: PDF_EXTRACTION_MAX_CHARS,
+      signal: req.signal,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : undefined;
-    logger.error(
-      { userId: user.id, extractionHash, message, stack },
-      'Proof issuance failed for PDF extraction'
-    );
-    return errorResponse(
-      'Proof generation failed, please retry',
-      'PROOF_ISSUANCE_FAILED',
-      500
-    );
-  }
 
-  return json({
-    success: true,
-    extraction: {
-      text: boundedExtraction.payload.text,
-      pageCount: boundedExtraction.payload.pageCount,
-      metadata: boundedExtraction.payload.metadata,
-      structure: boundedExtraction.payload.structure,
-      truncation: boundedExtraction.truncation,
-    },
-    proof: toPdfExtractionProofPayload({
-      token: issuedProof.token,
-      extractionHash,
-      expiresAt: issuedProof.expiresAt,
-    }),
-  });
+    if (!extraction.success) {
+      if (extraction.error === 'parse_timeout') {
+        return errorResponse(extraction.message, 'INVALID_FILE', 408);
+      }
+      if (extraction.error === 'decompression_bomb') {
+        return errorResponse(extraction.message, 'INVALID_FILE', 400);
+      }
+      if (extraction.error === 'no_text') {
+        return errorResponse(extraction.message, 'NO_TEXT', 400);
+      }
+      if (extraction.error === 'password_protected') {
+        return errorResponse(extraction.message, 'PASSWORD_PROTECTED', 400);
+      }
+
+      return toExtractionError(extraction.message);
+    }
+
+    logger.info(
+      {
+        userId: user.id,
+        fileSize: file.size,
+        pageCount: pageCountForValidation,
+        textLength: extraction.text.length,
+        parseTimeMs: extraction.parseTimeMs,
+        truncatedText: extraction.truncatedText,
+      },
+      'PDF extraction completed'
+    );
+
+    const boundedExtraction: CapExtractionResponse =
+      capExtractionResponsePayload({
+        text: extraction.text,
+        pageCount: pageCountForValidation,
+        metadata: extraction.metadata,
+        structure: extraction.structure,
+      });
+
+    const extractionProofInput: {
+      mainTopic: string;
+      sections: ExtractedSection[];
+    } = {
+      mainTopic: boundedExtraction.payload.structure.suggestedMainTopic,
+      sections: boundedExtraction.payload.structure.sections,
+    };
+    const extractionHash = computePdfExtractionHash(extractionProofInput);
+    let issuedProof: { token: string; expiresAt: Date };
+    try {
+      issuedProof = await issuePdfExtractionProof({
+        authUserId: userId,
+        extractionHash,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      logger.error(
+        { userId: user.id, extractionHash, message, stack },
+        'Proof issuance failed for PDF extraction'
+      );
+      return errorResponse(
+        'Proof generation failed, please retry',
+        'PROOF_ISSUANCE_FAILED',
+        500
+      );
+    }
+
+    return json({
+      success: true,
+      extraction: {
+        text: boundedExtraction.payload.text,
+        pageCount: boundedExtraction.payload.pageCount,
+        metadata: boundedExtraction.payload.metadata,
+        structure: boundedExtraction.payload.structure,
+        truncation: boundedExtraction.truncation,
+      },
+      proof: toPdfExtractionProofPayload({
+        token: issuedProof.token,
+        extractionHash,
+        expiresAt: issuedProof.expiresAt,
+      }),
+    });
+  } finally {
+    globalSlot.release();
+  }
 }
 
 export function createPostHandler(deps: PdfExtractRouteDeps): PlainHandler {

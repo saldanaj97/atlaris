@@ -1,7 +1,7 @@
+import { MockGenerationProvider } from '@/lib/ai/providers/mock';
+import { RouterGenerationProvider } from '@/lib/ai/providers/router';
+import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
-import { MockGenerationProvider } from './providers/mock';
-import { RouterGenerationProvider } from './providers/router';
-import type { AiPlanGenerationProvider } from './types/provider.types';
 
 /**
  * Creates a generation provider configured with a specific model.
@@ -24,8 +24,8 @@ export function getGenerationProviderWithModel(
     }
   }
 
-  // TODO: Validate modelId against AVAILABLE_MODELS and user's tier
-  // For now, pass through to RouterGenerationProvider
+  // Model/tier validation is enforced by resolveModelForTier before calling
+  // this factory. This factory only constructs providers.
   return new RouterGenerationProvider({ model: modelId });
 }
 

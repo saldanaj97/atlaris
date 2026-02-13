@@ -2,6 +2,7 @@ import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { PdfContext } from '@/lib/pdf/context';
+import type { FailureClassification } from '@/lib/types/client';
 import { and, eq, sql } from 'drizzle-orm';
 
 import {
@@ -434,12 +435,20 @@ export async function markPlanGenerationSuccess(
     .where(eq(learningPlans.id, planId));
 }
 
+export type MarkPlanFailureOptions = {
+  now?: () => Date;
+  failureContext?: {
+    classification: FailureClassification | 'unknown';
+    error: Error;
+  };
+};
+
 export async function markPlanGenerationFailure(
   planId: string,
   dbClient: DbClient = getDb(),
-  now: () => Date = () => new Date()
+  options?: MarkPlanFailureOptions
 ): Promise<void> {
-  const timestamp = now();
+  const timestamp = (options?.now ?? (() => new Date()))();
 
   await dbClient
     .update(learningPlans)
@@ -610,6 +619,45 @@ export async function decrementPdfPlanUsage(
       newCount: updated.pdfPlansGenerated,
     },
     'PDF plan usage decremented'
+  );
+}
+
+/**
+ * Decrement regeneration usage counter (used to roll back quota when an enqueue
+ * request deduplicates against an already active regeneration job).
+ * Counter is clamped at 0 to prevent negative values.
+ */
+export async function decrementRegenerationUsage(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<void> {
+  const month = getCurrentMonth();
+
+  const [updated] = await dbClient
+    .update(usageMetrics)
+    .set({
+      regenerationsUsed: sql`GREATEST(0, ${usageMetrics.regenerationsUsed} - 1)`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .returning({ regenerationsUsed: usageMetrics.regenerationsUsed });
+
+  if (!updated) {
+    logger.warn(
+      { userId, month, action: 'decrementRegenerationUsage' },
+      'No usage metrics found to decrement'
+    );
+    return;
+  }
+
+  logger.info(
+    {
+      userId,
+      month,
+      action: 'decrementRegenerationUsage',
+      newCount: updated.regenerationsUsed,
+    },
+    'Regeneration usage decremented'
   );
 }
 

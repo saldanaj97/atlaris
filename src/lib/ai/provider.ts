@@ -1,6 +1,7 @@
-import type { ProviderErrorKind } from './types/provider.types';
+import type { ProviderErrorKind } from '@/lib/ai/types/provider.types';
 
-// Re-export types from provider.types for backwards compatibility
+// Backward-compatibility shim.
+// New imports should use '@/lib/ai/types/provider.types' for types.
 export type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -10,46 +11,65 @@ export type {
   ProviderGenerateResult,
   ProviderMetadata,
   ProviderUsage,
-} from './types/provider.types';
+} from '@/lib/ai/types/provider.types';
+
+export interface ProviderErrorOptions extends ErrorOptions {
+  statusCode?: number;
+}
 
 export class ProviderError extends Error {
+  public readonly statusCode?: number;
+
   constructor(
     public readonly kind: ProviderErrorKind,
     message: string,
-    options?: ErrorOptions
+    options?: ProviderErrorOptions
   ) {
     super(message, options);
     this.name = 'ProviderError';
+    this.statusCode = options?.statusCode;
   }
 }
 
 export class ProviderNotImplementedError extends ProviderError {
-  constructor(message = 'AI provider not implemented') {
-    super('unknown', message);
+  constructor(
+    message = 'AI provider not implemented',
+    options?: ProviderErrorOptions
+  ) {
+    super('unknown', message, options);
     this.name = 'ProviderNotImplementedError';
   }
 }
 
 export class ProviderRateLimitError extends ProviderError {
-  constructor(message = 'AI provider rate limit exceeded') {
-    super('rate_limit', message);
+  constructor(
+    message = 'AI provider rate limit exceeded',
+    options?: ProviderErrorOptions
+  ) {
+    super('rate_limit', message, options);
     this.name = 'ProviderRateLimitError';
   }
 }
 
 export class ProviderTimeoutError extends ProviderError {
-  constructor(message = 'AI provider timed out') {
-    super('timeout', message);
+  constructor(
+    message = 'AI provider timed out',
+    options?: ProviderErrorOptions
+  ) {
+    super('timeout', message, options);
     this.name = 'ProviderTimeoutError';
   }
 }
 
 export class ProviderInvalidResponseError extends ProviderError {
-  constructor(message = 'AI provider returned an invalid response') {
-    super('invalid_response', message);
+  constructor(
+    message = 'AI provider returned an invalid response',
+    options?: ProviderErrorOptions
+  ) {
+    super('invalid_response', message, options);
     this.name = 'ProviderInvalidResponseError';
   }
 }
 
 // Re-export factory function from provider-factory module
-export { getGenerationProvider } from './provider-factory';
+export { getGenerationProvider } from '@/lib/ai/provider-factory';

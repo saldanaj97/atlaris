@@ -69,13 +69,16 @@ export class ConflictError extends AppError {
   }
 }
 
+interface RateLimitErrorDetails {
+  retryAfter?: number;
+  remaining?: number;
+}
+
 export class RateLimitError extends AppError {
   public retryAfter?: number;
+  public remaining?: number;
 
-  constructor(
-    message = 'Too Many Requests',
-    details?: { retryAfter?: number }
-  ) {
+  constructor(message = 'Too Many Requests', details?: RateLimitErrorDetails) {
     super(message, {
       status: 429,
       code: 'RATE_LIMITED',
@@ -83,6 +86,7 @@ export class RateLimitError extends AppError {
       classification: 'rate_limit',
     });
     this.retryAfter = details?.retryAfter;
+    this.remaining = details?.remaining;
   }
 }
 
@@ -162,6 +166,7 @@ export function toErrorResponse(err: unknown) {
       error: err.message,
       code: err.code(),
     };
+    const headers: Record<string, string> = {};
 
     const classification = err.classification();
     if (classification) {
@@ -178,7 +183,11 @@ export function toErrorResponse(err: unknown) {
       body.retryAfter = err.retryAfter;
     }
 
-    return Response.json(body, { status: err.status() });
+    if (err instanceof RateLimitError && err.remaining !== undefined) {
+      headers['X-RateLimit-Remaining'] = String(Math.max(0, err.remaining));
+    }
+
+    return Response.json(body, { status: err.status(), headers });
   }
   logger.error({ error: toSafeError(err) }, 'Unexpected API error');
   return Response.json(

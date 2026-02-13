@@ -1,25 +1,11 @@
-import { and, eq } from 'drizzle-orm';
-
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import {
+  requireInternalUserByAuthId,
+  requireOwnedPlanById,
+  requirePlanIdFromRequest,
+} from '@/lib/api/plans/route-context';
 import { getAllTasksInPlan } from '@/lib/db/queries/tasks';
-import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
-import { learningPlans } from '@/lib/db/schema';
-import { isUuid } from '@/lib/api/route-helpers';
-
-function getParams(req: Request) {
-  const url = new URL(req.url);
-  const segments = url.pathname.split('/').filter(Boolean);
-  const planIndex = segments.indexOf('plans');
-
-  return {
-    planId:
-      planIndex !== -1 && segments.length > planIndex + 1
-        ? segments[planIndex + 1]
-        : undefined,
-  };
-}
 
 /**
  * GET /api/v1/plans/:planId/tasks
@@ -30,36 +16,12 @@ function getParams(req: Request) {
  */
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req, userId }) => {
-    const { planId } = getParams(req);
-    if (!planId) {
-      throw new ValidationError('Plan id is required in the request path.');
-    }
-    if (!isUuid(planId)) {
-      throw new ValidationError('Invalid plan id format.');
-    }
-
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
-
-    // Ensure the plan exists and belongs to the authenticated user
+    const planId = requirePlanIdFromRequest(req, 'second-to-last');
+    const user = await requireInternalUserByAuthId(userId);
     const db = getDb();
-    const [plan] = await db
-      .select({ id: learningPlans.id })
-      .from(learningPlans)
-      .where(
-        and(eq(learningPlans.id, planId), eq(learningPlans.userId, user.id))
-      )
-      .limit(1);
+    await requireOwnedPlanById({ planId, ownerUserId: user.id, dbClient: db });
 
-    if (!plan) {
-      throw new NotFoundError('Plan not found.');
-    }
-
-    const tasks = await getAllTasksInPlan(user.id, planId);
-    return new Response(JSON.stringify(tasks), { status: 200 });
+    const tasks = await getAllTasksInPlan(user.id, planId, db);
+    return Response.json(tasks, { status: 200 });
   })
 );
