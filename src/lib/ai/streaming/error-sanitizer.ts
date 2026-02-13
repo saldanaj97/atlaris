@@ -74,8 +74,12 @@ function stringifyUnknownError(value: StringifyErrorValue): string {
     'toString' in value &&
     value.toString !== Object.prototype.toString
   ) {
-    const toStringResult = value.toString();
-    if (typeof toStringResult === 'string' && toStringResult.length > 0) {
+    const toStringResult = (value as { toString(): unknown }).toString();
+    if (
+      typeof toStringResult === 'string' &&
+      toStringResult.length > 0 &&
+      toStringResult !== '[object Object]'
+    ) {
       return toStringResult;
     }
   }

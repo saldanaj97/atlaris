@@ -64,7 +64,7 @@ export function createStreamHandler(deps?: {
 
       let body: CreateLearningPlanInput;
       try {
-        const parsedBody = await req.json();
+        const parsedBody: unknown = await req.json();
         logger.info(
           {
             authUserId: userId,
