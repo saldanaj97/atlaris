@@ -2,10 +2,11 @@ import { GET as GET_PLAN_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_PLAN_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { buildTestAuthUserId } from '../../helpers/testIds';
 
 type StatusFixture = {
   generationStatus: 'generating' | 'ready' | 'failed';
@@ -48,10 +49,12 @@ async function createPlanFixture(
 }
 
 describe('Plan status parity contract', () => {
-  it('returns matching status between detail and status endpoints', async () => {
+  beforeEach(async () => {
     await resetDbForIntegrationTestFile();
+  });
 
-    const authUserId = 'auth_status_parity';
+  it('returns matching status between detail and status endpoints', async () => {
+    const authUserId = buildTestAuthUserId('status_parity');
     setTestUser(authUserId);
     const userId = await ensureUser({
       authUserId,

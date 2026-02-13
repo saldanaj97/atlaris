@@ -121,12 +121,12 @@ export function emitCancelledEvent({
   getCorrelationId: getCorrelationIdOverride,
 }: EmitCancelledEventParams): void {
   const requestId = (getCorrelationIdOverride ?? getCorrelationId)();
+  logger.info({ planId, userId }, 'Generation stream cancelled');
 
   emit({
     type: 'cancelled',
     data: {
       planId,
-      userId,
       classification: 'cancelled',
       retryable: true,
       message: 'Plan generation was cancelled.',
@@ -516,12 +516,16 @@ export async function executeGenerationStream({
     });
   } catch (error: unknown) {
     if (abortController.signal.aborted) {
+      const clientError = mapUnhandledErrorToClientError
+        ? mapUnhandledErrorToClientError(error)
+        : toFallbackErrorLike(error);
+
       try {
         await onUnhandledError(error, startedAt);
       } catch (cleanupError) {
         logger.error(
           {
-            error: cleanupError,
+            cleanupError,
             planId,
             userId,
             sourceError: error,
@@ -532,21 +536,34 @@ export async function executeGenerationStream({
 
       emitCancelledEvent({
         emit,
-        error: mapUnhandledErrorToClientError
-          ? mapUnhandledErrorToClientError(error)
-          : toFallbackErrorLike(error),
+        error: clientError,
         planId,
         userId,
       });
       return;
     }
 
-    await onUnhandledError(error, startedAt);
+    const clientError = mapUnhandledErrorToClientError
+      ? mapUnhandledErrorToClientError(error)
+      : toFallbackErrorLike(error);
+
+    try {
+      await onUnhandledError(error, startedAt);
+    } catch (cleanupError) {
+      logger.error(
+        {
+          cleanupError,
+          planId,
+          userId,
+          sourceError: error,
+        },
+        'Failed cleanup after generation stream error'
+      );
+    }
+
     emitSanitizedFailureEvent({
       emit,
-      error: mapUnhandledErrorToClientError
-        ? mapUnhandledErrorToClientError(error)
-        : toFallbackErrorLike(error),
+      error: clientError,
       classification: fallbackClassification,
       planId,
       userId,

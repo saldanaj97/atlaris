@@ -25,6 +25,17 @@ describe('derivePlanStatus', () => {
     ).toBe('pending');
   });
 
+  it('returns failed when generation status is ready without modules and attempts reached cap', () => {
+    expect(
+      derivePlanStatus({
+        generationStatus: 'ready',
+        hasModules: false,
+        attemptsCount: 3,
+        attemptCap: 3,
+      })
+    ).toBe('failed');
+  });
+
   it('returns failed when generation status is failed', () => {
     expect(
       derivePlanStatus({ generationStatus: 'failed', hasModules: false })

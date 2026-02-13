@@ -2,10 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import type { AttemptRejection } from '@/lib/db/queries/attempts';
-import { db } from '@/lib/db/service-role';
 
 describe('runGenerationAttempt reservation rejection handling', () => {
   it('maps in_progress reservation rejections to a valid retryable classification', async () => {
+    const dbClientStub = {
+      select: () => ({}),
+      insert: () => ({}),
+      update: () => ({}),
+      delete: () => ({}),
+      transaction: () => ({}),
+    };
     const reservation: AttemptRejection = {
       reserved: false,
       reason: 'in_progress',
@@ -23,7 +29,7 @@ describe('runGenerationAttempt reservation rejection handling', () => {
         },
       },
       {
-        dbClient: db,
+        dbClient: dbClientStub as unknown as RunGenerationDbClient,
         reservation: reservation as unknown as RunGenerationReservation,
       }
     );
@@ -43,4 +49,12 @@ type RunGenerationReservation = Parameters<
   reservation?: infer Reservation;
 }
   ? Reservation
+  : never;
+
+type RunGenerationDbClient = Parameters<
+  typeof runGenerationAttempt
+>[1] extends {
+  dbClient: infer DbClient;
+}
+  ? DbClient
   : never;

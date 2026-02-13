@@ -79,6 +79,10 @@ export async function createFailedAttemptsInDb(
   count: number,
   overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>
 ): Promise<GenerationAttemptRow[]> {
+  if (count === 0) {
+    return [];
+  }
+
   const attempts = createFailedAttempts(planId, count, overridesPerIndex);
   const inserted = await db
     .insert(generationAttempts)

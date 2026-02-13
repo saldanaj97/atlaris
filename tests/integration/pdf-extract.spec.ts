@@ -24,6 +24,7 @@ import {
 } from '@/lib/api/pdf-rate-limit';
 
 const BASE_URL = 'http://localhost/api/v1/plans/from-pdf/extract';
+const MAX_SLOT_ATTEMPTS = 100;
 
 const PDF_BYTES = Buffer.from('%PDF-1.4\n%%EOF', 'utf8');
 const PDF_FILE_NAME = 'sample.pdf';
@@ -248,7 +249,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     expect(mockExtractTextFromPdf).not.toHaveBeenCalled();
   });
 
-  it('returns 408 when extraction times out', async () => {
+  it('returns 422 when extraction times out', async () => {
     const authUserId = `auth_pdf_timeout_${Date.now()}`;
     const authEmail = `pdf-timeout-${Date.now()}@test.local`;
 
@@ -264,7 +265,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     const request = createPdfRequest();
     const response = await postHandler(request);
 
-    expect(response.status).toBe(408);
+    expect(response.status).toBe(422);
     const payload = await response.json();
     expect(payload.success).toBe(false);
     expect(payload.code).toBe('INVALID_FILE');
@@ -281,9 +282,22 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     // it returns allowed === false (throttle limit). Keeps test resilient to config changes.
     const slots: ReturnType<typeof acquireGlobalPdfExtractionSlot>[] = [];
     let slot = acquireGlobalPdfExtractionSlot();
-    while (slot.allowed) {
+    let slotAttempts = 0;
+    while (slot.allowed && slotAttempts < MAX_SLOT_ATTEMPTS) {
       slots.push(slot);
+      slotAttempts += 1;
       slot = acquireGlobalPdfExtractionSlot();
+    }
+
+    if (slot.allowed) {
+      for (const acquiredSlot of slots) {
+        if (acquiredSlot.allowed) {
+          acquiredSlot.release();
+        }
+      }
+      throw new Error(
+        `Failed to saturate PDF extraction slots within ${MAX_SLOT_ATTEMPTS} attempts. Potential regression in acquireGlobalPdfExtractionSlot().`
+      );
     }
 
     try {

@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/nextjs';
 
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
 import { ProviderError, ProviderInvalidResponseError } from '@/lib/ai/provider';
-import { createAdaptiveTimeout } from '@/lib/ai/timeout';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -252,14 +251,9 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         if (options?.signal) {
           requestOptions.signal = options.signal;
         }
-        const adaptiveTimeout = createAdaptiveTimeout({
-          baseMs: options?.timeoutMs ?? OPENROUTER_DEFAULT_TIMEOUT_MS,
-          extensionMs: OPENROUTER_TIMEOUT_EXTENSION_MS,
-        });
-        adaptiveTimeout.notifyFirstModule();
         requestOptions.timeoutMs =
-          adaptiveTimeout.deadline - adaptiveTimeout.startedAt;
-        adaptiveTimeout.cancel();
+          (options?.timeoutMs ?? OPENROUTER_DEFAULT_TIMEOUT_MS) +
+          OPENROUTER_TIMEOUT_EXTENSION_MS;
 
         let response: unknown;
         try {
@@ -308,11 +302,16 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
           });
         }
 
-        const metadataUsage = normalizeUsage(
+        const normalizedInitialUsage = normalizeUsage(
           isObjectRecord(response) && 'usage' in response
             ? (response.usage as StreamEventLike['usage'] | undefined)
             : undefined
         );
+        const metadataUsage: ProviderUsage = {
+          promptTokens: normalizedInitialUsage.promptTokens ?? 0,
+          completionTokens: normalizedInitialUsage.completionTokens ?? 0,
+          totalTokens: normalizedInitialUsage.totalTokens ?? 0,
+        };
         // Streaming: when SDK returns AsyncIterable we yield chunk-by-chunk; otherwise single-chunk fallback.
         // Track full streaming UX (SDK stream mode + ReadableStream + chunk-by-chunk) in GitHub #214.
         const stream = isAsyncIterable(response)
@@ -350,32 +349,29 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
                 );
               }
               const normalizedUsage = normalizeUsage(nonStreamResponse?.usage);
-              metadataUsage.promptTokens = normalizedUsage.promptTokens;
-              metadataUsage.completionTokens = normalizedUsage.completionTokens;
-              metadataUsage.totalTokens = normalizedUsage.totalTokens;
+              metadataUsage.promptTokens =
+                normalizedUsage.promptTokens ?? metadataUsage.promptTokens;
+              metadataUsage.completionTokens =
+                normalizedUsage.completionTokens ??
+                metadataUsage.completionTokens;
+              metadataUsage.totalTokens =
+                normalizedUsage.totalTokens ?? metadataUsage.totalTokens;
               return toStream(content);
             })();
 
-        const usage = metadataUsage;
-        if (usage) {
-          span.setAttribute(
-            'gen_ai.usage.input_tokens',
-            usage.promptTokens ?? 0
-          );
-          span.setAttribute(
-            'gen_ai.usage.output_tokens',
-            usage.completionTokens ?? 0
-          );
-        }
+        span.setAttribute(
+          'gen_ai.usage.input_tokens',
+          metadataUsage.promptTokens ?? 0
+        );
+        span.setAttribute(
+          'gen_ai.usage.output_tokens',
+          metadataUsage.completionTokens ?? 0
+        );
 
         return {
           stream,
           metadata: {
-            usage: {
-              promptTokens: usage.promptTokens ?? 0,
-              completionTokens: usage.completionTokens ?? 0,
-              totalTokens: usage.totalTokens ?? 0,
-            },
+            usage: metadataUsage,
             provider: 'openrouter',
             model: this.model,
           },

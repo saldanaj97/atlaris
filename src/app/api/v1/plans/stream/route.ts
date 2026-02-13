@@ -21,6 +21,7 @@ import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
+import { appEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
@@ -205,83 +206,109 @@ export function createStreamHandler(deps?: {
 
       const stream = createEventStream(
         async (emit, _controller, streamContext) => {
-          logger.info(
-            { planId: plan.id, userId: user.id },
-            'Building plan_start event'
-          );
-          const planStartEvent = buildPlanStartEvent({
-            planId: plan.id,
-            input: normalizedInput,
-          });
-          logger.info(
-            { planId: plan.id, userId: user.id },
-            'Emitting plan_start event'
-          );
-          emit(planStartEvent);
-
-          logger.info(
-            { planId: plan.id, userId: user.id },
-            'Starting executeGenerationStream'
-          );
-          await executeGenerationStream({
-            reqSignal: req.signal,
-            streamSignal: streamContext.signal,
-            planId: plan.id,
-            userId: user.id,
-            dbClient: db,
-            emit,
-            runGeneration: async (signal) => {
-              logger.info(
-                { planId: plan.id, userId: user.id },
-                'Starting generation attempt'
-              );
-              const result = await runGen(
-                {
-                  planId: plan.id,
-                  userId: user.id,
-                  input: generationInput,
-                },
-                { provider, signal, dbClient: db }
-              );
-              logger.info(
-                {
-                  planId: plan.id,
-                  userId: user.id,
-                  status: result.status,
-                  classification: result.classification ?? null,
-                },
-                'Generation attempt completed'
-              );
-              return result;
-            },
-            onUnhandledError: async (error, startedAt) => {
+          const { dbClient: streamDb, cleanup: cleanupStreamDb } =
+            await createStreamDbClient(userId);
+          let streamDbClosed = false;
+          const closeStreamDb = async (): Promise<void> => {
+            if (streamDbClosed) {
+              return;
+            }
+            streamDbClosed = true;
+            try {
+              await cleanupStreamDb();
+            } catch (error) {
               logger.error(
-                {
-                  planId: plan.id,
-                  userId: user.id,
-                  classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
-                  durationMs: Math.max(0, Date.now() - startedAt),
-                  error: serializeError(error),
-                },
-                'Unhandled exception during stream generation; marking plan failed'
+                { planId: plan.id, userId: user.id, error },
+                'Failed to close stream DB client'
               );
+            }
+          };
 
-              logger.warn(
-                { planId: plan.id, userId: user.id },
-                'Calling safeMarkPlanFailed after unhandled stream error'
-              );
-              await safeMarkPlanFailed(plan.id, user.id, db);
-              logger.info(
-                { planId: plan.id, userId: user.id },
-                'safeMarkPlanFailed completed after unhandled stream error'
-              );
-            },
-            fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
+          streamContext.onCancel(() => {
+            void closeStreamDb();
           });
-          logger.info(
-            { planId: plan.id, userId: user.id },
-            'executeGenerationStream completed'
-          );
+
+          try {
+            logger.info(
+              { planId: plan.id, userId: user.id },
+              'Building plan_start event'
+            );
+            const planStartEvent = buildPlanStartEvent({
+              planId: plan.id,
+              input: normalizedInput,
+            });
+            logger.info(
+              { planId: plan.id, userId: user.id },
+              'Emitting plan_start event'
+            );
+            emit(planStartEvent);
+
+            logger.info(
+              { planId: plan.id, userId: user.id },
+              'Starting executeGenerationStream'
+            );
+            await executeGenerationStream({
+              reqSignal: req.signal,
+              streamSignal: streamContext.signal,
+              planId: plan.id,
+              userId: user.id,
+              dbClient: streamDb,
+              emit,
+              runGeneration: async (signal) => {
+                logger.info(
+                  { planId: plan.id, userId: user.id },
+                  'Starting generation attempt'
+                );
+                const result = await runGen(
+                  {
+                    planId: plan.id,
+                    userId: user.id,
+                    input: generationInput,
+                  },
+                  { provider, signal, dbClient: streamDb }
+                );
+                logger.info(
+                  {
+                    planId: plan.id,
+                    userId: user.id,
+                    status: result.status,
+                    classification: result.classification ?? null,
+                  },
+                  'Generation attempt completed'
+                );
+                return result;
+              },
+              onUnhandledError: async (error, startedAt) => {
+                logger.error(
+                  {
+                    planId: plan.id,
+                    userId: user.id,
+                    classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
+                    durationMs: Math.max(0, Date.now() - startedAt),
+                    error: serializeError(error),
+                  },
+                  'Unhandled exception during stream generation; marking plan failed'
+                );
+
+                logger.warn(
+                  { planId: plan.id, userId: user.id },
+                  'Calling safeMarkPlanFailed after unhandled stream error'
+                );
+                await safeMarkPlanFailed(plan.id, user.id, streamDb);
+                logger.info(
+                  { planId: plan.id, userId: user.id },
+                  'safeMarkPlanFailed completed after unhandled stream error'
+                );
+              },
+              fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
+            });
+            logger.info(
+              { planId: plan.id, userId: user.id },
+              'executeGenerationStream completed'
+            );
+          } finally {
+            await closeStreamDb();
+          }
         }
       );
 
@@ -297,6 +324,25 @@ export function createStreamHandler(deps?: {
 }
 
 export const POST = createStreamHandler();
+
+async function createStreamDbClient(authUserId: string): Promise<{
+  dbClient: ReturnType<typeof getDb>;
+  cleanup: () => Promise<void>;
+}> {
+  if (appEnv.isTest) {
+    return {
+      dbClient: getDb(),
+      cleanup: async () => {},
+    };
+  }
+
+  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
+  const { db, cleanup } = await createAuthenticatedRlsClient(authUserId);
+  return {
+    dbClient: db,
+    cleanup,
+  };
+}
 
 function toPayloadLog(payload: unknown): Record<string, unknown> {
   if (!payload || typeof payload !== 'object') {

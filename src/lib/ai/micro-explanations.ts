@@ -164,8 +164,8 @@ export async function generateMicroExplanation(
       () =>
         generateWithOpenRouter(authConfig, config, systemPrompt, userPrompt),
       {
-        retries: 1,
         ...getRetryBackoffConfig(),
+        retries: 1,
         randomize: true,
       }
     );

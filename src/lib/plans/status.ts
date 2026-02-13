@@ -34,6 +34,10 @@ export function derivePlanStatus(params: {
     return 'pending';
   }
 
+  if (typeof attemptsCount === 'number' && attemptsCount >= attemptCap) {
+    return 'failed';
+  }
+
   if (generationStatus === 'ready') {
     return 'ready';
   }

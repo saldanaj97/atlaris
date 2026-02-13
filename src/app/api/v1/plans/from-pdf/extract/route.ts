@@ -318,7 +318,7 @@ async function postHandlerImpl(
 
     if (!extraction.success) {
       if (extraction.error === 'parse_timeout') {
-        return errorResponse(extraction.message, 'INVALID_FILE', 408);
+        return errorResponse(extraction.message, 'INVALID_FILE', 422);
       }
       if (extraction.error === 'decompression_bomb') {
         return errorResponse(extraction.message, 'INVALID_FILE', 400);

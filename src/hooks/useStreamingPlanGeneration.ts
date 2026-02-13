@@ -198,7 +198,7 @@ export function useStreamingPlanGeneration() {
               }));
               resolve(event.data.planId);
               break;
-            case 'error':
+            case 'error': {
               errored = true;
               const errorPlanId = event.data.planId ?? latestPlanId;
               setState((prev) => ({
@@ -219,7 +219,8 @@ export function useStreamingPlanGeneration() {
               streamErr.data = { planId: errorPlanId ?? undefined };
               reject(streamErr);
               break;
-            case 'cancelled':
+            }
+            case 'cancelled': {
               errored = true;
               latestPlanId = latestPlanId ?? event.data.planId;
               setState((prev) => ({
@@ -239,6 +240,7 @@ export function useStreamingPlanGeneration() {
               cancelledErr.data = { planId: latestPlanId ?? undefined };
               reject(cancelledErr);
               break;
+            }
           }
         };
 

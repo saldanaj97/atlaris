@@ -59,7 +59,6 @@ export type CancelledEvent = {
   type: 'cancelled';
   data: {
     planId: string;
-    userId: string;
     message: string;
     classification: 'cancelled';
     retryable: true;

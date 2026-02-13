@@ -19,6 +19,15 @@ const ORIGINAL_ENV = {
   REGENERATION_QUEUE_ENABLED: process.env.REGENERATION_QUEUE_ENABLED,
 };
 
+function restoreEnvVar(name: keyof typeof ORIGINAL_ENV): void {
+  const originalValue = ORIGINAL_ENV[name];
+  if (originalValue === undefined) {
+    delete process.env[name];
+    return;
+  }
+  process.env[name] = originalValue;
+}
+
 async function createRegenerateRequest(planId: string, body: unknown) {
   return {
     request: new Request(`http://localhost/api/v1/plans/${planId}/regenerate`, {
@@ -32,40 +41,15 @@ async function createRegenerateRequest(planId: string, body: unknown) {
 
 describe('POST /api/internal/jobs/regeneration/process', () => {
   afterEach(() => {
-    if (ORIGINAL_ENV.AI_PROVIDER === undefined) {
-      delete process.env.AI_PROVIDER;
-    } else {
-      process.env.AI_PROVIDER = ORIGINAL_ENV.AI_PROVIDER;
-    }
-    if (ORIGINAL_ENV.AI_USE_MOCK === undefined) {
-      delete process.env.AI_USE_MOCK;
-    } else {
-      process.env.AI_USE_MOCK = ORIGINAL_ENV.AI_USE_MOCK;
-    }
-    if (ORIGINAL_ENV.MOCK_GENERATION_FAILURE_RATE === undefined) {
-      delete process.env.MOCK_GENERATION_FAILURE_RATE;
-    } else {
-      process.env.MOCK_GENERATION_FAILURE_RATE =
-        ORIGINAL_ENV.MOCK_GENERATION_FAILURE_RATE;
-    }
-    if (ORIGINAL_ENV.MOCK_GENERATION_DELAY_MS === undefined) {
-      delete process.env.MOCK_GENERATION_DELAY_MS;
-    } else {
-      process.env.MOCK_GENERATION_DELAY_MS =
-        ORIGINAL_ENV.MOCK_GENERATION_DELAY_MS;
-    }
-    if (ORIGINAL_ENV.REGENERATION_INLINE_PROCESSING === undefined) {
-      delete process.env.REGENERATION_INLINE_PROCESSING;
-    } else {
-      process.env.REGENERATION_INLINE_PROCESSING =
-        ORIGINAL_ENV.REGENERATION_INLINE_PROCESSING;
-    }
-    if (ORIGINAL_ENV.REGENERATION_QUEUE_ENABLED === undefined) {
-      delete process.env.REGENERATION_QUEUE_ENABLED;
-    } else {
-      process.env.REGENERATION_QUEUE_ENABLED =
-        ORIGINAL_ENV.REGENERATION_QUEUE_ENABLED;
-    }
+    const envKeys: Array<keyof typeof ORIGINAL_ENV> = [
+      'AI_PROVIDER',
+      'AI_USE_MOCK',
+      'MOCK_GENERATION_FAILURE_RATE',
+      'MOCK_GENERATION_DELAY_MS',
+      'REGENERATION_INLINE_PROCESSING',
+      'REGENERATION_QUEUE_ENABLED',
+    ];
+    envKeys.forEach(restoreEnvVar);
   });
 
   it('drains queued regeneration jobs and finalizes plan state', async () => {

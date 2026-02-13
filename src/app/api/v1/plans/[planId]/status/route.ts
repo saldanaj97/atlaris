@@ -47,7 +47,7 @@ export const GET = withErrorBoundary(
 
     const hasModules = planModules.length > 0;
 
-    // Fetch bounded recent attempts (max retries is 3), derive count + latest in memory.
+    // Fetch bounded recent attempts (max retries is ATTEMPT_CAP), derive count + latest in memory.
     const recentAttempts = await db
       .select({
         classification: generationAttempts.classification,
@@ -56,7 +56,7 @@ export const GET = withErrorBoundary(
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, planId))
       .orderBy(desc(generationAttempts.createdAt))
-      .limit(3);
+      .limit(ATTEMPT_CAP);
 
     const attempts = recentAttempts.length;
     const latestAttempt = recentAttempts[0];

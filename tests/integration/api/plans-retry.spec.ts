@@ -2,7 +2,7 @@ import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
@@ -43,9 +43,11 @@ async function createTestPlanWithAttempt({
 }
 
 describe('POST /api/v1/plans/:planId/retry', () => {
-  it('applies durable generation_attempts rate limit before retry starts', async () => {
+  beforeEach(async () => {
     await resetDbForIntegrationTestFile();
+  });
 
+  it('applies durable generation_attempts rate limit before retry starts', async () => {
     const authUserId = 'auth_retry_rate_limit';
     setTestUser(authUserId);
     const userId = await ensureUser({
@@ -86,8 +88,6 @@ describe('POST /api/v1/plans/:planId/retry', () => {
   });
 
   it('returns 400 when plan is not in failed state', async () => {
-    await resetDbForIntegrationTestFile();
-
     const authUserId = 'auth_retry_invalid_status';
     setTestUser(authUserId);
     const userId = await ensureUser({
@@ -123,8 +123,6 @@ describe('POST /api/v1/plans/:planId/retry', () => {
   });
 
   it('returns 429 when plan attempt cap is already reached', async () => {
-    await resetDbForIntegrationTestFile();
-
     const authUserId = 'auth_retry_capped';
     setTestUser(authUserId);
     const userId = await ensureUser({
@@ -171,8 +169,6 @@ describe('POST /api/v1/plans/:planId/retry', () => {
   });
 
   it('returns 409 when another attempt is already in progress', async () => {
-    await resetDbForIntegrationTestFile();
-
     const authUserId = 'auth_retry_in_progress';
     setTestUser(authUserId);
     const userId = await ensureUser({

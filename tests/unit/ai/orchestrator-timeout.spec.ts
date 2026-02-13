@@ -30,6 +30,27 @@ const ORIGINAL_TIMEOUT_ENV = {
   extensionThresholdMs: process.env.AI_TIMEOUT_EXTENSION_THRESHOLD_MS,
 };
 
+const TIMEOUT_ENV_KEYS = [
+  'AI_TIMEOUT_BASE_MS',
+  'AI_TIMEOUT_EXTENSION_MS',
+  'AI_TIMEOUT_EXTENSION_THRESHOLD_MS',
+] as const;
+
+function restoreTimeoutEnvVar(key: (typeof TIMEOUT_ENV_KEYS)[number]): void {
+  const originalValue =
+    key === 'AI_TIMEOUT_BASE_MS'
+      ? ORIGINAL_TIMEOUT_ENV.baseMs
+      : key === 'AI_TIMEOUT_EXTENSION_MS'
+        ? ORIGINAL_TIMEOUT_ENV.extensionMs
+        : ORIGINAL_TIMEOUT_ENV.extensionThresholdMs;
+
+  if (originalValue === undefined) {
+    delete process.env[key];
+    return;
+  }
+  process.env[key] = originalValue;
+}
+
 type SuccessAttemptRecord = {
   id: string;
   planId: string;
@@ -178,10 +199,7 @@ describe('runGenerationAttempt timeout wiring', () => {
   afterEach(() => {
     vi.clearAllMocks();
 
-    process.env.AI_TIMEOUT_BASE_MS = ORIGINAL_TIMEOUT_ENV.baseMs;
-    process.env.AI_TIMEOUT_EXTENSION_MS = ORIGINAL_TIMEOUT_ENV.extensionMs;
-    process.env.AI_TIMEOUT_EXTENSION_THRESHOLD_MS =
-      ORIGINAL_TIMEOUT_ENV.extensionThresholdMs;
+    TIMEOUT_ENV_KEYS.forEach(restoreTimeoutEnvVar);
   });
 
   it('uses aiTimeoutEnv baseMs when no override is provided', async () => {
