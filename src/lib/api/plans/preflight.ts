@@ -10,17 +10,17 @@ import {
   preparePlanInputWithPdfOrigin,
   rollbackPdfUsageIfReserved,
   type PreparedPlanInput,
-} from './pdf-origin';
+} from '@/lib/api/plans/pdf-origin';
+import {
+  requireInternalUserByAuthId,
+  type PlansDbClient,
+} from '@/lib/api/plans/route-context';
 import {
   calculateTotalWeeks,
   ensurePlanDurationAllowed,
   findCappedPlanWithoutModules,
   normalizePlanDurationForTier,
-} from './shared';
-import {
-  requireInternalUserByAuthId,
-  type PlansDbClient,
-} from './route-context';
+} from '@/lib/api/plans/shared';
 
 export interface PlanCreationPreflightData {
   user: Awaited<ReturnType<typeof requireInternalUserByAuthId>>;
@@ -61,6 +61,8 @@ export async function preparePlanCreationPreflight(
   const user = await requireInternalUserByAuthId(authUserId);
   const userTier = await resolveUserTier(user.id, dbClient);
 
+  // First check: reject if the user's raw requested date range (before tier normalization) exceeds tier cap.
+  // This gives a clear 403 when the request is obviously over limit.
   if (enforceRequestedDurationCap) {
     const requestedWeeks = calculateTotalWeeks({
       startDate: body.startDate ?? null,
@@ -91,6 +93,7 @@ export async function preparePlanCreationPreflight(
     deadlineDate: body.deadlineDate ?? null,
   });
 
+  // Second check: after normalizing (and possibly capping) duration to the tier, ensure the normalized plan still fits.
   const cap = ensurePlanDurationAllowed({
     userTier,
     weeklyHours: body.weeklyHours,

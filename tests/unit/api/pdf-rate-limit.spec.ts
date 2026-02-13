@@ -6,7 +6,7 @@ import {
   validatePdfUpload,
   withGlobalPdfSlot,
 } from '@/lib/api/pdf-rate-limit';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
   describe('Extraction throttling', () => {
@@ -145,17 +145,17 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
       const tracker = createTracker();
 
       const acquired = [
-        acquireGlobalPdfExtractionSlot({ tracker }),
-        acquireGlobalPdfExtractionSlot({ tracker }),
-        acquireGlobalPdfExtractionSlot({ tracker }),
-        acquireGlobalPdfExtractionSlot({ tracker }),
+        acquireGlobalPdfExtractionSlot({ state: tracker }),
+        acquireGlobalPdfExtractionSlot({ state: tracker }),
+        acquireGlobalPdfExtractionSlot({ state: tracker }),
+        acquireGlobalPdfExtractionSlot({ state: tracker }),
       ];
 
       for (const slot of acquired) {
         expect(slot.allowed).toBe(true);
       }
 
-      const blocked = acquireGlobalPdfExtractionSlot({ tracker });
+      const blocked = acquireGlobalPdfExtractionSlot({ state: tracker });
       expect(blocked.allowed).toBe(false);
       if (!blocked.allowed) {
         expect(blocked.retryAfterMs).toBeGreaterThan(0);
@@ -172,7 +172,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
     it('releases slot idempotently and allows next extraction', () => {
       const tracker = createTracker();
 
-      const slot = acquireGlobalPdfExtractionSlot({ tracker });
+      const slot = acquireGlobalPdfExtractionSlot({ state: tracker });
       expect(slot.allowed).toBe(true);
       if (!slot.allowed) {
         throw new Error('Expected slot to be allowed');
@@ -181,7 +181,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
       slot.release();
       slot.release();
 
-      const next = acquireGlobalPdfExtractionSlot({ tracker });
+      const next = acquireGlobalPdfExtractionSlot({ state: tracker });
       expect(next.allowed).toBe(true);
       if (!next.allowed) {
         throw new Error('Expected next slot to be allowed');
@@ -190,20 +190,28 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
       next.release();
     });
 
-    it('automatically reclaims leaked slots after lease timeout', async () => {
+    it('automatically reclaims leaked slots after lease timeout', () => {
+      vi.useFakeTimers();
       const tracker = createTracker();
-      const slot = acquireGlobalPdfExtractionSlot({ tracker, leaseMs: 5 });
+      const slot = acquireGlobalPdfExtractionSlot({
+        state: tracker,
+        leaseMs: 5,
+      });
       expect(slot.allowed).toBe(true);
       if (!slot.allowed) {
         throw new Error('Expected slot to be allowed');
       }
       expect(tracker.inFlight).toBe(1);
 
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      vi.advanceTimersByTime(20);
       expect(tracker.inFlight).toBe(0);
 
       slot.release();
       expect(tracker.inFlight).toBe(0);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
     it('withGlobalPdfSlot always releases the slot in finally', async () => {
@@ -216,7 +224,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
             expect(tracker.inFlight).toBe(1);
             throw new Error('boom');
           },
-          { tracker }
+          { state: tracker }
         )
       ).rejects.toThrow('boom');
 

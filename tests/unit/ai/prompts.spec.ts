@@ -3,7 +3,6 @@ import {
   buildMicroExplanationUserPrompt,
   buildSystemPrompt,
   buildUserPrompt,
-  LEARNING_PLAN_PROMPT_SCHEMA,
   PDF_SECTION_CONTENT_LIMIT,
 } from '@/lib/ai/prompts';
 import { describe, expect, it } from 'vitest';
@@ -70,19 +69,11 @@ describe('AI Prompt Builder', () => {
 
     it('should avoid requiring task resources in the schema', () => {
       const prompt = buildSystemPrompt();
-      const taskSchemaMatch = prompt.match(/Task:\s*\{([^}]*)\}/);
-      const taskSchema = LEARNING_PLAN_PROMPT_SCHEMA.task;
-      const requiredTaskFields = taskSchema
-        .filter((field) => field.required)
-        .map((field) => field.name);
 
-      expect(taskSchemaMatch).toBeTruthy();
-      expect(taskSchemaMatch?.[1]).not.toMatch(/\bresources\??\s*:/i);
-      expect(taskSchema.some((field) => field.name === 'resources')).toBe(
-        false
-      );
-      expect(requiredTaskFields).not.toContain('resources');
       expect(prompt).not.toMatch(/Resource Requirements:/i);
+      expect(prompt).not.toMatch(/\bresources\s+required\b/i);
+      const taskSchemaSnippet = prompt.match(/Task:\s*\{([^}]*)\}/)?.[1] ?? '';
+      expect(taskSchemaSnippet).not.toMatch(/\bresources\??\s*:/i);
     });
 
     it('should prohibit markdown and code fences', () => {
@@ -420,16 +411,17 @@ describe('AI Prompt Builder', () => {
     });
 
     it('should handle different skill levels', () => {
+      const base = createMicroExplanationParams();
       const beginner = buildMicroExplanationUserPrompt({
-        ...createMicroExplanationParams(),
+        ...base,
         skillLevel: 'beginner',
       });
       const intermediate = buildMicroExplanationUserPrompt({
-        ...createMicroExplanationParams(),
+        ...base,
         skillLevel: 'intermediate',
       });
       const advanced = buildMicroExplanationUserPrompt({
-        ...createMicroExplanationParams(),
+        ...base,
         skillLevel: 'advanced',
       });
 

@@ -54,7 +54,6 @@ const FAILURE_KEYS: FailureClassification[] = [
   'rate_limit',
   'timeout',
   'capped',
-  'in_progress',
 ];
 
 function createStatsState(): MetricStatsState {

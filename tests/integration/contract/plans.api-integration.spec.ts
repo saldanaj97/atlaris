@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { afterEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { POST } from '@/app/api/v1/plans/route';
@@ -7,7 +7,7 @@ import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { getDurableWindowSeedCount } from '../../fixtures/attempts';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -31,11 +31,8 @@ describe('Phase 4: API Integration', () => {
   const authUserId = buildTestAuthUserId('phase4-user');
   const authEmail = buildTestEmail(authUserId);
 
-  afterEach(async () => {
-    // Clean up test data (order matters due to foreign key constraints)
-    await db.delete(generationAttempts);
-    await db.delete(modules);
-    await db.delete(learningPlans);
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
   });
 
   describe('T040: Plan creation creates plan record', () => {

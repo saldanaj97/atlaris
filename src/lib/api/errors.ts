@@ -69,14 +69,18 @@ export class ConflictError extends AppError {
   }
 }
 
-interface RateLimitErrorDetails {
+export interface RateLimitErrorDetails {
   retryAfter?: number;
   remaining?: number;
+  limit?: number;
+  reset?: number;
 }
 
 export class RateLimitError extends AppError {
   public retryAfter?: number;
   public remaining?: number;
+  public limit?: number;
+  public reset?: number;
 
   constructor(message = 'Too Many Requests', details?: RateLimitErrorDetails) {
     super(message, {
@@ -87,6 +91,8 @@ export class RateLimitError extends AppError {
     });
     this.retryAfter = details?.retryAfter;
     this.remaining = details?.remaining;
+    this.limit = details?.limit;
+    this.reset = details?.reset;
   }
 }
 
@@ -178,13 +184,20 @@ export function toErrorResponse(err: unknown) {
       body.details = details;
     }
 
-    // Add retryAfter for RateLimitError
-    if (err instanceof RateLimitError && err.retryAfter !== undefined) {
-      body.retryAfter = err.retryAfter;
-    }
-
-    if (err instanceof RateLimitError && err.remaining !== undefined) {
-      headers['X-RateLimit-Remaining'] = String(Math.max(0, err.remaining));
+    if (err instanceof RateLimitError) {
+      if (err.retryAfter !== undefined) {
+        body.retryAfter = err.retryAfter;
+        headers['Retry-After'] = String(err.retryAfter);
+      }
+      if (err.limit !== undefined) {
+        headers['X-RateLimit-Limit'] = String(err.limit);
+      }
+      if (err.remaining !== undefined) {
+        headers['X-RateLimit-Remaining'] = String(Math.max(0, err.remaining));
+      }
+      if (err.reset !== undefined) {
+        headers['X-RateLimit-Reset'] = String(err.reset);
+      }
     }
 
     return Response.json(body, { status: err.status(), headers });

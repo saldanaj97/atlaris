@@ -101,7 +101,7 @@ function stringifyUnknownError(value: StringifyErrorValue): string {
  * @returns A safe, deterministic error payload for the SSE stream
  */
 export function sanitizeSseError(
-  error: GenerationError | ErrorLike,
+  error: GenerationError,
   classification: FailureClassification | 'unknown',
   context?: { planId?: string; userId?: string }
 ): SanitizedSseError {

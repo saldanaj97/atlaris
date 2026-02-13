@@ -279,11 +279,12 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     await ensureUser({ authUserId, email: authEmail });
 
     // Saturate the throttle: acquire slots via acquireGlobalPdfExtractionSlot() until
-    // it returns allowed === false (throttle limit). Keeps test resilient to config changes.
+    // it returns allowed === false (throttle limit). Bounded guard prevents runaway loops.
     const slots: ReturnType<typeof acquireGlobalPdfExtractionSlot>[] = [];
     let slot = acquireGlobalPdfExtractionSlot();
     let slotAttempts = 0;
-    while (slot.allowed && slotAttempts < MAX_SLOT_ATTEMPTS) {
+    while (slot.allowed) {
+      if (slotAttempts >= MAX_SLOT_ATTEMPTS) break;
       slots.push(slot);
       slotAttempts += 1;
       slot = acquireGlobalPdfExtractionSlot();

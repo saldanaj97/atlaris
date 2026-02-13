@@ -1,6 +1,14 @@
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
 import {
@@ -38,19 +46,13 @@ function assertNumericHeader(response: Response, name: string): void {
   );
 }
 
-const ORIGINAL_ENV = {
-  AI_PROVIDER: process.env.AI_PROVIDER,
-  MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
-};
-
 beforeAll(() => {
-  process.env.AI_PROVIDER = 'mock';
-  process.env.MOCK_GENERATION_DELAY_MS = '10';
+  vi.stubEnv('AI_PROVIDER', 'mock');
+  vi.stubEnv('MOCK_GENERATION_DELAY_MS', '10');
 });
 
 afterAll(() => {
-  process.env.AI_PROVIDER = ORIGINAL_ENV.AI_PROVIDER;
-  process.env.MOCK_GENERATION_DELAY_MS = ORIGINAL_ENV.MOCK_GENERATION_DELAY_MS;
+  vi.unstubAllEnvs();
 });
 
 describe('POST /api/v1/plans/stream', () => {
@@ -276,6 +278,7 @@ describe('POST /api/v1/plans/stream', () => {
       learningStyle: 'video',
       deadlineDate: '2030-06-01',
       visibility: 'private',
+      origin: 'ai',
     };
 
     // Use a different valid model to verify override is working
@@ -315,6 +318,7 @@ describe('POST /api/v1/plans/stream', () => {
       learningStyle: 'mixed',
       deadlineDate: '2030-03-01',
       visibility: 'private',
+      origin: 'ai',
     };
 
     // Use an invalid model override - should fall back to default
@@ -354,6 +358,7 @@ describe('POST /api/v1/plans/stream', () => {
       learningStyle: 'practice',
       deadlineDate: '2030-12-01',
       visibility: 'private',
+      origin: 'ai',
     };
 
     // No model param - should use default
@@ -741,7 +746,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(attempt?.metadata).toMatchObject({
       pdf: {
         extraction_hash: extractionHash,
-        proof_version: 1,
+        proof_version: DEFAULT_PDF_PROOF_VERSION,
         context_digest: expect.any(String),
       },
     });

@@ -9,6 +9,8 @@ import type { InferSelectModel } from 'drizzle-orm';
 type DbTask = InferSelectModel<typeof tasks>;
 type DbTaskProgress = InferSelectModel<typeof taskProgress>;
 
+type TasksDbClient = ReturnType<typeof getDb>;
+
 /**
  * Retrieves all tasks in a specific learning plan for a user.
  * @param userId - The ID of the user.
@@ -18,7 +20,7 @@ type DbTaskProgress = InferSelectModel<typeof taskProgress>;
 export async function getAllTasksInPlan(
   userId: string,
   planId: string,
-  dbClient: ReturnType<typeof getDb> = getDb()
+  dbClient: TasksDbClient = getDb()
 ): Promise<DbTask[]> {
   const rows = await dbClient
     .select({ task: tasks })
@@ -32,16 +34,19 @@ export async function getAllTasksInPlan(
 /**
  * Retrieves all tasks in a specific learning plan by planId
  * @param planId - The ID of the learning plan
+ * @param dbClient - Optional database client (defaults to getDb())
  * @returns A promise that resolves to an array of tasks with module info
  */
-export async function getTasksByPlanId(planId: string): Promise<
+export async function getTasksByPlanId(
+  planId: string,
+  dbClient: TasksDbClient = getDb()
+): Promise<
   Array<{
     task: DbTask;
     moduleTitle: string;
   }>
 > {
-  const db = getDb();
-  const rows = await db
+  const rows = await dbClient
     .select({
       task: tasks,
       moduleTitle: modules.title,
@@ -57,14 +62,15 @@ export async function getTasksByPlanId(planId: string): Promise<
  * Retrieves the task progress for a specific user and task.
  * @param userId - The ID of the user.
  * @param taskId - The ID of the task.
+ * @param dbClient - Optional database client (defaults to getDb())
  * @returns A promise that resolves to the task progress record or undefined if not found.
  */
 export async function getUserTaskProgress(
   userId: string,
-  taskId: string
+  taskId: string,
+  dbClient: TasksDbClient = getDb()
 ): Promise<DbTaskProgress | undefined> {
-  const db = getDb();
-  const result = await db
+  const result = await dbClient
     .select()
     .from(taskProgress)
     .where(
@@ -77,14 +83,15 @@ export async function getUserTaskProgress(
  * Retrieves the task progress for a specific user and plan.
  * @param userId - The ID of the user.
  * @param planId - The ID of the learning plan.
+ * @param dbClient - Optional database client (defaults to getDb())
  * @returns A promise that resolves to an array of task progress records.
  */
 export async function getTaskProgressForUserPlan(
   userId: string,
-  planId: string
+  planId: string,
+  dbClient: TasksDbClient = getDb()
 ): Promise<DbTaskProgress[]> {
-  const db = getDb();
-  const rows = await db
+  const rows = await dbClient
     .select({ progress: taskProgress })
     .from(taskProgress)
     .innerJoin(tasks, eq(taskProgress.taskId, tasks.id))
@@ -100,18 +107,19 @@ export async function getTaskProgressForUserPlan(
  * @param userId - The ID of the user.
  * @param taskId - The ID of the task.
  * @param status - The new progress status to set.
+ * @param dbClient - Optional database client (defaults to getDb())
  * @returns A promise that resolves to the task progress record.
  */
 export async function setTaskProgress(
   userId: string,
   taskId: string,
-  status: ProgressStatus
+  status: ProgressStatus,
+  dbClient: TasksDbClient = getDb()
 ): Promise<DbTaskProgress> {
-  const db = getDb();
   const now = new Date();
   const completedAt = status === 'completed' ? now : null;
 
-  const [progress] = await db
+  const [progress] = await dbClient
     .insert(taskProgress)
     .values({
       taskId,
@@ -138,15 +146,16 @@ export async function setTaskProgress(
  * Sanitizes all inputs to prevent XSS attacks and ensure safe plain text storage.
  * @param taskId - The ID of the task
  * @param additionalDescription - Additional description text to append
+ * @param dbClient - Optional database client (defaults to getDb())
  * @returns Promise that resolves when update completes
  */
 export async function appendTaskDescription(
   taskId: string,
-  additionalDescription: string
+  additionalDescription: string,
+  dbClient: TasksDbClient = getDb()
 ): Promise<void> {
-  const db = getDb();
   // Get current task
-  const [currentTask] = await db
+  const [currentTask] = await dbClient
     .select()
     .from(tasks)
     .where(eq(tasks.id, taskId))
@@ -172,7 +181,7 @@ export async function appendTaskDescription(
     ? `${sanitizedExisting}\n\n${sanitizedAdditional}`
     : sanitizedAdditional;
 
-  await db
+  await dbClient
     .update(tasks)
     .set({
       description: newDescription,
@@ -187,15 +196,16 @@ export async function appendTaskDescription(
  * Sanitizes all inputs to prevent XSS attacks.
  * @param taskId - The ID of the task
  * @param microExplanation - The micro-explanation text to append
+ * @param dbClient - Optional database client (defaults to getDb())
  * @returns Promise that resolves when update completes, or immediately if already has micro-explanation
  */
 export async function appendTaskMicroExplanation(
   taskId: string,
-  microExplanation: string
+  microExplanation: string,
+  dbClient: TasksDbClient = getDb()
 ): Promise<string> {
-  const db = getDb();
   // Get current task
-  const [currentTask] = await db
+  const [currentTask] = await dbClient
     .select()
     .from(tasks)
     .where(eq(tasks.id, taskId))
@@ -225,7 +235,7 @@ export async function appendTaskMicroExplanation(
     ? `${sanitizedExisting}${prefix}${sanitizedExplanation}`
     : `${prefix}${sanitizedExplanation}`;
 
-  await db
+  await dbClient
     .update(tasks)
     .set({
       description: newDescription,

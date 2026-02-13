@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 
-import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import { getUserByAuthId, type DbUser } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
@@ -29,7 +29,10 @@ export async function requireInternalUserByAuthId(
 ): Promise<DbUser> {
   const user = await getUserByAuthId(authUserId);
   if (!user) {
-    throw new Error('Authenticated user record missing despite provisioning.');
+    throw new AppError(
+      'Authenticated user record missing despite provisioning.',
+      { status: 500, code: 'INTERNAL_ERROR' }
+    );
   }
   return user;
 }

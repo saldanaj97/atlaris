@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/route';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
@@ -9,7 +9,7 @@ import {
 } from '@/lib/security/pdf-extraction-proof';
 import { createPdfProof } from '../../fixtures/validation';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -26,9 +26,8 @@ describe('POST /api/v1/plans', () => {
   const authUserId = buildTestAuthUserId('contract-post');
   const authEmail = buildTestEmail(authUserId);
 
-  afterEach(async () => {
-    // ensure we do not leak plans across tests in case truncate hook is bypassed
-    await db.delete(learningPlans);
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
   });
 
   it('creates a new plan and returns 201 with persisted payload', async () => {
@@ -201,6 +200,12 @@ describe('POST /api/v1/plans', () => {
     const payload = await response.json();
     expect(payload.origin).toBe('pdf');
     expect(payload.topic).toBe(extractedContent.mainTopic);
+    expect(payload).toHaveProperty('id');
+    expect(payload).toHaveProperty('createdAt');
+    expect(payload.skillLevel).toBe('beginner');
+    expect(payload.weeklyHours).toBe(4);
+    expect(payload.learningStyle).toBe('mixed');
+    expect(payload.visibility).toBe('private');
   });
 
   it('rejects PDF-origin create request with wrong-user proof token', async () => {

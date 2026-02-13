@@ -375,6 +375,135 @@ describe('OpenRouterProvider', () => {
       );
       expect(userMessage.content).toContain('Section 1 title: Generics');
     });
+
+    describe('AsyncIterable streaming path', () => {
+      async function* streamEvents(
+        payload: string,
+        usage?: {
+          promptTokens?: number;
+          completionTokens?: number;
+          totalTokens?: number;
+        }
+      ): AsyncIterable<{
+        delta?: string;
+        choices?: Array<{
+          delta?: { content?: string };
+          message?: { content?: string };
+        }>;
+        usage?: typeof usage;
+      }> {
+        const chunkSize = 8;
+        for (let i = 0; i < payload.length; i += chunkSize) {
+          yield { delta: payload.slice(i, i + chunkSize) };
+        }
+        if (usage) {
+          yield { usage };
+        }
+      }
+
+      it('generates plan from AsyncIterable stream (delta chunks)', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        const { client, send } = createMockClient();
+        send.mockResolvedValueOnce(
+          streamEvents(payload, {
+            promptTokens: 100,
+            completionTokens: 500,
+            totalTokens: 600,
+          })
+        );
+
+        const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
+        const result = await provider.generate(SAMPLE_INPUT);
+
+        const rawText = await collectStream(result.stream);
+        const parsed = JSON.parse(rawText);
+
+        expect(parsed.modules).toHaveLength(3);
+        expect(parsed.modules[0].title).toBe('Introduction to TypeScript');
+        expect(result.metadata.usage).toEqual({
+          promptTokens: 100,
+          completionTokens: 500,
+          totalTokens: 600,
+        });
+      });
+
+      it('generates plan from AsyncIterable stream (choices[0].delta.content)', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamViaChoices(): AsyncIterable<{
+          choices?: Array<{ delta?: { content?: string } }>;
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+          };
+        }> {
+          const chunkSize = 10;
+          for (let i = 0; i < payload.length; i += chunkSize) {
+            yield {
+              choices: [
+                { delta: { content: payload.slice(i, i + chunkSize) } },
+              ],
+            };
+          }
+          yield {
+            usage: {
+              promptTokens: 50,
+              completionTokens: 200,
+              totalTokens: 250,
+            },
+          };
+        }
+
+        const { client, send } = createMockClient();
+        send.mockResolvedValueOnce(streamViaChoices());
+
+        const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
+        const result = await provider.generate(SAMPLE_INPUT);
+
+        const rawText = await collectStream(result.stream);
+        const parsed = JSON.parse(rawText);
+
+        expect(parsed.modules).toHaveLength(3);
+        expect(result.metadata.usage).toEqual({
+          promptTokens: 50,
+          completionTokens: 200,
+          totalTokens: 250,
+        });
+      });
+
+      it('streams and merges usage from multiple events', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithMidUsage(): AsyncIterable<{
+          delta?: string;
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+          };
+        }> {
+          yield { delta: payload.slice(0, 20), usage: { promptTokens: 80 } };
+          yield { delta: payload.slice(20, 100) };
+          yield {
+            delta: payload.slice(100),
+            usage: { completionTokens: 400, totalTokens: 480 },
+          };
+        }
+
+        const { client, send } = createMockClient();
+        send.mockResolvedValueOnce(streamWithMidUsage());
+
+        const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
+        const result = await provider.generate(SAMPLE_INPUT);
+
+        const rawText = await collectStream(result.stream);
+        expect(JSON.parse(rawText).modules).toHaveLength(3);
+        const usage = result.metadata.usage;
+        if (!usage) throw new Error('Expected usage metadata');
+        expect(usage.promptTokens).toBe(80);
+        expect(usage.completionTokens).toBe(400);
+        expect(usage.totalTokens).toBe(480);
+      });
+    });
   });
 
   describe('error handling', () => {

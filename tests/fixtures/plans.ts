@@ -43,21 +43,14 @@ const RETRY_TEST_PLAN_DEFAULTS: Pick<
   isQuotaEligible: true,
 };
 
-/**
- * Inserts a learning plan with defaults suitable for regeneration tests.
- * Uses db.insert(learningPlans), spreads overrides, returns the created plan; throws on failure.
- */
-export async function createPlan(
+/** Single insert path for all plan factories. */
+async function insertPlanRow(
   userId: string,
-  overrides?: Partial<typeof learningPlans.$inferInsert>
+  values: Partial<LearningPlanInsert>
 ): Promise<LearningPlanRow> {
   const [plan] = await db
     .insert(learningPlans)
-    .values({
-      userId,
-      ...DEFAULT_PLAN_INSERT,
-      ...overrides,
-    })
+    .values({ userId, ...values } as LearningPlanInsert)
     .returning();
 
   if (!plan) {
@@ -68,6 +61,20 @@ export async function createPlan(
 }
 
 /**
+ * Inserts a learning plan with defaults suitable for regeneration tests.
+ * Uses db.insert(learningPlans), spreads overrides, returns the created plan; throws on failure.
+ */
+export async function createPlan(
+  userId: string,
+  overrides?: Partial<LearningPlanInsert>
+): Promise<LearningPlanRow> {
+  return insertPlanRow(userId, {
+    ...DEFAULT_PLAN_INSERT,
+    ...overrides,
+  });
+}
+
+/**
  * Inserts a learning plan with defaults tuned for retry endpoint integration tests.
  * Accepts field overrides so tests can customize status, topic, and related columns.
  */
@@ -75,20 +82,7 @@ export async function createPlanForRetryTest(
   userId: string,
   overrides: Partial<LearningPlanInsert> = {}
 ): Promise<LearningPlanRow> {
-  const [plan] = await db
-    .insert(learningPlans)
-    .values({
-      userId,
-      ...RETRY_TEST_PLAN_DEFAULTS,
-      ...overrides,
-    })
-    .returning();
-
-  if (!plan) {
-    throw new Error('Failed to create retry test plan');
-  }
-
-  return plan;
+  return createPlan(userId, { ...RETRY_TEST_PLAN_DEFAULTS, ...overrides });
 }
 
 export type CreateTestPlanParams = {
@@ -118,22 +112,12 @@ export async function createTestPlan(
     origin = 'ai',
   } = params;
 
-  const [plan] = await db
-    .insert(learningPlans)
-    .values({
-      userId,
-      topic,
-      skillLevel,
-      weeklyHours,
-      learningStyle,
-      visibility,
-      origin,
-    })
-    .returning();
-
-  if (!plan) {
-    throw new Error('Failed to create test plan');
-  }
-
-  return plan;
+  return insertPlanRow(userId, {
+    topic,
+    skillLevel,
+    weeklyHours,
+    learningStyle,
+    visibility,
+    origin,
+  });
 }

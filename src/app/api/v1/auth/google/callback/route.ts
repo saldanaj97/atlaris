@@ -25,6 +25,17 @@ const GoogleTokensSchema = z.object({
   scope: z.string().min(1).optional(),
 });
 
+/** OAuth 2.0 / Google error values we allow through to the frontend (RFC 6749 + Google). */
+const ALLOWED_OAUTH_ERROR_CODES = new Set([
+  'access_denied',
+  'invalid_grant',
+  'invalid_request',
+  'invalid_scope',
+  'server_error',
+  'temporarily_unavailable',
+  'unauthorized_client',
+]);
+
 export const GET = withErrorBoundary(async (req) => {
   const request = req as NextRequest;
 
@@ -58,8 +69,12 @@ export const GET = withErrorBoundary(async (req) => {
     'http://localhost:3000';
 
   if (error) {
+    const sanitizedError =
+      typeof error === 'string' && ALLOWED_OAUTH_ERROR_CODES.has(error)
+        ? error
+        : 'oauth_error';
     return redirectWithRequestId(
-      new URL(`/settings/integrations?error=${error}`, baseUrl)
+      new URL(`/settings/integrations?error=${sanitizedError}`, baseUrl)
     );
   }
 

@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logging/logger';
+
 /**
  * Converts an object to a single-chunk ReadableStream<string>.
  * This keeps provider contracts aligned on native web streams.
@@ -14,6 +16,7 @@ export function toStream(obj: unknown): ReadableStream<string> {
 
 /**
  * Converts a ReadableStream<string> to AsyncIterable<string> for parser compatibility.
+ * Logs and throws on invalid non-string chunks instead of silently dropping.
  */
 export function readableStreamToAsyncIterable(
   stream: ReadableStream<string>
@@ -27,9 +30,14 @@ export function readableStreamToAsyncIterable(
           if (done) {
             return;
           }
-          if (typeof value === 'string') {
-            yield value;
+          if (typeof value !== 'string') {
+            logger.warn(
+              { chunkType: typeof value },
+              'Invalid non-string chunk in AI stream; expected string'
+            );
+            throw new TypeError(`Expected string chunk, got ${typeof value}`);
           }
+          yield value;
         }
       } finally {
         reader.releaseLock();

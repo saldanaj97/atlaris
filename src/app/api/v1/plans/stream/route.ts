@@ -173,24 +173,22 @@ export function createStreamHandler(deps?: {
           typeof suppliedModel === 'string' &&
           ALLOWED_MODELS.has(suppliedModel);
 
-        logger.info(
-          {
-            authUserId: userId,
-            userId: user.id,
-            suppliedModelOverride: suppliedModel,
-            isValidOverride: isAllowedModel,
-          },
-          'Model override provided for stream generation'
-        );
-
         if (isAllowedModel) {
+          logger.info(
+            {
+              authUserId: userId,
+              userId: user.id,
+              modelOverride: suppliedModel,
+            },
+            'Model override provided for stream generation'
+          );
           modelOverride = suppliedModel;
         } else {
+          // Do not log raw user-supplied value (logging hygiene / injection risk).
           logger.warn(
             {
               authUserId: userId,
               userId: user.id,
-              suppliedModelOverride: suppliedModel,
             },
             'Ignoring invalid model override for stream generation'
           );
@@ -229,24 +227,12 @@ export function createStreamHandler(deps?: {
           });
 
           try {
-            logger.info(
-              { planId: plan.id, userId: user.id },
-              'Building plan_start event'
-            );
             const planStartEvent = buildPlanStartEvent({
               planId: plan.id,
               input: normalizedInput,
             });
-            logger.info(
-              { planId: plan.id, userId: user.id },
-              'Emitting plan_start event'
-            );
             emit(planStartEvent);
 
-            logger.info(
-              { planId: plan.id, userId: user.id },
-              'Starting executeGenerationStream'
-            );
             await executeGenerationStream({
               reqSignal: req.signal,
               streamSignal: streamContext.signal,
@@ -255,10 +241,6 @@ export function createStreamHandler(deps?: {
               dbClient: streamDb,
               emit,
               runGeneration: async (signal) => {
-                logger.info(
-                  { planId: plan.id, userId: user.id },
-                  'Starting generation attempt'
-                );
                 const result = await runGen(
                   {
                     planId: plan.id,
@@ -266,15 +248,6 @@ export function createStreamHandler(deps?: {
                     input: generationInput,
                   },
                   { provider, signal, dbClient: streamDb }
-                );
-                logger.info(
-                  {
-                    planId: plan.id,
-                    userId: user.id,
-                    status: result.status,
-                    classification: result.classification ?? null,
-                  },
-                  'Generation attempt completed'
                 );
                 return result;
               },

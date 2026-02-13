@@ -211,36 +211,39 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
 
   describe('Provider factory errors', () => {
     it('throws AppError with PROVIDER_INIT_FAILED when provider creation fails for default path', () => {
-      expect.assertions(3);
       const throwingProviderGetter: ProviderGetter = () => {
         throw new Error('Missing API key');
       };
+      let thrown: unknown;
       try {
         resolveModelForTier('free', undefined, throwingProviderGetter);
       } catch (error) {
-        const thrown = error as AppError;
-        expect(thrown.code()).toBe('PROVIDER_INIT_FAILED');
-        expect(thrown.status()).toBe(500);
-        expect(thrown.message).toBe('Provider initialization failed.');
+        thrown = error;
       }
+      expect(thrown).toBeInstanceOf(AppError);
+      expect((thrown as AppError).code()).toBe('PROVIDER_INIT_FAILED');
+      expect((thrown as AppError).status()).toBe(500);
+      expect((thrown as AppError).message).toBe(
+        'Provider initialization failed.'
+      );
     });
 
     it('throws AppError with PROVIDER_INIT_FAILED when provider creation fails for explicit model path', () => {
-      expect.assertions(4);
       const throwingProviderGetter: ProviderGetter = () => {
         throw new Error('Invalid model config');
       };
-
+      let thrown: unknown;
       try {
         resolveModelForTier('pro', PRO_MODEL_ID, throwingProviderGetter);
-      } catch (err) {
-        expect(err).toBeInstanceOf(AppError);
-        expect((err as AppError).code()).toBe('PROVIDER_INIT_FAILED');
-        expect((err as AppError).status()).toBe(500);
-        expect((err as AppError).message).toBe(
-          'Provider initialization failed.'
-        );
+      } catch (error) {
+        thrown = error;
       }
+      expect(thrown).toBeInstanceOf(AppError);
+      expect((thrown as AppError).code()).toBe('PROVIDER_INIT_FAILED');
+      expect((thrown as AppError).status()).toBe(500);
+      expect((thrown as AppError).message).toBe(
+        'Provider initialization failed.'
+      );
     });
   });
 });

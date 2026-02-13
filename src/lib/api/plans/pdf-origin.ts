@@ -153,9 +153,9 @@ export async function rollbackPdfUsageIfReserved(params: {
   try {
     await decrementPdfPlanUsage(params.internalUserId, params.dbClient);
   } catch (error) {
+    // Do not log internal identifiers (per security-audit checklist: scrub PII from logs).
     logger.error(
       {
-        internalUserId: params.internalUserId,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       },

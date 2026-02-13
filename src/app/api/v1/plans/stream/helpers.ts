@@ -148,7 +148,6 @@ export async function handleSuccessfulGeneration(
   ctx: SuccessContext
 ): Promise<void> {
   const { planId, userId, startedAt, emit, dbClient } = ctx;
-  const { recordUsage } = ctx;
   const markSuccess =
     ctx.markPlanGenerationSuccess ?? markPlanGenerationSuccess;
   const modules = result.modules;
@@ -158,7 +157,9 @@ export async function handleSuccessfulGeneration(
   emitModuleSummaries(modules, planId, emit);
 
   await markSuccess(planId, dbClient);
-  await tryRecordUsage(userId, result, dbClient, { recordUsage });
+  await tryRecordUsage(userId, result, dbClient, {
+    recordUsage: ctx.recordUsage,
+  });
 
   emit({
     type: 'complete',
@@ -184,7 +185,6 @@ export async function handleFailedGeneration(
   ctx: GenerationContext
 ): Promise<void> {
   const { planId, userId, emit, dbClient } = ctx;
-  const { recordUsage } = ctx;
   const markFailure =
     ctx.markPlanGenerationFailure ?? markPlanGenerationFailure;
 
@@ -192,13 +192,10 @@ export async function handleFailedGeneration(
   const retryable = isRetryableClassification(classification);
 
   if (!retryable) {
-    await markFailure(planId, dbClient, {
-      failureContext: {
-        classification,
-        error: result.error,
-      },
+    await markFailure(planId, dbClient);
+    await tryRecordUsage(userId, result, dbClient, {
+      recordUsage: ctx.recordUsage,
     });
-    await tryRecordUsage(userId, result, dbClient, { recordUsage });
   }
 
   emitSanitizedFailureEvent({

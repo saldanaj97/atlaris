@@ -46,12 +46,6 @@ const FAILURE_PRESENTATIONS: Record<
     message: 'Maximum generation attempts reached. Please create a new plan.',
     retryable: false,
   },
-  in_progress: {
-    code: 'GENERATION_IN_PROGRESS',
-    message:
-      'A generation is already in progress for this plan. Please wait and try again.',
-    retryable: true,
-  },
   unknown: DEFAULT_FAILURE_PRESENTATION,
 };
 

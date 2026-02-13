@@ -70,7 +70,8 @@ async function generateWithOpenRouter(
   authConfig: MicroExplanationAuthConfig,
   config: MicroExplanationProviderConfig,
   systemPrompt: string,
-  userPrompt: string
+  userPrompt: string,
+  signal?: AbortSignal
 ): Promise<MicroExplanation> {
   const openai = createOpenRouterClient(
     authConfig.apiKey,
@@ -86,6 +87,7 @@ async function generateWithOpenRouter(
     prompt: userPrompt,
     maxOutputTokens: config.maxOutputTokens,
     temperature: config.temperature,
+    abortSignal: signal,
     experimental_telemetry: {
       isEnabled: true,
       functionId: 'micro-explanation',
@@ -125,6 +127,7 @@ export async function generateMicroExplanation(
     moduleTitle?: string;
     taskTitle: string;
     skillLevel: 'beginner' | 'intermediate' | 'advanced';
+    signal?: AbortSignal;
   }
 ): Promise<string> {
   const authConfig = getAuthConfigFromProvider(provider);
@@ -162,7 +165,13 @@ export async function generateMicroExplanation(
     // Light retry on transient failures
     const explanation = await pRetry(
       () =>
-        generateWithOpenRouter(authConfig, config, systemPrompt, userPrompt),
+        generateWithOpenRouter(
+          authConfig,
+          config,
+          systemPrompt,
+          userPrompt,
+          args.signal
+        ),
       {
         ...getRetryBackoffConfig(),
         retries: 1,

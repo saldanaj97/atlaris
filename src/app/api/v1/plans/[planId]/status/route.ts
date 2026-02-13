@@ -107,7 +107,6 @@ function latestAttemptToClassification(
     case 'provider_error':
     case 'validation':
     case 'capped':
-    case 'in_progress':
       return classification;
     default:
       return 'unknown';

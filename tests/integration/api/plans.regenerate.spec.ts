@@ -1,15 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { desc, eq } from 'drizzle-orm';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
-import { jobQueue, learningPlans, usageMetrics } from '@/lib/db/schema';
+import { jobQueue, usageMetrics } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
@@ -25,14 +26,12 @@ async function createRequest(planId: string, body: unknown) {
 }
 
 describe('POST /api/v1/plans/:id/regenerate', () => {
-  const authUserId = 'auth_api_regen_user';
-  const authEmail = 'api-regen@example.com';
+  const authUserId = buildTestAuthUserId('api-regen-user');
+  const authEmail = buildTestEmail(authUserId);
 
-  afterEach(async () => {
+  beforeEach(async () => {
     clearAllUserRateLimiters();
-    await db.delete(jobQueue);
-    await db.delete(learningPlans);
-    await db.delete(usageMetrics);
+    await resetDbForIntegrationTestFile();
   });
 
   it('enqueues regeneration with priority', async () => {
@@ -103,10 +102,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     // Create another user and their plan
-    const otherAuthUserId = 'auth_api_regen_other';
+    const otherAuthUserId = buildTestAuthUserId('api-regen-other');
     const otherUserId = await ensureUser({
       authUserId: otherAuthUserId,
-      email: 'api-regen-other@example.com',
+      email: buildTestEmail(otherAuthUserId),
     });
 
     const otherPlan = await createPlan(otherUserId);

@@ -1,9 +1,9 @@
 import { getModelsForTier } from '@/lib/ai/ai-models';
 import { validateModelForTier } from '@/lib/ai/model-resolver';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
+import { AppError, ValidationError } from '@/lib/api/errors';
+import { requireInternalUserByAuthId } from '@/lib/api/plans/route-context';
 import { json } from '@/lib/api/response';
-import { getUserByAuthId } from '@/lib/db/queries/users';
 import {
   attachRequestIdHeader,
   createRequestContext,
@@ -26,12 +26,7 @@ export const GET = withErrorBoundary(
 
     logger.info('Fetching user preferences');
 
-    const user = await getUserByAuthId(userId);
-
-    if (!user) {
-      logger.warn('User not found in database');
-      throw new NotFoundError('User not found');
-    }
+    const user = await requireInternalUserByAuthId(userId);
 
     logger.debug('User preferences retrieved successfully');
 
@@ -81,11 +76,7 @@ export const PATCH = withErrorBoundary(
       throw new ValidationError('Invalid preferences', parsed.error.flatten());
     }
 
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      logger.warn('User not found in database');
-      throw new NotFoundError('User not found');
-    }
+    const user = await requireInternalUserByAuthId(userId);
 
     const userTier = await resolveUserTier(user.id);
     const modelValidation = validateModelForTier(

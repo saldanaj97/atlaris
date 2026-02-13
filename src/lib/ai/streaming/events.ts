@@ -86,6 +86,8 @@ export function createEventStream(
     },
     cancel() {
       const activeController = abortController;
+      // Abort first so in-flight work sees the signal; then run cleanup handlers.
+      activeController?.abort();
       for (const cancelHandler of cancelHandlers.values()) {
         try {
           cancelHandler();
@@ -97,7 +99,6 @@ export function createEventStream(
         }
       }
       cancelHandlers.clear();
-      activeController?.abort();
     },
   });
 }

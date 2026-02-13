@@ -3,6 +3,12 @@ import { RouterGenerationProvider } from '@/lib/ai/providers/router';
 import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
 
+function parseMockSeed(): number | undefined {
+  return typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
+    ? aiEnv.mockSeed
+    : undefined;
+}
+
 /**
  * Creates a generation provider configured with a specific model.
  * Used when a user has selected a preferred model or when explicitly specifying a model.
@@ -18,8 +24,7 @@ export function getGenerationProviderWithModel(
     const providerType = aiEnv.provider;
     if (providerType === 'mock' || aiEnv.useMock !== 'false') {
       return new MockGenerationProvider({
-        deterministicSeed:
-          typeof aiEnv.mockSeed === 'number' ? aiEnv.mockSeed : undefined,
+        deterministicSeed: parseMockSeed(),
       });
     }
   }
@@ -45,11 +50,7 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
 
   // In tests, honor explicit AI_PROVIDER when set; otherwise default to mock unless disabled
   if (isTest) {
-    // Parse seed once for reuse
-    const deterministicSeed =
-      typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
-        ? aiEnv.mockSeed
-        : undefined;
+    const deterministicSeed = parseMockSeed();
     if (providerType === 'mock') {
       return new MockGenerationProvider({
         deterministicSeed,
@@ -69,13 +70,8 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
   }
 
   if (providerType === 'mock' || (!providerType && appEnv.isDevelopment)) {
-    // Use mock provider in development or when explicitly configured
-    const deterministicSeed =
-      typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
-        ? aiEnv.mockSeed
-        : undefined;
     return new MockGenerationProvider({
-      deterministicSeed,
+      deterministicSeed: parseMockSeed(),
     });
   }
   // Default to router with default model for real usage

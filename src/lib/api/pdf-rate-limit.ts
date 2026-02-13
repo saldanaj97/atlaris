@@ -1,3 +1,4 @@
+import { RateLimitError } from '@/lib/api/errors';
 import { appEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
@@ -160,7 +161,7 @@ export interface PdfThrottleDeps {
 }
 
 export interface PdfGlobalExtractionDeps {
-  tracker?: GlobalExtractionState;
+  /** Canonical key for global extraction state (injection for tests). */
   state?: GlobalExtractionState;
   leaseMs?: number;
   setTimeoutFn?: typeof setTimeout;
@@ -231,7 +232,7 @@ export function checkPdfExtractionThrottle(
 export function acquireGlobalPdfExtractionSlot(
   deps: PdfGlobalExtractionDeps = {}
 ): PdfGlobalExtractionResult {
-  const state = deps.tracker ?? deps.state ?? globalExtractionState;
+  const state = deps.state ?? globalExtractionState;
   const leaseMs = deps.leaseMs ?? PDF_EXTRACTION_LEASE_MS;
   const setTimeoutFn = deps.setTimeoutFn ?? setTimeout;
   const clearTimeoutFn = deps.clearTimeoutFn ?? clearTimeout;
@@ -275,8 +276,9 @@ export async function withGlobalPdfSlot<T>(
 ): Promise<T> {
   const slot = acquireGlobalPdfExtractionSlot(deps);
   if (!slot.allowed) {
-    throw new Error(
-      `Global PDF extraction capacity exhausted. Retry after ${slot.retryAfterMs}ms.`
+    throw new RateLimitError(
+      'Global PDF extraction capacity exhausted. Retry after the indicated time.',
+      { retryAfter: slot.retryAfterMs, remaining: 0 }
     );
   }
 

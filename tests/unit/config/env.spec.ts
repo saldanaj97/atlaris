@@ -1,4 +1,4 @@
-import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
+import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import {
   EnvValidationError,
   aiEnv,
@@ -192,9 +192,11 @@ describe('Environment Configuration', () => {
 
   describe('aiEnv', () => {
     describe('defaultModel', () => {
+      const validModelId = AVAILABLE_MODELS[0]?.id ?? AI_DEFAULT_MODEL;
+
       it('should return configured value when AI_DEFAULT_MODEL is valid', () => {
-        process.env.AI_DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
-        expect(aiEnv.defaultModel).toBe('anthropic/claude-haiku-4.5');
+        process.env.AI_DEFAULT_MODEL = validModelId;
+        expect(aiEnv.defaultModel).toBe(validModelId);
       });
 
       it('should return fallback when AI_DEFAULT_MODEL is not set', () => {

@@ -7,16 +7,18 @@ import {
 } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import {
+  requireInternalUserByAuthId,
+  requireOwnedPlanById,
+  requirePlanIdFromRequest,
+} from '@/lib/api/plans/route-context';
+import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
 import { json, jsonError } from '@/lib/api/response';
-import { isUuid } from '@/lib/api/route-helpers';
 import { regenerationQueueEnv } from '@/lib/config/env';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
-import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
-import { learningPlans } from '@/lib/db/schema';
 import { enqueueJobWithResult } from '@/lib/jobs/queue';
 import {
   drainRegenerationQueue,
@@ -40,7 +42,6 @@ import {
   planRegenerationRequestSchema,
   type PlanRegenerationOverridesInput,
 } from '@/lib/validation/learningPlans';
-import { eq } from 'drizzle-orm';
 
 /**
  * POST /api/v1/plans/:planId/regenerate
@@ -58,30 +59,14 @@ export const POST: PlainHandler = withErrorBoundary(
       );
     }
 
-    const planId = params.planId;
-    if (!planId) {
-      throw new ValidationError('Plan id is required in the request path.');
-    }
-    if (!isUuid(planId)) {
-      throw new ValidationError('Invalid plan id format.');
-    }
-
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
-
-    // Fetch and verify plan ownership (RLS-enforced via getDb)
+    const planId = requirePlanIdFromRequest(req, 'second-to-last');
+    const user = await requireInternalUserByAuthId(userId);
     const db = getDb();
-    const plan = await db.query.learningPlans.findFirst({
-      where: eq(learningPlans.id, planId),
+    const plan = await requireOwnedPlanById({
+      planId,
+      ownerUserId: user.id,
+      dbClient: db,
     });
-
-    if (!plan || plan.userId !== user.id) {
-      return jsonError('Plan not found', { status: 404 });
-    }
 
     // Parse request body for overrides (before quota check to fail fast on validation)
     let body: unknown;

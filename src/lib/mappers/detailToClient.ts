@@ -20,7 +20,6 @@ const VALID_CLASSIFICATIONS: ReadonlySet<FailureClassification> = new Set([
   'rate_limit',
   'timeout',
   'capped',
-  'in_progress',
 ]);
 
 /**

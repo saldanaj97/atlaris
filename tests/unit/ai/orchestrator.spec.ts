@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import type { AttemptRejection } from '@/lib/db/queries/attempts';
 
 describe('runGenerationAttempt reservation rejection handling', () => {
   it('maps in_progress reservation rejections to a valid retryable classification', async () => {
@@ -12,7 +11,7 @@ describe('runGenerationAttempt reservation rejection handling', () => {
       delete: () => ({}),
       transaction: () => ({}),
     };
-    const reservation: AttemptRejection = {
+    const reservation = {
       reserved: false,
       reason: 'in_progress',
     };
@@ -30,6 +29,7 @@ describe('runGenerationAttempt reservation rejection handling', () => {
       },
       {
         dbClient: dbClientStub as unknown as RunGenerationDbClient,
+        // Intentional double-cast: options accepts a narrow reservation type; we pass a minimal shape for rejection testing.
         reservation: reservation as unknown as RunGenerationReservation,
       }
     );

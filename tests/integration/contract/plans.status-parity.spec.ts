@@ -66,6 +66,8 @@ describe('Plan status parity contract', () => {
       { generationStatus: 'failed', hasModules: false },
       { generationStatus: 'ready', hasModules: true },
       { generationStatus: 'generating', hasModules: true },
+      { generationStatus: 'failed', hasModules: true },
+      { generationStatus: 'ready', hasModules: false },
     ];
 
     for (const fixture of fixtures) {

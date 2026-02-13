@@ -93,6 +93,13 @@ export interface RouterConfig {
   model?: string;
 }
 
+export type MicroExplanationConfig = {
+  apiKey: string;
+  baseUrl: string;
+  siteUrl?: string;
+  appName?: string;
+};
+
 export class RouterGenerationProvider implements AiPlanGenerationProvider {
   private readonly providers: (() => AiPlanGenerationProvider)[];
 
@@ -125,12 +132,7 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     // For now, we rely on OpenRouter's internal model routing and fallbacks.
   }
 
-  getMicroExplanationConfig(): {
-    apiKey: string;
-    baseUrl: string;
-    siteUrl?: string;
-    appName?: string;
-  } | null {
+  getMicroExplanationConfig(): MicroExplanationConfig | null {
     const apiKey = openRouterEnv.apiKey;
     if (!apiKey) {
       return null;

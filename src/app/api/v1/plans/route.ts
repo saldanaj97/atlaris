@@ -1,7 +1,5 @@
 import { ZodError } from 'zod';
 
-import { eq } from 'drizzle-orm';
-
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import {
@@ -9,14 +7,15 @@ import {
   preparePlanCreationPreflight,
 } from '@/lib/api/plans/preflight';
 import { requireInternalUserByAuthId } from '@/lib/api/plans/route-context';
+import {
+  checkPlanGenerationRateLimit,
+  getPlanGenerationRateLimitHeaders,
+} from '@/lib/api/rate-limit';
 import { json } from '@/lib/api/response';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
-import { learningPlans } from '@/lib/db/schema';
-import {
-  CreateLearningPlanInput,
-  createLearningPlanSchema,
-} from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
 
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ userId }) => {
@@ -53,40 +52,36 @@ export const POST = withErrorBoundary(
       return preflight.response;
     }
 
+    const { remaining } = await checkPlanGenerationRateLimit(
+      preflight.data.user.id,
+      db
+    );
+    const generationRateLimitHeaders =
+      getPlanGenerationRateLimitHeaders(remaining);
+
     const created = await insertPlanWithRollback({
       body,
       preflight: preflight.data,
       dbClient: db,
     });
-    const [plan] = await db
-      .select()
-      .from(learningPlans)
-      .where(eq(learningPlans.id, created.id))
-      .limit(1);
 
-    // Notes from onboarding are intentionally ignored until the schema introduces a column.
-
-    if (!plan) {
-      throw new ValidationError('Failed to create learning plan.');
-    }
-
-    // Note: Plan generation now happens via the streaming endpoint (/api/v1/plans/stream).
-    // This endpoint only creates the plan record. The frontend should redirect to the
-    // streaming endpoint or the plan page where generation can be initiated.
-
+    // Build response from preflight + insert result to avoid post-insert re-fetch
+    // under RLS (same user context should see the row, but avoids dependency on
+    // visibility and gives consistent 201 semantics).
+    const now = new Date();
     return json(
       {
-        id: plan.id,
-        topic: plan.topic,
-        skillLevel: plan.skillLevel,
-        weeklyHours: plan.weeklyHours,
-        learningStyle: plan.learningStyle,
-        visibility: plan.visibility,
-        origin: plan.origin,
-        createdAt: plan.createdAt?.toISOString(),
+        id: created.id,
+        topic: preflight.data.preparedInput.topic,
+        skillLevel: body.skillLevel,
+        weeklyHours: body.weeklyHours,
+        learningStyle: body.learningStyle,
+        visibility: 'private',
+        origin: preflight.data.preparedInput.origin,
+        createdAt: now.toISOString(),
         status: 'generating',
       },
-      { status: 201 }
+      { status: 201, headers: generationRateLimitHeaders }
     );
   })
 );

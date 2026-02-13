@@ -1,3 +1,4 @@
+import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/helpers';
 import {
   handleFailedGeneration,
   handleSuccessfulGeneration,
@@ -13,10 +14,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createId } from '../../../fixtures/ids';
 
-let mockMarkPlanGenerationFailure = vi.fn();
-let mockMarkPlanGenerationSuccess = vi.fn();
-let mockRecordUsage = vi.fn();
-let mockGetCorrelationId = vi.fn();
+let mockMarkPlanGenerationFailure: NonNullable<
+  StreamingHelperDependencies['markPlanGenerationFailure']
+>;
+let mockMarkPlanGenerationSuccess: NonNullable<
+  StreamingHelperDependencies['markPlanGenerationSuccess']
+>;
+let mockRecordUsage: NonNullable<StreamingHelperDependencies['recordUsage']>;
+let mockGetCorrelationId: NonNullable<
+  StreamingHelperDependencies['getCorrelationId']
+>;
 
 function buildFailureResult(
   overrides: Partial<GenerationFailureResult> = {}
@@ -132,10 +139,22 @@ function buildSuccessResult(
 
 describe('stream helpers', () => {
   beforeEach(() => {
-    mockMarkPlanGenerationFailure = vi.fn().mockResolvedValue(undefined);
-    mockMarkPlanGenerationSuccess = vi.fn().mockResolvedValue(undefined);
-    mockRecordUsage = vi.fn().mockResolvedValue(undefined);
-    mockGetCorrelationId = vi.fn(() => 'req_test_123');
+    mockMarkPlanGenerationFailure = vi
+      .fn()
+      .mockResolvedValue(undefined) as NonNullable<
+      StreamingHelperDependencies['markPlanGenerationFailure']
+    >;
+    mockMarkPlanGenerationSuccess = vi
+      .fn()
+      .mockResolvedValue(undefined) as NonNullable<
+      StreamingHelperDependencies['markPlanGenerationSuccess']
+    >;
+    mockRecordUsage = vi.fn().mockResolvedValue(undefined) as NonNullable<
+      StreamingHelperDependencies['recordUsage']
+    >;
+    mockGetCorrelationId = vi.fn(() => 'req_test_123') as NonNullable<
+      StreamingHelperDependencies['getCorrelationId']
+    >;
   });
 
   afterEach(() => {
@@ -197,15 +216,7 @@ describe('stream helpers', () => {
     expect(mockMarkPlanGenerationFailure).toHaveBeenCalledTimes(1);
     expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
       planId,
-      expect.any(Object),
-      expect.objectContaining({
-        failureContext: expect.objectContaining({
-          classification: 'validation',
-          error: expect.objectContaining({
-            message: 'invalid schema details',
-          }),
-        }),
-      })
+      expect.any(Object)
     );
     expect(mockRecordUsage).toHaveBeenCalledTimes(1);
 
@@ -260,11 +271,15 @@ describe('stream helpers', () => {
       modulesCount: 2,
       tasksCount: 3,
     });
-    expect(typeof completeEvent?.data?.durationMs).toBe('number');
+    const durationMs = completeEvent?.data?.durationMs;
+    expect(typeof durationMs).toBe('number');
+    expect(durationMs).toBeGreaterThanOrEqual(100);
   });
 
   it('swallows mark failure errors in safeMarkPlanFailed', async () => {
-    mockMarkPlanGenerationFailure.mockRejectedValueOnce(new Error('db down'));
+    vi.mocked(mockMarkPlanGenerationFailure).mockRejectedValueOnce(
+      new Error('db down')
+    );
 
     await expect(
       safeMarkPlanFailed(

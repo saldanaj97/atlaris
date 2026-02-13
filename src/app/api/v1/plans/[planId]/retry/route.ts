@@ -7,6 +7,10 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import type { GenerationInput, IsoDateString } from '@/lib/ai/types';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import {
+  normalizeThrownError,
+  toAttemptError,
+} from '@/lib/api/error-normalization';
 import { RateLimitError } from '@/lib/api/errors';
 import {
   requireInternalUserByAuthId,
@@ -45,123 +49,6 @@ const toIsoDateString = (value: string | null): IsoDateString | undefined => {
 
   return ISO_DATE_PATTERN.test(value) ? (value as IsoDateString) : undefined;
 };
-
-interface AttemptErrorLike {
-  message?: string;
-  status?: number;
-  statusCode?: number;
-  httpStatus?: number;
-}
-
-function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
-  if (obj === null || typeof obj !== 'object') {
-    return false;
-  }
-  const o = obj as AttemptErrorLike;
-  if (o.message !== undefined && typeof o.message !== 'string') {
-    return false;
-  }
-  if (o.status !== undefined && typeof o.status !== 'number') {
-    return false;
-  }
-  if (o.statusCode !== undefined && typeof o.statusCode !== 'number') {
-    return false;
-  }
-  if (o.httpStatus !== undefined && typeof o.httpStatus !== 'number') {
-    return false;
-  }
-  return true;
-}
-
-type AttemptErrorResult = {
-  message: string;
-  status?: number;
-  statusCode?: number;
-  httpStatus?: number;
-};
-
-function extractStatusFields(
-  obj: AttemptErrorLike
-): Partial<AttemptErrorResult> {
-  const fields: Partial<AttemptErrorResult> = {};
-  if (typeof obj.status === 'number') {
-    fields.status = obj.status;
-  }
-  if (typeof obj.statusCode === 'number') {
-    fields.statusCode = obj.statusCode;
-  }
-  if (typeof obj.httpStatus === 'number') {
-    fields.httpStatus = obj.httpStatus;
-  }
-  return fields;
-}
-
-function toAttemptError(error: unknown): AttemptErrorResult {
-  if (typeof error === 'string') {
-    return { message: error };
-  }
-
-  if (error instanceof Error) {
-    const isAttempt = isAttemptErrorLike(error);
-    const result: AttemptErrorResult = { message: error.message };
-    if (isAttempt) {
-      const errWithStatus = error as Error & AttemptErrorLike;
-      Object.assign(result, extractStatusFields(errWithStatus));
-    }
-    return result;
-  }
-
-  if (isAttemptErrorLike(error)) {
-    const message =
-      typeof error.message === 'string'
-        ? error.message
-        : 'Unknown retry generation error';
-    const result: AttemptErrorResult = { message };
-    Object.assign(result, extractStatusFields(error));
-    return result;
-  }
-
-  return { message: 'Unknown retry generation error' };
-}
-
-function stringifyThrownValue(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    value === null ||
-    value === undefined
-  ) {
-    return String(value);
-  }
-
-  if (
-    typeof value === 'object' &&
-    'message' in value &&
-    typeof (value as { message?: unknown }).message === 'string'
-  ) {
-    return (value as { message: string }).message;
-  }
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return 'Unserializable thrown value';
-  }
-}
-
-function normalizeThrownError(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
-  }
-
-  return new Error(
-    `Non-Error thrown during retry generation: ${stringifyThrownValue(error)}`
-  );
-}
 
 /**
  * POST /api/v1/plans/:planId/retry

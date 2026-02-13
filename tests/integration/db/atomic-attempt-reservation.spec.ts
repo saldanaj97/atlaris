@@ -118,15 +118,39 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
       generationStatus: 'failed',
     });
 
-    // Seed attempts to leave exactly one slot in the durable window.
+    // Seed attempts to leave exactly one slot in the durable window, distributed
+    // across throwaway plans so no single plan reaches ATTEMPT_CAP (reserveAttemptSlot
+    // should hit durable-window logic only).
     const slotsToFill = getDurableWindowSeedCount(1);
-    const seededAttempts = await seedFailedAttemptsForDurableWindow(planId, {
-      slotsRemaining: 1,
-      durationMs: 500,
-      metadata: null,
-      promptHashPrefix: 'seed',
-    });
-    expect(seededAttempts).toHaveLength(slotsToFill);
+    const maxPerPlan = Math.max(1, ATTEMPT_CAP - 1);
+    const numPlans = Math.ceil(slotsToFill / maxPerPlan);
+    const throwawayPlans = await Promise.all(
+      Array.from({ length: numPlans }, () =>
+        createPlan(userId, {
+          topic: `Throwaway ${randomUUID()}`,
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+          origin: 'ai',
+          generationStatus: 'failed',
+        })
+      )
+    );
+    let globalIndex = 0;
+    for (const p of throwawayPlans) {
+      const remaining = slotsToFill - globalIndex;
+      const count = Math.min(maxPerPlan, remaining);
+      if (count <= 0) break;
+      await createFailedAttemptsInDb(p.id, count, (i) => ({
+        classification: 'timeout',
+        durationMs: 500,
+        metadata: null,
+        promptHash: `seed-${globalIndex + i}`,
+      }));
+      globalIndex += count;
+    }
+    expect(globalIndex).toBe(slotsToFill);
 
     const input = {
       topic: 'Durable Limit Test',

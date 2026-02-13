@@ -291,6 +291,7 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
         ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
         : baseDelay;
 
+    // Return an already-settled Promise so tests get deterministic timing and avoid unnecessary microtask deferral.
     return Promise.resolve({
       stream: createMockStream(payload, actualDelay, options?.signal),
       metadata: {

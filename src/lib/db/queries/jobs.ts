@@ -40,6 +40,16 @@ export interface JobEnqueueResult {
   deduplicated: boolean;
 }
 
+/** Shared predicate for "active" regeneration job (pending or processing) for a plan/user. */
+export function activeRegenerationJobWhere(planId: string, userId: string) {
+  return and(
+    eq(jobQueue.planId, planId),
+    eq(jobQueue.userId, userId),
+    eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+    or(eq(jobQueue.status, 'pending'), eq(jobQueue.status, 'processing'))
+  );
+}
+
 /**
  * Type guard to validate job type values at runtime.
  * Returns true if the value is a valid JobType.
@@ -243,17 +253,7 @@ export async function insertJobRecord(
       const [existingActiveJob] = await tx
         .select({ id: jobQueue.id })
         .from(jobQueue)
-        .where(
-          and(
-            eq(jobQueue.planId, planId),
-            eq(jobQueue.userId, userId),
-            eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-            or(
-              eq(jobQueue.status, 'pending'),
-              eq(jobQueue.status, 'processing')
-            )
-          )
-        )
+        .where(activeRegenerationJobWhere(planId, userId))
         .orderBy(desc(jobQueue.createdAt))
         .limit(1)
         .for('update');
@@ -291,14 +291,7 @@ export async function getActiveRegenerationJob(
   const [activeJob] = await dbClient
     .select({ id: jobQueue.id })
     .from(jobQueue)
-    .where(
-      and(
-        eq(jobQueue.planId, planId),
-        eq(jobQueue.userId, userId),
-        eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-        or(eq(jobQueue.status, 'pending'), eq(jobQueue.status, 'processing'))
-      )
-    )
+    .where(activeRegenerationJobWhere(planId, userId))
     .orderBy(desc(jobQueue.createdAt))
     .limit(1);
 
