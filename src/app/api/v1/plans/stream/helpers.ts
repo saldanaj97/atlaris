@@ -14,7 +14,7 @@ import {
 } from '@/lib/ai/streaming/error-sanitizer';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { getCorrelationId } from '@/lib/api/context';
-import type { AttemptsDbClient } from '@/lib/db/queries/attempts';
+import type { AttemptsDbClient } from '@/lib/db/queries/attempts.types';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';

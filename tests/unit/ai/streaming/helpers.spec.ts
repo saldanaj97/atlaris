@@ -9,7 +9,7 @@ import type {
   GenerationSuccessResult,
 } from '@/lib/ai/orchestrator';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
-import type { AttemptsDbClient } from '@/lib/db/queries/attempts';
+import type { AttemptsDbClient } from '@/lib/db/queries/attempts.types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createId } from '../../../fixtures/ids';

@@ -7,8 +7,8 @@ import { RateLimitError } from '@/lib/api/errors';
 import {
   countUserGenerationAttemptsSince,
   getOldestUserGenerationAttemptSince,
-  type AttemptsDbClient,
 } from '@/lib/db/queries/attempts';
+import type { AttemptsDbClient } from '@/lib/db/queries/attempts.types';
 import { logger } from '@/lib/logging/logger';
 
 export interface PlanGenerationRateLimitResult {

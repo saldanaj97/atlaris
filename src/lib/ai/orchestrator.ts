@@ -2,13 +2,15 @@ import { aiTimeoutEnv, appEnv } from '@/lib/config/env';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
-  isAttemptsDbClient,
   reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
+import {
+  isAttemptsDbClient,
   type AttemptRejection,
   type AttemptReservation,
   type AttemptsDbClient,
   type GenerationAttemptRecord,
-} from '@/lib/db/queries/attempts';
+} from '@/lib/db/queries/attempts.types';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 import * as Sentry from '@sentry/nextjs';

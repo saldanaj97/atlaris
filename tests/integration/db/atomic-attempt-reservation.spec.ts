@@ -1,5 +1,5 @@
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import {
-  ATTEMPT_CAP,
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,

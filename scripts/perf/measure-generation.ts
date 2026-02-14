@@ -8,9 +8,9 @@ import { performance } from 'node:perf_hooks';
 
 import { count, eq, inArray } from 'drizzle-orm';
 
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { ProviderTimeoutError } from '@/lib/ai/provider';
-import { asyncIterableToReadableStream } from '@/lib/ai/utils';
 import {
   type AiPlanGenerationProvider,
   type GenerationInput,
@@ -18,7 +18,7 @@ import {
   type ProviderGenerateResult,
   type ProviderMetadata,
 } from '@/lib/ai/types/provider.types';
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { asyncIterableToReadableStream } from '@/lib/ai/utils';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';

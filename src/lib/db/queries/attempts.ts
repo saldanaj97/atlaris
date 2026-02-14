@@ -1,3 +1,4 @@
+import { isRetryableClassification } from '@/lib/ai/failures';
 import {
   ATTEMPT_CAP,
   getPlanGenerationWindowStart,
@@ -6,21 +7,19 @@ import {
 } from '@/lib/ai/generation-policy';
 import { getCorrelationId } from '@/lib/api/context';
 import { appEnv } from '@/lib/config/env';
-import { logger } from '@/lib/logging/logger';
-import type { InferSelectModel } from 'drizzle-orm';
-import { and, asc, count, eq, gte } from 'drizzle-orm';
-
-import { isRetryableClassification } from '@/lib/ai/failures';
-import type { ParsedModule } from '@/lib/ai/parser';
-import type {
-  GenerationInput,
-  ProviderMetadata,
-} from '@/lib/ai/types/provider.types';
 import {
-  recordAttemptFailure as trackAttemptFailure,
-  recordAttemptSuccess as trackAttemptSuccess,
+  generationAttempts,
+  learningPlans,
+  modules,
+  tasks,
+  users,
+} from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
+import {
+  recordAttemptFailure,
+  recordAttemptSuccess,
 } from '@/lib/metrics/attempts';
-import type { FailureClassification } from '@/lib/types/client';
+import type { EffortNormalizationFlags } from '@/lib/utils/effort';
 import {
   aggregateNormalizationFlags,
   normalizeModuleMinutes,
@@ -32,56 +31,27 @@ import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
 } from '@/lib/validation/learningPlans';
+import { and, asc, count, eq, gte } from 'drizzle-orm';
 
-import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  tasks,
-  users,
-} from '@/lib/db/schema';
+import type { ParsedModule } from '@/lib/ai/parser';
+import type {
+  GenerationInput,
+  ProviderMetadata,
+} from '@/lib/ai/types/provider.types';
+import type {
+  AttemptReservation,
+  AttemptsDbClient,
+  GenerationAttemptRecord,
+  ReserveAttemptResult,
+} from '@/lib/db/queries/attempts.types';
+import type { FailureClassification } from '@/lib/types/client';
 
 /**
  * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
- * This file requires explicit dbClient (AttemptsDbClient) in all params (e.g. StartAttemptParams);
+ * This file requires explicit dbClient (AttemptsDbClient) in all params;
  * do not add default getDb() or make dbClient optional — callers must pass request-scoped getDb()
  * so RLS claims are preserved. See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
  */
-
-/**
- * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
- *
- * When using the RLS client returned by {@link getDb}, callers are responsible for releasing
- * it by calling its `cleanup()` method. Do this in a `finally` block.
- *
- * When using RLS client, always call cleanup() in a finally block to release the database connection.
- */
-export type AttemptsDbClient = ReturnType<
-  typeof import('@/lib/db/runtime').getDb
->;
-
-/** Drizzle-like methods required by attempt operations (reserve, finalize). */
-const ATTEMPTS_DB_METHODS = [
-  'select',
-  'insert',
-  'update',
-  'delete',
-  'transaction',
-] as const;
-
-/**
- * Type guard for AttemptsDbClient. Use when accepting db from unknown (e.g. options bags)
- * to fail fast with a clear error instead of obscure Drizzle errors later.
- */
-export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
-  if (db == null || typeof db !== 'object') {
-    return false;
-  }
-  const obj = db as Record<string, unknown>;
-  return ATTEMPTS_DB_METHODS.every(
-    (method) => typeof obj[method] === 'function'
-  );
-}
 
 interface SanitizedField {
   value: string | undefined;
@@ -89,19 +59,27 @@ interface SanitizedField {
   originalLength?: number;
 }
 
-export interface SanitizedInput {
+interface SanitizedInput {
   topic: SanitizedField & { value: string; originalLength: number };
   notes: SanitizedField;
 }
 
-export interface AttemptPreparation {
-  planId: string;
-  userId: string;
-  attemptNumber: number;
-  capped: boolean;
-  startedAt: Date;
-  sanitized: SanitizedInput;
-  promptHash: string;
+interface NormalizedTaskData {
+  title: string;
+  description: string | null;
+  estimatedMinutes: number;
+}
+
+interface NormalizedModuleData {
+  title: string;
+  description: string | null;
+  estimatedMinutes: number;
+  tasks: NormalizedTaskData[];
+}
+
+interface NormalizedModulesResult {
+  normalizedModules: NormalizedModuleData[];
+  normalizationFlags: EffortNormalizationFlags;
 }
 
 interface PdfProvenanceData {
@@ -110,73 +88,70 @@ interface PdfProvenanceData {
   contextDigest: string;
 }
 
-export type GenerationAttemptRecord = InferSelectModel<
-  typeof generationAttempts
->;
+interface AttemptMetadataFailure {
+  classification: FailureClassification;
+  timedOut: boolean;
+}
+
+interface AttemptMetadata {
+  input: {
+    topic: {
+      truncated: boolean;
+      original_length: number;
+    };
+    notes: {
+      truncated: boolean;
+      original_length: number;
+    } | null;
+  };
+  normalization: {
+    modules_clamped: boolean;
+    tasks_clamped: boolean;
+  };
+  timing: {
+    started_at: string;
+    finished_at: string;
+    duration_ms: number;
+    extended_timeout: boolean;
+  };
+  pdf: {
+    extraction_hash: string;
+    proof_version: 1;
+    context_digest: string;
+  } | null;
+  provider: ProviderMetadata | null;
+  failure: AttemptMetadataFailure | null;
+}
+
+interface MetadataParams {
+  sanitized: SanitizedInput;
+  providerMetadata?: ProviderMetadata;
+  modulesClamped: boolean;
+  tasksClamped: boolean;
+  startedAt: Date;
+  finishedAt: Date;
+  extendedTimeout: boolean;
+  pdfProvenance?: PdfProvenanceData | null;
+  failure?: AttemptMetadataFailure;
+}
+
+type AttemptsReadClient = Pick<AttemptsDbClient, 'select'>;
+
+interface ReserveAttemptSlotParams {
+  planId: string;
+  userId: string;
+  input: GenerationInput;
+  dbClient: AttemptsDbClient;
+  requiredGenerationStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
+  now?: () => Date;
+}
 
 /**
  * Security guardrail: keep `dbClient` required.
  * Callers must pass request-scoped `getDb()` so RLS claims flow through.
  * Reverting to optional `dbClient = getDb()` masks missing DI and is a security footgun.
  */
-export interface StartAttemptParams {
-  planId: string;
-  userId: string;
-  input: GenerationInput;
-  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
-  dbClient: AttemptsDbClient;
-  now?: () => Date;
-}
-
-export interface RecordSuccessParams {
-  planId: string;
-  preparation: AttemptPreparation;
-  modules: ParsedModule[];
-  providerMetadata?: ProviderMetadata;
-  durationMs: number;
-  extendedTimeout: boolean;
-  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
-  dbClient: AttemptsDbClient;
-  now?: () => Date;
-}
-
-export interface RecordFailureParams {
-  planId: string;
-  preparation: AttemptPreparation;
-  classification: FailureClassification;
-  durationMs: number;
-  timedOut?: boolean;
-  extendedTimeout?: boolean;
-  providerMetadata?: ProviderMetadata;
-  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
-  dbClient: AttemptsDbClient;
-  now?: () => Date;
-}
-
-// ---------------------------------------------------------------------------
-// Atomic reservation types (Phase 2 – concurrency-safe attempt cap)
-// ---------------------------------------------------------------------------
-
-export interface AttemptReservation {
-  reserved: true;
-  attemptId: string;
-  attemptNumber: number;
-  startedAt: Date;
-  sanitized: SanitizedInput;
-  promptHash: string;
-  pdfProvenance?: PdfProvenanceData | null;
-}
-
-export interface AttemptRejection {
-  reserved: false;
-  reason: 'capped' | 'in_progress' | 'invalid_status' | 'rate_limited';
-  currentStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
-  retryAfter?: number;
-}
-
-export type ReserveAttemptResult = AttemptReservation | AttemptRejection;
-
-export interface FinalizeSuccessParams {
+interface FinalizeSuccessParams {
   attemptId: string;
   planId: string;
   preparation: AttemptReservation;
@@ -189,7 +164,7 @@ export interface FinalizeSuccessParams {
   now?: () => Date;
 }
 
-export interface FinalizeFailureParams {
+interface FinalizeFailureParams {
   attemptId: string;
   planId: string;
   preparation: AttemptReservation;
@@ -209,6 +184,20 @@ export interface FinalizeFailureParams {
   now?: () => Date;
 }
 
+interface FinalizeSuccessPersistenceParams {
+  attemptId: string;
+  planId: string;
+  preparation: AttemptReservation;
+  normalizedModules: NormalizedModuleData[];
+  normalizationFlags: EffortNormalizationFlags;
+  modulesCount: number;
+  tasksCount: number;
+  durationMs: number;
+  metadata: AttemptMetadata;
+  finishedAt: Date;
+  dbClient: AttemptsDbClient;
+}
+
 /**
  * Determines if a provider_error is retryable based on error metadata.
  * 5xx or unknown → retryable; 4xx → terminal.
@@ -220,13 +209,13 @@ interface ProviderErrorStatusShape {
   response?: { status?: number } | null;
 }
 
-export interface AttemptErrorFallbackShape {
+interface AttemptErrorFallbackShape {
   message: string;
   code?: string;
 }
 
 /** Error with at least one identifying status field for retryability. */
-export type AttemptErrorWithStatus =
+type AttemptErrorWithStatus =
   | (ProviderErrorStatusShape &
       Partial<AttemptErrorFallbackShape> & { status: number })
   | (ProviderErrorStatusShape &
@@ -236,7 +225,13 @@ export type AttemptErrorWithStatus =
   | (ProviderErrorStatusShape &
       Partial<AttemptErrorFallbackShape> & { response: { status: number } });
 
-export type AttemptError = AttemptErrorWithStatus | AttemptErrorFallbackShape;
+type AttemptError = AttemptErrorWithStatus | AttemptErrorFallbackShape;
+
+interface UserGenerationAttemptsSinceParams {
+  userId: string;
+  dbClient: AttemptsReadClient;
+  since: Date;
+}
 
 function getProviderErrorStatus(
   error: AttemptError | null | undefined
@@ -307,18 +302,6 @@ function logAttemptEvent(
   }
 }
 
-interface MetadataParams {
-  sanitized: SanitizedInput;
-  providerMetadata?: ProviderMetadata;
-  modulesClamped: boolean;
-  tasksClamped: boolean;
-  startedAt: Date;
-  finishedAt: Date;
-  extendedTimeout: boolean;
-  pdfProvenance?: PdfProvenanceData | null;
-  failure?: { classification: FailureClassification; timedOut: boolean };
-}
-
 function stableSerialize(value: unknown): string {
   if (value === undefined) {
     return 'null';
@@ -345,8 +328,23 @@ function getPdfContextDigest(input: GenerationInput): string | null {
   return hashSha256(stableSerialize(input.pdfContext));
 }
 
+function hasPdfProvenanceInput(
+  input: GenerationInput
+): input is GenerationInput & {
+  pdfContext: NonNullable<GenerationInput['pdfContext']>;
+  pdfExtractionHash: string;
+  pdfProofVersion?: 1;
+} {
+  return (
+    input.pdfContext !== undefined &&
+    input.pdfContext !== null &&
+    typeof input.pdfExtractionHash === 'string' &&
+    input.pdfExtractionHash !== ''
+  );
+}
+
 function getPdfProvenance(input: GenerationInput): PdfProvenanceData | null {
-  if (!input.pdfContext || !input.pdfExtractionHash) {
+  if (!hasPdfProvenanceInput(input)) {
     return null;
   }
 
@@ -362,7 +360,7 @@ function getPdfProvenance(input: GenerationInput): PdfProvenanceData | null {
   };
 }
 
-function buildMetadata(params: MetadataParams) {
+function buildMetadata(params: MetadataParams): AttemptMetadata {
   const {
     sanitized,
     providerMetadata,
@@ -411,7 +409,7 @@ function buildMetadata(params: MetadataParams) {
       : null,
     provider: providerMetadata ?? null,
     failure: failure ?? null,
-  } satisfies Record<string, unknown>;
+  };
 }
 
 function sanitizeInput(input: GenerationInput): SanitizedInput {
@@ -467,7 +465,9 @@ function toPromptHashPayload(
   } satisfies Record<string, unknown>;
 }
 
-function normalizeParsedModules(modulesInput: ParsedModule[]) {
+function normalizeParsedModules(
+  modulesInput: ParsedModule[]
+): NormalizedModulesResult {
   const moduleFlags = [] as ReturnType<typeof normalizeModuleMinutes>[];
   const taskFlags = [] as ReturnType<typeof normalizeTaskMinutes>[];
 
@@ -501,248 +501,61 @@ function normalizeParsedModules(modulesInput: ParsedModule[]) {
   return { normalizedModules, normalizationFlags };
 }
 
-/**
- * @deprecated Use {@link reserveAttemptSlot} for atomic cap enforcement.
- * Retained for backward compatibility with existing tests.
- */
-export async function startAttempt({
-  planId,
-  userId,
-  input,
-  dbClient,
-  now,
-}: StartAttemptParams): Promise<AttemptPreparation> {
-  const client = dbClient;
-  const nowFn = now ?? (() => new Date());
-
-  const [planOwner] = await client
-    .select({ userId: learningPlans.userId })
-    .from(learningPlans)
-    .where(eq(learningPlans.id, planId))
-    .limit(1);
-
-  if (!planOwner || planOwner.userId !== userId) {
-    throw new Error('Learning plan not found or inaccessible for user');
-  }
-
-  const sanitized = sanitizeInput(input);
-  const promptHash = hashSha256(
-    JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
+function userAttemptsSincePredicate(userId: string, since: Date) {
+  return and(
+    eq(learningPlans.userId, userId),
+    gte(generationAttempts.createdAt, since)
   );
+}
 
-  const [{ value: existingAttempts = 0 } = { value: 0 }] = await client
+async function selectUserGenerationAttemptsSince({
+  userId,
+  dbClient,
+  since,
+}: UserGenerationAttemptsSinceParams): Promise<number> {
+  const [row] = await dbClient
     .select({ value: count(generationAttempts.id) })
     .from(generationAttempts)
-    .where(eq(generationAttempts.planId, planId));
+    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
+    .where(userAttemptsSincePredicate(userId, since));
 
-  const capped = existingAttempts >= ATTEMPT_CAP;
-
-  return {
-    planId,
-    userId,
-    attemptNumber: existingAttempts + 1,
-    capped,
-    startedAt: nowFn(),
-    sanitized,
-    promptHash,
-  };
+  return row?.value ?? 0;
 }
 
-/**
- * @deprecated Use {@link finalizeAttemptSuccess} with atomic reservation flow.
- * Retained for backward compatibility with existing tests.
- */
-export async function recordSuccess({
-  planId,
-  preparation,
-  modules: parsedModules,
-  providerMetadata,
-  durationMs,
-  extendedTimeout,
+async function selectOldestUserGenerationAttemptSince({
+  userId,
   dbClient,
-  now,
-}: RecordSuccessParams): Promise<GenerationAttemptRecord> {
-  const client = dbClient;
-  const nowFn = now ?? (() => new Date());
+  since,
+}: UserGenerationAttemptsSinceParams): Promise<Date | null> {
+  const [row] = await dbClient
+    .select({ createdAt: generationAttempts.createdAt })
+    .from(generationAttempts)
+    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
+    .where(userAttemptsSincePredicate(userId, since))
+    .orderBy(asc(generationAttempts.createdAt))
+    .limit(1);
 
-  const { normalizedModules, normalizationFlags } =
-    normalizeParsedModules(parsedModules);
-
-  const modulesCount = normalizedModules.length;
-  const tasksCount = normalizedModules.reduce(
-    (sum, module) => sum + module.tasks.length,
-    0
-  );
-
-  const finishedAt = nowFn();
-
-  const metadata = buildMetadata({
-    sanitized: preparation.sanitized,
-    providerMetadata,
-    modulesClamped: normalizationFlags.modulesClamped,
-    tasksClamped: normalizationFlags.tasksClamped,
-    startedAt: preparation.startedAt,
-    finishedAt,
-    extendedTimeout,
-    pdfProvenance: null,
-  });
-
-  const insertedAttempt = await client.transaction(async (tx) => {
-    await tx.delete(modules).where(eq(modules.planId, planId));
-
-    const insertedModules = [] as Array<{
-      id: string;
-      tasks: {
-        title: string;
-        description: string | null;
-        estimatedMinutes: number;
-      }[];
-    }>;
-
-    // Bulk insert modules
-    const moduleValues = normalizedModules.map((normalizedModule, index) => ({
-      planId,
-      order: index + 1,
-      title: normalizedModule.title,
-      description: normalizedModule.description,
-      estimatedMinutes: normalizedModule.estimatedMinutes,
-    }));
-    const insertedModuleRows = await tx
-      .insert(modules)
-      .values(moduleValues)
-      .returning({ id: modules.id });
-
-    if (insertedModuleRows.length !== normalizedModules.length) {
-      throw new Error('Failed to insert all modules for generation attempt.');
-    }
-
-    for (let i = 0; i < insertedModuleRows.length; i++) {
-      insertedModules.push({
-        id: insertedModuleRows[i].id,
-        tasks: normalizedModules[i].tasks,
-      });
-    }
-
-    for (const moduleEntry of insertedModules) {
-      if (moduleEntry.tasks.length === 0) continue;
-      await tx.insert(tasks).values(
-        moduleEntry.tasks.map((task, taskIndex) => ({
-          moduleId: moduleEntry.id,
-          order: taskIndex + 1,
-          title: task.title,
-          description: task.description,
-          estimatedMinutes: task.estimatedMinutes,
-        }))
-      );
-    }
-
-    const [attempt] = await tx
-      .insert(generationAttempts)
-      .values({
-        planId,
-        status: 'success',
-        classification: null,
-        durationMs: Math.max(0, Math.round(durationMs)),
-        modulesCount,
-        tasksCount,
-        truncatedTopic: preparation.sanitized.topic.truncated,
-        truncatedNotes: preparation.sanitized.notes.truncated ?? false,
-        normalizedEffort:
-          normalizationFlags.modulesClamped || normalizationFlags.tasksClamped,
-        promptHash: preparation.promptHash,
-        metadata,
-      })
-      .returning();
-
-    if (!attempt) {
-      throw new Error('Failed to record generation attempt.');
-    }
-
-    return attempt;
-  });
-
-  trackAttemptSuccess(insertedAttempt);
-
-  logAttemptEvent('success', {
-    planId,
-    attemptId: insertedAttempt.id,
-    durationMs: insertedAttempt.durationMs,
-    modulesCount,
-    tasksCount,
-  });
-
-  return insertedAttempt;
+  return row?.createdAt ?? null;
 }
 
-/**
- * @deprecated Use {@link finalizeAttemptFailure} with atomic reservation flow.
- * Retained for backward compatibility with existing tests.
- */
-export async function recordFailure({
-  planId,
-  preparation,
-  classification,
-  durationMs,
-  timedOut = false,
-  extendedTimeout = false,
-  providerMetadata,
-  dbClient,
-  now,
-}: RecordFailureParams): Promise<GenerationAttemptRecord> {
-  const client = dbClient;
-  const nowFn = now ?? (() => new Date());
-  const finishedAt = nowFn();
-
-  const metadata = buildMetadata({
-    sanitized: preparation.sanitized,
-    providerMetadata,
-    modulesClamped: false,
-    tasksClamped: false,
-    startedAt: preparation.startedAt,
-    finishedAt,
-    extendedTimeout,
-    pdfProvenance: null,
-    failure: { classification, timedOut },
-  });
-
-  const [attempt] = await client
-    .insert(generationAttempts)
-    .values({
-      planId,
-      status: 'failure',
-      classification,
-      durationMs: Math.max(0, Math.round(durationMs)),
-      modulesCount: 0,
-      tasksCount: 0,
-      truncatedTopic: preparation.sanitized.topic.truncated,
-      truncatedNotes: preparation.sanitized.notes.truncated ?? false,
-      normalizedEffort: false,
-      promptHash: preparation.promptHash,
-      metadata,
-    })
-    .returning();
-
-  if (!attempt) {
-    throw new Error('Failed to record failed generation attempt.');
+function computeRetryAfterSeconds(
+  oldestAttemptCreatedAt: Date | null,
+  now: Date
+): number {
+  if (!oldestAttemptCreatedAt) {
+    return Math.floor(PLAN_GENERATION_WINDOW_MS / 1000);
   }
 
-  trackAttemptFailure(attempt);
-
-  logAttemptEvent('failure', {
-    planId,
-    attemptId: attempt.id,
-    classification,
-    durationMs: attempt.durationMs,
-    timedOut,
-    extendedTimeout,
-  });
-
-  return attempt;
+  return Math.max(
+    0,
+    Math.floor(
+      (oldestAttemptCreatedAt.getTime() +
+        PLAN_GENERATION_WINDOW_MS -
+        now.getTime()) /
+        1000
+    )
+  );
 }
-
-// ---------------------------------------------------------------------------
-// Atomic reservation flow (Phase 2 – concurrency-safe attempt cap)
-// ---------------------------------------------------------------------------
 
 /**
  * Atomically reserves an attempt slot for a plan within a single transaction.
@@ -755,14 +568,9 @@ export async function recordFailure({
  *
  * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
  */
-export async function reserveAttemptSlot(params: {
-  planId: string;
-  userId: string;
-  input: GenerationInput;
-  dbClient: AttemptsDbClient;
-  requiredGenerationStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
-  now?: () => Date;
-}): Promise<ReserveAttemptResult> {
+export async function reserveAttemptSlot(
+  params: ReserveAttemptSlotParams
+): Promise<ReserveAttemptResult> {
   const { planId, userId, input, dbClient, requiredGenerationStatus } = params;
   const nowFn = params.now ?? (() => new Date());
 
@@ -826,45 +634,23 @@ export async function reserveAttemptSlot(params: {
 
     // Enforce durable per-user generation window cap inside this transaction so
     // concurrent requests cannot overrun the limit.
-    const [{ value: attemptsInWindow = 0 } = { value: 0 }] = await tx
-      .select({ value: count(generationAttempts.id) })
-      .from(generationAttempts)
-      .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
-      .where(
-        and(
-          eq(learningPlans.userId, userId),
-          gte(generationAttempts.createdAt, windowStart)
-        )
-      );
+    const attemptsInWindow = await selectUserGenerationAttemptsSince({
+      userId,
+      dbClient: tx,
+      since: windowStart,
+    });
 
     if (attemptsInWindow >= PLAN_GENERATION_LIMIT) {
-      const [oldestAttempt] = await tx
-        .select({ createdAt: generationAttempts.createdAt })
-        .from(generationAttempts)
-        .innerJoin(
-          learningPlans,
-          eq(generationAttempts.planId, learningPlans.id)
-        )
-        .where(
-          and(
-            eq(learningPlans.userId, userId),
-            gte(generationAttempts.createdAt, windowStart)
-          )
-        )
-        .orderBy(asc(generationAttempts.createdAt))
-        .limit(1);
-
-      const retryAfter = oldestAttempt
-        ? Math.max(
-            0,
-            Math.floor(
-              (oldestAttempt.createdAt.getTime() +
-                PLAN_GENERATION_WINDOW_MS -
-                startedAt.getTime()) /
-                1000
-            )
-          )
-        : Math.floor(PLAN_GENERATION_WINDOW_MS / 1000);
+      const oldestAttemptCreatedAt =
+        await selectOldestUserGenerationAttemptSince({
+          userId,
+          dbClient: tx,
+          since: windowStart,
+        });
+      const retryAfter = computeRetryAfterSeconds(
+        oldestAttemptCreatedAt,
+        startedAt
+      );
 
       return {
         reserved: false,
@@ -942,49 +728,24 @@ export async function reserveAttemptSlot(params: {
   });
 }
 
-/**
- * Finalizes a previously reserved attempt as successful.
- * Updates the in-progress attempt row, replaces plan modules/tasks,
- * and records metrics — all within a single transaction.
- */
-export async function finalizeAttemptSuccess({
-  attemptId,
-  planId,
-  preparation,
-  modules: parsedModules,
-  providerMetadata,
-  durationMs,
-  extendedTimeout,
-  dbClient,
-  now,
-}: FinalizeSuccessParams): Promise<GenerationAttemptRecord> {
-  assertAttemptIdMatchesReservation(attemptId, preparation);
-
-  const nowFn = now ?? (() => new Date());
-
-  const { normalizedModules, normalizationFlags } =
-    normalizeParsedModules(parsedModules);
-
-  const modulesCount = normalizedModules.length;
-  const tasksCount = normalizedModules.reduce(
-    (sum, module) => sum + module.tasks.length,
-    0
-  );
-
-  const finishedAt = nowFn();
-
-  const metadata = buildMetadata({
-    sanitized: preparation.sanitized,
-    providerMetadata,
-    modulesClamped: normalizationFlags.modulesClamped,
-    tasksClamped: normalizationFlags.tasksClamped,
-    startedAt: preparation.startedAt,
+async function persistSuccessfulAttempt(
+  params: FinalizeSuccessPersistenceParams
+): Promise<GenerationAttemptRecord> {
+  const {
+    attemptId,
+    planId,
+    preparation,
+    normalizedModules,
+    normalizationFlags,
+    modulesCount,
+    tasksCount,
+    durationMs,
+    metadata,
     finishedAt,
-    extendedTimeout,
-    pdfProvenance: preparation.pdfProvenance ?? null,
-  });
+    dbClient,
+  } = params;
 
-  const updatedAttempt = await dbClient.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     // Replace existing modules for the plan
     await tx.delete(modules).where(eq(modules.planId, planId));
 
@@ -1084,8 +845,65 @@ export async function finalizeAttemptSuccess({
 
     return attempt;
   });
+}
 
-  trackAttemptSuccess(updatedAttempt);
+/**
+ * Finalizes a previously reserved attempt as successful.
+ * Updates the in-progress attempt row, replaces plan modules/tasks,
+ * and records metrics — all within a single transaction.
+ */
+export async function finalizeAttemptSuccess({
+  attemptId,
+  planId,
+  preparation,
+  modules: parsedModules,
+  providerMetadata,
+  durationMs,
+  extendedTimeout,
+  dbClient,
+  now,
+}: FinalizeSuccessParams): Promise<GenerationAttemptRecord> {
+  assertAttemptIdMatchesReservation(attemptId, preparation);
+
+  const nowFn = now ?? (() => new Date());
+
+  const { normalizedModules, normalizationFlags } =
+    normalizeParsedModules(parsedModules);
+
+  const modulesCount = normalizedModules.length;
+  const tasksCount = normalizedModules.reduce(
+    (sum, module) => sum + module.tasks.length,
+    0
+  );
+
+  const finishedAt = nowFn();
+
+  const metadata = buildMetadata({
+    sanitized: preparation.sanitized,
+    providerMetadata,
+    modulesClamped: normalizationFlags.modulesClamped,
+    tasksClamped: normalizationFlags.tasksClamped,
+    startedAt: preparation.startedAt,
+    finishedAt,
+    extendedTimeout,
+    pdfProvenance: preparation.pdfProvenance ?? null,
+  });
+
+  const updatedAttempt = await persistSuccessfulAttempt({
+    attemptId,
+    planId,
+    preparation,
+    normalizedModules,
+    normalizationFlags,
+    modulesCount,
+    tasksCount,
+    durationMs,
+    metadata,
+    finishedAt,
+    dbClient,
+  });
+
+  recordAttemptSuccess(updatedAttempt);
 
   logAttemptEvent('success', {
     planId,
@@ -1180,7 +998,7 @@ export async function finalizeAttemptFailure({
     return updatedAttempt;
   });
 
-  trackAttemptFailure(attempt);
+  recordAttemptFailure(attempt);
 
   logAttemptEvent('failure', {
     planId,
@@ -1194,8 +1012,6 @@ export async function finalizeAttemptFailure({
   return attempt;
 }
 
-export { ATTEMPT_CAP, PLAN_GENERATION_LIMIT };
-
 function assertAttemptIdMatchesReservation(
   attemptId: string,
   preparation: AttemptReservation
@@ -1203,12 +1019,6 @@ function assertAttemptIdMatchesReservation(
   if (attemptId !== preparation.attemptId) {
     throw new Error('Attempt ID mismatch between params and reserved attempt.');
   }
-}
-
-export interface UserGenerationAttemptsSinceParams {
-  userId: string;
-  dbClient: AttemptsDbClient;
-  since: Date;
 }
 
 /**
@@ -1221,19 +1031,7 @@ export interface UserGenerationAttemptsSinceParams {
 export async function countUserGenerationAttemptsSince(
   params: UserGenerationAttemptsSinceParams
 ): Promise<number> {
-  const { userId, dbClient, since } = params;
-  const [row] = await dbClient
-    .select({ value: count(generationAttempts.id) })
-    .from(generationAttempts)
-    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
-    .where(
-      and(
-        eq(learningPlans.userId, userId),
-        gte(generationAttempts.createdAt, since)
-      )
-    );
-
-  return row?.value ?? 0;
+  return selectUserGenerationAttemptsSince(params);
 }
 
 /**
@@ -1247,19 +1045,5 @@ export async function countUserGenerationAttemptsSince(
 export async function getOldestUserGenerationAttemptSince(
   params: UserGenerationAttemptsSinceParams
 ): Promise<Date | null> {
-  const { userId, dbClient, since } = params;
-  const [row] = await dbClient
-    .select({ createdAt: generationAttempts.createdAt })
-    .from(generationAttempts)
-    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
-    .where(
-      and(
-        eq(learningPlans.userId, userId),
-        gte(generationAttempts.createdAt, since)
-      )
-    )
-    .orderBy(asc(generationAttempts.createdAt))
-    .limit(1);
-
-  return row?.createdAt ?? null;
+  return selectOldestUserGenerationAttemptSince(params);
 }
