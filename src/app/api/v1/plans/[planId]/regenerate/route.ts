@@ -48,184 +48,187 @@ import {
  * Enqueues a regeneration job for an existing plan with optional parameter overrides.
  */
 export const POST: PlainHandler = withErrorBoundary(
-  withAuthAndRateLimit('aiGeneration', async ({ req, userId, params }) => {
-    if (!regenerationQueueEnv.enabled) {
-      return jsonError(
-        'Plan regeneration is temporarily disabled while queue workers are unavailable.',
-        {
-          status: 503,
-          code: 'SERVICE_UNAVAILABLE',
-        }
-      );
-    }
+  withAuthAndRateLimit(
+    'aiGeneration',
+    async ({ req, userId, params: _params }) => {
+      if (!regenerationQueueEnv.enabled) {
+        return jsonError(
+          'Plan regeneration is temporarily disabled while queue workers are unavailable.',
+          {
+            status: 503,
+            code: 'SERVICE_UNAVAILABLE',
+          }
+        );
+      }
 
-    const planId = requirePlanIdFromRequest(req, 'second-to-last');
-    const user = await requireInternalUserByAuthId(userId);
-    const db = getDb();
-    const plan = await requireOwnedPlanById({
-      planId,
-      ownerUserId: user.id,
-      dbClient: db,
-    });
-
-    // Parse request body for overrides (before quota check to fail fast on validation)
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return jsonError('Invalid JSON in request body.', {
-        status: 400,
-        code: 'VALIDATION_ERROR',
+      const planId = requirePlanIdFromRequest(req, 'second-to-last');
+      const user = await requireInternalUserByAuthId(userId);
+      const db = getDb();
+      const plan = await requireOwnedPlanById({
+        planId,
+        ownerUserId: user.id,
+        dbClient: db,
       });
-    }
 
-    let overrides: PlanRegenerationOverridesInput | undefined;
-    try {
-      const parsed = planRegenerationRequestSchema.parse(body);
-      overrides = parsed.overrides;
-    } catch (err: unknown) {
-      const errDetail = err instanceof Error ? err : new Error(String(err));
-      if (err instanceof ZodError) {
-        throw new ValidationError('Invalid overrides.', {
-          cause: errDetail,
-          fieldErrors: err.flatten(),
+      // Parse request body for overrides (before quota check to fail fast on validation)
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        return jsonError('Invalid JSON in request body.', {
+          status: 400,
+          code: 'VALIDATION_ERROR',
         });
       }
-      throw new ValidationError('Invalid overrides.', { cause: errDetail });
-    }
 
-    const existingActiveJob = await getActiveRegenerationJob(
-      planId,
-      user.id,
-      db
-    );
-    if (existingActiveJob) {
-      throw new AppError(
-        'A regeneration job is already queued for this plan.',
-        {
-          status: 409,
-          code: 'REGENERATION_ALREADY_QUEUED',
-          details: { jobId: existingActiveJob.id },
-        }
-      );
-    }
-
-    const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
-    const generationRateLimitHeaders =
-      getPlanGenerationRateLimitHeaders(remaining);
-
-    // Atomically check and increment regeneration quota (prevents TOCTOU race)
-    const usageResult = await atomicCheckAndIncrementUsage(
-      user.id,
-      'regeneration',
-      db
-    );
-    if (!usageResult.allowed) {
-      return jsonError(
-        'Regeneration quota exceeded for your subscription tier.',
-        { status: 429, headers: generationRateLimitHeaders }
-      );
-    }
-
-    // Compute priority based on tier and topic
-    const tier = await resolveUserTier(user.id, db);
-    const priority = computeJobPriority({
-      tier,
-      isPriorityTopic: isPriorityTopic(overrides?.topic ?? plan.topic),
-    });
-
-    // Enqueue regeneration job
-    const payload: PlanRegenerationJobData = { planId, overrides };
-    const enqueueResult = await enqueueJobWithResult(
-      JOB_TYPES.PLAN_REGENERATION as JobType,
-      planId,
-      user.id,
-      payload,
-      priority
-    );
-
-    if (enqueueResult.deduplicated) {
-      let rollbackFailed = false;
+      let overrides: PlanRegenerationOverridesInput | undefined;
       try {
-        await decrementRegenerationUsage(user.id, db);
-      } catch (rollbackError) {
-        rollbackFailed = true;
-        recordBillingReconciliationRequired(
+        const parsed = planRegenerationRequestSchema.parse(body);
+        overrides = parsed.overrides;
+      } catch (err: unknown) {
+        const errDetail = err instanceof Error ? err : new Error(String(err));
+        if (err instanceof ZodError) {
+          throw new ValidationError('Invalid overrides.', {
+            cause: errDetail,
+            fieldErrors: err.flatten(),
+          });
+        }
+        throw new ValidationError('Invalid overrides.', { cause: errDetail });
+      }
+
+      const existingActiveJob = await getActiveRegenerationJob(
+        planId,
+        user.id,
+        db
+      );
+      if (existingActiveJob) {
+        throw new AppError(
+          'A regeneration job is already queued for this plan.',
           {
-            planId,
-            userId: user.id,
-            jobId: enqueueResult.id,
-          },
-          rollbackError
-        );
-        logger.error(
-          {
-            planId,
-            userId: user.id,
-            jobId: enqueueResult.id,
-            rollbackError,
-          },
-          'Failed to rollback regeneration usage after deduplicated enqueue'
+            status: 409,
+            code: 'REGENERATION_ALREADY_QUEUED',
+            details: { jobId: existingActiveJob.id },
+          }
         );
       }
 
-      throw new AppError(
-        'A regeneration job is already queued for this plan.',
-        {
-          status: 409,
-          code: 'REGENERATION_ALREADY_QUEUED',
-          details: {
-            jobId: enqueueResult.id,
-            ...(rollbackFailed && { reconciliationRequired: true }),
-          },
-        }
-      );
-    }
+      const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
+      const generationRateLimitHeaders =
+        getPlanGenerationRateLimitHeaders(remaining);
 
-    if (regenerationQueueEnv.inlineProcessingEnabled) {
-      if (tryAcquireInlineDrainLock()) {
+      // Atomically check and increment regeneration quota (prevents TOCTOU race)
+      const usageResult = await atomicCheckAndIncrementUsage(
+        user.id,
+        'regeneration',
+        db
+      );
+      if (!usageResult.allowed) {
+        return jsonError(
+          'Regeneration quota exceeded for your subscription tier.',
+          { status: 429, headers: generationRateLimitHeaders }
+        );
+      }
+
+      // Compute priority based on tier and topic
+      const tier = await resolveUserTier(user.id, db);
+      const priority = computeJobPriority({
+        tier,
+        isPriorityTopic: isPriorityTopic(overrides?.topic ?? plan.topic),
+      });
+
+      // Enqueue regeneration job
+      const payload: PlanRegenerationJobData = { planId, overrides };
+      const enqueueResult = await enqueueJobWithResult(
+        JOB_TYPES.PLAN_REGENERATION as JobType,
+        planId,
+        user.id,
+        payload,
+        priority
+      );
+
+      if (enqueueResult.deduplicated) {
+        let rollbackFailed = false;
         try {
-          const drainPromise = drainRegenerationQueue({ maxJobs: 1 });
-          void drainPromise
-            .catch((error: unknown) => {
-              logger.error(
-                {
-                  planId,
-                  userId: user.id,
-                  error,
-                  inlineProcessingEnabled:
-                    regenerationQueueEnv.inlineProcessingEnabled,
-                  drainFn: 'drainRegenerationQueue',
-                },
-                'Inline regeneration queue drain failed'
-              );
-            })
-            .finally(releaseInlineDrainLock);
-        } catch (syncError: unknown) {
-          releaseInlineDrainLock();
+          await decrementRegenerationUsage(user.id, db);
+        } catch (rollbackError) {
+          rollbackFailed = true;
+          recordBillingReconciliationRequired(
+            {
+              planId,
+              userId: user.id,
+              jobId: enqueueResult.id,
+            },
+            rollbackError
+          );
           logger.error(
             {
               planId,
               userId: user.id,
-              error: syncError,
-              inlineProcessingEnabled:
-                regenerationQueueEnv.inlineProcessingEnabled,
-              drainFn: 'drainRegenerationQueue',
+              jobId: enqueueResult.id,
+              rollbackError,
             },
-            'Inline regeneration queue drain failed (sync throw)'
+            'Failed to rollback regeneration usage after deduplicated enqueue'
           );
         }
-      }
-    }
 
-    return json(
-      {
-        generationId: planId,
-        planId,
-        jobId: enqueueResult.id,
-        status: 'pending',
-      },
-      { status: 202, headers: generationRateLimitHeaders }
-    );
-  })
+        throw new AppError(
+          'A regeneration job is already queued for this plan.',
+          {
+            status: 409,
+            code: 'REGENERATION_ALREADY_QUEUED',
+            details: {
+              jobId: enqueueResult.id,
+              ...(rollbackFailed && { reconciliationRequired: true }),
+            },
+          }
+        );
+      }
+
+      if (regenerationQueueEnv.inlineProcessingEnabled) {
+        if (tryAcquireInlineDrainLock()) {
+          try {
+            const drainPromise = drainRegenerationQueue({ maxJobs: 1 });
+            void drainPromise
+              .catch((error: unknown) => {
+                logger.error(
+                  {
+                    planId,
+                    userId: user.id,
+                    error,
+                    inlineProcessingEnabled:
+                      regenerationQueueEnv.inlineProcessingEnabled,
+                    drainFn: 'drainRegenerationQueue',
+                  },
+                  'Inline regeneration queue drain failed'
+                );
+              })
+              .finally(releaseInlineDrainLock);
+          } catch (syncError: unknown) {
+            releaseInlineDrainLock();
+            logger.error(
+              {
+                planId,
+                userId: user.id,
+                error: syncError,
+                inlineProcessingEnabled:
+                  regenerationQueueEnv.inlineProcessingEnabled,
+                drainFn: 'drainRegenerationQueue',
+              },
+              'Inline regeneration queue drain failed (sync throw)'
+            );
+          }
+        }
+      }
+
+      return json(
+        {
+          generationId: planId,
+          planId,
+          jobId: enqueueResult.id,
+          status: 'pending',
+        },
+        { status: 202, headers: generationRateLimitHeaders }
+      );
+    }
+  )
 );

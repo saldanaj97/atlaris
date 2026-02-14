@@ -91,7 +91,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(res.status).toBe(404);
 
     const body = await res.json();
-    expect(body.error).toBe('Plan not found');
+    expect(body.error).toBe('Learning plan not found.');
   });
 
   it('rejects regeneration for plan owned by different user', async () => {
@@ -119,7 +119,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(res.status).toBe(404);
 
     const body = await res.json();
-    expect(body.error).toBe('Plan not found');
+    expect(body.error).toBe('Learning plan not found.');
   });
 
   describe('invalid overrides schema', () => {

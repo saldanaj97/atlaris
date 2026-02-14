@@ -12,7 +12,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createFailedAttemptsInDb,
   getDurableWindowSeedCount,
-  seedFailedAttemptsForDurableWindow,
 } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';

@@ -1,18 +1,21 @@
-import '../../mocks/unit/sonner.unit';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import React from 'react';
 import SubscribeButton from '@/components/billing/SubscribeButton';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '../../mocks/unit/sonner.unit';
 
 describe('SubscribeButton', () => {
+  const mockLocation = { href: '' };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock window.location.href
-    delete (window as any).location;
-    (window as any).location = {
-      href: '',
-    } as Location;
+    mockLocation.href = '';
+    // Mock window.location so assignments to .href go to our object (jsdom can normalize href on the real Location)
+    Object.defineProperty(window, 'location', {
+      value: mockLocation,
+      writable: true,
+      configurable: true,
+    });
   });
 
   afterEach(() => {
