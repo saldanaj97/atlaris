@@ -194,12 +194,12 @@ function createDbHarness(params?: {
     }) as AttemptsDbClient['transaction'],
   };
 
-  const dbClient: AttemptsDbClient & AttemptOpsOverrides = {
+  const dbClient = {
     ...requiredDbMethods,
     reserveAttemptSlot: reserveAttemptSlotMock,
     finalizeAttemptSuccess: finalizeAttemptSuccessMock,
     finalizeAttemptFailure: finalizeAttemptFailureMock,
-  };
+  } as unknown as AttemptsDbClient & AttemptOpsOverrides;
 
   return {
     dbClient,

@@ -1,8 +1,10 @@
+// IMPORTANT: Mock imports must come first, before any component or module
+// imports that consume the mocked package (sonner in this case).
+import '../../mocks/unit/sonner.unit';
 import SubscribeButton from '@/components/billing/SubscribeButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import '../../mocks/unit/sonner.unit';
 
 describe('SubscribeButton', () => {
   const mockLocation = { href: '' };
