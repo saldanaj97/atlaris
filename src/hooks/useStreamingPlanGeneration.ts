@@ -198,7 +198,7 @@ export function useStreamingPlanGeneration() {
               }));
               resolve(event.data.planId);
               break;
-            case 'error':
+            case 'error': {
               errored = true;
               const errorPlanId = event.data.planId ?? latestPlanId;
               setState((prev) => ({
@@ -219,6 +219,28 @@ export function useStreamingPlanGeneration() {
               streamErr.data = { planId: errorPlanId ?? undefined };
               reject(streamErr);
               break;
+            }
+            case 'cancelled': {
+              errored = true;
+              latestPlanId = latestPlanId ?? event.data.planId;
+              setState((prev) => ({
+                ...prev,
+                status: 'error',
+                planId: prev.planId ?? latestPlanId,
+                error: {
+                  message: event.data.message,
+                  classification: event.data.classification,
+                  retryable: event.data.retryable,
+                },
+              }));
+              const cancelledErr = new Error(
+                event.data.message || 'Plan generation was cancelled.'
+              ) as StreamingError;
+              cancelledErr.planId = latestPlanId ?? undefined;
+              cancelledErr.data = { planId: latestPlanId ?? undefined };
+              reject(cancelledErr);
+              break;
+            }
           }
         };
 

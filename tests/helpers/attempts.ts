@@ -1,5 +1,5 @@
 import type { ParsedModule } from '@/lib/ai/parser';
-import type { GenerationInput } from '@/lib/ai/provider';
+import type { GenerationInput } from '@/lib/ai/types/provider.types';
 import {
   generationAttempts,
   learningPlans,

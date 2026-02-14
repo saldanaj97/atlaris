@@ -1,45 +1,26 @@
 import { ZodError } from 'zod';
 
-import { eq } from 'drizzle-orm';
-
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { AttemptCapExceededError, ValidationError } from '@/lib/api/errors';
+import { RateLimitError, ValidationError } from '@/lib/api/errors';
 import {
-  calculateTotalWeeks,
-  ensurePlanDurationAllowed,
-  findCappedPlanWithoutModules,
-  normalizePlanDurationForTier,
-} from '@/lib/api/plans/shared';
-import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
-import { json, jsonError } from '@/lib/api/response';
+  insertPlanWithRollback,
+  preparePlanCreationPreflight,
+} from '@/lib/api/plans/preflight';
+import { requireInternalUserByAuthId } from '@/lib/api/plans/route-context';
+import {
+  checkPlanGenerationRateLimit,
+  getPlanGenerationRateLimitHeaders,
+} from '@/lib/api/rate-limit';
+import { json } from '@/lib/api/response';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
-import { learningPlans } from '@/lib/db/schema';
-import { logger } from '@/lib/logging/logger';
-import { sanitizePdfContextForPersistence } from '@/lib/pdf/context';
-import { verifyAndConsumePdfExtractionProof } from '@/lib/security/pdf-extraction-proof';
-import {
-  atomicCheckAndIncrementPdfUsage,
-  atomicCheckAndInsertPlan,
-  decrementPdfPlanUsage,
-  resolveUserTier,
-} from '@/lib/stripe/usage';
-import {
-  CreateLearningPlanInput,
-  createLearningPlanSchema,
-} from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
 
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ userId }) => {
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
-
     const db = getDb();
+    const user = await requireInternalUserByAuthId(userId);
     const summaries = await getPlanSummariesForUser(user.id, db);
     return json(summaries);
   })
@@ -56,177 +37,62 @@ export const POST = withErrorBoundary(
       if (error instanceof ZodError) {
         throw new ValidationError('Invalid request body.', error.flatten());
       }
-      throw new ValidationError('Invalid request body.', error);
-    }
-
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
+      const details = error instanceof Error ? error : String(error);
+      throw new ValidationError('Invalid request body.', details);
     }
 
     const db = getDb();
-
-    // Check rate limit before creating plan
-    await checkPlanGenerationRateLimit(user.id, db);
-
-    // Enforce plan duration cap based on user tier using the requested window
-    const userTier = await resolveUserTier(user.id, db);
-    const requestedWeeks = calculateTotalWeeks({
-      startDate: body.startDate ?? null,
-      deadlineDate: body.deadlineDate ?? null,
-    });
-    const requestedCap = ensurePlanDurationAllowed({
-      userTier,
-      weeklyHours: body.weeklyHours,
-      totalWeeks: requestedWeeks,
+    const preflight = await preparePlanCreationPreflight({
+      body,
+      authUserId: userId,
+      dbClient: db,
     });
 
-    if (!requestedCap.allowed) {
-      return jsonError(
-        requestedCap.reason ?? 'Plan duration exceeds tier cap',
-        {
-          status: 403,
-        }
-      );
+    if (!preflight.ok) {
+      return preflight.response;
     }
 
-    // Normalize persisted dates to tier limits while keeping requested cap validation strict
-    const {
-      startDate: _startDate,
-      deadlineDate: _deadlineDate,
-      totalWeeks,
-    } = normalizePlanDurationForTier({
-      tier: userTier,
-      weeklyHours: body.weeklyHours,
-      startDate: body.startDate ?? null,
-      deadlineDate: body.deadlineDate ?? null,
-    });
-
-    const cap = ensurePlanDurationAllowed({
-      userTier,
-      weeklyHours: body.weeklyHours,
-      totalWeeks,
-    });
-
-    if (!cap.allowed) {
-      return jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
-        status: 403,
-      });
-    }
-
-    const cappedPlanId = await findCappedPlanWithoutModules(user.id);
-    if (cappedPlanId) {
-      throw new AttemptCapExceededError('attempt cap reached', {
-        planId: cappedPlanId,
-      });
-    }
-
-    const origin = body.origin ?? 'ai';
-    const extractedContent = body.extractedContent;
-
-    const invalidPdfProofResponse = () =>
-      jsonError('Invalid or expired PDF extraction proof.', { status: 403 });
-
-    if (origin === 'pdf') {
-      if (!extractedContent || !body.pdfProofToken || !body.pdfExtractionHash) {
-        return invalidPdfProofResponse();
-      }
-
-      const proofVerified = await verifyAndConsumePdfExtractionProof({
-        authUserId: userId,
-        extractedContent,
-        extractionHash: body.pdfExtractionHash,
-        token: body.pdfProofToken,
-        dbClient: db,
-      });
-
-      if (!proofVerified) {
-        return invalidPdfProofResponse();
-      }
-
-      const pdfUsage = await atomicCheckAndIncrementPdfUsage(user.id, db);
-      if (!pdfUsage.allowed) {
-        return jsonError('PDF plan quota exceeded for this month.', {
-          status: 403,
-          code: 'QUOTA_EXCEEDED',
-        });
-      }
-    }
-
-    const extractedContext =
-      origin === 'pdf' && extractedContent
-        ? sanitizePdfContextForPersistence(extractedContent)
-        : null;
-
-    const topic =
-      origin === 'pdf' &&
-      extractedContext &&
-      extractedContext.mainTopic &&
-      extractedContext.mainTopic.trim().length > 0
-        ? extractedContext.mainTopic.trim()
-        : body.topic;
-
-    let created: { id: string };
+    // Draft plan creation should not be blocked by the durable generation
+    // window cap; execution endpoints enforce that cap. We still expose
+    // advisory remaining headers for clients.
+    let generationRateLimitHeaders: Record<string, string>;
     try {
-      created = await atomicCheckAndInsertPlan(
-        user.id,
-        {
-          topic,
-          skillLevel: body.skillLevel,
-          weeklyHours: body.weeklyHours,
-          learningStyle: body.learningStyle,
-          visibility: 'private',
-          origin,
-          extractedContext,
-          startDate: _startDate,
-          deadlineDate: _deadlineDate,
-        },
+      const { remaining } = await checkPlanGenerationRateLimit(
+        preflight.data.user.id,
         db
       );
-    } catch (err) {
-      if (origin === 'pdf') {
-        try {
-          await decrementPdfPlanUsage(user.id, db);
-        } catch (rollbackErr) {
-          logger.error(
-            { rollbackErr, userId: user.id },
-            'Failed to rollback pdf plan usage'
-          );
-        }
+      generationRateLimitHeaders = getPlanGenerationRateLimitHeaders(remaining);
+    } catch (error) {
+      if (error instanceof RateLimitError) {
+        generationRateLimitHeaders = getPlanGenerationRateLimitHeaders(0);
+      } else {
+        throw error;
       }
-      throw err;
-    }
-    const [plan] = await db
-      .select()
-      .from(learningPlans)
-      .where(eq(learningPlans.id, created.id))
-      .limit(1);
-
-    // Notes from onboarding are intentionally ignored until the schema introduces a column.
-
-    if (!plan) {
-      throw new ValidationError('Failed to create learning plan.');
     }
 
-    // Note: Plan generation now happens via the streaming endpoint (/api/v1/plans/stream).
-    // This endpoint only creates the plan record. The frontend should redirect to the
-    // streaming endpoint or the plan page where generation can be initiated.
+    const created = await insertPlanWithRollback({
+      body,
+      preflight: preflight.data,
+      dbClient: db,
+    });
 
+    // Build response from preflight + insert result to avoid post-insert re-fetch
+    // under RLS (same user context should see the row, but avoids dependency on
+    // visibility and gives consistent 201 semantics).
+    const now = new Date();
     return json(
       {
-        id: plan.id,
-        topic: plan.topic,
-        skillLevel: plan.skillLevel,
-        weeklyHours: plan.weeklyHours,
-        learningStyle: plan.learningStyle,
-        visibility: plan.visibility,
-        origin: plan.origin,
-        createdAt: plan.createdAt?.toISOString(),
+        id: created.id,
+        topic: preflight.data.preparedInput.topic,
+        skillLevel: body.skillLevel,
+        weeklyHours: body.weeklyHours,
+        learningStyle: body.learningStyle,
+        visibility: 'private',
+        origin: preflight.data.preparedInput.origin,
+        createdAt: now.toISOString(),
         status: 'generating',
       },
-      { status: 201 }
+      { status: 201, headers: generationRateLimitHeaders }
     );
   })
 );

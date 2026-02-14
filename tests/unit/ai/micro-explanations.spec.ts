@@ -6,9 +6,9 @@ import {
   buildMicroExplanationSystemPrompt,
   buildMicroExplanationUserPrompt,
 } from '@/lib/ai/prompts';
-import type { AiPlanGenerationProvider } from '@/lib/ai/provider';
+import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 import { generateObject } from 'ai';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the AI SDK
 vi.mock('ai', async () => {
@@ -63,24 +63,21 @@ describe('Micro-explanations', () => {
   });
 
   describe('generateMicroExplanation', () => {
-    // Note: mockProvider is passed to generateMicroExplanation but is NOT used internally.
-    // The function uses OpenRouter directly regardless of this parameter.
-    // The parameter exists for backwards compatibility (see JSDoc in micro-explanations.ts).
-    // TODO: Remove this unused parameter in the next major version.
-    let mockProvider: AiPlanGenerationProvider;
+    const configuredProvider = {
+      generate: vi.fn(),
+      getMicroExplanationConfig: () => ({
+        apiKey: 'test-openrouter-key',
+        baseUrl: 'https://openrouter.ai/api/v1',
+      }),
+    } as unknown as AiPlanGenerationProvider;
+
+    const unconfiguredProvider = {
+      generate: vi.fn(),
+      getMicroExplanationConfig: () => null,
+    } as unknown as AiPlanGenerationProvider;
 
     beforeEach(() => {
       vi.clearAllMocks();
-      mockProvider = {
-        generate: vi.fn(),
-      } as any;
-
-      // Set up environment variables for OpenRouter
-      vi.stubEnv('OPENROUTER_API_KEY', 'test-openrouter-key');
-    });
-
-    afterEach(() => {
-      vi.unstubAllEnvs();
     });
 
     it('returns formatted markdown from structured response', async () => {
@@ -98,7 +95,7 @@ describe('Micro-explanations', () => {
         },
       } as Awaited<ReturnType<typeof generateObject>>);
 
-      const result = await generateMicroExplanation(mockProvider, {
+      const result = await generateMicroExplanation(configuredProvider, {
         topic: 'React Hooks',
         taskTitle: 'Use useState',
         skillLevel: 'beginner',
@@ -123,7 +120,7 @@ describe('Micro-explanations', () => {
         },
       } as Awaited<ReturnType<typeof generateObject>>);
 
-      const result = await generateMicroExplanation(mockProvider, {
+      const result = await generateMicroExplanation(configuredProvider, {
         topic: 'React Hooks',
         taskTitle: 'Use useState',
         skillLevel: 'beginner',
@@ -135,11 +132,41 @@ describe('Micro-explanations', () => {
       expect(result).not.toContain('**Practice:**');
     });
 
-    it('throws error when OpenRouter API key is not configured', async () => {
-      delete process.env.OPENROUTER_API_KEY;
+    it('rejects when provider reports unconfigured (getMicroExplanationConfig returns null)', async () => {
+      await expect(
+        generateMicroExplanation(unconfiguredProvider, {
+          topic: 'React Hooks',
+          taskTitle: 'Use useState',
+          skillLevel: 'beginner',
+        })
+      ).rejects.toThrow('OpenRouter API key is not configured');
+    });
+
+    it('rejects when provider returns config without apiKey', async () => {
+      const noApiKeyProvider = {
+        generate: vi.fn(),
+        getMicroExplanationConfig: () => ({
+          apiKey: '',
+          baseUrl: 'https://openrouter.ai/api/v1',
+        }),
+      } as unknown as AiPlanGenerationProvider;
 
       await expect(
-        generateMicroExplanation(mockProvider, {
+        generateMicroExplanation(noApiKeyProvider, {
+          topic: 'React Hooks',
+          taskTitle: 'Use useState',
+          skillLevel: 'beginner',
+        })
+      ).rejects.toThrow('OpenRouter API key is not configured');
+    });
+
+    it('rejects when provider lacks getMicroExplanationConfig', async () => {
+      const providerWithoutConfig = {
+        generate: vi.fn(),
+      } as unknown as AiPlanGenerationProvider;
+
+      await expect(
+        generateMicroExplanation(providerWithoutConfig, {
           topic: 'React Hooks',
           taskTitle: 'Use useState',
           skillLevel: 'beginner',

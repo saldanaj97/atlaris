@@ -434,12 +434,16 @@ export async function markPlanGenerationSuccess(
     .where(eq(learningPlans.id, planId));
 }
 
+export type MarkPlanFailureOptions = {
+  now?: () => Date;
+};
+
 export async function markPlanGenerationFailure(
   planId: string,
   dbClient: DbClient = getDb(),
-  now: () => Date = () => new Date()
+  options?: MarkPlanFailureOptions
 ): Promise<void> {
-  const timestamp = now();
+  const timestamp = (options?.now ?? (() => new Date()))();
 
   await dbClient
     .update(learningPlans)
@@ -569,6 +573,75 @@ export async function atomicCheckAndIncrementPdfUsage(
   });
 }
 
+type DecrementUsageColumn = 'pdfPlansGenerated' | 'regenerationsUsed';
+
+async function decrementUsageColumn(
+  userId: string,
+  column: DecrementUsageColumn,
+  actionLabel: string,
+  successLogMessage: string,
+  dbClient: DbClient = getDb()
+): Promise<void> {
+  const month = getCurrentMonth();
+
+  if (column === 'pdfPlansGenerated') {
+    const [updated] = await dbClient
+      .update(usageMetrics)
+      .set({
+        pdfPlansGenerated: sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
+      )
+      .returning({ pdfPlansGenerated: usageMetrics.pdfPlansGenerated });
+
+    if (!updated) {
+      logger.warn(
+        { userId, month, action: actionLabel },
+        'No usage metrics found to decrement'
+      );
+      return;
+    }
+    logger.info(
+      {
+        userId,
+        month,
+        action: actionLabel,
+        newCount: updated.pdfPlansGenerated,
+      },
+      successLogMessage
+    );
+    return;
+  }
+
+  const [updated] = await dbClient
+    .update(usageMetrics)
+    .set({
+      regenerationsUsed: sql`GREATEST(0, ${usageMetrics.regenerationsUsed} - 1)`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .returning({ regenerationsUsed: usageMetrics.regenerationsUsed });
+
+  if (!updated) {
+    logger.warn(
+      { userId, month, action: actionLabel },
+      'No usage metrics found to decrement'
+    );
+    return;
+  }
+  logger.info(
+    {
+      userId,
+      month,
+      action: actionLabel,
+      newCount: updated.regenerationsUsed,
+    },
+    successLogMessage
+  );
+}
+
 /**
  * Decrement PDF plan usage counter (used when a PDF plan is deleted/rolled back).
  * This operation is performed outside a transaction and may fail silently if metrics don't exist.
@@ -583,33 +656,30 @@ export async function decrementPdfPlanUsage(
   userId: string,
   dbClient: DbClient = getDb()
 ): Promise<void> {
-  const month = getCurrentMonth();
+  await decrementUsageColumn(
+    userId,
+    'pdfPlansGenerated',
+    'decrementPdfPlanUsage',
+    'PDF plan usage decremented',
+    dbClient
+  );
+}
 
-  const [updated] = await dbClient
-    .update(usageMetrics)
-    .set({
-      pdfPlansGenerated: sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
-    .returning({ pdfPlansGenerated: usageMetrics.pdfPlansGenerated });
-
-  if (!updated) {
-    logger.warn(
-      { userId, month, action: 'decrementPdfPlanUsage' },
-      'No usage metrics found to decrement'
-    );
-    return;
-  }
-
-  logger.info(
-    {
-      userId,
-      month,
-      action: 'decrementPdfPlanUsage',
-      newCount: updated.pdfPlansGenerated,
-    },
-    'PDF plan usage decremented'
+/**
+ * Decrement regeneration usage counter (used to roll back quota when an enqueue
+ * request deduplicates against an already active regeneration job).
+ * Counter is clamped at 0 to prevent negative values.
+ */
+export async function decrementRegenerationUsage(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<void> {
+  await decrementUsageColumn(
+    userId,
+    'regenerationsUsed',
+    'decrementRegenerationUsage',
+    'Regeneration usage decremented',
+    dbClient
   );
 }
 

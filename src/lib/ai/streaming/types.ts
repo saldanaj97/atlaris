@@ -55,9 +55,21 @@ export type ErrorEvent = {
   };
 };
 
+export type CancelledEvent = {
+  type: 'cancelled';
+  data: {
+    planId: string;
+    message: string;
+    classification: 'cancelled';
+    retryable: true;
+    requestId?: string;
+  };
+};
+
 export type StreamingEvent =
   | PlanStartEvent
   | ModuleSummaryEvent
   | ProgressEvent
   | CompleteEvent
-  | ErrorEvent;
+  | ErrorEvent
+  | CancelledEvent;

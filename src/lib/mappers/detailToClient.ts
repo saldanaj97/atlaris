@@ -1,13 +1,13 @@
 import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { logger } from '@/lib/logging/logger';
+import { derivePlanStatus } from '@/lib/plans/status';
 import {
   type AttemptStatus,
   ClientGenerationAttempt,
   ClientPlanDetail,
   type FailureClassification,
-  PlanStatus,
 } from '@/lib/types/client';
-import { GenerationAttempt, LearningPlanDetail } from '../types/db';
+import type { GenerationAttempt, LearningPlanDetail } from '@/lib/types/db';
 
 const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set([
   'success',
@@ -110,37 +110,6 @@ function toClientAttempt(attempt: GenerationAttempt): ClientGenerationAttempt {
   } satisfies ClientGenerationAttempt;
 }
 
-function derivePlanStatus(detail: LearningPlanDetail): PlanStatus | undefined {
-  const modulesCount = detail.plan.modules.length;
-
-  if (modulesCount > 0) {
-    return 'ready';
-  }
-
-  if (detail.plan.generationStatus === 'failed') {
-    return 'failed';
-  }
-
-  const latestAttempt = detail.latestAttempt;
-  if (
-    latestAttempt?.status === 'failure' &&
-    (latestAttempt.classification === 'validation' ||
-      latestAttempt.classification === 'capped')
-  ) {
-    return 'failed';
-  }
-
-  if (detail.attemptsCount >= ATTEMPT_CAP) {
-    return 'failed';
-  }
-
-  if (detail.plan.generationStatus === 'generating') {
-    return 'processing';
-  }
-
-  return 'pending';
-}
-
 export function mapDetailToClient(
   detail: LearningPlanDetail | null | undefined
 ): ClientPlanDetail | undefined {
@@ -197,7 +166,12 @@ export function mapDetailToClient(
     origin: plan.origin,
     createdAt: plan.createdAt?.toISOString(),
     modules,
-    status: derivePlanStatus(detail),
+    status: derivePlanStatus({
+      generationStatus: plan.generationStatus,
+      hasModules: modules.length > 0,
+      attemptsCount: detail.attemptsCount,
+      attemptCap: ATTEMPT_CAP,
+    }),
     latestAttempt,
   };
 }

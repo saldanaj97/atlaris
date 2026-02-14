@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { recordSuccess, startAttempt } from '@/lib/db/queries/attempts';
@@ -11,9 +12,38 @@ import {
   createSequentialNow,
 } from '../../helpers/attempts';
 
-describe('attempt service – success path', () => {
+interface AttemptMetadataShape {
+  provider?: {
+    model?: string;
+    provider?: string;
+    usage?: { totalTokens?: number };
+  };
+  normalization?: {
+    modules_clamped?: boolean;
+    tasks_clamped?: boolean;
+  };
+  timing?: {
+    duration_ms?: number;
+    extended_timeout?: boolean;
+  };
+  input?: {
+    topic?: {
+      truncated?: boolean;
+      original_length?: number;
+    };
+  };
+}
+
+function buildId(prefix: string): string {
+  return `${prefix}-${randomUUID()}`;
+}
+
+describe('attempt service - success path', () => {
   it('stores normalized modules, tasks, and attempt metadata', async () => {
     const mockDb = new MockDbClient();
+    const planId = buildId('plan');
+    const userId = buildId('user');
+    mockDb.planOwnerUserId = userId;
 
     const now = createSequentialNow([
       new Date('2024-01-01T00:00:00.000Z'),
@@ -22,8 +52,8 @@ describe('attempt service – success path', () => {
 
     const input = createInput({ topic: 'Learning Figma' });
     const preparation = await startAttempt({
-      planId: 'plan-1',
-      userId: 'user-1',
+      planId,
+      userId,
       input,
       dbClient: asDbClient(mockDb),
       now,
@@ -32,7 +62,7 @@ describe('attempt service – success path', () => {
     const modulesInput = createModules();
 
     const attempt = await recordSuccess({
-      planId: 'plan-1',
+      planId,
       preparation,
       modules: modulesInput,
       providerMetadata: {
@@ -48,13 +78,13 @@ describe('attempt service – success path', () => {
 
     expect(mockDb.modules).toHaveLength(2);
     expect(mockDb.modules[0]).toMatchObject({
-      planId: 'plan-1',
+      planId,
       order: 1,
       title: 'Module 1',
       estimatedMinutes: 15,
     });
     expect(mockDb.modules[1]).toMatchObject({
-      planId: 'plan-1',
+      planId,
       order: 2,
       estimatedMinutes: 60,
     });
@@ -81,7 +111,7 @@ describe('attempt service – success path', () => {
     expect(attempt.truncatedTopic).toBe(false);
     expect(attempt.truncatedNotes).toBe(false);
 
-    const metadata = attempt.metadata as Record<string, any>;
+    const metadata = attempt.metadata as AttemptMetadataShape;
     expect(metadata.provider).toEqual({
       model: 'fake',
       provider: 'mock',
@@ -95,20 +125,23 @@ describe('attempt service – success path', () => {
       duration_ms: 120000,
       extended_timeout: true,
     });
-    expect(metadata.input.topic).toEqual({
+    expect(metadata.input?.topic).toEqual({
       truncated: false,
       original_length: input.topic.length,
     });
 
     const expectedHash = hashSha256(
       JSON.stringify({
-        planId: 'plan-1',
-        userId: 'user-1',
+        planId,
+        userId,
         topic: preparation.sanitized.topic.value,
         notes: preparation.sanitized.notes.value,
         skillLevel: input.skillLevel,
         weeklyHours: input.weeklyHours,
         learningStyle: input.learningStyle,
+        pdfExtractionHash: null,
+        pdfProofVersion: null,
+        pdfContextDigest: null,
       })
     );
     expect(preparation.promptHash).toBe(expectedHash);

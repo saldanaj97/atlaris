@@ -1,23 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  ProviderError,
-  ProviderRateLimitError,
-  type GenerationInput,
-} from '@/lib/ai/provider';
+import { ProviderError, ProviderRateLimitError } from '@/lib/ai/provider';
+import { readableStreamToAsyncIterable } from '@/lib/ai/utils';
+import { createGenerationInput } from '../../fixtures/generation-input';
 import { createMockProvider } from '../../helpers/mockProvider';
 
-const SAMPLE_INPUT: GenerationInput = {
+const SAMPLE_INPUT = createGenerationInput({
   topic: 'Sample Topic',
   notes: 'Sample notes for testing the mock provider.',
-  skillLevel: 'beginner',
   weeklyHours: 5,
-  learningStyle: 'mixed',
-};
+});
 
-async function collectStream(stream: AsyncIterable<string>) {
+async function collectStream(
+  stream: AsyncIterable<string> | ReadableStream<string>
+) {
+  const source =
+    stream instanceof ReadableStream
+      ? readableStreamToAsyncIterable(stream)
+      : stream;
   let output = '';
-  for await (const chunk of stream) {
+  for await (const chunk of source) {
     output += chunk;
   }
   return output;

@@ -1,12 +1,29 @@
-import { db as serviceDb } from '@/lib/db/service-role';
 import { getRequestContext } from '@/lib/api/context';
 import { appEnv } from '@/lib/config/env';
+import { db as serviceDb } from '@/lib/db/service-role';
+
+export class MissingRequestDbContextError extends Error {
+  constructor() {
+    super(
+      'Missing request-scoped database context. Request handlers must run inside withAuth/withRequestContext. Use service-role db explicitly in workers/background jobs.'
+    );
+    this.name = 'MissingRequestDbContextError';
+  }
+}
+
+/**
+ * Explicit service-role accessor for workers/background jobs.
+ * Avoid using this in request handlers.
+ */
+export function getServiceDbForWorker(): typeof serviceDb {
+  return serviceDb;
+}
 
 /**
  * Returns the appropriate database client based on execution context:
  * - In test mode: Always returns service-role DB (bypasses RLS for integration tests)
  * - In request handlers: Returns the RLS-enforced DB from request context
- * - In workers/background jobs: Returns the service-role DB (bypasses RLS)
+ * - In non-test runtimes without request context: throws (fail-closed)
  *
  * This allows query modules to work in all contexts without explicit context passing.
  *
@@ -20,7 +37,10 @@ export function getDb(): typeof serviceDb {
   }
 
   const ctx = getRequestContext();
-  // We assert the request-scoped DB conforms to the service DB shape.
-  // Both Drizzle clients expose the same query API we use across the app.
-  return (ctx?.db as typeof serviceDb | undefined) ?? serviceDb;
+  const requestDb: typeof serviceDb | undefined = ctx?.db;
+  if (requestDb) {
+    return requestDb;
+  }
+
+  throw new MissingRequestDbContextError();
 }

@@ -152,9 +152,11 @@ Primary focus areas:
 4. **Consolidate duplicated validation surfaces**
 
 - Risk: duplicate validators increase inconsistency risk over time.
-- Evidence: `src/components/pdf/PdfUploadZone.tsx:51`, `src/lib/pdf/validate.ts:18`, `src/lib/api/rate-limit.ts:23`
+- Evidence: `src/components/pdf/PdfUploadZone.tsx:51`, `src/lib/api/pdf-rate-limit.ts`, `src/lib/validation/pdf.ts`
 - Action:
   - Define one authoritative server validation contract and make client checks advisory only.
+
+Status (2026-02): completed for server-side PDF intake flow. Legacy `src/lib/pdf/validate.ts` was removed; extraction route now uses shared request schemas and centralized server-side enforcement.
 
 5. **Cap extraction response payload size**
 

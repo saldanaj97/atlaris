@@ -12,6 +12,54 @@ async function* createStream(chunks: string[]): AsyncIterable<string> {
   }
 }
 
+interface Deferred<T> {
+  promise: Promise<T>;
+  resolve: (value?: T) => void;
+}
+
+function createDeferred<T>(): Deferred<T> {
+  let resolveFn: ((value: T) => void) | undefined;
+  const promise = new Promise<T>((resolve) => {
+    resolveFn = resolve;
+  });
+
+  return {
+    promise,
+    resolve(value?: T) {
+      resolveFn?.(value as T);
+    },
+  };
+}
+
+function createControlledStream(chunks: string[]): {
+  stream: AsyncIterable<string>;
+  releaseChunk: (index: number) => void;
+  waitUntilChunkYielded: (index: number) => Promise<void>;
+} {
+  const releaseSignals = chunks.map(() => createDeferred<void>());
+  const yieldedSignals = chunks.map(() => createDeferred<void>());
+
+  const stream: AsyncIterable<string> = {
+    async *[Symbol.asyncIterator]() {
+      for (let index = 0; index < chunks.length; index++) {
+        await releaseSignals[index].promise;
+        yieldedSignals[index].resolve();
+        yield chunks[index];
+      }
+    },
+  };
+
+  return {
+    stream,
+    releaseChunk(index: number) {
+      releaseSignals[index].resolve();
+    },
+    waitUntilChunkYielded(index: number) {
+      return yieldedSignals[index].promise;
+    },
+  };
+}
+
 describe('AI Parser', () => {
   describe('parseGenerationStream', () => {
     it('should parse valid JSON with modules', async () => {
@@ -69,6 +117,46 @@ describe('AI Parser', () => {
 
       await expect(promise).rejects.toThrow(ParserError);
       await expect(promise).rejects.toThrow('invalid JSON');
+    });
+
+    it('should throw AbortError when signal is already aborted', async () => {
+      const abortController = new AbortController();
+      abortController.abort();
+
+      await expect(
+        parseGenerationStream(createStream(['{"modules": []}']), {
+          signal: abortController.signal,
+        })
+      ).rejects.toMatchObject({ name: 'AbortError' });
+    });
+
+    it('should throw AbortError when signal aborts during stream parsing', async () => {
+      const abortController = new AbortController();
+      const payload = JSON.stringify({
+        modules: [
+          {
+            title: 'Module 1',
+            estimatedMinutes: 60,
+            tasks: [{ title: 'Task 1', estimatedMinutes: 30 }],
+          },
+        ],
+      });
+      const controlled = createControlledStream([
+        payload.slice(0, 20),
+        payload.slice(20),
+      ]);
+
+      const parsePromise = parseGenerationStream(controlled.stream, {
+        signal: abortController.signal,
+      });
+
+      controlled.releaseChunk(0);
+      await controlled.waitUntilChunkYielded(0);
+
+      abortController.abort();
+      controlled.releaseChunk(1);
+
+      await expect(parsePromise).rejects.toMatchObject({ name: 'AbortError' });
     });
 
     it('should throw ParserError when response is not an object', async () => {

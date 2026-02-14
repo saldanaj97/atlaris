@@ -1,6 +1,6 @@
-import type { ProviderMetadata } from '@/lib/ai/provider';
+import type { ProviderMetadata } from '@/lib/ai/types/provider.types';
 
-import { JOB_TYPE_MAP, type JobTypeValue } from './constants';
+import { JOB_TYPE_MAP, type JobTypeValue } from '@/lib/jobs/constants';
 
 /**
  * Job type constants object for convenient access.

@@ -1,12 +1,19 @@
-import { count, desc, eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 
+import { classificationToUserMessage } from '@/lib/ai/failure-presentation';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import {
+  requireInternalUserByAuthId,
+  requireOwnedPlanById,
+  requirePlanIdFromRequest,
+} from '@/lib/api/plans/route-context';
 import { json } from '@/lib/api/response';
-import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
-import { getUserByAuthId } from '@/lib/db/queries/users';
+import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
+import { generationAttempts, modules } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
+import { derivePlanStatus } from '@/lib/plans/status';
+import type { FailureClassification } from '@/lib/types/client';
 
 /**
  * GET /api/v1/plans/:planId/status
@@ -16,39 +23,20 @@ import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
  * instead of the legacy job_queue table.
  */
 
-type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
-
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req, userId }) => {
-    const planId = getPlanIdFromUrl(req, 'second-to-last');
-    if (!planId) {
-      throw new ValidationError('Plan id is required in the request path.');
-    }
-    if (!isUuid(planId)) {
-      throw new ValidationError('Invalid plan id format.');
-    }
+    const planId = requirePlanIdFromRequest(req, 'second-to-last');
 
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
+    logger.debug({ planId, userId }, 'Plan status request received');
 
-    // Fetch the plan (using getDb for future RLS support)
+    const user = await requireInternalUserByAuthId(userId);
+
     const db = getDb();
-    const plan = await db.query.learningPlans.findFirst({
-      where: eq(learningPlans.id, planId),
+    const plan = await requireOwnedPlanById({
+      planId,
+      ownerUserId: user.id,
+      dbClient: db,
     });
-
-    if (!plan) {
-      throw new NotFoundError('Learning plan not found.');
-    }
-
-    // Verify ownership
-    if (plan.userId !== user.id) {
-      throw new NotFoundError('Learning plan not found.');
-    }
 
     // Check if plan has modules (indicates successful generation)
     const planModules = await db
@@ -59,16 +47,8 @@ export const GET = withErrorBoundary(
 
     const hasModules = planModules.length > 0;
 
-    // Get attempt count and latest attempt error from generation_attempts table
-    const [attemptCountResult] = await db
-      .select({ value: count(generationAttempts.id) })
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId));
-
-    const attempts = attemptCountResult?.value ?? 0;
-
-    // Get the latest attempt to show error message if failed
-    const [latestAttempt] = await db
+    // Fetch bounded recent attempts (max retries is ATTEMPT_CAP), derive count + latest in memory.
+    const recentAttempts = await db
       .select({
         classification: generationAttempts.classification,
         createdAt: generationAttempts.createdAt,
@@ -76,42 +56,35 @@ export const GET = withErrorBoundary(
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, planId))
       .orderBy(desc(generationAttempts.createdAt))
-      .limit(1);
+      .limit(ATTEMPT_CAP);
 
-    // Determine status based on generationStatus column and modules
-    let status: PlanStatus;
-    const generationStatus = plan.generationStatus;
+    const attempts = recentAttempts.length;
+    const latestAttempt = recentAttempts[0];
 
-    if (generationStatus === 'ready' && hasModules) {
-      status = 'ready';
-    } else if (generationStatus === 'failed') {
-      status = 'failed';
-    } else if (generationStatus === 'generating') {
-      // 'generating' maps to 'processing' for the frontend
-      status = 'processing';
-    } else if (hasModules) {
-      // Has modules but status not 'ready' - treat as ready
-      status = 'ready';
-    } else {
-      // No modules and not failed - still pending/processing
-      status = 'pending';
-    }
+    const status = derivePlanStatus({
+      generationStatus: plan.generationStatus,
+      hasModules,
+      attemptsCount: attempts,
+      attemptCap: ATTEMPT_CAP,
+    });
 
-    // Build error message from latest attempt classification
     let latestError: string | null = null;
-    if (status === 'failed' && latestAttempt?.classification) {
-      const classification = latestAttempt.classification;
-      // Map classification to user-friendly message
-      const errorMessages: Record<string, string> = {
-        timeout: 'Generation timed out. Please try again.',
-        rate_limit: 'Rate limit exceeded. Please wait and try again.',
-        validation: 'Invalid response from AI. Please try again.',
-        parse_error: 'Failed to parse AI response. Please try again.',
-        network: 'Network error occurred. Please try again.',
-        capped: 'Maximum generation attempts reached for this plan.',
-        unknown: 'An unexpected error occurred. Please try again.',
-      };
-      latestError = errorMessages[classification] ?? errorMessages.unknown;
+    if (status === 'failed') {
+      const planClassification = latestAttemptToClassification(
+        latestAttempt?.classification
+      );
+      latestError = classificationToUserMessage(planClassification);
+      logger.warn(
+        {
+          planId,
+          userId: user.id,
+          status,
+          attempts,
+          classification: latestAttempt?.classification ?? null,
+          latestError,
+        },
+        'Plan generation failed'
+      );
     }
 
     return json({
@@ -124,3 +97,18 @@ export const GET = withErrorBoundary(
     });
   })
 );
+
+function latestAttemptToClassification(
+  classification: string | null | undefined
+): FailureClassification | 'unknown' {
+  switch (classification) {
+    case 'timeout':
+    case 'rate_limit':
+    case 'provider_error':
+    case 'validation':
+    case 'capped':
+      return classification;
+    default:
+      return 'unknown';
+  }
+}

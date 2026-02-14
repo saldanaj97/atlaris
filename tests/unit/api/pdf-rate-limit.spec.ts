@@ -1,9 +1,12 @@
 import {
+  acquireGlobalPdfExtractionSlot,
   checkPdfExtractionThrottle,
   checkPdfSizeLimit,
+  type GlobalExtractionState,
   validatePdfUpload,
+  withGlobalPdfSlot,
 } from '@/lib/api/pdf-rate-limit';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
   describe('Extraction throttling', () => {
@@ -132,6 +135,100 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
         },
       });
       expect(blocked.allowed).toBe(false);
+    });
+  });
+
+  describe('Global extraction concurrency', () => {
+    const createTracker = (): GlobalExtractionState => ({ inFlight: 0 });
+
+    it('blocks when global extraction slots are exhausted', () => {
+      const tracker = createTracker();
+
+      const acquired = [
+        acquireGlobalPdfExtractionSlot({ state: tracker }),
+        acquireGlobalPdfExtractionSlot({ state: tracker }),
+        acquireGlobalPdfExtractionSlot({ state: tracker }),
+        acquireGlobalPdfExtractionSlot({ state: tracker }),
+      ];
+
+      for (const slot of acquired) {
+        expect(slot.allowed).toBe(true);
+      }
+
+      const blocked = acquireGlobalPdfExtractionSlot({ state: tracker });
+      expect(blocked.allowed).toBe(false);
+      if (!blocked.allowed) {
+        expect(blocked.retryAfterMs).toBeGreaterThan(0);
+      }
+
+      for (const slot of acquired) {
+        if (!slot.allowed) {
+          throw new Error('Expected slot to be allowed');
+        }
+        slot.release();
+      }
+    });
+
+    it('releases slot idempotently and allows next extraction', () => {
+      const tracker = createTracker();
+
+      const slot = acquireGlobalPdfExtractionSlot({ state: tracker });
+      expect(slot.allowed).toBe(true);
+      if (!slot.allowed) {
+        throw new Error('Expected slot to be allowed');
+      }
+
+      slot.release();
+      slot.release();
+
+      const next = acquireGlobalPdfExtractionSlot({ state: tracker });
+      expect(next.allowed).toBe(true);
+      if (!next.allowed) {
+        throw new Error('Expected next slot to be allowed');
+      }
+      next.release();
+      next.release();
+    });
+
+    it('automatically reclaims leaked slots after lease timeout', () => {
+      vi.useFakeTimers();
+      const tracker = createTracker();
+      const slot = acquireGlobalPdfExtractionSlot({
+        state: tracker,
+        leaseMs: 5,
+      });
+      expect(slot.allowed).toBe(true);
+      if (!slot.allowed) {
+        throw new Error('Expected slot to be allowed');
+      }
+      expect(tracker.inFlight).toBe(1);
+
+      vi.advanceTimersByTime(20);
+      expect(tracker.inFlight).toBe(0);
+
+      slot.release();
+      expect(tracker.inFlight).toBe(0);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('withGlobalPdfSlot always releases the slot in finally', async () => {
+      expect.assertions(3);
+      const tracker = createTracker();
+
+      await expect(
+        withGlobalPdfSlot(
+          async () => {
+            expect(tracker.inFlight).toBe(1);
+            throw new Error('boom');
+          },
+          { state: tracker }
+        )
+      ).rejects.toThrow('boom');
+
+      expect(tracker.inFlight).toBe(0);
     });
   });
 

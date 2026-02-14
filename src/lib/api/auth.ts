@@ -171,17 +171,17 @@ export function withRateLimit(
       checkUserRateLimit(ctx.userId, category);
       const response = await handler(ctx);
 
-      // Attach rate limit headers to the response
-      // We create a new Response because the original may be immutable
       const rateLimitHeaders = getUserRateLimitHeaders(ctx.userId, category);
+      const headers = new Headers(response.headers);
+      for (const [name, value] of Object.entries(rateLimitHeaders)) {
+        // Use set() so existing values are replaced case-insensitively.
+        headers.set(name, value);
+      }
 
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,
-        headers: {
-          ...Object.fromEntries(response.headers.entries()),
-          ...rateLimitHeaders,
-        },
+        headers,
       });
     };
   };

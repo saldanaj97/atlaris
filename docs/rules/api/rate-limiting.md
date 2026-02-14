@@ -17,9 +17,11 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 
 ### Plan Generation Rate Limit
 
-| Limit       | Window     | Scope                          |
-| ----------- | ---------- | ------------------------------ |
-| 10 attempts | 60 minutes | Per user (generation_attempts) |
+| Limit                                           | Window                                              | Scope                          |
+| ----------------------------------------------- | --------------------------------------------------- | ------------------------------ |
+| `PLAN_GENERATION_LIMIT` (currently 10 attempts) | `PLAN_GENERATION_WINDOW_MINUTES` (currently 60 min) | Per user (generation_attempts) |
+
+Source of truth for durable generation limits is `src/lib/ai/generation-policy.ts`. Avoid hardcoding numeric values in docs/tests.
 
 ## Architecture
 
@@ -39,6 +41,7 @@ Located in `src/lib/api/rate-limit.ts`.
 - **Storage**: Database (generation_attempts table)
 - **Key**: RLS-scoped (current user via session)
 - **Scope**: Actual generation attempts (stream + retry paths)
+- **Policy constants**: `PLAN_GENERATION_LIMIT`, `PLAN_GENERATION_WINDOW_MINUTES`
 - **Multi-instance note**: Globally consistent (database-backed)
 
 ## Usage in API Routes
@@ -86,7 +89,7 @@ import { getDb } from '@/lib/db/runtime';
 
 // Inside handler, after user-based rate limit passes
 const db = getDb();
-await checkPlanGenerationRateLimit(db); // Uses RLS-scoped generation_attempts count
+await checkPlanGenerationRateLimit(user.id, db); // Uses generation_attempts count in durable window
 ```
 
 ## Response Headers
@@ -133,10 +136,10 @@ When rate limit is exceeded, the API returns:
 
 ### AI Generation (`aiGeneration`)
 
+- `POST /api/v1/plans/stream`
 - `POST /api/v1/plans/[planId]/retry`
 - `POST /api/v1/plans/[planId]/regenerate`
 - `POST /api/v1/ai/enhance-content`
-- `POST /api/v1/ai/generate-plan`
 
 ### Integration (`integration`)
 

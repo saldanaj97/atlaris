@@ -1,12 +1,12 @@
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 import { createRlsDbForUser } from '../../helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
@@ -18,6 +18,10 @@ import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
  */
 
 describe('RLS attempt insertion', () => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+  });
+
   it('blocks attempt insertion for non-owner user', async () => {
     const ownerAuthUserId = buildTestAuthUserId('rls-insert-owner');
     const attackerAuthUserId = buildTestAuthUserId('rls-insert-attacker');
@@ -78,7 +82,7 @@ describe('RLS attempt insertion', () => {
       err.code === '42501' ||
       (err.cause as { code?: string })?.code === '42501';
     const hasPermissionMessage =
-      /permission denied|row[- ]level security|not found or inaccessible/i.test(
+      /permission denied|row[- ]level security|not found or inaccessible|user not found for generation attempt reservation/i.test(
         combinedMsg
       );
     expect(

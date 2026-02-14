@@ -1,3 +1,5 @@
+import { RateLimitError } from '@/lib/api/errors';
+import { appEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import {
@@ -128,11 +130,22 @@ export async function validatePdfUpload(
 const PDF_EXTRACTION_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const PDF_EXTRACTION_MAX_PER_WINDOW = 10;
 const PDF_EXTRACTION_MAX_TRACKED_USERS = 50_000;
+const PDF_EXTRACTION_MAX_CONCURRENT = 4;
+const PDF_EXTRACTION_CONCURRENCY_RETRY_AFTER_MS = 1_000;
+const PDF_EXTRACTION_LEASE_MS = 2 * 60 * 1000;
 
 const extractionTimestamps = new LRUCache<string, number[]>({
   max: PDF_EXTRACTION_MAX_TRACKED_USERS,
   ttl: PDF_EXTRACTION_WINDOW_MS + 1000,
 });
+
+export interface GlobalExtractionState {
+  inFlight: number;
+}
+
+const globalExtractionState: GlobalExtractionState = {
+  inFlight: 0,
+};
 
 export interface PdfThrottleResult {
   allowed: boolean;
@@ -146,6 +159,24 @@ export interface PdfThrottleDeps {
   now?: () => number;
   headers?: Record<string, string | undefined>;
 }
+
+export interface PdfGlobalExtractionDeps {
+  /** Canonical key for global extraction state (injection for tests). */
+  state?: GlobalExtractionState;
+  leaseMs?: number;
+  setTimeoutFn?: typeof setTimeout;
+  clearTimeoutFn?: typeof clearTimeout;
+}
+
+export type PdfGlobalExtractionResult =
+  | {
+      allowed: true;
+      release: () => void;
+    }
+  | {
+      allowed: false;
+      retryAfterMs: number;
+    };
 
 function pruneRecentTimestamps(
   timestamps: number[],
@@ -196,4 +227,80 @@ export function checkPdfExtractionThrottle(
   deps: PdfThrottleDeps = {}
 ): PdfThrottleResult {
   return acquirePdfExtractionSlot(userId, deps);
+}
+
+export function acquireGlobalPdfExtractionSlot(
+  deps: PdfGlobalExtractionDeps = {}
+): PdfGlobalExtractionResult {
+  const state = deps.state ?? globalExtractionState;
+  const leaseMs = deps.leaseMs ?? PDF_EXTRACTION_LEASE_MS;
+  const setTimeoutFn = deps.setTimeoutFn ?? setTimeout;
+  const clearTimeoutFn = deps.clearTimeoutFn ?? clearTimeout;
+
+  if (state.inFlight >= PDF_EXTRACTION_MAX_CONCURRENT) {
+    return {
+      allowed: false,
+      retryAfterMs: PDF_EXTRACTION_CONCURRENCY_RETRY_AFTER_MS,
+    };
+  }
+
+  state.inFlight += 1;
+  let released = false;
+  let leaseTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const release = (): void => {
+    if (released) {
+      return;
+    }
+    released = true;
+    if (leaseTimer) {
+      clearTimeoutFn(leaseTimer);
+      leaseTimer = null;
+    }
+    state.inFlight = Math.max(0, state.inFlight - 1);
+  };
+
+  leaseTimer = setTimeoutFn(() => {
+    release();
+  }, leaseMs);
+
+  return {
+    allowed: true,
+    release,
+  };
+}
+
+export async function withGlobalPdfSlot<T>(
+  asyncFn: () => Promise<T>,
+  deps: PdfGlobalExtractionDeps = {}
+): Promise<T> {
+  const slot = acquireGlobalPdfExtractionSlot(deps);
+  if (!slot.allowed) {
+    throw new RateLimitError(
+      'Global PDF extraction capacity exhausted. Retry after the indicated time.',
+      { retryAfter: slot.retryAfterMs, remaining: 0 }
+    );
+  }
+
+  try {
+    return await asyncFn();
+  } finally {
+    slot.release();
+  }
+}
+
+/**
+ * Resets internal throttle state (extractionTimestamps + globalExtractionState).
+ * DANGER: For test use only. Mutates shared in-memory state. Never call in production.
+ *
+ * @internal
+ */
+export function _dangerousResetPdfExtractionThrottleForTests(): void {
+  if (!appEnv.isTest) {
+    throw new Error(
+      '_dangerousResetPdfExtractionThrottleForTests is for test environments only'
+    );
+  }
+  extractionTimestamps.clear();
+  globalExtractionState.inFlight = 0;
 }

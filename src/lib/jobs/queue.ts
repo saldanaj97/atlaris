@@ -5,6 +5,7 @@ import {
   failJobRecord,
   findJobsByPlan,
   insertJobRecord,
+  type JobEnqueueResult,
 } from '@/lib/db/queries/jobs';
 import { db } from '@/lib/db/service-role';
 import type { Job, JobPayload, JobResult, JobType } from '@/lib/jobs/types';
@@ -20,6 +21,23 @@ export async function enqueueJob(
   data: JobPayload,
   priority = 0
 ): Promise<string> {
+  const result = await enqueueJobWithResult(
+    type,
+    planId,
+    userId,
+    data,
+    priority
+  );
+  return result.id;
+}
+
+export async function enqueueJobWithResult(
+  type: JobType,
+  planId: string | null,
+  userId: string,
+  data: JobPayload,
+  priority = 0
+): Promise<JobEnqueueResult> {
   return insertJobRecord({ type, planId, userId, data, priority }, db);
 }
 

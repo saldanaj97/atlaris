@@ -8,18 +8,15 @@
  */
 
 import {
-  AI_DEFAULT_MODEL,
+  getDefaultModelForTier,
   getModelsForTier,
   isValidModelId,
 } from '@/lib/ai/ai-models';
-import {
-  getGenerationProvider,
-  getGenerationProviderWithModel,
-} from '@/lib/ai/provider-factory';
+import * as providerFactory from '@/lib/ai/provider-factory';
 import type { SubscriptionTier } from '@/lib/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 import { AppError } from '@/lib/api/errors';
-import { logger } from '@/lib/logging/logger';
+import { logger, type Logger } from '@/lib/logging/logger';
 
 export interface ModelResolution {
   /** The model ID that was resolved (always valid and tier-allowed) */
@@ -32,26 +29,57 @@ export interface ModelResolution {
   fallbackReason?: 'invalid_model' | 'tier_denied' | 'not_specified';
 }
 
+export type ModelValidationResult =
+  | { valid: true }
+  | { valid: false; reason: 'invalid_model' | 'tier_denied' };
+
+export type ModelResolverLogger = Pick<Logger, 'warn' | 'info' | 'error'>;
+export type ProviderGetter =
+  typeof providerFactory.getGenerationProviderWithModel;
+
+/**
+ * Validates whether a requested model is both known and allowed for a tier.
+ */
+export function validateModelForTier(
+  userTier: SubscriptionTier,
+  requestedModel: string
+): ModelValidationResult {
+  if (!isValidModelId(requestedModel)) {
+    return { valid: false, reason: 'invalid_model' };
+  }
+
+  const allowedModels = getModelsForTier(userTier);
+  const isAllowed = allowedModels.some((model) => model.id === requestedModel);
+
+  if (!isAllowed) {
+    return { valid: false, reason: 'tier_denied' };
+  }
+
+  return { valid: true };
+}
+
 /**
  * Wraps provider factory calls in try/catch. Logs and rethrows with contextual
  * details (requestedModel, which factory failed) for centralized error surfaces.
  */
 function getProviderSafe(
   modelIdToUse: string,
-  requestedModel: string | undefined | null
+  requestedModel: string | undefined | null,
+  providerGetter: ProviderGetter,
+  requestLogger: ModelResolverLogger
 ): AiPlanGenerationProvider {
-  const useCustomModel = modelIdToUse !== AI_DEFAULT_MODEL;
-  const factory = useCustomModel
-    ? 'getGenerationProviderWithModel'
-    : 'getGenerationProvider';
-
   try {
-    return useCustomModel
-      ? getGenerationProviderWithModel(modelIdToUse)
-      : getGenerationProvider();
+    // Always use the model-specific provider factory so default-model fallback
+    // cannot be silently redirected by aiEnv.defaultModel.
+    return providerGetter(modelIdToUse);
   } catch (err) {
-    logger.error(
-      { err, requestedModel: requestedModel ?? 'default', factory },
+    const factoryName = providerGetter.name || 'unknownFactory';
+    requestLogger.error(
+      {
+        err,
+        requestedModel: requestedModel ?? 'default',
+        factory: factoryName,
+      },
       'Provider factory failed'
     );
     throw new AppError('Provider initialization failed.', {
@@ -69,19 +97,31 @@ function getProviderSafe(
  * @param userTier - The user's subscription tier
  * @param requestedModel - Optional model ID from request. Pass undefined when param absent
  *   (not_specified fallback). Null/empty string means invalid_model fallback.
+ * @param providerGetter - Optional provider getter for dependency injection in tests.
+ *   Defaults to providerFactory.getGenerationProviderWithModel.
+ * @param requestLogger - Optional logger injection for tests/callers that need log isolation.
  * @returns ModelResolution with the resolved provider and metadata
  */
 export function resolveModelForTier(
   userTier: SubscriptionTier,
-  requestedModel?: string | null
+  requestedModel?: string | null,
+  providerGetter: ProviderGetter = providerFactory.getGenerationProviderWithModel,
+  requestLogger: ModelResolverLogger = logger
 ): ModelResolution {
+  const defaultModelForTier = getDefaultModelForTier(userTier);
+
   // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
   const modelSpecified = requestedModel !== undefined;
 
   if (!modelSpecified) {
     return {
-      modelId: AI_DEFAULT_MODEL,
-      provider: getProviderSafe(AI_DEFAULT_MODEL, requestedModel),
+      modelId: defaultModelForTier,
+      provider: getProviderSafe(
+        defaultModelForTier,
+        requestedModel,
+        providerGetter,
+        requestLogger
+      ),
       fallback: true,
       fallbackReason: 'not_specified',
     };
@@ -89,53 +129,53 @@ export function resolveModelForTier(
 
   // Explicit null or empty string → invalid_model
   if (requestedModel === null || requestedModel === '') {
-    logger.warn(
+    requestLogger.warn(
       { requestedModel, userTier },
       'Invalid model requested, falling back to default'
     );
     return {
-      modelId: AI_DEFAULT_MODEL,
-      provider: getProviderSafe(AI_DEFAULT_MODEL, requestedModel),
+      modelId: defaultModelForTier,
+      provider: getProviderSafe(
+        defaultModelForTier,
+        requestedModel,
+        providerGetter,
+        requestLogger
+      ),
       fallback: true,
       fallbackReason: 'invalid_model',
     };
   }
 
   // Check if model ID is valid
-  if (!isValidModelId(requestedModel)) {
-    logger.warn(
-      { requestedModel, userTier },
-      'Invalid model requested, falling back to default'
+  const validation = validateModelForTier(userTier, requestedModel);
+
+  if (!validation.valid) {
+    requestLogger.warn(
+      { requestedModel, userTier, reason: validation.reason },
+      'Invalid or tier-denied model, falling back to default'
     );
     return {
-      modelId: AI_DEFAULT_MODEL,
-      provider: getProviderSafe(AI_DEFAULT_MODEL, requestedModel),
+      modelId: defaultModelForTier,
+      provider: getProviderSafe(
+        defaultModelForTier,
+        requestedModel,
+        providerGetter,
+        requestLogger
+      ),
       fallback: true,
-      fallbackReason: 'invalid_model',
-    };
-  }
-
-  // Check if model is allowed for user's tier
-  const allowedModels = getModelsForTier(userTier);
-  const isAllowed = allowedModels.some((m) => m.id === requestedModel);
-
-  if (!isAllowed) {
-    logger.warn(
-      { requestedModel, userTier },
-      'Model not allowed for tier, falling back to default'
-    );
-    return {
-      modelId: AI_DEFAULT_MODEL,
-      provider: getProviderSafe(AI_DEFAULT_MODEL, requestedModel),
-      fallback: true,
-      fallbackReason: 'tier_denied',
+      fallbackReason: validation.reason,
     };
   }
 
   // Model is valid and allowed
   return {
     modelId: requestedModel,
-    provider: getProviderSafe(requestedModel, requestedModel),
+    provider: getProviderSafe(
+      requestedModel,
+      requestedModel,
+      providerGetter,
+      requestLogger
+    ),
     fallback: false,
   };
 }

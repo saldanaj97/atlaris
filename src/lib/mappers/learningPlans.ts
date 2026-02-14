@@ -117,6 +117,7 @@ export interface PdfSettingsToCreateInputParams {
   deadlineWeeks: string;
   pdfProofToken: string;
   pdfExtractionHash: string;
+  pdfProofVersion?: 1;
 }
 
 /**
@@ -133,6 +134,7 @@ export function mapPdfSettingsToCreateInput(
     },
     pdfProofToken: params.pdfProofToken,
     pdfExtractionHash: params.pdfExtractionHash,
+    pdfProofVersion: params.pdfProofVersion,
     topic: params.mainTopic,
     skillLevel: asSkillLevel(params.skillLevel),
     weeklyHours: parseWeeklyHours(params.weeklyHours),

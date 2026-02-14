@@ -85,25 +85,25 @@ This document explains the complete flow from user request to persisted plan.
 | ------------------------- | --------------------------------------------------------------------------------------- |
 | `orchestrator.ts`         | **Main entry point** - `runGenerationAttempt()` coordinates the entire generation flow  |
 | `provider-factory.ts`     | Selects provider: `MockGenerationProvider` (tests) vs `RouterGenerationProvider` (prod) |
-| `providers/router.ts`     | Routes to OpenRouter with p-retry fallback logic                                        |
-| `providers/openrouter.ts` | OpenRouter SDK integration, constructs prompts, handles API calls                       |
+| `providers/router.ts`     | Provider routing + transient retry policy (retryable: rate-limit/5xx only)              |
+| `providers/openrouter.ts` | OpenRouter transport adapter (streaming mode), metadata extraction, error mapping       |
 | `providers/mock.ts`       | Deterministic mock for testing (no external calls)                                      |
-| `parser.ts`               | Parses AI JSON output into `ParsedModule[]`, validates with Zod                         |
+| `parser.ts`               | Parses AI JSON output into `ParsedModule[]`, validates with parser guards + errors      |
 | `pacing.ts`               | `pacePlan()` - Trims/adjusts modules to fit user's weekly hours                         |
 | `prompts.ts`              | System and user prompt builders for curriculum generation                               |
 | `schema.ts`               | Zod schemas for AI output validation                                                    |
 | `classification.ts`       | Classifies failures: `timeout`, `rate_limit`, `provider_error`, `validation`, `capped`  |
-| `timeout.ts`              | Adaptive timeout with extension on first module detection                               |
+| `timeout.ts`              | Adaptive timeout controller + shared retry backoff config                               |
 
 ### Database Layer (`src/lib/db/`)
 
-| File                     | Responsibility                                                                  |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| `schema/tables/plans.ts` | Schema: `learning_plans`, `modules`, `tasks`, `generation_attempts`             |
-| `queries/attempts.ts`    | `startAttempt()`, `recordSuccess()`, `recordFailure()` with atomic transactions |
-| `queries/plans.ts`       | Plan CRUD operations                                                            |
-| `runtime.ts`             | `getDb()` - RLS-enforced client for request handlers                            |
-| `service-role.ts`        | `db` - Bypasses RLS (tests/workers only)                                        |
+| File                     | Responsibility                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `schema/tables/plans.ts` | Schema: `learning_plans`, `modules`, `tasks`, `generation_attempts`                                     |
+| `queries/attempts.ts`    | `reserveAttemptSlot()`, `finalizeAttemptSuccess()`, `finalizeAttemptFailure()` with atomic transactions |
+| `queries/plans.ts`       | Plan CRUD operations                                                                                    |
+| `runtime.ts`             | `getDb()` - RLS-enforced client for request handlers                                                    |
+| `service-role.ts`        | `db` - Bypasses RLS (tests/workers only)                                                                |
 
 ### Streaming (`src/lib/ai/streaming/`)
 
@@ -129,7 +129,7 @@ This document explains the complete flow from user request to persisted plan.
 
 // API does:
 1. Authenticate user (Clerk)
-2. Rate limit check (10 requests / 60 minutes)
+2. User rate limit check (`mutation`: 60 requests / minute)
 3. Validate input with Zod
 4. Truncate if needed (topic ≤200 chars, notes ≤2000 chars)
 5. Insert plan record with status: 'generating'
@@ -142,10 +142,12 @@ This document explains the complete flow from user request to persisted plan.
 // Client calls with planId
 // API does:
 1. Verify plan exists and belongs to user
-2. Check plan isn't already 'ready' or at max attempts
-3. Start SSE stream response
-4. Call runGenerationAttempt()
-5. Stream events as generation progresses
+2. User rate limit check (`aiGeneration`)
+3. Durable generation window check (`PLAN_GENERATION_LIMIT` per `PLAN_GENERATION_WINDOW_MINUTES`)
+4. Check plan isn't already 'ready' or at max attempts
+5. Start SSE stream response
+6. Call runGenerationAttempt()
+7. Stream events as generation progresses
 ```
 
 ### Step 3: AI Generation (`orchestrator.ts`)
@@ -153,28 +155,41 @@ This document explains the complete flow from user request to persisted plan.
 ```typescript
 async function runGenerationAttempt(
   { planId, userId, input },
-  { provider, timeoutConfig, signal }
+  { provider, timeoutConfig, signal, dbClient }
 ): Promise<GenerationResult> {
-  // 1. Record attempt start in DB
-  const attempt = await startAttempt(planId, userId);
+  // 1. Reserve attempt slot atomically
+  const reservation = await reserveAttemptSlot({
+    planId,
+    userId,
+    input,
+    dbClient,
+  });
 
-  // 2. Call AI provider
+  // 2. Resolve timeout budget from aiTimeoutEnv (or caller override)
+  const timeout = createAdaptiveTimeout(timeoutConfig);
+
+  // 3. Call AI provider with explicit timeout + abort signal
   const { stream, metadata } = await provider.generate(input, {
     signal,
     timeoutMs: timeoutConfig.baseMs,
   });
 
-  // 3. Parse and validate AI output
-  const modules = await parseGenerationStream(stream, {
-    onFirstModule: () => timeoutConfig.extend(),
-    onProgress: (pct) => emit('progress', pct),
+  // 4. Parse + validate output; extend timeout when first module appears
+  const parsed = await parseGenerationStream(stream, {
+    onFirstModuleDetected: () => timeout.notifyFirstModule(),
+    signal,
   });
 
-  // 4. Adjust to fit user's hours
-  const pacedModules = pacePlan(modules, input.weeklyHours);
+  // 5. Adjust to fit user's hours
+  const pacedModules = pacePlan(parsed.modules, input);
 
-  // 5. Persist atomically
-  await recordSuccess(attempt.id, pacedModules);
+  // 6. Persist attempt + modules/tasks atomically
+  await finalizeAttemptSuccess({
+    reservation,
+    pacedModules,
+    metadata,
+    dbClient,
+  });
 
   return { status: 'success', modules: pacedModules };
 }
@@ -261,13 +276,13 @@ function deriveStatus(plan: LearningPlan): 'generating' | 'ready' | 'failed' {
 
 The stream endpoint emits these events to the client:
 
-| Event            | Payload                                 | When                      |
-| ---------------- | --------------------------------------- | ------------------------- |
-| `plan_start`     | `{ planId, attemptNumber }`             | Generation begins         |
-| `module_summary` | `{ title, estimatedMinutes }`           | Each module parsed        |
-| `progress`       | `{ percent: number }`                   | Periodic progress updates |
-| `complete`       | `{ planId, moduleCount, totalMinutes }` | Success                   |
-| `error`          | `{ code, message, retryable }`          | Failure                   |
+| Event            | Payload                                                    | When                      |
+| ---------------- | ---------------------------------------------------------- | ------------------------- |
+| `plan_start`     | `{ planId, topic, skillLevel, ... }`                       | Generation begins         |
+| `module_summary` | `{ title, estimatedMinutes }`                              | Each module parsed        |
+| `progress`       | `{ planId, modulesParsed, modulesTotalHint? }`             | Periodic progress updates |
+| `complete`       | `{ planId, modulesCount, tasksCount, durationMs }`         | Success                   |
+| `error`          | `{ code, message, classification, retryable, requestId? }` | Failure (sanitized)       |
 
 ### Client-Side Handling
 
@@ -308,33 +323,37 @@ eventSource.addEventListener('error', (e) => {
 ### Retry Strategy (p-retry in `providers/router.ts`)
 
 ```typescript
-const result = await pRetry(() => openRouterClient.generate(prompt), {
-  retries: 2,
-  onFailedAttempt: (error) => {
-    if (error.response?.status === 429) {
-      // Rate limited - use exponential backoff
-      throw error; // Will retry
+const result = await pRetry(() => provider.generate(input, options), {
+  retries: 1,
+  minTimeout: 300,
+  maxTimeout: 700,
+  randomize: true,
+  onFailedAttempt: ({ error }) => {
+    if (!shouldRetry(error)) {
+      throw error;
     }
-    if (error.response?.status >= 500) {
-      throw error; // Will retry
-    }
-    // 4xx errors (except 429) - don't retry
-    throw new AbortError(error.message);
   },
 });
+
+// Retries only transient errors (rate_limit and 5xx-like failures)
+// Never retries abort or invalid_response errors.
 ```
 
 ### Timeout Strategy (Adaptive)
 
 ```typescript
+// Default from aiTimeoutEnv:
 const timeout = createAdaptiveTimeout({
-  baseMs: 15_000, // Initial: 15 seconds
-  extensionMs: 10_000, // Add 10s when first module detected
-  maxMs: 45_000, // Never exceed 45 seconds
+  baseMs: 30_000,
+  extensionMs: 15_000,
+  extensionThresholdMs: 25_000,
 });
 
 // In parser:
-onFirstModuleDetected: () => timeout.extend();
+onFirstModuleDetected: () => timeout.notifyFirstModule();
+
+// Provider receives explicit timeout budget:
+provider.generate(input, { timeoutMs: timeoutConfig.baseMs, signal });
 ```
 
 ---
@@ -349,7 +368,7 @@ interface AiPlanGenerationProvider {
     input: GenerationInput,
     options?: { signal?: AbortSignal; timeoutMs?: number }
   ): Promise<{
-    stream: ReadableStream<Uint8Array>;
+    stream: ReadableStream<string>;
     metadata: ProviderMetadata;
   }>;
 }
@@ -373,7 +392,7 @@ export function getGenerationProvider(): AiPlanGenerationProvider {
 export function getGenerationProviderWithModel(
   modelId: string
 ): AiPlanGenerationProvider {
-  return new RouterGenerationProvider({ modelId });
+  return new RouterGenerationProvider({ model: modelId });
 }
 ```
 
@@ -611,3 +630,4 @@ expect(globalThis.__capturedInputs[0].topic).toBe('TypeScript');
 - [Database Client Usage](../database/client-usage.md) - RLS-enforced vs service-role
 - [Rate Limiting](../api/rate-limiting.md) - Request limits per endpoint
 - [Available Models](./available-models.md) - Model IDs and pricing
+- [Regeneration Worker Runbook](./regeneration-worker-runbook.md) - Queue drain operations and alerts

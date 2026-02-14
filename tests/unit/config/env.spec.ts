@@ -1,4 +1,4 @@
-import { AI_DEFAULT_MODEL } from '@/lib/ai/ai-models';
+import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import {
   EnvValidationError,
   aiEnv,
@@ -192,9 +192,11 @@ describe('Environment Configuration', () => {
 
   describe('aiEnv', () => {
     describe('defaultModel', () => {
-      it('should return configured value when AI_DEFAULT_MODEL is set', () => {
-        process.env.AI_DEFAULT_MODEL = 'anthropic/claude-3-sonnet';
-        expect(aiEnv.defaultModel).toBe('anthropic/claude-3-sonnet');
+      const validModelId = AVAILABLE_MODELS[0]?.id ?? AI_DEFAULT_MODEL;
+
+      it('should return configured value when AI_DEFAULT_MODEL is valid', () => {
+        process.env.AI_DEFAULT_MODEL = validModelId;
+        expect(aiEnv.defaultModel).toBe(validModelId);
       });
 
       it('should return fallback when AI_DEFAULT_MODEL is not set', () => {
@@ -210,6 +212,15 @@ describe('Environment Configuration', () => {
       it('should return fallback when AI_DEFAULT_MODEL is whitespace', () => {
         process.env.AI_DEFAULT_MODEL = '   ';
         expect(aiEnv.defaultModel).toBe(AI_DEFAULT_MODEL);
+      });
+
+      it('should throw when AI_DEFAULT_MODEL is not in AVAILABLE_MODELS', () => {
+        process.env.AI_DEFAULT_MODEL = 'invalid/nonexistent-model-xyz';
+
+        expect(() => aiEnv.defaultModel).toThrow(EnvValidationError);
+        expect(() => aiEnv.defaultModel).toThrow(
+          /AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids/
+        );
       });
     });
 

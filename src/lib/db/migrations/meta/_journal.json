@@ -92,6 +92,13 @@
       "when": 1770900000000,
       "tag": "0012_composite_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1770950000000,
+      "tag": "0013_generation_attempts_created_at_plan_id",
+      "breakpoints": true
     }
   ]
 }

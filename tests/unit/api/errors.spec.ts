@@ -205,6 +205,13 @@ describe('RateLimitError', () => {
     expect(error.details()).toEqual({ retryAfter: 60 });
   });
 
+  it('should store remaining from details', () => {
+    const error = new RateLimitError('Rate limited', { remaining: 0 });
+
+    expect(error.remaining).toBe(0);
+    expect(error.details()).toEqual({ remaining: 0 });
+  });
+
   it('should handle missing retryAfter', () => {
     const error = new RateLimitError();
 
@@ -297,6 +304,13 @@ describe('toErrorResponse', () => {
 
     const body = await response.json();
     expect(body.retryAfter).toBe(120);
+  });
+
+  it('should set X-RateLimit-Remaining when provided', () => {
+    const error = new RateLimitError('Rate limited', { remaining: 0 });
+    const response = toErrorResponse(error);
+
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
   });
 
   it('should handle AuthError', async () => {

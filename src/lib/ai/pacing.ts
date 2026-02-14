@@ -4,7 +4,7 @@
  */
 
 import type { ParsedModule, ParsedTask } from '@/lib/ai/parser';
-import type { GenerationInput } from '@/lib/ai/provider';
+import type { GenerationInput } from '@/lib/ai/types/provider.types';
 
 /**
  * Pacing parameters for capacity calculation
