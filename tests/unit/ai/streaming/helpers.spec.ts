@@ -1,5 +1,6 @@
 import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/helpers';
 import {
+  executeGenerationStream,
   handleFailedGeneration,
   handleSuccessfulGeneration,
   safeMarkPlanFailed,
@@ -13,6 +14,51 @@ import type { AttemptsDbClient } from '@/lib/db/queries/attempts.types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createId } from '../../../fixtures/ids';
+
+type AbortSignalHarness = {
+  signal: AbortSignal;
+  triggerAbort: () => void;
+  addEventListener: ReturnType<typeof vi.fn>;
+  removeEventListener: ReturnType<typeof vi.fn>;
+};
+
+function createAbortSignalHarness(): AbortSignalHarness {
+  let aborted = false;
+  let listener: EventListener | null = null;
+  const addEventListener = vi.fn(
+    (_event: string, handler: EventListener): void => {
+      listener = handler;
+    }
+  );
+  const removeEventListener = vi.fn(
+    (_event: string, handler: EventListener): void => {
+      if (listener === handler) {
+        listener = null;
+      }
+    }
+  );
+
+  const signal = {
+    get aborted() {
+      return aborted;
+    },
+    addEventListener,
+    removeEventListener,
+  } as unknown as AbortSignal;
+
+  return {
+    signal,
+    triggerAbort: () => {
+      if (aborted) {
+        return;
+      }
+      aborted = true;
+      listener?.(new Event('abort'));
+    },
+    addEventListener,
+    removeEventListener,
+  };
+}
 
 let mockMarkPlanGenerationFailure: NonNullable<
   StreamingHelperDependencies['markPlanGenerationFailure']
@@ -291,5 +337,137 @@ describe('stream helpers', () => {
     ).resolves.toBeUndefined();
 
     expect(mockMarkPlanGenerationFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it('registers and removes abort listeners for request and stream signals', async () => {
+    const reqHarness = createAbortSignalHarness();
+    const streamHarness = createAbortSignalHarness();
+    const onUnhandledError = vi.fn().mockResolvedValue(undefined);
+    const emittedEvents: StreamingEvent[] = [];
+
+    await executeGenerationStream({
+      reqSignal: reqHarness.signal,
+      streamSignal: streamHarness.signal,
+      planId: createId('plan'),
+      userId: createId('user'),
+      dbClient: {} as AttemptsDbClient,
+      emit: (event) => emittedEvents.push(event),
+      runGeneration: async () => {
+        throw new Error('forced failure');
+      },
+      onUnhandledError,
+      fallbackClassification: 'unknown',
+    });
+
+    expect(reqHarness.addEventListener).toHaveBeenCalledTimes(1);
+    expect(streamHarness.addEventListener).toHaveBeenCalledTimes(1);
+    expect(reqHarness.removeEventListener).toHaveBeenCalledTimes(1);
+    expect(streamHarness.removeEventListener).toHaveBeenCalledTimes(1);
+    expect(onUnhandledError).toHaveBeenCalledTimes(1);
+    expect(emittedEvents.find((event) => event.type === 'error')).toBeDefined();
+  });
+
+  it('maps request aborts to cancelled path and cleans up listeners', async () => {
+    const reqHarness = createAbortSignalHarness();
+    const streamHarness = createAbortSignalHarness();
+    const onUnhandledError = vi.fn().mockResolvedValue(undefined);
+    const emittedEvents: StreamingEvent[] = [];
+
+    const execution = executeGenerationStream({
+      reqSignal: reqHarness.signal,
+      streamSignal: streamHarness.signal,
+      planId: createId('plan'),
+      userId: createId('user'),
+      dbClient: {} as AttemptsDbClient,
+      emit: (event) => emittedEvents.push(event),
+      runGeneration: (signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError'))
+          );
+        }),
+      onUnhandledError,
+      fallbackClassification: 'provider_error',
+    });
+
+    reqHarness.triggerAbort();
+    await execution;
+
+    expect(onUnhandledError).toHaveBeenCalledTimes(1);
+    expect(
+      emittedEvents.find((event) => event.type === 'cancelled')
+    ).toBeDefined();
+    expect(
+      emittedEvents.find((event) => event.type === 'error')
+    ).toBeUndefined();
+    expect(reqHarness.removeEventListener).toHaveBeenCalledTimes(1);
+    expect(streamHarness.removeEventListener).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps stream aborts to cancelled path and handles cleanup errors', async () => {
+    const reqHarness = createAbortSignalHarness();
+    const streamHarness = createAbortSignalHarness();
+    const onUnhandledError = vi
+      .fn()
+      .mockRejectedValue(new Error('cleanup exploded'));
+    const emittedEvents: StreamingEvent[] = [];
+
+    const execution = executeGenerationStream({
+      reqSignal: reqHarness.signal,
+      streamSignal: streamHarness.signal,
+      planId: createId('plan'),
+      userId: createId('user'),
+      dbClient: {} as AttemptsDbClient,
+      emit: (event) => emittedEvents.push(event),
+      runGeneration: (signal) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError'))
+          );
+        }),
+      onUnhandledError,
+      fallbackClassification: 'provider_error',
+    });
+
+    streamHarness.triggerAbort();
+    await execution;
+
+    expect(onUnhandledError).toHaveBeenCalledTimes(1);
+    expect(
+      emittedEvents.find((event) => event.type === 'cancelled')
+    ).toBeDefined();
+    expect(
+      emittedEvents.find((event) => event.type === 'error')
+    ).toBeUndefined();
+  });
+
+  it('maps non-abort thrown errors to sanitized failure with fallback classification', async () => {
+    const reqHarness = createAbortSignalHarness();
+    const streamHarness = createAbortSignalHarness();
+    const onUnhandledError = vi
+      .fn()
+      .mockRejectedValue(new Error('cleanup failed during non-abort'));
+    const emittedEvents: StreamingEvent[] = [];
+
+    await executeGenerationStream({
+      reqSignal: reqHarness.signal,
+      streamSignal: streamHarness.signal,
+      planId: createId('plan'),
+      userId: createId('user'),
+      dbClient: {} as AttemptsDbClient,
+      emit: (event) => emittedEvents.push(event),
+      runGeneration: async () => {
+        throw new Error('provider crashed');
+      },
+      onUnhandledError,
+      fallbackClassification: 'unknown',
+    });
+
+    const errorEvent = emittedEvents.find((event) => event.type === 'error');
+    expect(onUnhandledError).toHaveBeenCalledTimes(1);
+    expect(errorEvent?.data?.classification).toBe('unknown');
+    expect(
+      emittedEvents.find((event) => event.type === 'cancelled')
+    ).toBeUndefined();
   });
 });

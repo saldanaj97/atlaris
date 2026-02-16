@@ -4,13 +4,13 @@ import {
   finalizeAttemptSuccess,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
-import {
-  isAttemptsDbClient,
-  type AttemptRejection,
-  type AttemptReservation,
-  type AttemptsDbClient,
-  type GenerationAttemptRecord,
+import type {
+  AttemptRejection,
+  AttemptReservation,
+  AttemptsDbClient,
+  GenerationAttemptRecord,
 } from '@/lib/db/queries/attempts.types';
+import { isAttemptsDbClient } from '@/lib/db/queries/attempts.types';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 import * as Sentry from '@sentry/nextjs';

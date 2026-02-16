@@ -130,6 +130,7 @@ interface MetadataParams {
   tasksClamped: boolean;
   startedAt: Date;
   finishedAt: Date;
+  durationMs: number;
   extendedTimeout: boolean;
   pdfProvenance?: PdfProvenanceData | null;
   failure?: AttemptMetadataFailure;
@@ -368,6 +369,7 @@ function buildMetadata(params: MetadataParams): AttemptMetadata {
     tasksClamped,
     startedAt,
     finishedAt,
+    durationMs,
     extendedTimeout,
     pdfProvenance,
     failure,
@@ -394,10 +396,7 @@ function buildMetadata(params: MetadataParams): AttemptMetadata {
     timing: {
       started_at: startedAt.toISOString(),
       finished_at: finishedAt.toISOString(),
-      duration_ms: Math.max(
-        0,
-        Math.round(finishedAt.getTime() - startedAt.getTime())
-      ),
+      duration_ms: Math.max(0, Math.round(durationMs)),
       extended_timeout: extendedTimeout,
     },
     pdf: pdfProvenance
@@ -651,11 +650,19 @@ export async function reserveAttemptSlot(
         oldestAttemptCreatedAt,
         startedAt
       );
+      const reset = oldestAttemptCreatedAt
+        ? Math.ceil(
+            (oldestAttemptCreatedAt.getTime() + PLAN_GENERATION_WINDOW_MS) /
+              1000
+          )
+        : Math.ceil(startedAt.getTime() / 1000) +
+          Math.floor(PLAN_GENERATION_WINDOW_MS / 1000);
 
       return {
         reserved: false,
         reason: 'rate_limited',
         retryAfter,
+        reset,
       } as const;
     }
 
@@ -885,6 +892,7 @@ export async function finalizeAttemptSuccess({
     tasksClamped: normalizationFlags.tasksClamped,
     startedAt: preparation.startedAt,
     finishedAt,
+    durationMs,
     extendedTimeout,
     pdfProvenance: preparation.pdfProvenance ?? null,
   });
@@ -945,6 +953,7 @@ export async function finalizeAttemptFailure({
     tasksClamped: false,
     startedAt: preparation.startedAt,
     finishedAt,
+    durationMs,
     extendedTimeout,
     pdfProvenance: preparation.pdfProvenance ?? null,
     failure: { classification, timedOut },

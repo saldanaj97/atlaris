@@ -40,9 +40,12 @@ type PreparePdfOriginResult =
   | { ok: false; response: Response };
 
 const INVALID_PDF_PROOF_MESSAGE = 'Invalid or expired PDF extraction proof.';
+const MISSING_PDF_FIELDS_MESSAGE =
+  'Missing required PDF fields: extractedContent, pdfProofToken, and pdfExtractionHash are required for PDF-origin plan creation.';
 
-function getProofVersion(input: CreateLearningPlanInput): 1 {
-  return input.pdfProofVersion ?? 1;
+/** Proof version for PDF extraction; currently always 1. Reserved for future versioned proof formats. */
+function getProofVersion(_input: CreateLearningPlanInput): 1 {
+  return 1;
 }
 
 export async function preparePlanInputWithPdfOrigin(
@@ -71,7 +74,7 @@ export async function preparePlanInputWithPdfOrigin(
   ) {
     return {
       ok: false,
-      response: jsonError(INVALID_PDF_PROOF_MESSAGE, { status: 403 }),
+      response: jsonError(MISSING_PDF_FIELDS_MESSAGE, { status: 400 }),
     };
   }
 

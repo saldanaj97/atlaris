@@ -1,5 +1,5 @@
-import { appEnv, devAuthEnv } from '@/lib/config/env';
 import { auth } from '@/lib/auth/server';
+import { appEnv, devAuthEnv } from '@/lib/config/env';
 import {
   createUser,
   getUserByAuthId,
@@ -147,13 +147,21 @@ export function withAuth(handler: Handler): PlainHandler {
   };
 }
 
-export function withErrorBoundary(fn: PlainHandler): PlainHandler {
-  return async (req, context) => {
+export function withErrorBoundary<
+  TRequest extends Request,
+  TResponse extends Response,
+>(
+  fn: (req: TRequest, context?: RouteHandlerContext) => Promise<TResponse>
+): (req: TRequest, context?: RouteHandlerContext) => Promise<TResponse> {
+  return async (
+    req: TRequest,
+    context?: RouteHandlerContext
+  ): Promise<TResponse> => {
     try {
       return await fn(req, context);
     } catch (e) {
       const { toErrorResponse } = await import('./errors');
-      return toErrorResponse(e);
+      return toErrorResponse(e) as TResponse;
     }
   };
 }

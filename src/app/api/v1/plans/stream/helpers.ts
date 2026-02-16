@@ -73,7 +73,6 @@ interface EmitCancelledEventParams {
  * - `rate_limit`: provider throttled request (retryable)
  * - `timeout`: generation timed out (retryable)
  * - `capped`: attempt cap reached (non-retryable)
- * - `in_progress`: generation already running for plan (retryable)
  * - `unknown`: fallback when no specific classification exists
  * @param params.planId - Learning plan id associated with the error
  * @param params.userId - User id associated with the error
@@ -443,14 +442,26 @@ interface ExecuteGenerationStreamParams {
   fallbackClassification?: FailureClassification | 'unknown';
 }
 
-function toFallbackErrorLike(error: unknown): ErrorLike {
+/** Serialize an error to a safe record for logging (name, message, stack). */
+export function serializeError(error: unknown): Record<string, unknown> {
   if (error instanceof Error) {
-    const errorLike: ErrorLike = {
+    return {
       name: error.name,
       message: error.message,
       stack: error.stack,
     };
+  }
+  return { value: String(error) };
+}
 
+function toFallbackErrorLike(error: unknown): ErrorLike {
+  const base = serializeError(error);
+  const errorLike: ErrorLike = {
+    name: (base.name as string) ?? 'UnknownGenerationError',
+    message: (base.message as string) ?? String(error),
+    stack: base.stack as string | undefined,
+  };
+  if (error instanceof Error && error.cause !== undefined) {
     const cause = error.cause;
     if (
       cause === null ||
@@ -460,14 +471,8 @@ function toFallbackErrorLike(error: unknown): ErrorLike {
     ) {
       errorLike.cause = cause;
     }
-
-    return errorLike;
   }
-
-  return {
-    name: 'UnknownGenerationError',
-    message: String(error),
-  };
+  return errorLike;
 }
 
 export async function executeGenerationStream({

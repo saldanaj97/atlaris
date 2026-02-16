@@ -1,5 +1,9 @@
 import { ZodError } from 'zod';
 
+import {
+  PLAN_GENERATION_LIMIT,
+  PLAN_GENERATION_WINDOW_MINUTES,
+} from '@/lib/ai/generation-policy';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { RateLimitError, ValidationError } from '@/lib/api/errors';
 import {
@@ -42,32 +46,39 @@ export const POST = withErrorBoundary(
     }
 
     const db = getDb();
-    const preflight = await preparePlanCreationPreflight({
-      body,
-      authUserId: userId,
-      dbClient: db,
-    });
-
-    if (!preflight.ok) {
-      return preflight.response;
-    }
+    const user = await requireInternalUserByAuthId(userId);
 
     // Draft plan creation should not be blocked by the durable generation
     // window cap; execution endpoints enforce that cap. We still expose
     // advisory remaining headers for clients.
     let generationRateLimitHeaders: Record<string, string>;
     try {
-      const { remaining } = await checkPlanGenerationRateLimit(
-        preflight.data.user.id,
-        db
-      );
-      generationRateLimitHeaders = getPlanGenerationRateLimitHeaders(remaining);
+      const rateLimitInfo = await checkPlanGenerationRateLimit(user.id, db);
+      generationRateLimitHeaders =
+        getPlanGenerationRateLimitHeaders(rateLimitInfo);
     } catch (error) {
       if (error instanceof RateLimitError) {
-        generationRateLimitHeaders = getPlanGenerationRateLimitHeaders(0);
+        generationRateLimitHeaders = getPlanGenerationRateLimitHeaders({
+          limit: error.limit ?? PLAN_GENERATION_LIMIT,
+          remaining: error.remaining ?? 0,
+          reset:
+            error.reset ??
+            Math.ceil(Date.now() / 1000) + PLAN_GENERATION_WINDOW_MINUTES * 60,
+        });
       } else {
         throw error;
       }
+    }
+
+    const preflight = await preparePlanCreationPreflight({
+      body,
+      authUserId: userId,
+      resolvedUser: user,
+      dbClient: db,
+    });
+
+    if (!preflight.ok) {
+      return preflight.response;
     }
 
     const created = await insertPlanWithRollback({

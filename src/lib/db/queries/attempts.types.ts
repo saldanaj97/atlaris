@@ -68,6 +68,7 @@ export interface AttemptRejection {
   reason: 'capped' | 'in_progress' | 'invalid_status' | 'rate_limited';
   currentStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
   retryAfter?: number;
+  reset?: number;
 }
 
 export type ReserveAttemptResult = AttemptReservation | AttemptRejection;

@@ -16,11 +16,13 @@ import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,
-  type AttemptRejection,
-  type AttemptReservation,
-  type AttemptsDbClient,
-  type GenerationAttemptRecord,
 } from '@/lib/db/queries/attempts';
+import type {
+  AttemptRejection,
+  AttemptReservation,
+  AttemptsDbClient,
+  GenerationAttemptRecord,
+} from '@/lib/db/queries/attempts.types';
 
 type AttemptOpsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;

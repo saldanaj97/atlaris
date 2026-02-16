@@ -52,6 +52,8 @@ export function createEventStream(
           controller.error(error);
         } catch {
           closeSafely();
+        } finally {
+          closed = true;
         }
       };
 

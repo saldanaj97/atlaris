@@ -25,11 +25,7 @@ import {
   releaseInlineDrainLock,
   tryAcquireInlineDrainLock,
 } from '@/lib/jobs/regeneration-worker';
-import {
-  JOB_TYPES,
-  type JobType,
-  type PlanRegenerationJobData,
-} from '@/lib/jobs/types';
+import { JOB_TYPES, type PlanRegenerationJobData } from '@/lib/jobs/types';
 import { logger } from '@/lib/logging/logger';
 import { recordBillingReconciliationRequired } from '@/lib/metrics/ops';
 import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
@@ -112,9 +108,9 @@ export const POST: PlainHandler = withErrorBoundary(
         );
       }
 
-      const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
+      const rateLimitInfo = await checkPlanGenerationRateLimit(user.id, db);
       const generationRateLimitHeaders =
-        getPlanGenerationRateLimitHeaders(remaining);
+        getPlanGenerationRateLimitHeaders(rateLimitInfo);
 
       // Atomically check and increment regeneration quota (prevents TOCTOU race)
       const usageResult = await atomicCheckAndIncrementUsage(
@@ -139,7 +135,7 @@ export const POST: PlainHandler = withErrorBoundary(
       // Enqueue regeneration job
       const payload: PlanRegenerationJobData = { planId, overrides };
       const enqueueResult = await enqueueJobWithResult(
-        JOB_TYPES.PLAN_REGENERATION as JobType,
+        JOB_TYPES.PLAN_REGENERATION,
         planId,
         user.id,
         payload,

@@ -134,6 +134,135 @@ function normalizeUsage(
   };
 }
 
+const USAGE_TOKEN_FIELDS = [
+  'promptTokens',
+  'completionTokens',
+  'totalTokens',
+  'input_tokens',
+  'output_tokens',
+  'total_tokens',
+] as const;
+
+function isTextPartArray(value: unknown): value is TextPart[] {
+  return (
+    Array.isArray(value) &&
+    value.every((part) => {
+      if (!isObjectRecord(part) || typeof part.type !== 'string') {
+        return false;
+      }
+      return part.text === undefined || typeof part.text === 'string';
+    })
+  );
+}
+
+function isUsageShape(value: unknown): value is StreamEventLike['usage'] {
+  if (!isObjectRecord(value)) {
+    return false;
+  }
+
+  return USAGE_TOKEN_FIELDS.every((field) => {
+    const fieldValue = value[field];
+    return fieldValue === undefined || typeof fieldValue === 'number';
+  });
+}
+
+function describeResponseValue(value: unknown): string {
+  if (value === null) {
+    return 'null';
+  }
+  if (value === undefined) {
+    return 'undefined';
+  }
+  if (Array.isArray(value)) {
+    return `array(length=${value.length})`;
+  }
+  if (isObjectRecord(value)) {
+    const keys = Object.keys(value);
+    return `object(keys=${keys.length > 0 ? keys.join(', ') : 'none'})`;
+  }
+  if (typeof value === 'string') {
+    return `string(length=${value.length})`;
+  }
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return `${typeof value}(${value.toString()})`;
+  }
+  if (typeof value === 'symbol') {
+    return 'symbol';
+  }
+  if (typeof value === 'function') {
+    return 'function';
+  }
+  return typeof value;
+}
+
+function createInvalidShapeError(
+  fieldPath: string,
+  expected: string,
+  actual: unknown
+): ProviderInvalidResponseError {
+  return new ProviderInvalidResponseError(
+    `OpenRouter returned invalid response shape: expected ${fieldPath} to be ${expected}, received ${describeResponseValue(actual)}`
+  );
+}
+
+function validateNonStreamingResponse(response: unknown): {
+  rawContent: string | TextPart[];
+  usage: StreamEventLike['usage'] | undefined;
+} {
+  if (!isObjectRecord(response)) {
+    throw createInvalidShapeError('response', 'an object', response);
+  }
+
+  const rawChoices = response.choices;
+  if (!Array.isArray(rawChoices)) {
+    throw createInvalidShapeError('choices', 'an array', rawChoices);
+  }
+  const choices: unknown[] = rawChoices;
+
+  if (choices.length === 0) {
+    throw new ProviderInvalidResponseError(
+      'OpenRouter returned an empty response (choices array was empty)'
+    );
+  }
+
+  const firstChoice = choices[0];
+  if (!isObjectRecord(firstChoice)) {
+    throw createInvalidShapeError('choices[0]', 'an object', firstChoice);
+  }
+
+  const message = firstChoice.message;
+  if (!isObjectRecord(message)) {
+    throw createInvalidShapeError('choices[0].message', 'an object', message);
+  }
+
+  const rawContent = message.content;
+  if (typeof rawContent !== 'string' && !isTextPartArray(rawContent)) {
+    throw createInvalidShapeError(
+      'choices[0].message.content',
+      'a string or TextPart[]',
+      rawContent
+    );
+  }
+
+  const usage = response.usage;
+  if (usage !== undefined && !isUsageShape(usage)) {
+    throw createInvalidShapeError(
+      'usage',
+      'an object with numeric token fields',
+      usage
+    );
+  }
+
+  return {
+    rawContent,
+    usage,
+  };
+}
+
 function getStatusCodeFromError(error: unknown): number | undefined {
   if (!isObjectRecord(error)) {
     return undefined;
@@ -234,7 +363,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       { role: 'user' as const, content: userPrompt },
     ];
 
-    return Sentry.startSpan(
+    return Sentry.startSpanManual(
       {
         op: 'gen_ai.request',
         name: `request ${this.model}`,
@@ -243,7 +372,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
           'gen_ai.request.temperature': this.temperature,
         },
       },
-      async (span) => {
+      async (span, finish) => {
         const requestOptions: {
           signal?: AbortSignal;
           timeoutMs?: number;
@@ -251,6 +380,8 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         if (options?.signal) {
           requestOptions.signal = options.signal;
         }
+        // Streaming responses routinely exceed base timeout; extension applied unconditionally
+        // until adaptive timeout is wired end-to-end (see GitHub #214).
         requestOptions.timeoutMs =
           (options?.timeoutMs ?? OPENROUTER_DEFAULT_TIMEOUT_MS) +
           OPENROUTER_TIMEOUT_EXTENSION_MS;
@@ -302,21 +433,19 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
           });
         }
 
-        const normalizedInitialUsage = normalizeUsage(
-          isObjectRecord(response) && 'usage' in response
-            ? (response.usage as StreamEventLike['usage'] | undefined)
-            : undefined
-        );
+        // Defaulting undefined to 0 simplifies downstream handling; consumers cannot distinguish
+        // "provider reported zero" from "provider did not report usage."
         const metadataUsage: ProviderUsage = {
-          promptTokens: normalizedInitialUsage.promptTokens ?? 0,
-          completionTokens: normalizedInitialUsage.completionTokens ?? 0,
-          totalTokens: normalizedInitialUsage.totalTokens ?? 0,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
         };
+        const isStreamingResponse = isAsyncIterable(response);
         // Streaming: when SDK returns AsyncIterable we yield chunk-by-chunk; otherwise single-chunk fallback.
         // Track full streaming UX (SDK stream mode + ReadableStream + chunk-by-chunk) in GitHub #214.
-        const stream = isAsyncIterable(response)
+        const stream = isStreamingResponse
           ? streamFromEvents({
-              events: response,
+              events: response as AsyncIterable<StreamEventLike>,
               onUsage: (usage) => {
                 metadataUsage.promptTokens =
                   usage.promptTokens ?? metadataUsage.promptTokens;
@@ -327,22 +456,8 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
               },
             })
           : (() => {
-              const nonStreamResponse = isObjectRecord(response)
-                ? (response as {
-                    choices?: Array<{
-                      message?: { content?: string | TextPart[] | null };
-                    }>;
-                    usage?: StreamEventLike['usage'];
-                  })
-                : null;
-              const rawContent =
-                nonStreamResponse?.choices?.[0]?.message?.content;
-              if (!rawContent) {
-                throw new ProviderInvalidResponseError(
-                  'OpenRouter returned an empty response'
-                );
-              }
-              const content = parseContent(rawContent);
+              const nonStreamResponse = validateNonStreamingResponse(response);
+              const content = parseContent(nonStreamResponse.rawContent);
               if (!content) {
                 throw new ProviderInvalidResponseError(
                   'OpenRouter returned no text content'
@@ -359,14 +474,124 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
               return toStream(content);
             })();
 
-        span.setAttribute(
-          'gen_ai.usage.input_tokens',
-          metadataUsage.promptTokens ?? 0
-        );
-        span.setAttribute(
-          'gen_ai.usage.output_tokens',
-          metadataUsage.completionTokens ?? 0
-        );
+        if (!isStreamingResponse) {
+          span.setAttribute(
+            'gen_ai.usage.input_tokens',
+            metadataUsage.promptTokens ?? 0
+          );
+          span.setAttribute(
+            'gen_ai.usage.output_tokens',
+            metadataUsage.completionTokens ?? 0
+          );
+          finish();
+        } else {
+          // For streaming, update span when stream consumption completes.
+          let streamSpanFinished = false;
+          const finishStreamSpan = (): void => {
+            if (streamSpanFinished) {
+              return;
+            }
+            streamSpanFinished = true;
+            span.setAttribute(
+              'gen_ai.usage.input_tokens',
+              metadataUsage.promptTokens ?? 0
+            );
+            span.setAttribute(
+              'gen_ai.usage.output_tokens',
+              metadataUsage.completionTokens ?? 0
+            );
+            finish();
+          };
+          const formatStreamReason = (reason: unknown): string => {
+            if (reason instanceof Error) {
+              return `${reason.name}: ${reason.message}`;
+            }
+            if (
+              typeof reason === 'string' ||
+              typeof reason === 'number' ||
+              typeof reason === 'boolean' ||
+              typeof reason === 'bigint'
+            ) {
+              return String(reason);
+            }
+            if (reason == null) {
+              return 'none';
+            }
+            try {
+              return JSON.stringify(reason);
+            } catch {
+              return Object.prototype.toString.call(reason);
+            }
+          };
+          const finishStreamSpanWithError = (reason: unknown): void => {
+            span.setAttribute('gen_ai.stream.terminated_with_error', true);
+            span.setAttribute(
+              'gen_ai.stream.termination_reason',
+              formatStreamReason(reason)
+            );
+            finishStreamSpan();
+          };
+
+          const transformedStream = stream.pipeThrough(
+            new TransformStream<string, string>({
+              transform(chunk, controller) {
+                try {
+                  controller.enqueue(chunk);
+                } catch (error) {
+                  finishStreamSpanWithError(error);
+                  throw error;
+                }
+              },
+              flush() {
+                finishStreamSpan();
+              },
+              // lib.dom lacks this callback, but runtimes invoke it on cancellation.
+              cancel(reason) {
+                finishStreamSpanWithError(reason);
+              },
+            } as Transformer<string, string> & {
+              cancel: (reason?: unknown) => void;
+            })
+          );
+          let transformedReader: ReadableStreamDefaultReader<string> | null =
+            null;
+          const wrappedStream = new ReadableStream<string>({
+            async start(controller) {
+              transformedReader = transformedStream.getReader();
+              try {
+                while (true) {
+                  const { done, value } = await transformedReader.read();
+                  if (done) {
+                    controller.close();
+                    return;
+                  }
+                  controller.enqueue(value);
+                }
+              } catch (error) {
+                finishStreamSpanWithError(error);
+                controller.error(error);
+              } finally {
+                transformedReader.releaseLock();
+                transformedReader = null;
+              }
+            },
+            cancel(reason) {
+              finishStreamSpanWithError(reason);
+              if (transformedReader) {
+                return transformedReader.cancel(reason);
+              }
+              return transformedStream.cancel(reason);
+            },
+          });
+          return {
+            stream: wrappedStream,
+            metadata: {
+              usage: metadataUsage,
+              provider: 'openrouter',
+              model: this.model,
+            },
+          };
+        }
 
         return {
           stream,

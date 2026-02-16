@@ -69,9 +69,9 @@ export const POST = withErrorBoundary(
       dbClient: db,
     });
 
-    const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
+    const rateLimitInfo = await checkPlanGenerationRateLimit(user.id, db);
     const generationRateLimitHeaders =
-      getPlanGenerationRateLimitHeaders(remaining);
+      getPlanGenerationRateLimitHeaders(rateLimitInfo);
 
     // Tier-gated provider resolution (retries use default model for the tier)
     const userTier = await resolveUserTier(user.id, db);
@@ -121,9 +121,17 @@ export const POST = withErrorBoundary(
         );
       }
       if (reservation.reason === 'rate_limited') {
+        const reset =
+          reservation.reset ??
+          Math.ceil(Date.now() / 1000) + PLAN_GENERATION_WINDOW_MINUTES * 60;
         throw new RateLimitError(
           `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
-          { retryAfter: reservation.retryAfter, remaining: 0 }
+          {
+            retryAfter: reservation.retryAfter,
+            remaining: 0,
+            limit: PLAN_GENERATION_LIMIT,
+            reset,
+          }
         );
       }
       if (reservation.reason === 'invalid_status') {

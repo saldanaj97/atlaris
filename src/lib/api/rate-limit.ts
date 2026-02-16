@@ -12,14 +12,25 @@ import type { AttemptsDbClient } from '@/lib/db/queries/attempts.types';
 import { logger } from '@/lib/logging/logger';
 
 export interface PlanGenerationRateLimitResult {
+  limit: number;
   remaining: number;
+  reset: number;
 }
 
-export function getPlanGenerationRateLimitHeaders(
-  remaining: number
-): Record<string, string> {
+export function getPlanGenerationRateLimitHeaders(info: {
+  limit: number;
+  remaining: number;
+  reset: number | Date;
+}): Record<string, string> {
+  const resetUnixSeconds =
+    info.reset instanceof Date
+      ? Math.ceil(info.reset.getTime() / 1000)
+      : Math.ceil(info.reset);
+
   return {
-    'X-RateLimit-Remaining': String(Math.max(0, remaining)),
+    'X-RateLimit-Limit': String(info.limit),
+    'X-RateLimit-Remaining': String(Math.max(0, info.remaining)),
+    'X-RateLimit-Reset': String(Math.max(0, resetUnixSeconds)),
   };
 }
 
@@ -37,6 +48,7 @@ export async function checkPlanGenerationRateLimit(
   dbClient: AttemptsDbClient
 ): Promise<PlanGenerationRateLimitResult> {
   const windowStart = getPlanGenerationWindowStart(new Date());
+  const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
 
   let attemptCount: number;
   let countFailed = false;
@@ -61,41 +73,38 @@ export async function checkPlanGenerationRateLimit(
     countFailed = true;
   }
 
-  if (attemptCount >= PLAN_GENERATION_LIMIT) {
-    const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
-    let retryAfter: number;
-    let reset: number | undefined;
-    if (countFailed) {
-      retryAfter = windowSeconds;
-      reset = Math.ceil(Date.now() / 1000) + retryAfter;
-    } else {
-      try {
-        const oldestAttempt = await getOldestUserGenerationAttemptSince({
-          userId,
-          dbClient,
-          since: windowStart,
-        });
-        retryAfter = oldestAttempt
-          ? Math.max(
-              0,
-              Math.floor(
-                (oldestAttempt.getTime() + windowSeconds * 1000 - Date.now()) /
-                  1000
-              )
-            )
-          : windowSeconds;
-        reset = oldestAttempt
-          ? Math.ceil((oldestAttempt.getTime() + windowSeconds * 1000) / 1000)
-          : Math.ceil(Date.now() / 1000) + retryAfter;
-      } catch (err) {
-        logger.error(
-          { error: err, userId },
-          'getOldestUserGenerationAttemptSince failed, using fallback retry-after'
-        );
-        retryAfter = windowSeconds;
-        reset = Math.ceil(Date.now() / 1000) + retryAfter;
-      }
+  const now = Date.now();
+  const fallbackReset = Math.ceil(now / 1000) + windowSeconds;
+  let oldestAttempt: Date | null = null;
+  if (!countFailed && attemptCount > 0) {
+    try {
+      oldestAttempt = await getOldestUserGenerationAttemptSince({
+        userId,
+        dbClient,
+        since: windowStart,
+      });
+    } catch (err) {
+      logger.error(
+        { error: err, userId },
+        'getOldestUserGenerationAttemptSince failed, using fallback reset'
+      );
     }
+  }
+
+  const reset = oldestAttempt
+    ? Math.ceil((oldestAttempt.getTime() + windowSeconds * 1000) / 1000)
+    : fallbackReset;
+
+  if (attemptCount >= PLAN_GENERATION_LIMIT) {
+    const retryAfter = oldestAttempt
+      ? Math.max(
+          0,
+          Math.floor(
+            (oldestAttempt.getTime() + windowSeconds * 1000 - now) / 1000
+          )
+        )
+      : windowSeconds;
+
     throw new RateLimitError(
       `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
       {
@@ -108,6 +117,8 @@ export async function checkPlanGenerationRateLimit(
   }
 
   return {
+    limit: PLAN_GENERATION_LIMIT,
     remaining: Math.max(0, PLAN_GENERATION_LIMIT - attemptCount),
+    reset,
   };
 }

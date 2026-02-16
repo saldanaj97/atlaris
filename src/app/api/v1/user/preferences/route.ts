@@ -8,7 +8,7 @@ import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
-import { resolveUserTier } from '@/lib/stripe/usage';
+import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
 
 /**
@@ -30,7 +30,7 @@ export const GET = withErrorBoundary(
 
     logger.debug('User preferences retrieved successfully');
 
-    const userTier = await resolveUserTier(user.id);
+    const userTier: SubscriptionTier = user.subscriptionTier;
     const availableModels = getModelsForTier(userTier);
 
     // TODO: [OPENROUTER-MIGRATION] Return actual user preferences when column exists:
@@ -78,7 +78,7 @@ export const PATCH = withErrorBoundary(
 
     const user = await requireInternalUserByAuthId(userId);
 
-    const userTier = await resolveUserTier(user.id);
+    const userTier: SubscriptionTier = user.subscriptionTier;
     const modelValidation = validateModelForTier(
       userTier,
       parsed.data.preferredAiModel
@@ -124,17 +124,13 @@ export const PATCH = withErrorBoundary(
             },
             'Unexpected model validation reason from validateModelForTier'
           );
-          throw new AppError(
-            'Model validation failed for an unexpected reason.',
-            {
-              status: 500,
-              code: 'UNKNOWN_MODEL_VALIDATION_REASON',
-              details: {
-                reason: unexpectedReason,
-                preferredAiModel: parsed.data.preferredAiModel,
-              },
-            }
-          );
+          throw new AppError('Unable to validate preferred model.', {
+            status: 500,
+            code: 'UNKNOWN_MODEL_VALIDATION_REASON',
+            details: {
+              preferredAiModel: parsed.data.preferredAiModel,
+            },
+          });
         }
       }
     }

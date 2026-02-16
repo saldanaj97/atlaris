@@ -43,15 +43,24 @@ const RETRY_TEST_PLAN_DEFAULTS: Pick<
   isQuotaEligible: true,
 };
 
-/** Single insert path for all plan factories. */
+/** Required fields for learning_plans insert (columns without defaults). */
+type RequiredPlanInsertFields = Pick<
+  LearningPlanInsert,
+  'topic' | 'skillLevel' | 'weeklyHours' | 'learningStyle'
+>;
+
+/**
+ * Single insert path for all plan factories.
+ * Callers must merge from DEFAULT_PLAN_INSERT or RETRY_TEST_PLAN_DEFAULTS so required
+ * fields are present. Accepts Partial for optional columns (DB defaults apply).
+ */
 async function insertPlanRow(
   userId: string,
-  values: Partial<LearningPlanInsert>
+  values: RequiredPlanInsertFields &
+    Partial<Omit<LearningPlanInsert, 'userId' | keyof RequiredPlanInsertFields>>
 ): Promise<LearningPlanRow> {
-  const [plan] = await db
-    .insert(learningPlans)
-    .values({ userId, ...values } as LearningPlanInsert)
-    .returning();
+  const insert: LearningPlanInsert = { userId, ...values };
+  const [plan] = await db.insert(learningPlans).values(insert).returning();
 
   if (!plan) {
     throw new Error('Failed to create plan');
