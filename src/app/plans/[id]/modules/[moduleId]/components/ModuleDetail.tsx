@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
 import { Accordion } from '@/components/ui/accordion';
-import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/modules';
+import type { ModuleDetail } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/lib/types/db';
 import { LessonAccordionItem } from './LessonAccordionItem';
 import { ModuleHeader } from './ModuleHeader';
 
 interface ModuleDetailProps {
-  moduleData: ModuleDetailData;
+  moduleData: ModuleDetail;
 }
 
 /**
