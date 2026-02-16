@@ -1,4 +1,26 @@
 import {
+  activeRegenerationJobWhere,
+  appendErrorHistoryEntry,
+  assertValidJobTypes,
+  clampLimit,
+  mapRowToJob,
+} from '@/lib/db/queries/helpers/jobs-helpers';
+import type {
+  JobEnqueueResult,
+  JobQueueRow,
+  JobsDbClient,
+  JobStats,
+} from '@/lib/db/queries/types/jobs.types';
+import { getDb } from '@/lib/db/runtime';
+import { jobQueue, learningPlans } from '@/lib/db/schema';
+import {
+  JOB_TYPES,
+  type Job,
+  type JobPayload,
+  type JobResult,
+  type JobType,
+} from '@/lib/jobs/types';
+import {
   and,
   desc,
   eq,
@@ -9,182 +31,156 @@ import {
   lte,
   or,
   sql,
-  type InferSelectModel,
 } from 'drizzle-orm';
 
-import { getDb } from '@/lib/db/runtime';
-import { jobQueue, learningPlans } from '@/lib/db/schema';
-import {
-  JOB_TYPES,
-  type Job,
-  type JobPayload,
-  type JobResult,
-  type JobStatus,
-  type JobType,
-} from '@/lib/jobs/types';
+/**
+ * Job queue queries: enqueue, claim, complete, fail, stats, cleanup, and lookups by plan/user.
+ * Uses optional dbClient for DI; defaults to getDb() for request-scoped RLS.
+ */
+
+const MAX_MONITORING_ROWS = 200;
+const DEFAULT_PLAN_JOBS_LIMIT = 100;
+const MAX_PLAN_JOBS_LIMIT = 500;
+/** Hard cap on attempts regardless of retryable override; prevents unbounded retries. */
+const ABSOLUTE_MAX_ATTEMPTS = 100;
+
+const jobQueueSelect = {
+  id: jobQueue.id,
+  planId: jobQueue.planId,
+  userId: jobQueue.userId,
+  jobType: jobQueue.jobType,
+  status: jobQueue.status,
+  priority: jobQueue.priority,
+  attempts: jobQueue.attempts,
+  maxAttempts: jobQueue.maxAttempts,
+  payload: jobQueue.payload,
+  result: jobQueue.result,
+  error: jobQueue.error,
+  lockedAt: jobQueue.lockedAt,
+  lockedBy: jobQueue.lockedBy,
+  scheduledFor: jobQueue.scheduledFor,
+  startedAt: jobQueue.startedAt,
+  completedAt: jobQueue.completedAt,
+  createdAt: jobQueue.createdAt,
+  updatedAt: jobQueue.updatedAt,
+} as const;
+
+/** Transaction client type for use inside dbClient.transaction() callbacks. */
+type JobsTransaction = Parameters<
+  Parameters<JobsDbClient['transaction']>[0]
+>[0];
 
 /**
- * Database row type inferred from Drizzle schema.
- * Using InferSelectModel ensures type safety without manual interface maintenance.
+ * Locks the job row by id (SELECT FOR UPDATE) and indicates whether it is already terminal.
+ * Shared by completeJobRecord and failJobRecord for idempotent guard behavior.
+ *
+ * @returns null if job not found, else { row, isTerminal } with isTerminal true when status is completed or failed
  */
-type JobQueueRow = InferSelectModel<typeof jobQueue>;
+async function lockJobAndCheckTerminal(
+  tx: JobsTransaction,
+  jobId: string
+): Promise<{ row: JobQueueRow; isTerminal: boolean } | null> {
+  const [row] = await tx
+    .select(jobQueueSelect)
+    .from(jobQueue)
+    .where(eq(jobQueue.id, jobId))
+    .for('update');
 
-const ALLOWED_JOB_TYPES: ReadonlySet<JobType> = Object.freeze(
-  new Set(Object.values(JOB_TYPES) as JobType[])
-);
-
-export type JobsDbClient = ReturnType<typeof getDb>;
-
-export interface JobEnqueueResult {
-  id: string;
-  deduplicated: boolean;
-}
-
-/** Shared predicate for "active" regeneration job (pending or processing) for a plan/user. */
-export function activeRegenerationJobWhere(planId: string, userId: string) {
-  return and(
-    eq(jobQueue.planId, planId),
-    eq(jobQueue.userId, userId),
-    eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-    or(eq(jobQueue.status, 'pending'), eq(jobQueue.status, 'processing'))
-  );
-}
-
-/**
- * Type guard to validate job type values at runtime.
- * Returns true if the value is a valid JobType.
- */
-function isValidJobType(value: string): value is JobType {
-  return ALLOWED_JOB_TYPES.has(value as JobType);
-}
-
-/**
- * Maps a database row to the domain Job model.
- * Uses type inference from Drizzle schema for the input type.
- */
-function mapRowToJob(row: JobQueueRow): Job {
-  // Validate jobType at runtime since DB stores as string
-  const jobType = row.jobType;
-  if (!isValidJobType(jobType)) {
-    throw new Error(`Invalid job type in database: ${String(jobType)}`);
+  if (!row) {
+    return null;
   }
 
-  return {
-    id: row.id,
-    type: jobType,
-    planId: row.planId ?? null,
-    userId: row.userId,
-    status: row.status,
-    priority: row.priority,
-    attempts: row.attempts,
-    maxAttempts: row.maxAttempts,
-    data: row.payload as JobPayload,
-    result: (row.result as JobResult | null) ?? null,
-    error: row.error ?? null,
-    processingStartedAt: row.startedAt ?? null,
-    completedAt: row.completedAt ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
+  const isTerminal = row.status === 'completed' || row.status === 'failed';
+  return { row, isTerminal };
 }
 
 /**
- * Retrieve recent failed jobs for debugging and monitoring
+ * Retrieves recent failed jobs for debugging and monitoring.
+ *
+ * @param limit - Max rows requested (capped at 200)
+ * @param dbClient - Database client (default: getDb())
+ * @returns Array of Job rows in descending completedAt order
  */
 export async function getFailedJobs(
   limit: number,
   dbClient: JobsDbClient = getDb()
 ): Promise<Job[]> {
+  const boundedLimit = clampLimit(limit, MAX_MONITORING_ROWS);
+  if (boundedLimit === 0) {
+    return [];
+  }
+
   const rows = await dbClient
-    .select()
+    .select(jobQueueSelect)
     .from(jobQueue)
     .where(eq(jobQueue.status, 'failed'))
     .orderBy(desc(jobQueue.completedAt))
-    .limit(limit);
+    .limit(boundedLimit);
 
   return rows.map(mapRowToJob);
 }
 
-export interface JobStats {
-  pendingCount: number;
-  processingCount: number;
-  completedCount: number;
-  failedCount: number;
-  averageProcessingTimeMs: number | null;
-  failureRate: number;
-}
-
 /**
- * Calculate job statistics since a given timestamp
+ * Calculates job statistics since a given timestamp: counts by status, average
+ * processing time for completed jobs, and failure rate.
+ *
+ * @param since - Inclusive lower bound on createdAt for all aggregates
+ * @param dbClient - Database client (default: getDb())
+ * @returns JobStats with pending/processing/completed/failed counts, avg duration, and failure rate
  */
 export async function getJobStats(
   since: Date,
   dbClient: JobsDbClient = getDb()
 ): Promise<JobStats> {
-  // Get all status counts
-  const allCounts = await dbClient
+  const [stats] = await dbClient
     .select({
-      status: jobQueue.status,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(jobQueue)
-    .where(gte(jobQueue.createdAt, since))
-    .groupBy(jobQueue.status);
-
-  const countsByStatus = allCounts.reduce(
-    (acc, row) => {
-      acc[row.status] = row.count;
-      return acc;
-    },
-    {
-      pending: 0,
-      processing: 0,
-      completed: 0,
-      failed: 0,
-    } as Record<JobStatus, number>
-  );
-
-  // Calculate average processing time for completed jobs
-  const [avgResult] = await dbClient
-    .select({
-      avgDuration: sql<number | null>`avg(
-        extract(epoch from (${jobQueue.completedAt} - ${jobQueue.startedAt})) * 1000
+      pendingCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending')::int`,
+      processingCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing')::int`,
+      completedCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'completed')::int`,
+      failedCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'failed')::int`,
+      averageProcessingTimeMs: sql<number | null>`avg(
+        case
+          when ${and(
+            eq(jobQueue.status, 'completed'),
+            isNotNull(jobQueue.startedAt),
+            isNotNull(jobQueue.completedAt)
+          )}
+          then extract(epoch from (${jobQueue.completedAt} - ${jobQueue.startedAt})) * 1000
+          else null
+        end
       )`,
     })
     .from(jobQueue)
-    .where(
-      and(
-        eq(jobQueue.status, 'completed'),
-        gte(jobQueue.createdAt, since),
-        sql`${jobQueue.startedAt} is not null`,
-        sql`${jobQueue.completedAt} is not null`
-      )
-    );
+    .where(gte(jobQueue.createdAt, since));
 
-  const totalCompleted = countsByStatus.completed;
-  const totalFailed = countsByStatus.failed;
+  const totalCompleted = stats?.completedCount ?? 0;
+  const totalFailed = stats?.failedCount ?? 0;
   const totalFinished = totalCompleted + totalFailed;
   const failureRate = totalFinished > 0 ? totalFailed / totalFinished : 0;
 
-  // PostgreSQL avg() returns numeric type, which postgres-js returns as string to preserve precision
   const averageProcessingTimeMs =
-    avgResult.avgDuration !== null
-      ? parseFloat(String(avgResult.avgDuration))
+    stats?.averageProcessingTimeMs !== null &&
+    stats?.averageProcessingTimeMs !== undefined
+      ? Number(stats.averageProcessingTimeMs)
       : null;
 
   return {
-    pendingCount: countsByStatus.pending,
-    processingCount: countsByStatus.processing,
-    completedCount: countsByStatus.completed,
-    failedCount: countsByStatus.failed,
+    pendingCount: stats?.pendingCount ?? 0,
+    processingCount: stats?.processingCount ?? 0,
+    completedCount: totalCompleted,
+    failedCount: totalFailed,
     averageProcessingTimeMs,
     failureRate,
   };
 }
 
 /**
- * Delete completed and failed jobs older than a given threshold
- * Used for retention management
+ * Deletes completed and failed jobs whose completedAt is older than the threshold.
+ * Used for retention management; pending/processing jobs are never deleted.
+ *
+ * @param olderThan - Jobs with completedAt strictly before this date are deleted
+ * @param dbClient - Database client (default: getDb())
+ * @returns Number of rows deleted
  */
 export async function cleanupOldJobs(
   olderThan: Date,
@@ -200,21 +196,19 @@ export async function cleanupOldJobs(
       )
     );
 
-  // postgres-js returns a result with a count property
   return result.count ?? 0;
 }
 
-function assertValidJobTypes(
-  values: readonly unknown[]
-): asserts values is JobType[] {
-  const allValid = values.every(
-    (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v as JobType)
-  );
-  if (!allValid) {
-    throw new Error('Invalid job type(s) received');
-  }
-}
-
+/**
+ * Inserts a new job into the queue. For plan regeneration jobs with a planId,
+ * deduplicates by returning the existing active job id if one is already pending/processing.
+ * Uses a transaction with row locks to avoid race conditions.
+ *
+ * @param params - Job payload: type, planId (nullable), userId, data, priority
+ * @param dbClient - Database client (default: getDb())
+ * @returns Enqueue result with job id and whether it was deduplicated
+ * @throws Error if plan not found when deduplicating regeneration, or if insert fails
+ */
 export async function insertJobRecord(
   {
     type,
@@ -236,9 +230,6 @@ export async function insertJobRecord(
       type === JOB_TYPES.PLAN_REGENERATION && planId !== null;
 
     if (shouldDeduplicateRegeneration) {
-      // Serialize enqueue attempts per plan so concurrent requests cannot create
-      // duplicate pending/processing regeneration jobs. Lock the plan row first;
-      // if it doesn't exist, abort to avoid creating jobQueue rows for non-existent plans.
       const [lockedPlan] = await tx
         .select({ id: learningPlans.id })
         .from(learningPlans)
@@ -267,7 +258,7 @@ export async function insertJobRecord(
       .insert(jobQueue)
       .values({
         jobType: type,
-        planId: planId ?? null,
+        planId,
         userId,
         status: 'pending',
         priority,
@@ -283,6 +274,15 @@ export async function insertJobRecord(
   });
 }
 
+/**
+ * Returns the single active (pending or processing) regeneration job for a plan and user, if any.
+ * Used to avoid duplicate regeneration work and to surface status to the UI.
+ *
+ * @param planId - Plan id to check
+ * @param userId - Owner user id
+ * @param dbClient - Database client (default: getDb())
+ * @returns The job id of the active regeneration job, or null
+ */
 export async function getActiveRegenerationJob(
   planId: string,
   userId: string,
@@ -298,6 +298,15 @@ export async function getActiveRegenerationJob(
   return activeJob ?? null;
 }
 
+/**
+ * Atomically claims the next eligible pending job of the given types.
+ * Selects by highest priority, then oldest createdAt; updates status to processing and sets startedAt.
+ * Only considers jobs whose scheduledFor is <= now.
+ *
+ * @param types - Allowed job types to claim (e.g. [JOB_TYPES.PLAN_REGENERATION])
+ * @param dbClient - Database client (default: getDb())
+ * @returns The claimed job row mapped to Job, or null if none available
+ */
 export async function claimNextPendingJob(
   types: JobType[],
   dbClient: JobsDbClient = getDb()
@@ -308,9 +317,8 @@ export async function claimNextPendingJob(
   assertValidJobTypes(types);
 
   const startTime = new Date();
-
-  const result = await dbClient.transaction(async (tx) => {
-    const rows = await tx
+  return dbClient.transaction(async (tx) => {
+    const candidateRows = await tx
       .select({ id: jobQueue.id })
       .from(jobQueue)
       .where(
@@ -322,51 +330,51 @@ export async function claimNextPendingJob(
       )
       .orderBy(desc(jobQueue.priority), jobQueue.createdAt)
       .limit(1)
-      .for('update');
+      .for('update', { skipLocked: true });
 
-    const selectedId = rows[0]?.id;
-    if (!selectedId) {
+    const candidateIds = candidateRows.map((r) => r.id);
+    if (candidateIds.length === 0) {
       return null;
     }
 
-    const [updated] = await tx
+    const [claimed] = await tx
       .update(jobQueue)
       .set({
         status: 'processing',
         startedAt: startTime,
         updatedAt: startTime,
       })
-      .where(eq(jobQueue.id, selectedId))
-      .returning();
+      .where(inArray(jobQueue.id, candidateIds))
+      .returning(jobQueueSelect);
 
-    return updated ? mapRowToJob(updated) : null;
+    return claimed ? mapRowToJob(claimed) : null;
   });
-
-  return result;
 }
 
+/**
+ * Marks a job as completed and stores the result. Idempotent: if the job is already
+ * completed or failed, returns the current row without updating.
+ *
+ * @param jobId - Job id to complete
+ * @param result - Result payload to store (type depends on job type)
+ * @param dbClient - Database client (default: getDb())
+ * @returns Updated job row as Job, or null if job not found
+ */
 export async function completeJobRecord(
   jobId: string,
   result: JobResult,
   dbClient: JobsDbClient = getDb()
 ): Promise<Job | null> {
   return dbClient.transaction(async (tx) => {
-    const [current] = await tx
-      .select()
-      .from(jobQueue)
-      .where(eq(jobQueue.id, jobId))
-      .for('update');
-
-    if (!current) {
+    const locked = await lockJobAndCheckTerminal(tx, jobId);
+    if (!locked) {
       return null;
     }
-
-    if (current.status === 'completed' || current.status === 'failed') {
-      return mapRowToJob(current);
+    if (locked.isTerminal) {
+      return mapRowToJob(locked.row);
     }
 
     const completedAt = new Date();
-
     const [updated] = await tx
       .update(jobQueue)
       .set({
@@ -377,48 +385,54 @@ export async function completeJobRecord(
         updatedAt: completedAt,
       })
       .where(eq(jobQueue.id, jobId))
-      .returning();
+      .returning(jobQueueSelect);
 
     return updated ? mapRowToJob(updated) : null;
   });
 }
 
-export interface FailJobOptions {
-  retryable?: boolean;
-  dbClient?: JobsDbClient;
-}
-
-type ErrorHistoryEntry = {
-  attempt: number;
-  error: string;
-  timestamp: string;
-};
-
+/**
+ * Marks a job as failed or schedules a retry. Appends an error entry to the job's
+ * payload error history. If retryable is true (or not set and under maxAttempts),
+ * status is set to pending with exponential backoff (scheduledFor); otherwise status
+ * is set to failed with completedAt set.
+ *
+ * Retry decision: when retryable is undefined, shouldRetry follows reachedMaxAttempts
+ * (i.e. nextAttempts >= current.maxAttempts). When retryable is true, it can override
+ * current.maxAttempts but is bounded by ABSOLUTE_MAX_ATTEMPTS for safety. When
+ * retryable is false, retry is never scheduled.
+ *
+ * @param jobId - Job id to fail
+ * @param error - Error message to record
+ * @param retryable - Optional retry override; when true, overrides maxAttempts but capped by ABSOLUTE_MAX_ATTEMPTS
+ * @param dbClient - Database client (default: getDb())
+ * @returns Updated job row as Job, or null if job not found or already terminal
+ */
 export async function failJobRecord(
   jobId: string,
   error: string,
-  options: FailJobOptions = {}
+  retryable?: boolean,
+  dbClient: JobsDbClient = getDb()
 ): Promise<Job | null> {
-  const { retryable, dbClient = getDb() } = options;
   return dbClient.transaction(async (tx) => {
-    const [current] = await tx
-      .select()
-      .from(jobQueue)
-      .where(eq(jobQueue.id, jobId))
-      .for('update');
-
-    if (!current) {
+    const locked = await lockJobAndCheckTerminal(tx, jobId);
+    if (!locked) {
       return null;
     }
-
-    if (current.status === 'completed' || current.status === 'failed') {
-      return mapRowToJob(current);
+    if (locked.isTerminal) {
+      return mapRowToJob(locked.row);
     }
 
+    const current = locked.row;
     const nextAttempts = current.attempts + 1;
     const now = new Date();
     const reachedMaxAttempts = nextAttempts >= current.maxAttempts;
-    const shouldRetry = retryable ?? !reachedMaxAttempts;
+    const shouldRetry =
+      retryable === true
+        ? nextAttempts < ABSOLUTE_MAX_ATTEMPTS
+        : retryable === false
+          ? false
+          : !reachedMaxAttempts;
 
     const retryDelaySeconds = Math.min(60, Math.pow(2, nextAttempts));
     const scheduledForRetry = new Date(
@@ -458,68 +472,51 @@ export async function failJobRecord(
       .update(jobQueue)
       .set(updatePayload)
       .where(eq(jobQueue.id, jobId))
-      .returning();
+      .returning(jobQueueSelect);
 
     return updated ? mapRowToJob(updated) : null;
   });
 }
 
 /**
- * Type guard to check if a value is a record object (not null, not array).
+ * Lists jobs associated with a plan, newest first. Uses a bounded limit to avoid
+ * unbounded plan-history reads.
+ *
+ * @param planId - Plan id to filter by
+ * @param dbClient - Database client (default: getDb())
+ * @param limit - Max rows to return (default 100, capped at 500)
+ * @returns Array of Job rows ordered by createdAt descending
  */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-/**
- * Type guard to check if an array contains ErrorHistoryEntry objects.
- */
-function isErrorHistoryArray(value: unknown): value is ErrorHistoryEntry[] {
-  if (!Array.isArray(value)) return false;
-  return value.every(
-    (item) =>
-      isRecord(item) &&
-      typeof item.attempt === 'number' &&
-      typeof item.error === 'string' &&
-      typeof item.timestamp === 'string'
-  );
-}
-
-/**
- * Appends an error entry to the payload's error history.
- * Preserves existing payload structure while adding error tracking.
- */
-function appendErrorHistoryEntry(
-  payload: unknown,
-  entry: ErrorHistoryEntry
-): Record<string, unknown> {
-  const base = isRecord(payload) ? payload : {};
-
-  const existingHistory = isErrorHistoryArray(base.errorHistory)
-    ? [...base.errorHistory]
-    : [];
-
-  existingHistory.push(entry);
-
-  return {
-    ...base,
-    errorHistory: existingHistory,
-  };
-}
-
 export async function findJobsByPlan(
   planId: string,
-  dbClient: JobsDbClient = getDb()
+  dbClient: JobsDbClient = getDb(),
+  limit: number = DEFAULT_PLAN_JOBS_LIMIT
 ): Promise<Job[]> {
+  const boundedLimit = clampLimit(limit, MAX_PLAN_JOBS_LIMIT);
+  if (boundedLimit === 0) {
+    return [];
+  }
+
   const rows = await dbClient
-    .select()
+    .select(jobQueueSelect)
     .from(jobQueue)
     .where(eq(jobQueue.planId, planId))
-    .orderBy(desc(jobQueue.createdAt));
+    .orderBy(desc(jobQueue.createdAt))
+    .limit(boundedLimit);
 
   return rows.map(mapRowToJob);
 }
 
+/**
+ * Counts how many jobs of a given type were created by a user since a timestamp.
+ * Used for rate limiting and usage metrics (e.g. regenerations per day).
+ *
+ * @param userId - User id to filter by
+ * @param type - Job type to count
+ * @param since - Inclusive lower bound on createdAt
+ * @param dbClient - Database client (default: getDb())
+ * @returns Count of matching jobs
+ */
 export async function countUserJobsSince(
   userId: string,
   type: JobType,
