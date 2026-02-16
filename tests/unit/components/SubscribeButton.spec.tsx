@@ -1,17 +1,20 @@
 // IMPORTANT: Mock imports must come first, before any component or module
 // imports that consume the mocked package (sonner in this case).
-import '../../mocks/unit/sonner.unit';
 import SubscribeButton from '@/components/billing/SubscribeButton';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import '../../mocks/unit/sonner.unit';
 
 describe('SubscribeButton', () => {
   const mockLocation = { href: '' };
+  let originalLocation: Location;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockLocation.href = '';
+    originalLocation = window.location;
     // Mock window.location so assignments to .href go to our object (jsdom can normalize href on the real Location)
     Object.defineProperty(window, 'location', {
       value: mockLocation,
@@ -21,7 +24,13 @@ describe('SubscribeButton', () => {
   });
 
   afterEach(() => {
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      writable: true,
+      configurable: true,
+    });
     vi.restoreAllMocks();
+    cleanup();
   });
 
   it('should render with default label', () => {
@@ -48,6 +57,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should call checkout API with correct priceId', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -59,7 +69,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton priceId="price_123" />);
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/stripe/create-checkout', {
@@ -77,6 +87,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should include success and cancel URLs when provided', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -94,7 +105,7 @@ describe('SubscribeButton', () => {
     );
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/stripe/create-checkout', {
@@ -112,6 +123,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should show loading state during checkout', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) =>
@@ -132,7 +144,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton priceId="price_123" />);
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     await waitFor(() => {
       expect(screen.getByText(/redirecting/i)).toBeInTheDocument();
@@ -140,6 +152,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should disable button during checkout', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) =>
@@ -164,7 +177,7 @@ describe('SubscribeButton', () => {
     // Button should be enabled initially
     expect(button).not.toBeDisabled();
 
-    fireEvent.click(button);
+    await user.click(button);
 
     // Button should be disabled during loading
     await waitFor(() => {
@@ -173,6 +186,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should redirect to checkout session URL on success', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -184,7 +198,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton priceId="price_123" />);
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     await waitFor(() => {
       expect(window.location.href).toBe(
@@ -194,6 +208,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should show error toast when API call fails', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       text: async () => 'Payment failed',
@@ -203,7 +218,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton priceId="price_123" />);
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Unable to start checkout', {
@@ -213,6 +228,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should show error toast when sessionUrl is missing', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({}), // Missing sessionUrl
@@ -222,7 +238,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton priceId="price_123" />);
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Unable to start checkout', {
@@ -232,13 +248,14 @@ describe('SubscribeButton', () => {
   });
 
   it('should handle network errors gracefully', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('fetch', mockFetch);
 
     render(<SubscribeButton priceId="price_123" />);
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Unable to start checkout', {
@@ -248,6 +265,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should re-enable button after error', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
       text: async () => 'Error',
@@ -257,7 +275,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton priceId="price_123" />);
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await user.click(button);
 
     // Wait for error
     await waitFor(() => {
@@ -271,6 +289,7 @@ describe('SubscribeButton', () => {
   });
 
   it('should not allow multiple simultaneous checkout requests', async () => {
+    const user = userEvent.setup();
     const mockFetch = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) =>
@@ -293,9 +312,9 @@ describe('SubscribeButton', () => {
     const button = screen.getByRole('button');
 
     // Click multiple times rapidly
-    fireEvent.click(button);
-    fireEvent.click(button);
-    fireEvent.click(button);
+    await user.click(button);
+    await user.click(button);
+    await user.click(button);
 
     // Should only have been called once
     await waitFor(() => {

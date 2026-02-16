@@ -8,7 +8,7 @@ import type {
 import type {
   AttemptReservation,
   AttemptsDbClient,
-} from '@/lib/db/queries/attempts';
+} from '@/lib/db/queries/attempts.types';
 import { createId } from '../../fixtures/ids';
 
 type MockDbClient = {

@@ -1,6 +1,5 @@
 import { AttemptCapExceededError } from '@/lib/api/errors';
 import { jsonError } from '@/lib/api/response';
-import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
@@ -44,6 +43,7 @@ export type PlanCreationPreflightResult =
 type PreparePlanCreationPreflightParams = {
   body: CreateLearningPlanInput;
   authUserId: string;
+  resolvedUser?: Awaited<ReturnType<typeof requireInternalUserByAuthId>>;
   dbClient: PlansDbClient;
   enforceRequestedDurationCap?: boolean;
 };
@@ -54,11 +54,12 @@ export async function preparePlanCreationPreflight(
   const {
     body,
     authUserId,
+    resolvedUser,
     dbClient,
     enforceRequestedDurationCap = true,
   } = params;
 
-  const user = await requireInternalUserByAuthId(authUserId);
+  const user = resolvedUser ?? (await requireInternalUserByAuthId(authUserId));
   const userTier = await resolveUserTier(user.id, dbClient);
 
   // First check: reject if the user's raw requested date range (before tier normalization) exceeds tier cap.
@@ -108,6 +109,8 @@ export async function preparePlanCreationPreflight(
     };
   }
 
+  // AttemptCapExceededError is thrown (not returned as ok: false) so the stream handler
+  // can map it to a specific status/error boundary; callers must handle both return and throw.
   const cappedPlanId = await findCappedPlanWithoutModules(user.id, dbClient);
   if (cappedPlanId) {
     throw new AttemptCapExceededError('attempt cap reached', {
@@ -177,9 +180,13 @@ export async function insertPlanWithRollback(params: {
           reserved: pdfUsageReserved,
         });
       } catch (rollbackErr) {
-        logger.error(
-          { rollbackErr, userId: user.id },
-          'Failed to rollback pdf plan usage'
+        logger.warn(
+          {
+            error: rollbackErr,
+            internalUserId: user.id,
+            reserved: pdfUsageReserved,
+          },
+          'rollbackPdfUsageIfReserved failed; original error preserved'
         );
       }
     }
@@ -187,5 +194,3 @@ export async function insertPlanWithRollback(params: {
     throw error;
   }
 }
-
-export type PlanCreationDbClient = ReturnType<typeof getDb>;

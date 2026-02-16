@@ -1,6 +1,6 @@
 import { count, eq, inArray } from 'drizzle-orm';
 
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { TIER_LIMITS, type SubscriptionTier } from '@/lib/stripe/tier-limits';

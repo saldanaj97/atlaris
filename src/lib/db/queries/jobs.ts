@@ -41,7 +41,10 @@ export interface JobEnqueueResult {
 }
 
 /** Shared predicate for "active" regeneration job (pending or processing) for a plan/user. */
-export function activeRegenerationJobWhere(planId: string, userId: string) {
+export function activeRegenerationJobWhere(
+  planId: string,
+  userId: string
+): ReturnType<typeof and> {
   return and(
     eq(jobQueue.planId, planId),
     eq(jobQueue.userId, userId),

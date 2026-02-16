@@ -1,6 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 
 import { classificationToUserMessage } from '@/lib/ai/failure-presentation';
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import {
   requireInternalUserByAuthId,
@@ -8,7 +9,6 @@ import {
   requirePlanIdFromRequest,
 } from '@/lib/api/plans/route-context';
 import { json } from '@/lib/api/response';
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, modules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';

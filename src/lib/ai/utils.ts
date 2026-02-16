@@ -5,7 +5,15 @@ import { logger } from '@/lib/logging/logger';
  * This keeps provider contracts aligned on native web streams.
  */
 export function toStream(obj: unknown): ReadableStream<string> {
-  const data = typeof obj === 'string' ? obj : JSON.stringify(obj);
+  const data =
+    typeof obj === 'string'
+      ? obj
+      : obj === undefined
+        ? ''
+        : (() => {
+            const serialized = JSON.stringify(obj);
+            return serialized === undefined ? '' : serialized;
+          })();
   return new ReadableStream<string>({
     start(controller) {
       controller.enqueue(data);
@@ -24,10 +32,12 @@ export function readableStreamToAsyncIterable(
   return {
     async *[Symbol.asyncIterator]() {
       const reader = stream.getReader();
+      let completed = false;
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
+            completed = true;
             return;
           }
           if (typeof value !== 'string') {
@@ -40,7 +50,13 @@ export function readableStreamToAsyncIterable(
           yield value;
         }
       } finally {
-        reader.releaseLock();
+        try {
+          if (!completed) {
+            await reader.cancel();
+          }
+        } finally {
+          reader.releaseLock();
+        }
       }
     },
   };

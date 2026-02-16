@@ -1,5 +1,5 @@
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

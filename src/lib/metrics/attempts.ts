@@ -1,4 +1,4 @@
-import type { GenerationAttemptRecord } from '@/lib/db/queries/attempts';
+import type { GenerationAttemptRecord } from '@/lib/db/queries/attempts.types';
 import type { FailureClassification } from '@/lib/types/client';
 
 export interface MetricStatsSnapshot {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 import {
   buildGenerationAttempt,

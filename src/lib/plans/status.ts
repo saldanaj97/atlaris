@@ -22,6 +22,8 @@ export function derivePlanStatus(params: {
     return 'failed';
   }
 
+  // Check generating before attempt-cap so actively generating plans show as processing.
+  // Orchestrator prevents starting a new attempt past cap, so generating + at-cap is not expected.
   if (generationStatus === 'generating') {
     return 'processing';
   }

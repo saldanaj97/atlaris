@@ -46,6 +46,9 @@ function assertNumericHeader(response: Response, name: string): void {
   );
 }
 
+// Stubbing env in beforeAll/afterAll is safe: Vitest runs each file in a separate worker,
+// so process.env is isolated per file. If the project switches to --pool=threads with
+// shared state, these stubs could leak; keep this assumption in mind.
 beforeAll(() => {
   vi.stubEnv('AI_PROVIDER', 'mock');
   vi.stubEnv('MOCK_GENERATION_DELAY_MS', '10');

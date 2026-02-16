@@ -30,6 +30,8 @@ import {
 import { resolveUserTier, type SubscriptionTier } from '@/lib/stripe/usage';
 import { pdfExtractionFormDataSchema } from '@/lib/validation/pdf';
 
+const PDF_SIGNATURE = new TextEncoder().encode('%PDF-');
+
 /** Dependencies for PDF extract POST handler; inject for testing. */
 export type PdfExtractRouteDeps = {
   extractTextFromPdf: typeof defaultExtractTextFromPdf;
@@ -73,12 +75,11 @@ const toUploadValidationError = (
   return errorResponse(result.reason, result.code, status);
 };
 
-const isPdfMagicBytes = (buffer: Buffer): boolean => {
-  const signature = Buffer.from('%PDF-', 'utf8');
-  if (buffer.length < signature.length) {
+const isPdfMagicBytes = (buffer: Uint8Array): boolean => {
+  if (buffer.length < PDF_SIGNATURE.length) {
     return false;
   }
-  return buffer.subarray(0, signature.length).equals(signature);
+  return PDF_SIGNATURE.every((byte, i) => buffer[i] === byte);
 };
 
 function parseFormDataToObject(formData: FormData): Record<string, unknown> {

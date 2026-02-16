@@ -17,6 +17,7 @@ import {
   insertPlanWithRollback,
   preparePlanCreationPreflight,
 } from '@/lib/api/plans/preflight';
+import { requireInternalUserByAuthId } from '@/lib/api/plans/route-context';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -31,6 +32,7 @@ import {
   buildPlanStartEvent,
   executeGenerationStream,
   safeMarkPlanFailed,
+  serializeError,
 } from './helpers';
 
 /** Classification used when an unstructured exception occurs in the generation catch block. */
@@ -98,11 +100,20 @@ export function createStreamHandler(deps?: {
       }
 
       const db = getDb();
+      const internalUser = await requireInternalUserByAuthId(userId);
+      // Enforces durable DB-backed limit; throws RateLimitError (429) when exceeded.
+      const rateLimitInfo = await checkPlanGenerationRateLimit(
+        internalUser.id,
+        db
+      );
+      const generationRateLimitHeaders =
+        getPlanGenerationRateLimitHeaders(rateLimitInfo);
 
       logger.info({ authUserId: userId }, 'Running plan creation preflight');
       const preflight = await preparePlanCreationPreflight({
         body,
         authUserId: userId,
+        resolvedUser: internalUser,
         dbClient: db,
       });
 
@@ -118,16 +129,11 @@ export function createStreamHandler(deps?: {
       }
 
       const {
-        user,
         userTier,
         startDate,
         deadlineDate,
         preparedInput: { extractedContext, topic, pdfProvenance },
       } = preflight.data;
-
-      const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
-      const generationRateLimitHeaders =
-        getPlanGenerationRateLimitHeaders(remaining);
 
       const generationInput = {
         topic,
@@ -145,7 +151,7 @@ export function createStreamHandler(deps?: {
       logger.info(
         {
           authUserId: userId,
-          userId: user.id,
+          userId: internalUser.id,
         },
         'Inserting plan before streaming generation'
       );
@@ -157,7 +163,7 @@ export function createStreamHandler(deps?: {
       logger.info(
         {
           planId: plan.id,
-          userId: user.id,
+          userId: internalUser.id,
           authUserId: userId,
         },
         'Plan insert succeeded for streaming generation'
@@ -177,18 +183,20 @@ export function createStreamHandler(deps?: {
           logger.info(
             {
               authUserId: userId,
-              userId: user.id,
+              userId: internalUser.id,
               modelOverride: suppliedModel,
             },
             'Model override provided for stream generation'
           );
           modelOverride = suppliedModel;
         } else {
+          // Silent fallback: invalid model param is ignored; tier default is used.
           // Do not log raw user-supplied value (logging hygiene / injection risk).
+          // API consumers can rely on tier default; consider X-Model-Used header if callers need to observe the selected model.
           logger.warn(
             {
               authUserId: userId,
-              userId: user.id,
+              userId: internalUser.id,
             },
             'Ignoring invalid model override for stream generation'
           );
@@ -216,7 +224,7 @@ export function createStreamHandler(deps?: {
               await cleanupStreamDb();
             } catch (error) {
               logger.error(
-                { planId: plan.id, userId: user.id, error },
+                { planId: plan.id, userId: internalUser.id, error },
                 'Failed to close stream DB client'
               );
             }
@@ -237,14 +245,14 @@ export function createStreamHandler(deps?: {
               reqSignal: req.signal,
               streamSignal: streamContext.signal,
               planId: plan.id,
-              userId: user.id,
+              userId: internalUser.id,
               dbClient: streamDb,
               emit,
               runGeneration: async (signal) => {
                 const result = await runGen(
                   {
                     planId: plan.id,
-                    userId: user.id,
+                    userId: internalUser.id,
                     input: generationInput,
                   },
                   { provider, signal, dbClient: streamDb }
@@ -255,7 +263,7 @@ export function createStreamHandler(deps?: {
                 logger.error(
                   {
                     planId: plan.id,
-                    userId: user.id,
+                    userId: internalUser.id,
                     classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
                     durationMs: Math.max(0, Date.now() - startedAt),
                     error: serializeError(error),
@@ -264,19 +272,19 @@ export function createStreamHandler(deps?: {
                 );
 
                 logger.warn(
-                  { planId: plan.id, userId: user.id },
+                  { planId: plan.id, userId: internalUser.id },
                   'Calling safeMarkPlanFailed after unhandled stream error'
                 );
-                await safeMarkPlanFailed(plan.id, user.id, streamDb);
+                await safeMarkPlanFailed(plan.id, internalUser.id, streamDb);
                 logger.info(
-                  { planId: plan.id, userId: user.id },
+                  { planId: plan.id, userId: internalUser.id },
                   'safeMarkPlanFailed completed after unhandled stream error'
                 );
               },
               fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
             });
             logger.info(
-              { planId: plan.id, userId: user.id },
+              { planId: plan.id, userId: internalUser.id },
               'executeGenerationStream completed'
             );
           } finally {
@@ -303,6 +311,7 @@ async function createStreamDbClient(authUserId: string): Promise<{
   cleanup: () => Promise<void>;
 }> {
   if (appEnv.isTest) {
+    // Test mode: shared getDb() + no-op cleanup for speed. Production RLS client lifecycle (createAuthenticatedRlsClient → cleanup) is not exercised here.
     return {
       dbClient: getDb(),
       cleanup: async () => {},
@@ -322,49 +331,17 @@ function toPayloadLog(payload: unknown): Record<string, unknown> {
     return { payloadType: typeof payload };
   }
 
-  const maybePayload = payload as Partial<CreateLearningPlanInput> & {
-    notes?: unknown;
-    extractedContent?: unknown;
-  };
-
+  const rec = payload as Record<string, unknown>;
   return {
-    topic: typeof maybePayload.topic === 'string' ? maybePayload.topic : null,
-    skillLevel:
-      typeof maybePayload.skillLevel === 'string'
-        ? maybePayload.skillLevel
-        : null,
-    weeklyHours:
-      typeof maybePayload.weeklyHours === 'number'
-        ? maybePayload.weeklyHours
-        : null,
+    topic: typeof rec.topic === 'string' ? rec.topic : null,
+    skillLevel: typeof rec.skillLevel === 'string' ? rec.skillLevel : null,
+    weeklyHours: typeof rec.weeklyHours === 'number' ? rec.weeklyHours : null,
     learningStyle:
-      typeof maybePayload.learningStyle === 'string'
-        ? maybePayload.learningStyle
-        : null,
-    visibility:
-      typeof maybePayload.visibility === 'string'
-        ? maybePayload.visibility
-        : null,
-    origin:
-      typeof maybePayload.origin === 'string' ? maybePayload.origin : null,
-    hasNotes:
-      typeof maybePayload.notes === 'string' && maybePayload.notes.length > 0,
+      typeof rec.learningStyle === 'string' ? rec.learningStyle : null,
+    visibility: typeof rec.visibility === 'string' ? rec.visibility : null,
+    origin: typeof rec.origin === 'string' ? rec.origin : null,
+    hasNotes: typeof rec.notes === 'string' && rec.notes.length > 0,
     hasExtractedContent:
-      typeof maybePayload.extractedContent === 'object' &&
-      maybePayload.extractedContent !== null,
-  };
-}
-
-function serializeError(error: unknown): Record<string, unknown> {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    value: String(error),
+      typeof rec.extractedContent === 'object' && rec.extractedContent !== null,
   };
 }
