@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 import {
   buildGenerationAttempt,
@@ -12,7 +12,7 @@ import {
 describe('derived plan status mapping', () => {
   it('returns pending when no modules and attempts below cap', () => {
     const detail = buildPlanDetail({
-      attemptsCount: 2,
+      attemptsCount: ATTEMPT_CAP - 1,
       plan: buildPlan({ generationStatus: 'ready', modules: [] }),
     });
     const client = mapDetailToClient(detail);

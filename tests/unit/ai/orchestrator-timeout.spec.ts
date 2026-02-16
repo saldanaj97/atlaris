@@ -5,21 +5,31 @@ import type {
   GenerationInput,
   GenerationOptions,
 } from '@/lib/ai/types/provider.types';
+import {
+  finalizeAttemptFailure,
+  finalizeAttemptSuccess,
+  reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
 import type {
   AttemptReservation,
   AttemptsDbClient,
-} from '@/lib/db/queries/attempts';
+} from '@/lib/db/queries/types/attempts.types';
 import { createId } from '../../fixtures/ids';
 
-type MockDbClient = {
-  select: () => Record<string, unknown>;
-  insert: () => Record<string, unknown>;
-  update: () => Record<string, unknown>;
-  delete: () => Record<string, unknown>;
-  transaction: () => Record<string, unknown>;
-  reserveAttemptSlot: ReturnType<typeof vi.fn>;
-  finalizeAttemptSuccess: ReturnType<typeof vi.fn>;
-  finalizeAttemptFailure: ReturnType<typeof vi.fn>;
+/**
+ * Mock client for orchestrator timeout tests. Satisfies isAttemptsDbClient (five
+ * Drizzle-like methods) and resolveAttemptOperations overrides. The three
+ * attempt methods use the real fn types so signature drift is caught by the compiler.
+ */
+type MockAttemptsDbClient = {
+  select: () => unknown;
+  insert: () => unknown;
+  update: () => unknown;
+  delete: () => unknown;
+  transaction: () => unknown;
+  reserveAttemptSlot: typeof reserveAttemptSlot;
+  finalizeAttemptSuccess: typeof finalizeAttemptSuccess;
+  finalizeAttemptFailure: typeof finalizeAttemptFailure;
 };
 
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
@@ -36,14 +46,17 @@ const TIMEOUT_ENV_KEYS = [
   'AI_TIMEOUT_EXTENSION_THRESHOLD_MS',
 ] as const;
 
-function restoreTimeoutEnvVar(key: (typeof TIMEOUT_ENV_KEYS)[number]): void {
-  const originalValue =
-    key === 'AI_TIMEOUT_BASE_MS'
-      ? ORIGINAL_TIMEOUT_ENV.baseMs
-      : key === 'AI_TIMEOUT_EXTENSION_MS'
-        ? ORIGINAL_TIMEOUT_ENV.extensionMs
-        : ORIGINAL_TIMEOUT_ENV.extensionThresholdMs;
+const TIMEOUT_ENV_LOOKUP: Record<
+  (typeof TIMEOUT_ENV_KEYS)[number],
+  string | undefined
+> = {
+  AI_TIMEOUT_BASE_MS: ORIGINAL_TIMEOUT_ENV.baseMs,
+  AI_TIMEOUT_EXTENSION_MS: ORIGINAL_TIMEOUT_ENV.extensionMs,
+  AI_TIMEOUT_EXTENSION_THRESHOLD_MS: ORIGINAL_TIMEOUT_ENV.extensionThresholdMs,
+};
 
+function restoreTimeoutEnvVar(key: (typeof TIMEOUT_ENV_KEYS)[number]): void {
+  const originalValue = TIMEOUT_ENV_LOOKUP[key];
   if (originalValue === undefined) {
     delete process.env[key];
     return;
@@ -170,7 +183,7 @@ function createProvider(
 
 describe('runGenerationAttempt timeout wiring', () => {
   let ctx: ReturnType<typeof createTimeoutTestContext>;
-  let mockDbClient: MockDbClient;
+  let mockDbClient: MockAttemptsDbClient;
   let failureAttemptRecord: FailureAttemptRecord;
 
   beforeEach(() => {
@@ -188,11 +201,19 @@ describe('runGenerationAttempt timeout wiring', () => {
       update: () => ({}),
       delete: () => ({}),
       transaction: () => ({}),
-      reserveAttemptSlot: vi.fn().mockResolvedValue(ctx.reservedAttempt),
+      reserveAttemptSlot: vi
+        .fn()
+        .mockResolvedValue(ctx.reservedAttempt) as typeof reserveAttemptSlot,
       finalizeAttemptSuccess: vi
         .fn()
-        .mockResolvedValue(ctx.successAttemptRecord),
-      finalizeAttemptFailure: vi.fn().mockResolvedValue(failureAttemptRecord),
+        .mockResolvedValue(
+          ctx.successAttemptRecord
+        ) as typeof finalizeAttemptSuccess,
+      finalizeAttemptFailure: vi
+        .fn()
+        .mockResolvedValue(
+          failureAttemptRecord
+        ) as typeof finalizeAttemptFailure,
     };
   });
 

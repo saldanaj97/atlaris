@@ -5,10 +5,10 @@ import {
 } from '@/lib/ai/generation-policy';
 import { RateLimitError } from '@/lib/api/errors';
 import {
-  countUserGenerationAttemptsSince,
-  getOldestUserGenerationAttemptSince,
-  type AttemptsDbClient,
-} from '@/lib/db/queries/attempts';
+  selectOldestUserGenerationAttemptSince,
+  selectUserGenerationAttemptsSince,
+} from '@/lib/db/queries/helpers/attempts-helpers';
+import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
 
 export interface PlanGenerationRateLimitResult {
@@ -41,7 +41,7 @@ export async function checkPlanGenerationRateLimit(
   let attemptCount: number;
   let countFailed = false;
   try {
-    attemptCount = await countUserGenerationAttemptsSince({
+    attemptCount = await selectUserGenerationAttemptsSince({
       userId,
       dbClient,
       since: windowStart,
@@ -55,7 +55,7 @@ export async function checkPlanGenerationRateLimit(
         userId,
         windowStart: windowStart.toISOString(),
       },
-      'countUserGenerationAttemptsSince failed, failing closed'
+      'selectUserGenerationAttemptsSince failed, failing closed'
     );
     attemptCount = PLAN_GENERATION_LIMIT;
     countFailed = true;
@@ -70,7 +70,7 @@ export async function checkPlanGenerationRateLimit(
       reset = Math.ceil(Date.now() / 1000) + retryAfter;
     } else {
       try {
-        const oldestAttempt = await getOldestUserGenerationAttemptSince({
+        const oldestAttempt = await selectOldestUserGenerationAttemptSince({
           userId,
           dbClient,
           since: windowStart,
@@ -90,7 +90,7 @@ export async function checkPlanGenerationRateLimit(
       } catch (err) {
         logger.error(
           { error: err, userId },
-          'getOldestUserGenerationAttemptSince failed, using fallback retry-after'
+          'selectOldestUserGenerationAttemptSince failed, using fallback retry-after'
         );
         retryAfter = windowSeconds;
         reset = Math.ceil(Date.now() / 1000) + retryAfter;

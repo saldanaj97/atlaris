@@ -1,10 +1,13 @@
 import { count, eq, inArray } from 'drizzle-orm';
 
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { TIER_LIMITS, type SubscriptionTier } from '@/lib/stripe/tier-limits';
-import { checkPlanDurationCap } from '@/lib/stripe/usage';
+import {
+  checkPlanDurationCap,
+  type PlanDurationCapResult,
+} from '@/lib/stripe/usage';
 import {
   DEFAULT_PLAN_DURATION_WEEKS,
   MILLISECONDS_PER_WEEK,
@@ -45,7 +48,7 @@ export function ensurePlanDurationAllowed({
   userTier: SubscriptionTier;
   weeklyHours: number;
   totalWeeks: number;
-}) {
+}): PlanDurationCapResult {
   return checkPlanDurationCap({
     tier: userTier,
     weeklyHours,

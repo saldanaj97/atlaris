@@ -1,10 +1,12 @@
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
+import {
+  seedFailedAttemptsForDurableWindow,
+  seedMaxAttemptsForPlan,
+} from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
@@ -131,17 +133,7 @@ describe('POST /api/v1/plans/:planId/retry', () => {
       planOverrides: { topic: 'Capped plan' },
     });
 
-    await db.insert(generationAttempts).values(
-      Array.from({ length: ATTEMPT_CAP }, (_, index) => ({
-        planId: plan.id,
-        status: 'failure' as const,
-        classification: 'validation' as const,
-        durationMs: 500 + index,
-        modulesCount: 0,
-        tasksCount: 0,
-        promptHash: `retry-capped-${index}`,
-      }))
-    );
+    await seedMaxAttemptsForPlan(plan.id);
 
     await withRunGenerationAttemptSpy(async (runSpy) => {
       const response = await POST(

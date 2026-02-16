@@ -1,6 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 
 import { classificationToUserMessage } from '@/lib/ai/failure-presentation';
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import {
   requireInternalUserByAuthId,
@@ -8,7 +9,6 @@ import {
   requirePlanIdFromRequest,
 } from '@/lib/api/plans/route-context';
 import { json } from '@/lib/api/response';
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, modules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
@@ -24,7 +24,7 @@ import type { FailureClassification } from '@/lib/types/client';
  */
 
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req, userId }) => {
+  withAuthAndRateLimit('read', async ({ req, userId }): Promise<Response> => {
     const planId = requirePlanIdFromRequest(req, 'second-to-last');
 
     logger.debug({ planId, userId }, 'Plan status request received');
