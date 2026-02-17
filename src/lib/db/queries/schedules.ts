@@ -1,34 +1,32 @@
-import { eq } from 'drizzle-orm';
+import { mapDbRowToScheduleCacheRow } from '@/lib/db/queries/helpers/schedule-helpers';
+import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
 import { getDb } from '@/lib/db/runtime';
 import { planSchedules } from '@/lib/db/schema';
 import type { ScheduleCacheRow } from '@/lib/scheduling/types';
+import { eq } from 'drizzle-orm';
+
+/** RLS-enforced database client for schedule queries (default: getDb()). */
+type DbClient = ReturnType<typeof getDb>;
 
 /**
  * Retrieves the cached schedule for the specified plan.
  *
+ * @param planId - The ID of the plan whose schedule cache will be retrieved
+ * @param dbClient - Optional database client; defaults to getDb()
  * @returns The cached schedule row for the given `planId`, or `null` if no cache exists.
  */
 export async function getPlanScheduleCache(
-  planId: string
+  planId: string,
+  dbClient: DbClient = getDb()
 ): Promise<ScheduleCacheRow | null> {
-  const db = getDb();
-  const [result] = await db
+  const [result] = await dbClient
     .select()
     .from(planSchedules)
     .where(eq(planSchedules.planId, planId));
 
   if (!result) return null;
 
-  return {
-    planId: result.planId,
-    scheduleJson: result.scheduleJson as ScheduleCacheRow['scheduleJson'],
-    inputsHash: result.inputsHash,
-    generatedAt: result.generatedAt,
-    timezone: result.timezone,
-    weeklyHours: result.weeklyHours,
-    startDate: result.startDate,
-    deadline: result.deadline,
-  };
+  return mapDbRowToScheduleCacheRow(result);
 }
 
 /**
@@ -38,41 +36,36 @@ export async function getPlanScheduleCache(
  *
  * @param planId - The ID of the plan whose schedule cache will be created or updated
  * @param payload - Cache values to store; `deadline` may be `null` to indicate no deadline
+ * @param dbClient - Optional database client; defaults to getDb()
  */
 export async function upsertPlanScheduleCache(
   planId: string,
-  payload: {
-    scheduleJson: ScheduleCacheRow['scheduleJson'];
-    inputsHash: string;
-    timezone: string;
-    weeklyHours: number;
-    startDate: string;
-    deadline: string | null;
-  }
+  payload: UpsertPlanScheduleCachePayload,
+  dbClient: DbClient = getDb()
 ): Promise<void> {
-  const db = getDb();
-  await db
+  const {
+    scheduleJson,
+    inputsHash,
+    timezone,
+    weeklyHours,
+    startDate,
+    deadline,
+  } = payload;
+  const cacheFields = {
+    scheduleJson,
+    inputsHash,
+    timezone,
+    weeklyHours,
+    startDate,
+    deadline,
+  };
+
+  await dbClient
     .insert(planSchedules)
-    .values({
-      planId,
-      scheduleJson: payload.scheduleJson,
-      inputsHash: payload.inputsHash,
-      timezone: payload.timezone,
-      weeklyHours: payload.weeklyHours,
-      startDate: payload.startDate,
-      deadline: payload.deadline,
-    })
+    .values({ planId, ...cacheFields })
     .onConflictDoUpdate({
       target: planSchedules.planId,
-      set: {
-        scheduleJson: payload.scheduleJson,
-        inputsHash: payload.inputsHash,
-        timezone: payload.timezone,
-        weeklyHours: payload.weeklyHours,
-        startDate: payload.startDate,
-        deadline: payload.deadline,
-        generatedAt: new Date(),
-      },
+      set: { ...cacheFields, generatedAt: new Date() },
     });
 }
 
@@ -80,8 +73,11 @@ export async function upsertPlanScheduleCache(
  * Remove the schedule cache entry for the specified plan.
  *
  * @param planId - The identifier of the plan whose schedule cache will be deleted
+ * @param dbClient - Optional database client; defaults to getDb()
  */
-export async function deletePlanScheduleCache(planId: string): Promise<void> {
-  const db = getDb();
-  await db.delete(planSchedules).where(eq(planSchedules.planId, planId));
+export async function deletePlanScheduleCache(
+  planId: string,
+  dbClient: DbClient = getDb()
+): Promise<void> {
+  await dbClient.delete(planSchedules).where(eq(planSchedules.planId, planId));
 }
