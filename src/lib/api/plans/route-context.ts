@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm';
 
 import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
-import { getUserByAuthId, type DbUser } from '@/lib/db/queries/users';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 

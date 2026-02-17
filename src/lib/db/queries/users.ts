@@ -1,36 +1,111 @@
+import type {
+  DbUser,
+  DeleteUserResult,
+  UsersDbClient,
+} from '@/lib/db/queries/types/users.types';
+import { getDb } from '@/lib/db/runtime';
+import { users } from '@/lib/db/schema';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 
-import { getDb } from '@/lib/db/runtime';
-import { db as serviceDb } from '@/lib/db/service-role';
-import { users } from '@/lib/db/schema';
-import type { InferSelectModel } from 'drizzle-orm';
+type CleanupCapableClient = UsersDbClient & {
+  cleanup?: () => Promise<void>;
+  destroy?: () => Promise<void>;
+};
 
-export type DbUser = InferSelectModel<typeof users>;
+async function cleanupInternalClient(
+  client: CleanupCapableClient,
+  shouldCleanup: boolean
+): Promise<void> {
+  if (!shouldCleanup) {
+    return;
+  }
 
+  if (typeof client.cleanup === 'function') {
+    await client.cleanup();
+    return;
+  }
+
+  if (typeof client.destroy === 'function') {
+    await client.destroy();
+  }
+}
+
+/**
+ * User-related queries for account lookup, creation, and deletion.
+ * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
+ */
+
+/**
+ * Looks up a user by their auth provider ID.
+ *
+ * @param authUserId - The external auth provider user ID
+ * @param dbClient - Optional RLS-enforced client; defaults to getDb()
+ * @returns The user record, or undefined if not found
+ */
 export async function getUserByAuthId(
-  authUserId: string
+  authUserId: string,
+  dbClient?: UsersDbClient
 ): Promise<DbUser | undefined> {
-  const db = getDb();
-  const result = await db
-    .select()
-    .from(users)
-    .where(eq(users.authUserId, authUserId));
-  return result[0];
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
+
+  try {
+    const result = await client
+      .select()
+      .from(users)
+      .where(eq(users.authUserId, authUserId));
+    return result[0];
+  } finally {
+    await cleanupInternalClient(client as CleanupCapableClient, shouldCleanup);
+  }
 }
 
-export async function createUser(userData: {
-  authUserId: string;
-  email: string;
-  name?: string;
-}): Promise<DbUser | undefined> {
-  const db = getDb();
-  const result = await db.insert(users).values(userData).returning();
-  return result[0];
+/**
+ * Creates a new user record.
+ *
+ * @param userData - User fields (authUserId, email, optional name)
+ * @param dbClient - Optional RLS-enforced client; defaults to getDb()
+ * @returns The created user record, or undefined on failure
+ */
+export async function createUser(
+  userData: {
+    authUserId: string;
+    email: string;
+    name?: string | null;
+  },
+  dbClient?: UsersDbClient
+): Promise<DbUser | undefined> {
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
+
+  try {
+    const insertData = {
+      authUserId: userData.authUserId,
+      email: userData.email,
+      name: userData.name,
+    };
+
+    const result = await client.insert(users).values(insertData).returning();
+    return result[0];
+  } finally {
+    await cleanupInternalClient(client as CleanupCapableClient, shouldCleanup);
+  }
 }
 
+/**
+ * Deletes a user by their auth provider ID.
+ *
+ * Uses service-role client (bypasses RLS) because this is called from
+ * auth provider webhooks / background workers where no user session exists.
+ * Do NOT call this from request handlers — use an RLS-scoped client instead.
+ *
+ * @param authUserId - The external auth provider user ID
+ * @returns Whether the deletion succeeded + the deleted user's ID
+ */
 export async function deleteUserByAuthId(
   authUserId: string
-): Promise<{ deleted: boolean; userId?: string }> {
+): Promise<DeleteUserResult> {
   const result = await serviceDb
     .delete(users)
     .where(eq(users.authUserId, authUserId))
@@ -42,25 +117,3 @@ export async function deleteUserByAuthId(
 
   return { deleted: true, userId: result[0].id };
 }
-
-// TODO: [OPENROUTER-MIGRATION] Add function when preferredAiModel column exists:
-// export async function updateUserModelPreference(
-//   userId: string,
-//   modelId: string
-// ): Promise<void> {
-//   const db = getDb();
-//   await db
-//     .update(users)
-//     .set({ preferredAiModel: modelId })
-//     .where(eq(users.id, userId));
-// }
-
-// TODO: [OPENROUTER-MIGRATION] Add function to get user's preferred model:
-// export async function getUserPreferredModel(userId: string): Promise<string | null> {
-//   const db = getDb();
-//   const user = await db
-//     .select({ preferredAiModel: users.preferredAiModel })
-//     .from(users)
-//     .where(eq(users.id, userId));
-//   return user[0]?.preferredAiModel ?? null;
-// }

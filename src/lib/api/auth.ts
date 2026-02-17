@@ -1,10 +1,7 @@
-import { appEnv, devAuthEnv } from '@/lib/config/env';
 import { auth } from '@/lib/auth/server';
-import {
-  createUser,
-  getUserByAuthId,
-  type DbUser,
-} from '@/lib/db/queries/users';
+import { appEnv, devAuthEnv } from '@/lib/config/env';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
+import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 import {
