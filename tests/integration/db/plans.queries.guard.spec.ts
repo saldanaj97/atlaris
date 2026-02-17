@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Guard test to ensure all plan-fetching functions in queries/plans.ts
@@ -15,11 +15,10 @@ describe('Plan Queries - Tenant Scoping Guard', () => {
     const fileContent = readFileSync(plansQueryPath, 'utf-8');
 
     // Pattern to match exported async functions that directly fetch learning plans
-    // Matches functions like: getLearningPlan*, getUserLearningPlans, getPlanSummaries*, getPlanAttempts*
+    // Matches functions like: getLearningPlan*, getPlanSummaries*, getPlanAttempts*
     // Excludes utility functions like: getPlanSchedule*, getPlanCache*, getPlanStatus*
     // Expected naming convention: Functions that fetch plan entities should use:
     //   - getLearningPlan* (e.g., getLearningPlanDetail)
-    //   - getUserLearningPlans
     //   - getPlanSummaries* (e.g., getPlanSummariesForUser)
     //   - getPlanAttempts* (e.g., getPlanAttemptsForUser)
     const planFetchingFunctionPattern =

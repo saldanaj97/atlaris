@@ -13,6 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
+import type { GenerationAttemptStatus } from '@/lib/db/queries/types/plans.types';
 import type { PdfContext } from '@/lib/pdf/context';
 
 import {
@@ -29,8 +30,6 @@ import {
 import { users } from './users';
 
 // Learning plans and related tables
-
-export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
 
 export const learningPlans = pgTable(
   'learning_plans',
