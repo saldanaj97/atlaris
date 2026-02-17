@@ -1,4 +1,4 @@
-import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
+import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import type {
   CreateUserData,
   DbUser,
@@ -27,7 +27,6 @@ export async function getUserByAuthId(
   dbClient?: UsersDbClient
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const result = await client
@@ -36,7 +35,9 @@ export async function getUserByAuthId(
       .where(eq(users.authUserId, authUserId));
     return result[0];
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -52,7 +53,6 @@ export async function createUser(
   dbClient?: UsersDbClient
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const insertData = {
@@ -64,7 +64,9 @@ export async function createUser(
     const result = await client.insert(users).values(insertData).returning();
     return result[0];
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 

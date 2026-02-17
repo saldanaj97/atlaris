@@ -1,4 +1,4 @@
-import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
+import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import {
   activeRegenerationJobWhere,
   appendErrorHistoryEntry,
@@ -124,7 +124,6 @@ export async function getFailedJobs(
   dbClient?: JobsDbClient
 ): Promise<Job[]> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   const boundedLimit = clampLimit(limit, MAX_MONITORING_ROWS);
   if (boundedLimit === 0) {
@@ -141,7 +140,9 @@ export async function getFailedJobs(
 
     return rows.map(mapRowToJob);
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -158,7 +159,6 @@ export async function getJobStats(
   dbClient?: JobsDbClient
 ): Promise<JobStats> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const [stats] = await client
@@ -202,7 +202,9 @@ export async function getJobStats(
       failureRate,
     };
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -219,7 +221,6 @@ export async function cleanupOldJobs(
   dbClient?: JobsDbClient
 ): Promise<number> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const result = await client
@@ -234,7 +235,9 @@ export async function cleanupOldJobs(
 
     return result.count ?? 0;
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -265,7 +268,6 @@ export async function insertJobRecord(
   dbClient?: JobsDbClient
 ): Promise<JobEnqueueResult> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     return client.transaction(async (tx) => {
@@ -316,7 +318,9 @@ export async function insertJobRecord(
       return { id: inserted.id, deduplicated: false };
     });
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -335,7 +339,6 @@ export async function getActiveRegenerationJob(
   dbClient?: JobsDbClient
 ): Promise<{ id: string } | null> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const [activeJob] = await client
@@ -347,7 +350,9 @@ export async function getActiveRegenerationJob(
 
     return activeJob ?? null;
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -365,7 +370,6 @@ export async function claimNextPendingJob(
   dbClient?: JobsDbClient
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     if (types.length === 0) {
@@ -407,7 +411,9 @@ export async function claimNextPendingJob(
       return claimed ? mapRowToJob(claimed) : null;
     });
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -426,7 +432,6 @@ export async function completeJobRecord(
   dbClient?: JobsDbClient
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     return client.transaction(async (tx) => {
@@ -454,7 +459,9 @@ export async function completeJobRecord(
       return updated ? mapRowToJob(updated) : null;
     });
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -482,7 +489,6 @@ export async function failJobRecord(
   dbClient?: JobsDbClient
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     return client.transaction(async (tx) => {
@@ -550,7 +556,9 @@ export async function failJobRecord(
       return updated ? mapRowToJob(updated) : null;
     });
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -571,7 +579,6 @@ export async function countUserJobsSince(
   dbClient?: JobsDbClient
 ): Promise<number> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const [row] = await client
@@ -587,6 +594,8 @@ export async function countUserJobsSince(
 
     return row?.value ?? 0;
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }

@@ -10,6 +10,7 @@ import { db } from '@/lib/db/service-role';
 import type { ScheduleJson } from '@/lib/scheduling/types';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
+import { resetDbForIntegrationTestFile } from '../../helpers/db';
 
 function buildScheduleJson(
   overrides: Partial<ScheduleJson> = {}
@@ -63,6 +64,8 @@ describe('Schedule Queries', () => {
   let planId: string;
 
   beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+
     const owner = await createTestUser();
     const attacker = await createTestUser();
 

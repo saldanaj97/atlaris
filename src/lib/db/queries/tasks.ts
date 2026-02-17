@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 
-import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
+import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import type {
   DbTask,
   DbTaskProgress,
@@ -23,7 +23,6 @@ export async function getAllTasksInPlan(
   dbClient?: TasksDbClient
 ): Promise<DbTask[]> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const rows = await client
@@ -36,7 +35,9 @@ export async function getAllTasksInPlan(
       );
     return rows.map((row) => row.task);
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -58,7 +59,6 @@ export async function setTaskProgress(
   dbClient?: TasksDbClient
 ): Promise<DbTaskProgress> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     // Validate task ownership first
@@ -107,6 +107,8 @@ export async function setTaskProgress(
 
     return progress;
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }

@@ -1,10 +1,10 @@
 import { and, eq } from 'drizzle-orm';
 
 import { mapDbRowToScheduleCacheRow } from '@/lib/db/queries/helpers/schedule-helpers';
-import { logger } from '@/lib/logging/logger';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, planSchedules } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 import type { ScheduleCacheRow } from '@/lib/scheduling/types';
 
 /** RLS-enforced database client for schedule queries (default: getDb()). */
@@ -37,29 +37,32 @@ export async function validatePlanOwnership(
 
 /**
  * Retrieves the cached schedule for the specified plan.
- * Validates that the plan belongs to the user before returning cached data.
+ * Ownership is enforced inline: the schedule is only returned when the plan
+ * belongs to `userId`. Returns `null` if the plan is not found, the user does
+ * not own it, or no cache entry exists yet.
  *
  * @param planId - The ID of the plan whose schedule cache will be retrieved
  * @param userId - The ID of the user who owns the plan
  * @param dbClient - Optional database client; defaults to getDb()
  * @returns The cached schedule row for the given `planId`, or `null` if no cache exists.
- * @throws Error if the plan is not found or the user doesn't own it
  */
 export async function getPlanScheduleCache(
   planId: string,
   userId: string,
   dbClient: DbClient = getDb()
 ): Promise<ScheduleCacheRow | null> {
-  await validatePlanOwnership(planId, userId, dbClient);
-
   const [result] = await dbClient
-    .select()
+    .select({ schedule: planSchedules })
     .from(planSchedules)
-    .where(eq(planSchedules.planId, planId));
+    .innerJoin(learningPlans, eq(planSchedules.planId, learningPlans.id))
+    .where(
+      and(eq(planSchedules.planId, planId), eq(learningPlans.userId, userId))
+    )
+    .limit(1);
 
   if (!result) return null;
 
-  return mapDbRowToScheduleCacheRow(result);
+  return mapDbRowToScheduleCacheRow(result.schedule);
 }
 
 /**

@@ -2,7 +2,7 @@
  * Plan-related queries for learning plans, summaries, detail views, and generation attempts.
  * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
  */
-import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
+import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
@@ -42,7 +42,6 @@ export async function getPlanSummariesForUser(
   dbClient?: DbClient
 ): Promise<PlanSummary[]> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const planRows = await client
@@ -97,7 +96,9 @@ export async function getPlanSummariesForUser(
       progressRows,
     });
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -116,7 +117,6 @@ export async function getLearningPlanDetail(
   dbClient?: DbClient
 ): Promise<LearningPlanDetail | null> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     const planRow = await client
@@ -134,11 +134,7 @@ export async function getLearningPlanDetail(
     const plan = planRow[0];
 
     // Fire plan-level queries in parallel: modules + generation attempt metadata
-    const [
-      moduleRows,
-      [{ attemptCount } = { attemptCount: 0 }],
-      [latestAttempt],
-    ] = await Promise.all([
+    const [moduleRows, attemptCountRow, latestAttemptRow] = await Promise.all([
       client
         .select()
         .from(modules)
@@ -211,8 +207,10 @@ export async function getLearningPlanDetail(
         : ([] as TaskResourceWithResource[]),
     ]);
 
-    const attemptsCount = Number(attemptCount ?? 0);
-    const latestAttemptOrNull: GenerationAttempt | null = latestAttempt ?? null;
+    const attemptCount = attemptCountRow[0]?.attemptCount ?? 0;
+    const attemptsCount = Number(attemptCount);
+    const latestAttemptOrNull: GenerationAttempt | null =
+      latestAttemptRow[0] ?? null;
 
     return mapLearningPlanDetail({
       plan,
@@ -224,7 +222,9 @@ export async function getLearningPlanDetail(
       attemptsCount,
     });
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
 
@@ -249,33 +249,36 @@ export async function getPlanAttemptsForUser(
   dbClient?: DbClient
 ): Promise<PlanAttemptsResult | null> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
-    const planRow = await client
-      .select({
-        id: learningPlans.id,
-        topic: learningPlans.topic,
-        generationStatus: learningPlans.generationStatus,
-      })
-      .from(learningPlans)
-      .where(
-        and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId))
-      )
-      .limit(1);
+    const [planRow, attempts] = await Promise.all([
+      client
+        .select({
+          id: learningPlans.id,
+          topic: learningPlans.topic,
+          generationStatus: learningPlans.generationStatus,
+        })
+        .from(learningPlans)
+        .where(
+          and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId))
+        )
+        .limit(1),
+      client
+        .select()
+        .from(generationAttempts)
+        .where(eq(generationAttempts.planId, planId))
+        .orderBy(desc(generationAttempts.createdAt))
+        .limit(10),
+    ]);
 
     if (!planRow.length) {
       return null;
     }
 
-    const attempts = await client
-      .select()
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId))
-      .orderBy(desc(generationAttempts.createdAt));
-
     return { plan: planRow[0], attempts };
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }

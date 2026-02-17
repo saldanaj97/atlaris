@@ -10,17 +10,15 @@ export type DbUser = InferSelectModel<typeof users>;
 export type DbUserInsert = InferInsertModel<typeof users>;
 
 /** Input data for createUser (authUserId, email, optional name). */
-export interface CreateUserData {
-  authUserId: string;
-  email: string;
-  name?: string | null;
-}
+export type CreateUserData = Pick<
+  DbUserInsert,
+  'authUserId' | 'email' | 'name'
+>;
 
 /** RLS-enforced database client for user queries. */
 export type UsersDbClient = ReturnType<typeof getDb>;
 
 /** Result of a user deletion operation. */
-export interface DeleteUserResult {
-  deleted: boolean;
-  userId?: string;
-}
+export type DeleteUserResult =
+  | { deleted: true; userId: string }
+  | { deleted: false; userId?: string; reason?: string };

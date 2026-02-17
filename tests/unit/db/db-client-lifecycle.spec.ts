@@ -1,37 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
+import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 
-describe('cleanupInternalDbClient', () => {
-  it('does not cleanup when shouldCleanup is false', async () => {
+describe('cleanupDbClient', () => {
+  it('calls cleanup when present', async () => {
     const cleanup = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const destroy = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
-    await cleanupInternalDbClient({ cleanup, destroy }, false);
-
-    expect(cleanup).not.toHaveBeenCalled();
-    expect(destroy).not.toHaveBeenCalled();
-  });
-
-  it('calls cleanup when present and shouldCleanup is true', async () => {
-    const cleanup = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    const destroy = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
-
-    await cleanupInternalDbClient({ cleanup, destroy }, true);
+    await cleanupDbClient({ cleanup, destroy });
 
     expect(cleanup).toHaveBeenCalledTimes(1);
     expect(destroy).not.toHaveBeenCalled();
   });
 
-  it('calls destroy when cleanup is absent and shouldCleanup is true', async () => {
+  it('calls destroy when cleanup is absent', async () => {
     const destroy = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
 
-    await cleanupInternalDbClient({ destroy }, true);
+    await cleanupDbClient({ destroy });
 
     expect(destroy).toHaveBeenCalledTimes(1);
   });
 
   it('is a no-op when client has no cleanup methods', async () => {
-    await expect(cleanupInternalDbClient({}, true)).resolves.toBeUndefined();
+    await expect(cleanupDbClient({})).resolves.toBeUndefined();
   });
 });

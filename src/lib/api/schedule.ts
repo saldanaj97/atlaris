@@ -9,6 +9,7 @@ import { generateSchedule } from '@/lib/scheduling/generate';
 import { computeInputsHash } from '@/lib/scheduling/hash';
 import type { ScheduleInputs, ScheduleJson } from '@/lib/scheduling/types';
 import { and, asc, eq, inArray } from 'drizzle-orm';
+import { z } from 'zod';
 
 interface GetPlanScheduleParams {
   planId: string;
@@ -22,26 +23,24 @@ const SUPPORTED_TIME_ZONES =
     ? new Set(Intl.supportedValuesOf('timeZone'))
     : null;
 
+const UserWithPrefsSchema = z.object({
+  timezone: z.string().optional(),
+  prefs: z
+    .object({
+      timezone: z.string().optional(),
+    })
+    .optional(),
+});
+
 function extractTimezonePreference(userRecord: unknown): string | undefined {
-  if (!userRecord || typeof userRecord !== 'object') {
+  const parsedUserRecord = UserWithPrefsSchema.safeParse(userRecord);
+  if (!parsedUserRecord.success) {
     return undefined;
   }
 
-  const userLike = userRecord as Record<string, unknown>;
-
-  if (typeof userLike.timezone === 'string') {
-    return userLike.timezone;
-  }
-
-  const prefs = userLike.prefs;
-  if (prefs && typeof prefs === 'object') {
-    const prefsLike = prefs as Record<string, unknown>;
-    if (typeof prefsLike.timezone === 'string') {
-      return prefsLike.timezone;
-    }
-  }
-
-  return undefined;
+  return (
+    parsedUserRecord.data.timezone ?? parsedUserRecord.data.prefs?.timezone
+  );
 }
 
 function resolveScheduleTimezone(

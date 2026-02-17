@@ -1,4 +1,4 @@
-import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
+import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import {
   buildResourcesByTask,
   computeModuleNavItems,
@@ -44,7 +44,6 @@ export async function getModuleDetail(
   dbClient?: ModulesDbClient
 ): Promise<ModuleDetail | null> {
   const client = dbClient ?? getDb();
-  const shouldCleanup = dbClient === undefined;
 
   try {
     // RLS enforces ownership. If unauthorized, this query returns no rows.
@@ -204,6 +203,8 @@ export async function getModuleDetail(
       allModules,
     };
   } finally {
-    await cleanupInternalDbClient(client, shouldCleanup);
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
 }
