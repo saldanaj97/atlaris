@@ -1,15 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 
+import type {
+  DbTask,
+  DbTaskProgress,
+  TasksDbClient,
+} from '@/lib/db/queries/types/tasks.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
 import type { ProgressStatus } from '@/lib/types/db';
-import { sanitizePlainText } from '@/lib/utils/sanitize';
-import type { InferSelectModel } from 'drizzle-orm';
-
-type DbTask = InferSelectModel<typeof tasks>;
-type DbTaskProgress = InferSelectModel<typeof taskProgress>;
-
-type TasksDbClient = ReturnType<typeof getDb>;
 
 /**
  * Retrieves all tasks in a specific learning plan for a user.
@@ -32,83 +30,15 @@ export async function getAllTasksInPlan(
 }
 
 /**
- * Retrieves all tasks in a specific learning plan by planId
- * @param planId - The ID of the learning plan
- * @param dbClient - Optional database client (defaults to getDb())
- * @returns A promise that resolves to an array of tasks with module info
- */
-export async function getTasksByPlanId(
-  planId: string,
-  dbClient: TasksDbClient = getDb()
-): Promise<
-  Array<{
-    task: DbTask;
-    moduleTitle: string;
-  }>
-> {
-  const rows = await dbClient
-    .select({
-      task: tasks,
-      moduleTitle: modules.title,
-    })
-    .from(tasks)
-    .innerJoin(modules, eq(tasks.moduleId, modules.id))
-    .where(eq(modules.planId, planId))
-    .orderBy(tasks.order);
-  return rows;
-}
-
-/**
- * Retrieves the task progress for a specific user and task.
- * @param userId - The ID of the user.
- * @param taskId - The ID of the task.
- * @param dbClient - Optional database client (defaults to getDb())
- * @returns A promise that resolves to the task progress record or undefined if not found.
- */
-export async function getUserTaskProgress(
-  userId: string,
-  taskId: string,
-  dbClient: TasksDbClient = getDb()
-): Promise<DbTaskProgress | undefined> {
-  const result = await dbClient
-    .select()
-    .from(taskProgress)
-    .where(
-      and(eq(taskProgress.userId, userId), eq(taskProgress.taskId, taskId))
-    );
-  return result[0];
-}
-
-/**
- * Retrieves the task progress for a specific user and plan.
- * @param userId - The ID of the user.
- * @param planId - The ID of the learning plan.
- * @param dbClient - Optional database client (defaults to getDb())
- * @returns A promise that resolves to an array of task progress records.
- */
-export async function getTaskProgressForUserPlan(
-  userId: string,
-  planId: string,
-  dbClient: TasksDbClient = getDb()
-): Promise<DbTaskProgress[]> {
-  const rows = await dbClient
-    .select({ progress: taskProgress })
-    .from(taskProgress)
-    .innerJoin(tasks, eq(taskProgress.taskId, tasks.id))
-    .innerJoin(modules, eq(tasks.moduleId, modules.id))
-    .where(and(eq(taskProgress.userId, userId), eq(modules.planId, planId)));
-
-  return rows.map((row) => row.progress);
-}
-
-/**
  * Sets or updates the progress status for a specific task for a user.
+ * Validates that the task belongs to a plan owned by the user before updating.
  * If a progress record does not exist, it creates one; otherwise, it updates the existing record.
  * @param userId - The ID of the user.
  * @param taskId - The ID of the task.
  * @param status - The new progress status to set.
  * @param dbClient - Optional database client (defaults to getDb())
  * @returns A promise that resolves to the task progress record.
+ * @throws Error if the task is not found or the user doesn't own the task's plan
  */
 export async function setTaskProgress(
   userId: string,
@@ -116,6 +46,22 @@ export async function setTaskProgress(
   status: ProgressStatus,
   dbClient: TasksDbClient = getDb()
 ): Promise<DbTaskProgress> {
+  // Validate task ownership first
+  const [ownership] = await dbClient
+    .select({
+      taskId: tasks.id,
+      planUserId: learningPlans.userId,
+    })
+    .from(tasks)
+    .innerJoin(modules, eq(tasks.moduleId, modules.id))
+    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+    .where(eq(tasks.id, taskId))
+    .limit(1);
+
+  if (!ownership || ownership.planUserId !== userId) {
+    throw new Error('Task not found or access denied');
+  }
+
   const now = new Date();
   const completedAt = status === 'completed' ? now : null;
 
@@ -138,111 +84,11 @@ export async function setTaskProgress(
     })
     .returning();
 
+  if (!progress) {
+    throw new Error(
+      'Failed to update task progress: operation returned no rows'
+    );
+  }
+
   return progress;
-}
-
-/**
- * Update task description by appending new content
- * Sanitizes all inputs to prevent XSS attacks and ensure safe plain text storage.
- * @param taskId - The ID of the task
- * @param additionalDescription - Additional description text to append
- * @param dbClient - Optional database client (defaults to getDb())
- * @returns Promise that resolves when update completes
- */
-export async function appendTaskDescription(
-  taskId: string,
-  additionalDescription: string,
-  dbClient: TasksDbClient = getDb()
-): Promise<void> {
-  // Get current task
-  const [currentTask] = await dbClient
-    .select()
-    .from(tasks)
-    .where(eq(tasks.id, taskId))
-    .limit(1);
-
-  if (!currentTask) {
-    throw new Error(`Task not found: ${taskId}`);
-  }
-
-  // Sanitize both existing description and new content before appending
-  const sanitizedExisting = currentTask.description
-    ? sanitizePlainText(currentTask.description)
-    : '';
-  const sanitizedAdditional = sanitizePlainText(additionalDescription);
-
-  // If there's nothing meaningful to append, keep the original description unchanged
-  if (!sanitizedAdditional) {
-    return;
-  }
-
-  // Append to existing description (or create new if none exists)
-  const newDescription = sanitizedExisting
-    ? `${sanitizedExisting}\n\n${sanitizedAdditional}`
-    : sanitizedAdditional;
-
-  await dbClient
-    .update(tasks)
-    .set({
-      description: newDescription,
-      updatedAt: new Date(),
-    })
-    .where(eq(tasks.id, taskId));
-}
-
-/**
- * Append a micro-explanation to a task description.
- * Uses a flag to prevent duplicate micro-explanations from being added.
- * Sanitizes all inputs to prevent XSS attacks.
- * @param taskId - The ID of the task
- * @param microExplanation - The micro-explanation text to append
- * @param dbClient - Optional database client (defaults to getDb())
- * @returns Promise that resolves when update completes, or immediately if already has micro-explanation
- */
-export async function appendTaskMicroExplanation(
-  taskId: string,
-  microExplanation: string,
-  dbClient: TasksDbClient = getDb()
-): Promise<string> {
-  // Get current task
-  const [currentTask] = await dbClient
-    .select()
-    .from(tasks)
-    .where(eq(tasks.id, taskId))
-    .limit(1);
-
-  if (!currentTask) {
-    throw new Error(`Task not found: ${taskId}`);
-  }
-
-  // If micro-explanation already exists, skip
-  if (currentTask.hasMicroExplanation) {
-    // Return the current DB value (may be null if empty)
-    return currentTask.description ?? '';
-  }
-
-  // Sanitize the micro-explanation text
-  const sanitizedExplanation = sanitizePlainText(microExplanation);
-
-  // Sanitize existing description if present
-  const sanitizedExisting = currentTask.description
-    ? sanitizePlainText(currentTask.description)
-    : '';
-
-  // Append with a plain-text prefix (no HTML markers)
-  const prefix = '\n\nMicro-explanation\n';
-  const newDescription = sanitizedExisting
-    ? `${sanitizedExisting}${prefix}${sanitizedExplanation}`
-    : `${prefix}${sanitizedExplanation}`;
-
-  await dbClient
-    .update(tasks)
-    .set({
-      description: newDescription,
-      hasMicroExplanation: true,
-      updatedAt: new Date(),
-    })
-    .where(eq(tasks.id, taskId));
-
-  return newDescription;
 }
