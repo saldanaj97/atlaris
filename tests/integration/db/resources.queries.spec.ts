@@ -2,29 +2,53 @@
  * Unit tests for DB resources queries
  * Tests: upsert by URL, type mapping, attachment order/idempotency
  */
-import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@/lib/db/service-role';
+import type { ResourceCandidate } from '@/lib/curation/types';
 import {
+  attachTaskResources,
+  upsertAndAttach,
+  upsertResource,
+} from '@/lib/db/queries/resources';
+import {
+  learningPlans,
+  modules,
   resources,
   taskResources,
   tasks,
-  modules,
-  learningPlans,
   users,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
-import {
-  upsertResource,
-  attachTaskResources,
-  upsertAndAttach,
-} from '@/lib/db/queries/resources';
-import type { ResourceCandidate } from '@/lib/curation/types';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('DB Resources Queries', () => {
   let testUserId: string;
   let testPlanId: string;
   let testModuleId: string;
   let testTaskId: string;
+
+  const upsertResourceWithDb = async (
+    candidate: ResourceCandidate
+  ): Promise<string> => upsertResource({ candidate, dbClient: db });
+
+  const attachTaskResourcesWithDb = async (
+    taskId: string,
+    resourceIds: string[]
+  ): Promise<void> =>
+    attachTaskResources({
+      taskId,
+      resourceIds,
+      dbClient: db,
+    });
+
+  const upsertAndAttachWithDb = async (
+    taskId: string,
+    candidates: ResourceCandidate[]
+  ): Promise<string[]> =>
+    upsertAndAttach({
+      taskId,
+      candidates,
+      dbClient: db,
+    });
 
   beforeEach(async () => {
     // Create test user
@@ -94,7 +118,7 @@ describe('DB Resources Queries', () => {
         },
       };
 
-      const resourceId = await upsertResource(candidate);
+      const resourceId = await upsertResourceWithDb(candidate);
 
       expect(resourceId).toBeDefined();
 
@@ -122,8 +146,8 @@ describe('DB Resources Queries', () => {
         metadata: {},
       };
 
-      const resourceId1 = await upsertResource(candidate);
-      const resourceId2 = await upsertResource(candidate);
+      const resourceId1 = await upsertResourceWithDb(candidate);
+      const resourceId2 = await upsertResourceWithDb(candidate);
 
       expect(resourceId1).toBe(resourceId2);
 
@@ -156,8 +180,8 @@ describe('DB Resources Queries', () => {
         metadata: {},
       };
 
-      const youtubeId = await upsertResource(youtubeCandidate);
-      const docId = await upsertResource(docCandidate);
+      const youtubeId = await upsertResourceWithDb(youtubeCandidate);
+      const docId = await upsertResourceWithDb(docCandidate);
 
       const [youtubeResource] = await db
         .select()
@@ -192,7 +216,9 @@ describe('DB Resources Queries', () => {
           metadata: {},
         };
 
-        await expect(upsertResource(candidate)).rejects.toThrow(/invalid url/i);
+        await expect(upsertResourceWithDb(candidate)).rejects.toThrow(
+          /invalid url/i
+        );
       }
     });
 
@@ -209,7 +235,7 @@ describe('DB Resources Queries', () => {
         metadata: {},
       };
 
-      const resourceId = await upsertResource(candidate);
+      const resourceId = await upsertResourceWithDb(candidate);
       const [row] = await db
         .select()
         .from(resources)
@@ -220,7 +246,7 @@ describe('DB Resources Queries', () => {
 
   describe('attachTaskResources', () => {
     it('should attach resources with stable ordering', async () => {
-      const resource1 = await upsertResource({
+      const resource1 = await upsertResourceWithDb({
         url: 'https://example.com/resource1',
         title: 'Resource 1',
         source: 'doc',
@@ -232,7 +258,7 @@ describe('DB Resources Queries', () => {
         metadata: {},
       });
 
-      const resource2 = await upsertResource({
+      const resource2 = await upsertResourceWithDb({
         url: 'https://example.com/resource2',
         title: 'Resource 2',
         source: 'doc',
@@ -244,7 +270,7 @@ describe('DB Resources Queries', () => {
         metadata: {},
       });
 
-      await attachTaskResources(testTaskId, [resource1, resource2]);
+      await attachTaskResourcesWithDb(testTaskId, [resource1, resource2]);
 
       const attachments = await db
         .select()
@@ -260,7 +286,7 @@ describe('DB Resources Queries', () => {
     });
 
     it('should be idempotent on duplicate inserts', async () => {
-      const resourceId = await upsertResource({
+      const resourceId = await upsertResourceWithDb({
         url: 'https://example.com/resource',
         title: 'Resource',
         source: 'doc',
@@ -272,8 +298,8 @@ describe('DB Resources Queries', () => {
         metadata: {},
       });
 
-      await attachTaskResources(testTaskId, [resourceId]);
-      await attachTaskResources(testTaskId, [resourceId]); // Duplicate
+      await attachTaskResourcesWithDb(testTaskId, [resourceId]);
+      await attachTaskResourcesWithDb(testTaskId, [resourceId]); // Duplicate
 
       const attachments = await db
         .select()
@@ -311,7 +337,7 @@ describe('DB Resources Queries', () => {
         },
       ];
 
-      const resourceIds = await upsertAndAttach(testTaskId, candidates);
+      const resourceIds = await upsertAndAttachWithDb(testTaskId, candidates);
 
       expect(resourceIds).toHaveLength(2);
 
@@ -327,7 +353,7 @@ describe('DB Resources Queries', () => {
     });
 
     it('should handle empty candidates', async () => {
-      const resourceIds = await upsertAndAttach(testTaskId, []);
+      const resourceIds = await upsertAndAttachWithDb(testTaskId, []);
 
       expect(resourceIds).toEqual([]);
 

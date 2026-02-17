@@ -3,19 +3,19 @@
  * Tests: end-to-end upsert+attach 1-3 resources for a fake task
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@/lib/db/service-role';
+import type { ResourceCandidate } from '@/lib/curation/types';
+import { upsertAndAttach } from '@/lib/db/queries/resources';
 import {
+  learningPlans,
+  modules,
   resources,
   taskResources,
   tasks,
-  modules,
-  learningPlans,
   users,
 } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { upsertAndAttach } from '@/lib/db/queries/resources';
-import type { ResourceCandidate } from '@/lib/curation/types';
+import { db } from '@/lib/db/service-role';
+import { eq, inArray } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('Curation Persistence Integration', () => {
@@ -23,6 +23,16 @@ describe('Curation Persistence Integration', () => {
   let testPlanId: string;
   let testModuleId: string;
   let testTaskId: string;
+
+  const upsertAndAttachWithDb = async (
+    taskId: string,
+    candidates: ResourceCandidate[]
+  ): Promise<string[]> =>
+    upsertAndAttach({
+      taskId,
+      candidates,
+      dbClient: db,
+    });
 
   beforeEach(async () => {
     const authUserId = buildTestAuthUserId('curation-persistence');
@@ -124,22 +134,15 @@ describe('Curation Persistence Integration', () => {
       },
     ];
 
-    const resourceIds = await upsertAndAttach(testTaskId, candidates);
+    const resourceIds = await upsertAndAttachWithDb(testTaskId, candidates);
 
     expect(resourceIds).toHaveLength(2);
 
     // Verify resources were created
-    const createdResources = await db
+    const allResources = await db
       .select()
       .from(resources)
-      .where(eq(resources.id, resourceIds[0]));
-
-    const createdResources2 = await db
-      .select()
-      .from(resources)
-      .where(eq(resources.id, resourceIds[1]));
-
-    const allResources = [...createdResources, ...createdResources2];
+      .where(inArray(resources.id, resourceIds));
 
     expect(allResources).toHaveLength(2);
     const docResource = allResources.find((r) => r.type === 'doc');
@@ -198,7 +201,7 @@ describe('Curation Persistence Integration', () => {
       },
     ];
 
-    const resourceIds = await upsertAndAttach(testTaskId, candidates);
+    const resourceIds = await upsertAndAttachWithDb(testTaskId, candidates);
 
     expect(resourceIds).toHaveLength(3);
 
@@ -225,16 +228,44 @@ describe('Curation Persistence Integration', () => {
       metadata: {},
     };
 
-    // Attach same resource twice
-    await upsertAndAttach(testTaskId, [candidate]);
-    await upsertAndAttach(testTaskId, [candidate]);
+    // First attachment
+    await upsertAndAttachWithDb(testTaskId, [candidate]);
 
-    const attachments = await db
+    // Verify exactly one resource was created
+    const resourcesAfterFirst = await db
+      .select()
+      .from(resources)
+      .where(eq(resources.url, 'https://example.com/unique-resource'));
+    expect(resourcesAfterFirst).toHaveLength(1);
+
+    // Capture initial attachment details
+    const initialAttachments = await db
       .select()
       .from(taskResources)
       .where(eq(taskResources.taskId, testTaskId));
+    expect(initialAttachments).toHaveLength(1);
+    const initialAttachment = initialAttachments[0];
 
-    // Should only have one attachment (idempotent)
-    expect(attachments).toHaveLength(1);
+    // Second attachment (duplicate)
+    await upsertAndAttachWithDb(testTaskId, [candidate]);
+
+    // Verify resource wasn't duplicated
+    const resourcesAfterSecond = await db
+      .select()
+      .from(resources)
+      .where(eq(resources.url, 'https://example.com/unique-resource'));
+    expect(resourcesAfterSecond).toHaveLength(1);
+
+    // Verify attachment wasn't duplicated and order/position unchanged
+    const finalAttachments = await db
+      .select()
+      .from(taskResources)
+      .where(eq(taskResources.taskId, testTaskId));
+    expect(finalAttachments).toHaveLength(1);
+
+    const finalAttachment = finalAttachments[0];
+    expect(finalAttachment.order).toBe(initialAttachment.order);
+    expect(finalAttachment.createdAt).toEqual(initialAttachment.createdAt);
+    expect(finalAttachment.resourceId).toBe(initialAttachment.resourceId);
   });
 });
