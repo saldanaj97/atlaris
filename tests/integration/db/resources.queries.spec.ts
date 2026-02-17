@@ -1,368 +1,111 @@
-/**
- * Unit tests for DB resources queries
- * Tests: upsert by URL, type mapping, attachment order/idempotency
- */
-import type { ResourceCandidate } from '@/lib/curation/types';
-import {
-  attachTaskResources,
-  upsertAndAttach,
-  upsertResource,
-} from '@/lib/db/queries/resources';
-import {
-  learningPlans,
-  modules,
-  resources,
-  taskResources,
-  tasks,
-  users,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-describe('DB Resources Queries', () => {
-  let testUserId: string;
-  let testPlanId: string;
-  let testModuleId: string;
-  let testTaskId: string;
+import type { ResourceCandidate } from '@/lib/curation/types';
+import { upsertResource } from '@/lib/db/queries/resources';
+import { resources } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
-  const upsertResourceWithDb = async (
-    candidate: ResourceCandidate
-  ): Promise<string> => upsertResource({ candidate, dbClient: db });
+function buildCandidate(
+  overrides: Partial<ResourceCandidate> = {}
+): ResourceCandidate {
+  const scoreTimestamp = new Date().toISOString();
+  const { metadata, ...rest } = overrides;
 
-  const attachTaskResourcesWithDb = async (
-    taskId: string,
-    resourceIds: string[]
-  ): Promise<void> =>
-    attachTaskResources({
-      taskId,
-      resourceIds,
-      dbClient: db,
-    });
+  return {
+    url: 'https://example.com/resource',
+    title: 'Example Resource',
+    source: 'doc',
+    score: {
+      blended: 0.85,
+      components: { relevance: 0.9, authority: 0.8 },
+      scoredAt: scoreTimestamp,
+    },
+    ...rest,
+    metadata: metadata ?? {},
+  };
+}
 
-  const upsertAndAttachWithDb = async (
-    taskId: string,
-    candidates: ResourceCandidate[]
-  ): Promise<string[]> =>
-    upsertAndAttach({
-      taskId,
-      candidates,
-      dbClient: db,
-    });
-
-  beforeEach(async () => {
-    // Create test user
-    const [user] = await db
-      .insert(users)
-      .values({
-        authUserId: 'test-auth-id',
-        email: 'test@example.com',
-        subscriptionTier: 'free',
-      })
-      .returning();
-    testUserId = user.id;
-
-    // Create test plan
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId: testUserId,
-        topic: 'Test Topic',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        generationStatus: 'ready',
-      })
-      .returning();
-    testPlanId = plan.id;
-
-    // Create test module
-    const [module] = await db
-      .insert(modules)
-      .values({
-        planId: testPlanId,
-        order: 1,
-        title: 'Test Module',
-        estimatedMinutes: 60,
-      })
-      .returning();
-    testModuleId = module.id;
-
-    // Create test task
-    const [task] = await db
-      .insert(tasks)
-      .values({
-        moduleId: testModuleId,
-        order: 1,
-        title: 'Test Task',
-        estimatedMinutes: 30,
-      })
-      .returning();
-    testTaskId = task.id;
-  });
-
+describe('Resource Queries', () => {
   describe('upsertResource', () => {
-    it('should create new resource', async () => {
-      const candidate: ResourceCandidate = {
-        url: 'https://youtube.com/watch?v=test123',
-        title: 'Test Video',
-        source: 'youtube',
-        score: {
-          blended: 0.8,
-          components: {},
-          scoredAt: new Date().toISOString(),
-        },
-        metadata: {
-          videoId: 'test123',
-          durationMinutes: 10,
-        },
-      };
+    it('creates a new resource and returns its id', async () => {
+      const candidate = buildCandidate({
+        url: 'https://www.react.dev/learn',
+        title: 'React Learn',
+        source: 'doc',
+        metadata: { durationMinutes: 12.6 },
+      });
 
-      const resourceId = await upsertResourceWithDb(candidate);
+      const resourceId = await upsertResource({ candidate, dbClient: db });
 
-      expect(resourceId).toBeDefined();
-
-      const [resource] = await db
+      const [row] = await db
         .select()
         .from(resources)
         .where(eq(resources.id, resourceId));
 
-      expect(resource.type).toBe('youtube');
-      expect(resource.title).toBe('Test Video');
-      expect(resource.url).toBe('https://youtube.com/watch?v=test123');
-      expect(resource.durationMinutes).toBe(10);
+      expect(row).toBeDefined();
+      expect(row?.id).toBe(resourceId);
+      expect(row?.url).toBe(candidate.url);
+      expect(row?.type).toBe('doc');
+      expect(row?.title).toBe('React Learn');
+      expect(row?.domain).toBe('react.dev');
+      expect(row?.durationMinutes).toBe(13);
     });
 
-    it('should deduplicate by URL', async () => {
-      const candidate: ResourceCandidate = {
-        url: 'https://react.dev/docs',
-        title: 'React Docs',
-        source: 'doc',
-        score: {
-          blended: 0.8,
-          components: {},
-          scoredAt: new Date().toISOString(),
-        },
-        metadata: {},
-      };
+    it('deduplicates by URL and updates mutable fields on conflict', async () => {
+      const url = 'https://youtube.com/watch?v=abc123';
 
-      const resourceId1 = await upsertResourceWithDb(candidate);
-      const resourceId2 = await upsertResourceWithDb(candidate);
+      const firstId = await upsertResource({
+        candidate: buildCandidate({
+          url,
+          title: 'First Title',
+          source: 'doc',
+          metadata: { durationMinutes: 5 },
+        }),
+        dbClient: db,
+      });
 
-      expect(resourceId1).toBe(resourceId2);
+      const secondId = await upsertResource({
+        candidate: buildCandidate({
+          url,
+          title: 'Updated Title',
+          source: 'youtube',
+          metadata: { durationMinutes: 18 },
+        }),
+        dbClient: db,
+      });
 
-      const allResources = await db.select().from(resources);
-      expect(allResources).toHaveLength(1);
-    });
-
-    it('should map source types correctly', async () => {
-      const youtubeCandidate: ResourceCandidate = {
-        url: 'https://youtube.com/watch?v=test',
-        title: 'YouTube Video',
-        source: 'youtube',
-        score: {
-          blended: 0.8,
-          components: {},
-          scoredAt: new Date().toISOString(),
-        },
-        metadata: {},
-      };
-
-      const docCandidate: ResourceCandidate = {
-        url: 'https://example.com/docs',
-        title: 'Documentation',
-        source: 'doc',
-        score: {
-          blended: 0.8,
-          components: {},
-          scoredAt: new Date().toISOString(),
-        },
-        metadata: {},
-      };
-
-      const youtubeId = await upsertResourceWithDb(youtubeCandidate);
-      const docId = await upsertResourceWithDb(docCandidate);
-
-      const [youtubeResource] = await db
+      const rows = await db
         .select()
         .from(resources)
-        .where(eq(resources.id, youtubeId));
-      const [docResource] = await db
-        .select()
-        .from(resources)
-        .where(eq(resources.id, docId));
+        .where(eq(resources.url, url));
 
-      expect(youtubeResource.type).toBe('youtube');
-      expect(docResource.type).toBe('doc');
+      expect(secondId).toBe(firstId);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.id).toBe(firstId);
+      expect(rows[0]?.type).toBe('youtube');
+      expect(rows[0]?.title).toBe('Updated Title');
+      expect(rows[0]?.durationMinutes).toBe(18);
     });
 
-    it('should reject invalid URLs', async () => {
-      const badUrls = [
+    it('rejects invalid URLs', async () => {
+      const invalidUrls = [
         'not-a-url',
         'ftp://example.com/file',
         'javascript:alert(1)',
       ];
 
-      for (const bad of badUrls) {
-        const candidate: ResourceCandidate = {
-          url: bad,
-          title: 'Bad URL',
-          source: 'doc',
-          score: {
-            blended: 0.8,
-            components: {},
-            scoredAt: new Date().toISOString(),
-          },
-          metadata: {},
-        };
-
-        await expect(upsertResourceWithDb(candidate)).rejects.toThrow(
-          /invalid url/i
-        );
+      for (const invalidUrl of invalidUrls) {
+        await expect(
+          upsertResource({
+            candidate: buildCandidate({
+              url: invalidUrl,
+              title: 'Invalid URL Candidate',
+            }),
+            dbClient: db,
+          })
+        ).rejects.toThrow(/invalid url/i);
       }
-    });
-
-    it('should extract domain correctly from URL', async () => {
-      const candidate: ResourceCandidate = {
-        url: 'https://www.react.dev/docs/intro',
-        title: 'React Docs',
-        source: 'doc',
-        score: {
-          blended: 0.9,
-          components: {},
-          scoredAt: new Date().toISOString(),
-        },
-        metadata: {},
-      };
-
-      const resourceId = await upsertResourceWithDb(candidate);
-      const [row] = await db
-        .select()
-        .from(resources)
-        .where(eq(resources.id, resourceId));
-      expect(row.domain).toBe('react.dev');
-    });
-  });
-
-  describe('attachTaskResources', () => {
-    it('should attach resources with stable ordering', async () => {
-      const resource1 = await upsertResourceWithDb({
-        url: 'https://example.com/resource1',
-        title: 'Resource 1',
-        source: 'doc',
-        score: {
-          blended: 0.8,
-          components: {},
-          scoredAt: new Date().toISOString(),
-        },
-        metadata: {},
-      });
-
-      const resource2 = await upsertResourceWithDb({
-        url: 'https://example.com/resource2',
-        title: 'Resource 2',
-        source: 'doc',
-        score: {
-          blended: 0.8,
-          components: {},
-          scoredAt: new Date().toISOString(),
-        },
-        metadata: {},
-      });
-
-      await attachTaskResourcesWithDb(testTaskId, [resource1, resource2]);
-
-      const attachments = await db
-        .select()
-        .from(taskResources)
-        .where(eq(taskResources.taskId, testTaskId))
-        .orderBy(taskResources.order);
-
-      expect(attachments).toHaveLength(2);
-      expect(attachments[0].order).toBe(1);
-      expect(attachments[0].resourceId).toBe(resource1);
-      expect(attachments[1].order).toBe(2);
-      expect(attachments[1].resourceId).toBe(resource2);
-    });
-
-    it('should be idempotent on duplicate inserts', async () => {
-      const resourceId = await upsertResourceWithDb({
-        url: 'https://example.com/resource',
-        title: 'Resource',
-        source: 'doc',
-        score: {
-          blended: 0.8,
-          components: {},
-          scoredAt: new Date().toISOString(),
-        },
-        metadata: {},
-      });
-
-      await attachTaskResourcesWithDb(testTaskId, [resourceId]);
-      await attachTaskResourcesWithDb(testTaskId, [resourceId]); // Duplicate
-
-      const attachments = await db
-        .select()
-        .from(taskResources)
-        .where(eq(taskResources.taskId, testTaskId));
-
-      expect(attachments).toHaveLength(1);
-    });
-  });
-
-  describe('upsertAndAttach', () => {
-    it('should upsert and attach resources in order', async () => {
-      const candidates: ResourceCandidate[] = [
-        {
-          url: 'https://example.com/resource1',
-          title: 'Resource 1',
-          source: 'doc',
-          score: {
-            blended: 0.8,
-            components: {},
-            scoredAt: new Date().toISOString(),
-          },
-          metadata: {},
-        },
-        {
-          url: 'https://example.com/resource2',
-          title: 'Resource 2',
-          source: 'doc',
-          score: {
-            blended: 0.8,
-            components: {},
-            scoredAt: new Date().toISOString(),
-          },
-          metadata: {},
-        },
-      ];
-
-      const resourceIds = await upsertAndAttachWithDb(testTaskId, candidates);
-
-      expect(resourceIds).toHaveLength(2);
-
-      const attachments = await db
-        .select()
-        .from(taskResources)
-        .where(eq(taskResources.taskId, testTaskId))
-        .orderBy(taskResources.order);
-
-      expect(attachments).toHaveLength(2);
-      expect(attachments[0].order).toBe(1);
-      expect(attachments[1].order).toBe(2);
-    });
-
-    it('should handle empty candidates', async () => {
-      const resourceIds = await upsertAndAttachWithDb(testTaskId, []);
-
-      expect(resourceIds).toEqual([]);
-
-      const attachments = await db
-        .select()
-        .from(taskResources)
-        .where(eq(taskResources.taskId, testTaskId));
-
-      expect(attachments).toHaveLength(0);
     });
   });
 });

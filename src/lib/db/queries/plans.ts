@@ -2,6 +2,7 @@
  * Plan-related queries for learning plans, summaries, detail views, and generation attempts.
  * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
  */
+import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
@@ -38,59 +39,66 @@ type DbClient = ReturnType<typeof getDb>;
  */
 export async function getPlanSummariesForUser(
   userId: string,
-  dbClient: DbClient = getDb()
+  dbClient?: DbClient
 ): Promise<PlanSummary[]> {
-  const planRows = await dbClient
-    .select()
-    .from(learningPlans)
-    .where(eq(learningPlans.userId, userId));
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-  if (!planRows.length) {
-    // TODO - If adding pagination or filtering (e.g., by topic or status) ensure multiple
-    // conditions are combined via a single where(and(...)) call instead of chaining.
-    return [];
-  }
-
-  const planIds = planRows.map((plan) => plan.id);
-
-  const [moduleRows, taskRows] = await Promise.all([
-    dbClient
+  try {
+    const planRows = await client
       .select()
-      .from(modules)
-      .where(inArray(modules.planId, planIds))
-      .orderBy(asc(modules.order)),
-    dbClient
-      .select({
-        id: tasks.id,
-        moduleId: tasks.moduleId,
-        planId: modules.planId,
-        estimatedMinutes: tasks.estimatedMinutes,
-      })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .where(inArray(modules.planId, planIds)),
-  ]);
+      .from(learningPlans)
+      .where(eq(learningPlans.userId, userId));
 
-  const taskIds = taskRows.map((task) => task.id);
+    if (!planRows.length) {
+      // TODO - If adding pagination or filtering (e.g., by topic or status) ensure multiple
+      // conditions are combined via a single where(and(...)) call instead of chaining.
+      return [];
+    }
 
-  const progressRows = taskIds.length
-    ? await dbClient
-        .select({ taskId: taskProgress.taskId, status: taskProgress.status })
-        .from(taskProgress)
-        .where(
-          and(
-            eq(taskProgress.userId, userId),
-            inArray(taskProgress.taskId, taskIds)
+    const planIds = planRows.map((plan) => plan.id);
+
+    const [moduleRows, taskRows] = await Promise.all([
+      client
+        .select()
+        .from(modules)
+        .where(inArray(modules.planId, planIds))
+        .orderBy(asc(modules.order)),
+      client
+        .select({
+          id: tasks.id,
+          moduleId: tasks.moduleId,
+          planId: modules.planId,
+          estimatedMinutes: tasks.estimatedMinutes,
+        })
+        .from(tasks)
+        .innerJoin(modules, eq(tasks.moduleId, modules.id))
+        .where(inArray(modules.planId, planIds)),
+    ]);
+
+    const taskIds = taskRows.map((task) => task.id);
+
+    const progressRows = taskIds.length
+      ? await client
+          .select({ taskId: taskProgress.taskId, status: taskProgress.status })
+          .from(taskProgress)
+          .where(
+            and(
+              eq(taskProgress.userId, userId),
+              inArray(taskProgress.taskId, taskIds)
+            )
           )
-        )
-    : [];
+      : [];
 
-  return mapPlanSummaries({
-    planRows,
-    moduleRows,
-    taskRows,
-    progressRows,
-  });
+    return mapPlanSummaries({
+      planRows,
+      moduleRows,
+      taskRows,
+      progressRows,
+    });
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /**
@@ -105,107 +113,119 @@ export async function getPlanSummariesForUser(
 export async function getLearningPlanDetail(
   planId: string,
   userId: string,
-  dbClient: DbClient = getDb()
+  dbClient?: DbClient
 ): Promise<LearningPlanDetail | null> {
-  const planRow = await dbClient
-    .select()
-    .from(learningPlans)
-    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
-    .limit(1);
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-  if (!planRow.length) {
-    return null;
-  }
-
-  const plan = planRow[0];
-
-  const moduleRows = await dbClient
-    .select()
-    .from(modules)
-    .where(eq(modules.planId, planId))
-    .orderBy(asc(modules.order));
-
-  const moduleIds = moduleRows.map((module) => module.id);
-
-  const taskRows = moduleIds.length
-    ? await dbClient
-        .select()
-        .from(tasks)
-        .where(inArray(tasks.moduleId, moduleIds))
-        .orderBy(asc(tasks.order))
-    : [];
-
-  const taskIds = taskRows.map((task) => task.id);
-
-  const [
-    progressRows,
-    resourceRows,
-    [{ attemptCount } = { attemptCount: 0 }],
-    [latestAttempt],
-  ] = await Promise.all([
-    taskIds.length
-      ? dbClient
-          .select()
-          .from(taskProgress)
-          .where(
-            and(
-              eq(taskProgress.userId, userId),
-              inArray(taskProgress.taskId, taskIds)
-            )
-          )
-      : ([] as (typeof taskProgress.$inferSelect)[]),
-    taskIds.length
-      ? dbClient
-          .select({
-            id: taskResources.id,
-            taskId: taskResources.taskId,
-            resourceId: taskResources.resourceId,
-            order: taskResources.order,
-            notes: taskResources.notes,
-            createdAt: taskResources.createdAt,
-            resource: {
-              id: resources.id,
-              type: resources.type,
-              title: resources.title,
-              url: resources.url,
-              domain: resources.domain,
-              author: resources.author,
-              durationMinutes: resources.durationMinutes,
-              costCents: resources.costCents,
-              currency: resources.currency,
-              tags: resources.tags,
-              createdAt: resources.createdAt,
-            },
-          })
-          .from(taskResources)
-          .innerJoin(resources, eq(taskResources.resourceId, resources.id))
-          .where(inArray(taskResources.taskId, taskIds))
-          .orderBy(asc(taskResources.order))
-      : ([] as TaskResourceWithResource[]),
-    dbClient
-      .select({ attemptCount: count(generationAttempts.id) })
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId)),
-    dbClient
+  try {
+    const planRow = await client
       .select()
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId))
-      .orderBy(desc(generationAttempts.createdAt))
-      .limit(1),
-  ]);
+      .from(learningPlans)
+      .where(
+        and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId))
+      )
+      .limit(1);
 
-  const attemptsCount = Number(attemptCount ?? 0);
-  const latestAttemptOrNull: GenerationAttempt | null = latestAttempt ?? null;
+    if (!planRow.length) {
+      return null;
+    }
 
-  return mapLearningPlanDetail({
-    plan,
-    moduleRows,
-    taskRows,
-    progressRows,
-    resourceRows,
-    latestAttempt: latestAttemptOrNull,
-    attemptsCount,
-  });
+    const plan = planRow[0];
+
+    // Fire plan-level queries in parallel: modules + generation attempt metadata
+    const [
+      moduleRows,
+      [{ attemptCount } = { attemptCount: 0 }],
+      [latestAttempt],
+    ] = await Promise.all([
+      client
+        .select()
+        .from(modules)
+        .where(eq(modules.planId, planId))
+        .orderBy(asc(modules.order)),
+      client
+        .select({ attemptCount: count(generationAttempts.id) })
+        .from(generationAttempts)
+        .where(eq(generationAttempts.planId, planId)),
+      client
+        .select()
+        .from(generationAttempts)
+        .where(eq(generationAttempts.planId, planId))
+        .orderBy(desc(generationAttempts.createdAt))
+        .limit(1),
+    ]);
+
+    const moduleIds = moduleRows.map((module) => module.id);
+
+    const taskRows = moduleIds.length
+      ? await client
+          .select()
+          .from(tasks)
+          .where(inArray(tasks.moduleId, moduleIds))
+          .orderBy(asc(tasks.order))
+      : [];
+
+    const taskIds = taskRows.map((task) => task.id);
+
+    // Fire task-dependent queries in parallel
+    const [progressRows, resourceRows] = await Promise.all([
+      taskIds.length
+        ? client
+            .select()
+            .from(taskProgress)
+            .where(
+              and(
+                eq(taskProgress.userId, userId),
+                inArray(taskProgress.taskId, taskIds)
+              )
+            )
+        : ([] as (typeof taskProgress.$inferSelect)[]),
+      taskIds.length
+        ? client
+            .select({
+              id: taskResources.id,
+              taskId: taskResources.taskId,
+              resourceId: taskResources.resourceId,
+              order: taskResources.order,
+              notes: taskResources.notes,
+              createdAt: taskResources.createdAt,
+              resource: {
+                id: resources.id,
+                type: resources.type,
+                title: resources.title,
+                url: resources.url,
+                domain: resources.domain,
+                author: resources.author,
+                durationMinutes: resources.durationMinutes,
+                costCents: resources.costCents,
+                currency: resources.currency,
+                tags: resources.tags,
+                createdAt: resources.createdAt,
+              },
+            })
+            .from(taskResources)
+            .innerJoin(resources, eq(taskResources.resourceId, resources.id))
+            .where(inArray(taskResources.taskId, taskIds))
+            .orderBy(asc(taskResources.order))
+        : ([] as TaskResourceWithResource[]),
+    ]);
+
+    const attemptsCount = Number(attemptCount ?? 0);
+    const latestAttemptOrNull: GenerationAttempt | null = latestAttempt ?? null;
+
+    return mapLearningPlanDetail({
+      plan,
+      moduleRows,
+      taskRows,
+      progressRows,
+      resourceRows,
+      latestAttempt: latestAttemptOrNull,
+      attemptsCount,
+    });
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /** Return type for getPlanAttemptsForUser. */
@@ -226,27 +246,36 @@ export interface PlanAttemptsResult {
 export async function getPlanAttemptsForUser(
   planId: string,
   userId: string,
-  dbClient: DbClient = getDb()
+  dbClient?: DbClient
 ): Promise<PlanAttemptsResult | null> {
-  const planRow = await dbClient
-    .select({
-      id: learningPlans.id,
-      topic: learningPlans.topic,
-      generationStatus: learningPlans.generationStatus,
-    })
-    .from(learningPlans)
-    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
-    .limit(1);
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-  if (!planRow.length) {
-    return null;
+  try {
+    const planRow = await client
+      .select({
+        id: learningPlans.id,
+        topic: learningPlans.topic,
+        generationStatus: learningPlans.generationStatus,
+      })
+      .from(learningPlans)
+      .where(
+        and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId))
+      )
+      .limit(1);
+
+    if (!planRow.length) {
+      return null;
+    }
+
+    const attempts = await client
+      .select()
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId))
+      .orderBy(desc(generationAttempts.createdAt));
+
+    return { plan: planRow[0], attempts };
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
   }
-
-  const attempts = await dbClient
-    .select()
-    .from(generationAttempts)
-    .where(eq(generationAttempts.planId, planId))
-    .orderBy(desc(generationAttempts.createdAt));
-
-  return { plan: planRow[0], attempts };
 }

@@ -9,6 +9,13 @@ export type DbUser = InferSelectModel<typeof users>;
 /** Inferred insert type for the `users` table (use for create operations). */
 export type DbUserInsert = InferInsertModel<typeof users>;
 
+/** Input data for createUser (authUserId, email, optional name). */
+export interface CreateUserData {
+  authUserId: string;
+  email: string;
+  name?: string | null;
+}
+
 /** RLS-enforced database client for user queries. */
 export type UsersDbClient = ReturnType<typeof getDb>;
 

@@ -1,4 +1,6 @@
+import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import type {
+  CreateUserData,
   DbUser,
   DeleteUserResult,
   UsersDbClient,
@@ -7,29 +9,6 @@ import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { db as serviceDb } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
-
-type CleanupCapableClient = UsersDbClient & {
-  cleanup?: () => Promise<void>;
-  destroy?: () => Promise<void>;
-};
-
-async function cleanupInternalClient(
-  client: CleanupCapableClient,
-  shouldCleanup: boolean
-): Promise<void> {
-  if (!shouldCleanup) {
-    return;
-  }
-
-  if (typeof client.cleanup === 'function') {
-    await client.cleanup();
-    return;
-  }
-
-  if (typeof client.destroy === 'function') {
-    await client.destroy();
-  }
-}
 
 /**
  * User-related queries for account lookup, creation, and deletion.
@@ -57,7 +36,7 @@ export async function getUserByAuthId(
       .where(eq(users.authUserId, authUserId));
     return result[0];
   } finally {
-    await cleanupInternalClient(client as CleanupCapableClient, shouldCleanup);
+    await cleanupInternalDbClient(client, shouldCleanup);
   }
 }
 
@@ -69,11 +48,7 @@ export async function getUserByAuthId(
  * @returns The created user record, or undefined on failure
  */
 export async function createUser(
-  userData: {
-    authUserId: string;
-    email: string;
-    name?: string | null;
-  },
+  userData: CreateUserData,
   dbClient?: UsersDbClient
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? getDb();
@@ -89,7 +64,7 @@ export async function createUser(
     const result = await client.insert(users).values(insertData).returning();
     return result[0];
   } finally {
-    await cleanupInternalClient(client as CleanupCapableClient, shouldCleanup);
+    await cleanupInternalDbClient(client, shouldCleanup);
   }
 }
 

@@ -1,17 +1,74 @@
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { and, eq, asc, inArray } from 'drizzle-orm';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
 } from '@/lib/db/queries/schedules';
+import { getDb } from '@/lib/db/runtime';
+import { learningPlans, modules, tasks, users } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 import { generateSchedule } from '@/lib/scheduling/generate';
 import { computeInputsHash } from '@/lib/scheduling/hash';
 import type { ScheduleInputs, ScheduleJson } from '@/lib/scheduling/types';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 
 interface GetPlanScheduleParams {
   planId: string;
   userId: string;
+}
+
+const DEFAULT_SCHEDULE_TIMEZONE = 'UTC';
+
+const SUPPORTED_TIME_ZONES =
+  typeof Intl.supportedValuesOf === 'function'
+    ? new Set(Intl.supportedValuesOf('timeZone'))
+    : null;
+
+function extractTimezonePreference(userRecord: unknown): string | undefined {
+  if (!userRecord || typeof userRecord !== 'object') {
+    return undefined;
+  }
+
+  const userLike = userRecord as Record<string, unknown>;
+
+  if (typeof userLike.timezone === 'string') {
+    return userLike.timezone;
+  }
+
+  const prefs = userLike.prefs;
+  if (prefs && typeof prefs === 'object') {
+    const prefsLike = prefs as Record<string, unknown>;
+    if (typeof prefsLike.timezone === 'string') {
+      return prefsLike.timezone;
+    }
+  }
+
+  return undefined;
+}
+
+function resolveScheduleTimezone(
+  timezonePreference: string | undefined,
+  context: { planId: string; userId: string }
+): string {
+  if (!timezonePreference) {
+    logger.debug(
+      { ...context, fallbackTimezone: DEFAULT_SCHEDULE_TIMEZONE },
+      'No user timezone preference found; using default timezone'
+    );
+    return DEFAULT_SCHEDULE_TIMEZONE;
+  }
+
+  if (SUPPORTED_TIME_ZONES && !SUPPORTED_TIME_ZONES.has(timezonePreference)) {
+    logger.debug(
+      {
+        ...context,
+        timezonePreference,
+        fallbackTimezone: DEFAULT_SCHEDULE_TIMEZONE,
+      },
+      'Invalid user timezone preference; using default timezone'
+    );
+    return DEFAULT_SCHEDULE_TIMEZONE;
+  }
+
+  return timezonePreference;
 }
 
 export const SCHEDULE_FETCH_ERROR_CODE = {
@@ -60,6 +117,18 @@ export async function getPlanSchedule(
     );
   }
 
+  const [currentUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const timezonePreference = extractTimezonePreference(currentUser);
+  const timezone = resolveScheduleTimezone(timezonePreference, {
+    planId,
+    userId,
+  });
+
   // Load modules and tasks in a single joined query
   const planModules = await db
     .select()
@@ -67,25 +136,25 @@ export async function getPlanSchedule(
     .where(eq(modules.planId, planId))
     .orderBy(asc(modules.order));
 
-  const flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }> =
-    planModules.length > 0
-      ? await (async () => {
-          const moduleIds = planModules.map((m) => m.id);
-          const taskRows = await db
-            .select({
-              task: tasks,
-              moduleTitle: modules.title,
-            })
-            .from(tasks)
-            .innerJoin(modules, eq(tasks.moduleId, modules.id))
-            .where(inArray(modules.id, moduleIds))
-            .orderBy(asc(modules.order), asc(tasks.order));
-          return taskRows.map((row) => ({
-            ...row.task,
-            moduleTitle: row.moduleTitle,
-          }));
-        })()
-      : [];
+  let flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }>;
+  if (planModules.length > 0) {
+    const moduleIds = planModules.map((m) => m.id);
+    const taskRows = await db
+      .select({
+        task: tasks,
+        moduleTitle: modules.title,
+      })
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .where(inArray(modules.id, moduleIds))
+      .orderBy(asc(modules.order), asc(tasks.order));
+    flatTasks = taskRows.map((row) => ({
+      ...row.task,
+      moduleTitle: row.moduleTitle,
+    }));
+  } else {
+    flatTasks = [];
+  }
 
   // Build schedule inputs
   if (plan.weeklyHours <= 0) {
@@ -106,14 +175,14 @@ export async function getPlanSchedule(
     startDate: plan.startDate || plan.createdAt.toISOString().split('T')[0],
     deadline: plan.deadlineDate,
     weeklyHours: plan.weeklyHours,
-    timezone: 'UTC', // TODO: Get from user preferences
+    timezone,
   };
 
   // Compute hash
   const inputsHash = computeInputsHash(inputs);
 
   // Check cache
-  const cached = await getPlanScheduleCache(planId);
+  const cached = await getPlanScheduleCache(planId, userId);
   if (cached && cached.inputsHash === inputsHash) {
     return cached.scheduleJson;
   }
@@ -122,7 +191,7 @@ export async function getPlanSchedule(
   const schedule = generateSchedule(inputs);
 
   // Write through cache
-  await upsertPlanScheduleCache(planId, {
+  await upsertPlanScheduleCache(planId, userId, {
     scheduleJson: schedule,
     inputsHash,
     timezone: inputs.timezone,

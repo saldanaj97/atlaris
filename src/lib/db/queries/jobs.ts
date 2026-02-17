@@ -1,3 +1,4 @@
+import { cleanupInternalDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import {
   activeRegenerationJobWhere,
   appendErrorHistoryEntry,
@@ -39,10 +40,10 @@ import {
  */
 
 const MAX_MONITORING_ROWS = 200;
-const DEFAULT_PLAN_JOBS_LIMIT = 100;
-const MAX_PLAN_JOBS_LIMIT = 500;
 /** Hard cap on attempts regardless of retryable override; prevents unbounded retries. */
 const ABSOLUTE_MAX_ATTEMPTS = 100;
+/** Cap for exponential retry delay in seconds (5 minutes). */
+const MAX_RETRY_DELAY_SECONDS = 300;
 
 const jobQueueSelect = {
   id: jobQueue.id,
@@ -94,6 +95,23 @@ async function lockJobAndCheckTerminal(
   return { row, isTerminal };
 }
 
+function computeShouldRetry(
+  retryable: boolean | undefined,
+  nextAttempts: number,
+  maxAttempts: number,
+  absoluteMaxAttempts: number
+): boolean {
+  if (retryable === false) {
+    return false;
+  }
+
+  if (retryable === true) {
+    return nextAttempts < absoluteMaxAttempts;
+  }
+
+  return nextAttempts < maxAttempts;
+}
+
 /**
  * Retrieves recent failed jobs for debugging and monitoring.
  *
@@ -103,21 +121,28 @@ async function lockJobAndCheckTerminal(
  */
 export async function getFailedJobs(
   limit: number,
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<Job[]> {
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
+
   const boundedLimit = clampLimit(limit, MAX_MONITORING_ROWS);
   if (boundedLimit === 0) {
     return [];
   }
 
-  const rows = await dbClient
-    .select(jobQueueSelect)
-    .from(jobQueue)
-    .where(eq(jobQueue.status, 'failed'))
-    .orderBy(desc(jobQueue.completedAt))
-    .limit(boundedLimit);
+  try {
+    const rows = await client
+      .select(jobQueueSelect)
+      .from(jobQueue)
+      .where(eq(jobQueue.status, 'failed'))
+      .orderBy(desc(jobQueue.completedAt))
+      .limit(boundedLimit);
 
-  return rows.map(mapRowToJob);
+    return rows.map(mapRowToJob);
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /**
@@ -130,48 +155,55 @@ export async function getFailedJobs(
  */
 export async function getJobStats(
   since: Date,
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<JobStats> {
-  const [stats] = await dbClient
-    .select({
-      pendingCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending')::int`,
-      processingCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing')::int`,
-      completedCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'completed')::int`,
-      failedCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'failed')::int`,
-      averageProcessingTimeMs: sql<number | null>`avg(
-        case
-          when ${and(
-            eq(jobQueue.status, 'completed'),
-            isNotNull(jobQueue.startedAt),
-            isNotNull(jobQueue.completedAt)
-          )}
-          then extract(epoch from (${jobQueue.completedAt} - ${jobQueue.startedAt})) * 1000
-          else null
-        end
-      )`,
-    })
-    .from(jobQueue)
-    .where(gte(jobQueue.createdAt, since));
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-  const totalCompleted = stats?.completedCount ?? 0;
-  const totalFailed = stats?.failedCount ?? 0;
-  const totalFinished = totalCompleted + totalFailed;
-  const failureRate = totalFinished > 0 ? totalFailed / totalFinished : 0;
+  try {
+    const [stats] = await client
+      .select({
+        pendingCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending')::int`,
+        processingCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing')::int`,
+        completedCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'completed')::int`,
+        failedCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'failed')::int`,
+        averageProcessingTimeMs: sql<number | null>`avg(
+          case
+            when ${and(
+              eq(jobQueue.status, 'completed'),
+              isNotNull(jobQueue.startedAt),
+              isNotNull(jobQueue.completedAt)
+            )}
+            then extract(epoch from (${jobQueue.completedAt} - ${jobQueue.startedAt})) * 1000
+            else null
+          end
+        )`,
+      })
+      .from(jobQueue)
+      .where(gte(jobQueue.createdAt, since));
 
-  const averageProcessingTimeMs =
-    stats?.averageProcessingTimeMs !== null &&
-    stats?.averageProcessingTimeMs !== undefined
-      ? Number(stats.averageProcessingTimeMs)
-      : null;
+    const totalCompleted = stats?.completedCount ?? 0;
+    const totalFailed = stats?.failedCount ?? 0;
+    const totalFinished = totalCompleted + totalFailed;
+    const failureRate = totalFinished > 0 ? totalFailed / totalFinished : 0;
 
-  return {
-    pendingCount: stats?.pendingCount ?? 0,
-    processingCount: stats?.processingCount ?? 0,
-    completedCount: totalCompleted,
-    failedCount: totalFailed,
-    averageProcessingTimeMs,
-    failureRate,
-  };
+    const averageProcessingTimeMs =
+      stats?.averageProcessingTimeMs !== null &&
+      stats?.averageProcessingTimeMs !== undefined
+        ? Number(stats.averageProcessingTimeMs)
+        : null;
+
+    return {
+      pendingCount: stats?.pendingCount ?? 0,
+      processingCount: stats?.processingCount ?? 0,
+      completedCount: totalCompleted,
+      failedCount: totalFailed,
+      averageProcessingTimeMs,
+      failureRate,
+    };
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /**
@@ -184,19 +216,26 @@ export async function getJobStats(
  */
 export async function cleanupOldJobs(
   olderThan: Date,
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<number> {
-  const result = await dbClient
-    .delete(jobQueue)
-    .where(
-      and(
-        or(eq(jobQueue.status, 'completed'), eq(jobQueue.status, 'failed')),
-        isNotNull(jobQueue.completedAt),
-        lt(jobQueue.completedAt, olderThan)
-      )
-    );
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-  return result.count ?? 0;
+  try {
+    const result = await client
+      .delete(jobQueue)
+      .where(
+        and(
+          or(eq(jobQueue.status, 'completed'), eq(jobQueue.status, 'failed')),
+          isNotNull(jobQueue.completedAt),
+          lt(jobQueue.completedAt, olderThan)
+        )
+      );
+
+    return result.count ?? 0;
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /**
@@ -223,55 +262,62 @@ export async function insertJobRecord(
     data: JobPayload;
     priority: number;
   },
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<JobEnqueueResult> {
-  return dbClient.transaction(async (tx) => {
-    const shouldDeduplicateRegeneration =
-      type === JOB_TYPES.PLAN_REGENERATION && planId !== null;
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-    if (shouldDeduplicateRegeneration) {
-      const [lockedPlan] = await tx
-        .select({ id: learningPlans.id })
-        .from(learningPlans)
-        .where(eq(learningPlans.id, planId))
-        .limit(1)
-        .for('update');
+  try {
+    return client.transaction(async (tx) => {
+      const shouldDeduplicateRegeneration =
+        type === JOB_TYPES.PLAN_REGENERATION && planId !== null;
 
-      if (!lockedPlan?.id) {
-        throw new Error(`Plan not found: ${planId}`);
+      if (shouldDeduplicateRegeneration) {
+        const [lockedPlan] = await tx
+          .select({ id: learningPlans.id })
+          .from(learningPlans)
+          .where(eq(learningPlans.id, planId))
+          .limit(1)
+          .for('update');
+
+        if (!lockedPlan?.id) {
+          throw new Error(`Plan not found: ${planId}`);
+        }
+
+        const [existingActiveJob] = await tx
+          .select({ id: jobQueue.id })
+          .from(jobQueue)
+          .where(activeRegenerationJobWhere(planId, userId))
+          .orderBy(desc(jobQueue.createdAt))
+          .limit(1)
+          .for('update');
+
+        if (existingActiveJob?.id) {
+          return { id: existingActiveJob.id, deduplicated: true };
+        }
       }
 
-      const [existingActiveJob] = await tx
-        .select({ id: jobQueue.id })
-        .from(jobQueue)
-        .where(activeRegenerationJobWhere(planId, userId))
-        .orderBy(desc(jobQueue.createdAt))
-        .limit(1)
-        .for('update');
+      const [inserted] = await tx
+        .insert(jobQueue)
+        .values({
+          jobType: type,
+          planId,
+          userId,
+          status: 'pending',
+          priority,
+          payload: data,
+        })
+        .returning({ id: jobQueue.id });
 
-      if (existingActiveJob?.id) {
-        return { id: existingActiveJob.id, deduplicated: true };
+      if (!inserted?.id) {
+        throw new Error('Failed to enqueue job');
       }
-    }
 
-    const [inserted] = await tx
-      .insert(jobQueue)
-      .values({
-        jobType: type,
-        planId,
-        userId,
-        status: 'pending',
-        priority,
-        payload: data,
-      })
-      .returning({ id: jobQueue.id });
-
-    if (!inserted?.id) {
-      throw new Error('Failed to enqueue job');
-    }
-
-    return { id: inserted.id, deduplicated: false };
-  });
+      return { id: inserted.id, deduplicated: false };
+    });
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /**
@@ -286,16 +332,23 @@ export async function insertJobRecord(
 export async function getActiveRegenerationJob(
   planId: string,
   userId: string,
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<{ id: string } | null> {
-  const [activeJob] = await dbClient
-    .select({ id: jobQueue.id })
-    .from(jobQueue)
-    .where(activeRegenerationJobWhere(planId, userId))
-    .orderBy(desc(jobQueue.createdAt))
-    .limit(1);
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-  return activeJob ?? null;
+  try {
+    const [activeJob] = await client
+      .select({ id: jobQueue.id })
+      .from(jobQueue)
+      .where(activeRegenerationJobWhere(planId, userId))
+      .orderBy(desc(jobQueue.createdAt))
+      .limit(1);
+
+    return activeJob ?? null;
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /**
@@ -309,46 +362,53 @@ export async function getActiveRegenerationJob(
  */
 export async function claimNextPendingJob(
   types: JobType[],
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<Job | null> {
-  if (types.length === 0) {
-    return null;
-  }
-  assertValidJobTypes(types);
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-  const startTime = new Date();
-  return dbClient.transaction(async (tx) => {
-    const candidateRows = await tx
-      .select({ id: jobQueue.id })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'pending'),
-          inArray(jobQueue.jobType, types),
-          lte(jobQueue.scheduledFor, startTime)
-        )
-      )
-      .orderBy(desc(jobQueue.priority), jobQueue.createdAt)
-      .limit(1)
-      .for('update', { skipLocked: true });
-
-    const candidateIds = candidateRows.map((r) => r.id);
-    if (candidateIds.length === 0) {
+  try {
+    if (types.length === 0) {
       return null;
     }
+    assertValidJobTypes(types);
 
-    const [claimed] = await tx
-      .update(jobQueue)
-      .set({
-        status: 'processing',
-        startedAt: startTime,
-        updatedAt: startTime,
-      })
-      .where(inArray(jobQueue.id, candidateIds))
-      .returning(jobQueueSelect);
+    const startTime = new Date();
+    return client.transaction(async (tx) => {
+      const candidateRows = await tx
+        .select({ id: jobQueue.id })
+        .from(jobQueue)
+        .where(
+          and(
+            eq(jobQueue.status, 'pending'),
+            inArray(jobQueue.jobType, types),
+            lte(jobQueue.scheduledFor, startTime)
+          )
+        )
+        .orderBy(desc(jobQueue.priority), jobQueue.createdAt)
+        .limit(1)
+        .for('update', { skipLocked: true });
 
-    return claimed ? mapRowToJob(claimed) : null;
-  });
+      const candidateIds = candidateRows.map((r) => r.id);
+      if (candidateIds.length === 0) {
+        return null;
+      }
+
+      const [claimed] = await tx
+        .update(jobQueue)
+        .set({
+          status: 'processing',
+          startedAt: startTime,
+          updatedAt: startTime,
+        })
+        .where(inArray(jobQueue.id, candidateIds))
+        .returning(jobQueueSelect);
+
+      return claimed ? mapRowToJob(claimed) : null;
+    });
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /**
@@ -363,32 +423,39 @@ export async function claimNextPendingJob(
 export async function completeJobRecord(
   jobId: string,
   result: JobResult,
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<Job | null> {
-  return dbClient.transaction(async (tx) => {
-    const locked = await lockJobAndCheckTerminal(tx, jobId);
-    if (!locked) {
-      return null;
-    }
-    if (locked.isTerminal) {
-      return mapRowToJob(locked.row);
-    }
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-    const completedAt = new Date();
-    const [updated] = await tx
-      .update(jobQueue)
-      .set({
-        status: 'completed',
-        result,
-        error: null,
-        completedAt,
-        updatedAt: completedAt,
-      })
-      .where(eq(jobQueue.id, jobId))
-      .returning(jobQueueSelect);
+  try {
+    return client.transaction(async (tx) => {
+      const locked = await lockJobAndCheckTerminal(tx, jobId);
+      if (!locked) {
+        return null;
+      }
+      if (locked.isTerminal) {
+        return mapRowToJob(locked.row);
+      }
 
-    return updated ? mapRowToJob(updated) : null;
-  });
+      const completedAt = new Date();
+      const [updated] = await tx
+        .update(jobQueue)
+        .set({
+          status: 'completed',
+          result,
+          error: null,
+          completedAt,
+          updatedAt: completedAt,
+        })
+        .where(eq(jobQueue.id, jobId))
+        .returning(jobQueueSelect);
+
+      return updated ? mapRowToJob(updated) : null;
+    });
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }
 
 /**
@@ -397,10 +464,10 @@ export async function completeJobRecord(
  * status is set to pending with exponential backoff (scheduledFor); otherwise status
  * is set to failed with completedAt set.
  *
- * Retry decision: when retryable is undefined, shouldRetry follows reachedMaxAttempts
- * (i.e. nextAttempts >= current.maxAttempts). When retryable is true, it can override
- * current.maxAttempts but is bounded by ABSOLUTE_MAX_ATTEMPTS for safety. When
- * retryable is false, retry is never scheduled.
+ * Retry decision: when retryable is undefined, shouldRetry follows
+ * nextAttempts < current.maxAttempts. When retryable is true, it can override
+ * current.maxAttempts but is bounded by ABSOLUTE_MAX_ATTEMPTS for safety.
+ * When retryable is false, retry is never scheduled.
  *
  * @param jobId - Job id to fail
  * @param error - Error message to record
@@ -412,99 +479,79 @@ export async function failJobRecord(
   jobId: string,
   error: string,
   retryable?: boolean,
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<Job | null> {
-  return dbClient.transaction(async (tx) => {
-    const locked = await lockJobAndCheckTerminal(tx, jobId);
-    if (!locked) {
-      return null;
-    }
-    if (locked.isTerminal) {
-      return mapRowToJob(locked.row);
-    }
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-    const current = locked.row;
-    const nextAttempts = current.attempts + 1;
-    const now = new Date();
-    const reachedMaxAttempts = nextAttempts >= current.maxAttempts;
-    const shouldRetry =
-      retryable === true
-        ? nextAttempts < ABSOLUTE_MAX_ATTEMPTS
-        : retryable === false
-          ? false
-          : !reachedMaxAttempts;
+  try {
+    return client.transaction(async (tx) => {
+      const locked = await lockJobAndCheckTerminal(tx, jobId);
+      if (!locked) {
+        return null;
+      }
+      if (locked.isTerminal) {
+        return mapRowToJob(locked.row);
+      }
 
-    const retryDelaySeconds = Math.min(60, Math.pow(2, nextAttempts));
-    const scheduledForRetry = new Date(
-      now.getTime() + retryDelaySeconds * 1000
-    );
+      const current = locked.row;
+      const nextAttempts = current.attempts + 1;
+      const now = new Date();
+      const shouldRetry = computeShouldRetry(
+        retryable,
+        nextAttempts,
+        current.maxAttempts,
+        ABSOLUTE_MAX_ATTEMPTS
+      );
 
-    const payloadWithHistory = appendErrorHistoryEntry(current.payload, {
-      attempt: nextAttempts,
-      error,
-      timestamp: now.toISOString(),
+      const retryDelaySeconds = Math.min(
+        MAX_RETRY_DELAY_SECONDS,
+        Math.pow(2, nextAttempts)
+      );
+      const scheduledForRetry = new Date(
+        now.getTime() + retryDelaySeconds * 1000
+      );
+
+      const payloadWithHistory = appendErrorHistoryEntry(current.payload, {
+        attempt: nextAttempts,
+        error,
+        timestamp: now.toISOString(),
+      });
+
+      const updatePayload = shouldRetry
+        ? {
+            attempts: nextAttempts,
+            status: 'pending' as const,
+            error: null,
+            result: null,
+            completedAt: null,
+            startedAt: null,
+            scheduledFor: scheduledForRetry,
+            updatedAt: now,
+            payload: payloadWithHistory,
+          }
+        : {
+            attempts: nextAttempts,
+            status: 'failed' as const,
+            error,
+            result: null,
+            completedAt: now,
+            startedAt: current.startedAt,
+            updatedAt: now,
+            payload: payloadWithHistory,
+          };
+
+      const [updated] = await tx
+        .update(jobQueue)
+        .set(updatePayload)
+        .where(eq(jobQueue.id, jobId))
+        .returning(jobQueueSelect);
+
+      return updated ? mapRowToJob(updated) : null;
     });
-
-    const updatePayload = shouldRetry
-      ? {
-          attempts: nextAttempts,
-          status: 'pending' as const,
-          error: null,
-          result: null,
-          completedAt: null,
-          startedAt: null,
-          scheduledFor: scheduledForRetry,
-          updatedAt: now,
-          payload: payloadWithHistory,
-        }
-      : {
-          attempts: nextAttempts,
-          status: 'failed' as const,
-          error,
-          result: null,
-          completedAt: now,
-          startedAt: current.startedAt,
-          updatedAt: now,
-          payload: payloadWithHistory,
-        };
-
-    const [updated] = await tx
-      .update(jobQueue)
-      .set(updatePayload)
-      .where(eq(jobQueue.id, jobId))
-      .returning(jobQueueSelect);
-
-    return updated ? mapRowToJob(updated) : null;
-  });
-}
-
-/**
- * Lists jobs associated with a plan, newest first. Uses a bounded limit to avoid
- * unbounded plan-history reads.
- *
- * @param planId - Plan id to filter by
- * @param dbClient - Database client (default: getDb())
- * @param limit - Max rows to return (default 100, capped at 500)
- * @returns Array of Job rows ordered by createdAt descending
- */
-export async function findJobsByPlan(
-  planId: string,
-  dbClient: JobsDbClient = getDb(),
-  limit: number = DEFAULT_PLAN_JOBS_LIMIT
-): Promise<Job[]> {
-  const boundedLimit = clampLimit(limit, MAX_PLAN_JOBS_LIMIT);
-  if (boundedLimit === 0) {
-    return [];
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
   }
-
-  const rows = await dbClient
-    .select(jobQueueSelect)
-    .from(jobQueue)
-    .where(eq(jobQueue.planId, planId))
-    .orderBy(desc(jobQueue.createdAt))
-    .limit(boundedLimit);
-
-  return rows.map(mapRowToJob);
 }
 
 /**
@@ -521,18 +568,25 @@ export async function countUserJobsSince(
   userId: string,
   type: JobType,
   since: Date,
-  dbClient: JobsDbClient = getDb()
+  dbClient?: JobsDbClient
 ): Promise<number> {
-  const [row] = await dbClient
-    .select({ value: sql<number>`count(*)::int` })
-    .from(jobQueue)
-    .where(
-      and(
-        eq(jobQueue.userId, userId),
-        eq(jobQueue.jobType, type),
-        gte(jobQueue.createdAt, since)
-      )
-    );
+  const client = dbClient ?? getDb();
+  const shouldCleanup = dbClient === undefined;
 
-  return row?.value ?? 0;
+  try {
+    const [row] = await client
+      .select({ value: sql<number>`count(*)::int` })
+      .from(jobQueue)
+      .where(
+        and(
+          eq(jobQueue.userId, userId),
+          eq(jobQueue.jobType, type),
+          gte(jobQueue.createdAt, since)
+        )
+      );
+
+    return row?.value ?? 0;
+  } finally {
+    await cleanupInternalDbClient(client, shouldCleanup);
+  }
 }

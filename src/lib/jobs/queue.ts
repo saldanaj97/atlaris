@@ -3,7 +3,6 @@ import {
   completeJobRecord,
   countUserJobsSince,
   failJobRecord,
-  findJobsByPlan,
   insertJobRecord,
 } from '@/lib/db/queries/jobs';
 import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
@@ -58,13 +57,6 @@ export async function failJob(
   options: FailJobOptions = {}
 ): Promise<Job | null> {
   return failJobRecord(jobId, error, options.retryable, db);
-}
-
-export async function getJobsByPlanId(
-  planId: string,
-  limit?: number
-): Promise<Job[]> {
-  return findJobsByPlan(planId, db, limit);
 }
 
 export async function getUserJobCount(

@@ -1,19 +1,14 @@
 import {
-  buildTaskResourceInsertValues,
   dedupePreparedCandidatesByUrl,
-  mapResourceIdsToInputOrder,
   prepareResourceCandidate,
-  prepareResourceCandidates,
 } from '@/lib/db/queries/helpers/resources-helpers';
 import type {
-  AttachTaskResourcesParams,
   PreparedResourceCandidate,
   ResourcesDbClient,
-  UpsertAndAttachParams,
   UpsertResourceParams,
 } from '@/lib/db/queries/types/resources.types';
-import { resources, taskResources, tasks } from '@/lib/db/schema';
-import { desc, eq, sql } from 'drizzle-orm';
+import { resources } from '@/lib/db/schema';
+import { sql } from 'drizzle-orm';
 
 /**
  * Database queries for resource management.
@@ -51,46 +46,6 @@ async function upsertPreparedResources(
   return new Map(rows.map((row) => [row.url, row.id]));
 }
 
-async function attachTaskResourcesInClient(
-  taskId: string,
-  resourceIds: string[],
-  dbClient: ResourcesWriteClient
-): Promise<void> {
-  if (resourceIds.length === 0) {
-    return;
-  }
-
-  const [taskRow] = await dbClient
-    .select({ id: tasks.id })
-    .from(tasks)
-    .where(eq(tasks.id, taskId))
-    .limit(1)
-    .for('update');
-
-  if (!taskRow?.id) {
-    throw new Error(`Task not found: ${taskId}`);
-  }
-
-  const [maxOrderRow] = await dbClient
-    .select({ order: taskResources.order })
-    .from(taskResources)
-    .where(eq(taskResources.taskId, taskId))
-    .orderBy(desc(taskResources.order))
-    .limit(1)
-    .for('update');
-
-  const currentMaxOrder = maxOrderRow?.order ?? 0;
-  const values = buildTaskResourceInsertValues({
-    taskId,
-    resourceIds,
-  }).map((value) => ({
-    ...value,
-    order: currentMaxOrder + value.order,
-  }));
-
-  await dbClient.insert(taskResources).values(values).onConflictDoNothing();
-}
-
 /**
  * Insert a new resource or update an existing one identified by URL.
  *
@@ -111,48 +66,4 @@ export async function upsertResource({
   }
 
   return resourceId;
-}
-
-/**
- * Attach resources to a task with stable ordering.
- * Appends resources after the current max order and avoids duplicates.
- */
-export async function attachTaskResources({
-  taskId,
-  resourceIds,
-  dbClient,
-}: AttachTaskResourcesParams): Promise<void> {
-  if (resourceIds.length === 0) {
-    return;
-  }
-
-  await dbClient.transaction(async (tx) => {
-    await attachTaskResourcesInClient(taskId, resourceIds, tx);
-  });
-}
-
-/**
- * Upsert and attach resources to a task in a single transaction.
- *
- * Batches resource upserts into one statement, then attaches in order.
- */
-export async function upsertAndAttach({
-  taskId,
-  candidates,
-  dbClient,
-}: UpsertAndAttachParams): Promise<string[]> {
-  if (candidates.length === 0) {
-    return [];
-  }
-
-  const preparedCandidates = prepareResourceCandidates(candidates);
-
-  return dbClient.transaction(async (tx) => {
-    const idByUrl = await upsertPreparedResources(preparedCandidates, tx);
-    const resourceIds = mapResourceIdsToInputOrder(preparedCandidates, idByUrl);
-
-    await attachTaskResourcesInClient(taskId, resourceIds, tx);
-
-    return resourceIds;
-  });
 }
