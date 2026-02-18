@@ -10,6 +10,29 @@ import type { ScheduleCacheRow } from '@/lib/scheduling/types';
 /** RLS-enforced database client for schedule queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;
 
+interface PgErrorShape {
+  code?: string;
+  message?: string;
+}
+
+function isPlanOwnershipWriteError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+
+  const dbError = error as PgErrorShape;
+
+  if (dbError.code === '42501' || dbError.code === '23503') {
+    return true;
+  }
+
+  return (
+    typeof dbError.message === 'string' &&
+    (dbError.message.includes('row-level security') ||
+      dbError.message.includes('foreign key constraint'))
+  );
+}
+
 /**
  * Validates that the user owns the plan. Throws if the plan is not found or access is denied.
  *
@@ -83,8 +106,6 @@ export async function upsertPlanScheduleCache(
   payload: UpsertPlanScheduleCachePayload,
   dbClient: DbClient = getDb()
 ): Promise<void> {
-  await validatePlanOwnership(planId, userId, dbClient);
-
   const {
     scheduleJson,
     inputsHash,
@@ -102,11 +123,20 @@ export async function upsertPlanScheduleCache(
     deadline,
   };
 
-  await dbClient
-    .insert(planSchedules)
-    .values({ planId, ...cacheFields })
-    .onConflictDoUpdate({
-      target: planSchedules.planId,
-      set: { ...cacheFields, generatedAt: new Date() },
-    });
+  try {
+    await dbClient
+      .insert(planSchedules)
+      .values({ planId, ...cacheFields })
+      .onConflictDoUpdate({
+        target: planSchedules.planId,
+        set: { ...cacheFields, generatedAt: new Date() },
+      });
+  } catch (error) {
+    if (isPlanOwnershipWriteError(error)) {
+      logger.warn({ planId, userId }, 'Plan not found or access denied');
+      throw new Error('Plan not found or access denied');
+    }
+
+    throw error;
+  }
 }
