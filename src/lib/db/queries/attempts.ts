@@ -14,8 +14,7 @@ import {
   normalizeParsedModules,
   persistSuccessfulAttempt,
   sanitizeInput,
-  selectOldestUserGenerationAttemptSince,
-  selectUserGenerationAttemptsSince,
+  selectUserGenerationAttemptWindowStats,
   toPromptHashPayload,
 } from '@/lib/db/queries/helpers/attempts-helpers';
 import type {
@@ -32,7 +31,7 @@ import {
   recordAttemptSuccess,
 } from '@/lib/metrics/attempts';
 import { hashSha256 } from '@/lib/utils/hash';
-import { and, count, eq } from 'drizzle-orm';
+import { count, eq, sql } from 'drizzle-orm';
 
 /**
  * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
@@ -113,21 +112,16 @@ export async function reserveAttemptSlot(
 
     const windowStart = getPlanGenerationWindowStart(startedAt);
 
-    const attemptsInWindow = await selectUserGenerationAttemptsSince({
+    const attemptWindowStats = await selectUserGenerationAttemptWindowStats({
       userId,
       dbClient: tx,
       since: windowStart,
     });
+    const attemptsInWindow = attemptWindowStats.count;
 
     if (attemptsInWindow >= PLAN_GENERATION_LIMIT) {
-      const oldestAttemptCreatedAt =
-        await selectOldestUserGenerationAttemptSince({
-          userId,
-          dbClient: tx,
-          since: windowStart,
-        });
       const retryAfter = computeRetryAfterSeconds(
-        oldestAttemptCreatedAt,
+        attemptWindowStats.oldestAttemptCreatedAt,
         startedAt
       );
 
@@ -138,27 +132,22 @@ export async function reserveAttemptSlot(
       } as const;
     }
 
-    const [{ value: existingAttempts = 0 } = { value: 0 }] = await tx
-      .select({ value: count(generationAttempts.id) })
+    const [attemptState] = await tx
+      .select({
+        existingAttempts: count(generationAttempts.id),
+        inProgressAttempts: sql<number>`count(*) filter (where ${generationAttempts.status} = 'in_progress')`,
+      })
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, planId));
+
+    const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
+    const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
 
     if (existingAttempts >= ATTEMPT_CAP) {
       return { reserved: false, reason: 'capped' } as const;
     }
 
-    const [inProgressAttempt] = await tx
-      .select({ id: generationAttempts.id })
-      .from(generationAttempts)
-      .where(
-        and(
-          eq(generationAttempts.planId, planId),
-          eq(generationAttempts.status, 'in_progress')
-        )
-      )
-      .limit(1);
-
-    if (inProgressAttempt) {
+    if (inProgressAttempts > 0) {
       return { reserved: false, reason: 'in_progress' } as const;
     }
 

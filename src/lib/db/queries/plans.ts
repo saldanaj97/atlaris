@@ -24,7 +24,7 @@ import type {
   LearningPlanDetail,
   PlanSummary,
 } from '@/lib/types/db';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;
@@ -35,23 +35,44 @@ type DbClient = ReturnType<typeof getDb>;
  *
  * @param userId - Authenticated user ID (RLS scopes results)
  * @param dbClient - Optional client; defaults to getDb()
+ * @param options - Optional pagination controls for large plan sets
  * @returns PlanSummary[] - Empty array if user has no plans
  */
 export async function getPlanSummariesForUser(
   userId: string,
-  dbClient?: DbClient
+  dbClient?: DbClient,
+  options?: {
+    limit?: number;
+    offset?: number;
+  }
 ): Promise<PlanSummary[]> {
   const client = dbClient ?? getDb();
 
   try {
-    const planRows = await client
+    const planQuery = client
       .select()
       .from(learningPlans)
-      .where(eq(learningPlans.userId, userId));
+      .where(eq(learningPlans.userId, userId))
+      .$dynamic();
+
+    const hasPagination =
+      options?.limit !== undefined || options?.offset !== undefined;
+
+    if (hasPagination) {
+      planQuery.orderBy(desc(learningPlans.createdAt));
+    }
+
+    if (options?.limit !== undefined) {
+      planQuery.limit(Math.max(1, options.limit));
+    }
+
+    if (options?.offset !== undefined) {
+      planQuery.offset(Math.max(0, options.offset));
+    }
+
+    const planRows = await planQuery;
 
     if (!planRows.length) {
-      // TODO - If adding pagination or filtering (e.g., by topic or status) ensure multiple
-      // conditions are combined via a single where(and(...)) call instead of chaining.
       return [];
     }
 
@@ -134,18 +155,17 @@ export async function getLearningPlanDetail(
     const plan = planRow[0];
 
     // Fire plan-level queries in parallel: modules + generation attempt metadata
-    const [moduleRows, attemptCountRow, latestAttemptRow] = await Promise.all([
+    const [moduleRows, attemptMetaRows] = await Promise.all([
       client
         .select()
         .from(modules)
         .where(eq(modules.planId, planId))
         .orderBy(asc(modules.order)),
       client
-        .select({ attemptCount: count(generationAttempts.id) })
-        .from(generationAttempts)
-        .where(eq(generationAttempts.planId, planId)),
-      client
-        .select()
+        .select({
+          attempt: generationAttempts,
+          attemptsCount: sql<number>`count(*) over ()`,
+        })
         .from(generationAttempts)
         .where(eq(generationAttempts.planId, planId))
         .orderBy(desc(generationAttempts.createdAt))
@@ -207,10 +227,9 @@ export async function getLearningPlanDetail(
         : ([] as TaskResourceWithResource[]),
     ]);
 
-    const attemptCount = attemptCountRow[0]?.attemptCount ?? 0;
-    const attemptsCount = Number(attemptCount);
+    const attemptsCount = Number(attemptMetaRows[0]?.attemptsCount ?? 0);
     const latestAttemptOrNull: GenerationAttempt | null =
-      latestAttemptRow[0] ?? null;
+      attemptMetaRows[0]?.attempt ?? null;
 
     return mapLearningPlanDetail({
       plan,

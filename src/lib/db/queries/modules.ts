@@ -1,10 +1,11 @@
 import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import {
   buildResourcesByTask,
-  computeModuleNavItems,
+  computeModuleNavItemsFromCounts,
 } from '@/lib/db/queries/helpers/modules-helpers';
 import type {
   ModuleDetail,
+  ModuleNavCompletionRaw,
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
 import { getDb } from '@/lib/db/runtime';
@@ -16,7 +17,7 @@ import {
   taskResources,
   tasks,
 } from '@/lib/db/schema';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, inArray } from 'drizzle-orm';
 
 type ModulesDbClient = ReturnType<typeof getDb>;
 
@@ -64,67 +65,45 @@ export async function getModuleDetail(
 
     const planId = moduleRow.planId;
 
-    // Get all modules and tasks for this plan in one pass.
-    const moduleTaskRows = await client
-      .select({
-        moduleId: modules.id,
-        moduleOrder: modules.order,
-        moduleTitle: modules.title,
-        task: tasks,
-      })
-      .from(modules)
-      .leftJoin(tasks, eq(tasks.moduleId, modules.id))
-      .where(eq(modules.planId, planId))
-      .orderBy(asc(modules.order), asc(tasks.order));
-
-    const allModulesRaw: Array<{ id: string; order: number; title: string }> =
-      [];
-    const allTasksInPlan: Array<typeof tasks.$inferSelect> = [];
-    const seenModuleIds = new Set<string>();
-
-    for (const row of moduleTaskRows) {
-      if (!seenModuleIds.has(row.moduleId)) {
-        seenModuleIds.add(row.moduleId);
-        allModulesRaw.push({
-          id: row.moduleId,
-          order: row.moduleOrder,
-          title: row.moduleTitle,
-        });
-      }
-
-      if (row.task) {
-        allTasksInPlan.push(row.task);
-      }
-    }
-
-    // Get all progress rows for tasks in this plan (RLS-scoped to current user).
-    const allTaskIds = allTasksInPlan.map((t) => t.id);
-    const allProgressRows = await runIfIdsPresent(allTaskIds, () =>
+    const [allModulesRaw, taskRows] = await Promise.all([
+      client
+        .select({
+          id: modules.id,
+          order: modules.order,
+          title: modules.title,
+          totalTaskCount: count(tasks.id),
+          completedTaskCount: count(taskProgress.id),
+        })
+        .from(modules)
+        .leftJoin(tasks, eq(tasks.moduleId, modules.id))
+        .leftJoin(
+          taskProgress,
+          and(
+            eq(taskProgress.taskId, tasks.id),
+            eq(taskProgress.status, 'completed')
+          )
+        )
+        .where(eq(modules.planId, planId))
+        .groupBy(modules.id, modules.order, modules.title)
+        .orderBy(asc(modules.order)),
       client
         .select()
-        .from(taskProgress)
-        .where(inArray(taskProgress.taskId, allTaskIds))
+        .from(tasks)
+        .where(eq(tasks.moduleId, moduleId))
+        .orderBy(asc(tasks.order)),
+    ]);
+
+    const normalizedModuleRows: ModuleNavCompletionRaw[] = allModulesRaw.map(
+      (row) => ({
+        id: row.id,
+        order: row.order,
+        title: row.title,
+        totalTaskCount: Number(row.totalTaskCount),
+        completedTaskCount: Number(row.completedTaskCount),
+      })
     );
 
-    const completedTaskIds = new Set(
-      allProgressRows
-        .filter((progressRow) => progressRow.status === 'completed')
-        .map((progressRow) => progressRow.taskId)
-    );
-
-    // Group tasks by module
-    const tasksByModule = new Map<string, string[]>();
-    for (const task of allTasksInPlan) {
-      const existing = tasksByModule.get(task.moduleId) ?? [];
-      existing.push(task.id);
-      tasksByModule.set(task.moduleId, existing);
-    }
-
-    const allModules = computeModuleNavItems(
-      allModulesRaw,
-      tasksByModule,
-      completedTaskIds
-    );
+    const allModules = computeModuleNavItemsFromCounts(normalizedModuleRows);
 
     const currentIndex = allModules.findIndex((m) => m.id === moduleId);
     if (currentIndex < 0) {
@@ -141,12 +120,14 @@ export async function getModuleDetail(
     // previousModulesComplete is the inverse of isLocked for the current module
     const previousModulesComplete = !allModules[currentIndex].isLocked;
 
-    // Tasks for this module are already loaded as part of the plan query.
-    const taskRows = allTasksInPlan.filter(
-      (task) => task.moduleId === moduleId
-    );
-
     const taskIds = taskRows.map((task) => task.id);
+
+    const progressRows = await runIfIdsPresent(taskIds, () =>
+      client
+        .select()
+        .from(taskProgress)
+        .where(inArray(taskProgress.taskId, taskIds))
+    );
 
     // Get resources for tasks
     const resourceRows = await runIfIdsPresent(taskIds, () =>
@@ -179,7 +160,7 @@ export async function getModuleDetail(
     );
 
     const progressMap = new Map(
-      allProgressRows.map((progressRow) => [progressRow.taskId, progressRow])
+      progressRows.map((progressRow) => [progressRow.taskId, progressRow])
     );
     const resourcesByTask = buildResourcesByTask(resourceRows);
 

@@ -43,14 +43,14 @@ export async function getAllTasksInPlan(
 
 /**
  * Sets or updates the progress status for a specific task for a user.
- * Validates that the task belongs to a plan owned by the user before updating.
+ * Validates task accessibility under RLS before updating.
  * If a progress record does not exist, it creates one; otherwise, it updates the existing record.
  * @param userId - The ID of the user.
  * @param taskId - The ID of the task.
  * @param status - The new progress status to set.
  * @param dbClient - Optional TasksDbClient used for transactions/internal testing. When omitted, the function calls getDb() and cleanupInternalDbClient will run.
  * @returns A promise that resolves to the task progress record.
- * @throws Error if the task is not found or the user doesn't own the task's plan
+ * @throws Error if the task is not found or access is denied
  */
 export async function setTaskProgress(
   userId: string,
@@ -61,19 +61,13 @@ export async function setTaskProgress(
   const client = dbClient ?? getDb();
 
   try {
-    // Validate task ownership first
-    const [ownership] = await client
-      .select({
-        taskId: tasks.id,
-        planUserId: learningPlans.userId,
-      })
+    const [taskRow] = await client
+      .select({ id: tasks.id })
       .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
       .where(eq(tasks.id, taskId))
       .limit(1);
 
-    if (!ownership || ownership.planUserId !== userId) {
+    if (!taskRow) {
       throw new Error('Task not found or access denied');
     }
 

@@ -209,6 +209,11 @@ export interface UserGenerationAttemptsSinceParams {
   since: Date;
 }
 
+export interface UserGenerationAttemptWindowStats {
+  count: number;
+  oldestAttemptCreatedAt: Date | null;
+}
+
 // ----- Provider error retryability -----
 
 /** Determines if a provider_error is retryable based on error metadata. */

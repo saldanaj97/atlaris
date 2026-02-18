@@ -13,6 +13,7 @@ import type {
   NormalizedModulesResult,
   PdfProvenanceData,
   SanitizedInput,
+  UserGenerationAttemptWindowStats,
   UserGenerationAttemptsSinceParams,
 } from '@/lib/db/queries/types/attempts.types';
 import {
@@ -33,7 +34,7 @@ import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
 } from '@/lib/validation/learningPlans';
-import { and, asc, count, eq, gte } from 'drizzle-orm';
+import { and, count, eq, gte, min } from 'drizzle-orm';
 
 import type { ParsedModule } from '@/lib/ai/parser';
 import type { GenerationInput } from '@/lib/ai/types/provider.types';
@@ -340,13 +341,33 @@ export async function selectUserGenerationAttemptsSince({
   dbClient,
   since,
 }: UserGenerationAttemptsSinceParams): Promise<number> {
+  const stats = await selectUserGenerationAttemptWindowStats({
+    userId,
+    dbClient,
+    since,
+  });
+
+  return stats.count;
+}
+
+export async function selectUserGenerationAttemptWindowStats({
+  userId,
+  dbClient,
+  since,
+}: UserGenerationAttemptsSinceParams): Promise<UserGenerationAttemptWindowStats> {
   const [row] = await dbClient
-    .select({ value: count(generationAttempts.id) })
+    .select({
+      value: count(generationAttempts.id),
+      oldestCreatedAt: min(generationAttempts.createdAt),
+    })
     .from(generationAttempts)
     .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
     .where(userAttemptsSincePredicate(userId, since));
 
-  return row?.value ?? 0;
+  return {
+    count: row?.value ?? 0,
+    oldestAttemptCreatedAt: row?.oldestCreatedAt ?? null,
+  };
 }
 
 export async function selectOldestUserGenerationAttemptSince({
@@ -354,15 +375,13 @@ export async function selectOldestUserGenerationAttemptSince({
   dbClient,
   since,
 }: UserGenerationAttemptsSinceParams): Promise<Date | null> {
-  const [row] = await dbClient
-    .select({ createdAt: generationAttempts.createdAt })
-    .from(generationAttempts)
-    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
-    .where(userAttemptsSincePredicate(userId, since))
-    .orderBy(asc(generationAttempts.createdAt))
-    .limit(1);
+  const stats = await selectUserGenerationAttemptWindowStats({
+    userId,
+    dbClient,
+    since,
+  });
 
-  return row?.createdAt ?? null;
+  return stats.oldestAttemptCreatedAt;
 }
 
 export function computeRetryAfterSeconds(

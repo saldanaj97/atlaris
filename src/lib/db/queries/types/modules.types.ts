@@ -72,6 +72,15 @@ export interface ModuleNavRaw {
   title: string;
 }
 
+/**
+ * Module completion aggregates for nav lock computation.
+ * `totalTaskCount` and `completedTaskCount` are numeric SQL aggregates.
+ */
+export interface ModuleNavCompletionRaw extends ModuleNavRaw {
+  totalTaskCount: number;
+  completedTaskCount: number;
+}
+
 /** Resource row shape from taskResources + resources join. */
 export type ModuleResourceRow = {
   id: string;
