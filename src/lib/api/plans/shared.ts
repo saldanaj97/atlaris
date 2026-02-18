@@ -5,10 +5,6 @@ import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { TIER_LIMITS, type SubscriptionTier } from '@/lib/stripe/tier-limits';
 import {
-  checkPlanDurationCap,
-  type PlanDurationCapResult,
-} from '@/lib/stripe/usage';
-import {
   DEFAULT_PLAN_DURATION_WEEKS,
   MILLISECONDS_PER_WEEK,
 } from '@/lib/validation/learningPlans';
@@ -38,22 +34,6 @@ export function calculateTotalWeeks({
   deadline.setUTCHours(0, 0, 0, 0);
   const diffMs = deadline.getTime() - start.getTime();
   return Math.max(1, Math.ceil(diffMs / MILLISECONDS_PER_WEEK));
-}
-
-export function ensurePlanDurationAllowed({
-  userTier,
-  weeklyHours,
-  totalWeeks,
-}: {
-  userTier: SubscriptionTier;
-  weeklyHours: number;
-  totalWeeks: number;
-}): PlanDurationCapResult {
-  return checkPlanDurationCap({
-    tier: userTier,
-    weeklyHours,
-    totalWeeks,
-  });
 }
 
 export function normalizePlanDurationForTier({

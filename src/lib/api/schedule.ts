@@ -3,13 +3,12 @@ import {
   upsertPlanScheduleCache,
 } from '@/lib/db/queries/schedules';
 import { getDb } from '@/lib/db/runtime';
-import { learningPlans, modules, tasks, users } from '@/lib/db/schema';
-import { logger } from '@/lib/logging/logger';
+import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { generateSchedule } from '@/lib/scheduling/generate';
 import { computeInputsHash } from '@/lib/scheduling/hash';
 import type { ScheduleInputs, ScheduleJson } from '@/lib/scheduling/types';
+import { format } from 'date-fns';
 import { and, asc, eq, inArray } from 'drizzle-orm';
-import { z } from 'zod';
 
 interface GetPlanScheduleParams {
   planId: string;
@@ -17,58 +16,6 @@ interface GetPlanScheduleParams {
 }
 
 const DEFAULT_SCHEDULE_TIMEZONE = 'UTC';
-
-const SUPPORTED_TIME_ZONES =
-  typeof Intl.supportedValuesOf === 'function'
-    ? new Set(Intl.supportedValuesOf('timeZone'))
-    : null;
-
-const UserWithPrefsSchema = z.object({
-  timezone: z.string().optional(),
-  prefs: z
-    .object({
-      timezone: z.string().optional(),
-    })
-    .optional(),
-});
-
-function extractTimezonePreference(userRecord: unknown): string | undefined {
-  const parsedUserRecord = UserWithPrefsSchema.safeParse(userRecord);
-  if (!parsedUserRecord.success) {
-    return undefined;
-  }
-
-  return (
-    parsedUserRecord.data.timezone ?? parsedUserRecord.data.prefs?.timezone
-  );
-}
-
-function resolveScheduleTimezone(
-  timezonePreference: string | undefined,
-  logContext: { planId: string; userId: string }
-): string {
-  if (!timezonePreference) {
-    logger.debug(
-      { ...logContext, fallbackTimezone: DEFAULT_SCHEDULE_TIMEZONE },
-      'No user timezone preference found; using default timezone'
-    );
-    return DEFAULT_SCHEDULE_TIMEZONE;
-  }
-
-  if (SUPPORTED_TIME_ZONES && !SUPPORTED_TIME_ZONES.has(timezonePreference)) {
-    logger.debug(
-      {
-        ...logContext,
-        timezonePreference,
-        fallbackTimezone: DEFAULT_SCHEDULE_TIMEZONE,
-      },
-      'Invalid user timezone preference; using default timezone'
-    );
-    return DEFAULT_SCHEDULE_TIMEZONE;
-  }
-
-  return timezonePreference;
-}
 
 export const SCHEDULE_FETCH_ERROR_CODE = {
   PLAN_NOT_FOUND_OR_ACCESS_DENIED: 'PLAN_NOT_FOUND_OR_ACCESS_DENIED',
@@ -116,17 +63,7 @@ export async function getPlanSchedule(
     );
   }
 
-  const [currentUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  const timezonePreference = extractTimezonePreference(currentUser);
-  const timezone = resolveScheduleTimezone(timezonePreference, {
-    planId,
-    userId,
-  });
+  const timezone = DEFAULT_SCHEDULE_TIMEZONE;
 
   // Load modules and tasks in a single joined query
   const planModules = await db
@@ -170,7 +107,7 @@ export async function getPlanSchedule(
       order: idx + 1,
       moduleId: task.moduleId,
     })),
-    startDate: plan.startDate || plan.createdAt.toISOString().split('T')[0],
+    startDate: plan.startDate ?? format(plan.createdAt, 'yyyy-MM-dd'),
     deadline: plan.deadlineDate,
     weeklyHours: plan.weeklyHours,
     timezone,

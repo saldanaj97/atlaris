@@ -8,7 +8,7 @@ import {
   selectOldestUserGenerationAttemptSince,
   selectUserGenerationAttemptsSince,
 } from '@/lib/db/queries/helpers/attempts-helpers';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import type { AttemptsReadClient } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
 
 export interface PlanGenerationRateLimitResult {
@@ -34,7 +34,7 @@ export function getPlanGenerationRateLimitHeaders(
  */
 export async function checkPlanGenerationRateLimit(
   userId: string,
-  dbClient: AttemptsDbClient
+  dbClient: AttemptsReadClient
 ): Promise<PlanGenerationRateLimitResult> {
   const windowStart = getPlanGenerationWindowStart(new Date());
 

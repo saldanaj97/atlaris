@@ -3,7 +3,11 @@ import { jsonError } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
+import {
+  atomicCheckAndInsertPlan,
+  checkPlanDurationCap,
+  resolveUserTier,
+} from '@/lib/stripe/usage';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 
 import {
@@ -17,7 +21,6 @@ import {
 } from '@/lib/api/plans/route-context';
 import {
   calculateTotalWeeks,
-  ensurePlanDurationAllowed,
   findCappedPlanWithoutModules,
   normalizePlanDurationForTier,
 } from '@/lib/api/plans/shared';
@@ -68,8 +71,8 @@ export async function preparePlanCreationPreflight(
       startDate: body.startDate ?? null,
       deadlineDate: body.deadlineDate ?? null,
     });
-    const requestedCap = ensurePlanDurationAllowed({
-      userTier,
+    const requestedCap = checkPlanDurationCap({
+      tier: userTier,
       weeklyHours: body.weeklyHours,
       totalWeeks: requestedWeeks,
     });
@@ -94,8 +97,8 @@ export async function preparePlanCreationPreflight(
   });
 
   // Second check: after normalizing (and possibly capping) duration to the tier, ensure the normalized plan still fits.
-  const cap = ensurePlanDurationAllowed({
-    userTier,
+  const cap = checkPlanDurationCap({
+    tier: userTier,
     weeklyHours: body.weeklyHours,
     totalWeeks,
   });
