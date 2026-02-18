@@ -51,7 +51,13 @@ export async function getPlanSchedule(
 
   // Load plan with ownership check in WHERE clause (RLS-enforced)
   const [plan] = await db
-    .select()
+    .select({
+      id: learningPlans.id,
+      weeklyHours: learningPlans.weeklyHours,
+      startDate: learningPlans.startDate,
+      createdAt: learningPlans.createdAt,
+      deadlineDate: learningPlans.deadlineDate,
+    })
     .from(learningPlans)
     .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
     .limit(1);
@@ -67,18 +73,30 @@ export async function getPlanSchedule(
 
   // Load modules and tasks in a single joined query
   const planModules = await db
-    .select()
+    .select({ id: modules.id, order: modules.order, title: modules.title })
     .from(modules)
     .where(eq(modules.planId, planId))
     .orderBy(asc(modules.order));
 
-  let flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }> =
-    [];
+  let flatTasks: Array<{
+    id: string;
+    title: string;
+    estimatedMinutes: number;
+    order: number;
+    moduleId: string;
+    moduleTitle: string;
+  }> = [];
   if (planModules.length > 0) {
     const moduleIds = planModules.map((m) => m.id);
     const taskRows = await db
       .select({
-        task: tasks,
+        task: {
+          id: tasks.id,
+          title: tasks.title,
+          estimatedMinutes: tasks.estimatedMinutes,
+          order: tasks.order,
+          moduleId: tasks.moduleId,
+        },
         moduleTitle: modules.title,
       })
       .from(tasks)
@@ -117,7 +135,7 @@ export async function getPlanSchedule(
   const inputsHash = computeInputsHash(inputs);
 
   // Check cache
-  const cached = await getPlanScheduleCache(planId, userId);
+  const cached = await getPlanScheduleCache(planId, userId, db);
   if (cached && cached.inputsHash === inputsHash) {
     return cached.scheduleJson;
   }
@@ -126,14 +144,19 @@ export async function getPlanSchedule(
   const schedule = generateSchedule(inputs);
 
   // Write through cache
-  await upsertPlanScheduleCache(planId, userId, {
-    scheduleJson: schedule,
-    inputsHash,
-    timezone: inputs.timezone,
-    weeklyHours: inputs.weeklyHours,
-    startDate: inputs.startDate,
-    deadline: inputs.deadline,
-  });
+  await upsertPlanScheduleCache(
+    planId,
+    userId,
+    {
+      scheduleJson: schedule,
+      inputsHash,
+      timezone: inputs.timezone,
+      weeklyHours: inputs.weeklyHours,
+      startDate: inputs.startDate,
+      deadline: inputs.deadline,
+    },
+    db
+  );
 
   return schedule;
 }

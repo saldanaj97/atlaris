@@ -19,7 +19,10 @@ import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
-import { moduleError, moduleSuccess } from './helpers';
+import {
+  moduleError,
+  moduleSuccess,
+} from '@/app/plans/[id]/modules/[moduleId]/helpers';
 import type { ModuleAccessResult } from '@/app/plans/[id]/modules/[moduleId]/types';
 
 interface UpdateTaskProgressInput {

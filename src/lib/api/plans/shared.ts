@@ -1,4 +1,4 @@
-import { count, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, gte, notExists } from 'drizzle-orm';
 
 import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { getDb } from '@/lib/db/runtime';
@@ -112,51 +112,26 @@ export function normalizePlanDurationForTier({
 
 export async function findCappedPlanWithoutModules(
   userDbId: string,
-  db: ReturnType<typeof getDb> = getDb()
+  db: ReturnType<typeof getDb>
 ): Promise<string | null> {
-  const planRows = await db
-    .select({ id: learningPlans.id })
-    .from(learningPlans)
-    .where(eq(learningPlans.userId, userDbId));
-
-  if (!planRows.length) {
-    return null;
-  }
-
-  const planIds = planRows.map((row) => row.id);
-
-  const attemptAggregates = await db
-    .select({
-      planId: generationAttempts.planId,
-      count: count(generationAttempts.id).as('count'),
-    })
+  const [row] = await db
+    .select({ planId: generationAttempts.planId })
     .from(generationAttempts)
-    .where(inArray(generationAttempts.planId, planIds))
-    .groupBy(generationAttempts.planId);
+    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
+    .where(
+      and(
+        eq(learningPlans.userId, userDbId),
+        notExists(
+          db
+            .select({ planId: modules.planId })
+            .from(modules)
+            .where(eq(modules.planId, generationAttempts.planId))
+        )
+      )
+    )
+    .groupBy(generationAttempts.planId)
+    .having(gte(count(generationAttempts.id), ATTEMPT_CAP))
+    .limit(1);
 
-  if (!attemptAggregates.length) {
-    return null;
-  }
-
-  const cappedPlanIds = attemptAggregates
-    .filter((row) => row.count >= ATTEMPT_CAP)
-    .map((row) => row.planId);
-
-  if (!cappedPlanIds.length) {
-    return null;
-  }
-
-  const plansWithModules = await db
-    .select({ planId: modules.planId })
-    .from(modules)
-    .where(inArray(modules.planId, cappedPlanIds))
-    .groupBy(modules.planId);
-
-  const plansWithModulesSet = new Set(
-    plansWithModules.map((row) => row.planId)
-  );
-
-  return (
-    cappedPlanIds.find((planId) => !plansWithModulesSet.has(planId)) ?? null
-  );
+  return row?.planId ?? null;
 }
