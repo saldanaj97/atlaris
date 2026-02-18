@@ -5,10 +5,9 @@ import type {
   PreparedResourceCandidate,
   ResourceInsertValue,
 } from '@/lib/db/queries/types/resources.types';
+import { MAX_RESOURCE_TITLE_LENGTH } from '@/lib/db/schema/constants';
 import { sanitizePlainText } from '@/lib/utils/sanitize';
 import { extractDomain, isValidHttpUrl } from '@/lib/utils/url';
-
-const MAX_RESOURCE_TITLE_LENGTH = 500;
 
 function sanitizeResourceTitle(title: string): string {
   const sanitized = sanitizePlainText(title, MAX_RESOURCE_TITLE_LENGTH).trim();

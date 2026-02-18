@@ -1,9 +1,11 @@
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
+import type {
+  ProgressStatusRow,
+  SummaryTaskRow,
+} from '@/lib/mappers/planQueries';
 import {
   mapLearningPlanDetail,
   mapPlanSummaries,
-  type ProgressStatusRow,
-  type SummaryTaskRow,
 } from '@/lib/mappers/planQueries';
 import type {
   GenerationAttempt,

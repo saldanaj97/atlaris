@@ -45,11 +45,11 @@ function extractTimezonePreference(userRecord: unknown): string | undefined {
 
 function resolveScheduleTimezone(
   timezonePreference: string | undefined,
-  context: { planId: string; userId: string }
+  logContext: { planId: string; userId: string }
 ): string {
   if (!timezonePreference) {
     logger.debug(
-      { ...context, fallbackTimezone: DEFAULT_SCHEDULE_TIMEZONE },
+      { ...logContext, fallbackTimezone: DEFAULT_SCHEDULE_TIMEZONE },
       'No user timezone preference found; using default timezone'
     );
     return DEFAULT_SCHEDULE_TIMEZONE;
@@ -58,7 +58,7 @@ function resolveScheduleTimezone(
   if (SUPPORTED_TIME_ZONES && !SUPPORTED_TIME_ZONES.has(timezonePreference)) {
     logger.debug(
       {
-        ...context,
+        ...logContext,
         timezonePreference,
         fallbackTimezone: DEFAULT_SCHEDULE_TIMEZONE,
       },
@@ -135,7 +135,8 @@ export async function getPlanSchedule(
     .where(eq(modules.planId, planId))
     .orderBy(asc(modules.order));
 
-  let flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }>;
+  let flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }> =
+    [];
   if (planModules.length > 0) {
     const moduleIds = planModules.map((m) => m.id);
     const taskRows = await db
@@ -151,8 +152,6 @@ export async function getPlanSchedule(
       ...row.task,
       moduleTitle: row.moduleTitle,
     }));
-  } else {
-    flatTasks = [];
   }
 
   // Build schedule inputs

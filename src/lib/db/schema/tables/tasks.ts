@@ -177,7 +177,8 @@ export const resources = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     type: resourceType('type').notNull(),
     // TODO: [RESOURCE-HARDENING] In a future migration, add DB-level title length
-    // constraint (e.g., char_length(title) <= 500) and add updatedAt for staleness tracking.
+    // constraint (e.g., char_length(title) <= MAX_RESOURCE_TITLE_LENGTH from
+    // @/lib/db/schema/constants) and add updatedAt for staleness tracking.
     title: text('title').notNull(),
     url: text('url').notNull().unique(),
     domain: text('domain'),

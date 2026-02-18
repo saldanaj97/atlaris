@@ -10,7 +10,7 @@ import { db } from '@/lib/db/service-role';
 import type { ScheduleJson } from '@/lib/scheduling/types';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
-import { resetDbForIntegrationTestFile } from '../../helpers/db';
+import { resetDbForIntegrationTestFile } from '@tests/helpers/db';
 
 function buildScheduleJson(
   overrides: Partial<ScheduleJson> = {}
@@ -60,17 +60,17 @@ function buildSchedulePayload(
 
 describe('Schedule Queries', () => {
   let ownerId: string;
-  let attackerId: string;
+  let unauthorizedUserId: string;
   let planId: string;
 
   beforeEach(async () => {
     await resetDbForIntegrationTestFile();
 
     const owner = await createTestUser();
-    const attacker = await createTestUser();
+    const unauthorizedUser = await createTestUser();
 
     ownerId = owner.id;
-    attackerId = attacker.id;
+    unauthorizedUserId = unauthorizedUser.id;
 
     const plan = await createTestPlan({
       userId: ownerId,
@@ -91,7 +91,7 @@ describe('Schedule Queries', () => {
 
     it('throws when plan is not owned by the user', async () => {
       await expect(
-        validatePlanOwnership(planId, attackerId, db)
+        validatePlanOwnership(planId, unauthorizedUserId, db)
       ).rejects.toThrow('Plan not found or access denied');
     });
   });
@@ -104,9 +104,9 @@ describe('Schedule Queries', () => {
     });
 
     it('throws when user does not own the plan', async () => {
-      await expect(getPlanScheduleCache(planId, attackerId)).rejects.toThrow(
-        'Plan not found or access denied'
-      );
+      await expect(
+        getPlanScheduleCache(planId, unauthorizedUserId)
+      ).rejects.toThrow('Plan not found or access denied');
     });
   });
 
@@ -173,7 +173,11 @@ describe('Schedule Queries', () => {
 
     it('throws when user does not own the plan', async () => {
       await expect(
-        upsertPlanScheduleCache(planId, attackerId, buildSchedulePayload())
+        upsertPlanScheduleCache(
+          planId,
+          unauthorizedUserId,
+          buildSchedulePayload()
+        )
       ).rejects.toThrow('Plan not found or access denied');
     });
   });

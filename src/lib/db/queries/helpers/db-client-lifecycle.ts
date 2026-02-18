@@ -30,13 +30,13 @@ export function isDbClient(value: unknown): value is CleanupCapableClient {
 async function cleanupInternalDbClient(
   client: CleanupCapableClient
 ): Promise<void> {
-  let cleanupFailed = false;
+  let cleanupThrew = false;
 
   if (typeof client.cleanup === 'function') {
     try {
       await client.cleanup();
     } catch (err) {
-      cleanupFailed = true;
+      cleanupThrew = true;
       logger.error(
         { err },
         'db-client-lifecycle: cleanup() failed; resources may be orphaned'
@@ -46,7 +46,7 @@ async function cleanupInternalDbClient(
 
   if (
     typeof client.destroy === 'function' &&
-    (cleanupFailed || typeof client.cleanup !== 'function')
+    (cleanupThrew || typeof client.cleanup !== 'function')
   ) {
     try {
       await client.destroy();
@@ -71,16 +71,13 @@ async function cleanupInternalDbClient(
  */
 export async function cleanupDbClient(client: unknown): Promise<void> {
   if (!isDbClient(client)) {
-    logger.warn(
-      {
-        clientType: typeof client,
-        clientConstructor:
-          (client as { constructor?: { name?: string } })?.constructor?.name ??
-          'unknown',
-      },
-      'db-client-lifecycle: client lacked cleanup/destroy; no teardown performed — verify correct client type is being passed'
+    const clientType = typeof client;
+    const clientConstructor =
+      (client as { constructor?: { name?: string } })?.constructor?.name ??
+      'unknown';
+    throw new TypeError(
+      `db-client-lifecycle: expected a DB client with cleanup/destroy, got ${clientType} (${clientConstructor}) — verify correct client type is being passed`
     );
-    return;
   }
 
   await cleanupInternalDbClient(client);

@@ -21,4 +21,4 @@ export type UsersDbClient = ReturnType<typeof getDb>;
 /** Result of a user deletion operation. */
 export type DeleteUserResult =
   | { deleted: true; userId: string }
-  | { deleted: false; userId?: string; reason?: string };
+  | { deleted: false; userId?: string };
