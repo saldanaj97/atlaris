@@ -8,3 +8,8 @@ export interface UpsertPlanScheduleCachePayload {
   startDate: string;
   deadline: string | null;
 }
+
+export type PgErrorShape = {
+  code?: string;
+  message?: string;
+};

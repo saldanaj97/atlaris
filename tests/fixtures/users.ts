@@ -45,3 +45,28 @@ export async function createTestUser(
 
   return row;
 }
+
+/**
+ * Builds an in-memory user fixture without database IO.
+ * Useful for unit tests that need a full DbUser shape.
+ */
+export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
+  const now = new Date();
+
+  return {
+    id: `user_${nanoid(12)}`,
+    authUserId: `auth_test_${nanoid(12)}`,
+    email: `test-${nanoid(12)}@example.test`,
+    name: null,
+    subscriptionTier: 'free',
+    stripeCustomerId: null,
+    stripeSubscriptionId: null,
+    subscriptionStatus: null,
+    subscriptionPeriodEnd: null,
+    monthlyExportCount: 0,
+    preferredAiModel: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}

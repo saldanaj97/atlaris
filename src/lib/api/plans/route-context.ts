@@ -1,15 +1,16 @@
-import { eq } from 'drizzle-orm';
-
 import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
 import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
+import {
+  selectOwnedPlanById,
+  type OwnedPlanRecord,
+} from '@/lib/db/queries/helpers/plans-helpers';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
-import { learningPlans } from '@/lib/db/schema';
 
 export type PlansDbClient = ReturnType<typeof getDb>;
 
-export type LearningPlanRecord = typeof learningPlans.$inferSelect;
+export type LearningPlanRecord = OwnedPlanRecord;
 
 export function requirePlanIdFromRequest(
   req: Request,
@@ -26,9 +27,10 @@ export function requirePlanIdFromRequest(
 }
 
 export async function requireInternalUserByAuthId(
-  authUserId: string
+  authUserId: string,
+  dbClient?: PlansDbClient
 ): Promise<DbUser> {
-  const user = await getUserByAuthId(authUserId);
+  const user = await getUserByAuthId(authUserId, dbClient);
   if (!user) {
     throw new AppError(
       'Authenticated user record missing despite provisioning.',
@@ -44,11 +46,13 @@ export async function requireOwnedPlanById(params: {
   dbClient?: PlansDbClient;
 }): Promise<LearningPlanRecord> {
   const dbClient = params.dbClient ?? getDb();
-  const plan = await dbClient.query.learningPlans.findFirst({
-    where: eq(learningPlans.id, params.planId),
+  const plan = await selectOwnedPlanById({
+    planId: params.planId,
+    ownerUserId: params.ownerUserId,
+    dbClient,
   });
 
-  if (!plan || plan.userId !== params.ownerUserId) {
+  if (!plan) {
     throw new NotFoundError('Learning plan not found.');
   }
 

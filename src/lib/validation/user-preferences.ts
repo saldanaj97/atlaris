@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { isValidModelId } from '@/lib/ai/ai-models';
+import type { PreferredAiModel } from '@/lib/db/enums';
 
 /**
  * Schema for updating user preferences.
@@ -12,9 +13,12 @@ import { isValidModelId } from '@/lib/ai/ai-models';
  * @module lib/validation/user-preferences
  */
 export const updatePreferencesSchema = z.object({
-  preferredAiModel: z.string().refine(isValidModelId, {
-    message: 'Invalid model ID',
-  }),
+  preferredAiModel: z
+    .string()
+    .refine(isValidModelId, {
+      message: 'Invalid model ID',
+    })
+    .transform((modelId): PreferredAiModel => modelId as PreferredAiModel),
 });
 
 export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;

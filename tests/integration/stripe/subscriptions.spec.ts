@@ -18,12 +18,6 @@ import {
   cancelSubscription,
   getCustomerPortalUrl,
 } from '@/lib/stripe/subscriptions';
-import * as stripeClient from '@/lib/stripe/client';
-
-// Mock Stripe client
-vi.mock('@/lib/stripe/client', () => ({
-  getStripe: vi.fn(),
-}));
 
 async function createUniqueUser() {
   const authUserId = buildTestAuthUserId('stripe-subscriptions');
@@ -52,11 +46,10 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
       const customerId = await createCustomer(
         userId,
-        'create.customer@example.com'
+        'create.customer@example.com',
+        mockStripe
       );
 
       expect(customerId).toBe(expectedCustomerId);
@@ -91,11 +84,10 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
       const customerId = await createCustomer(
         userId,
-        'existing.customer@example.com'
+        'existing.customer@example.com',
+        mockStripe
       );
 
       expect(customerId).toBe(existingCustomerId);
@@ -178,9 +170,7 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
-      await syncSubscriptionToDb(mockSubscription);
+      await syncSubscriptionToDb(mockSubscription, mockStripe);
 
       // Verify DB updated
       const [user] = await db
@@ -238,9 +228,7 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
-      await syncSubscriptionToDb(mockSubscription);
+      await syncSubscriptionToDb(mockSubscription, mockStripe);
 
       // Verify DB updated
       const [user] = await db
@@ -297,9 +285,7 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
-      await syncSubscriptionToDb(mockSubscription);
+      await syncSubscriptionToDb(mockSubscription, mockStripe);
 
       const [user] = await db
         .select()
@@ -352,9 +338,7 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
-      await syncSubscriptionToDb(mockSubscription);
+      await syncSubscriptionToDb(mockSubscription, mockStripe);
 
       const [user] = await db
         .select()
@@ -387,11 +371,9 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
       // Should log error but not throw
       await expect(
-        syncSubscriptionToDb(mockSubscription)
+        syncSubscriptionToDb(mockSubscription, mockStripe)
       ).resolves.toBeUndefined();
     });
   });
@@ -415,9 +397,7 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
-      await cancelSubscription(userId);
+      await cancelSubscription(userId, mockStripe);
 
       expect(updateSubscription).toHaveBeenCalledWith(stripeSubscriptionId, {
         cancel_at_period_end: true,
@@ -447,12 +427,11 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
-
       const testCustomerId = buildStripeCustomerId('portal-customer', 'portal');
       const url = await getCustomerPortalUrl(
         testCustomerId,
-        'https://example.com/settings'
+        'https://example.com/settings',
+        mockStripe
       );
 
       expect(url).toBe('https://billing.stripe.com/session_abc123');

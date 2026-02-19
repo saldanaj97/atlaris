@@ -17,6 +17,7 @@ import {
   selectUserGenerationAttemptWindowStats,
   toPromptHashPayload,
 } from '@/lib/db/queries/helpers/attempts-helpers';
+import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import type {
   FinalizeFailureParams,
   FinalizeSuccessParams,
@@ -54,7 +55,14 @@ import { count, eq, sql } from 'drizzle-orm';
 export async function reserveAttemptSlot(
   params: ReserveAttemptSlotParams
 ): Promise<ReserveAttemptResult> {
-  const { planId, userId, input, dbClient, requiredGenerationStatus } = params;
+  const {
+    planId,
+    userId,
+    input,
+    dbClient,
+    allowedGenerationStatuses,
+    requiredGenerationStatus,
+  } = params;
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
@@ -77,28 +85,27 @@ export async function reserveAttemptSlot(
       throw new Error('User not found for generation attempt reservation');
     }
 
-    const [plan] = await tx
-      .select({
-        id: learningPlans.id,
-        userId: learningPlans.userId,
-        generationStatus: learningPlans.generationStatus,
-      })
-      .from(learningPlans)
-      .where(eq(learningPlans.id, planId))
-      .for('update');
+    const plan = await lockOwnedPlanById({
+      planId,
+      ownerUserId: userId,
+      dbClient: tx,
+    });
 
-    if (!plan || plan.userId !== userId) {
+    if (!plan) {
       throw new Error('Learning plan not found or inaccessible for user');
     }
 
-    if (
-      requiredGenerationStatus !== undefined &&
-      plan.generationStatus !== requiredGenerationStatus
-    ) {
+    const statusAllowed =
+      allowedGenerationStatuses !== undefined
+        ? allowedGenerationStatuses.includes(plan.generationStatus)
+        : requiredGenerationStatus === undefined
+          ? true
+          : plan.generationStatus === requiredGenerationStatus;
+    if (!statusAllowed) {
       logger.debug(
         {
           planId,
-          expectedStatus: requiredGenerationStatus,
+          allowed: allowedGenerationStatuses ?? requiredGenerationStatus,
           actualStatus: plan.generationStatus,
         },
         'Plan reservation aborted: generation status mismatch'
@@ -135,7 +142,10 @@ export async function reserveAttemptSlot(
     const [attemptState] = await tx
       .select({
         existingAttempts: count(generationAttempts.id),
-        inProgressAttempts: sql<number>`count(*) filter (where ${generationAttempts.status} = 'in_progress')`,
+        inProgressAttempts:
+          sql`count(*) filter (where ${generationAttempts.status} = 'in_progress')`.mapWith(
+            Number
+          ),
       })
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, planId));
@@ -333,7 +343,10 @@ export async function finalizeAttemptFailure({
     } else {
       await tx
         .update(learningPlans)
-        .set({ updatedAt: finishedAt })
+        .set({
+          generationStatus: 'pending_retry',
+          updatedAt: finishedAt,
+        })
         .where(eq(learningPlans.id, planId));
     }
 

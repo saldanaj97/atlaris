@@ -5,6 +5,11 @@ import { randomUUID } from 'node:crypto';
 export interface RequestContext {
   correlationId: string;
   userId?: string;
+  /** Authenticated internal user for this request (set by withAuth). */
+  user?: {
+    id: string;
+    authUserId: string;
+  };
   /** RLS-enforced or service-role Drizzle client. Use getDb() from @/lib/db/runtime in handlers. */
   db?: DbClient;
   /** Cleanup function for RLS database connections. Call when request completes. */
@@ -50,12 +55,23 @@ export function ensureCorrelationId(source?: HeaderSource): string {
   return existing && existing.length > 0 ? existing : randomUUID();
 }
 
+export interface CreateContextOptions {
+  userId?: string;
+  user?: RequestContext['user'];
+  db?: DbClient;
+  cleanup?: () => Promise<void>;
+}
+
 export function createRequestContext(
   req: Request,
-  userId?: string,
-  db?: DbClient,
-  cleanup?: () => Promise<void>
+  options?: CreateContextOptions
 ): RequestContext {
   const correlationId = ensureCorrelationId(req.headers);
-  return { correlationId, userId, db, cleanup };
+  return {
+    correlationId,
+    userId: options?.userId,
+    user: options?.user,
+    db: options?.db,
+    cleanup: options?.cleanup,
+  };
 }

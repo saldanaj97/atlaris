@@ -1,9 +1,9 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import { requirePlanIdFromRequest } from '@/lib/api/plans/route-context';
 import { json } from '@/lib/api/response';
-import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
-import { getUserByAuthId } from '@/lib/db/queries/users';
+import { logger } from '@/lib/logging/logger';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
 /**
@@ -17,31 +17,42 @@ import { mapDetailToClient } from '@/lib/mappers/detailToClient';
  */
 
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req, userId }) => {
-    const planId = getPlanIdFromUrl(req, 'last');
-    if (!planId) {
-      throw new ValidationError('Plan id is required in the request path.');
-    }
-    if (!isUuid(planId)) {
-      throw new ValidationError('Invalid plan id format.');
-    }
+  withAuthAndRateLimit('read', async ({ req, user }) => {
+    const planId = requirePlanIdFromRequest(req, 'last');
 
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
+    logger.info({ planId, userId: user.id }, 'Fetching learning plan detail');
+
+    let detail: Awaited<ReturnType<typeof getLearningPlanDetail>>;
+    try {
+      detail = await getLearningPlanDetail(planId, user.id);
+    } catch (error) {
+      logger.error(
+        {
+          planId,
+          userId: user.id,
+          error,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        'Failed fetching learning plan detail'
       );
+      throw error;
     }
 
-    const detail = await getLearningPlanDetail(planId, user.id);
     if (!detail) {
+      logger.error({ planId, userId: user.id }, 'Learning plan not found');
       throw new NotFoundError('Learning plan not found.');
     }
 
     const clientDetail = mapDetailToClient(detail);
     if (!clientDetail) {
+      logger.error(
+        { planId, userId: user.id },
+        'Learning plan detail mapping returned null'
+      );
       throw new NotFoundError('Learning plan not found.');
     }
+
+    logger.debug({ planId, userId: user.id }, 'Fetched learning plan detail');
 
     return json(clientDetail);
   })
@@ -49,6 +60,7 @@ export const GET = withErrorBoundary(
 
 export const DELETE = withErrorBoundary(
   withAuthAndRateLimit('mutation', async () => {
+    logger.error('Plan deletion attempted before implementation is available');
     throw new ValidationError('Plan deletion is not yet implemented.');
   })
 );

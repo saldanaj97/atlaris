@@ -157,6 +157,11 @@ export interface ReserveAttemptSlotParams {
   userId: string;
   input: GenerationInput;
   dbClient: AttemptsDbClient;
+  /** If set, plan must have one of these statuses (takes precedence over requiredGenerationStatus). */
+  allowedGenerationStatuses?: ReadonlyArray<
+    (typeof learningPlans.$inferSelect)['generationStatus']
+  >;
+  /** If set (and allowedGenerationStatuses not set), plan must have this exact status. */
   requiredGenerationStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
   now?: () => Date;
 }

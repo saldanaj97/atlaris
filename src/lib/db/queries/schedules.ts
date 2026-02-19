@@ -1,37 +1,17 @@
-import { and, eq } from 'drizzle-orm';
-
-import { mapDbRowToScheduleCacheRow } from '@/lib/db/queries/helpers/schedule-helpers';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import {
+  isPlanOwnershipWriteError,
+  mapDbRowToScheduleCacheRow,
+} from '@/lib/db/queries/helpers/schedule-helpers';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans, planSchedules } from '@/lib/db/schema';
+import type { getDb } from '@/lib/db/runtime';
+import { planSchedules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { ScheduleCacheRow } from '@/lib/scheduling/types';
+import { eq } from 'drizzle-orm';
 
-/** RLS-enforced database client for schedule queries (default: getDb()). */
+/** RLS-enforced database client for schedule queries. */
 type DbClient = ReturnType<typeof getDb>;
-
-interface PgErrorShape {
-  code?: string;
-  message?: string;
-}
-
-function isPlanOwnershipWriteError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) {
-    return false;
-  }
-
-  const dbError = error as PgErrorShape;
-
-  if (dbError.code === '42501' || dbError.code === '23503') {
-    return true;
-  }
-
-  return (
-    typeof dbError.message === 'string' &&
-    (dbError.message.includes('row-level security') ||
-      dbError.message.includes('foreign key constraint'))
-  );
-}
 
 /**
  * Validates that the user owns the plan. Throws if the plan is not found or access is denied.
@@ -46,11 +26,11 @@ export async function validatePlanOwnership(
   userId: string,
   dbClient: DbClient
 ): Promise<void> {
-  const [plan] = await dbClient
-    .select({ id: learningPlans.id })
-    .from(learningPlans)
-    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
-    .limit(1);
+  const plan = await selectOwnedPlanById({
+    planId,
+    ownerUserId: userId,
+    dbClient,
+  });
 
   if (!plan) {
     logger.warn({ planId, userId }, 'Plan not found or access denied');
@@ -60,32 +40,30 @@ export async function validatePlanOwnership(
 
 /**
  * Retrieves the cached schedule for the specified plan.
- * Ownership is enforced inline: the schedule is only returned when the plan
- * belongs to `userId`. Returns `null` if the plan is not found, the user does
- * not own it, or no cache entry exists yet.
+ * Returns `null` when no cache entry exists yet for an owned plan.
+ * Throws when the plan is not owned by the user.
  *
  * @param planId - The ID of the plan whose schedule cache will be retrieved
  * @param userId - The ID of the user who owns the plan
- * @param dbClient - Optional database client; defaults to getDb()
+ * @param dbClient - Database client for the query
  * @returns The cached schedule row for the given `planId`, or `null` if no cache exists.
  */
 export async function getPlanScheduleCache(
   planId: string,
   userId: string,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient
 ): Promise<ScheduleCacheRow | null> {
+  await validatePlanOwnership(planId, userId, dbClient);
+
   const [result] = await dbClient
-    .select({ schedule: planSchedules })
+    .select()
     .from(planSchedules)
-    .innerJoin(learningPlans, eq(planSchedules.planId, learningPlans.id))
-    .where(
-      and(eq(planSchedules.planId, planId), eq(learningPlans.userId, userId))
-    )
+    .where(eq(planSchedules.planId, planId))
     .limit(1);
 
   if (!result) return null;
 
-  return mapDbRowToScheduleCacheRow(result.schedule);
+  return mapDbRowToScheduleCacheRow(result);
 }
 
 /**
@@ -97,14 +75,14 @@ export async function getPlanScheduleCache(
  * @param planId - The ID of the plan whose schedule cache will be created or updated
  * @param userId - The ID of the user who owns the plan
  * @param payload - Cache values to store; `deadline` may be `null` to indicate no deadline
- * @param dbClient - Optional database client; defaults to getDb()
+ * @param dbClient - Database client for the query
  * @throws Error if the plan is not found or the user doesn't own it
  */
 export async function upsertPlanScheduleCache(
   planId: string,
   userId: string,
   payload: UpsertPlanScheduleCachePayload,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient
 ): Promise<void> {
   const {
     scheduleJson,
@@ -123,6 +101,8 @@ export async function upsertPlanScheduleCache(
     deadline,
   };
 
+  await validatePlanOwnership(planId, userId, dbClient);
+
   try {
     await dbClient
       .insert(planSchedules)
@@ -133,8 +113,11 @@ export async function upsertPlanScheduleCache(
       });
   } catch (error) {
     if (isPlanOwnershipWriteError(error)) {
-      logger.warn({ planId, userId }, 'Plan not found or access denied');
-      throw new Error('Plan not found or access denied');
+      logger.warn(
+        { planId, userId },
+        'Plan write failed - not found or access denied'
+      );
+      throw new Error('Plan not found or access denied', { cause: error });
     }
 
     throw error;

@@ -1,25 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
-import { setTestUser } from '../../helpers/auth';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import {
-  markUserAsSubscribed,
+  createCreatePortalHandler,
+  POST as createPortalPOST,
+} from '@/app/api/v1/stripe/create-portal/route';
+import {
+  createWebhookHandler,
+  POST as webhookPOST,
+} from '@/app/api/v1/stripe/webhook/route';
+import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
+import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import {
   buildStripeCustomerId,
   buildStripeSubscriptionId,
+  markUserAsSubscribed,
 } from '../../helpers/subscription';
-import { db } from '@/lib/db/service-role';
-import { users } from '@/lib/db/schema';
-import { POST as createPortalPOST } from '@/app/api/v1/stripe/create-portal/route';
-import { POST as webhookPOST } from '@/app/api/v1/stripe/webhook/route';
-import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
-import * as stripeClient from '@/lib/stripe/client';
-
-vi.mock('@/lib/stripe/client', () => ({
-  getStripe: vi.fn(),
-}));
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 async function createAuthTestUser() {
   const authUserId = buildTestAuthUserId('stripe-api');
@@ -58,7 +59,7 @@ describe('Stripe API Routes', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
+      const portalPOST = createCreatePortalHandler(mockStripe);
 
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
@@ -69,12 +70,12 @@ describe('Stripe API Routes', () => {
             Origin: 'http://localhost',
           },
           body: JSON.stringify({
-            returnUrl: 'http://localhost/settings',
+            returnUrl: '/settings',
           }),
         }
       );
 
-      const response = await createPortalPOST(request);
+      const response = await portalPOST(request);
 
       expect(response.status).toBe(200);
 
@@ -102,6 +103,36 @@ describe('Stripe API Routes', () => {
 
       expect(response.status).toBe(400);
     });
+
+    it('returns 400 when returnUrl is an external origin', async () => {
+      const userId = await createAuthTestUser();
+      const stripeCustomerId = buildStripeCustomerId(userId, 'portal-external');
+      await db
+        .update(users)
+        .set({ stripeCustomerId })
+        .where(sql`id = ${userId}`);
+
+      const request = new Request(
+        'http://localhost/api/v1/stripe/create-portal',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'http://localhost',
+          },
+          body: JSON.stringify({
+            returnUrl: 'https://evil.example/phish',
+          }),
+        }
+      );
+
+      const response = await createPortalPOST(request);
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toMatchObject({
+        error: 'returnUrl must be a relative path or same-origin URL',
+      });
+    });
   });
 
   describe('POST /api/v1/stripe/webhook', () => {
@@ -126,21 +157,16 @@ describe('Stripe API Routes', () => {
         body: JSON.stringify(event),
       });
 
-      const constructEventSpy = vi
-        .spyOn(Stripe.webhooks, 'constructEvent')
-        .mockReturnValue(event);
+      vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 
-      // Set webhook secret
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
 
       const response = await webhookPOST(request);
 
       expect(response.status).toBe(200);
-      expect(constructEventSpy).toHaveBeenCalled();
+      expect(Stripe.webhooks.constructEvent).toHaveBeenCalled();
 
-      // Cleanup
       delete process.env.STRIPE_WEBHOOK_SECRET;
-      constructEventSpy.mockRestore();
     });
 
     it('handles subscription.created event and syncs to DB', async () => {
@@ -186,13 +212,11 @@ describe('Stripe API Routes', () => {
         },
       } as unknown as Stripe;
 
-      vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
+      const webhookPOSTWithMock = createWebhookHandler(mockStripe);
 
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
 
-      const constructEventSpy = vi
-        .spyOn(Stripe.webhooks, 'constructEvent')
-        .mockReturnValue(event);
+      vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -202,7 +226,7 @@ describe('Stripe API Routes', () => {
         body: JSON.stringify(event),
       });
 
-      const response = await webhookPOST(request);
+      const response = await webhookPOSTWithMock(request);
 
       expect(response.status).toBe(200);
 
@@ -218,7 +242,6 @@ describe('Stripe API Routes', () => {
       expect(user?.subscriptionPeriodEnd).toEqual(new Date(1735689600 * 1000));
 
       delete process.env.STRIPE_WEBHOOK_SECRET;
-      constructEventSpy.mockRestore();
     });
 
     it('handles subscription.deleted event and downgrades to free', async () => {
@@ -246,9 +269,7 @@ describe('Stripe API Routes', () => {
 
       process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
 
-      const constructEventSpy = vi
-        .spyOn(Stripe.webhooks, 'constructEvent')
-        .mockReturnValue(event);
+      vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -272,7 +293,6 @@ describe('Stripe API Routes', () => {
       expect(user?.stripeSubscriptionId).toBeNull();
 
       delete process.env.STRIPE_WEBHOOK_SECRET;
-      constructEventSpy.mockRestore();
     });
 
     it('returns 400 when signature missing', async () => {

@@ -98,14 +98,30 @@ describe('Schedule Queries', () => {
 
   describe('getPlanScheduleCache', () => {
     it('returns null when cache does not exist for an owned plan', async () => {
-      const cache = await getPlanScheduleCache(planId, ownerId);
+      const cache = await getPlanScheduleCache(planId, ownerId, db);
 
       expect(cache).toBeNull();
     });
 
+    it('returns cached schedule when one exists for the owner', async () => {
+      const payload = buildSchedulePayload();
+
+      await upsertPlanScheduleCache(planId, ownerId, payload, db);
+
+      const cache = await getPlanScheduleCache(planId, ownerId, db);
+
+      expect(cache).not.toBeNull();
+      expect(cache?.inputsHash).toBe(payload.inputsHash);
+      expect(cache?.timezone).toBe(payload.timezone);
+      expect(cache?.weeklyHours).toBe(payload.weeklyHours);
+      expect(cache?.startDate).toBe(payload.startDate);
+      expect(cache?.deadline).toBe(payload.deadline);
+      expect(cache?.scheduleJson).toEqual(payload.scheduleJson);
+    });
+
     it('throws when user does not own the plan', async () => {
       await expect(
-        getPlanScheduleCache(planId, unauthorizedUserId)
+        getPlanScheduleCache(planId, unauthorizedUserId, db)
       ).rejects.toThrow('Plan not found or access denied');
     });
   });
@@ -114,9 +130,9 @@ describe('Schedule Queries', () => {
     it('inserts and retrieves schedule cache for the owner', async () => {
       const payload = buildSchedulePayload();
 
-      await upsertPlanScheduleCache(planId, ownerId, payload);
+      await upsertPlanScheduleCache(planId, ownerId, payload, db);
 
-      const cache = await getPlanScheduleCache(planId, ownerId);
+      const cache = await getPlanScheduleCache(planId, ownerId, db);
 
       expect(cache).not.toBeNull();
       expect(cache?.planId).toBe(planId);
@@ -129,7 +145,12 @@ describe('Schedule Queries', () => {
     });
 
     it('updates existing cache entry on conflict', async () => {
-      await upsertPlanScheduleCache(planId, ownerId, buildSchedulePayload());
+      await upsertPlanScheduleCache(
+        planId,
+        ownerId,
+        buildSchedulePayload(),
+        db
+      );
 
       const updatedPayload = buildSchedulePayload({
         scheduleJson: buildScheduleJson({
@@ -157,9 +178,9 @@ describe('Schedule Queries', () => {
         deadline: null,
       });
 
-      await upsertPlanScheduleCache(planId, ownerId, updatedPayload);
+      await upsertPlanScheduleCache(planId, ownerId, updatedPayload, db);
 
-      const cache = await getPlanScheduleCache(planId, ownerId);
+      const cache = await getPlanScheduleCache(planId, ownerId, db);
 
       expect(cache).not.toBeNull();
       expect(cache?.inputsHash).toBe('hash-updated');
@@ -176,7 +197,8 @@ describe('Schedule Queries', () => {
         upsertPlanScheduleCache(
           planId,
           unauthorizedUserId,
-          buildSchedulePayload()
+          buildSchedulePayload(),
+          db
         )
       ).rejects.toThrow('Plan not found or access denied');
     });

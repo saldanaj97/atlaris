@@ -2,6 +2,7 @@
 
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
+import { jsonError } from './response';
 
 export class AppError extends Error {
   constructor(
@@ -11,26 +12,31 @@ export class AppError extends Error {
       code?: string;
       details?: unknown;
       classification?: FailureClassification;
+      headers?: Record<string, string>;
     } = {}
   ) {
     super(message);
     this.name = this.constructor.name;
   }
 
-  status() {
+  status(): number {
     return this.options.status ?? 500;
   }
 
-  code() {
+  code(): string {
     return this.options.code ?? 'INTERNAL_ERROR';
   }
 
-  details() {
+  details(): unknown {
     return this.options.details;
   }
 
-  classification() {
+  classification(): FailureClassification | undefined {
     return this.options.classification;
+  }
+
+  headers(): Record<string, string> {
+    return this.options.headers ?? {};
   }
 }
 
@@ -66,6 +72,12 @@ export class ValidationError extends AppError {
 export class ConflictError extends AppError {
   constructor(message = 'Conflict', details?: unknown) {
     super(message, { status: 409, code: 'CONFLICT', details });
+  }
+}
+
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'Service unavailable', details?: unknown) {
+    super(message, { status: 503, code: 'SERVICE_UNAVAILABLE', details });
   }
 }
 
@@ -166,27 +178,14 @@ function toSafeError(err: unknown): Record<string, unknown> {
   };
 }
 
-export function toErrorResponse(err: unknown) {
+export function toErrorResponse(err: unknown): Response {
   if (err instanceof AppError) {
-    const body: Record<string, unknown> = {
-      error: err.message,
-      code: err.code(),
-    };
-    const headers: Record<string, string> = {};
-
-    const classification = err.classification();
-    if (classification) {
-      body.classification = classification;
-    }
-
-    const details = err.details();
-    if (details !== undefined) {
-      body.details = details;
-    }
+    const headers: Record<string, string> = { ...err.headers() };
+    let retryAfter: number | undefined;
 
     if (err instanceof RateLimitError) {
       if (err.retryAfter !== undefined) {
-        body.retryAfter = err.retryAfter;
+        retryAfter = err.retryAfter;
         headers['Retry-After'] = String(err.retryAfter);
       }
       if (err.limit !== undefined) {
@@ -200,11 +199,18 @@ export function toErrorResponse(err: unknown) {
       }
     }
 
-    return Response.json(body, { status: err.status(), headers });
+    return jsonError(err.message, {
+      status: err.status(),
+      code: err.code(),
+      classification: err.classification(),
+      details: err.details(),
+      retryAfter,
+      headers,
+    });
   }
   logger.error({ error: toSafeError(err) }, 'Unexpected API error');
-  return Response.json(
-    { error: 'Internal Server Error', code: 'INTERNAL_ERROR' },
-    { status: 500 }
-  );
+  return jsonError('Internal Server Error', {
+    status: 500,
+    code: 'INTERNAL_ERROR',
+  });
 }

@@ -65,7 +65,7 @@ describe('useStreamingPlanGeneration', () => {
   it('sets error state on error event', async () => {
     const chunks = [
       'data: {"type":"plan_start","data":{"planId":"plan-err","topic":"TS","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
-      'data: {"type":"error","data":{"planId":"plan-err","message":"boom","classification":"validation","retryable":false}}\n\n',
+      'data: {"type":"error","data":{"planId":"plan-err","code":"VALIDATION_ERROR","message":"boom","classification":"validation","retryable":false}}\n\n',
     ];
 
     vi.stubGlobal(
@@ -88,5 +88,42 @@ describe('useStreamingPlanGeneration', () => {
 
     expect(result.current.state.status).toBe('error');
     expect(result.current.state.error?.classification).toBe('validation');
+  });
+
+  it('throws normalized api error for non-streaming failures', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: 'Rate limit exceeded. Please wait and retry.',
+            code: 'RATE_LIMITED',
+          }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      )
+    );
+
+    const { result } = renderHook(() => useStreamingPlanGeneration());
+
+    await act(async () => {
+      await expect(
+        result.current.startGeneration(basePayload)
+      ).rejects.toMatchObject({
+        message: 'Rate limit exceeded. Please wait and retry.',
+        code: 'RATE_LIMITED',
+        status: 429,
+      });
+    });
+
+    expect(result.current.state.status).toBe('error');
+    expect(result.current.state.error).toMatchObject({
+      message: 'Rate limit exceeded. Please wait and retry.',
+      classification: 'rate_limit',
+      retryable: true,
+    });
   });
 });

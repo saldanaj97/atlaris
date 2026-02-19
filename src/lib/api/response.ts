@@ -1,6 +1,7 @@
 import type { FailureClassification } from '@/lib/types/client';
 
-import { AppError } from './errors';
+import { toApiErrorJsonResponse } from '@/lib/api/error-response';
+import type { AppError } from '@/lib/api/errors';
 
 interface JsonOptions {
   status?: number;
@@ -19,27 +20,11 @@ export function jsonError(
     code?: string;
     classification?: FailureClassification;
     details?: unknown;
+    retryAfter?: number;
     headers?: Record<string, string>;
   } = {}
 ) {
-  const { status = 400, code, classification, details, headers = {} } = options;
-
-  // Backwards-compatible shape: if no structured fields provided, return a simple string
-  if (!code && !classification && details === undefined) {
-    return Response.json({ error: message }, { status, headers });
-  }
-
-  return Response.json(
-    {
-      error: {
-        message,
-        ...(code ? { code } : {}),
-        ...(classification ? { classification } : {}),
-        ...(details !== undefined ? { details } : {}),
-      },
-    },
-    { status, headers }
-  );
+  return toApiErrorJsonResponse(message, options);
 }
 
 export function notImplemented() {

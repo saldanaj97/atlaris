@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 
 interface RegenerateButtonProps {
@@ -38,7 +39,11 @@ export function RegenerateButton({ planId }: RegenerateButtonProps) {
         signal: abortControllerRef.current.signal,
       });
       if (!res.ok) {
-        throw new Error('Failed to enqueue regeneration');
+        const parsedError = await parseApiErrorResponse(
+          res,
+          'Failed to enqueue regeneration'
+        );
+        throw new Error(parsedError.error);
       }
       toast.success('Plan regeneration enqueued');
     } catch (error) {

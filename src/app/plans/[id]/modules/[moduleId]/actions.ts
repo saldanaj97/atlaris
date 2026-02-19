@@ -79,9 +79,7 @@ export async function getModuleForPage(
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-module'),
-    authUserId,
-    rlsDb,
-    cleanup
+    { userId: authUserId, db: rlsDb, cleanup }
   );
 
   try {
@@ -143,9 +141,7 @@ export async function updateModuleTaskProgressAction({
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-module-task-progress'),
-    authUserId,
-    rlsDb,
-    cleanup
+    { userId: authUserId, db: rlsDb, cleanup }
   );
 
   try {

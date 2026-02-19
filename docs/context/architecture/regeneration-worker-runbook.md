@@ -48,10 +48,12 @@ Failure shape:
 
 ```json
 {
-  "ok": false,
-  "error": "<code>"
+  "error": "Human-readable message",
+  "code": "MACHINE_READABLE_CODE"
 }
 ```
+
+The endpoint now uses the canonical API error contract (see `docs/rules/api/error-contract.md`) for all non-2xx responses.
 
 ## Operational Checks
 

@@ -4,18 +4,35 @@ import {
 } from '@/lib/db/queries/schedules';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
+import type { DbClient } from '@/lib/db/types';
 import { generateSchedule } from '@/lib/scheduling/generate';
 import { computeInputsHash } from '@/lib/scheduling/hash';
 import type { ScheduleInputs, ScheduleJson } from '@/lib/scheduling/types';
 import { format } from 'date-fns';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 interface GetPlanScheduleParams {
   planId: string;
   userId: string;
 }
 
-const DEFAULT_SCHEDULE_TIMEZONE = 'UTC';
+/** Default timezone for schedule generation when no user timezone is available (e.g. not set in profile or preferences). */
+export const DEFAULT_SCHEDULE_TIMEZONE = 'UTC';
+
+/**
+ * Resolves the IANA timezone used for schedule generation for the given user.
+ * Currently returns {@link DEFAULT_SCHEDULE_TIMEZONE} only; when user timezone is added to profile, preferences, or request context, this will resolve from there and fall back to the default when none is set.
+ *
+ * @param _userId - User id (reserved for future lookup of user profile/preferences).
+ * @param _db - Database client (reserved for future user/preferences queries).
+ * @returns The timezone string (e.g. 'UTC', 'America/New_York').
+ */
+export async function resolveScheduleTimezone(
+  _userId: string,
+  _db: DbClient
+): Promise<string> {
+  return DEFAULT_SCHEDULE_TIMEZONE;
+}
 
 export const SCHEDULE_FETCH_ERROR_CODE = {
   PLAN_NOT_FOUND_OR_ACCESS_DENIED: 'PLAN_NOT_FOUND_OR_ACCESS_DENIED',
@@ -69,45 +86,56 @@ export async function getPlanSchedule(
     );
   }
 
-  const timezone = DEFAULT_SCHEDULE_TIMEZONE;
+  const timezone = await resolveScheduleTimezone(userId, db);
 
-  // Load modules and tasks in a single joined query
-  const planModules = await db
-    .select({ id: modules.id, order: modules.order, title: modules.title })
+  // Load modules and tasks in one query to avoid serial module->task round trips.
+  const moduleTaskRows = await db
+    .select({
+      moduleOrder: modules.order,
+      moduleTitle: modules.title,
+      taskId: tasks.id,
+      taskTitle: tasks.title,
+      taskEstimatedMinutes: tasks.estimatedMinutes,
+      taskOrder: tasks.order,
+      taskModuleId: tasks.moduleId,
+    })
     .from(modules)
+    .leftJoin(tasks, eq(tasks.moduleId, modules.id))
     .where(eq(modules.planId, planId))
-    .orderBy(asc(modules.order));
+    .orderBy(asc(modules.order), asc(tasks.order));
 
-  let flatTasks: Array<{
+  const flatTasks: Array<{
     id: string;
     title: string;
     estimatedMinutes: number;
     order: number;
     moduleId: string;
     moduleTitle: string;
-  }> = [];
-  if (planModules.length > 0) {
-    const moduleIds = planModules.map((m) => m.id);
-    const taskRows = await db
-      .select({
-        task: {
-          id: tasks.id,
-          title: tasks.title,
-          estimatedMinutes: tasks.estimatedMinutes,
-          order: tasks.order,
-          moduleId: tasks.moduleId,
-        },
-        moduleTitle: modules.title,
-      })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .where(inArray(modules.id, moduleIds))
-      .orderBy(asc(modules.order), asc(tasks.order));
-    flatTasks = taskRows.map((row) => ({
-      ...row.task,
+  }> = moduleTaskRows
+    .filter(
+      (
+        row
+      ): row is typeof row & {
+        taskId: string;
+        taskTitle: string;
+        taskEstimatedMinutes: number;
+        taskOrder: number;
+        taskModuleId: string;
+      } =>
+        row.taskId !== null &&
+        row.taskTitle !== null &&
+        row.taskEstimatedMinutes !== null &&
+        row.taskOrder !== null &&
+        row.taskModuleId !== null
+    )
+    .map((row) => ({
+      id: row.taskId,
+      title: row.taskTitle,
+      estimatedMinutes: row.taskEstimatedMinutes,
+      order: row.taskOrder,
+      moduleId: row.taskModuleId,
       moduleTitle: row.moduleTitle,
     }));
-  }
 
   // Build schedule inputs
   if (plan.weeklyHours <= 0) {

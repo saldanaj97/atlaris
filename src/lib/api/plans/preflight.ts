@@ -1,5 +1,4 @@
-import { AttemptCapExceededError } from '@/lib/api/errors';
-import { jsonError } from '@/lib/api/response';
+import { AttemptCapExceededError, ForbiddenError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
@@ -19,6 +18,7 @@ import {
   requireInternalUserByAuthId,
   type PlansDbClient,
 } from '@/lib/api/plans/route-context';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
 import {
   calculateTotalWeeks,
   findCappedPlanWithoutModules,
@@ -26,7 +26,7 @@ import {
 } from '@/lib/api/plans/shared';
 
 export interface PlanCreationPreflightData {
-  user: Awaited<ReturnType<typeof requireInternalUserByAuthId>>;
+  user: DbUser;
   userTier: SubscriptionTier;
   startDate: string | null;
   deadlineDate: string | null;
@@ -34,34 +34,27 @@ export interface PlanCreationPreflightData {
   preparedInput: PreparedPlanInput;
 }
 
-export type PlanCreationPreflightResult =
-  | {
-      ok: true;
-      data: PlanCreationPreflightData;
-    }
-  | {
-      ok: false;
-      response: Response;
-    };
-
 type PreparePlanCreationPreflightParams = {
   body: CreateLearningPlanInput;
   authUserId: string;
+  user?: DbUser;
   dbClient: PlansDbClient;
   enforceRequestedDurationCap?: boolean;
 };
 
 export async function preparePlanCreationPreflight(
   params: PreparePlanCreationPreflightParams
-): Promise<PlanCreationPreflightResult> {
+): Promise<PlanCreationPreflightData> {
   const {
     body,
     authUserId,
+    user: existingUser,
     dbClient,
     enforceRequestedDurationCap = true,
   } = params;
 
-  const user = await requireInternalUserByAuthId(authUserId);
+  const user =
+    existingUser ?? (await requireInternalUserByAuthId(authUserId, dbClient));
   const userTier = await resolveUserTier(user.id, dbClient);
 
   // First check: reject if the user's raw requested date range (before tier normalization) exceeds tier cap.
@@ -77,15 +70,9 @@ export async function preparePlanCreationPreflight(
       totalWeeks: requestedWeeks,
     });
     if (!requestedCap.allowed) {
-      return {
-        ok: false,
-        response: jsonError(
-          requestedCap.reason ?? 'Plan duration exceeds tier cap',
-          {
-            status: 403,
-          }
-        ),
-      };
+      throw new ForbiddenError(
+        requestedCap.reason ?? 'Plan duration exceeds tier cap'
+      );
     }
   }
 
@@ -103,12 +90,7 @@ export async function preparePlanCreationPreflight(
     totalWeeks,
   });
   if (!cap.allowed) {
-    return {
-      ok: false,
-      response: jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
-        status: 403,
-      }),
-    };
+    throw new ForbiddenError(cap.reason ?? 'Plan duration exceeds tier cap');
   }
 
   const cappedPlanId = await findCappedPlanWithoutModules(user.id, dbClient);
@@ -125,34 +107,34 @@ export async function preparePlanCreationPreflight(
     dbClient,
   });
 
-  if (!preparedInput.ok) {
-    return preparedInput;
-  }
-
   return {
-    ok: true,
-    data: {
-      user,
-      userTier,
-      startDate,
-      deadlineDate,
-      totalWeeks,
-      preparedInput: preparedInput.data,
-    },
+    user,
+    userTier,
+    startDate,
+    deadlineDate,
+    totalWeeks,
+    preparedInput,
   };
 }
 
 export async function insertPlanWithRollback(params: {
-  body: CreateLearningPlanInput;
   preflight: PlanCreationPreflightData;
   dbClient: PlansDbClient;
 }): Promise<{ id: string }> {
-  const { body, preflight, dbClient } = params;
+  const { preflight, dbClient } = params;
   const {
     user,
     startDate,
     deadlineDate,
-    preparedInput: { origin, extractedContext, topic, pdfUsageReserved },
+    preparedInput: {
+      origin,
+      extractedContext,
+      topic,
+      skillLevel,
+      weeklyHours,
+      learningStyle,
+      pdfUsageReserved,
+    },
   } = preflight;
 
   try {
@@ -160,9 +142,9 @@ export async function insertPlanWithRollback(params: {
       user.id,
       {
         topic,
-        skillLevel: body.skillLevel,
-        weeklyHours: body.weeklyHours,
-        learningStyle: body.learningStyle,
+        skillLevel,
+        weeklyHours,
+        learningStyle,
         visibility: 'private',
         origin,
         extractedContext,

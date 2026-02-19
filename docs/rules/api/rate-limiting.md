@@ -124,13 +124,16 @@ When rate limit is exceeded, the API returns:
 ```json
 {
   "error": "Rate limit exceeded. Maximum 10 requests allowed per hour.",
-  "code": "RATE_LIMIT_EXCEEDED",
+  "code": "RATE_LIMITED",
+  "classification": "rate_limit",
   "retryAfter": 3542
 }
 ```
 
 - HTTP Status: `429 Too Many Requests`
 - `retryAfter`: Seconds until the rate limit resets
+
+All error payloads must follow the canonical API error contract in `docs/rules/api/error-contract.md`.
 
 ## Current Endpoint Assignments
 

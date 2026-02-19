@@ -3,30 +3,20 @@ import {
   buildResourcesByTask,
   computeModuleNavItemsFromCounts,
 } from '@/lib/db/queries/helpers/modules-helpers';
+import {
+  fetchTaskProgressRows,
+  fetchTaskResourceRows,
+} from '@/lib/db/queries/helpers/task-relations-helpers';
 import type {
   ModuleDetail,
   ModuleNavCompletionRaw,
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
 import { getDb } from '@/lib/db/runtime';
-import {
-  learningPlans,
-  modules,
-  resources,
-  taskProgress,
-  taskResources,
-  tasks,
-} from '@/lib/db/schema';
-import { and, asc, count, eq, inArray } from 'drizzle-orm';
+import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
+import { and, asc, countDistinct, eq } from 'drizzle-orm';
 
 type ModulesDbClient = ReturnType<typeof getDb>;
-
-async function runIfIdsPresent<T>(
-  ids: readonly string[],
-  runQuery: () => Promise<T[]>
-): Promise<T[]> {
-  return ids.length > 0 ? runQuery() : [];
-}
 
 /**
  * Module queries: full module detail with plan context, resources, and progress.
@@ -71,8 +61,8 @@ export async function getModuleDetail(
           id: modules.id,
           order: modules.order,
           title: modules.title,
-          totalTaskCount: count(tasks.id),
-          completedTaskCount: count(taskProgress.id),
+          totalTaskCount: countDistinct(tasks.id),
+          completedTaskCount: countDistinct(taskProgress.id),
         })
         .from(modules)
         .leftJoin(tasks, eq(tasks.moduleId, modules.id))
@@ -122,42 +112,10 @@ export async function getModuleDetail(
 
     const taskIds = taskRows.map((task) => task.id);
 
-    const progressRows = await runIfIdsPresent(taskIds, () =>
-      client
-        .select()
-        .from(taskProgress)
-        .where(inArray(taskProgress.taskId, taskIds))
-    );
-
-    // Get resources for tasks
-    const resourceRows = await runIfIdsPresent(taskIds, () =>
-      client
-        .select({
-          id: taskResources.id,
-          taskId: taskResources.taskId,
-          resourceId: taskResources.resourceId,
-          order: taskResources.order,
-          notes: taskResources.notes,
-          createdAt: taskResources.createdAt,
-          resource: {
-            id: resources.id,
-            type: resources.type,
-            title: resources.title,
-            url: resources.url,
-            domain: resources.domain,
-            author: resources.author,
-            durationMinutes: resources.durationMinutes,
-            costCents: resources.costCents,
-            currency: resources.currency,
-            tags: resources.tags,
-            createdAt: resources.createdAt,
-          },
-        })
-        .from(taskResources)
-        .innerJoin(resources, eq(taskResources.resourceId, resources.id))
-        .where(inArray(taskResources.taskId, taskIds))
-        .orderBy(asc(taskResources.order))
-    );
+    const [progressRows, resourceRows] = await Promise.all([
+      fetchTaskProgressRows({ taskIds, dbClient: client }),
+      fetchTaskResourceRows({ taskIds, dbClient: client }),
+    ]);
 
     const progressMap = new Map(
       progressRows.map((progressRow) => [progressRow.taskId, progressRow])

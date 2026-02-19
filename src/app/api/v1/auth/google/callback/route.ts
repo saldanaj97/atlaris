@@ -1,8 +1,10 @@
 import { getAuthUserId, withErrorBoundary } from '@/lib/api/auth';
+import { ValidationError, toErrorResponse } from '@/lib/api/errors';
 import {
   createRequestContext as createApiRequestContext,
   withRequestContext,
 } from '@/lib/api/context';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { googleOAuthEnv } from '@/lib/config/env';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
@@ -39,6 +41,12 @@ const ALLOWED_OAUTH_ERROR_CODES = new Set([
 export const GET = withErrorBoundary(async (req) => {
   const request = req as NextRequest;
 
+  try {
+    await checkIpRateLimit(req, 'auth');
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+
   // For OAuth callbacks we must validate against the actual auth session,
   // not the DEV_AUTH_USER_ID override used in tests and local dev.
   const authUserId = await getAuthUserId();
@@ -63,10 +71,10 @@ export const GET = withErrorBoundary(async (req) => {
   const stateToken = searchParams.get('state'); // Secure state token
   const error = searchParams.get('error');
 
-  const baseUrl =
-    request.nextUrl?.origin ||
-    new URL(request.url).origin ||
-    'http://localhost:3000';
+  const baseUrl = request.nextUrl.origin || new URL(request.url).origin;
+  if (!baseUrl) {
+    throw new Error('Unable to resolve Google OAuth callback base URL.');
+  }
 
   if (error) {
     const sanitizedError =
@@ -99,7 +107,11 @@ export const GET = withErrorBoundary(async (req) => {
   }
 
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-  const apiRequestContext = createApiRequestContext(req, authUserId, rlsDb);
+  const apiRequestContext = createApiRequestContext(req, {
+    userId: authUserId,
+    db: rlsDb,
+    cleanup,
+  });
 
   try {
     const [user] = await withRequestContext(apiRequestContext, () => {
@@ -132,7 +144,10 @@ export const GET = withErrorBoundary(async (req) => {
         },
         'Invalid Google OAuth token response payload'
       );
-      throw new Error('Google OAuth token response validation failed');
+      throw new ValidationError(
+        'Google OAuth token response validation failed',
+        parsedTokens.error.flatten()
+      );
     }
 
     const tokens = parsedTokens.data;

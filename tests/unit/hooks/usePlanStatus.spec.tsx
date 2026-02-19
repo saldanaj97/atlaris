@@ -34,6 +34,7 @@ describe('usePlanStatus', () => {
     expect(result.current.status).toBe('pending');
     expect(result.current.attempts).toBe(0);
     expect(result.current.error).toBeNull();
+    expect(result.current.pollingError).toBeNull();
     expect(result.current.isPolling).toBe(true);
   });
 

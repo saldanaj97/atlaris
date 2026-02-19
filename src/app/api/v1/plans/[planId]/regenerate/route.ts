@@ -5,9 +5,8 @@ import {
   withErrorBoundary,
   type PlainHandler,
 } from '@/lib/api/auth';
-import { AppError, ValidationError } from '@/lib/api/errors';
+import { AppError, RateLimitError, ValidationError } from '@/lib/api/errors';
 import {
-  requireInternalUserByAuthId,
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/lib/api/plans/route-context';
@@ -15,7 +14,7 @@ import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
-import { json, jsonError } from '@/lib/api/response';
+import { json } from '@/lib/api/response';
 import { regenerationQueueEnv } from '@/lib/config/env';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
 import { getDb } from '@/lib/db/runtime';
@@ -50,9 +49,9 @@ import {
 export const POST: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit(
     'aiGeneration',
-    async ({ req, userId, params: _params }) => {
+    async ({ req, user, params: _params }) => {
       if (!regenerationQueueEnv.enabled) {
-        return jsonError(
+        throw new AppError(
           'Plan regeneration is temporarily disabled while queue workers are unavailable.',
           {
             status: 503,
@@ -62,7 +61,6 @@ export const POST: PlainHandler = withErrorBoundary(
       }
 
       const planId = requirePlanIdFromRequest(req, 'second-to-last');
-      const user = await requireInternalUserByAuthId(userId);
       const db = getDb();
       const plan = await requireOwnedPlanById({
         planId,
@@ -75,10 +73,7 @@ export const POST: PlainHandler = withErrorBoundary(
       try {
         body = await req.json();
       } catch {
-        return jsonError('Invalid JSON in request body.', {
-          status: 400,
-          code: 'VALIDATION_ERROR',
-        });
+        throw new ValidationError('Invalid JSON in request body.');
       }
 
       let overrides: PlanRegenerationOverridesInput | undefined;
@@ -112,9 +107,7 @@ export const POST: PlainHandler = withErrorBoundary(
         );
       }
 
-      const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
-      const generationRateLimitHeaders =
-        getPlanGenerationRateLimitHeaders(remaining);
+      const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
 
       // Atomically check and increment regeneration quota (prevents TOCTOU race)
       const usageResult = await atomicCheckAndIncrementUsage(
@@ -123,9 +116,13 @@ export const POST: PlainHandler = withErrorBoundary(
         db
       );
       if (!usageResult.allowed) {
-        return jsonError(
+        throw new RateLimitError(
           'Regeneration quota exceeded for your subscription tier.',
-          { status: 429, headers: generationRateLimitHeaders }
+          {
+            remaining: rateLimit.remaining,
+            limit: rateLimit.limit,
+            reset: rateLimit.reset,
+          }
         );
       }
 
@@ -186,37 +183,21 @@ export const POST: PlainHandler = withErrorBoundary(
 
       if (regenerationQueueEnv.inlineProcessingEnabled) {
         if (tryAcquireInlineDrainLock()) {
-          try {
-            const drainPromise = drainRegenerationQueue({ maxJobs: 1 });
-            void drainPromise
-              .catch((error: unknown) => {
-                logger.error(
-                  {
-                    planId,
-                    userId: user.id,
-                    error,
-                    inlineProcessingEnabled:
-                      regenerationQueueEnv.inlineProcessingEnabled,
-                    drainFn: 'drainRegenerationQueue',
-                  },
-                  'Inline regeneration queue drain failed'
-                );
-              })
-              .finally(releaseInlineDrainLock);
-          } catch (syncError: unknown) {
-            releaseInlineDrainLock();
-            logger.error(
-              {
-                planId,
-                userId: user.id,
-                error: syncError,
-                inlineProcessingEnabled:
-                  regenerationQueueEnv.inlineProcessingEnabled,
-                drainFn: 'drainRegenerationQueue',
-              },
-              'Inline regeneration queue drain failed (sync throw)'
-            );
-          }
+          void drainRegenerationQueue({ maxJobs: 1 })
+            .catch((error: unknown) => {
+              logger.error(
+                {
+                  planId,
+                  userId: user.id,
+                  error,
+                  inlineProcessingEnabled:
+                    regenerationQueueEnv.inlineProcessingEnabled,
+                  drainFn: 'drainRegenerationQueue',
+                },
+                'Inline regeneration queue drain failed'
+              );
+            })
+            .finally(releaseInlineDrainLock);
         }
       }
 
@@ -227,7 +208,7 @@ export const POST: PlainHandler = withErrorBoundary(
           jobId: enqueueResult.id,
           status: 'pending',
         },
-        { status: 202, headers: generationRateLimitHeaders }
+        { status: 202, headers: getPlanGenerationRateLimitHeaders(rateLimit) }
       );
     }
   )

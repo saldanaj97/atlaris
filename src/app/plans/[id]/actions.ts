@@ -106,9 +106,7 @@ export async function updateTaskProgressAction({
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-task-progress'),
-    authUserId,
-    rlsDb,
-    cleanup
+    { userId: authUserId, db: rlsDb, cleanup }
   );
 
   try {
@@ -169,9 +167,7 @@ export async function getPlanForPage(
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-plan'),
-    authUserId,
-    rlsDb,
-    cleanup
+    { userId: authUserId, db: rlsDb, cleanup }
   );
 
   try {
@@ -239,9 +235,7 @@ export async function getPlanScheduleForPage(
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-schedule'),
-    authUserId,
-    rlsDb,
-    cleanup
+    { userId: authUserId, db: rlsDb, cleanup }
   );
 
   try {

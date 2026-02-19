@@ -331,6 +331,7 @@ describe('IP Rate Limiting', () => {
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('publicApi');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('auth');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('docs');
+      expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('internal');
     });
 
     it('auth has lowest limit (brute force protection)', () => {

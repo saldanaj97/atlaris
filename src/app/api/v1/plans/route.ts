@@ -6,7 +6,10 @@ import {
   insertPlanWithRollback,
   preparePlanCreationPreflight,
 } from '@/lib/api/plans/preflight';
-import { requireInternalUserByAuthId } from '@/lib/api/plans/route-context';
+import {
+  PLAN_GENERATION_LIMIT,
+  PLAN_GENERATION_WINDOW_MINUTES,
+} from '@/lib/ai/generation-policy';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -18,9 +21,8 @@ import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
 
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ userId }) => {
+  withAuthAndRateLimit('read', async ({ user }) => {
     const db = getDb();
-    const user = await requireInternalUserByAuthId(userId);
     const summaries = await getPlanSummariesForUser(user.id, db);
     return json(summaries);
   })
@@ -29,7 +31,7 @@ export const GET = withErrorBoundary(
 // Use shared validation constants to avoid duplication
 
 export const POST = withErrorBoundary(
-  withAuthAndRateLimit('mutation', async ({ req, userId }) => {
+  withAuthAndRateLimit('mutation', async ({ req, userId, user }) => {
     let body: CreateLearningPlanInput;
     try {
       body = createLearningPlanSchema.parse(await req.json());
@@ -45,50 +47,53 @@ export const POST = withErrorBoundary(
     const preflight = await preparePlanCreationPreflight({
       body,
       authUserId: userId,
+      user,
       dbClient: db,
     });
-
-    if (!preflight.ok) {
-      return preflight.response;
-    }
 
     // Draft plan creation should not be blocked by the durable generation
     // window cap; execution endpoints enforce that cap. We still expose
     // advisory remaining headers for clients.
     let generationRateLimitHeaders: Record<string, string>;
     try {
-      const { remaining } = await checkPlanGenerationRateLimit(
-        preflight.data.user.id,
+      const rateLimit = await checkPlanGenerationRateLimit(
+        preflight.user.id,
         db
       );
-      generationRateLimitHeaders = getPlanGenerationRateLimitHeaders(remaining);
+      generationRateLimitHeaders = getPlanGenerationRateLimitHeaders(rateLimit);
     } catch (error) {
       if (error instanceof RateLimitError) {
-        generationRateLimitHeaders = getPlanGenerationRateLimitHeaders(0);
+        const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
+        generationRateLimitHeaders = getPlanGenerationRateLimitHeaders({
+          remaining: 0,
+          limit: error.limit ?? PLAN_GENERATION_LIMIT,
+          reset: error.reset ?? Math.ceil(Date.now() / 1000) + windowSeconds,
+        });
       } else {
         throw error;
       }
     }
 
     const created = await insertPlanWithRollback({
-      body,
-      preflight: preflight.data,
+      preflight,
       dbClient: db,
     });
 
     // Build response from preflight + insert result to avoid post-insert re-fetch
     // under RLS (same user context should see the row, but avoids dependency on
-    // visibility and gives consistent 201 semantics).
+    // visibility and gives consistent 201 semantics). Use preparedInput as the
+    // canonical source so the returned object reflects normalized/validated values.
     const now = new Date();
+    const { preparedInput } = preflight;
     return json(
       {
         id: created.id,
-        topic: preflight.data.preparedInput.topic,
-        skillLevel: body.skillLevel,
-        weeklyHours: body.weeklyHours,
-        learningStyle: body.learningStyle,
+        topic: preparedInput.topic,
+        skillLevel: preparedInput.skillLevel,
+        weeklyHours: preparedInput.weeklyHours,
+        learningStyle: preparedInput.learningStyle,
         visibility: 'private',
-        origin: preflight.data.preparedInput.origin,
+        origin: preparedInput.origin,
         createdAt: now.toISOString(),
         status: 'generating',
       },

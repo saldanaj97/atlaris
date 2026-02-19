@@ -90,6 +90,13 @@ ESLint blocks service-role imports in `src/app/api/**`, `src/lib/api/**`, `src/l
 - Prefix unused vars with `_`
 - Exported functions need explicit return types
 
+### API Error Handling
+
+- For API routes wrapped with `withErrorBoundary`, throw typed `AppError` variants from `@/lib/api/errors`
+- Do not return ad-hoc `Response.json(...)` / `NextResponse.json(...)` error payloads
+- Follow canonical error shape in `docs/rules/api/error-contract.md`
+- Client-side fetch consumers must parse failures via `parseApiErrorResponse(...)` from `@/lib/api/error-response.ts`
+
 ### Imports
 
 - Path alias: `@/*` → `src/*`
@@ -155,6 +162,7 @@ Guardrails and guidelines for LLMs to follow:
 - **Styling**: `docs/rules/styles/styling.md`
 - **DI Pattern**: `docs/rules/architecture/dependency-injection-architecture.md`
 - **Rate Limiting**: `docs/rules/api/rate-limiting.md`
+- **API Error Contract**: `docs/rules/api/error-contract.md`
 
 ## Subdirectory Agents
 

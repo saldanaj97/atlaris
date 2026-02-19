@@ -41,8 +41,8 @@ describe('GET /api/v1/templates', () => {
     expect(response.status).toBe(501);
     const body = await response.json();
     expect(body).toHaveProperty('error');
-    expect(body.error).toHaveProperty('message', 'Not Implemented');
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    expect(body.error).toBe('Not Implemented');
+    expect(body.code).toBe('NOT_IMPLEMENTED');
   });
 
   it('should require authentication', async () => {

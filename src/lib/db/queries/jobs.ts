@@ -6,6 +6,7 @@ import {
   clampLimit,
   mapRowToJob,
 } from '@/lib/db/queries/helpers/jobs-helpers';
+import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import type {
   JobEnqueueResult,
   JobQueueRow,
@@ -13,7 +14,7 @@ import type {
   JobStats,
 } from '@/lib/db/queries/types/jobs.types';
 import { getDb } from '@/lib/db/runtime';
-import { jobQueue, learningPlans } from '@/lib/db/schema';
+import { jobQueue } from '@/lib/db/schema';
 import {
   JOB_TYPES,
   type Job,
@@ -275,15 +276,14 @@ export async function insertJobRecord(
         type === JOB_TYPES.PLAN_REGENERATION && planId !== null;
 
       if (shouldDeduplicateRegeneration) {
-        const [lockedPlan] = await tx
-          .select({ id: learningPlans.id })
-          .from(learningPlans)
-          .where(eq(learningPlans.id, planId))
-          .limit(1)
-          .for('update');
+        const lockedPlan = await lockOwnedPlanById({
+          planId,
+          ownerUserId: userId,
+          dbClient: tx,
+        });
 
-        if (!lockedPlan?.id) {
-          throw new Error(`Plan not found: ${planId}`);
+        if (!lockedPlan) {
+          throw new Error(`Plan not found or inaccessible: ${planId}`);
         }
 
         const [existingActiveJob] = await tx

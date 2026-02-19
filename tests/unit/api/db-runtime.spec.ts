@@ -54,11 +54,9 @@ describe('getDb runtime safety', () => {
     } as unknown as ReturnType<typeof getDb>;
 
     const resolvedDb = withRequestContext(
-      createRequestContext(
-        new Request('http://localhost/runtime-test'),
-        undefined,
-        requestDb
-      ),
+      createRequestContext(new Request('http://localhost/runtime-test'), {
+        db: requestDb,
+      }),
       () => getDb()
     );
 

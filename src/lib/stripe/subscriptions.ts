@@ -37,11 +37,13 @@ export async function getSubscriptionTier(
 /**
  * Sync subscription data from Stripe to database
  * Called from webhook handlers
+ * @param stripe Optional Stripe client (for tests); uses getStripe() when omitted
  */
 export async function syncSubscriptionToDb(
-  subscription: Stripe.Subscription
+  subscription: Stripe.Subscription,
+  stripeInstance?: Stripe
 ): Promise<void> {
-  const stripe = getStripe();
+  const stripe = stripeInstance ?? getStripe();
   const customerId =
     typeof subscription.customer === 'string'
       ? subscription.customer
@@ -141,13 +143,15 @@ export async function syncSubscriptionToDb(
 
 /**
  * Create a Stripe customer for a user
+ * @param stripeInstance Optional Stripe client (for tests); uses getStripe() when omitted
  * @returns Stripe customer ID
  */
 export async function createCustomer(
   userId: string,
-  email: string
+  email: string,
+  stripeInstance?: Stripe
 ): Promise<string> {
-  const stripe = getStripe();
+  const stripe = stripeInstance ?? getStripe();
 
   // Check if user already has a Stripe customer ID
   const [existingUser] = await db
@@ -184,13 +188,15 @@ export async function createCustomer(
  * Generate billing portal URL for customer
  * @param customerId Stripe customer ID
  * @param returnUrl URL to return to after portal session
+ * @param stripeInstance Optional Stripe client (for tests); uses getStripe() when omitted
  * @returns Portal session URL
  */
 export async function getCustomerPortalUrl(
   customerId: string,
-  returnUrl: string
+  returnUrl: string,
+  stripeInstance?: Stripe
 ): Promise<string> {
-  const stripe = getStripe();
+  const stripe = stripeInstance ?? getStripe();
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
@@ -202,8 +208,12 @@ export async function getCustomerPortalUrl(
 
 /**
  * Cancel a subscription and downgrade user to free tier
+ * @param stripeInstance Optional Stripe client (for tests); uses getStripe() when omitted
  */
-export async function cancelSubscription(userId: string): Promise<void> {
+export async function cancelSubscription(
+  userId: string,
+  stripeInstance?: Stripe
+): Promise<void> {
   const [user] = await db
     .select({ stripeSubscriptionId: users.stripeSubscriptionId })
     .from(users)
@@ -214,7 +224,7 @@ export async function cancelSubscription(userId: string): Promise<void> {
     throw new Error('No active subscription found');
   }
 
-  const stripe = getStripe();
+  const stripe = stripeInstance ?? getStripe();
 
   // Cancel subscription at period end
   await stripe.subscriptions.update(user.stripeSubscriptionId, {

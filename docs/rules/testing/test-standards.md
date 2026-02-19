@@ -196,6 +196,13 @@ if (
   - persisted data (and only what matters)
   - error mapping
 
+For API error responses, assert the canonical contract from `docs/rules/api/error-contract.md`:
+
+- `error` must be a string
+- `code` must be present and stable
+- Optional fields (`classification`, `details`, `retryAfter`) only when relevant
+- Do not assert or expect legacy nested error shapes like `error.message`
+
 - Avoid over-asserting on full objects; it creates brittle coupling.
 
 ### Control async and concurrency

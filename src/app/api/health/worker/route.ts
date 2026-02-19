@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { toErrorResponse } from '@/lib/api/errors';
@@ -7,6 +7,7 @@ import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { jobQueue } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { JOB_TYPES } from '@/lib/jobs/types';
+import { logger } from '@/lib/logging/logger';
 
 const STUCK_JOB_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
 const BACKLOG_THRESHOLD = 100; // pending jobs threshold
@@ -48,54 +49,20 @@ export async function GET(request: Request) {
   // Health checks need to see all jobs across all users, not just the authenticated user's jobs
 
   try {
-    const [stuckJobsResult] = await db
+    const [healthCounts] = await db
       .select({
-        count: sql<number>`count(*)::int`,
+        stuckJobsCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.startedAt} < ${stuckThreshold})::int`,
+        backlogCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending')::int`,
+        pendingRegenerationCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION})::int`,
+        stuckRegenerationCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION} and ${jobQueue.startedAt} < ${stuckThreshold})::int`,
       })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'processing'),
-          lt(jobQueue.startedAt, stuckThreshold)
-        )
-      );
+      .from(jobQueue);
 
-    const [backlogResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(eq(jobQueue.status, 'pending'));
-
-    const [pendingRegenerationResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'pending'),
-          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION)
-        )
-      );
-
-    const [stuckRegenerationResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'processing'),
-          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-          lt(jobQueue.startedAt, stuckThreshold)
-        )
-      );
-
-    const stuckJobCount = stuckJobsResult?.count ?? 0;
-    const backlogCount = backlogResult?.count ?? 0;
-    const pendingRegenerationCount = pendingRegenerationResult?.count ?? 0;
-    const stuckRegenerationCount = stuckRegenerationResult?.count ?? 0;
+    const stuckJobCount = healthCounts?.stuckJobsCount ?? 0;
+    const backlogCount = healthCounts?.backlogCount ?? 0;
+    const pendingRegenerationCount =
+      healthCounts?.pendingRegenerationCount ?? 0;
+    const stuckRegenerationCount = healthCounts?.stuckRegenerationCount ?? 0;
 
     const stuckJobsCheck = {
       status: stuckJobCount > 0 ? ('fail' as const) : ('ok' as const),
@@ -154,8 +121,7 @@ export async function GET(request: Request) {
       status: isHealthy ? 200 : 503,
     });
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ error }, 'Health worker check failed');
 
     return NextResponse.json(
       {
@@ -175,7 +141,7 @@ export async function GET(request: Request) {
             threshold: STUCK_JOB_THRESHOLD_MS,
           },
         },
-        reason: `Health check failed: ${errorMessage}`,
+        reason: 'Health check failed due to an internal monitoring error',
       } satisfies HealthCheckResponse,
       { status: 503 }
     );

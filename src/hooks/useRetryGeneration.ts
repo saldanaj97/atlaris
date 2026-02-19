@@ -2,9 +2,33 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { z } from 'zod';
 
+import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 import { parseEventLine } from '@/lib/streaming/parse-event';
+
+/** Runtime shape for SSE error event data (message and/or error key). */
+const errorEventDataSchema = z
+  .object({
+    message: z.string().optional(),
+    error: z.string().optional(),
+  })
+  .strict();
+
+function getErrorMessage(raw: unknown): string {
+  const parsed = errorEventDataSchema.safeParse(raw);
+  if (parsed.success) {
+    const m = parsed.data.message ?? parsed.data.error;
+    if (m !== undefined) return m;
+  }
+  if (typeof raw === 'object' && raw !== null) {
+    const o = raw as Record<string, unknown>;
+    if (typeof o.message === 'string') return o.message;
+    if (typeof o.error === 'string') return o.error;
+  }
+  return raw !== undefined && raw !== null ? String(raw) : 'Generation failed.';
+}
 
 type RetryStatus = 'idle' | 'retrying' | 'success' | 'error';
 
@@ -98,17 +122,12 @@ export function useRetryGeneration(
 
       // Handle non-streaming error responses
       if (!response.ok || !response.body) {
-        let message = 'Failed to retry generation.';
-        try {
-          const json = (await response.json()) as { error?: string };
-          if (json?.error) {
-            message = json.error;
-          }
-        } catch {
-          // Use default message
-        }
+        const parsedError = await parseApiErrorResponse(
+          response,
+          'Failed to retry generation.'
+        );
         setStatus('error');
-        setError(message);
+        setError(parsedError.error);
         return;
       }
 
@@ -138,9 +157,7 @@ export function useRetryGeneration(
 
           if (event.type === 'error') {
             setStatus('error');
-            // Defensive access for runtime safety
-            const errorData = event.data as { message?: string } | undefined;
-            setError(errorData?.message ?? 'Generation failed.');
+            setError(getErrorMessage(event.data as unknown));
             return;
           }
 
@@ -156,7 +173,7 @@ export function useRetryGeneration(
       setStatus('error');
       setError('Generation completed unexpectedly.');
     } catch (err) {
-      if ((err as DOMException)?.name === 'AbortError') {
+      if (err instanceof DOMException && err.name === 'AbortError') {
         setStatus('idle');
         return;
       }

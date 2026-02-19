@@ -14,6 +14,7 @@ import {
   isStreamingError,
   useStreamingPlanGeneration,
 } from '@/hooks/useStreamingPlanGeneration';
+import { normalizeApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 import { mapPdfSettingsToCreateInput } from '@/lib/mappers/learningPlans';
 import { Loader2 } from 'lucide-react';
@@ -110,6 +111,26 @@ const extractionApiResponseSchema = z.object({
 
 type ExtractionApiResponse = z.infer<typeof extractionApiResponseSchema>;
 
+function handleExtractionApiError(params: {
+  rawData: unknown;
+  status: number;
+  fallbackMessage: string;
+}): { error: string; code?: ErrorCode } {
+  const normalizedError = normalizeApiErrorResponse(params.rawData, {
+    status: params.status,
+    fallbackMessage: params.fallbackMessage,
+  });
+
+  const code: ErrorCode | undefined = isKnownErrorCode(normalizedError.code)
+    ? normalizedError.code
+    : undefined;
+
+  return {
+    error: normalizedError.error,
+    code,
+  };
+}
+
 interface PdfCreatePanelProps {
   onSwitchToManual: (extractedTopic: string) => void;
 }
@@ -175,13 +196,20 @@ export function PdfCreatePanel({
       const parseResult = extractionApiResponseSchema.safeParse(rawData);
 
       if (!parseResult.success) {
+        const normalizedApiError = handleExtractionApiError({
+          rawData,
+          status: response.status,
+          fallbackMessage: 'Invalid response from server. Please try again.',
+        });
+
         clientLogger.error('PDF extraction response validation failed', {
           error: parseResult.error.flatten(),
           responseOk: response.ok,
         });
         setState({
           status: 'error',
-          error: 'Invalid response from server. Please try again.',
+          error: normalizedApiError.error,
+          code: normalizedApiError.code,
         });
         return;
       }
@@ -189,13 +217,16 @@ export function PdfCreatePanel({
       const data: ExtractionApiResponse = parseResult.data;
 
       if (!response.ok || !data.success || !data.extraction || !data.proof) {
-        const code: ErrorCode | undefined = isKnownErrorCode(data.code)
-          ? data.code
-          : undefined;
+        const normalizedApiError = handleExtractionApiError({
+          rawData,
+          status: response.status,
+          fallbackMessage: 'Failed to extract PDF content',
+        });
+
         setState({
           status: 'error',
-          error: data.error ?? 'Failed to extract PDF content',
-          code,
+          error: normalizedApiError.error,
+          code: normalizedApiError.code,
         });
         return;
       }

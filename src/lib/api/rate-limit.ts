@@ -13,13 +13,18 @@ import { logger } from '@/lib/logging/logger';
 
 export interface PlanGenerationRateLimitResult {
   remaining: number;
+  limit: number;
+  reset: number;
 }
 
+/** Serializes rate-limit numeric values to HTTP response headers. */
 export function getPlanGenerationRateLimitHeaders(
-  remaining: number
+  result: PlanGenerationRateLimitResult
 ): Record<string, string> {
   return {
-    'X-RateLimit-Remaining': String(Math.max(0, remaining)),
+    'X-RateLimit-Remaining': String(Math.max(0, result.remaining)),
+    'X-RateLimit-Limit': String(result.limit),
+    'X-RateLimit-Reset': String(result.reset),
   };
 }
 
@@ -99,7 +104,15 @@ export async function checkPlanGenerationRateLimit(
     );
   }
 
+  const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
+  const oldestAttempt = attemptWindowStats.oldestAttemptCreatedAt;
+  const reset = oldestAttempt
+    ? Math.ceil((oldestAttempt.getTime() + windowSeconds * 1000) / 1000)
+    : Math.ceil(Date.now() / 1000) + windowSeconds;
+
   return {
     remaining: Math.max(0, PLAN_GENERATION_LIMIT - attemptCount),
+    limit: PLAN_GENERATION_LIMIT,
+    reset,
   };
 }

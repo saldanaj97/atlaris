@@ -22,7 +22,7 @@ interface PlanPendingStateProps {
 
 export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const router = useRouter();
-  const { status, attempts, error, isPolling } = usePlanStatus(
+  const { status, attempts, error, pollingError, isPolling } = usePlanStatus(
     plan.id,
     plan.status ?? 'pending'
   );
@@ -45,11 +45,13 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const isProcessing = status === 'processing' || retryStatus === 'retrying';
   // Check if plan generation has failed (we keep this block visible during retry to show progress)
   const isFailed = status === 'failed';
+  // Polling gave up (non-retriable or too many consecutive failures)
+  const hasPollingError = pollingError !== null;
   // Check if currently attempting a retry
   const isRetrying = retryStatus === 'retrying';
 
-  // Use retry error if available, otherwise use status error
-  const displayError = retryError ?? error;
+  // Use retry error if available, then polling failure, then server status error
+  const displayError = retryError ?? pollingError ?? error;
 
   // Check if user has exhausted all retry attempts
   const hasExhaustedRetries = attempts >= MAX_RETRY_ATTEMPTS;
@@ -87,7 +89,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
         </CardHeader>
 
         <CardContent className="space-y-6" aria-live="polite">
-          {isFailed && displayError ? (
+          {(isFailed || hasPollingError) && displayError ? (
             <div className="space-y-4">
               <div className="bg-destructive/10 border-destructive/20 flex items-start gap-3 rounded-lg border p-4">
                 <AlertCircle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />

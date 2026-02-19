@@ -11,9 +11,8 @@ import {
   normalizeThrownError,
   toAttemptError,
 } from '@/lib/api/error-normalization';
-import { RateLimitError } from '@/lib/api/errors';
+import { AppError, RateLimitError } from '@/lib/api/errors';
 import {
-  requireInternalUserByAuthId,
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/lib/api/plans/route-context';
@@ -21,7 +20,6 @@ import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
-import { jsonError } from '@/lib/api/response';
 import {
   finalizeAttemptFailure,
   reserveAttemptSlot,
@@ -58,9 +56,8 @@ const toIsoDateString = (value: string | null): IsoDateString | undefined => {
  * atomically inside reserveAttemptSlot before streaming starts.
  */
 export const POST = withErrorBoundary(
-  withAuthAndRateLimit('aiGeneration', async ({ req, userId }) => {
+  withAuthAndRateLimit('aiGeneration', async ({ req, user }) => {
     const planId = requirePlanIdFromRequest(req, 'second-to-last');
-    const user = await requireInternalUserByAuthId(userId);
 
     const db = getDb();
     const plan = await requireOwnedPlanById({
@@ -69,9 +66,9 @@ export const POST = withErrorBoundary(
       dbClient: db,
     });
 
-    const { remaining } = await checkPlanGenerationRateLimit(user.id, db);
+    const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
     const generationRateLimitHeaders =
-      getPlanGenerationRateLimitHeaders(remaining);
+      getPlanGenerationRateLimitHeaders(rateLimit);
 
     // Tier-gated provider resolution (retries use default model for the tier)
     const userTier = await resolveUserTier(user.id, db);
@@ -110,14 +107,19 @@ export const POST = withErrorBoundary(
       userId: user.id,
       input: generationInput,
       dbClient: db,
-      requiredGenerationStatus: 'failed',
+      allowedGenerationStatuses: ['failed', 'pending_retry'],
     });
 
     if (!reservation.reserved) {
       if (reservation.reason === 'capped') {
-        return jsonError(
+        throw new AppError(
           'Maximum retry attempts reached for this plan. Please create a new plan.',
-          { status: 429, headers: generationRateLimitHeaders }
+          {
+            status: 429,
+            code: 'ATTEMPTS_CAPPED',
+            classification: 'capped',
+            headers: generationRateLimitHeaders,
+          }
         );
       }
       if (reservation.reason === 'rate_limited') {
@@ -127,15 +129,22 @@ export const POST = withErrorBoundary(
         );
       }
       if (reservation.reason === 'invalid_status') {
-        return jsonError(
+        throw new AppError(
           'Plan is not in a failed state. Only failed plans can be retried.',
-          { status: 400, headers: generationRateLimitHeaders }
+          {
+            status: 400,
+            code: 'VALIDATION_ERROR',
+            classification: 'validation',
+            headers: generationRateLimitHeaders,
+          }
         );
       }
 
       // reason === 'in_progress'
-      return jsonError('A generation is already in progress for this plan.', {
+      throw new AppError('A generation is already in progress for this plan.', {
         status: 409,
+        code: 'CONFLICT',
+        classification: 'validation',
         headers: generationRateLimitHeaders,
       });
     }

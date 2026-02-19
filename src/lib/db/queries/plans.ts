@@ -3,16 +3,17 @@
  * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
  */
 import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
-import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import {
+  fetchTaskProgressRows,
+  fetchTaskResourceRows,
+} from '@/lib/db/queries/helpers/task-relations-helpers';
 import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
 import {
   generationAttempts,
   learningPlans,
   modules,
-  resources,
-  taskProgress,
-  taskResources,
   tasks,
 } from '@/lib/db/schema';
 import {
@@ -24,10 +25,13 @@ import type {
   LearningPlanDetail,
   PlanSummary,
 } from '@/lib/types/db';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;
+
+/** Maximum number of generation attempts to return in attempt history queries. */
+const MAX_ATTEMPTS_HISTORY_LIMIT = 10;
 
 /**
  * Fetches plan summaries with completion metrics for a user.
@@ -55,12 +59,7 @@ export async function getPlanSummariesForUser(
       .where(eq(learningPlans.userId, userId))
       .$dynamic();
 
-    const hasPagination =
-      options?.limit !== undefined || options?.offset !== undefined;
-
-    if (hasPagination) {
-      planQuery.orderBy(desc(learningPlans.createdAt));
-    }
+    planQuery.orderBy(desc(learningPlans.createdAt));
 
     if (options?.limit !== undefined) {
       planQuery.limit(Math.max(1, options.limit));
@@ -98,17 +97,11 @@ export async function getPlanSummariesForUser(
 
     const taskIds = taskRows.map((task) => task.id);
 
-    const progressRows = taskIds.length
-      ? await client
-          .select({ taskId: taskProgress.taskId, status: taskProgress.status })
-          .from(taskProgress)
-          .where(
-            and(
-              eq(taskProgress.userId, userId),
-              inArray(taskProgress.taskId, taskIds)
-            )
-          )
-      : [];
+    const progressRows = await fetchTaskProgressRows({
+      taskIds,
+      userId,
+      dbClient: client,
+    });
 
     return mapPlanSummaries({
       planRows,
@@ -140,19 +133,15 @@ export async function getLearningPlanDetail(
   const client = dbClient ?? getDb();
 
   try {
-    const planRow = await client
-      .select()
-      .from(learningPlans)
-      .where(
-        and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId))
-      )
-      .limit(1);
+    const plan = await selectOwnedPlanById({
+      planId,
+      ownerUserId: userId,
+      dbClient: client,
+    });
 
-    if (!planRow.length) {
+    if (!plan) {
       return null;
     }
-
-    const plan = planRow[0];
 
     // Fire plan-level queries in parallel: modules + generation attempt metadata
     const [moduleRows, attemptMetaRows] = await Promise.all([
@@ -186,45 +175,12 @@ export async function getLearningPlanDetail(
 
     // Fire task-dependent queries in parallel
     const [progressRows, resourceRows] = await Promise.all([
-      taskIds.length
-        ? client
-            .select()
-            .from(taskProgress)
-            .where(
-              and(
-                eq(taskProgress.userId, userId),
-                inArray(taskProgress.taskId, taskIds)
-              )
-            )
-        : ([] as (typeof taskProgress.$inferSelect)[]),
-      taskIds.length
-        ? client
-            .select({
-              id: taskResources.id,
-              taskId: taskResources.taskId,
-              resourceId: taskResources.resourceId,
-              order: taskResources.order,
-              notes: taskResources.notes,
-              createdAt: taskResources.createdAt,
-              resource: {
-                id: resources.id,
-                type: resources.type,
-                title: resources.title,
-                url: resources.url,
-                domain: resources.domain,
-                author: resources.author,
-                durationMinutes: resources.durationMinutes,
-                costCents: resources.costCents,
-                currency: resources.currency,
-                tags: resources.tags,
-                createdAt: resources.createdAt,
-              },
-            })
-            .from(taskResources)
-            .innerJoin(resources, eq(taskResources.resourceId, resources.id))
-            .where(inArray(taskResources.taskId, taskIds))
-            .orderBy(asc(taskResources.order))
-        : ([] as TaskResourceWithResource[]),
+      fetchTaskProgressRows({
+        taskIds,
+        userId,
+        dbClient: client,
+      }),
+      fetchTaskResourceRows({ taskIds, dbClient: client }),
     ]);
 
     const attemptsCount = Number(attemptMetaRows[0]?.attemptsCount ?? 0);
@@ -270,31 +226,31 @@ export async function getPlanAttemptsForUser(
   const client = dbClient ?? getDb();
 
   try {
-    const [planRow, attempts] = await Promise.all([
-      client
-        .select({
-          id: learningPlans.id,
-          topic: learningPlans.topic,
-          generationStatus: learningPlans.generationStatus,
-        })
-        .from(learningPlans)
-        .where(
-          and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId))
-        )
-        .limit(1),
+    const [plan, attempts] = await Promise.all([
+      selectOwnedPlanById({
+        planId,
+        ownerUserId: userId,
+        dbClient: client,
+      }),
       client
         .select()
         .from(generationAttempts)
         .where(eq(generationAttempts.planId, planId))
         .orderBy(desc(generationAttempts.createdAt))
-        .limit(10),
+        .limit(MAX_ATTEMPTS_HISTORY_LIMIT),
     ]);
 
-    if (!planRow.length) {
+    if (!plan) {
       return null;
     }
 
-    return { plan: planRow[0], attempts };
+    const planMeta: PlanAttemptsPlanMeta = {
+      id: plan.id,
+      topic: plan.topic,
+      generationStatus: plan.generationStatus,
+    };
+
+    return { plan: planMeta, attempts };
   } finally {
     if (dbClient === undefined) {
       await cleanupDbClient(client);

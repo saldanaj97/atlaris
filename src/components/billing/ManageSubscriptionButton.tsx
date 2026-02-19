@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+
+import { parseApiErrorResponse } from '@/lib/api/error-response';
+import { clientLogger } from '@/lib/logging/client';
 
 interface ManageSubscriptionButtonProps {
   label?: string;
@@ -14,7 +17,7 @@ export default function ManageSubscriptionButton({
   label = 'Manage Subscription',
   className,
   returnUrl,
-}: ManageSubscriptionButtonProps) {
+}: ManageSubscriptionButtonProps): React.ReactElement {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -29,8 +32,15 @@ export default function ManageSubscriptionButton({
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || 'Failed to open billing portal');
+        const parsedError = await parseApiErrorResponse(
+          res,
+          'Failed to open billing portal'
+        );
+        clientLogger.error('Failed to open billing portal', {
+          parsedError,
+          returnUrl: returnUrl ?? undefined,
+        });
+        throw new Error(parsedError.error);
       }
 
       const data = (await res.json()) as { portalUrl?: string };

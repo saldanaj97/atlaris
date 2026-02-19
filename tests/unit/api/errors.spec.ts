@@ -6,10 +6,17 @@ import {
   ForbiddenError,
   NotFoundError,
   RateLimitError,
+  ServiceUnavailableError,
   toErrorResponse,
   ValidationError,
 } from '@/lib/api/errors';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/lib/logging/logger', () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
 
 describe('AppError', () => {
   it('should create error with message', () => {
@@ -58,6 +65,13 @@ describe('AppError', () => {
   it('should return undefined for missing classification', () => {
     const error = new AppError('Test error');
     expect(error.classification()).toBeUndefined();
+  });
+
+  it('should expose custom headers', () => {
+    const error = new AppError('Test error', {
+      headers: { 'X-Custom-Header': 'custom-value' },
+    });
+    expect(error.headers()).toEqual({ 'X-Custom-Header': 'custom-value' });
   });
 });
 
@@ -181,6 +195,33 @@ describe('ConflictError', () => {
   });
 });
 
+describe('ServiceUnavailableError', () => {
+  it('uses default message, status, and code', () => {
+    const error = new ServiceUnavailableError();
+
+    expect(error.message).toBe('Service unavailable');
+    expect(error.status()).toBe(503);
+    expect(error.code()).toBe('SERVICE_UNAVAILABLE');
+  });
+
+  it('uses custom message while keeping status 503', () => {
+    const error = new ServiceUnavailableError('OAuth provider unavailable');
+
+    expect(error.message).toBe('OAuth provider unavailable');
+    expect(error.status()).toBe(503);
+  });
+
+  it('returns provided details from details()', () => {
+    const details = { provider: 'google_calendar' };
+    const error = new ServiceUnavailableError(
+      'OAuth provider unavailable',
+      details
+    );
+
+    expect(error.details()).toEqual(details);
+  });
+});
+
 describe('RateLimitError', () => {
   it('should create 429 error with default message', () => {
     const error = new RateLimitError();
@@ -245,16 +286,7 @@ describe('AttemptCapExceededError', () => {
 });
 
 describe('toErrorResponse', () => {
-  // Mock logger to prevent console output during tests
   beforeEach(() => {
-    vi.mock('@/lib/logging/logger', () => ({
-      logger: {
-        error: vi.fn(),
-      },
-    }));
-  });
-
-  afterEach(() => {
     vi.clearAllMocks();
   });
 
@@ -304,6 +336,18 @@ describe('toErrorResponse', () => {
 
     const body = await response.json();
     expect(body.retryAfter).toBe(120);
+  });
+
+  it('should preserve custom AppError headers in response', () => {
+    const response = toErrorResponse(
+      new AppError('Downstream unavailable', {
+        status: 503,
+        code: 'SERVICE_UNAVAILABLE',
+        headers: { 'Retry-After': '15' },
+      })
+    );
+
+    expect(response.headers.get('Retry-After')).toBe('15');
   });
 
   it('should set X-RateLimit-Remaining when provided', () => {

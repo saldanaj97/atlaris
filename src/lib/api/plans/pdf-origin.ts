@@ -1,4 +1,4 @@
-import { jsonError } from '@/lib/api/response';
+import { AppError, ForbiddenError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 import {
   sanitizePdfContextForPersistence,
@@ -24,6 +24,9 @@ export interface PreparedPlanInput {
   origin: CreateLearningPlanInput['origin'];
   extractedContext: PdfContext | null;
   topic: string;
+  skillLevel: CreateLearningPlanInput['skillLevel'];
+  weeklyHours: CreateLearningPlanInput['weeklyHours'];
+  learningStyle: CreateLearningPlanInput['learningStyle'];
   pdfUsageReserved: boolean;
   pdfProvenance: PdfProvenance | null;
 }
@@ -35,10 +38,6 @@ type PreparePdfOriginParams = {
   dbClient: DbClient;
 };
 
-type PreparePdfOriginResult =
-  | { ok: true; data: PreparedPlanInput }
-  | { ok: false; response: Response };
-
 const INVALID_PDF_PROOF_MESSAGE = 'Invalid or expired PDF extraction proof.';
 
 function getProofVersion(input: CreateLearningPlanInput): 1 {
@@ -47,20 +46,20 @@ function getProofVersion(input: CreateLearningPlanInput): 1 {
 
 export async function preparePlanInputWithPdfOrigin(
   params: PreparePdfOriginParams
-): Promise<PreparePdfOriginResult> {
+): Promise<PreparedPlanInput> {
   const { body, authUserId, internalUserId, dbClient } = params;
   const origin = body.origin ?? 'ai';
 
   if (origin !== 'pdf') {
     return {
-      ok: true,
-      data: {
-        origin,
-        extractedContext: null,
-        topic: body.topic,
-        pdfUsageReserved: false,
-        pdfProvenance: null,
-      },
+      origin,
+      extractedContext: null,
+      topic: body.topic,
+      skillLevel: body.skillLevel,
+      weeklyHours: body.weeklyHours,
+      learningStyle: body.learningStyle,
+      pdfUsageReserved: false,
+      pdfProvenance: null,
     };
   }
 
@@ -69,10 +68,7 @@ export async function preparePlanInputWithPdfOrigin(
     !body.pdfProofToken ||
     !body.pdfExtractionHash
   ) {
-    return {
-      ok: false,
-      response: jsonError(INVALID_PDF_PROOF_MESSAGE, { status: 403 }),
-    };
+    throw new ForbiddenError(INVALID_PDF_PROOF_MESSAGE);
   }
 
   const pdfUsage = await atomicCheckAndIncrementPdfUsage(
@@ -80,13 +76,11 @@ export async function preparePlanInputWithPdfOrigin(
     dbClient
   );
   if (!pdfUsage.allowed) {
-    return {
-      ok: false,
-      response: jsonError('PDF plan quota exceeded for this month.', {
-        status: 403,
-        code: 'QUOTA_EXCEEDED',
-      }),
-    };
+    throw new AppError('PDF plan quota exceeded for this month.', {
+      status: 429,
+      code: 'QUOTA_EXCEEDED',
+      classification: 'rate_limit',
+    });
   }
 
   let proofVerified = false;
@@ -113,10 +107,7 @@ export async function preparePlanInputWithPdfOrigin(
       dbClient,
       reserved: true,
     });
-    return {
-      ok: false,
-      response: jsonError(INVALID_PDF_PROOF_MESSAGE, { status: 403 }),
-    };
+    throw new ForbiddenError(INVALID_PDF_PROOF_MESSAGE);
   }
 
   const extractedContext = sanitizePdfContextForPersistence(
@@ -128,16 +119,16 @@ export async function preparePlanInputWithPdfOrigin(
       : body.topic;
 
   return {
-    ok: true,
-    data: {
-      origin,
-      extractedContext,
-      topic,
-      pdfUsageReserved: true,
-      pdfProvenance: {
-        extractionHash: body.pdfExtractionHash,
-        proofVersion: getProofVersion(body),
-      },
+    origin,
+    extractedContext,
+    topic,
+    skillLevel: body.skillLevel,
+    weeklyHours: body.weeklyHours,
+    learningStyle: body.learningStyle,
+    pdfUsageReserved: true,
+    pdfProvenance: {
+      extractionHash: body.pdfExtractionHash,
+      proofVersion: getProofVersion(body),
     },
   };
 }
