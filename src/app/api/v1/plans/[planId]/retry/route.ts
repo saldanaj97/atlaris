@@ -28,6 +28,7 @@ import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import { parsePersistedPdfContext } from '@/lib/pdf/context';
 import { resolveUserTier } from '@/lib/stripe/usage';
+import type { FailureClassification } from '@/lib/types/client';
 
 import {
   buildPlanStartEvent,
@@ -40,12 +41,39 @@ export const maxDuration = 60;
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+const FAILURE_CLASSIFICATIONS = new Set<FailureClassification>([
+  'validation',
+  'conflict',
+  'provider_error',
+  'rate_limit',
+  'timeout',
+  'capped',
+]);
+
 const toIsoDateString = (value: string | null): IsoDateString | undefined => {
   if (!value) {
     return undefined;
   }
 
   return ISO_DATE_PATTERN.test(value) ? (value as IsoDateString) : undefined;
+};
+
+const extractFailureClassification = (
+  error: unknown
+): FailureClassification | undefined => {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+
+  const classification = (error as { classification?: unknown }).classification;
+  if (
+    typeof classification === 'string' &&
+    FAILURE_CLASSIFICATIONS.has(classification as FailureClassification)
+  ) {
+    return classification as FailureClassification;
+  }
+
+  return undefined;
 };
 
 /**
@@ -62,45 +90,35 @@ export const POST = withErrorBoundary(
       const planId = requirePlanIdFromRequest(req, 'second-to-last');
 
       const db = getDb();
+      const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
+      const generationRateLimitHeaders =
+        getPlanGenerationRateLimitHeaders(rateLimit);
+
       const plan = await requireOwnedPlanById({
         planId,
         ownerUserId: user.id,
         dbClient: db,
       });
 
-      const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
-      const generationRateLimitHeaders =
-        getPlanGenerationRateLimitHeaders(rateLimit);
-
       // Tier-gated provider resolution (retries use default model for the tier)
       const userTier = await resolveUserTier(user.id, db);
       const { provider } = resolveModelForTier(userTier);
 
       // Build generation input from existing plan data
-      // Capture plan properties in local constants to satisfy TypeScript
-      // Note: planId is already available from getPlanIdFromUrl and guaranteed non-null
-      const planTopic = plan.topic;
-      const planSkillLevel = plan.skillLevel;
-      const planWeeklyHours = plan.weeklyHours;
-      const planLearningStyle = plan.learningStyle;
-      const planStartDate = plan.startDate;
-      const planDeadlineDate = plan.deadlineDate;
-      const planPdfContext =
-        plan.origin === 'pdf'
-          ? parsePersistedPdfContext(plan.extractedContext)
-          : null;
-
-      const generationInput: GenerationInput = {
-        topic: planTopic,
+      const generationInput = {
+        topic: plan.topic,
         // Notes are not stored on the plan currently
         notes: undefined,
-        pdfContext: planPdfContext,
-        skillLevel: planSkillLevel,
-        weeklyHours: planWeeklyHours,
-        learningStyle: planLearningStyle,
-        startDate: toIsoDateString(planStartDate),
-        deadlineDate: toIsoDateString(planDeadlineDate),
-      };
+        pdfContext:
+          plan.origin === 'pdf'
+            ? parsePersistedPdfContext(plan.extractedContext)
+            : null,
+        skillLevel: plan.skillLevel,
+        weeklyHours: plan.weeklyHours,
+        learningStyle: plan.learningStyle,
+        startDate: toIsoDateString(plan.startDate),
+        deadlineDate: toIsoDateString(plan.deadlineDate),
+      } satisfies GenerationInput;
 
       // Atomically reserve an attempt slot before starting the stream so we can
       // return proper HTTP error codes for rejected attempts.
@@ -127,7 +145,8 @@ export const POST = withErrorBoundary(
           case 'rate_limited':
             throw new RateLimitError(
               `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
-              { retryAfter: reservation.retryAfter, remaining: 0 }
+              { retryAfter: reservation.retryAfter, remaining: 0 },
+              { headers: generationRateLimitHeaders }
             );
           case 'invalid_status':
             throw new AppError(
@@ -172,7 +191,7 @@ export const POST = withErrorBoundary(
                 skillLevel: generationInput.skillLevel,
                 weeklyHours: generationInput.weeklyHours,
                 learningStyle: generationInput.learningStyle,
-                notes: generationInput.notes ?? undefined,
+                notes: generationInput.notes,
                 startDate: generationInput.startDate ?? undefined,
                 deadlineDate: generationInput.deadlineDate ?? undefined,
                 visibility: 'private',
@@ -207,11 +226,15 @@ export const POST = withErrorBoundary(
 
               await withFallbackCleanup(
                 async () => {
+                  const classification =
+                    extractFailureClassification(attemptError) ??
+                    'provider_error';
+
                   await finalizeAttemptFailure({
                     attemptId: reservation.attemptId,
                     planId: plan.id,
                     preparation: reservation,
-                    classification: 'provider_error',
+                    classification,
                     durationMs: Math.max(0, Date.now() - startedAt),
                     error: toAttemptError(normalizedAttemptError),
                     dbClient: db,

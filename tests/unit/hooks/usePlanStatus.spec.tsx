@@ -252,6 +252,45 @@ describe('usePlanStatus', () => {
     expect(clientLogger.error).not.toHaveBeenCalled();
   });
 
+  it('should treat 429 responses as retriable and continue polling', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        json: async () => ({
+          error: 'Rate limit exceeded',
+          code: 'RATE_LIMITED',
+        }),
+      })
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'processing' })
+        )
+      );
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch)
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+
+    expect(result.current.status).toBe('processing');
+    expect(result.current.isPolling).toBe(true);
+    expect(clientLogger.warn).toHaveBeenCalledTimes(1);
+    expect(clientLogger.error).not.toHaveBeenCalled();
+  });
+
   it('should handle network errors without stopping polling', async () => {
     vi.useFakeTimers();
 

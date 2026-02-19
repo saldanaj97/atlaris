@@ -1,12 +1,8 @@
-import { and, eq, lt, sql } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
-// Intentional: service-role bypasses RLS for system-wide metrics; see comment in GET handler below.
-import { jobQueue } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
-import { JOB_TYPES } from '@/lib/jobs/types';
+import { getSystemWideJobMetrics } from '@/lib/db/queries/jobs';
 import { logger } from '@/lib/logging/logger';
 
 const STUCK_JOB_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
@@ -36,7 +32,7 @@ interface HealthCheckResponse {
   reason?: string;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<Response> {
   try {
     checkIpRateLimit(request, 'health');
   } catch (error) {
@@ -45,64 +41,18 @@ export async function GET(request: Request) {
 
   const timestamp = new Date().toISOString();
   const stuckThreshold = new Date(Date.now() - STUCK_JOB_THRESHOLD_MS);
-  // Use service-role DB to bypass RLS and get system-wide metrics
-  // Health checks need to see all jobs across all users, not just the authenticated user's jobs
 
   try {
-    const [stuckJobsResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'processing'),
-          lt(jobQueue.startedAt, stuckThreshold)
-        )
-      );
-
-    const stuckJobCount = stuckJobsResult?.count ?? 0;
-
-    const [backlogResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(eq(jobQueue.status, 'pending'));
-
-    const backlogCount = backlogResult?.count ?? 0;
-
-    const [pendingRegenerationResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'pending'),
-          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION)
-        )
-      );
-
-    const [stuckRegenerationResult] = await db
-      .select({
-        count: sql<number>`count(*)::int`,
-      })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'processing'),
-          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-          lt(jobQueue.startedAt, stuckThreshold)
-        )
-      );
-
-    const pendingRegenerationCount = pendingRegenerationResult?.count ?? 0;
-    const stuckRegenerationCount = stuckRegenerationResult?.count ?? 0;
+    const {
+      stuckJobsCount,
+      backlogCount,
+      pendingRegenerationCount,
+      stuckRegenerationCount,
+    } = await getSystemWideJobMetrics(stuckThreshold);
 
     const stuckJobsCheck = {
-      status: stuckJobCount > 0 ? ('fail' as const) : ('ok' as const),
-      count: stuckJobCount,
+      status: stuckJobsCount > 0 ? ('fail' as const) : ('ok' as const),
+      count: stuckJobsCount,
       threshold: STUCK_JOB_THRESHOLD_MS,
     };
 
@@ -138,7 +88,7 @@ export async function GET(request: Request) {
     if (!isHealthy) {
       const reasons: string[] = [];
       if (stuckJobsCheck.status === 'fail') {
-        reasons.push(`${stuckJobCount} stuck job(s) detected`);
+        reasons.push(`${stuckJobsCount} stuck job(s) detected`);
       }
       if (backlogCheck.status === 'fail') {
         reasons.push(

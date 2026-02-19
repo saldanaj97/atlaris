@@ -28,7 +28,7 @@ import {
   buildPlanStartEvent,
   executeGenerationStream,
   safeMarkPlanFailed,
-} from './helpers';
+} from '@/app/api/v1/plans/stream/helpers';
 
 /** Classification used when an unstructured exception occurs in the generation catch block. */
 export const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
@@ -156,10 +156,8 @@ export function createStreamHandler(deps?: {
         const url = new URL(req.url);
         let modelOverride: string | undefined;
         if (url.searchParams.has('model')) {
-          const suppliedModel = url.searchParams.get('model');
-          const isAllowedModel =
-            typeof suppliedModel === 'string' &&
-            ALLOWED_MODELS.has(suppliedModel);
+          const suppliedModel = url.searchParams.get('model') ?? '';
+          const isAllowedModel = ALLOWED_MODELS.has(suppliedModel);
 
           if (isAllowedModel) {
             logger.info(

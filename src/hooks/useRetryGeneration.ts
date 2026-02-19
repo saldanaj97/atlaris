@@ -9,12 +9,10 @@ import { clientLogger } from '@/lib/logging/client';
 import { parseEventLine } from '@/lib/streaming/parse-event';
 
 /** Runtime shape for SSE error event data (message and/or error key). */
-const errorEventDataSchema = z
-  .object({
-    message: z.string().optional(),
-    error: z.string().optional(),
-  })
-  .passthrough();
+const errorEventDataSchema = z.looseObject({
+  message: z.string().optional(),
+  error: z.string().optional(),
+});
 
 function getErrorMessage(raw: unknown): string {
   const parsed = errorEventDataSchema.safeParse(raw);
@@ -27,7 +25,6 @@ function getErrorMessage(raw: unknown): string {
     if (typeof o.message === 'string') return o.message;
     if (typeof o.error === 'string') return o.error;
   }
-  if (raw instanceof Error && raw.message) return raw.message;
   if (
     typeof raw === 'string' ||
     typeof raw === 'number' ||

@@ -13,7 +13,13 @@ export const createCheckoutResponseSchema = z.object({
  * Used by ManageSubscriptionButton to validate the response before redirecting.
  */
 export const createPortalResponseSchema = z.object({
-  portalUrl: z.string().min(1, 'portalUrl is required'),
+  portalUrl: z
+    .string()
+    .url('portalUrl must be a valid URL')
+    .refine((value) => {
+      const protocol = new URL(value).protocol;
+      return protocol === 'http:' || protocol === 'https:';
+    }, 'portalUrl must use http or https'),
 });
 
 export type CreateCheckoutResponse = z.infer<

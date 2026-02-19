@@ -15,6 +15,7 @@ import type {
 } from '@/lib/db/queries/types/jobs.types';
 import { getDb } from '@/lib/db/runtime';
 import { jobQueue } from '@/lib/db/schema';
+import { db as serviceRoleDb } from '@/lib/db/service-role';
 import {
   JOB_TYPES,
   type Job,
@@ -45,6 +46,45 @@ const MAX_MONITORING_ROWS = 200;
 const ABSOLUTE_MAX_ATTEMPTS = 100;
 /** Cap for exponential retry delay in seconds (5 minutes). */
 const MAX_RETRY_DELAY_SECONDS = 300;
+
+export interface SystemWideJobMetrics {
+  stuckJobsCount: number;
+  backlogCount: number;
+  pendingRegenerationCount: number;
+  stuckRegenerationCount: number;
+}
+
+export async function getSystemWideJobMetrics(
+  stuckThreshold: Date
+): Promise<SystemWideJobMetrics> {
+  const [metrics] = await serviceRoleDb
+    .select({
+      stuckJobsCount:
+        sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.startedAt} < ${stuckThreshold})::int`.mapWith(
+          Number
+        ),
+      backlogCount:
+        sql<number>`count(*) filter (where ${jobQueue.status} = 'pending')::int`.mapWith(
+          Number
+        ),
+      pendingRegenerationCount:
+        sql<number>`count(*) filter (where ${jobQueue.status} = 'pending' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION})::int`.mapWith(
+          Number
+        ),
+      stuckRegenerationCount:
+        sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION} and ${jobQueue.startedAt} < ${stuckThreshold})::int`.mapWith(
+          Number
+        ),
+    })
+    .from(jobQueue);
+
+  return {
+    stuckJobsCount: metrics?.stuckJobsCount ?? 0,
+    backlogCount: metrics?.backlogCount ?? 0,
+    pendingRegenerationCount: metrics?.pendingRegenerationCount ?? 0,
+    stuckRegenerationCount: metrics?.stuckRegenerationCount ?? 0,
+  };
+}
 
 const jobQueueSelect = {
   id: jobQueue.id,

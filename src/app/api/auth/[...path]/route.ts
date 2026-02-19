@@ -1,4 +1,4 @@
-import { RateLimitError, toErrorResponse } from '@/lib/api/errors';
+import { AppError, RateLimitError, toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit as realCheckIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { auth } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
@@ -29,7 +29,7 @@ function withAuthIpRateLimit(
           },
           'auth route rate limit hit'
         );
-      } else {
+      } else if (error instanceof AppError) {
         logger.error(
           {
             method: request.method,
@@ -57,7 +57,22 @@ export function createAuthHandlers(deps: CreateAuthHandlersDeps): {
   };
 }
 
-const { GET, POST } = createAuthHandlers({
-  checkIpRateLimit: realCheckIpRateLimit,
-});
-export { GET, POST };
+let cachedHandlers: ReturnType<typeof createAuthHandlers> | undefined;
+
+function getDefaultHandlers(): ReturnType<typeof createAuthHandlers> {
+  if (cachedHandlers) {
+    return cachedHandlers;
+  }
+
+  cachedHandlers = createAuthHandlers({
+    checkIpRateLimit: realCheckIpRateLimit,
+  });
+
+  return cachedHandlers;
+}
+
+export const GET: AuthRouteHandler = async (request, context) =>
+  getDefaultHandlers().GET(request, context);
+
+export const POST: AuthRouteHandler = async (request, context) =>
+  getDefaultHandlers().POST(request, context);

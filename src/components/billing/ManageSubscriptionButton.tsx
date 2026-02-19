@@ -39,7 +39,7 @@ export default function ManageSubscriptionButton({
         );
         clientLogger.error('Failed to open billing portal', {
           parsedError,
-          returnUrl: returnUrl ?? undefined,
+          returnUrl,
         });
         throw new Error(parsedError.error);
       }
@@ -49,24 +49,28 @@ export default function ManageSubscriptionButton({
       if (!parsed.success) {
         clientLogger.error('Invalid billing portal response shape', {
           parseError: parsed.error.issues,
-          returnUrl: returnUrl ?? undefined,
+          returnUrl,
         });
-        const missingPortalUrl = parsed.error.issues.some(
+        const portalUrlIssue = parsed.error.issues.find(
           (issue) => issue.path[0] === 'portalUrl'
         );
-        const message = missingPortalUrl
-          ? 'Missing portal URL'
-          : (parsed.error.issues[0]?.message ??
-            'Invalid billing portal response');
+        const message =
+          portalUrlIssue?.message ??
+          parsed.error.issues[0]?.message ??
+          'Invalid billing portal response';
         throw new Error(message);
       }
 
-      window.location.href = parsed.data.portalUrl;
+      const portalUrl = new URL(parsed.data.portalUrl);
+      if (portalUrl.protocol !== 'http:' && portalUrl.protocol !== 'https:') {
+        throw new Error('Invalid billing portal URL protocol.');
+      }
+
+      window.location.href = portalUrl.toString();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Something went wrong';
       toast.error('Unable to open billing portal', { description: message });
-    } finally {
       setLoading(false);
     }
   }

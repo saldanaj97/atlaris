@@ -3,7 +3,7 @@ import {
   createRequestContext as createApiRequestContext,
   withRequestContext,
 } from '@/lib/api/context';
-import { ValidationError, toErrorResponse } from '@/lib/api/errors';
+import { ValidationError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { googleOAuthEnv } from '@/lib/config/env';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
@@ -41,11 +41,7 @@ const ALLOWED_OAUTH_ERROR_CODES = new Set([
 export const GET = withErrorBoundary(async (req) => {
   const request = req as NextRequest;
 
-  try {
-    checkIpRateLimit(req, 'auth');
-  } catch (error) {
-    return toErrorResponse(error);
-  }
+  checkIpRateLimit(req, 'auth');
 
   // For OAuth callbacks we must validate against the actual auth session,
   // not the DEV_AUTH_USER_ID override used in tests and local dev.

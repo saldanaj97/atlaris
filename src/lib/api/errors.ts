@@ -97,18 +97,27 @@ export interface RateLimitErrorDetails {
   reset?: number;
 }
 
+interface RateLimitErrorOptions {
+  headers?: Record<string, string>;
+}
+
 export class RateLimitError extends AppError {
   public retryAfter?: number;
   public remaining?: number;
   public limit?: number;
   public reset?: number;
 
-  constructor(message = 'Too Many Requests', details?: RateLimitErrorDetails) {
+  constructor(
+    message = 'Too Many Requests',
+    details?: RateLimitErrorDetails,
+    options?: RateLimitErrorOptions
+  ) {
     super(message, {
       status: 429,
       code: 'RATE_LIMITED',
       details,
       classification: 'rate_limit',
+      headers: options?.headers,
     });
     this.retryAfter = details?.retryAfter;
     this.remaining = details?.remaining;
