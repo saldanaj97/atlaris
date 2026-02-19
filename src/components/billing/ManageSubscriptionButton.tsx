@@ -48,8 +48,7 @@ export default function ManageSubscriptionButton({
       const parsed = createPortalResponseSchema.safeParse(raw);
       if (!parsed.success) {
         clientLogger.error('Invalid billing portal response shape', {
-          parseError: parsed.error,
-          rawResponse: raw,
+          parseError: parsed.error.issues,
           returnUrl: returnUrl ?? undefined,
         });
         const missingPortalUrl = parsed.error.issues.some(

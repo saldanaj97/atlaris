@@ -51,10 +51,10 @@ export async function GET(request: Request) {
   try {
     const [healthCounts] = await db
       .select({
-        stuckJobsCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.startedAt} < ${stuckThreshold})::int`,
+        stuckJobsCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.startedAt} < ${stuckThreshold}::timestamptz)::int`,
         backlogCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending')::int`,
-        pendingRegenerationCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION})::int`,
-        stuckRegenerationCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION} and ${jobQueue.startedAt} < ${stuckThreshold})::int`,
+        pendingRegenerationCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'pending' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION}::job_type)::int`,
+        stuckRegenerationCount: sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION}::job_type and ${jobQueue.startedAt} < ${stuckThreshold}::timestamptz)::int`,
       })
       .from(jobQueue);
 

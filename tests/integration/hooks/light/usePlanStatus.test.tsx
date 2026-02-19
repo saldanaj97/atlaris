@@ -33,9 +33,14 @@ describe('usePlanStatus', () => {
 
   it('T050 transitions pending -> processing -> ready and stops polling', async () => {
     const responses = [
-      { status: 'pending', attempts: 0 },
-      { status: 'processing', attempts: 1 },
-      { status: 'ready', attempts: 1 },
+      { planId: 'plan-1', status: 'pending', attempts: 0, latestError: null },
+      {
+        planId: 'plan-1',
+        status: 'processing',
+        attempts: 1,
+        latestError: null,
+      },
+      { planId: 'plan-1', status: 'ready', attempts: 1, latestError: null },
     ];
     (global.fetch as unknown as Mock).mockImplementation(() => {
       const next = responses.shift() ?? responses[responses.length - 1];
@@ -71,8 +76,18 @@ describe('usePlanStatus', () => {
 
   it('T051 sets error and stops when failed', async () => {
     const responses = [
-      { status: 'processing', attempts: 1, latestError: null },
-      { status: 'failed', attempts: 2, latestError: 'Provider timeout' },
+      {
+        planId: 'plan-err',
+        status: 'processing',
+        attempts: 1,
+        latestError: null,
+      },
+      {
+        planId: 'plan-err',
+        status: 'failed',
+        attempts: 2,
+        latestError: 'Provider timeout',
+      },
     ];
     (global.fetch as unknown as Mock).mockImplementation(() => {
       const next = responses.shift() ?? responses[responses.length - 1];

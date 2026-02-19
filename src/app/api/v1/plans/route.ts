@@ -4,7 +4,11 @@ import {
   PLAN_GENERATION_LIMIT,
   PLAN_GENERATION_WINDOW_MINUTES,
 } from '@/lib/ai/generation-policy';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import {
+  type PlainHandler,
+  withAuthAndRateLimit,
+  withErrorBoundary,
+} from '@/lib/api/auth';
 import { RateLimitError, ValidationError } from '@/lib/api/errors';
 import {
   insertPlanWithRollback,
@@ -20,7 +24,7 @@ import { getDb } from '@/lib/db/runtime';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
 
-export const GET = withErrorBoundary(
+export const GET: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ user }) => {
     const db = getDb();
     const summaries = await getPlanSummariesForUser(user.id, db);
@@ -30,7 +34,7 @@ export const GET = withErrorBoundary(
 
 // Use shared validation constants to avoid duplication
 
-export const POST = withErrorBoundary(
+export const POST: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('mutation', async ({ req, userId, user }) => {
     let body: CreateLearningPlanInput;
     try {

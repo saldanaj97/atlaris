@@ -14,7 +14,7 @@ const errorEventDataSchema = z
     message: z.string().optional(),
     error: z.string().optional(),
   })
-  .strict();
+  .passthrough();
 
 function getErrorMessage(raw: unknown): string {
   const parsed = errorEventDataSchema.safeParse(raw);

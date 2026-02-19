@@ -107,14 +107,14 @@ export function createStreamHandler(deps?: {
         });
 
         const {
-          user,
+          user: dbUser,
           userTier,
           startDate,
           deadlineDate,
           preparedInput: { extractedContext, topic, pdfProvenance },
         } = preflight;
 
-        const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
+        const rateLimit = await checkPlanGenerationRateLimit(dbUser.id, db);
         const generationRateLimitHeaders =
           getPlanGenerationRateLimitHeaders(rateLimit);
 
@@ -134,7 +134,7 @@ export function createStreamHandler(deps?: {
         logger.info(
           {
             authUserId: userId,
-            userId: user.id,
+            userId: dbUser.id,
           },
           'Inserting plan before streaming generation'
         );
@@ -145,7 +145,7 @@ export function createStreamHandler(deps?: {
         logger.info(
           {
             planId: plan.id,
-            userId: user.id,
+            userId: dbUser.id,
             authUserId: userId,
           },
           'Plan insert succeeded for streaming generation'
@@ -165,7 +165,7 @@ export function createStreamHandler(deps?: {
             logger.info(
               {
                 authUserId: userId,
-                userId: user.id,
+                userId: dbUser.id,
                 modelOverride: suppliedModel,
               },
               'Model override provided for stream generation'
@@ -176,7 +176,7 @@ export function createStreamHandler(deps?: {
             logger.warn(
               {
                 authUserId: userId,
-                userId: user.id,
+                userId: dbUser.id,
               },
               'Ignoring invalid model override for stream generation'
             );
@@ -186,6 +186,7 @@ export function createStreamHandler(deps?: {
         const { provider } = resolveModelForTier(userTier, modelOverride);
         const normalizedInput: CreateLearningPlanInput = {
           ...body,
+          topic: generationInput.topic,
           startDate: generationInput.startDate,
           deadlineDate: generationInput.deadlineDate,
         };
@@ -206,7 +207,7 @@ export function createStreamHandler(deps?: {
                 logger.error(
                   {
                     planId: plan.id,
-                    userId: user.id,
+                    userId: dbUser.id,
                     error: serializeError(error),
                   },
                   'Failed to close stream DB client'
@@ -229,14 +230,14 @@ export function createStreamHandler(deps?: {
                 reqSignal: req.signal,
                 streamSignal: streamContext.signal,
                 planId: plan.id,
-                userId: user.id,
+                userId: dbUser.id,
                 dbClient: streamDb,
                 emit,
                 runGeneration: async (signal) => {
                   const result = await runGen(
                     {
                       planId: plan.id,
-                      userId: user.id,
+                      userId: dbUser.id,
                       input: generationInput,
                     },
                     { provider, signal, dbClient: streamDb }
@@ -247,7 +248,7 @@ export function createStreamHandler(deps?: {
                   logger.error(
                     {
                       planId: plan.id,
-                      userId: user.id,
+                      userId: dbUser.id,
                       classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
                       durationMs: Math.max(0, Date.now() - startedAt),
                       error: serializeError(error),
@@ -255,12 +256,12 @@ export function createStreamHandler(deps?: {
                     'Unhandled exception during stream generation; marking plan failed'
                   );
 
-                  await safeMarkPlanFailed(plan.id, user.id, streamDb);
+                  await safeMarkPlanFailed(plan.id, dbUser.id, streamDb);
                 },
                 fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
               });
               logger.info(
-                { planId: plan.id, userId: user.id },
+                { planId: plan.id, userId: dbUser.id },
                 'executeGenerationStream completed'
               );
             } finally {

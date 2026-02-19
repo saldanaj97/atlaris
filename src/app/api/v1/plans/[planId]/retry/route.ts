@@ -113,45 +113,52 @@ export const POST = withErrorBoundary(
       });
 
       if (!reservation.reserved) {
-        if (reservation.reason === 'capped') {
-          throw new AppError(
-            'Maximum retry attempts reached for this plan. Please create a new plan.',
-            {
-              status: 429,
-              code: 'ATTEMPTS_CAPPED',
-              classification: 'capped',
+        switch (reservation.reason) {
+          case 'capped':
+            throw new AppError(
+              'Maximum retry attempts reached for this plan. Please create a new plan.',
+              {
+                status: 429,
+                code: 'ATTEMPTS_CAPPED',
+                classification: 'capped',
+                headers: generationRateLimitHeaders,
+              }
+            );
+          case 'rate_limited':
+            throw new RateLimitError(
+              `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
+              { retryAfter: reservation.retryAfter, remaining: 0 }
+            );
+          case 'invalid_status':
+            throw new AppError(
+              "Plan is not eligible for retry. Only plans in 'failed' or 'pending_retry' may be retried.",
+              {
+                status: 400,
+                code: 'VALIDATION_ERROR',
+                classification: 'validation',
+                headers: generationRateLimitHeaders,
+              }
+            );
+          case 'in_progress':
+            throw new AppError(
+              'A generation is already in progress for this plan.',
+              {
+                status: 409,
+                code: 'CONFLICT',
+                classification: 'conflict',
+                headers: generationRateLimitHeaders,
+              }
+            );
+          default: {
+            const unknownReason: never = reservation.reason;
+            throw new AppError('Unexpected reservation failure reason.', {
+              status: 500,
+              code: 'UNKNOWN_RESERVATION_REASON',
+              details: { reason: String(unknownReason) },
               headers: generationRateLimitHeaders,
-            }
-          );
-        }
-        if (reservation.reason === 'rate_limited') {
-          throw new RateLimitError(
-            `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
-            { retryAfter: reservation.retryAfter, remaining: 0 }
-          );
-        }
-        if (reservation.reason === 'invalid_status') {
-          throw new AppError(
-            'Plan is not in a failed state. Only failed plans can be retried.',
-            {
-              status: 400,
-              code: 'VALIDATION_ERROR',
-              classification: 'validation',
-              headers: generationRateLimitHeaders,
-            }
-          );
-        }
-
-        // reason === 'in_progress' - this is a state/conflict error, not input validation
-        throw new AppError(
-          'A generation is already in progress for this plan.',
-          {
-            status: 409,
-            code: 'CONFLICT',
-            classification: 'conflict',
-            headers: generationRateLimitHeaders,
+            });
           }
-        );
+        }
       }
 
       let stream: ReadableStream<Uint8Array>;

@@ -82,13 +82,16 @@ export const POST: PlainHandler = withErrorBoundary(
         overrides = parsed.overrides;
       } catch (err: unknown) {
         const errDetail = err instanceof Error ? err : new Error(String(err));
+        const serializableCause = `${errDetail.name}: ${errDetail.message}`;
         if (err instanceof ZodError) {
           throw new ValidationError('Invalid overrides.', {
-            cause: errDetail,
+            cause: serializableCause,
             fieldErrors: err.flatten(),
           });
         }
-        throw new ValidationError('Invalid overrides.', { cause: errDetail });
+        throw new ValidationError('Invalid overrides.', {
+          cause: serializableCause,
+        });
       }
 
       const existingActiveJob = await getActiveRegenerationJob(
@@ -119,9 +122,11 @@ export const POST: PlainHandler = withErrorBoundary(
         throw new RateLimitError(
           'Regeneration quota exceeded for your subscription tier.',
           {
-            remaining: rateLimit.remaining,
-            limit: rateLimit.limit,
-            reset: rateLimit.reset,
+            remaining: Math.max(
+              0,
+              usageResult.limit - usageResult.currentCount
+            ),
+            limit: usageResult.limit,
           }
         );
       }

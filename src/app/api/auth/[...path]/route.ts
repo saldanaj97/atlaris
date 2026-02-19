@@ -1,6 +1,6 @@
-import { auth } from '@/lib/auth/server';
 import { RateLimitError, toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit as realCheckIpRateLimit } from '@/lib/api/ip-rate-limit';
+import { auth } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
 
 type AuthRouteHandler = ReturnType<typeof auth.handler>['GET'];
@@ -15,7 +15,7 @@ function withAuthIpRateLimit(
 ): AuthRouteHandler {
   return async (request, context) => {
     try {
-      await checkIpRateLimit(request, 'auth');
+      checkIpRateLimit(request, 'auth');
       return await handler(request, context);
     } catch (error) {
       if (error instanceof RateLimitError) {

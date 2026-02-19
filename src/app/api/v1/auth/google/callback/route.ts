@@ -42,7 +42,7 @@ export const GET = withErrorBoundary(async (req) => {
   const request = req as NextRequest;
 
   try {
-    await checkIpRateLimit(req, 'auth');
+    checkIpRateLimit(req, 'auth');
   } catch (error) {
     return toErrorResponse(error);
   }
@@ -71,7 +71,10 @@ export const GET = withErrorBoundary(async (req) => {
   const stateToken = searchParams.get('state'); // Secure state token
   const error = searchParams.get('error');
 
-  const baseUrl = request.nextUrl.origin || new URL(request.url).origin;
+  const resolvedBaseUrl = request.nextUrl.origin || new URL(request.url).origin;
+  const baseUrl =
+    resolvedBaseUrl && resolvedBaseUrl !== 'null' ? resolvedBaseUrl : null;
+
   if (!baseUrl) {
     throw new Error('Unable to resolve Google OAuth callback base URL.');
   }

@@ -9,7 +9,17 @@ import { z } from 'zod';
 const MAX_CONSECUTIVE_FAILURES = 3;
 
 function isRetriableFromResponse(status: number): boolean {
-  return status >= 500;
+  return status === 429 || status >= 500;
+}
+
+class RetriableError extends Error {
+  constructor(
+    message: string,
+    public readonly isRetriable: boolean
+  ) {
+    super(message);
+    this.name = 'RetriableError';
+  }
 }
 
 interface StatusResponse {
@@ -69,9 +79,7 @@ export function usePlanStatus(
           `Failed to fetch plan status: ${response.status}`
         );
         const retriable = isRetriableFromResponse(response.status);
-        const e = new Error(parsed.error) as Error & { isRetriable?: boolean };
-        e.isRetriable = retriable;
-        throw e;
+        throw new RetriableError(parsed.error, retriable);
       }
 
       consecutiveFailuresRef.current = 0;
@@ -99,7 +107,8 @@ export function usePlanStatus(
           planId,
           error: err.flatten(),
         });
-        setError('Received invalid plan status response from server.');
+        consecutiveFailuresRef.current += 1;
+        setPollingError('Received invalid plan status response from server.');
         setIsPolling(false);
         return;
       }
@@ -107,7 +116,7 @@ export function usePlanStatus(
       const message =
         err instanceof Error ? err.message : 'Failed to fetch plan status';
       const isRetriable =
-        (err as Error & { isRetriable?: boolean }).isRetriable !== false;
+        err instanceof RetriableError ? err.isRetriable : true;
 
       if (!isRetriable) {
         clientLogger.error('Failed to poll plan status (non-retriable):', err);

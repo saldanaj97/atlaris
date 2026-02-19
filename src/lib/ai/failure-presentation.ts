@@ -16,6 +16,13 @@ const DEFAULT_FAILURE_PRESENTATION: FailurePresentation = {
   retryable: false,
 };
 
+const CONFLICT_FAILURE_PRESENTATION: FailurePresentation = {
+  code: 'GENERATION_CONFLICT',
+  message:
+    'A generation is already in progress. Please wait a moment and retry.',
+  retryable: true,
+};
+
 const FAILURE_PRESENTATIONS: Record<
   FailurePresentationClassification,
   FailurePresentation
@@ -47,7 +54,7 @@ const FAILURE_PRESENTATIONS: Record<
     retryable: false,
   },
   // State/conflict errors — a concurrent operation is blocking the request
-  conflict: DEFAULT_FAILURE_PRESENTATION,
+  conflict: CONFLICT_FAILURE_PRESENTATION,
   unknown: DEFAULT_FAILURE_PRESENTATION,
 };
 

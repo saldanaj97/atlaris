@@ -110,9 +110,9 @@ describe('auth catch-all route rate limiting', () => {
   });
 
   it('returns standardized 500 response when auth IP limiter throws unexpectedly', async () => {
-    mocks.mockCheckIpRateLimit.mockRejectedValue(
-      new Error('limiter unavailable')
-    );
+    mocks.mockCheckIpRateLimit.mockImplementation(() => {
+      throw new Error('limiter unavailable');
+    });
 
     const { GET } = getMockHandlers();
 

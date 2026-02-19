@@ -1,8 +1,17 @@
 // Centralized error types and helpers for API layer
 
+import { jsonError } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
-import { jsonError } from './response';
+
+function hasStringCode(value: unknown): value is { code: string } {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const maybeRecord = value as Record<string, unknown>;
+  return typeof maybeRecord.code === 'string';
+}
 
 export class AppError extends Error {
   constructor(
@@ -148,13 +157,8 @@ export class ExportQuotaExceededError extends AppError {
  * Returns `undefined` when the value has no string `code` field.
  */
 export function extractErrorCode(error: unknown): string | undefined {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    typeof (error as { code?: unknown }).code === 'string'
-  ) {
-    return (error as { code: string }).code;
+  if (hasStringCode(error)) {
+    return error.code;
   }
   return undefined;
 }

@@ -101,15 +101,19 @@ function asNonEmptyString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function isFailureClassification(
+  value: unknown
+): value is FailureClassification {
+  return (
+    typeof value === 'string' &&
+    (FAILURE_CLASSIFICATION_SET as ReadonlySet<string>).has(value)
+  );
+}
+
 function asFailureClassification(
   value: unknown
 ): FailureClassification | undefined {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  return FAILURE_CLASSIFICATION_SET.has(value as FailureClassification)
-    ? (value as FailureClassification)
-    : undefined;
+  return isFailureClassification(value) ? value : undefined;
 }
 
 function asRetryAfter(value: unknown): number | undefined {

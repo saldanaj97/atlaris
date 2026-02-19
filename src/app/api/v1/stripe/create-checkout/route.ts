@@ -144,7 +144,6 @@ export function createCreateCheckoutHandler(
           {
             status: isClientError ? 400 : 500,
             code: 'STRIPE_CHECKOUT_SESSION_CREATION_FAILED',
-            details: stripeCode ? { stripeCode } : undefined,
           }
         );
       }

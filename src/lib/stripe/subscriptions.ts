@@ -1,12 +1,63 @@
 import { getDb } from '@/lib/db/runtime';
-import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { getStripe } from './client';
 
 type DbClient = ReturnType<typeof getDb>;
+
+interface SyncSubscriptionToDbOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+function createAbortError(message: string): Error {
+  const error = new Error(message);
+  error.name = 'AbortError';
+  return error;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+async function withAbortSignal<T>(
+  promise: Promise<T>,
+  signal?: AbortSignal
+): Promise<T> {
+  if (!signal) {
+    return promise;
+  }
+
+  if (signal.aborted) {
+    throw createAbortError('Stripe request aborted before execution.');
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(createAbortError('Stripe request aborted.'));
+    };
+
+    signal.addEventListener('abort', onAbort, { once: true });
+
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        const normalizedError =
+          error instanceof Error
+            ? error
+            : new Error(`Unknown rejection reason: ${String(error)}`);
+        reject(normalizedError);
+      }
+    );
+  });
+}
 
 /**
  * Get user's subscription tier from database
@@ -41,7 +92,8 @@ export async function getSubscriptionTier(
  */
 export async function syncSubscriptionToDb(
   subscription: Stripe.Subscription,
-  stripeInstance?: Stripe
+  stripeInstance?: Stripe,
+  options?: SyncSubscriptionToDbOptions
 ): Promise<void> {
   const stripe = stripeInstance ?? getStripe();
   const customerId =
@@ -84,10 +136,20 @@ export async function syncSubscriptionToDb(
   let tier: 'free' | 'starter' | 'pro' = existingTier;
 
   if (priceId) {
+    const requestTimeoutMs = options?.timeoutMs ?? 10_000;
     try {
-      const price = await stripe.prices.retrieve(priceId, {
-        expand: ['product'],
-      });
+      const price = await withAbortSignal(
+        stripe.prices.retrieve(
+          priceId,
+          {
+            expand: ['product'],
+          },
+          {
+            timeout: requestTimeoutMs,
+          }
+        ),
+        options?.signal
+      );
 
       const product = price.product as Stripe.Product;
       const tierMetadata = product.metadata?.tier;
@@ -96,14 +158,25 @@ export async function syncSubscriptionToDb(
         tier = tierMetadata;
       }
     } catch (error) {
-      logger.error(
-        {
-          priceId,
-          event: 'subscription_sync_price_fetch_failed',
-          error,
-        },
-        'Error retrieving Stripe price/product during subscription sync'
-      );
+      if (isAbortError(error)) {
+        logger.warn(
+          {
+            priceId,
+            event: 'subscription_sync_price_fetch_aborted',
+            timeoutMs: requestTimeoutMs,
+          },
+          'Stripe price lookup aborted during subscription sync'
+        );
+      } else {
+        logger.error(
+          {
+            priceId,
+            event: 'subscription_sync_price_fetch_failed',
+            error,
+          },
+          'Error retrieving Stripe price/product during subscription sync'
+        );
+      }
     }
   }
 
