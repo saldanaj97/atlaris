@@ -57,32 +57,55 @@ export interface SystemWideJobMetrics {
 export async function getSystemWideJobMetrics(
   stuckThreshold: Date
 ): Promise<SystemWideJobMetrics> {
-  const [metrics] = await serviceRoleDb
+  const [stuckJobsResult] = await serviceRoleDb
     .select({
-      stuckJobsCount:
-        sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.startedAt} < ${stuckThreshold})::int`.mapWith(
-          Number
-        ),
-      backlogCount:
-        sql<number>`count(*) filter (where ${jobQueue.status} = 'pending')::int`.mapWith(
-          Number
-        ),
-      pendingRegenerationCount:
-        sql<number>`count(*) filter (where ${jobQueue.status} = 'pending' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION})::int`.mapWith(
-          Number
-        ),
-      stuckRegenerationCount:
-        sql<number>`count(*) filter (where ${jobQueue.status} = 'processing' and ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION} and ${jobQueue.startedAt} < ${stuckThreshold})::int`.mapWith(
-          Number
-        ),
+      count: sql<number>`count(*)::int`,
     })
-    .from(jobQueue);
+    .from(jobQueue)
+    .where(
+      and(
+        eq(jobQueue.status, 'processing'),
+        lt(jobQueue.startedAt, stuckThreshold)
+      )
+    );
+
+  const [backlogResult] = await serviceRoleDb
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(jobQueue)
+    .where(eq(jobQueue.status, 'pending'));
+
+  const [pendingRegenerationResult] = await serviceRoleDb
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(jobQueue)
+    .where(
+      and(
+        eq(jobQueue.status, 'pending'),
+        eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION)
+      )
+    );
+
+  const [stuckRegenerationResult] = await serviceRoleDb
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(jobQueue)
+    .where(
+      and(
+        eq(jobQueue.status, 'processing'),
+        eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+        lt(jobQueue.startedAt, stuckThreshold)
+      )
+    );
 
   return {
-    stuckJobsCount: metrics?.stuckJobsCount ?? 0,
-    backlogCount: metrics?.backlogCount ?? 0,
-    pendingRegenerationCount: metrics?.pendingRegenerationCount ?? 0,
-    stuckRegenerationCount: metrics?.stuckRegenerationCount ?? 0,
+    stuckJobsCount: stuckJobsResult?.count ?? 0,
+    backlogCount: backlogResult?.count ?? 0,
+    pendingRegenerationCount: pendingRegenerationResult?.count ?? 0,
+    stuckRegenerationCount: stuckRegenerationResult?.count ?? 0,
   };
 }
 

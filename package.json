@@ -114,6 +114,9 @@
   },
   "pnpm": {
     "overrides": {
+      "@eslint/config-array>minimatch": "3.1.2",
+      "@eslint/eslintrc>minimatch": "3.1.2",
+      "eslint>minimatch": "3.1.2",
       "minimatch": "^10.2.1",
       "tar": "^7.5.8"
     }
