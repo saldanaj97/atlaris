@@ -3,8 +3,7 @@ import { RateLimitError, toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit as realCheckIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { logger } from '@/lib/logging/logger';
 
-const handlers = auth.handler();
-type AuthRouteHandler = typeof handlers.GET;
+type AuthRouteHandler = ReturnType<typeof auth.handler>['GET'];
 
 export type CreateAuthHandlersDeps = {
   checkIpRateLimit: typeof realCheckIpRateLimit;

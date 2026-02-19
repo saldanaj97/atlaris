@@ -139,30 +139,38 @@ Use factories from `tests/fixtures/`. Test behavior, not implementation.
 
 ## Extended Docs
 
-Load on-demand based on task:
+CRITICAL: When you encounter a file reference (e.g., @docs/rules/general.md), or a folder within the `@docs/context/` or `@docs/rules/` is relevant to the prompt, use your Read tool to load it on a need-to-know basis. They're relevant to the SPECIFIC task at hand.
 
-### Architecture & System Context (`docs/context/`)
+Instructions:
+
+- Do NOT preemptively load all references - use lazy loading based on actual need
+- When loaded, treat content as mandatory instructions that override defaults
+- Follow references recursively when needed
+- If specific file within the `@docs/context/` or `@docs/rules/` folders becomes outdated due to changes from the same conversation, then remove the old documentation and update it with new documentation.
+- If you feel it would be useful to add some context to the `@docs/context/` or a new rule to the `@docs/rules/` directories, then go ahead and do so but make sure to always notify me when you do.
+
+### Architecture & System Context (`@docs/context/`)
 
 Documentation explaining how our code works, architecture decisions, and system flows:
 
-- **Plan Generation**: `docs/context/architecture/plan-generation-architecture.md`
-- **CI/CD & Branching**: `docs/context/ci/branching-strategy.md`
+- **Plan Generation**: `@docs/context/architecture/plan-generation-architecture.md`
+- **CI/CD & Branching**: `@docs/context/ci/branching-strategy.md`
 
-### LLM Rules & Guidelines (`docs/rules/`)
+### LLM Rules & Guidelines (`@docs/rules/`)
 
 Guardrails and guidelines for LLMs to follow:
 
-- **Architecture**: `docs/rules/architecture/project-structure.md`
-- **CI/CD Workflow**: `docs/rules/ci/development-workflow.md`
-- **Logging**: `docs/rules/logging.md`
-- **TypeScript**: `docs/rules/language-specific/typescript.md`
-- **React**: `docs/rules/language-specific/react.md`
-- **Testing**: `docs/rules/testing/test-standards.md`
-- **Database**: `docs/rules/database/schema-overview.md`
-- **Styling**: `docs/rules/styles/styling.md`
-- **DI Pattern**: `docs/rules/architecture/dependency-injection-architecture.md`
-- **Rate Limiting**: `docs/rules/api/rate-limiting.md`
-- **API Error Contract**: `docs/rules/api/error-contract.md`
+- **Architecture**: `@docs/rules/architecture/project-structure.md`
+- **CI/CD Workflow**: `@docs/rules/ci/development-workflow.md`
+- **Logging**: `@docs/rules/logging.md`
+- **TypeScript**: `@docs/rules/language-specific/typescript.md`
+- **React**: `@docs/rules/language-specific/react.md`
+- **Testing**: `@docs/rules/testing/test-standards.md`
+- **Database**: `@docs/rules/database/schema-overview.md`
+- **Styling**: `@docs/rules/styles/styling.md`
+- **DI Pattern**: `@docs/rules/architecture/dependency-injection-architecture.md`
+- **Rate Limiting**: `@docs/rules/api/rate-limiting.md`
+- **API Error Contract**: `@docs/rules/api/error-contract.md`
 
 ## Subdirectory Agents
 

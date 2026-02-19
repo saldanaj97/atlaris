@@ -201,6 +201,7 @@ export const POST: PlainHandler = withErrorBoundary(
         }
       }
 
+      // generationId is an alias for planId kept for backwards compatibility with existing clients.
       return json(
         {
           generationId: planId,

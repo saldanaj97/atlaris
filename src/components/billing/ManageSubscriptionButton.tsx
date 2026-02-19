@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import React, { useState } from 'react';
 import { toast } from 'sonner';
 
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
+import { createPortalResponseSchema } from '@/lib/validation/stripe';
 
 interface ManageSubscriptionButtonProps {
   label?: string;
@@ -43,10 +44,25 @@ export default function ManageSubscriptionButton({
         throw new Error(parsedError.error);
       }
 
-      const data = (await res.json()) as { portalUrl?: string };
-      if (!data.portalUrl) throw new Error('Missing portal URL');
+      const raw: unknown = await res.json();
+      const parsed = createPortalResponseSchema.safeParse(raw);
+      if (!parsed.success) {
+        clientLogger.error('Invalid billing portal response shape', {
+          parseError: parsed.error,
+          rawResponse: raw,
+          returnUrl: returnUrl ?? undefined,
+        });
+        const missingPortalUrl = parsed.error.issues.some(
+          (issue) => issue.path[0] === 'portalUrl'
+        );
+        const message = missingPortalUrl
+          ? 'Missing portal URL'
+          : (parsed.error.issues[0]?.message ??
+            'Invalid billing portal response');
+        throw new Error(message);
+      }
 
-      window.location.href = data.portalUrl;
+      window.location.href = parsed.data.portalUrl;
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Something went wrong';

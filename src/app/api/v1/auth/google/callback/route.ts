@@ -1,9 +1,9 @@
 import { getAuthUserId, withErrorBoundary } from '@/lib/api/auth';
-import { ValidationError, toErrorResponse } from '@/lib/api/errors';
 import {
   createRequestContext as createApiRequestContext,
   withRequestContext,
 } from '@/lib/api/context';
+import { ValidationError, toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { googleOAuthEnv } from '@/lib/config/env';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';

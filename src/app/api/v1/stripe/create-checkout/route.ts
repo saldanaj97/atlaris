@@ -1,6 +1,7 @@
+import Stripe from 'stripe';
 import { z } from 'zod';
-import type Stripe from 'stripe';
 
+import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
@@ -9,13 +10,15 @@ import { logger } from '@/lib/logging/logger';
 import { getStripe } from '@/lib/stripe/client';
 import { createCustomer } from '@/lib/stripe/subscriptions';
 
-const createCheckoutBodySchema = z.object({
-  priceId: z
-    .string({ message: 'priceId is required' })
-    .min(1, 'priceId is required'),
-  successUrl: z.string().optional(),
-  cancelUrl: z.string().optional(),
-});
+const createCheckoutBodySchema = z
+  .object({
+    priceId: z
+      .string({ message: 'priceId is required' })
+      .min(1, 'priceId is required'),
+    successUrl: z.string().optional(),
+    cancelUrl: z.string().optional(),
+  })
+  .strict();
 
 function isValidRedirectUrl(url: string | undefined): boolean {
   if (!url) return true;
@@ -53,9 +56,9 @@ function resolveRedirectUrl(
  * Factory for the create-checkout POST handler. Accepts an optional Stripe
  * client for tests; production uses getStripe() when omitted.
  */
-export function createCreateCheckoutHandler(stripeInstance?: Stripe) {
-  const getStripeClient = () => stripeInstance ?? getStripe();
-
+export function createCreateCheckoutHandler(
+  stripeInstance?: Stripe
+): PlainHandler {
   return withErrorBoundary(
     withAuthAndRateLimit('billing', async ({ req, user }) => {
       let body: unknown;
@@ -93,7 +96,7 @@ export function createCreateCheckoutHandler(stripeInstance?: Stripe) {
         stripeInstance
       );
 
-      const stripe = getStripeClient();
+      const stripe = stripeInstance ?? getStripe();
       let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
       try {
         session = await stripe.checkout.sessions.create({
@@ -114,19 +117,9 @@ export function createCreateCheckoutHandler(stripeInstance?: Stripe) {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const stripeType =
-          typeof error === 'object' &&
-          error !== null &&
-          'type' in error &&
-          typeof (error as { type?: unknown }).type === 'string'
-            ? (error as { type: string }).type
-            : undefined;
+          error instanceof Stripe.errors.StripeError ? error.type : undefined;
         const stripeCode =
-          typeof error === 'object' &&
-          error !== null &&
-          'code' in error &&
-          typeof (error as { code?: unknown }).code === 'string'
-            ? (error as { code: string }).code
-            : undefined;
+          error instanceof Stripe.errors.StripeError ? error.code : undefined;
 
         logger.error(
           {

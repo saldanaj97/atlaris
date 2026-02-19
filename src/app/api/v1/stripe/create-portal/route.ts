@@ -1,8 +1,8 @@
-import { z } from 'zod';
 import type Stripe from 'stripe';
+import { z } from 'zod';
 
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { AppError, ValidationError } from '@/lib/api/errors';
+import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
@@ -71,8 +71,21 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
       let body: unknown = {};
       try {
         body = await req.json();
-      } catch {
-        // Body is optional, so we can continue with defaults
+      } catch (err) {
+        const contentType = req.headers.get('content-type') ?? '';
+        const contentLength = req.headers.get('content-length');
+        const hasBody =
+          contentType.includes('application/json') ||
+          (contentLength !== null && contentLength !== '0');
+
+        if (err instanceof SyntaxError && hasBody) {
+          logger.debug(
+            { userId: user.id, parseError: err.message },
+            'billing portal received malformed JSON body'
+          );
+          throw new ValidationError('Malformed JSON body');
+        }
+        // No body sent — continue with defaults
       }
 
       const parseResult = createPortalBodySchema.safeParse(body);
@@ -127,13 +140,7 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
           stripeInstance
         );
       } catch (error) {
-        const stripeErrorCode =
-          typeof error === 'object' &&
-          error !== null &&
-          'code' in error &&
-          typeof (error as { code?: unknown }).code === 'string'
-            ? (error as { code: string }).code
-            : undefined;
+        const stripeErrorCode = extractErrorCode(error);
 
         logger.error(
           {

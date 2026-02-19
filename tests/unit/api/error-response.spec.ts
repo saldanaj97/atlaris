@@ -65,6 +65,23 @@ describe('error-response', () => {
       });
     });
 
+    it('accepts conflict as a valid classification', () => {
+      const result = normalizeApiErrorResponse(
+        {
+          error: 'Generation already in progress',
+          code: 'CONFLICT',
+          classification: 'conflict',
+        },
+        { status: 409, fallbackMessage: 'Fallback' }
+      );
+
+      expect(result).toEqual({
+        error: 'Generation already in progress',
+        code: 'CONFLICT',
+        classification: 'conflict',
+      });
+    });
+
     it('falls back when payload is not parseable', () => {
       const result = normalizeApiErrorResponse('not-an-object', {
         status: 404,

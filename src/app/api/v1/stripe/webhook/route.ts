@@ -1,3 +1,4 @@
+import type { PlainHandler } from '@/lib/api/auth';
 import { withErrorBoundary } from '@/lib/api/auth';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { appEnv, stripeEnv } from '@/lib/config/env';
@@ -6,15 +7,19 @@ import {
   createRequestContext,
 } from '@/lib/logging/request-context';
 import Stripe from 'stripe';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// Minimal shape required to safely log and handle dev-mode webhook events.
+const devWebhookEventSchema = z.object({ type: z.string() });
 
 /**
  * Factory for the webhook POST handler. Accepts an optional Stripe
  * client for tests (used when syncing subscription events); production uses getStripe() when omitted.
  */
-export function createWebhookHandler(stripeInstance?: Stripe) {
+export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
   return withErrorBoundary(async (req: Request) => {
     const { requestId, logger } = createRequestContext(req, {
       route: 'stripe_webhook',
@@ -72,20 +77,22 @@ export function createWebhookHandler(stripeInstance?: Stripe) {
         );
         return respond('webhook misconfigured', { status: 500 });
       }
+      let devParsed: unknown;
       try {
-        event = JSON.parse(rawBody) as Stripe.Event;
+        devParsed = JSON.parse(rawBody);
       } catch {
         return respond('bad request', { status: 400 });
       }
 
-      const eventType =
-        event && typeof event === 'object' && 'type' in event
-          ? ((event as { type?: string }).type ?? 'unknown')
-          : 'unknown';
+      const devParseResult = devWebhookEventSchema.safeParse(devParsed);
+      if (!devParseResult.success) {
+        return respond('bad request', { status: 400 });
+      }
+
+      // Cast is safe: we've validated the minimum required shape above.
+      event = devParsed as Stripe.Event;
       logger.info(
-        {
-          type: eventType,
-        },
+        { type: devParseResult.data.type },
         'Stripe webhook dev mode event received (noop)'
       );
       return respond('ok');

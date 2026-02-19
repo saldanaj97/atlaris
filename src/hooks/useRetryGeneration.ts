@@ -27,7 +27,16 @@ function getErrorMessage(raw: unknown): string {
     if (typeof o.message === 'string') return o.message;
     if (typeof o.error === 'string') return o.error;
   }
-  return raw !== undefined && raw !== null ? String(raw) : 'Generation failed.';
+  if (raw instanceof Error && raw.message) return raw.message;
+  if (
+    typeof raw === 'string' ||
+    typeof raw === 'number' ||
+    typeof raw === 'boolean' ||
+    typeof raw === 'bigint'
+  ) {
+    return `${raw}`;
+  }
+  return 'Generation failed.';
 }
 
 type RetryStatus = 'idle' | 'retrying' | 'success' | 'error';

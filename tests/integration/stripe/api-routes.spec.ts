@@ -2,10 +2,7 @@ import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  createCreatePortalHandler,
-  POST as createPortalPOST,
-} from '@/app/api/v1/stripe/create-portal/route';
+import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
 import {
   createWebhookHandler,
   POST as webhookPOST,
@@ -88,6 +85,18 @@ describe('Stripe API Routes', () => {
     it('returns 400 when no Stripe customer exists', async () => {
       await createAuthTestUser();
 
+      const mockCreateSession = vi
+        .fn()
+        .mockRejectedValue(new Error('Should not be called'));
+      const mockStripe = {
+        billingPortal: {
+          sessions: {
+            create: mockCreateSession,
+          },
+        },
+      } as unknown as Stripe;
+      const portalPOST = createCreatePortalHandler(mockStripe);
+
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
         {
@@ -99,9 +108,10 @@ describe('Stripe API Routes', () => {
         }
       );
 
-      const response = await createPortalPOST(request);
+      const response = await portalPOST(request);
 
       expect(response.status).toBe(400);
+      expect(mockCreateSession).not.toHaveBeenCalled();
     });
 
     it('returns 400 when returnUrl is an external origin', async () => {
@@ -111,6 +121,18 @@ describe('Stripe API Routes', () => {
         .update(users)
         .set({ stripeCustomerId })
         .where(sql`id = ${userId}`);
+
+      const mockCreateSession = vi
+        .fn()
+        .mockRejectedValue(new Error('Should not be called'));
+      const mockStripe = {
+        billingPortal: {
+          sessions: {
+            create: mockCreateSession,
+          },
+        },
+      } as unknown as Stripe;
+      const portalPOST = createCreatePortalHandler(mockStripe);
 
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
@@ -126,9 +148,10 @@ describe('Stripe API Routes', () => {
         }
       );
 
-      const response = await createPortalPOST(request);
+      const response = await portalPOST(request);
 
       expect(response.status).toBe(400);
+      expect(mockCreateSession).not.toHaveBeenCalled();
       await expect(response.json()).resolves.toMatchObject({
         error: 'returnUrl must be a relative path or same-origin URL',
       });
@@ -136,6 +159,10 @@ describe('Stripe API Routes', () => {
   });
 
   describe('POST /api/v1/stripe/webhook', () => {
+    beforeEach(() => {
+      vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_test123');
+    });
+
     it('handles checkout.session.completed event', async () => {
       const event = {
         id: 'evt_test123',
@@ -157,16 +184,14 @@ describe('Stripe API Routes', () => {
         body: JSON.stringify(event),
       });
 
-      vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
-
-      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
+      const constructEventSpy = vi
+        .spyOn(Stripe.webhooks, 'constructEvent')
+        .mockReturnValue(event);
 
       const response = await webhookPOST(request);
 
       expect(response.status).toBe(200);
-      expect(Stripe.webhooks.constructEvent).toHaveBeenCalled();
-
-      delete process.env.STRIPE_WEBHOOK_SECRET;
+      expect(constructEventSpy).toHaveBeenCalled();
     });
 
     it('handles subscription.created event and syncs to DB', async () => {
@@ -214,8 +239,6 @@ describe('Stripe API Routes', () => {
 
       const webhookPOSTWithMock = createWebhookHandler(mockStripe);
 
-      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
-
       vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
@@ -240,8 +263,6 @@ describe('Stripe API Routes', () => {
       expect(user?.stripeCustomerId).toBe(stripeCustomerId);
       expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
       expect(user?.subscriptionPeriodEnd).toEqual(new Date(1735689600 * 1000));
-
-      delete process.env.STRIPE_WEBHOOK_SECRET;
     });
 
     it('handles subscription.deleted event and downgrades to free', async () => {
@@ -267,9 +288,15 @@ describe('Stripe API Routes', () => {
         },
       } as unknown as Stripe.Event;
 
-      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
-
-      vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
+      const constructEventMock = vi
+        .spyOn(Stripe.webhooks, 'constructEvent')
+        .mockReturnValue(event);
+      const mockStripe = {
+        webhooks: {
+          constructEvent: constructEventMock,
+        },
+      } as unknown as Stripe;
+      const webhookPOSTWithMock = createWebhookHandler(mockStripe);
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -279,7 +306,7 @@ describe('Stripe API Routes', () => {
         body: JSON.stringify(event),
       });
 
-      const response = await webhookPOST(request);
+      const response = await webhookPOSTWithMock(request);
 
       expect(response.status).toBe(200);
 
@@ -291,13 +318,9 @@ describe('Stripe API Routes', () => {
       expect(user?.subscriptionTier).toBe('free');
       expect(user?.subscriptionStatus).toBe('canceled');
       expect(user?.stripeSubscriptionId).toBeNull();
-
-      delete process.env.STRIPE_WEBHOOK_SECRET;
     });
 
     it('returns 400 when signature missing', async () => {
-      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test123';
-
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
         body: JSON.stringify({ type: 'test' }),
@@ -306,8 +329,6 @@ describe('Stripe API Routes', () => {
       const response = await webhookPOST(request);
 
       expect(response.status).toBe(400);
-
-      delete process.env.STRIPE_WEBHOOK_SECRET;
     });
   });
 

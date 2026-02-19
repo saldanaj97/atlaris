@@ -1,37 +1,34 @@
 'use client';
 
-import {
-  parseApiErrorResponse,
-  type ApiErrorResponse,
-} from '@/lib/api/error-response';
+import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import type { PlanStatus } from '@/lib/types/client';
+import { PLAN_STATUSES, type PlanStatus } from '@/lib/types/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
 const MAX_CONSECUTIVE_FAILURES = 3;
 
-function isRetriableFromResponse(
-  status: number,
-  _parsed: ApiErrorResponse
-): boolean {
-  if (status >= 500) return true;
-  if (status >= 400 && status < 500) return false;
-  return true;
+function isRetriableFromResponse(status: number): boolean {
+  return status >= 500;
 }
 
-const StatusResponseSchema = z
-  .object({
-    planId: z.string(),
-    status: z.enum(['pending', 'processing', 'ready', 'failed']),
-    attempts: z.number(),
-    latestError: z.string().nullable(),
-    createdAt: z.string().optional(),
-    updatedAt: z.string().optional(),
-  })
-  .strict();
+interface StatusResponse {
+  planId: string;
+  status: PlanStatus;
+  attempts: number;
+  latestError: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
-type StatusResponse = z.infer<typeof StatusResponseSchema>;
+const StatusResponseSchema: z.ZodType<StatusResponse> = z.object({
+  planId: z.string(),
+  status: z.enum(PLAN_STATUSES),
+  attempts: z.number(),
+  latestError: z.string().nullable(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
 
 interface UsePlanStatusReturn {
   status: PlanStatus;
@@ -43,7 +40,8 @@ interface UsePlanStatusReturn {
 
 export function usePlanStatus(
   planId: string,
-  initialStatus: PlanStatus
+  initialStatus: PlanStatus,
+  fetcher: typeof fetch = fetch
 ): UsePlanStatusReturn {
   const [status, setStatus] = useState<PlanStatus>(initialStatus);
   const [attempts, setAttempts] = useState<number>(0);
@@ -51,20 +49,26 @@ export function usePlanStatus(
   const [pollingError, setPollingError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const consecutiveFailuresRef = useRef(0);
+  // Track latest initialStatus without making planId-reset effect depend on it.
+  // This prevents a spurious full reset when initialStatus changes on the same plan.
+  const initialStatusRef = useRef(initialStatus);
+  useEffect(() => {
+    initialStatusRef.current = initialStatus;
+  });
 
   const shouldPoll =
     (status === 'pending' || status === 'processing') && pollingError === null;
 
   const fetchStatus = useCallback(async () => {
     try {
-      const response = await fetch(`/api/v1/plans/${planId}/status`);
+      const response = await fetcher(`/api/v1/plans/${planId}/status`);
 
       if (!response.ok) {
         const parsed = await parseApiErrorResponse(
           response,
           `Failed to fetch plan status: ${response.status}`
         );
-        const retriable = isRetriableFromResponse(response.status, parsed);
+        const retriable = isRetriableFromResponse(response.status);
         const e = new Error(parsed.error) as Error & { isRetriable?: boolean };
         e.isRetriable = retriable;
         throw e;
@@ -78,7 +82,7 @@ export function usePlanStatus(
         throw parseResult.error;
       }
 
-      const data: StatusResponse = parseResult.data;
+      const data = parseResult.data;
 
       setStatus(data.status);
       setAttempts(data.attempts);
@@ -100,14 +104,13 @@ export function usePlanStatus(
         return;
       }
 
-      clientLogger.error('Failed to poll plan status:', err);
-
       const message =
         err instanceof Error ? err.message : 'Failed to fetch plan status';
       const isRetriable =
         (err as Error & { isRetriable?: boolean }).isRetriable !== false;
 
       if (!isRetriable) {
+        clientLogger.error('Failed to poll plan status (non-retriable):', err);
         setPollingError(message);
         setIsPolling(false);
         return;
@@ -115,11 +118,18 @@ export function usePlanStatus(
 
       consecutiveFailuresRef.current += 1;
       if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
+        clientLogger.error(
+          'Failed to poll plan status: max retries exhausted',
+          err
+        );
         setPollingError(message);
         setIsPolling(false);
+        return;
       }
+
+      clientLogger.warn('Transient polling failure, will retry:', err);
     }
-  }, [planId]);
+  }, [planId, fetcher]);
 
   useEffect(() => {
     if (!shouldPoll) {
@@ -128,8 +138,6 @@ export function usePlanStatus(
     }
 
     setIsPolling(true);
-
-    // Poll immediately on mount
     void fetchStatus();
 
     // Then poll every 3 seconds
@@ -143,9 +151,14 @@ export function usePlanStatus(
     };
   }, [shouldPoll, fetchStatus]);
 
+  // When the planId changes, reset all per-plan state so the new plan starts fresh
+  // and stale state from the previous plan never leaks into the UI.
   useEffect(() => {
-    consecutiveFailuresRef.current = 0;
+    setStatus(initialStatusRef.current);
+    setAttempts(0);
+    setError(null);
     setPollingError(null);
+    consecutiveFailuresRef.current = 0;
   }, [planId]);
 
   return { status, attempts, error, pollingError, isPolling };

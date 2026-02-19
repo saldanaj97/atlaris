@@ -144,6 +144,22 @@ export class ExportQuotaExceededError extends AppError {
 }
 
 /**
+ * Extracts a string `code` property from an unknown thrown value (e.g. Stripe errors).
+ * Returns `undefined` when the value has no string `code` field.
+ */
+export function extractErrorCode(error: unknown): string | undefined {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as { code?: unknown }).code === 'string'
+  ) {
+    return (error as { code: string }).code;
+  }
+  return undefined;
+}
+
+/**
  * Internal utility function to serialize errors into a safe, loggable format.
  * Used for error logging when unexpected errors occur outside of AppError handling.
  * Not exported as it's only intended for internal use within this module.

@@ -47,8 +47,12 @@ export default function SubscribeButton({
       const raw: unknown = await res.json();
       const parsed = createCheckoutResponseSchema.safeParse(raw);
       if (!parsed.success) {
-        const message =
-          parsed.error.issues[0]?.message ?? 'Invalid checkout response';
+        const missingSessionUrl = parsed.error.issues.some(
+          (issue) => issue.path[0] === 'sessionUrl'
+        );
+        const message = missingSessionUrl
+          ? 'Missing session URL'
+          : (parsed.error.issues[0]?.message ?? 'Invalid checkout response');
         throw new Error(message);
       }
 

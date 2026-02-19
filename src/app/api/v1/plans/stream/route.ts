@@ -1,17 +1,14 @@
 import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import {
-  runGenerationAttempt,
-  type GenerationAttemptContext,
-  type GenerationResult,
-  type RunGenerationOptions,
+import type {
+  GenerationAttemptContext,
+  GenerationResult,
+  RunGenerationOptions,
 } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import {
-  withAuthAndRateLimit,
-  withErrorBoundary,
-  type PlainHandler,
-} from '@/lib/api/auth';
+import type { PlainHandler } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import {
   insertPlanWithRollback,
@@ -207,7 +204,11 @@ export function createStreamHandler(deps?: {
                 await cleanupStreamDb();
               } catch (error) {
                 logger.error(
-                  { planId: plan.id, userId: user.id, error },
+                  {
+                    planId: plan.id,
+                    userId: user.id,
+                    error: serializeError(error),
+                  },
                   'Failed to close stream DB client'
                 );
               }
@@ -254,15 +255,7 @@ export function createStreamHandler(deps?: {
                     'Unhandled exception during stream generation; marking plan failed'
                   );
 
-                  logger.warn(
-                    { planId: plan.id, userId: user.id },
-                    'Calling safeMarkPlanFailed after unhandled stream error'
-                  );
                   await safeMarkPlanFailed(plan.id, user.id, streamDb);
-                  logger.info(
-                    { planId: plan.id, userId: user.id },
-                    'safeMarkPlanFailed completed after unhandled stream error'
-                  );
                 },
                 fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
               });

@@ -35,6 +35,8 @@ const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
 
 const FAILURE_CLASSIFICATIONS = [
   'validation',
+  // State/resource-conflict errors (e.g., generation already in progress)
+  'conflict',
   'provider_error',
   'rate_limit',
   'timeout',

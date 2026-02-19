@@ -2,10 +2,10 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { auth as mockAuth } from '../../mocks/shared/auth-server';
 
 vi.mock('@/lib/auth/server', () => {
-  const { auth } = require('../../mocks/shared/auth-server');
-  return { auth };
+  return { auth: mockAuth };
 });
 
 describe('GET /api/v1/notifications/preferences', () => {
