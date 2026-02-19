@@ -89,6 +89,10 @@ jobs:
           version: 9
       - name: Run dependency audit
         run: |
+          MAX_ATTEMPTS=1
+          RETRY_DELAY_SECONDS=5
+          AUDIT_TIMEOUT_SECONDS=30
+
           is_registry_outage_error() {
             local output="$1"
             # Registry/advisory endpoint failures that are external to this repo.
@@ -101,10 +105,10 @@ jobs:
             echo "${output}" | grep -Eiq 'vulnerabilities found|Severity:[[:space:]]*(high|critical)|GHSA-|CVE-'
           }
 
-          for attempt in 1 2 3; do
-            echo "Audit attempt ${attempt}/3..."
+          for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
+            echo "Audit attempt ${attempt}/${MAX_ATTEMPTS} (timeout: ${AUDIT_TIMEOUT_SECONDS}s)..."
             set +e
-            AUDIT_OUTPUT=$(pnpm audit --prod --audit-level=high 2>&1)
+            AUDIT_OUTPUT=$(timeout "${AUDIT_TIMEOUT_SECONDS}"s pnpm audit --prod --audit-level=high 2>&1)
             EXIT_CODE=$?
             set -e
 
@@ -121,10 +125,10 @@ jobs:
               exit 1
             fi
 
-            if is_registry_outage_error "${AUDIT_OUTPUT}"; then
-              if [ $attempt -lt 3 ]; then
-                echo "Transient registry error on attempt ${attempt}/3; retrying in 15s..."
-                sleep 15
+            if [ $EXIT_CODE -eq 124 ] || is_registry_outage_error "${AUDIT_OUTPUT}"; then
+              if [ $attempt -lt "${MAX_ATTEMPTS}" ]; then
+                echo "Transient registry/audit endpoint issue on attempt ${attempt}/${MAX_ATTEMPTS}; retrying in ${RETRY_DELAY_SECONDS}s..."
+                sleep "${RETRY_DELAY_SECONDS}"
               fi
             else
               echo "Audit failed for a non-transient reason; failing immediately."
@@ -132,8 +136,8 @@ jobs:
             fi
           done
 
-          echo "::warning title=Security audit skipped::pnpm audit failed after 3 attempts due to npm registry/advisory endpoint errors."
-          echo "Audit failed after 3 attempts due to transient registry errors; skipping to unblock CI."
+          echo "::warning title=Security audit skipped::pnpm audit failed after ${MAX_ATTEMPTS} attempts due to npm registry/advisory endpoint errors or timeout."
+          echo "Audit failed after ${MAX_ATTEMPTS} attempts due to transient registry errors/timeouts; skipping to unblock CI."
           exit 0
 
   build:

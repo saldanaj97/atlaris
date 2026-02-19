@@ -117,6 +117,10 @@ describe('ManageSubscriptionButton', () => {
     await waitFor(() => {
       expect(screen.getByText(/opening/i)).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('https://billing.stripe.com/portal');
+    });
   });
 
   it('should disable button during portal creation', async () => {
@@ -149,6 +153,10 @@ describe('ManageSubscriptionButton', () => {
     // Button should be disabled during loading
     await waitFor(() => {
       expect(button).toBeDisabled();
+    });
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('https://billing.stripe.com/portal');
     });
   });
 
