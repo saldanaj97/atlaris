@@ -92,13 +92,13 @@ jobs:
           is_registry_outage_error() {
             local output="$1"
             # Registry/advisory endpoint failures that are external to this repo.
-            echo "${output}" | grep -Eiq 'ERR_PNPM_AUDIT_BAD_RESPONSE|ERR_PNPM_FETCH_[45][0-9]{2}|ERR_PNPM_META_FETCH_FAIL|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EHOSTUNREACH|socket hang up|fetch failed|status code 5[0-9][0-9]|registry\.npmjs\.org'
+            echo "${output}" | grep -Eiq 'ERR_PNPM_AUDIT_BAD_RESPONSE|ERR_PNPM_FETCH_[45][0-9]{2}|ERR_PNPM_META_FETCH_FAIL|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EHOSTUNREACH|socket hang up|fetch failed|status code 5[0-9][0-9]|Internal Server Error|npm/v1/security/audits|registry\.npmjs\.org'
           }
 
           has_vulnerability_findings() {
             local output="$1"
             # Keep failing when audit results contain real findings.
-            echo "${output}" | grep -Eiq 'vulnerabilities found|Severity:\s*(high|critical)|GHSA-|CVE-'
+            echo "${output}" | grep -Eiq 'vulnerabilities found|Severity:[[:space:]]*(high|critical)|GHSA-|CVE-'
           }
 
           for attempt in 1 2 3; do
