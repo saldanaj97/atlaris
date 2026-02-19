@@ -91,20 +91,26 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             echo "Audit attempt ${attempt}/3..."
-            pnpm audit --audit-level=high && exit 0
+            AUDIT_OUTPUT=$(pnpm audit --audit-level=high 2>&1)
             EXIT_CODE=$?
-            # Exit code 1 = real vulnerabilities found; don't retry
-            if [ $EXIT_CODE -eq 1 ]; then
-              echo "Real vulnerabilities detected (exit 1); failing immediately."
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "Audit passed."
+              exit 0
+            fi
+            echo "${AUDIT_OUTPUT}"
+            # Distinguish registry/network errors from real vulnerability findings.
+            # pnpm exits 1 for both cases; check output to tell them apart.
+            if echo "${AUDIT_OUTPUT}" | grep -q "ERR_PNPM_AUDIT_BAD_RESPONSE\|ECONNRESET\|ETIMEDOUT\|ENOTFOUND\|fetch failed"; then
+              if [ $attempt -lt 3 ]; then
+                echo "Transient registry error on attempt ${attempt}/3; retrying in 15s..."
+                sleep 15
+              fi
+            else
+              echo "Real vulnerabilities detected; failing immediately."
               exit 1
             fi
-            # Any other non-zero = transient error (registry 5xx, network, etc.)
-            if [ $attempt -lt 3 ]; then
-              echo "Transient error (exit ${EXIT_CODE}); retrying in 15s..."
-              sleep 15
-            fi
           done
-          echo "Audit failed after 3 attempts (likely transient registry issue); skipping to unblock CI."
+          echo "Audit failed after 3 attempts due to transient registry errors; skipping to unblock CI."
           exit 0
 
   build:
