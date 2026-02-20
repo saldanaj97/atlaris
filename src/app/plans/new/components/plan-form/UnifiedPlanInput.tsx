@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { appEnv } from '@/lib/config/env';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useEffect, useId, useMemo, useReducer } from 'react';
+import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
+import type { JSX } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
@@ -34,7 +35,7 @@ interface PlanInputState {
 
 type PlanInputAction =
   | { type: 'set-topic'; value: string }
-  | { type: 'reset-topic'; value: string; resetVersion: number }
+  | { type: 'reset-topic'; value: string }
   | { type: 'set-skill-level'; value: string }
   | { type: 'set-weekly-hours'; value: string }
   | { type: 'set-learning-style'; value: string }
@@ -95,7 +96,7 @@ export function UnifiedPlanInput({
   disabled = false,
   initialTopic = '',
   topicResetVersion = 0,
-}: UnifiedPlanInputProps) {
+}: UnifiedPlanInputProps): JSX.Element {
   const baseId = useId();
   const [state, dispatch] = useReducer(planInputReducer, {
     topic: initialTopic,
@@ -106,13 +107,27 @@ export function UnifiedPlanInput({
     deadlineWeeks: '4',
   });
 
+  const topicRef = useRef(state.topic);
+  const initialTopicRef = useRef(initialTopic);
+
   useEffect(() => {
+    topicRef.current = state.topic;
+  }, [state.topic]);
+
+  useEffect(() => {
+    initialTopicRef.current = initialTopic;
+  }, [initialTopic]);
+
+  useEffect(() => {
+    if (topicRef.current === initialTopicRef.current) {
+      return;
+    }
+
     dispatch({
       type: 'reset-topic',
-      value: initialTopic,
-      resetVersion: topicResetVersion,
+      value: initialTopicRef.current,
     });
-  }, [initialTopic, topicResetVersion]);
+  }, [topicResetVersion]);
 
   const topic = state.topic;
 

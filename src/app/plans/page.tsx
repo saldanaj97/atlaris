@@ -8,6 +8,7 @@ import {
 import { Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import type { JSX } from 'react';
 import { Suspense } from 'react';
 
 export const metadata: Metadata = {
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
  * Static elements (title, "New Plan" button) render immediately.
  * Data-dependent elements (plan count badge, search bar, filters, plans list) are wrapped in Suspense.
  */
-export default function PlansPage() {
+export default function PlansPage(): JSX.Element {
   return (
     <div className="mx-auto min-h-screen max-w-7xl">
       {/* Static header - renders immediately */}

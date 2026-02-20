@@ -11,11 +11,11 @@ import {
   FinalCtaSectionWithAnalytics,
   HeroSectionWithAnalytics,
 } from './components/LandingAnalyticsWrapper';
+import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
 
 export const metadata: Metadata = {
-  title: 'Atlaris — Turn learning goals into a scheduled plan',
-  description:
-    'Atlaris turns what you want to learn into a time-blocked, resource-linked schedule that syncs to your calendar.',
+  title: LANDING_CANONICAL_TITLE,
+  description: LANDING_DESCRIPTION,
 };
 
 /**

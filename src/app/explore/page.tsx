@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { JSX } from 'react';
 
 import { Card } from '@/components/ui/card';
 
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+export default function Page(): JSX.Element {
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
       <Card className="p-8">

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { JSX } from 'react';
 import { Suspense } from 'react';
 
 import { getCachedPlanForPage } from '@/app/plans/[id]/data';
@@ -13,6 +14,9 @@ interface PlanPageProps {
   params: Promise<{ id: string }>;
 }
 
+const PLAN_METADATA_DESCRIPTION =
+  'View plan details, modules, tasks, and progress for this learning plan.';
+
 export async function generateMetadata({
   params,
 }: PlanPageProps): Promise<Metadata> {
@@ -21,8 +25,7 @@ export async function generateMetadata({
   if (!id) {
     return {
       title: 'Plan Details | Atlaris',
-      description:
-        'View plan details, modules, tasks, and progress for this learning plan.',
+      description: PLAN_METADATA_DESCRIPTION,
     };
   }
 
@@ -34,14 +37,12 @@ export async function generateMetadata({
 
     return {
       title: planTitle ? `${planTitle} | Atlaris` : 'Plan Details | Atlaris',
-      description:
-        'View plan details, modules, tasks, and progress for this learning plan.',
+      description: PLAN_METADATA_DESCRIPTION,
     };
   } catch {
     return {
       title: 'Plan Details | Atlaris',
-      description:
-        'View plan details, modules, tasks, and progress for this learning plan.',
+      description: PLAN_METADATA_DESCRIPTION,
     };
   }
 }
@@ -53,7 +54,9 @@ export async function generateMetadata({
  * in a Suspense boundary for loading states. Runtime errors are handled
  * by the route-level error.tsx boundary.
  */
-export default async function PlanDetailPage({ params }: PlanPageProps) {
+export default async function PlanDetailPage({
+  params,
+}: PlanPageProps): Promise<JSX.Element> {
   const { id } = await params;
   if (!id) return <PlanDetailPageError />;
 

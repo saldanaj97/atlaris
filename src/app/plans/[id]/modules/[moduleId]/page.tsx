@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { JSX } from 'react';
 import { Suspense } from 'react';
 
 import { ModuleDetailPageError } from '@/app/plans/[id]/modules/[moduleId]/components/Error';
@@ -54,7 +55,9 @@ export async function generateMetadata({
  * The page validates the route params and wraps all data-dependent content
  * (module details, error states) in a Suspense boundary.
  */
-export default async function ModuleDetailPage({ params }: ModulePageProps) {
+export default async function ModuleDetailPage({
+  params,
+}: ModulePageProps): Promise<JSX.Element> {
   const { id: planId, moduleId } = await params;
 
   if (!moduleId) {

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
+import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 
 interface RegenerateButtonProps {
@@ -54,7 +55,7 @@ export function RegenerateButton({
       })
       .catch((error: unknown) => {
         // Ignore abort errors (e.g., component unmounted or new request started)
-        if (error instanceof Error && error.name === 'AbortError') return;
+        if (isAbortError(error)) return;
         clientLogger.error('Regeneration failed:', error);
         toast.error('Unable to enqueue regeneration');
       })
