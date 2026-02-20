@@ -47,18 +47,6 @@ next-env.d.ts
 .cursor/*
 .claude/*
 .opencode/*
-.clavix/*
-CLAUDE.md
 
-# daily plan files
-docs/plans/*
-docs/designs/*
-
-# warp
-WARP.md
-
-# Sentry Config File
-.env.sentry-build-plugin
-
-# Opencode
-.sisyphus/*
+# plan files
+plans/*
