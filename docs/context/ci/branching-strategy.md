@@ -127,8 +127,10 @@ We have 6 GitHub Actions workflows. Here's what each does:
 **What it does:**
 
 - Runs a preflight DB-change detector (no-op pass when DB-related files did not change)
+- On PR `synchronize`, checks only newly pushed commits (not entire PR history)
 - Runs `pnpm db:generate` using a placeholder `DATABASE_URL` (no DB connection required)
 - Commits and pushes generated migration files back to the PR branch when schema changed
+- Reposts a tagged PR status comment (`preview-db-migrations-status`) with decision reason and outcome
 - Uses `[skip deploy]` in the commit message so Vercel ignores migration-only sync commits
 
 **Purpose:** Keep migration files in sync with schema changes before preview deployments apply them.
@@ -144,6 +146,7 @@ We have 6 GitHub Actions workflows. Here's what each does:
 - Evaluates latest-commit path changes to avoid unnecessary deploy requests
 - Skips deploy hook calls for migration sync commits tagged with `[skip deploy]`
 - Calls the Vercel Preview Deploy Hook URL
+- Reposts a tagged PR status comment (`preview-deploy-trigger-status`) with trigger/skip reason and outcome
 
 **Purpose:** Keep preview deployments controlled by GitHub workflow triggers while still using Vercel-managed builds.
 
@@ -157,7 +160,8 @@ We have 6 GitHub Actions workflows. Here's what each does:
 
 - Resolves the PR from the deployment ref
 - Runs `neondatabase/schema-diff-action@v1` against `preview/<git-branch>`
-- Upserts a schema diff comment on the PR
+- Reposts a `preview-deployment` PR comment with Vercel Preview + Neon branch links (keeps latest at bottom)
+- Reposts a schema diff comment on the PR when a diff exists (keeps latest at bottom)
 
 **Purpose:** Show DB schema changes after preview migrations have actually been applied in Neon.
 

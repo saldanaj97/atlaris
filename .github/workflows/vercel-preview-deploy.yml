@@ -100,3 +100,54 @@ jobs:
           fi
 
           curl --fail --show-error --silent --request POST "$VERCEL_PREVIEW_DEPLOY_HOOK_URL"
+
+  comment-preview-deploy-status:
+    needs: [check-deploy-paths, trigger-preview-deploy]
+    if: always()
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build preview deploy status message
+        id: status
+        env:
+          RUN_DEPLOY: ${{ needs.check-deploy-paths.outputs.run_deploy }}
+          REASON: ${{ needs.check-deploy-paths.outputs.reason }}
+          TRIGGER_RESULT: ${{ needs.trigger-preview-deploy.result }}
+        run: |
+          headline=""
+          details=""
+
+          if [ "$RUN_DEPLOY" = "true" ] && [ "$TRIGGER_RESULT" = "success" ]; then
+            headline="Preview deploy hook triggered"
+            details="Deploy hook was called successfully. Wait for the Preview Deployment comment update from preview-schema-diff."
+          elif [ "$RUN_DEPLOY" = "true" ]; then
+            headline="Preview deploy hook failed"
+            details="Preflight passed ($REASON) but deploy trigger job result was $TRIGGER_RESULT. Check workflow logs."
+          else
+            headline="Preview deploy skipped"
+            details="Preflight result: $REASON."
+          fi
+
+          {
+            echo "headline=$headline"
+            echo "details=$details"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Delete stale preview deploy status comment
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
+          comment-tag: preview-deploy-trigger-status
+          mode: delete
+
+      - name: Post preview deploy status comment
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
+          comment-tag: preview-deploy-trigger-status
+          message: |
+            **Preview Deploy Trigger**
+
+            - Status: ${{ steps.status.outputs.headline }}
+            - Details: ${{ steps.status.outputs.details }}

@@ -48,8 +48,10 @@ If you are new, read this once before opening your first PR.
 - Purpose: keep migration files in sync with schema code
 - Behavior:
   - Runs a preflight DB-change detector (no-op pass when DB-related files did not change)
+  - On PR `synchronize`, checks only newly pushed commits (not entire PR history)
   - Runs `pnpm db:generate` with placeholder `DATABASE_URL`
   - Commits generated migrations back to the PR branch
+  - Reposts a tagged PR status comment (`preview-db-migrations-status`) with decision reason and outcome
   - Uses `[skip deploy]` in commit message so deploy-trigger logic can ignore migration-only sync commits
 
 ### 3) `.github/workflows/vercel-preview-deploy.yml`
@@ -61,6 +63,7 @@ If you are new, read this once before opening your first PR.
   - Skips if commit message has `[skip deploy]`
   - Calls `VERCEL_PREVIEW_DEPLOY_HOOK_URL`
   - Prints preflight logs (`branch_name`, `run_deploy`, `reason`) for debugging
+  - Reposts a tagged PR status comment (`preview-deploy-trigger-status`) with trigger/skip reason and outcome
 
 ### 4) `.github/workflows/preview-schema-diff.yml`
 
@@ -70,7 +73,8 @@ If you are new, read this once before opening your first PR.
 - Behavior:
   - Resolves PR by deployment branch
   - Compares Neon branch `preview/<git-branch>` using `neondatabase/schema-diff-action@v1`
-  - Upserts a PR comment with diff
+  - Reposts a PR comment tagged `preview-deployment` with Vercel Preview + Neon branch links (keeps latest at bottom)
+  - Reposts a PR comment with diff when present (keeps latest at bottom)
   - Deletes stale comment when diff is empty
 
 ### 5) `.github/workflows/ci-trunk.yml`
