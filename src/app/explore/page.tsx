@@ -1,4 +1,12 @@
+import type { Metadata } from 'next';
+
 import { Card } from '@/components/ui/card';
+
+export const metadata: Metadata = {
+  title: 'Explore | Atlaris',
+  description:
+    'Explore community plans, templates, and curated learning tracks in Atlaris.',
+};
 
 export default function Page() {
   return (

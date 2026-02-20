@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
 import { PlanDetailPageError } from '@/app/plans/[id]/components/Error';
@@ -8,6 +9,18 @@ import {
 
 interface PlanPageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: PlanPageProps): Promise<Metadata> {
+  const { id } = await params;
+
+  return {
+    title: `Plan ${id} | Atlaris`,
+    description:
+      'View plan details, modules, tasks, and progress for this learning plan.',
+  };
 }
 
 /**

@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 
@@ -9,6 +10,12 @@ import {
   PlansContentSkeleton,
   PlanCountBadgeContent,
 } from './components/PlansContent';
+
+export const metadata: Metadata = {
+  title: 'Your Plans | Atlaris',
+  description:
+    'View, search, and manage your learning plans and track your progress in Atlaris.',
+};
 
 /**
  * Plans list page with Suspense boundaries for data-dependent content.

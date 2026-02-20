@@ -1,8 +1,15 @@
 import { ShieldAlert } from 'lucide-react';
+import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
+
+export const metadata: Metadata = {
+  title: 'Maintenance | Atlaris',
+  description:
+    'Atlaris is temporarily unavailable while we perform maintenance and infrastructure upgrades.',
+};
 
 export default function MaintenancePage(): JSX.Element {
   return (

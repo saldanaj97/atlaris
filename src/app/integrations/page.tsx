@@ -1,4 +1,12 @@
+import type { Metadata } from 'next';
+
 import { Card } from '@/components/ui/card';
+
+export const metadata: Metadata = {
+  title: 'Integrations | Atlaris',
+  description:
+    'Connect Atlaris with tools like Google Calendar and export learning schedules with ease.',
+};
 
 export default function Page() {
   return (

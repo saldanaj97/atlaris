@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+
 import {
   FeaturesSection,
   GradientBlobBackground,
@@ -9,6 +11,12 @@ import {
   FinalCtaSectionWithAnalytics,
   HeroSectionWithAnalytics,
 } from './components/LandingAnalyticsWrapper';
+
+export const metadata: Metadata = {
+  title: 'Atlaris — Turn learning goals into a scheduled plan',
+  description:
+    'Atlaris turns what you want to learn into a time-blocked, resource-linked schedule that syncs to your calendar.',
+};
 
 /**
  * Landing page for Atlaris - AI-powered learning roadmap and schedule generator.

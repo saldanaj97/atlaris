@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
 import { ModuleDetailPageError } from '@/app/plans/[id]/modules/[moduleId]/components/Error';
@@ -8,6 +9,18 @@ import {
 
 interface ModulePageProps {
   params: Promise<{ id: string; moduleId: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: ModulePageProps): Promise<Metadata> {
+  const { moduleId } = await params;
+
+  return {
+    title: `Module ${moduleId} | Atlaris`,
+    description:
+      'View module details, tasks, and resources for this learning plan module.',
+  };
 }
 
 /**
