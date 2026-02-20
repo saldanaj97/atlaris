@@ -47,7 +47,7 @@ An anchor branch is:
                          WHAT RUNS WHEN
     ┌─────────────────────────────────────────────────────────────┐
     │                                                             │
-    │   Open PR ───────> CI PR checks + deploy hook + schema diff  │
+    │   Open PR ───────> CI PR checks + preview deploy + schema diff│
     │                                                             │
     │   Merge to develop ──> Full CI ──> Vercel deploys staging   │
     │                                                             │
@@ -144,13 +144,14 @@ We have 6 GitHub Actions workflows. Here's what each does:
 **What it does:**
 
 - Evaluates latest-commit path changes to avoid unnecessary deploy requests
-- Skips deploy hook calls for migration sync commits tagged with `[skip deploy]`
-- Calls the Vercel Preview Deploy Hook URL
-- Reposts a tagged PR status comment (`preview-deploy-trigger-status`) with trigger/skip reason and outcome
+- Skips deploy runs for migration sync commits tagged with `[skip deploy]`
+- Builds and deploys preview through Vercel CLI (`vercel pull`, `vercel build`, `vercel deploy --prebuilt`)
+- Reposts a `preview-deployment` PR comment with Vercel Preview + Neon branch links (keeps latest at bottom)
+- Reposts a tagged PR status comment (`preview-deploy-status`) with trigger/skip reason and outcome
 
 **Purpose:** Keep preview deployments controlled by GitHub workflow triggers while still using Vercel-managed builds.
 
-**Required secrets:** `VERCEL_PREVIEW_DEPLOY_HOOK_URL`.
+**Required secrets:** `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
 
 ### 5. `preview-schema-diff.yml` - Schema Diff After Preview Deployment
 
@@ -160,7 +161,6 @@ We have 6 GitHub Actions workflows. Here's what each does:
 
 - Resolves the PR from the deployment ref
 - Runs `neondatabase/schema-diff-action@v1` against `preview/<git-branch>`
-- Reposts a `preview-deployment` PR comment with Vercel Preview + Neon branch links (keeps latest at bottom)
 - Reposts a schema diff comment on the PR when a diff exists (keeps latest at bottom)
 
 **Purpose:** Show DB schema changes after preview migrations have actually been applied in Neon.
@@ -328,7 +328,7 @@ We don't use a `staging` branch anymore. The staging **environment** deploys fro
 - `.github/workflows/ci-pr.yml` - PR validation workflow
 - `.github/workflows/ci-trunk.yml` - Full CI on trunk
 - `.github/workflows/preview-db-migrations.yml` - Migration generation and commit-back for PR previews
-- `.github/workflows/vercel-preview-deploy.yml` - Triggers Vercel preview deploy hook
+- `.github/workflows/vercel-preview-deploy.yml` - Builds/deploys Vercel preview from Actions
 - `.github/workflows/preview-schema-diff.yml` - Schema diff comments after successful preview deployments
 - `.github/workflows/deploy-production-migrations.yml` - Production migrations
 - `docs/rules/ci/development-workflow.md` - Rules for agents/automation

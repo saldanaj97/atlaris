@@ -1,7 +1,9 @@
 name: Vercel Preview Deployment
 
 # Required GitHub Secrets:
-#   VERCEL_PREVIEW_DEPLOY_HOOK_URL - Vercel Preview Deploy Hook URL
+#   VERCEL_TOKEN       - Vercel deploy token
+#   VERCEL_ORG_ID      - Vercel organization/team ID
+#   VERCEL_PROJECT_ID  - Vercel project ID
 
 on:
   pull_request:
@@ -80,26 +82,117 @@ jobs:
   trigger-preview-deploy:
     needs: check-deploy-paths
     if: needs.check-deploy-paths.outputs.run_deploy == 'true'
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.preview_url }}
     permissions:
       contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy trigger context
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Deployment context
         run: |
-          echo "Triggering preview deploy"
+          echo "Running Vercel preview deployment"
           echo "- branch: ${{ needs.check-deploy-paths.outputs.branch_name }}"
           echo "- reason: ${{ needs.check-deploy-paths.outputs.reason }}"
 
-      - name: Trigger Vercel Preview Deploy Hook
+      - name: Pull Vercel preview environment
         env:
-          VERCEL_PREVIEW_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_PREVIEW_DEPLOY_HOOK_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          if [ -z "$VERCEL_PREVIEW_DEPLOY_HOOK_URL" ]; then
-            echo "Missing VERCEL_PREVIEW_DEPLOY_HOOK_URL secret."
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "Missing one or more required Vercel secrets (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID)."
             exit 1
           fi
 
-          curl --fail --show-error --silent --request POST "$VERCEL_PREVIEW_DEPLOY_HOOK_URL"
+          vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Build with Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --token="$VERCEL_TOKEN"
+
+      - name: Deploy preview to Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          preview_url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve Neon branch URL
+        id: neon
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          BRANCH_NAME: preview/${{ github.head_ref }}
+        run: |
+          branches_url="https://console.neon.tech/app/projects/${NEON_PROJECT_ID}/branches"
+
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "neon_branch_url=$branches_url" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          api_url="https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches"
+          branch_id=""
+          set +e
+          branch_id=$(curl --silent --show-error \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            "$api_url" | jq -r --arg name "$BRANCH_NAME" '.branches[] | select(.name == $name) | .id' | head -n 1)
+          set -e
+
+          neon_branch_url="$branches_url"
+          if [ -n "$branch_id" ] && [ "$branch_id" != "null" ]; then
+            neon_branch_url="$branches_url/$branch_id"
+          fi
+
+          echo "neon_branch_url=$neon_branch_url" >> "$GITHUB_OUTPUT"
+
+      - name: Delete stale preview deployment comment
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
+          comment-tag: preview-deployment
+          mode: delete
+
+      - name: Post preview deployment comment
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
+          comment-tag: preview-deployment
+          message: |
+            **Preview Deployment**
+
+            | Resource | Link |
+            |----------|------|
+            | Vercel Preview | ${{ steps.deploy.outputs.preview_url }} |
+            | Neon Branch | [Console](${{ steps.neon.outputs.neon_branch_url }}) |
 
   comment-preview-deploy-status:
     needs: [check-deploy-paths, trigger-preview-deploy]
@@ -113,17 +206,18 @@ jobs:
         env:
           RUN_DEPLOY: ${{ needs.check-deploy-paths.outputs.run_deploy }}
           REASON: ${{ needs.check-deploy-paths.outputs.reason }}
-          TRIGGER_RESULT: ${{ needs.trigger-preview-deploy.result }}
+          DEPLOY_RESULT: ${{ needs.trigger-preview-deploy.result }}
+          PREVIEW_URL: ${{ needs.trigger-preview-deploy.outputs.preview_url }}
         run: |
           headline=""
           details=""
 
-          if [ "$RUN_DEPLOY" = "true" ] && [ "$TRIGGER_RESULT" = "success" ]; then
-            headline="Preview deploy hook triggered"
-            details="Deploy hook was called successfully. Wait for the Preview Deployment comment update from preview-schema-diff."
+          if [ "$RUN_DEPLOY" = "true" ] && [ "$DEPLOY_RESULT" = "success" ]; then
+            headline="Preview deployed successfully"
+            details="Deployment completed. Preview URL: $PREVIEW_URL"
           elif [ "$RUN_DEPLOY" = "true" ]; then
-            headline="Preview deploy hook failed"
-            details="Preflight passed ($REASON) but deploy trigger job result was $TRIGGER_RESULT. Check workflow logs."
+            headline="Preview deployment failed"
+            details="Preflight passed ($REASON) but deploy job result was $DEPLOY_RESULT. Check workflow logs."
           else
             headline="Preview deploy skipped"
             details="Preflight result: $REASON."
@@ -138,6 +232,13 @@ jobs:
         uses: thollander/actions-comment-pull-request@v3
         with:
           pr-number: ${{ github.event.pull_request.number }}
+          comment-tag: preview-deploy-status
+          mode: delete
+
+      - name: Delete legacy preview deploy trigger comment
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
           comment-tag: preview-deploy-trigger-status
           mode: delete
 
@@ -145,9 +246,9 @@ jobs:
         uses: thollander/actions-comment-pull-request@v3
         with:
           pr-number: ${{ github.event.pull_request.number }}
-          comment-tag: preview-deploy-trigger-status
+          comment-tag: preview-deploy-status
           message: |
-            **Preview Deploy Trigger**
+            **Preview Deploy Status**
 
             - Status: ${{ steps.status.outputs.headline }}
             - Details: ${{ steps.status.outputs.details }}

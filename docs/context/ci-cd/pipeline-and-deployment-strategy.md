@@ -15,7 +15,7 @@ If you are new, read this once before opening your first PR.
 
 - Start work from `develop`.
 - Open PRs into `develop` (or `main` only for true hotfixes).
-- PRs run CI checks, sync migration files, and trigger preview deploys through a Vercel deploy hook.
+- PRs run CI checks, sync migration files, and trigger preview deploys through Vercel CLI from GitHub Actions.
 - Vercel + Neon integration provisions a preview database branch during deploy.
 - Schema diffs are posted back to the PR after preview deployment succeeds.
 - Merging to `develop` deploys staging.
@@ -25,12 +25,12 @@ If you are new, read this once before opening your first PR.
 
 ## Environments and ownership
 
-| Environment | Source              | Owner                                       | Notes                                                           |
-| ----------- | ------------------- | ------------------------------------------- | --------------------------------------------------------------- |
-| Local       | Your feature branch | You                                         | `pnpm dev`                                                      |
-| Preview     | PR branch           | GitHub Actions trigger + Vercel build       | Triggered by deploy hook, DB branch created by Neon integration |
-| Staging     | `develop`           | Vercel                                      | Integration baseline                                            |
-| Production  | `main`              | Vercel + `deploy-production-migrations.yml` | App deploy via Vercel, DB migrate via GitHub Actions            |
+| Environment | Source              | Owner                                       | Notes                                                        |
+| ----------- | ------------------- | ------------------------------------------- | ------------------------------------------------------------ |
+| Local       | Your feature branch | You                                         | `pnpm dev`                                                   |
+| Preview     | PR branch           | GitHub Actions trigger + Vercel build       | Triggered by workflow, DB branch created by Neon integration |
+| Staging     | `develop`           | Vercel                                      | Integration baseline                                         |
+| Production  | `main`              | Vercel + `deploy-production-migrations.yml` | App deploy via Vercel, DB migrate via GitHub Actions         |
 
 ---
 
@@ -60,10 +60,11 @@ If you are new, read this once before opening your first PR.
 - Purpose: trigger preview deploys only when appropriate
 - Behavior:
   - Checks latest commit paths for deploy-relevant changes
-  - Skips if commit message has `[skip deploy]`
-  - Calls `VERCEL_PREVIEW_DEPLOY_HOOK_URL`
+  - Skips deploy runs for migration sync commits tagged with `[skip deploy]`
+  - Builds and deploys preview via Vercel CLI (`vercel pull`, `vercel build`, `vercel deploy --prebuilt`)
+  - Reposts a PR comment tagged `preview-deployment` with Vercel Preview + Neon branch links
   - Prints preflight logs (`branch_name`, `run_deploy`, `reason`) for debugging
-  - Reposts a tagged PR status comment (`preview-deploy-trigger-status`) with trigger/skip reason and outcome
+  - Reposts a tagged PR status comment (`preview-deploy-status`) with trigger/skip reason and outcome
 
 ### 4) `.github/workflows/preview-schema-diff.yml`
 
@@ -73,7 +74,6 @@ If you are new, read this once before opening your first PR.
 - Behavior:
   - Resolves PR by deployment branch
   - Compares Neon branch `preview/<git-branch>` using `neondatabase/schema-diff-action@v1`
-  - Reposts a PR comment tagged `preview-deployment` with Vercel Preview + Neon branch links (keeps latest at bottom)
   - Reposts a PR comment with diff when present (keeps latest at bottom)
   - Deletes stale comment when diff is empty
 
@@ -100,7 +100,7 @@ If you are new, read this once before opening your first PR.
 1. You push to a feature branch and open a PR to `develop`.
 2. `ci-pr.yml` validates code quality and tests.
 3. `preview-db-migrations.yml` generates and commits migrations if schema changed.
-4. `vercel-preview-deploy.yml` triggers Vercel Preview deploy hook (unless skipped).
+4. `vercel-preview-deploy.yml` runs Vercel preview deploy (unless skipped).
 5. Vercel builds the app.
 6. Neon/Vercel integration provisions the preview DB branch and injects DB env vars.
 7. Vercel applies `db:migrate` as part of preview build command.
@@ -127,7 +127,9 @@ If you are new, read this once before opening your first PR.
 
 ### GitHub secrets
 
-- `VERCEL_PREVIEW_DEPLOY_HOOK_URL` (used by `vercel-preview-deploy.yml`)
+- `VERCEL_TOKEN` (used by `vercel-preview-deploy.yml`)
+- `VERCEL_ORG_ID` (used by `vercel-preview-deploy.yml`)
+- `VERCEL_PROJECT_ID` (used by `vercel-preview-deploy.yml`)
 - `NEON_API_KEY` (used by `preview-schema-diff.yml`)
 - `NEON_PROJECT_ID` (used by `preview-schema-diff.yml`)
 - `NEON_PROD_DATABASE_NAME` (optional override for schema diff DB; fallback is `neondb`)
@@ -155,7 +157,7 @@ Neon integration should be configured to use preview branch naming `preview/<git
 ### Preview did not deploy
 
 - Check `vercel-preview-deploy.yml` preflight logs for `reason`
-- Confirm `VERCEL_PREVIEW_DEPLOY_HOOK_URL` exists and is valid
+- Confirm `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` are configured
 - Confirm latest commit touched deploy-relevant paths
 
 ### Preview deployed but no schema diff comment
