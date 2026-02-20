@@ -7,8 +7,11 @@ import {
   getTodayDateString,
 } from '@/app/plans/new/components/plan-form/helpers';
 import type { PlanFormData } from '@/app/plans/new/components/plan-form/types';
-import type { StreamingError } from '@/hooks/useStreamingPlanGeneration';
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
+import {
+  isStreamingError,
+  useStreamingPlanGeneration,
+} from '@/hooks/useStreamingPlanGeneration';
+import { isAbortError, normalizeThrown } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
@@ -23,31 +26,32 @@ import React, {
 } from 'react';
 import { toast } from 'sonner';
 
-import { CreateMethodToggle, type CreateMethod } from './CreateMethodToggle';
+import {
+  CreateMethodToggle,
+  type CreateMethod,
+} from '@/app/plans/new/components/CreateMethodToggle';
 
 const PdfCreatePanel = React.lazy(() =>
-  import('./PdfCreatePanel').then((module) => ({
+  import('@/app/plans/new/components/PdfCreatePanel').then((module) => ({
     default: module.PdfCreatePanel,
   }))
 );
 
 interface ManualCreatePanelProps {
   initialTopic?: string | null;
+  topicResetVersion?: number;
   onTopicUsed?: () => void;
 }
 
 interface CreatePlanPageClientProps {
   initialMethod: CreateMethod;
   initialTopic?: string | null;
+  initialTopicResetVersion?: number;
 }
 
 type MappingResult =
   | { ok: true; payload: ReturnType<typeof mapOnboardingToCreateInput> }
   | { ok: false; error: unknown };
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'AbortError';
-}
 
 function buildCreatePayload(data: PlanFormData): MappingResult {
   try {
@@ -80,6 +84,7 @@ function convertToOnboardingValues(data: PlanFormData): OnboardingFormValues {
  */
 export function ManualCreatePanel({
   initialTopic,
+  topicResetVersion = 0,
   onTopicUsed,
 }: ManualCreatePanelProps): React.ReactElement {
   const router = useRouter();
@@ -137,22 +142,19 @@ export function ManualCreatePanel({
 
         clientLogger.error('Streaming plan generation failed', streamError);
 
-        const errorWithStatus = streamError as StreamingError;
+        const normalizedError = normalizeThrown(streamError);
         const message =
-          streamError instanceof Error
-            ? streamError.message
+          normalizedError instanceof Error
+            ? normalizedError.message
             : 'We could not create your learning plan. Please try again.';
 
-        const extractedPlanId =
-          errorWithStatus.planId ??
-          errorWithStatus.data?.planId ??
-          planIdRef.current;
+        const extractedPlanId = isStreamingError(normalizedError)
+          ? (normalizedError.planId ??
+            normalizedError.data?.planId ??
+            planIdRef.current)
+          : planIdRef.current;
 
-        if (
-          (errorWithStatus.status === 200 || extractedPlanId) &&
-          typeof extractedPlanId === 'string' &&
-          extractedPlanId.length > 0
-        ) {
+        if (typeof extractedPlanId === 'string' && extractedPlanId.length > 0) {
           toast.error('Generation failed. You can retry from the plan page.');
           router.push(`/plans/${extractedPlanId}`);
           return;
@@ -169,11 +171,10 @@ export function ManualCreatePanel({
   return (
     <>
       <UnifiedPlanInput
-        onSubmit={(data) => {
-          void handleSubmit(data);
-        }}
+        onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
         initialTopic={initialTopic ?? undefined}
+        topicResetVersion={topicResetVersion}
       />
 
       {streamingState.status !== 'idle' && (
@@ -198,6 +199,7 @@ export function ManualCreatePanel({
 export function CreatePlanPageClient({
   initialMethod,
   initialTopic,
+  initialTopicResetVersion = 0,
 }: CreatePlanPageClientProps): React.ReactElement {
   const router = useRouter();
   const panelIdBase = useId();
@@ -209,6 +211,9 @@ export function CreatePlanPageClient({
   const currentMethod = initialMethod;
   const [prefillTopic, setPrefillTopic] = useState<string | null>(
     initialTopic ?? null
+  );
+  const [topicResetVersion, setTopicResetVersion] = useState(
+    initialTopicResetVersion
   );
 
   const handleMethodChange = useCallback(
@@ -223,6 +228,7 @@ export function CreatePlanPageClient({
   const handleSwitchToManual = useCallback(
     (extractedTopic: string) => {
       setPrefillTopic(extractedTopic);
+      setTopicResetVersion((currentVersion) => currentVersion + 1);
       router.push('/plans/new', { scroll: false });
     },
     [router]
@@ -276,6 +282,7 @@ export function CreatePlanPageClient({
       >
         <ManualCreatePanel
           initialTopic={prefillTopic}
+          topicResetVersion={topicResetVersion}
           onTopicUsed={handleTopicUsed}
         />
       </div>

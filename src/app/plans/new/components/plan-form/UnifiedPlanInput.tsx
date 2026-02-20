@@ -1,9 +1,10 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { appEnv } from '@/lib/config/env';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useId, useMemo, useReducer } from 'react';
+import { useEffect, useId, useMemo, useReducer } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
@@ -19,6 +20,7 @@ interface UnifiedPlanInputProps {
   isSubmitting?: boolean;
   disabled?: boolean;
   initialTopic?: string;
+  topicResetVersion?: number;
 }
 
 interface PlanInputState {
@@ -32,6 +34,7 @@ interface PlanInputState {
 
 type PlanInputAction =
   | { type: 'set-topic'; value: string }
+  | { type: 'reset-topic'; value: string; resetVersion: number }
   | { type: 'set-skill-level'; value: string }
   | { type: 'set-weekly-hours'; value: string }
   | { type: 'set-learning-style'; value: string }
@@ -47,6 +50,12 @@ function planInputReducer(
         ...state,
         topic: action.value,
         topicTouched: true,
+      };
+    case 'reset-topic':
+      return {
+        ...state,
+        topic: action.value,
+        topicTouched: false,
       };
     case 'set-skill-level':
       return {
@@ -85,6 +94,7 @@ export function UnifiedPlanInput({
   isSubmitting = false,
   disabled = false,
   initialTopic = '',
+  topicResetVersion = 0,
 }: UnifiedPlanInputProps) {
   const baseId = useId();
   const [state, dispatch] = useReducer(planInputReducer, {
@@ -96,13 +106,21 @@ export function UnifiedPlanInput({
     deadlineWeeks: '4',
   });
 
-  const topic = state.topicTouched ? state.topic : initialTopic;
+  useEffect(() => {
+    dispatch({
+      type: 'reset-topic',
+      value: initialTopic,
+      resetVersion: topicResetVersion,
+    });
+  }, [initialTopic, topicResetVersion]);
+
+  const topic = state.topic;
 
   const topicInputId = `${baseId}-topic`;
 
   const handleSubmit = () => {
     if (!topic.trim() || isSubmitting || disabled) {
-      if (process.env.NODE_ENV === 'development' && !topic.trim()) {
+      if (appEnv.isDevelopment && !topic.trim()) {
         clientLogger.warn(
           '[UnifiedPlanInput] Empty topic submission prevented'
         );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,9 @@ interface RegenerateButtonProps {
  *
  * @param planId - The ID of the plan to regenerate
  */
-export function RegenerateButton({ planId }: RegenerateButtonProps) {
+export function RegenerateButton({
+  planId,
+}: RegenerateButtonProps): ReactElement {
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -62,12 +64,7 @@ export function RegenerateButton({ planId }: RegenerateButtonProps) {
   };
 
   return (
-    <Button
-      disabled={loading}
-      onClick={() => {
-        void handleRegenerate();
-      }}
-    >
+    <Button disabled={loading} onClick={handleRegenerate}>
       {loading ? 'Regenerating…' : 'Regenerate Plan'}
     </Button>
   );

@@ -1,9 +1,11 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { getCachedModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/data';
+import {
+  getModuleError,
+  isModuleSuccess,
+} from '@/app/plans/[id]/modules/[moduleId]/helpers';
 import { logger } from '@/lib/logging/logger';
 import { redirect } from 'next/navigation';
-
-import { getModuleForPage } from '../actions';
-import { getModuleError, isModuleSuccess } from '../helpers';
 
 import { ModuleDetailPageError } from './Error';
 import { ModuleDetail } from './ModuleDetail';
@@ -21,7 +23,7 @@ export async function ModuleDetailContent({
   planId,
   moduleId,
 }: ModuleDetailContentProps) {
-  const moduleResult = await getModuleForPage(moduleId);
+  const moduleResult = await getCachedModuleForPage(moduleId);
 
   // Handle module access errors with explicit error codes
   if (!isModuleSuccess(moduleResult)) {
@@ -37,7 +39,9 @@ export async function ModuleDetailContent({
     switch (code) {
       case 'UNAUTHORIZED':
         // User needs to authenticate - redirect to sign-in
-        redirect(`/sign-in?redirect_url=/plans/${planId}/modules/${moduleId}`);
+        return redirect(
+          `/sign-in?redirect_url=/plans/${planId}/modules/${moduleId}`
+        );
 
       case 'NOT_FOUND':
         // Module doesn't exist or user doesn't have access

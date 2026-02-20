@@ -10,18 +10,22 @@ import {
   type ErrorCode,
 } from '@/components/pdf/PdfUploadError';
 import { PdfUploadZone } from '@/components/pdf/PdfUploadZone';
+import { Button } from '@/components/ui/button';
 import {
   isStreamingError,
   useStreamingPlanGeneration,
 } from '@/hooks/useStreamingPlanGeneration';
 import { normalizeApiErrorResponse } from '@/lib/api/error-response';
+import { isAbortError, normalizeThrown } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { mapPdfSettingsToCreateInput } from '@/lib/mappers/learningPlans';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+
+const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
 
 const truncationSchema = z.object({
   truncated: z.boolean(),
@@ -52,10 +56,6 @@ const TRUNCATION_REASON_LABELS: Record<string, string> = {
 };
 
 const MAX_TRUNCATION_REASONS_IN_TOAST = 3;
-
-function normalizeThrown(value: unknown): Error | { message?: string } {
-  return value instanceof Error ? value : { message: String(value) };
-}
 
 function truncationReasonsSummary(
   reasons: string[] | undefined
@@ -170,10 +170,6 @@ type PdfMappingResult =
   | { ok: true; payload: ReturnType<typeof mapPdfSettingsToCreateInput> }
   | { ok: false; error: unknown };
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'AbortError';
-}
-
 function buildPdfCreatePayload(params: {
   mainTopic: string;
   sections: ExtractionData['sections'];
@@ -210,7 +206,44 @@ export function PdfCreatePanel({
   const [state, setState] = useState<PageState>({ status: 'idle' });
   const isSubmittingRef = useRef(false);
   const planIdRef = useRef<string | undefined>(undefined);
+  const extractionAbortControllerRef = useRef<AbortController | null>(null);
+  const extractionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const extractionAbortReasonRef = useRef<'timeout' | 'cancel' | null>(null);
   const { startGeneration } = useStreamingPlanGeneration();
+
+  const clearExtractionTimeout = () => {
+    if (extractionTimeoutRef.current !== null) {
+      clearTimeout(extractionTimeoutRef.current);
+      extractionTimeoutRef.current = null;
+    }
+  };
+
+  const abortExtraction = (reason: 'timeout' | 'cancel') => {
+    extractionAbortReasonRef.current = reason;
+    extractionAbortControllerRef.current?.abort();
+    extractionAbortControllerRef.current = null;
+    clearExtractionTimeout();
+  };
+
+  const clearExtractionTracking = () => {
+    extractionAbortControllerRef.current = null;
+    extractionAbortReasonRef.current = null;
+    clearExtractionTimeout();
+  };
+
+  useEffect(() => {
+    return () => {
+      extractionAbortReasonRef.current = 'cancel';
+      extractionAbortControllerRef.current?.abort();
+      extractionAbortControllerRef.current = null;
+      if (extractionTimeoutRef.current !== null) {
+        clearTimeout(extractionTimeoutRef.current);
+        extractionTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleFileSelect = (file: File) => {
     if (file.type !== 'application/pdf') {
@@ -218,14 +251,27 @@ export function PdfCreatePanel({
       return;
     }
 
+    if (extractionAbortControllerRef.current) {
+      abortExtraction('cancel');
+    }
+
     setState({ status: 'uploading' });
 
     const formData = new FormData();
     formData.append('file', file);
 
+    const controller = new AbortController();
+    extractionAbortControllerRef.current = controller;
+    extractionAbortReasonRef.current = null;
+    clearExtractionTimeout();
+    extractionTimeoutRef.current = setTimeout(() => {
+      abortExtraction('timeout');
+    }, PDF_EXTRACTION_TIMEOUT_MS);
+
     void fetch('/api/v1/plans/from-pdf/extract', {
       method: 'POST',
       body: formData,
+      signal: controller.signal,
     })
       .then(async (response) => {
         const rawData: unknown = await response.json();
@@ -290,6 +336,20 @@ export function PdfCreatePanel({
         }
       })
       .catch((error: unknown) => {
+        if (isAbortError(error)) {
+          if (extractionAbortReasonRef.current === 'cancel') {
+            toast.info('Upload cancelled');
+            setState({ status: 'idle' });
+            return;
+          }
+
+          setState({
+            status: 'error',
+            error: 'Upload timed out. Please try again.',
+          });
+          return;
+        }
+
         clientLogger.error('PDF extraction failed', error);
         setState({
           status: 'error',
@@ -298,7 +358,19 @@ export function PdfCreatePanel({
               ? error.message
               : 'An unexpected error occurred',
         });
+      })
+      .finally(() => {
+        clearExtractionTracking();
       });
+  };
+
+  const handleCancelUpload = () => {
+    if (!extractionAbortControllerRef.current) {
+      setState({ status: 'idle' });
+      return;
+    }
+
+    abortExtraction('cancel');
   };
 
   const handleGenerate = (editedData: {
@@ -414,13 +486,20 @@ export function PdfCreatePanel({
 
   if (state.status === 'uploading') {
     return (
-      <PdfUploadZone
-        onFileSelect={(file) => {
-          void handleFileSelect(file);
-        }}
-        isUploading={true}
-        disabled={true}
-      />
+      <div className="w-full max-w-2xl space-y-4">
+        <PdfUploadZone
+          onFileSelect={(file) => {
+            void handleFileSelect(file);
+          }}
+          isUploading={true}
+          disabled={true}
+        />
+        <div className="flex justify-center">
+          <Button type="button" variant="outline" onClick={handleCancelUpload}>
+            Cancel upload
+          </Button>
+        </div>
+      </div>
     );
   }
 

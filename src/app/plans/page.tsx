@@ -1,20 +1,26 @@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  PlanCountBadgeContent,
+  PlansContent,
+  PlansContentSkeleton,
+} from '@/app/plans/components/PlansContent';
 import { Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 
-import {
-  PlansContent,
-  PlansContentSkeleton,
-  PlanCountBadgeContent,
-} from './components/PlansContent';
-
 export const metadata: Metadata = {
   title: 'Your Plans | Atlaris',
   description:
     'View, search, and manage your learning plans and track your progress in Atlaris.',
+  openGraph: {
+    title: 'Your Plans | Atlaris',
+    description:
+      'View, search, and manage your learning plans and track your progress in Atlaris.',
+    url: '/plans',
+    images: ['/og-default.jpg'],
+  },
 };
 
 /**

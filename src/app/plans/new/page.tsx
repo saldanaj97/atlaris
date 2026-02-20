@@ -1,9 +1,8 @@
 import { MouseGlowContainer } from '@/components/effects/MouseGlow';
+import { CreatePlanPageClient } from '@/app/plans/new/components/ManualCreatePanel';
+import type { CreateMethod } from '@/app/plans/new/components/CreateMethodToggle';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
-
-import { CreatePlanPageClient } from './components/ManualCreatePanel';
-import type { CreateMethod } from './components/CreateMethodToggle';
 
 interface CreateNewPlanPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

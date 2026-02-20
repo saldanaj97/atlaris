@@ -9,6 +9,13 @@ export const metadata: Metadata = {
   title: 'Maintenance | Atlaris',
   description:
     'Atlaris is temporarily unavailable while we perform maintenance and infrastructure upgrades.',
+  openGraph: {
+    title: 'Maintenance | Atlaris',
+    description:
+      'Atlaris is temporarily unavailable while we perform maintenance and infrastructure upgrades.',
+    url: '/maintenance',
+    images: ['/og-default.jpg'],
+  },
 };
 
 export default function MaintenancePage(): JSX.Element {

@@ -6,6 +6,8 @@ import {
   ModuleDetailContent,
   ModuleDetailContentSkeleton,
 } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleDetailContent';
+import { getCachedModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/data';
+import { isModuleSuccess } from '@/app/plans/[id]/modules/[moduleId]/helpers';
 
 interface ModulePageProps {
   params: Promise<{ id: string; moduleId: string }>;
@@ -16,11 +18,34 @@ export async function generateMetadata({
 }: ModulePageProps): Promise<Metadata> {
   const { moduleId } = await params;
 
-  return {
-    title: `Module ${moduleId} | Atlaris`,
-    description:
-      'View module details, tasks, and resources for this learning plan module.',
-  };
+  if (!moduleId) {
+    return {
+      title: 'Module Details | Atlaris',
+      description:
+        'View module details, tasks, and resources for this learning plan module.',
+    };
+  }
+
+  try {
+    const moduleResult = await getCachedModuleForPage(moduleId);
+    const moduleTitle = isModuleSuccess(moduleResult)
+      ? moduleResult.data.module.title.trim()
+      : '';
+
+    return {
+      title: moduleTitle
+        ? `${moduleTitle} | Atlaris`
+        : 'Module Details | Atlaris',
+      description:
+        'View module details, tasks, and resources for this learning plan module.',
+    };
+  } catch {
+    return {
+      title: 'Module Details | Atlaris',
+      description:
+        'View module details, tasks, and resources for this learning plan module.',
+    };
+  }
 }
 
 /**

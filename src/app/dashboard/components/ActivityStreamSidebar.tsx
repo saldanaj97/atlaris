@@ -7,12 +7,16 @@ import type { ScheduledEvent } from '../types';
 
 interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;
-  upcomingEvents?: ScheduledEvent[];
+  upcomingEvents?: readonly ScheduledEvent[];
 }
 
-const EMPTY_UPCOMING_EVENTS: ScheduledEvent[] = [];
+const EMPTY_UPCOMING_EVENTS: readonly ScheduledEvent[] = [];
 
-function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
+function UpcomingScheduleCard({
+  events,
+}: {
+  events: readonly ScheduledEvent[];
+}) {
   return (
     <div className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10">
       {/* Header */}

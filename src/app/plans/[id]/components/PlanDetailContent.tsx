@@ -3,8 +3,8 @@ import { logger } from '@/lib/logging/logger';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 import { redirect } from 'next/navigation';
 
-import { getPlanForPage } from '../actions';
-import { getPlanError, isPlanSuccess } from '../helpers';
+import { getCachedPlanForPage } from '@/app/plans/[id]/data';
+import { getPlanError, isPlanSuccess } from '@/app/plans/[id]/helpers';
 
 import { PlanDetailPageError } from './Error';
 import { PlanDetails } from './PlanDetails';
@@ -18,7 +18,7 @@ interface PlanDetailContentProps {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
-  const planResult = await getPlanForPage(planId);
+  const planResult = await getCachedPlanForPage(planId);
 
   // Handle plan access errors with explicit error codes
   if (!isPlanSuccess(planResult)) {
@@ -31,7 +31,9 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
     switch (code) {
       case 'UNAUTHORIZED':
         // User needs to authenticate - redirect to sign-in
-        redirect(`/sign-in?redirect_url=/plans/${encodeURIComponent(planId)}`);
+        return redirect(
+          `/sign-in?redirect_url=/plans/${encodeURIComponent(planId)}`
+        );
 
       case 'NOT_FOUND':
         // Plan doesn't exist or user doesn't have access
