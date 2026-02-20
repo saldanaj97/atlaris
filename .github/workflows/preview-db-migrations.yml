@@ -1,0 +1,107 @@
+name: Preview DB Migrations
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [develop, main]
+
+concurrency:
+  group: preview-db-migrations-${{ github.event.number }}
+  cancel-in-progress: true
+
+jobs:
+  check-migration-paths:
+    runs-on: ubuntu-latest
+    outputs:
+      run_generate: ${{ steps.set.outputs.run_generate }}
+      reason: ${{ steps.set.outputs.reason }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Set run_generate from latest commit or event
+        id: set
+        run: |
+          if git log -1 --pretty=%B | grep -qF '[skip deploy]'; then
+            echo "run_generate=false" >> "$GITHUB_OUTPUT"
+            echo "reason=skip-deploy-tag-detected" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          base_ref="${{ github.base_ref }}"
+          files=""
+
+          if [ -n "$base_ref" ]; then
+            git fetch --no-tags origin "$base_ref" || true
+            files=$(git diff --name-only "origin/$base_ref"...HEAD || true)
+          fi
+
+          if [ -z "$files" ]; then
+            files=$(git diff-tree --no-commit-id --name-only -r HEAD)
+          fi
+
+          run_generate="false"
+          if printf '%s\n' "$files" | grep -Eq '^(src/lib/db/schema/|src/lib/db/migrations/|src/lib/db/enums\.ts$|drizzle\.config\.ts$|\.github/workflows/preview-db-migrations\.yml$|\.github/workflows/preview-schema-diff\.yml$)'; then
+            run_generate="true"
+          fi
+
+          echo "run_generate=$run_generate" >> "$GITHUB_OUTPUT"
+          if [ "$run_generate" = "true" ]; then
+            echo "reason=db-related-changes-detected" >> "$GITHUB_OUTPUT"
+          else
+            echo "reason=no-db-related-changes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Preflight summary
+        run: |
+          echo "Preview DB migrations preflight"
+          echo "- run_generate: ${{ steps.set.outputs.run_generate }}"
+          echo "- reason: ${{ steps.set.outputs.reason }}"
+
+  generate-migrations:
+    needs: check-migration-paths
+    if: needs.check-migration-paths.outputs.run_generate == 'true'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate migrations
+        env:
+          DATABASE_URL: postgresql://placeholder@localhost/placeholder
+        run: pnpm db:generate
+
+      - name: Commit and push generated migrations
+        run: |
+          git add src/lib/db/migrations/
+          if git diff --staged --quiet; then
+            echo "No migration changes to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: auto-generate migrations from schema [skip deploy]"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
