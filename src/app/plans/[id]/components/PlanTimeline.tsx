@@ -120,18 +120,21 @@ export function PlanTimeline({
 }: ModuleTimelineProps) {
   // Transform modules into timeline items with computed status
   const timelineModules: TimelineModule[] = useMemo(() => {
-    let previousModulesCompleted = true;
-
     return modules.map((mod, index) => {
       const tasks = mod.tasks ?? [];
+      const previousModulesCompleted = modules
+        .slice(0, index)
+        .every((prevMod) => {
+          const prevTasks = prevMod.tasks ?? [];
+          return (
+            prevTasks.length > 0 &&
+            prevTasks.every((task) => statuses[task.id] === 'completed')
+          );
+        });
       const completedCount = tasks.filter(
         (t) => statuses[t.id] === 'completed'
       ).length;
       const status = getModuleStatus(mod, statuses, previousModulesCompleted);
-
-      if (status !== 'completed') {
-        previousModulesCompleted = false;
-      }
 
       return {
         id: mod.id,

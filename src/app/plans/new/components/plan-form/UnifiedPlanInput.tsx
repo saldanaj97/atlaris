@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useReducer } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
@@ -21,6 +21,58 @@ interface UnifiedPlanInputProps {
   initialTopic?: string;
 }
 
+interface PlanInputState {
+  topic: string;
+  topicTouched: boolean;
+  skillLevel: string;
+  weeklyHours: string;
+  learningStyle: string;
+  deadlineWeeks: string;
+}
+
+type PlanInputAction =
+  | { type: 'set-topic'; value: string }
+  | { type: 'set-skill-level'; value: string }
+  | { type: 'set-weekly-hours'; value: string }
+  | { type: 'set-learning-style'; value: string }
+  | { type: 'set-deadline-weeks'; value: string };
+
+function planInputReducer(
+  state: PlanInputState,
+  action: PlanInputAction
+): PlanInputState {
+  switch (action.type) {
+    case 'set-topic':
+      return {
+        ...state,
+        topic: action.value,
+        topicTouched: true,
+      };
+    case 'set-skill-level':
+      return {
+        ...state,
+        skillLevel: action.value,
+      };
+    case 'set-weekly-hours':
+      return {
+        ...state,
+        weeklyHours: action.value,
+      };
+    case 'set-learning-style':
+      return {
+        ...state,
+        learningStyle: action.value,
+      };
+    case 'set-deadline-weeks':
+      return {
+        ...state,
+        deadlineWeeks: action.value,
+      };
+    default:
+      return state;
+  }
+}
+
 /**
  * Modern unified input component for plan generation.
  * Features a text input with inline dropdown selectors that appear
@@ -35,27 +87,16 @@ export function UnifiedPlanInput({
   initialTopic = '',
 }: UnifiedPlanInputProps) {
   const baseId = useId();
-  const [topic, setTopic] = useState(initialTopic);
-  const [skillLevel, setSkillLevel] = useState('beginner');
-  const [weeklyHours, setWeeklyHours] = useState('3-5');
-  const [learningStyle, setLearningStyle] = useState('mixed');
-  const [deadlineWeeks, setDeadlineWeeks] = useState('4');
-  const topicTouchedRef = useRef(false);
+  const [state, dispatch] = useReducer(planInputReducer, {
+    topic: initialTopic,
+    topicTouched: false,
+    skillLevel: 'beginner',
+    weeklyHours: '3-5',
+    learningStyle: 'mixed',
+    deadlineWeeks: '4',
+  });
 
-  useEffect(() => {
-    if (
-      initialTopic !== undefined &&
-      initialTopic !== '' &&
-      !topicTouchedRef.current
-    ) {
-      setTopic(initialTopic);
-    }
-  }, [initialTopic]);
-
-  const handleTopicChange = (value: string) => {
-    topicTouchedRef.current = true;
-    setTopic(value);
-  };
+  const topic = state.topicTouched ? state.topic : initialTopic;
 
   const topicInputId = `${baseId}-topic`;
 
@@ -70,10 +111,10 @@ export function UnifiedPlanInput({
     }
     onSubmit({
       topic: topic.trim(),
-      skillLevel,
-      weeklyHours,
-      learningStyle,
-      deadlineWeeks,
+      skillLevel: state.skillLevel,
+      weeklyHours: state.weeklyHours,
+      learningStyle: state.learningStyle,
+      deadlineWeeks: state.deadlineWeeks,
     });
   };
 
@@ -122,7 +163,9 @@ export function UnifiedPlanInput({
             <textarea
               id={topicInputId}
               value={topic}
-              onChange={(e) => handleTopicChange(e.target.value)}
+              onChange={(e) =>
+                dispatch({ type: 'set-topic', value: e.target.value })
+              }
               onKeyDown={handleKeyDown}
               placeholder="I want to learn TypeScript for React development..."
               className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[72px] w-full resize-none bg-transparent text-lg focus:outline-none"
@@ -138,16 +181,16 @@ export function UnifiedPlanInput({
           <InlineDropdown
             id={`${baseId}-skill-level`}
             options={SKILL_LEVEL_OPTIONS}
-            value={skillLevel}
-            onChange={setSkillLevel}
+            value={state.skillLevel}
+            onChange={(value) => dispatch({ type: 'set-skill-level', value })}
             variant="primary"
           />
           <span className="text-sm">with</span>
           <InlineDropdown
             id={`${baseId}-weekly-hours`}
             options={WEEKLY_HOURS_OPTIONS}
-            value={weeklyHours}
-            onChange={setWeeklyHours}
+            value={state.weeklyHours}
+            onChange={(value) => dispatch({ type: 'set-weekly-hours', value })}
             icon={<Clock className="h-3.5 w-3.5" />}
             variant="accent"
           />
@@ -160,16 +203,20 @@ export function UnifiedPlanInput({
           <InlineDropdown
             id={`${baseId}-learning-style`}
             options={LEARNING_STYLE_OPTIONS}
-            value={learningStyle}
-            onChange={setLearningStyle}
+            value={state.learningStyle}
+            onChange={(value) =>
+              dispatch({ type: 'set-learning-style', value })
+            }
             variant="accent"
           />
           <span className="text-sm">and want to finish in</span>
           <InlineDropdown
             id={`${baseId}-deadline`}
             options={DEADLINE_OPTIONS}
-            value={deadlineWeeks}
-            onChange={setDeadlineWeeks}
+            value={state.deadlineWeeks}
+            onChange={(value) =>
+              dispatch({ type: 'set-deadline-weeks', value })
+            }
             icon={<Calendar className="h-3.5 w-3.5" />}
             variant="primary"
           />

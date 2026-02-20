@@ -13,12 +13,52 @@ import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
+
+import { CreateMethodToggle, type CreateMethod } from './CreateMethodToggle';
+
+const PdfCreatePanel = React.lazy(() =>
+  import('./PdfCreatePanel').then((module) => ({
+    default: module.PdfCreatePanel,
+  }))
+);
 
 interface ManualCreatePanelProps {
   initialTopic?: string | null;
   onTopicUsed?: () => void;
+}
+
+interface CreatePlanPageClientProps {
+  initialMethod: CreateMethod;
+  initialTopic?: string | null;
+}
+
+type MappingResult =
+  | { ok: true; payload: ReturnType<typeof mapOnboardingToCreateInput> }
+  | { ok: false; error: unknown };
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function buildCreatePayload(data: PlanFormData): MappingResult {
+  try {
+    const onboardingValues = convertToOnboardingValues(data);
+    return {
+      ok: true,
+      payload: mapOnboardingToCreateInput(onboardingValues),
+    };
+  } catch (error) {
+    return { ok: false, error };
+  }
 }
 
 function convertToOnboardingValues(data: PlanFormData): OnboardingFormValues {
@@ -64,17 +104,14 @@ export function ManualCreatePanel({
     }
   }, [streamingState.status]);
 
-  const handleSubmit = async (data: PlanFormData) => {
+  const handleSubmit = (data: PlanFormData) => {
     if (isSubmittingRef.current) {
       return;
     }
 
-    let payload: ReturnType<typeof mapOnboardingToCreateInput>;
-    try {
-      const onboardingValues = convertToOnboardingValues(data);
-      payload = mapOnboardingToCreateInput(onboardingValues);
-    } catch (error) {
-      clientLogger.error('Failed to map form values', error);
+    const mappingResult = buildCreatePayload(data);
+    if (!mappingResult.ok) {
+      clientLogger.error('Failed to map form values', mappingResult.error);
       toast.error('Please double-check the form and try again.');
       return;
     }
@@ -83,50 +120,50 @@ export function ManualCreatePanel({
 
     isSubmittingRef.current = true;
     setIsSubmitting(true);
-    try {
-      const planId = await startGeneration(payload);
-      toast.success('Your learning plan is ready!');
-      router.push(`/plans/${planId}`);
-    } catch (streamError) {
-      const isAbort =
-        streamError instanceof DOMException &&
-        streamError.name === 'AbortError';
-      if (isAbort) {
-        if (!cancellationToastShownRef.current) {
-          toast.info('Generation cancelled');
-          cancellationToastShownRef.current = true;
+
+    void startGeneration(mappingResult.payload)
+      .then((planId) => {
+        toast.success('Your learning plan is ready!');
+        router.push(`/plans/${planId}`);
+      })
+      .catch((streamError: unknown) => {
+        if (isAbortError(streamError)) {
+          if (!cancellationToastShownRef.current) {
+            toast.info('Generation cancelled');
+            cancellationToastShownRef.current = true;
+          }
+          return;
         }
-        return;
-      }
 
-      clientLogger.error('Streaming plan generation failed', streamError);
+        clientLogger.error('Streaming plan generation failed', streamError);
 
-      const errorWithStatus = streamError as StreamingError;
-      const message =
-        streamError instanceof Error
-          ? streamError.message
-          : 'We could not create your learning plan. Please try again.';
+        const errorWithStatus = streamError as StreamingError;
+        const message =
+          streamError instanceof Error
+            ? streamError.message
+            : 'We could not create your learning plan. Please try again.';
 
-      const extractedPlanId =
-        errorWithStatus.planId ??
-        errorWithStatus.data?.planId ??
-        planIdRef.current;
+        const extractedPlanId =
+          errorWithStatus.planId ??
+          errorWithStatus.data?.planId ??
+          planIdRef.current;
 
-      if (
-        (errorWithStatus.status === 200 || extractedPlanId) &&
-        typeof extractedPlanId === 'string' &&
-        extractedPlanId.length > 0
-      ) {
-        toast.error('Generation failed. You can retry from the plan page.');
-        router.push(`/plans/${extractedPlanId}`);
-        return;
-      }
+        if (
+          (errorWithStatus.status === 200 || extractedPlanId) &&
+          typeof extractedPlanId === 'string' &&
+          extractedPlanId.length > 0
+        ) {
+          toast.error('Generation failed. You can retry from the plan page.');
+          router.push(`/plans/${extractedPlanId}`);
+          return;
+        }
 
-      toast.error(message);
-    } finally {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
-    }
+        toast.error(message);
+      })
+      .finally(() => {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+      });
   };
 
   return (
@@ -154,6 +191,112 @@ export function ManualCreatePanel({
           />
         </div>
       )}
+    </>
+  );
+}
+
+export function CreatePlanPageClient({
+  initialMethod,
+  initialTopic,
+}: CreatePlanPageClientProps): React.ReactElement {
+  const router = useRouter();
+  const panelIdBase = useId();
+  const tabIdBase = useId();
+  const manualPanelId = `${panelIdBase}-manual-panel`;
+  const pdfPanelId = `${panelIdBase}-pdf-panel`;
+  const manualTabId = `${tabIdBase}-manual-tab`;
+  const pdfTabId = `${tabIdBase}-pdf-tab`;
+  const currentMethod = initialMethod;
+  const [prefillTopic, setPrefillTopic] = useState<string | null>(
+    initialTopic ?? null
+  );
+
+  const handleMethodChange = useCallback(
+    (method: CreateMethod) => {
+      const targetUrl =
+        method === 'manual' ? '/plans/new' : '/plans/new?method=pdf';
+      router.push(targetUrl, { scroll: false });
+    },
+    [router]
+  );
+
+  const handleSwitchToManual = useCallback(
+    (extractedTopic: string) => {
+      setPrefillTopic(extractedTopic);
+      router.push('/plans/new', { scroll: false });
+    },
+    [router]
+  );
+
+  const handleTopicUsed = useCallback(() => {
+    setPrefillTopic(null);
+  }, []);
+
+  return (
+    <>
+      <div className="mb-8 text-center">
+        <div className="dark:border-border dark:bg-card/50 border-primary/30 mb-4 inline-flex items-center rounded-full border bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
+          <span className="from-primary to-accent mr-2 h-2 w-2 rounded-full bg-gradient-to-r" />
+          <span className="text-primary text-sm font-medium">
+            AI-Powered Learning Plans
+          </span>
+        </div>
+
+        <h1 className="text-foreground mb-3 text-4xl font-bold tracking-tight md:text-5xl">
+          What do you want to{' '}
+          <span className="from-primary via-accent to-primary bg-gradient-to-r bg-clip-text text-transparent">
+            learn?
+          </span>
+        </h1>
+
+        <p className="text-muted-foreground mx-auto max-w-xl text-lg">
+          {currentMethod === 'manual'
+            ? "Describe your learning goal. We'll create a personalized, time-blocked schedule that syncs to your calendar."
+            : "Upload a PDF document and we'll extract the key topics to create a personalized learning plan."}
+        </p>
+      </div>
+
+      <div className="mb-8">
+        <CreateMethodToggle
+          value={currentMethod}
+          onChange={handleMethodChange}
+          manualPanelId={manualPanelId}
+          pdfPanelId={pdfPanelId}
+          manualTabId={manualTabId}
+          pdfTabId={pdfTabId}
+        />
+      </div>
+
+      <div
+        id={manualPanelId}
+        role="tabpanel"
+        aria-labelledby={manualTabId}
+        aria-hidden={currentMethod !== 'manual'}
+        className={currentMethod !== 'manual' ? 'hidden' : undefined}
+      >
+        <ManualCreatePanel
+          initialTopic={prefillTopic}
+          onTopicUsed={handleTopicUsed}
+        />
+      </div>
+
+      <div
+        id={pdfPanelId}
+        role="tabpanel"
+        aria-labelledby={pdfTabId}
+        aria-hidden={currentMethod !== 'pdf'}
+        className={currentMethod !== 'pdf' ? 'hidden' : undefined}
+      >
+        <Suspense
+          fallback={
+            <div className="text-muted-foreground text-center text-sm">
+              Loading PDF options...
+            </div>
+          }
+        >
+          <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+        </Suspense>
+      </div>
     </>
   );
 }

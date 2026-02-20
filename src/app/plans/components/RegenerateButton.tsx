@@ -27,33 +27,38 @@ export function RegenerateButton({ planId }: RegenerateButtonProps) {
     };
   }, []);
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = () => {
     // Abort any in-flight request before starting a new one
     abortControllerRef.current?.abort();
-    abortControllerRef.current = new AbortController();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setLoading(true);
-    try {
-      const res = await fetch(`/api/v1/plans/${planId}/regenerate`, {
-        method: 'POST',
-        signal: abortControllerRef.current.signal,
+    void fetch(`/api/v1/plans/${planId}/regenerate`, {
+      method: 'POST',
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const parsedError = await parseApiErrorResponse(
+            res,
+            'Failed to enqueue regeneration'
+          );
+          throw new Error(parsedError.error);
+        }
+      })
+      .then(() => {
+        toast.success('Plan regeneration enqueued');
+      })
+      .catch((error: unknown) => {
+        // Ignore abort errors (e.g., component unmounted or new request started)
+        if (error instanceof Error && error.name === 'AbortError') return;
+        clientLogger.error('Regeneration failed:', error);
+        toast.error('Unable to enqueue regeneration');
+      })
+      .finally(() => {
+        setLoading(false);
       });
-      if (!res.ok) {
-        const parsedError = await parseApiErrorResponse(
-          res,
-          'Failed to enqueue regeneration'
-        );
-        throw new Error(parsedError.error);
-      }
-      toast.success('Plan regeneration enqueued');
-    } catch (error) {
-      // Ignore abort errors (e.g., component unmounted or new request started)
-      if ((error as Error).name === 'AbortError') return;
-      clientLogger.error('Regeneration failed:', error);
-      toast.error('Unable to enqueue regeneration');
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
