@@ -69,6 +69,16 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Check Drizzle migration drift
+        env:
+          DATABASE_URL: postgresql://placeholder@localhost/placeholder
+        run: |
+          pnpm db:generate
+          if ! git diff --quiet -- src/lib/db/migrations/; then
+            echo "::error::Migration files are out of sync with schema. Run 'pnpm db:generate' locally and commit generated files."
+            git status --short src/lib/db/migrations/
+            exit 1
+          fi
       - name: Run ESLint
         run: pnpm lint
       - name: Run TypeScript type check

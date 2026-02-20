@@ -5,7 +5,7 @@
 
 ## Overview
 
-This document explains how code flows from your local machine to production. Understanding this system is essential before making your first contribution.
+This document explains how code flows from your local machine to production.
 
 ---
 
@@ -17,14 +17,6 @@ We use two protected branches that serve as anchors for all development:
 | --------- | -------------------------------------------- | ---------------------- | -------------------------- |
 | `develop` | **Integration anchor** - day-to-day baseline | Staging environment    | When PRs are merged        |
 | `main`    | **Release anchor** - production baseline     | Production environment | When `develop` is promoted |
-
-### What "Anchor" Means
-
-An anchor branch is:
-
-- The **base reference** for starting new work
-- The branch that stays **continuously up to date**
-- The branch you **compare against** when reviewing changes
 
 **Rule:** All feature work branches from `develop`. All releases come from `main`.
 
@@ -38,7 +30,6 @@ An anchor branch is:
     │                                                             │
     │   feature/xyz ──PR──> develop ──PR──> main                  │
     │        │                 │              │                   │
-    │        │                 │              │                   │
     │   Your work         Integration     Production              │
     │                      (Staging)                              │
     │                                                             │
@@ -51,7 +42,7 @@ An anchor branch is:
     │                                                             │
     │   Merge to develop ──> Full CI ──> Vercel deploys staging   │
     │                                                             │
-    │   Merge to main ─────> Full CI ──> Deploy Production       │
+    │   Merge to main ─────> Full CI ──> Migrate DB ──> Deploy app│
     │                                                             │
     └─────────────────────────────────────────────────────────────┘
 ```
@@ -67,8 +58,6 @@ An anchor branch is:
 | Hotfix  | `hotfix/<description>`        | `hotfix/payment-timeout`    |
 | Chore   | `chore/<description>`         | `chore/update-dependencies` |
 
-**Keep names short, lowercase, hyphenated.** Your branch name appears in commit history.
-
 ---
 
 ## Environments
@@ -82,17 +71,15 @@ An anchor branch is:
 
 ### Deployment Mechanism
 
-The Next.js app deploys automatically via **Vercel**:
-
-- Vercel watches the repo and builds on push
-- **Preview environments** are triggered from GitHub Actions via a Vercel Deploy Hook. Neon preview branches are provisioned by the Neon/Vercel integration during deploy.
-- **Production** migrations run via `deploy-production-migrations.yml` when code is pushed to `main`
+- **Preview**: Vercel native preview deployments on non-`main` branches.
+- **Preview DB**: Neon/Vercel integration creates isolated preview branches.
+- **Production**: `.github/workflows/deploy-production-migrations.yml` applies DB migrations first, then deploys app to Vercel production.
 
 ---
 
 ## CI Workflows Explained
 
-We have 6 GitHub Actions workflows. Here's what each does:
+We use 4 core GitHub Actions workflows plus a schema diff workflow:
 
 ### 1. `ci-pr.yml` - PR Validation
 
@@ -103,11 +90,12 @@ We have 6 GitHub Actions workflows. Here's what each does:
 - Lint (ESLint)
 - Type check (TypeScript)
 - Security audit (dependency vulnerabilities)
+- Migration drift check (`pnpm db:generate` must not change committed migration files)
 - Build (Next.js)
-- Unit tests (sharded across 2 runners)
+- Unit tests
 - Light integration tests
 
-**Purpose:** Fast feedback on PRs. Catches issues before merge.
+**Purpose:** Fast feedback on PRs before merge.
 
 ### 2. `ci-trunk.yml` - Full CI
 
@@ -115,164 +103,97 @@ We have 6 GitHub Actions workflows. Here's what each does:
 
 **What it runs:**
 
-- Integration tests (full suite, sharded across 2 runners)
-- E2E tests (full suite, sharded across 2 runners)
+- Integration tests (full suite)
+- E2E tests
 
-**Purpose:** Comprehensive validation after merge. This is the gate for trunk.
+**Purpose:** Comprehensive validation after merge.
 
-### 3. `preview-db-migrations.yml` - Migration File Sync for Preview PRs
+### 3. `preview-schema-diff.yml` - Schema Diff After Preview Deployment
 
-**Triggers:** PR opened, synchronize, or reopened to `develop` or `main`
-
-**What it does:**
-
-- Runs a preflight DB-change detector (no-op pass when DB-related files did not change)
-- On PR `synchronize`, checks only newly pushed commits (not entire PR history)
-- Runs `pnpm db:generate` using a placeholder `DATABASE_URL` (no DB connection required)
-- Commits and pushes generated migration files back to the PR branch when schema changed
-- Reposts a tagged PR status comment (`preview-db-migrations-status`) with decision reason and outcome
-- Uses `[skip deploy]` in the commit message so Vercel ignores migration-only sync commits
-
-**Purpose:** Keep migration files in sync with schema changes before preview deployments apply them.
-
-**Required secrets:** None beyond `GITHUB_TOKEN`.
-
-### 4. `vercel-preview-deploy.yml` - Trigger Vercel Preview Deploy
-
-**Triggers:** PR opened, synchronize, or reopened to `develop` or `main`
+**Triggers:** `deployment_status` when Vercel preview deployment succeeds
 
 **What it does:**
 
-- Evaluates latest-commit path changes to avoid unnecessary deploy requests
-- Skips deploy runs for migration sync commits tagged with `[skip deploy]`
-- Builds and deploys preview through Vercel CLI (`vercel pull`, `vercel build`, `vercel deploy --prebuilt`)
-- Reposts a `preview-deployment` PR comment with Vercel Preview + Neon branch links (keeps latest at bottom)
-- Reposts a tagged PR status comment (`preview-deploy-status`) with trigger/skip reason and outcome
-
-**Purpose:** Keep preview deployments controlled by GitHub workflow triggers while still using Vercel-managed builds.
-
-**Required secrets:** `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
-
-### 5. `preview-schema-diff.yml` - Schema Diff After Preview Deployment
-
-**Triggers:** `deployment_status` events when Vercel preview deployment succeeds
-
-**What it does:**
-
-- Resolves the PR from the deployment ref
+- Resolves PR from deployment ref
 - Runs `neondatabase/schema-diff-action@v1` against `preview/<git-branch>`
-- Reposts a schema diff comment on the PR when a diff exists (keeps latest at bottom)
+- Reposts schema diff comment on PR when diff exists
 
-**Purpose:** Show DB schema changes after preview migrations have actually been applied in Neon.
+**Purpose:** Show DB schema delta against real preview database state.
 
-**Required secrets:** `NEON_API_KEY`, `NEON_PROJECT_ID` (plus custom DB name secret if not using `neondb`).
+### 4. `deploy-production-migrations.yml` - Production Release Workflow
 
-### 6. `deploy-production-migrations.yml` - Production Deployment
-
-**Triggers:** Push to `main`, or `workflow_dispatch` (manual)
+**Triggers:** Push to `main`, or `workflow_dispatch`
 
 **What it does:**
 
-- Runs a preflight DB-change detector on `main` pushes (no-op pass when DB-related files did not change)
-- Optional `deploy_migrations` input on manual runs (force-run with `true`, skip with `false`)
-- Runs Drizzle migrations against the production database only when preflight allows
+- Preflight detects DB-related file changes
+- Runs `pnpm db:migrate` against production when needed
+- Deploys production app via Vercel CLI only after migration stage is successful (or skipped)
 
-**Purpose:** Apply schema changes to production after code lands on `main`.
+**Purpose:** Prevent app deploy-before-migration race conditions.
 
-**Note:** The Next.js app itself is deployed by Vercel on push. This workflow handles database migrations only.
+### 5. Preview Cleanup (Integration-managed)
 
-### 7. Preview Cleanup (Integration-managed)
-
-Preview Neon branches are cleaned up automatically by the Neon/Vercel integration when git branches are deleted.
+Preview Neon branches are cleaned automatically by Neon/Vercel integration when git branches are deleted.
 
 ---
 
 ## The Complete Flow: From Idea to Production
 
-### Step 1: Start Your Feature
+### Step 1: Start your feature
 
 ```bash
-# Always start from develop
 git checkout develop
 git pull origin develop
-
-# Create your feature branch
 git checkout -b feature/my-feature
 ```
 
-### Step 2: Do Your Work
+### Step 2: Do your work
 
-Make commits as you go. Keep them small and focused.
-
-```bash
-git add <files>
-git commit -m "feat: add user profile component"
-```
-
-### Step 3: Push and Open PR
+If you changed DB schema:
 
 ```bash
-# Push your branch
-git push -u origin feature/my-feature
-
-# Open PR targeting develop (not main!)
+pnpm db:generate
+git add src/lib/db/migrations
+git commit -m "feat: ..."
 ```
 
-**PR Target:** `develop`
+### Step 3: Push and open PR to `develop`
 
-### Step 4: PR Review Process
+### Step 4: PR review process
 
 1. CI runs automatically (`ci-pr.yml`)
-2. Preview migrations sync runs (`preview-db-migrations.yml`) and preview deploy trigger runs (`vercel-preview-deploy.yml`)
-3. Wait for checks to pass
-4. Request review from team
-5. Address feedback
-6. Get approval
+2. Vercel preview deploy runs automatically
+3. Schema diff comment appears after successful preview deploy
+4. Address feedback and merge
 
-### Step 5: Merge to Develop
+### Step 5: Merge to `develop`
 
-When approved and CI passes:
+1. Full CI runs (`ci-trunk.yml`)
+2. Vercel deploys staging
 
-1. Squash and merge (preferred) or merge commit
-2. Delete your feature branch
-3. Full CI runs (`ci-trunk.yml`)
-4. Vercel deploys staging from `develop`
+### Step 6: Release to production (`develop` -> `main`)
 
-### Step 6: Verify on Staging
-
-- Check your changes on staging environment
-- Run any manual verification needed
-- If issues found, fix on a new branch (repeat from Step 1)
-
-### Step 7: Release to Production
-
-When ready to release:
-
-1. Open PR from `develop` to `main`
-2. This is a "release PR" - summarize what's shipping
-3. Get approval
-4. Merge
-5. Full CI runs
-6. `deploy-production-migrations.yml` runs migrations on production
-7. Vercel deploys the Next.js app from `main`
+1. Merge release PR
+2. Full CI runs
+3. `deploy-production-migrations.yml` runs preflight
+4. DB migrations run if needed
+5. Production app deploy runs after migration stage
 
 ---
 
 ## Database Migrations
 
-Migrations are validated and applied at different stages:
+| Stage          | What happens                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------- |
+| **PR**         | Developer commits generated migrations; CI fails if `pnpm db:generate` would change committed migration files |
+| **Preview**    | Vercel preview build runs `pnpm db:migrate`                                                                   |
+| **Production** | `deploy-production-migrations.yml` runs preflight + `db:migrate` before production deploy                     |
 
-| Stage          | What Happens                                                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PR**         | `preview-db-migrations.yml` generates migration files, `vercel-preview-deploy.yml` triggers Vercel preview deploy, `preview-schema-diff.yml` comments DB diff |
-| **Trunk**      | No migration dry-run (preview already validated on Neon)                                                                                                      |
-| **Production** | `deploy-production-migrations.yml` runs preflight on push to `main`, then runs `db:migrate` only when DB-related files changed (or manual override)           |
+Migration-related changes include:
 
-**Migration files are detected by changes to:**
-
-- `src/lib/db/migrations/*.sql`
-- `src/lib/db/migrations/meta/**`
 - `src/lib/db/schema/**`
+- `src/lib/db/migrations/**`
 - `src/lib/db/enums.ts`
 - `drizzle.config.ts`
 
@@ -280,55 +201,24 @@ Migrations are validated and applied at different stages:
 
 ## Common Questions
 
-### "Which branch do I target my PR to?"
+### Which branch should PRs target?
 
-**Almost always `develop`.**
+Target `develop` unless it is a true production hotfix.
 
-The only exception is a production hotfix that cannot wait for the normal flow. In that case, you'd branch from `main`, fix, PR to `main`, then immediately backport to `develop`.
+### What if CI fails because migrations are out of sync?
 
-### "What if CI fails on my PR?"
+Run `pnpm db:generate` locally, commit generated files, push again.
 
-1. Read the error logs in GitHub Actions
-2. Fix the issue locally
-3. Push again
-4. CI re-runs automatically
+### How do I test against a real DB before merge?
 
-### "What if I need to test against a real database?"
-
-Each PR gets a preview deployment triggered by `vercel-preview-deploy.yml`, with a Neon branch provisioned by the Neon/Vercel integration. Use the Vercel preview URL plus the schema diff PR comment to validate against a real isolated database.
-
-### "How do I know what's deployed?"
-
-- **Staging:** Whatever is on `develop` HEAD
-- **Production:** Whatever is on `main` HEAD
-
-Check the "Deployments" tab in GitHub or Vercel dashboard.
-
-### "What's the staging branch?"
-
-We don't use a `staging` branch anymore. The staging **environment** deploys from `develop`. This simplifies the workflow.
-
----
-
-## Quick Reference
-
-| I want to...                   | Do this                                                 |
-| ------------------------------ | ------------------------------------------------------- |
-| Start new feature              | Branch from `develop`                                   |
-| Submit my work                 | PR to `develop`                                         |
-| Test with real DB before merge | Use the preview deployment URL from the PR comment      |
-| Deploy to staging              | Merge to `develop`                                      |
-| Release to production          | PR `develop` to `main`, then merge                      |
-| Fix production bug (urgent)    | Branch from `main`, PR to `main`, backport to `develop` |
+Use the Vercel preview deployment URL; Neon integration provisions an isolated preview DB branch.
 
 ---
 
 ## Related Files
 
-- `.github/workflows/ci-pr.yml` - PR validation workflow
+- `.github/workflows/ci-pr.yml` - PR validation
 - `.github/workflows/ci-trunk.yml` - Full CI on trunk
-- `.github/workflows/preview-db-migrations.yml` - Migration generation and commit-back for PR previews
-- `.github/workflows/vercel-preview-deploy.yml` - Builds/deploys Vercel preview from Actions
-- `.github/workflows/preview-schema-diff.yml` - Schema diff comments after successful preview deployments
-- `.github/workflows/deploy-production-migrations.yml` - Production migrations
+- `.github/workflows/preview-schema-diff.yml` - Schema diff comments after preview deploys
+- `.github/workflows/deploy-production-migrations.yml` - Production migration + deploy workflow
 - `docs/rules/ci/development-workflow.md` - Rules for agents/automation

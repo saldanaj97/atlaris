@@ -12,20 +12,21 @@ on:
         type: boolean
         default: true
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-production
-  cancel-in-progress: false # Never cancel production deployments
-
-env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
-  DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_PROD_NON_POOLING }}
+  cancel-in-progress: false # Never cancel production deploys
 
 jobs:
   check-db-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       run_migrations: ${{ steps.set.outputs.run_migrations }}
       reason: ${{ steps.set.outputs.reason }}
+      changed_files: ${{ steps.set.outputs.changed_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,15 +40,19 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             if [ "$INPUT_DEPLOY_MIGRATIONS" = "false" ]; then
               echo "run_migrations=false" >> "$GITHUB_OUTPUT"
               echo "reason=manual-dispatch-disabled" >> "$GITHUB_OUTPUT"
+              echo "changed_files=manual-dispatch" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
             echo "run_migrations=true" >> "$GITHUB_OUTPUT"
             echo "reason=manual-dispatch-enabled" >> "$GITHUB_OUTPUT"
+            echo "changed_files=manual-dispatch" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -72,26 +77,47 @@ jobs:
             echo "reason=no-db-related-changes" >> "$GITHUB_OUTPUT"
           fi
 
+          changed_joined=$(printf '%s' "$files" | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' | sed 's/^ //; s/ $//')
+          if [ -z "$changed_joined" ]; then
+            changed_joined="none"
+          fi
+          echo "changed_files=$changed_joined" >> "$GITHUB_OUTPUT"
+
       - name: Preflight summary
         run: |
-          echo "Deploy Production Migrations preflight"
-          echo "- run_migrations: ${{ steps.set.outputs.run_migrations }}"
-          echo "- reason: ${{ steps.set.outputs.reason }}"
+          {
+            echo "## Production Deploy Preflight"
+            echo "- run_migrations: ${{ steps.set.outputs.run_migrations }}"
+            echo "- reason: ${{ steps.set.outputs.reason }}"
+            echo "- changed_files: ${{ steps.set.outputs.changed_files }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-  deploy-production:
+  run-migrations:
     needs: check-db-changes
     if: needs.check-db-changes.outputs.run_migrations == 'true'
-    permissions: write-all
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+      DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_PROD_NON_POOLING }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Deployment context
+      - name: Verify DB secrets
         run: |
-          echo "Running production migrations"
-          echo "- reason: ${{ needs.check-db-changes.outputs.reason }}"
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ] || [ -z "${DATABASE_URL_NON_POOLING:-}" ]; then
+            echo "::error::Missing DATABASE_URL_PROD or DATABASE_URL_PROD_NON_POOLING secret."
+            exit 1
+          fi
+
+      - name: Migration context
+        run: |
+          {
+            echo "## Production Migrations"
+            echo "- reason: ${{ needs.check-db-changes.outputs.reason }}"
+            echo "- changed_files: ${{ needs.check-db-changes.outputs.changed_files }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -101,39 +127,132 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "pnpm"
+          node-version: '22'
+          cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Generate migrations from schema changes (no DB needed).
-      # Commit and push new migration files to main if schema changed without migrations.
-      - name: Generate migrations
-        run: pnpm db:generate
-
-      - name: Commit and push generated migrations
-        run: |
-          git add src/lib/db/migrations/
-          if git diff --staged --quiet; then
-            echo "No migration changes to commit."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore: auto-generate migrations from schema [skip ci]"
-            git push origin HEAD:main
-          fi
-
       - name: Run Drizzle migrations
         run: pnpm db:migrate
 
-  skip-migrations:
-    needs: check-db-changes
-    if: needs.check-db-changes.outputs.run_migrations != 'true'
+      - name: Migration success summary
+        run: |
+          echo "- migration_result: success" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-production:
+    needs: [check-db-changes, run-migrations]
+    if: >
+      always() &&
+      needs.check-db-changes.result == 'success' &&
+      (needs.run-migrations.result == 'success' || needs.run-migrations.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      deployment_url: ${{ steps.deploy.outputs.deployment_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Verify Vercel secrets
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::error::Missing one or more required Vercel secrets (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID)."
+            exit 1
+          fi
+
+      - name: Deployment context
+        run: |
+          {
+            echo "## Production Deploy"
+            echo "- migration_preflight: ${{ needs.check-db-changes.outputs.reason }}"
+            echo "- migration_job_result: ${{ needs.run-migrations.result }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Pull Vercel production environment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build with Vercel (production)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy to Vercel production
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          deployment_url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          if [ -z "$deployment_url" ]; then
+            echo "::error::Vercel deployment returned an empty URL."
+            exit 1
+          fi
+          echo "deployment_url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "- deployment_url: $deployment_url" >> "$GITHUB_STEP_SUMMARY"
+
+  release-summary:
+    needs: [check-db-changes, run-migrations, deploy-production]
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Skip summary
+      - name: Final release summary
+        env:
+          CHECK_RESULT: ${{ needs.check-db-changes.result }}
+          RUN_MIGRATIONS: ${{ needs.check-db-changes.outputs.run_migrations }}
+          MIGRATIONS_RESULT: ${{ needs.run-migrations.result }}
+          DEPLOY_RESULT: ${{ needs.deploy-production.result }}
+          DEPLOYMENT_URL: ${{ needs.deploy-production.outputs.deployment_url }}
+          REASON: ${{ needs.check-db-changes.outputs.reason }}
         run: |
-          echo "Skipping production migrations"
-          echo "- reason: ${{ needs.check-db-changes.outputs.reason }}"
+          {
+            echo "## Production Release Result"
+            echo "- preflight_result: $CHECK_RESULT"
+            echo "- run_migrations: $RUN_MIGRATIONS"
+            echo "- migration_result: $MIGRATIONS_RESULT"
+            echo "- deploy_result: $DEPLOY_RESULT"
+            echo "- reason: $REASON"
+            if [ -n "$DEPLOYMENT_URL" ]; then
+              echo "- deployment_url: $DEPLOYMENT_URL"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$CHECK_RESULT" != "success" ]; then
+            echo "::error::Preflight job failed."
+            exit 1
+          fi
+
+          if [ "$RUN_MIGRATIONS" = "true" ] && [ "$MIGRATIONS_RESULT" != "success" ]; then
+            echo "::error::Migration job failed while migrations were required."
+            exit 1
+          fi
+
+          if [ "$DEPLOY_RESULT" != "success" ]; then
+            echo "::error::Production deploy failed."
+            exit 1
+          fi
