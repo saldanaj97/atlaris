@@ -63,8 +63,11 @@ export function ModelSelectionCardSkeleton(): JSX.Element {
 
       {/* Model cards skeleton */}
       <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-lg border p-3">
+        {[1, 2, 3].map((modelSkeletonId) => (
+          <div
+            key={`model-skeleton-${modelSkeletonId}`}
+            className="rounded-lg border p-3"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-8 w-8 rounded-lg" />

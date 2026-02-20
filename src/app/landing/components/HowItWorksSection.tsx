@@ -113,15 +113,15 @@ function CurriculumVisual() {
         </div>
       </div>
       <div className="space-y-3 p-4">
-        {modules.map((module, idx) => (
-          <div key={idx} className="space-y-1.5">
+        {modules.map((module) => (
+          <div key={module.title} className="space-y-1.5">
             <div className="text-foreground flex items-center gap-2 text-sm font-medium">
               <span className="text-primary">▼</span>
               {module.title}
             </div>
-            {module.items.map((item, itemIdx) => (
+            {module.items.map((item) => (
               <div
-                key={itemIdx}
+                key={`${module.title}-${item}`}
                 className="text-muted-foreground ml-5 flex items-center gap-2 text-sm"
               >
                 <div className="from-primary to-accent h-1.5 w-1.5 rounded-full bg-gradient-to-r" />

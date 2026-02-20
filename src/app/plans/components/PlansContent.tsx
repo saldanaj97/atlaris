@@ -125,8 +125,8 @@ export function PlansContentSkeleton() {
 
       {/* Plans List skeleton */}
       <div className="space-y-1">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <PlanRowSkeleton key={i} />
+        {[1, 2, 3, 4, 5].map((planSkeletonId) => (
+          <PlanRowSkeleton key={`plan-row-skeleton-${planSkeletonId}`} />
         ))}
       </div>
     </>

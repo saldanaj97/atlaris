@@ -131,8 +131,8 @@ export function ModuleDetailContentSkeleton() {
 
         {/* Stats Grid skeleton */}
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <StatCardSkeleton key={i} />
+          {[1, 2, 3].map((statSkeletonId) => (
+            <StatCardSkeleton key={`module-stat-skeleton-${statSkeletonId}`} />
           ))}
         </div>
       </article>
@@ -146,8 +146,10 @@ export function ModuleDetailContentSkeleton() {
 
         {/* Lesson accordion items skeleton */}
         <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <LessonAccordionSkeleton key={i} />
+          {[1, 2, 3, 4, 5].map((lessonSkeletonId) => (
+            <LessonAccordionSkeleton
+              key={`module-lesson-skeleton-${lessonSkeletonId}`}
+            />
           ))}
         </div>
       </section>
