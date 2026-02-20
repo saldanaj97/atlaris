@@ -86,7 +86,10 @@ export function getRelativeTime(date: Date | null | undefined): string {
 export function getPlanStatus(summary: PlanSummary): PlanStatus {
   // Check generation status first
   const generationStatus = summary.plan.generationStatus;
-  if (generationStatus === 'generating') {
+  if (
+    generationStatus === 'generating' ||
+    generationStatus === 'pending_retry'
+  ) {
     return 'generating';
   }
   if (generationStatus === 'failed') {

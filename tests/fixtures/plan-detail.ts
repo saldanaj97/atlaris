@@ -4,14 +4,16 @@
  */
 
 import type {
+  ModuleWithTasks,
+  TaskResourceWithResource,
+  TaskWithRelations,
+} from '@/lib/db/queries/types/modules.types';
+import type {
   GenerationAttempt,
   LearningPlanDetail,
   LearningPlanWithModules,
   Module,
-  ModuleWithTasks,
   PlanSummary,
-  TaskResourceWithResource,
-  TaskWithRelations,
 } from '@/lib/types/db';
 
 import { createId } from './ids';

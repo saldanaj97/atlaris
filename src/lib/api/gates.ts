@@ -1,12 +1,12 @@
 import { getUserByAuthId } from '@/lib/db/queries/users';
-import { getDb } from '@/lib/db/runtime';
+import type { getDb } from '@/lib/db/runtime';
+import { AppError, AuthError, NotFoundError } from './errors';
 import {
   checkExportLimit,
   checkPlanLimit,
   checkRegenerationLimit,
 } from '@/lib/stripe/usage';
 import type { PlainHandler } from './auth';
-import { jsonError } from './response';
 
 /**
  * Subscription tier hierarchy
@@ -21,11 +21,7 @@ type SubscriptionTier = keyof typeof TIER_HIERARCHY;
 
 type GateUser = NonNullable<Awaited<ReturnType<typeof getUserByAuthId>>>;
 
-type GateUserResolutionResult =
-  | { ok: true; user: GateUser }
-  | { ok: false; response: Response };
-
-async function resolveGateUser(): Promise<GateUserResolutionResult> {
+async function resolveGateUser(): Promise<GateUser> {
   const { getRequestContext } = await import('./context');
   const { getEffectiveAuthUserId } = await import('./auth');
   const context = getRequestContext();
@@ -38,21 +34,15 @@ async function resolveGateUser(): Promise<GateUserResolutionResult> {
   }
 
   if (!authUserId) {
-    return {
-      ok: false,
-      response: jsonError('Unauthorized', { status: 401 }),
-    };
+    throw new AuthError();
   }
 
   const user = await getUserByAuthId(authUserId);
   if (!user) {
-    return {
-      ok: false,
-      response: jsonError('User not found', { status: 404 }),
-    };
+    throw new NotFoundError('User not found');
   }
 
-  return { ok: true, user };
+  return user;
 }
 
 /**
@@ -62,17 +52,13 @@ async function resolveGateUser(): Promise<GateUserResolutionResult> {
 export function requireSubscription(minTier: SubscriptionTier) {
   return (handler: PlainHandler): PlainHandler => {
     return async (req: Request) => {
-      const resolved = await resolveGateUser();
-      if (!resolved.ok) {
-        return resolved.response;
-      }
-      const { user } = resolved;
+      const user = await resolveGateUser();
 
       const userTierLevel = TIER_HIERARCHY[user.subscriptionTier];
       const requiredTierLevel = TIER_HIERARCHY[minTier];
 
       if (userTierLevel < requiredTierLevel) {
-        return jsonError(
+        throw new AppError(
           `This feature requires a ${minTier} subscription or higher`,
           {
             status: 403,
@@ -96,49 +82,54 @@ export function requireSubscription(minTier: SubscriptionTier) {
  */
 export type FeatureType = 'plan' | 'regeneration' | 'export';
 
+export type GateDbClient = ReturnType<typeof getDb>;
+
+export type GateDbClientResolver = () => GateDbClient;
+
 /**
  * Middleware to check feature usage limits
  * @param feature Feature type to check
+ * @param getDbClient Resolves the request-scoped DB client
  */
-export function checkFeatureLimit(feature: FeatureType) {
+export function checkFeatureLimit(
+  feature: FeatureType,
+  getDbClient: GateDbClientResolver
+): (handler: PlainHandler) => PlainHandler {
   return (handler: PlainHandler): PlainHandler => {
     return async (req: Request) => {
-      const resolved = await resolveGateUser();
-      if (!resolved.ok) {
-        return resolved.response;
-      }
-      const { user } = resolved;
+      const user = await resolveGateUser();
 
       // Check limits based on feature type
-      const db = getDb();
-      let hasLimit = false;
+      const db = getDbClient();
+      let withinLimit = false;
       let limitMessage = '';
 
       switch (feature) {
         case 'plan': {
-          hasLimit = await checkPlanLimit(user.id, db);
+          withinLimit = await checkPlanLimit(user.id, db);
           limitMessage =
             'You have reached the maximum number of active plans for your subscription tier';
           break;
         }
         case 'regeneration': {
-          hasLimit = await checkRegenerationLimit(user.id, db);
+          withinLimit = await checkRegenerationLimit(user.id, db);
           limitMessage =
             'You have reached your monthly regeneration limit for your subscription tier';
           break;
         }
         case 'export': {
-          hasLimit = await checkExportLimit(user.id, db);
+          withinLimit = await checkExportLimit(user.id, db);
           limitMessage =
             'You have reached your monthly export limit for your subscription tier';
           break;
         }
       }
 
-      if (!hasLimit) {
-        return jsonError(limitMessage, {
+      if (!withinLimit) {
+        throw new AppError(limitMessage, {
           status: 403,
           code: 'FEATURE_LIMIT_EXCEEDED',
+          classification: 'rate_limit',
           details: {
             feature,
             tier: user.subscriptionTier,
@@ -175,16 +166,16 @@ export async function hasSubscriptionTier(
  */
 export async function canUseFeature(
   userId: string,
-  feature: FeatureType
+  feature: FeatureType,
+  dbClient: GateDbClient
 ): Promise<boolean> {
-  const db = getDb();
   switch (feature) {
     case 'plan':
-      return checkPlanLimit(userId, db);
+      return checkPlanLimit(userId, dbClient);
     case 'regeneration':
-      return checkRegenerationLimit(userId, db);
+      return checkRegenerationLimit(userId, dbClient);
     case 'export':
-      return checkExportLimit(userId, db);
+      return checkExportLimit(userId, dbClient);
     default:
       return false;
   }

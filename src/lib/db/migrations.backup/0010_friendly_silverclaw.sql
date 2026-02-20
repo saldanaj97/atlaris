@@ -1,1 +1,0 @@
-ALTER TYPE "public"."job_type" ADD VALUE 'plan_regeneration';

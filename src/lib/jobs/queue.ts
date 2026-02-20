@@ -3,10 +3,9 @@ import {
   completeJobRecord,
   countUserJobsSince,
   failJobRecord,
-  findJobsByPlan,
   insertJobRecord,
-  type JobEnqueueResult,
 } from '@/lib/db/queries/jobs';
+import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
 import { db } from '@/lib/db/service-role';
 import type { Job, JobPayload, JobResult, JobType } from '@/lib/jobs/types';
 
@@ -57,11 +56,7 @@ export async function failJob(
   error: string,
   options: FailJobOptions = {}
 ): Promise<Job | null> {
-  return failJobRecord(jobId, error, { ...options, dbClient: db });
-}
-
-export async function getJobsByPlanId(planId: string): Promise<Job[]> {
-  return findJobsByPlan(planId, db);
+  return failJobRecord(jobId, error, options.retryable, db);
 }
 
 export async function getUserJobCount(

@@ -35,6 +35,7 @@ db/
 ├── index.ts         # Main exports (RLS clients + schema)
 ├── schema/
 │   ├── tables/      # Table definitions (plans.ts, users.ts, etc.)
+│   ├── constants.ts # Shared numeric/string limits (single source of truth)
 │   ├── relations.ts # Drizzle relations
 │   └── index.ts     # Barrel export
 ├── queries/         # Query modules by entity
@@ -63,6 +64,28 @@ try {
   await cleanup(); // CRITICAL: releases connection
 }
 ```
+
+## Schema Constants
+
+All numeric limits, string length caps, and other DB-layer constants **must** live in `src/lib/db/schema/constants.ts`. Never hardcode these values inline in table definitions, query helpers, or application code.
+
+```typescript
+// CORRECT — import from the single source of truth:
+import { MAX_RESOURCE_TITLE_LENGTH } from '@/lib/db/schema/constants';
+
+// WRONG — do NOT do this:
+const MAX_TITLE = 500; // local magic number
+```
+
+**Why?** Application-level sanitization (query helpers) and DB-level CHECK constraints must use the same value. A local constant silently diverges when one side is updated.
+
+### Current constants
+
+| Constant                    | Value | Used in                                                     | DB constraint status            |
+| --------------------------- | ----- | ----------------------------------------------------------- | ------------------------------- |
+| `MAX_RESOURCE_TITLE_LENGTH` | `500` | `queries/helpers/resources-helpers.ts` (sanitization guard) | TODO ([RESOURCE-HARDENING] tag) |
+
+**Adding a new constant:** add it to `schema/constants.ts` with a JSDoc comment explaining what enforces it (app-layer, DB CHECK, or both), then import it wherever it is used.
 
 ## RLS Policy Rules
 
@@ -115,6 +138,7 @@ pnpm db:push       # Push schema directly (dev only)
 
 ## Anti-Patterns
 
+- Defining DB-related numeric/string limits outside `schema/constants.ts` (hardcoded magic numbers)
 - Importing `@/lib/db/service-role` in API routes
 - Omitting `to` in `pgPolicy(...)` (defaults to insecure `PUBLIC` scope)
 - Forgetting `cleanup()` after RLS client use

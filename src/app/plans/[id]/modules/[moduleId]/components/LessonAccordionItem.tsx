@@ -5,12 +5,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/formatters';
-import type {
-  ProgressStatus,
-  ResourceType,
-  TaskWithRelations,
-} from '@/lib/types/db';
+import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 import {
   generatePlaceholderContent,
   hashString,

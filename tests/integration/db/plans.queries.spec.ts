@@ -1,13 +1,14 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { db } from '@/lib/db/service-role';
 import {
   getLearningPlanDetail,
   getPlanAttemptsForUser,
-  getUserLearningPlans,
 } from '@/lib/db/queries/plans';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { ensureUser } from '../../helpers/db';
+import { createTestModule, createTestTask } from '../../fixtures/modules';
+import { createTestPlan } from '../../fixtures/plans';
+import { createTestUser } from '../../fixtures/users';
+
+const NON_EXISTENT_PLAN_ID = '00000000-0000-0000-0000-000000000000';
 
 describe('Plan Queries - Tenant Scoping', () => {
   let ownerId: string;
@@ -15,49 +16,27 @@ describe('Plan Queries - Tenant Scoping', () => {
   let ownerPlanId: string;
 
   beforeEach(async () => {
-    // Create two users
-    ownerId = await ensureUser({
-      authUserId: 'auth_plan_queries_owner',
-      email: 'owner-queries@example.com',
+    const owner = await createTestUser();
+    const attacker = await createTestUser();
+    ownerId = owner.id;
+    attackerId = attacker.id;
+
+    const plan = await createTestPlan({
+      userId: ownerId,
+      visibility: 'private',
+      generationStatus: 'ready',
     });
-
-    attackerId = await ensureUser({
-      authUserId: 'auth_plan_queries_attacker',
-      email: 'attacker-queries@example.com',
-    });
-
-    // Create a plan for the owner
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId: ownerId,
-        topic: 'Owner Plan',
-        skillLevel: 'intermediate',
-        weeklyHours: 10,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-        generationStatus: 'ready',
-      })
-      .returning();
-
     ownerPlanId = plan.id;
 
-    // Add modules and tasks to make it a complete plan
-    const [module] = await db
-      .insert(modules)
-      .values({
-        planId: ownerPlanId,
-        order: 1,
-        title: 'Test Module',
-        description: 'Test description',
-        estimatedMinutes: 60,
-      })
-      .returning();
+    const module = await createTestModule({
+      planId: ownerPlanId,
+      title: 'Test Module',
+      description: 'Test description',
+      estimatedMinutes: 60,
+    });
 
-    await db.insert(tasks).values({
+    await createTestTask({
       moduleId: module.id,
-      order: 1,
       title: 'Test Task',
       description: 'Test task description',
       estimatedMinutes: 30,
@@ -80,10 +59,7 @@ describe('Plan Queries - Tenant Scoping', () => {
     });
 
     it('returns null for non-existent plan', async () => {
-      const detail = await getLearningPlanDetail(
-        '00000000-0000-0000-0000-000000000000',
-        ownerId
-      );
+      const detail = await getLearningPlanDetail(NON_EXISTENT_PLAN_ID, ownerId);
 
       expect(detail).toBeNull();
     });
@@ -95,6 +71,8 @@ describe('Plan Queries - Tenant Scoping', () => {
 
       expect(result).not.toBeNull();
       expect(result?.plan.id).toBe(ownerPlanId);
+      expect(result?.plan.topic).toBe('Owner Plan');
+      expect(result?.plan.generationStatus).toBe('ready');
       // Ownership is already enforced by the WHERE clause in the query
     });
 
@@ -102,39 +80,6 @@ describe('Plan Queries - Tenant Scoping', () => {
       const result = await getPlanAttemptsForUser(ownerPlanId, attackerId);
 
       expect(result).toBeNull();
-    });
-  });
-
-  describe('getUserLearningPlans', () => {
-    it('returns only plans owned by the specified user', async () => {
-      // Create another plan for the attacker
-      const [attackerPlan] = await db
-        .insert(learningPlans)
-        .values({
-          userId: attackerId,
-          topic: 'Attacker Plan',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'reading',
-          visibility: 'private',
-          origin: 'ai',
-        })
-        .returning();
-
-      const ownerPlans = await getUserLearningPlans(ownerId);
-      const attackerPlans = await getUserLearningPlans(attackerId);
-
-      expect(ownerPlans).toHaveLength(1);
-      expect(ownerPlans[0].id).toBe(ownerPlanId);
-      expect(ownerPlans[0].userId).toBe(ownerId);
-
-      expect(attackerPlans).toHaveLength(1);
-      expect(attackerPlans[0].id).toBe(attackerPlan.id);
-      expect(attackerPlans[0].userId).toBe(attackerId);
-
-      // Verify no cross-contamination
-      expect(ownerPlans.some((p) => p.id === attackerPlan.id)).toBe(false);
-      expect(attackerPlans.some((p) => p.id === ownerPlanId)).toBe(false);
     });
   });
 });

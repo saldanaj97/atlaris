@@ -1,6 +1,5 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import {
-  requireInternalUserByAuthId,
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/lib/api/plans/route-context';
@@ -15,9 +14,8 @@ import { getDb } from '@/lib/db/runtime';
  * @returns A JSON response containing the list of tasks.
  */
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req, userId }) => {
+  withAuthAndRateLimit('read', async ({ req, user }) => {
     const planId = requirePlanIdFromRequest(req, 'second-to-last');
-    const user = await requireInternalUserByAuthId(userId);
     const db = getDb();
     await requireOwnedPlanById({ planId, ownerUserId: user.id, dbClient: db });
 

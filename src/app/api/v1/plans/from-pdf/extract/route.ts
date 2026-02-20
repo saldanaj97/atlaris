@@ -10,7 +10,7 @@ import {
   validatePdfUpload,
 } from '@/lib/api/pdf-rate-limit';
 import { json } from '@/lib/api/response';
-import { getUserByAuthId } from '@/lib/db/queries/users';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { logger } from '@/lib/logging/logger';
 import {
   extractTextFromPdf as defaultExtractTextFromPdf,
@@ -36,6 +36,9 @@ export type PdfExtractRouteDeps = {
   getPdfPageCountFromBuffer: typeof defaultGetPdfPageCountFromBuffer;
   scanBufferForMalware: typeof defaultScanBufferForMalware;
 };
+
+/** PDF file magic bytes for content-type validation */
+const PDF_SIGNATURE = Buffer.from('%PDF-', 'utf8');
 
 /** Absolute maximum PDF upload size in bytes (50MB) — regardless of tier */
 const ABSOLUTE_MAX_PDF_BYTES = 50 * 1024 * 1024;
@@ -74,11 +77,10 @@ const toUploadValidationError = (
 };
 
 const isPdfMagicBytes = (buffer: Buffer): boolean => {
-  const signature = Buffer.from('%PDF-', 'utf8');
-  if (buffer.length < signature.length) {
+  if (buffer.length < PDF_SIGNATURE.length) {
     return false;
   }
-  return buffer.subarray(0, signature.length).equals(signature);
+  return buffer.subarray(0, PDF_SIGNATURE.length).equals(PDF_SIGNATURE);
 };
 
 function parseFormDataToObject(formData: FormData): Record<string, unknown> {
@@ -148,17 +150,16 @@ async function streamedSizeCheck(
   return { ok: true, body: merged.buffer };
 }
 
-type PdfExtractHandlerCtx = { req: Request; userId: string };
+type PdfExtractHandlerCtx = { req: Request; userId: string; user: DbUser };
 
 async function postHandlerImpl(
   ctx: PdfExtractHandlerCtx,
   deps: PdfExtractRouteDeps
 ): Promise<Response> {
-  const { req, userId } = ctx;
-  const user = await getUserByAuthId(userId);
-  if (!user) {
-    throw new Error('Authenticated user record missing despite provisioning.');
-  }
+  // ctx.userId is the auth/identity-provider ID; ctx.user.id is the app DB primary key.
+  // issuePdfExtractionProof uses userId (auth ID) because proofs are tied to oauth/auth identity.
+  // The rest of the handler uses user.id for throttling, tier checks, and logging.
+  const { req, userId, user } = ctx;
 
   // Streamed body size check before any form parsing.
   // Counts bytes as they arrive; aborts and returns 413 as soon as limit exceeded.

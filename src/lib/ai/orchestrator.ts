@@ -2,13 +2,15 @@ import { aiTimeoutEnv, appEnv } from '@/lib/config/env';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
-  isAttemptsDbClient,
   reserveAttemptSlot,
-  type AttemptRejection,
-  type AttemptReservation,
-  type AttemptsDbClient,
-  type GenerationAttemptRecord,
 } from '@/lib/db/queries/attempts';
+import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-helpers';
+import type {
+  AttemptRejection,
+  AttemptReservation,
+  AttemptsDbClient,
+  GenerationAttemptRecord,
+} from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
 import * as Sentry from '@sentry/nextjs';
@@ -214,14 +216,15 @@ export async function runGenerationAttempt(
   const clock = options.clock ?? DEFAULT_CLOCK;
   const nowFn = options.now ?? (() => new Date());
   const dbClient = options.dbClient;
-  const attemptOps = resolveAttemptOperations(dbClient);
-  const timeoutConfig = resolveTimeoutConfig(options.timeoutConfig, clock);
 
   if (!isAttemptsDbClient(dbClient)) {
     throw new Error(
       'runGenerationAttempt requires dbClient (pass request-scoped getDb() from API routes)'
     );
   }
+
+  const attemptOps = resolveAttemptOperations(dbClient);
+  const timeoutConfig = resolveTimeoutConfig(options.timeoutConfig, clock);
 
   // Use pre-reserved slot if provided; otherwise reserve atomically now
   const reservation =

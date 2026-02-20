@@ -1,4 +1,4 @@
--- Composite index for getOldestUserGenerationAttemptSince / countUserGenerationAttemptsSince
+-- Composite index for selectOldestUserGenerationAttemptSince / selectUserGenerationAttemptsSince (attempts-helpers)
 -- (join generation_attempts → learning_plans, filter by user_id + created_at, ORDER BY created_at).
 -- After applying, verify with:
 --   EXPLAIN (ANALYZE, BUFFERS) SELECT ga.created_at FROM generation_attempts ga

@@ -1,12 +1,63 @@
 import { getDb } from '@/lib/db/runtime';
-import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { getStripe } from './client';
 
 type DbClient = ReturnType<typeof getDb>;
+
+interface SyncSubscriptionToDbOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+function createAbortError(message: string): Error {
+  const error = new Error(message);
+  error.name = 'AbortError';
+  return error;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+async function withAbortSignal<T>(
+  promise: Promise<T>,
+  signal?: AbortSignal
+): Promise<T> {
+  if (!signal) {
+    return promise;
+  }
+
+  if (signal.aborted) {
+    throw createAbortError('Stripe request aborted before execution.');
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(createAbortError('Stripe request aborted.'));
+    };
+
+    signal.addEventListener('abort', onAbort, { once: true });
+
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        const normalizedError =
+          error instanceof Error
+            ? error
+            : new Error(`Unknown rejection reason: ${String(error)}`);
+        reject(normalizedError);
+      }
+    );
+  });
+}
 
 /**
  * Get user's subscription tier from database
@@ -37,11 +88,14 @@ export async function getSubscriptionTier(
 /**
  * Sync subscription data from Stripe to database
  * Called from webhook handlers
+ * @param stripe Optional Stripe client (for tests); uses getStripe() when omitted
  */
 export async function syncSubscriptionToDb(
-  subscription: Stripe.Subscription
+  subscription: Stripe.Subscription,
+  stripeInstance?: Stripe,
+  options?: SyncSubscriptionToDbOptions
 ): Promise<void> {
-  const stripe = getStripe();
+  const stripe = stripeInstance ?? getStripe();
   const customerId =
     typeof subscription.customer === 'string'
       ? subscription.customer
@@ -82,10 +136,20 @@ export async function syncSubscriptionToDb(
   let tier: 'free' | 'starter' | 'pro' = existingTier;
 
   if (priceId) {
+    const requestTimeoutMs = options?.timeoutMs ?? 10_000;
     try {
-      const price = await stripe.prices.retrieve(priceId, {
-        expand: ['product'],
-      });
+      const price = await withAbortSignal(
+        stripe.prices.retrieve(
+          priceId,
+          {
+            expand: ['product'],
+          },
+          {
+            timeout: requestTimeoutMs,
+          }
+        ),
+        options?.signal
+      );
 
       const product = price.product as Stripe.Product;
       const tierMetadata = product.metadata?.tier;
@@ -94,14 +158,25 @@ export async function syncSubscriptionToDb(
         tier = tierMetadata;
       }
     } catch (error) {
-      logger.error(
-        {
-          priceId,
-          event: 'subscription_sync_price_fetch_failed',
-          error,
-        },
-        'Error retrieving Stripe price/product during subscription sync'
-      );
+      if (isAbortError(error)) {
+        logger.warn(
+          {
+            priceId,
+            event: 'subscription_sync_price_fetch_aborted',
+            timeoutMs: requestTimeoutMs,
+          },
+          'Stripe price lookup aborted during subscription sync'
+        );
+      } else {
+        logger.error(
+          {
+            priceId,
+            event: 'subscription_sync_price_fetch_failed',
+            error,
+          },
+          'Error retrieving Stripe price/product during subscription sync'
+        );
+      }
     }
   }
 
@@ -141,13 +216,15 @@ export async function syncSubscriptionToDb(
 
 /**
  * Create a Stripe customer for a user
+ * @param stripeInstance Optional Stripe client (for tests); uses getStripe() when omitted
  * @returns Stripe customer ID
  */
 export async function createCustomer(
   userId: string,
-  email: string
+  email: string,
+  stripeInstance?: Stripe
 ): Promise<string> {
-  const stripe = getStripe();
+  const stripe = stripeInstance ?? getStripe();
 
   // Check if user already has a Stripe customer ID
   const [existingUser] = await db
@@ -184,13 +261,15 @@ export async function createCustomer(
  * Generate billing portal URL for customer
  * @param customerId Stripe customer ID
  * @param returnUrl URL to return to after portal session
+ * @param stripeInstance Optional Stripe client (for tests); uses getStripe() when omitted
  * @returns Portal session URL
  */
 export async function getCustomerPortalUrl(
   customerId: string,
-  returnUrl: string
+  returnUrl: string,
+  stripeInstance?: Stripe
 ): Promise<string> {
-  const stripe = getStripe();
+  const stripe = stripeInstance ?? getStripe();
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
@@ -202,8 +281,12 @@ export async function getCustomerPortalUrl(
 
 /**
  * Cancel a subscription and downgrade user to free tier
+ * @param stripeInstance Optional Stripe client (for tests); uses getStripe() when omitted
  */
-export async function cancelSubscription(userId: string): Promise<void> {
+export async function cancelSubscription(
+  userId: string,
+  stripeInstance?: Stripe
+): Promise<void> {
   const [user] = await db
     .select({ stripeSubscriptionId: users.stripeSubscriptionId })
     .from(users)
@@ -214,7 +297,7 @@ export async function cancelSubscription(userId: string): Promise<void> {
     throw new Error('No active subscription found');
   }
 
-  const stripe = getStripe();
+  const stripe = stripeInstance ?? getStripe();
 
   // Cancel subscription at period end
   await stripe.subscriptions.update(user.stripeSubscriptionId, {

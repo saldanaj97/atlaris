@@ -10,12 +10,9 @@ import {
   Target,
 } from 'lucide-react';
 
+import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/formatters';
-import type {
-  ProgressStatus,
-  ResourceType,
-  TaskWithRelations,
-} from '@/lib/types/db';
+import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 import { cn } from '@/lib/utils';
 import { TaskStatusButton } from './TaskStatusButton';
 
@@ -64,14 +61,14 @@ const RESOURCE_CONFIG: Record<
 };
 
 // Base classes shared across all task card states
-const baseClasses = 'group rounded-2xl border p-6 transition-all duration-300';
+const BASE_CLASSES = 'group rounded-2xl border p-6 transition-all duration-300';
 
 // Classes for completed task state
-const completedClasses =
+const COMPLETED_CLASSES =
   'border-green-200/50 bg-green-50/30 backdrop-blur-sm dark:border-green-800/30 dark:bg-green-950/20';
 
 // Classes for default (non-completed) task state
-const defaultClasses =
+const DEFAULT_CLASSES =
   'hover:border-primary/30 dark:hover:border-primary/50 border-white/40 bg-white/30 shadow-lg backdrop-blur-xl hover:shadow-xl dark:border-stone-800/50 dark:bg-stone-900/30';
 
 /**
@@ -91,8 +88,8 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        baseClasses,
-        isCompleted ? completedClasses : defaultClasses
+        BASE_CLASSES,
+        isCompleted ? COMPLETED_CLASSES : DEFAULT_CLASSES
       )}
     >
       {/* Task Header */}

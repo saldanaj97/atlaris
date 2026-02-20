@@ -20,9 +20,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { ModuleNavItem } from '@/lib/db/queries/modules';
+import type {
+  ModuleNavItem,
+  ModuleWithTasks,
+} from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/formatters';
-import type { ModuleWithTasks, ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db';
 
 interface ModuleHeaderProps {
   module: ModuleWithTasks;

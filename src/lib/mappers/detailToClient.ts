@@ -1,11 +1,11 @@
-import { ATTEMPT_CAP } from '@/lib/db/queries/attempts';
+import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
 import { logger } from '@/lib/logging/logger';
 import { derivePlanStatus } from '@/lib/plans/status';
-import {
-  type AttemptStatus,
+import type {
+  AttemptStatus,
   ClientGenerationAttempt,
   ClientPlanDetail,
-  type FailureClassification,
+  FailureClassification,
 } from '@/lib/types/client';
 import type { GenerationAttempt, LearningPlanDetail } from '@/lib/types/db';
 

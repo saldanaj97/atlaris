@@ -1,0 +1,139 @@
+name: Deploy Production Migrations
+
+on:
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:
+    inputs:
+      deploy_migrations:
+        description: 'Run database migrations'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # Never cancel production deployments
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+  DATABASE_URL_NON_POOLING: ${{ secrets.DATABASE_URL_PROD_NON_POOLING }}
+
+jobs:
+  check-db-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run_migrations: ${{ steps.set.outputs.run_migrations }}
+      reason: ${{ steps.set.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide whether migrations should run
+        id: set
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_DEPLOY_MIGRATIONS: ${{ github.event.inputs.deploy_migrations }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ "$INPUT_DEPLOY_MIGRATIONS" = "false" ]; then
+              echo "run_migrations=false" >> "$GITHUB_OUTPUT"
+              echo "reason=manual-dispatch-disabled" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "run_migrations=true" >> "$GITHUB_OUTPUT"
+            echo "reason=manual-dispatch-enabled" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          files=""
+          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            files=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA" || true)
+          fi
+
+          if [ -z "$files" ]; then
+            files=$(git diff-tree --no-commit-id --name-only -r HEAD)
+          fi
+
+          run_migrations="false"
+          if printf '%s\n' "$files" | grep -Eq '^(src/lib/db/schema/|src/lib/db/migrations/|src/lib/db/enums\.ts$|drizzle\.config\.ts$|\.github/workflows/deploy-production-migrations\.yml$)'; then
+            run_migrations="true"
+          fi
+
+          echo "run_migrations=$run_migrations" >> "$GITHUB_OUTPUT"
+          if [ "$run_migrations" = "true" ]; then
+            echo "reason=db-related-changes-detected" >> "$GITHUB_OUTPUT"
+          else
+            echo "reason=no-db-related-changes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Preflight summary
+        run: |
+          echo "Deploy Production Migrations preflight"
+          echo "- run_migrations: ${{ steps.set.outputs.run_migrations }}"
+          echo "- reason: ${{ steps.set.outputs.reason }}"
+
+  deploy-production:
+    needs: check-db-changes
+    if: needs.check-db-changes.outputs.run_migrations == 'true'
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deployment context
+        run: |
+          echo "Running production migrations"
+          echo "- reason: ${{ needs.check-db-changes.outputs.reason }}"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Generate migrations from schema changes (no DB needed).
+      # Commit and push new migration files to main if schema changed without migrations.
+      - name: Generate migrations
+        run: pnpm db:generate
+
+      - name: Commit and push generated migrations
+        run: |
+          git add src/lib/db/migrations/
+          if git diff --staged --quiet; then
+            echo "No migration changes to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore: auto-generate migrations from schema [skip ci]"
+            git push origin HEAD:main
+          fi
+
+      - name: Run Drizzle migrations
+        run: pnpm db:migrate
+
+  skip-migrations:
+    needs: check-db-changes
+    if: needs.check-db-changes.outputs.run_migrations != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip summary
+        run: |
+          echo "Skipping production migrations"
+          echo "- reason: ${{ needs.check-db-changes.outputs.reason }}"

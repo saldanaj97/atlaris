@@ -8,14 +8,16 @@ if (!process.env.CI) {
   });
 }
 
-// Prefer DATABASE_URL_NON_POOLING for migrations (avoids connection pooler issues with DDL),
-// but fall back to DATABASE_URL if only that is provided (e.g., in CI environments).
+// Prefer direct connection URLs for migrations (avoids connection pooler issues with DDL),
+// with fallbacks for environments that only provide pooled DATABASE_URL.
 const databaseUrl =
-  process.env.DATABASE_URL_NON_POOLING || process.env.DATABASE_URL;
+  process.env.DATABASE_URL_NON_POOLING ||
+  process.env.DATABASE_URL_UNPOOLED ||
+  process.env.DATABASE_URL;
 
 if (!databaseUrl) {
   throw new Error(
-    'DATABASE_URL_NON_POOLING or DATABASE_URL must be set for migrations'
+    'DATABASE_URL_NON_POOLING, DATABASE_URL_UNPOOLED, or DATABASE_URL must be set for migrations'
   );
 }
 

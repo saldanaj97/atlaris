@@ -815,11 +815,17 @@ async function incrementPdfUsageInTx(
 
 const TIER_RECOMMENDATION_THRESHOLD_WEEKS = 8;
 
+export type PlanDurationCapResult = {
+  allowed: boolean;
+  reason?: string;
+  upgradeUrl?: string;
+};
+
 export function checkPlanDurationCap(params: {
   tier: SubscriptionTier;
   weeklyHours: number;
   totalWeeks: number;
-}): { allowed: boolean; reason?: string; upgradeUrl?: string } {
+}): PlanDurationCapResult {
   const caps = TIER_LIMITS[params.tier];
   if (caps.maxWeeks !== null && params.totalWeeks > caps.maxWeeks) {
     const recommended =

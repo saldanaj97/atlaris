@@ -1,60 +1,89 @@
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
-
+/**
+ * Plan-related queries for learning plans, summaries, detail views, and generation attempts.
+ * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
+ */
+import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import {
+  fetchTaskProgressRows,
+  fetchTaskResourceRows,
+} from '@/lib/db/queries/helpers/task-relations-helpers';
+import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
 import {
   generationAttempts,
   learningPlans,
   modules,
-  resources,
-  taskProgress,
-  taskResources,
   tasks,
 } from '@/lib/db/schema';
 import {
   mapLearningPlanDetail,
   mapPlanSummaries,
 } from '@/lib/mappers/planQueries';
-import { LearningPlan, LearningPlanDetail, PlanSummary } from '@/lib/types/db';
+import type {
+  GenerationAttempt,
+  LearningPlanDetail,
+  PlanSummary,
+} from '@/lib/types/db';
+import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
+/** RLS-enforced database client for plan queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;
 
-export async function getUserLearningPlans(
-  userId: string
-): Promise<LearningPlan[]> {
-  const db = getDb();
-  return await db
-    .select()
-    .from(learningPlans)
-    .where(eq(learningPlans.userId, userId));
-}
+/** Maximum number of generation attempts to return in attempt history queries. */
+const MAX_ATTEMPTS_HISTORY_LIMIT = 10;
 
+/**
+ * Fetches plan summaries with completion metrics for a user.
+ * Returns plans with modules, task counts, progress, and aggregated time estimates.
+ *
+ * @param userId - Authenticated user ID (RLS scopes results)
+ * @param dbClient - Optional client; defaults to getDb()
+ * @param options - Optional pagination controls for large plan sets
+ * @returns PlanSummary[] - Empty array if user has no plans
+ */
 export async function getPlanSummariesForUser(
   userId: string,
-  dbClient: DbClient = getDb()
-): Promise<PlanSummary[]> {
-  const planRows = await dbClient
-    .select()
-    .from(learningPlans)
-    .where(eq(learningPlans.userId, userId));
-
-  if (!planRows.length) {
-    // TODO - If adding pagination or filtering (e.g., by topic or status) ensure multiple
-    // conditions are combined via a single where(and(...)) call instead of chaining.
-    return [];
+  dbClient?: DbClient,
+  options?: {
+    limit?: number;
+    offset?: number;
   }
+): Promise<PlanSummary[]> {
+  const client = dbClient ?? getDb();
 
-  const planIds = planRows.map((plan) => plan.id);
+  try {
+    const planQuery = client
+      .select()
+      .from(learningPlans)
+      .where(eq(learningPlans.userId, userId))
+      .$dynamic();
 
-  const moduleRows = await dbClient
-    .select()
-    .from(modules)
-    .where(inArray(modules.planId, planIds))
-    .orderBy(asc(modules.order));
+    planQuery.orderBy(desc(learningPlans.createdAt));
 
-  const moduleIds = moduleRows.map((module) => module.id);
+    if (options?.limit !== undefined) {
+      planQuery.limit(Math.max(1, options.limit));
+    }
 
-  const taskRows = moduleIds.length
-    ? await dbClient
+    if (options?.offset !== undefined) {
+      planQuery.offset(Math.max(0, options.offset));
+    }
+
+    const planRows = await planQuery;
+
+    if (!planRows.length) {
+      return [];
+    }
+
+    const planIds = planRows.map((plan) => plan.id);
+
+    const [moduleRows, taskRows] = await Promise.all([
+      client
+        .select()
+        .from(modules)
+        .where(inArray(modules.planId, planIds))
+        .orderBy(asc(modules.order)),
+      client
         .select({
           id: tasks.id,
           moduleId: tasks.moduleId,
@@ -63,162 +92,168 @@ export async function getPlanSummariesForUser(
         })
         .from(tasks)
         .innerJoin(modules, eq(tasks.moduleId, modules.id))
-        .where(inArray(modules.planId, planIds))
-    : [];
+        .where(inArray(modules.planId, planIds)),
+    ]);
 
-  const taskIds = taskRows.map((task) => task.id);
+    const taskIds = taskRows.map((task) => task.id);
 
-  const progressRows = taskIds.length
-    ? await dbClient
-        .select({ taskId: taskProgress.taskId, status: taskProgress.status })
-        .from(taskProgress)
-        .where(
-          and(
-            eq(taskProgress.userId, userId),
-            inArray(taskProgress.taskId, taskIds)
-          )
-        )
-    : [];
+    const progressRows = await fetchTaskProgressRows({
+      taskIds,
+      userId,
+      dbClient: client,
+    });
 
-  return mapPlanSummaries({
-    planRows,
-    moduleRows,
-    taskRows,
-    progressRows,
-  });
+    return mapPlanSummaries({
+      planRows,
+      moduleRows,
+      taskRows,
+      progressRows,
+    });
+  } finally {
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
+  }
 }
 
+/**
+ * Fetches full plan detail for a single plan: modules, tasks, resources, progress,
+ * and generation attempt metadata. Used for plan detail pages.
+ *
+ * @param planId - Plan ID
+ * @param userId - Authenticated user ID (ownership check; returns null if mismatch)
+ * @param dbClient - Optional client; defaults to getDb()
+ * @returns LearningPlanDetail or null if plan not found or not owned by user
+ */
 export async function getLearningPlanDetail(
   planId: string,
-  userId: string
+  userId: string,
+  dbClient?: DbClient
 ): Promise<LearningPlanDetail | null> {
-  const db = getDb();
-  const planRow = await db
-    .select()
-    .from(learningPlans)
-    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
-    .limit(1);
+  const client = dbClient ?? getDb();
 
-  if (!planRow.length) {
-    return null;
-  }
+  try {
+    const plan = await selectOwnedPlanById({
+      planId,
+      ownerUserId: userId,
+      dbClient: client,
+    });
 
-  const plan = planRow[0];
+    if (!plan) {
+      return null;
+    }
 
-  const moduleRows = await db
-    .select()
-    .from(modules)
-    .where(eq(modules.planId, planId))
-    .orderBy(asc(modules.order));
-
-  const moduleIds = moduleRows.map((module) => module.id);
-
-  const taskRows = moduleIds.length
-    ? await db
+    // Fire plan-level queries in parallel: modules + generation attempt metadata
+    const [moduleRows, attemptMetaRows] = await Promise.all([
+      client
         .select()
-        .from(tasks)
-        .where(inArray(tasks.moduleId, moduleIds))
-        .orderBy(asc(tasks.order))
-    : [];
-
-  const taskIds = taskRows.map((task) => task.id);
-
-  const progressRows = taskIds.length
-    ? await db
-        .select()
-        .from(taskProgress)
-        .where(
-          and(
-            eq(taskProgress.userId, userId),
-            inArray(taskProgress.taskId, taskIds)
-          )
-        )
-    : [];
-
-  const resourceRows = taskIds.length
-    ? await db
+        .from(modules)
+        .where(eq(modules.planId, planId))
+        .orderBy(asc(modules.order)),
+      client
         .select({
-          id: taskResources.id,
-          taskId: taskResources.taskId,
-          resourceId: taskResources.resourceId,
-          order: taskResources.order,
-          notes: taskResources.notes,
-          createdAt: taskResources.createdAt,
-          resource: {
-            id: resources.id,
-            type: resources.type,
-            title: resources.title,
-            url: resources.url,
-            domain: resources.domain,
-            author: resources.author,
-            durationMinutes: resources.durationMinutes,
-            costCents: resources.costCents,
-            currency: resources.currency,
-            tags: resources.tags,
-            createdAt: resources.createdAt,
-          },
+          attempt: generationAttempts,
+          attemptsCount: sql<number>`count(*) over ()`,
         })
-        .from(taskResources)
-        .innerJoin(resources, eq(taskResources.resourceId, resources.id))
-        .where(inArray(taskResources.taskId, taskIds))
-        .orderBy(asc(taskResources.order))
-    : [];
+        .from(generationAttempts)
+        .where(eq(generationAttempts.planId, planId))
+        .orderBy(desc(generationAttempts.createdAt))
+        .limit(1),
+    ]);
 
-  const [{ attemptCount = 0 } = { attemptCount: 0 }] = await db
-    .select({ attemptCount: count(generationAttempts.id) })
-    .from(generationAttempts)
-    .where(eq(generationAttempts.planId, planId));
+    const moduleIds = moduleRows.map((module) => module.id);
 
-  const attemptsCount = Number(attemptCount ?? 0);
+    const taskRows = moduleIds.length
+      ? await client
+          .select()
+          .from(tasks)
+          .where(inArray(tasks.moduleId, moduleIds))
+          .orderBy(asc(tasks.order))
+      : [];
 
-  let latestAttempt = null;
-  if (attemptsCount > 0) {
-    const [attempt] = await db
-      .select()
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId))
-      .orderBy(desc(generationAttempts.createdAt))
-      .limit(1);
+    const taskIds = taskRows.map((task) => task.id);
 
-    latestAttempt = attempt ?? null;
+    // Fire task-dependent queries in parallel
+    const [progressRows, resourceRows] = await Promise.all([
+      fetchTaskProgressRows({
+        taskIds,
+        userId,
+        dbClient: client,
+      }),
+      fetchTaskResourceRows({ taskIds, dbClient: client }),
+    ]);
+
+    const attemptsCount = Number(attemptMetaRows[0]?.attemptsCount ?? 0);
+    const latestAttemptOrNull: GenerationAttempt | null =
+      attemptMetaRows[0]?.attempt ?? null;
+
+    return mapLearningPlanDetail({
+      plan,
+      moduleRows,
+      taskRows,
+      progressRows,
+      resourceRows,
+      latestAttempt: latestAttemptOrNull,
+      attemptsCount,
+    });
+  } finally {
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
-
-  return mapLearningPlanDetail({
-    plan,
-    moduleRows,
-    taskRows,
-    progressRows,
-    resourceRows: resourceRows.map((r) => ({
-      id: r.id,
-      taskId: r.taskId,
-      resourceId: r.resourceId,
-      order: r.order,
-      notes: r.notes,
-      createdAt: r.createdAt,
-      resource: r.resource,
-    })),
-    latestAttempt,
-    attemptsCount,
-  });
 }
 
-export async function getPlanAttemptsForUser(planId: string, userId: string) {
-  const db = getDb();
-  const planRow = await db
-    .select({ id: learningPlans.id })
-    .from(learningPlans)
-    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
-    .limit(1);
+/** Return type for getPlanAttemptsForUser. */
+export interface PlanAttemptsResult {
+  plan: PlanAttemptsPlanMeta;
+  attempts: GenerationAttempt[];
+}
 
-  if (!planRow.length) {
-    return null;
+/**
+ * Fetches all generation attempts for a plan, ordered by creation (newest first).
+ * Verifies plan ownership before returning; returns null if plan not found.
+ *
+ * @param planId - Plan ID
+ * @param userId - Authenticated user ID (ownership check)
+ * @param dbClient - Optional client; defaults to getDb()
+ * @returns { plan, attempts } or null if plan not found or not owned by user
+ */
+export async function getPlanAttemptsForUser(
+  planId: string,
+  userId: string,
+  dbClient?: DbClient
+): Promise<PlanAttemptsResult | null> {
+  const client = dbClient ?? getDb();
+
+  try {
+    const [plan, attempts] = await Promise.all([
+      selectOwnedPlanById({
+        planId,
+        ownerUserId: userId,
+        dbClient: client,
+      }),
+      client
+        .select()
+        .from(generationAttempts)
+        .where(eq(generationAttempts.planId, planId))
+        .orderBy(desc(generationAttempts.createdAt))
+        .limit(MAX_ATTEMPTS_HISTORY_LIMIT),
+    ]);
+
+    if (!plan) {
+      return null;
+    }
+
+    const planMeta: PlanAttemptsPlanMeta = {
+      id: plan.id,
+      topic: plan.topic,
+      generationStatus: plan.generationStatus,
+    };
+
+    return { plan: planMeta, attempts };
+  } finally {
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
-
-  const attempts = await db
-    .select()
-    .from(generationAttempts)
-    .where(eq(generationAttempts.planId, planId))
-    .orderBy(desc(generationAttempts.createdAt));
-
-  return { plan: planRow[0], attempts };
 }

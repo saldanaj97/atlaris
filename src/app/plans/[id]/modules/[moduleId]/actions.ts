@@ -12,15 +12,18 @@ import { revalidatePath } from 'next/cache';
 
 import { getEffectiveAuthUserId } from '@/lib/api/auth';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getModuleDetail } from '@/lib/db/queries/modules';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
 import { getUserByAuthId } from '@/lib/db/queries/users';
+import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
-import type { ModuleAccessResult } from './types';
-import { moduleError, moduleSuccess } from './helpers';
+import {
+  moduleError,
+  moduleSuccess,
+} from '@/app/plans/[id]/modules/[moduleId]/helpers';
+import type { ModuleAccessResult } from '@/app/plans/[id]/modules/[moduleId]/types';
 
 interface UpdateTaskProgressInput {
   planId: string;
@@ -76,14 +79,12 @@ export async function getModuleForPage(
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/get-module'),
-    authUserId,
-    rlsDb,
-    cleanup
+    { userId: authUserId, db: rlsDb, cleanup }
   );
 
   try {
     const moduleData = await withRequestContext(ctx, () =>
-      getModuleDetail(moduleId, user.id)
+      getModuleDetail(moduleId)
     );
 
     if (!moduleData) {
@@ -140,9 +141,7 @@ export async function updateModuleTaskProgressAction({
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
   const ctx = createRequestContext(
     new Request('http://localhost/server-action/update-module-task-progress'),
-    authUserId,
-    rlsDb,
-    cleanup
+    { userId: authUserId, db: rlsDb, cleanup }
   );
 
   try {

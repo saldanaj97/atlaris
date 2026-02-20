@@ -66,6 +66,11 @@ export const IP_RATE_LIMIT_CONFIGS = {
     maxRequests: 30,
     windowMs: 60 * 1000, // 30 requests per minute
   },
+  /** Internal endpoints (cron/worker, e.g. /api/internal/) - permissive for single-worker traffic */
+  internal: {
+    maxRequests: 60,
+    windowMs: 60 * 1000, // 60 requests per minute
+  },
 } as const;
 
 /**

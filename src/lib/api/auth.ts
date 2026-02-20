@@ -1,10 +1,7 @@
-import { appEnv, devAuthEnv } from '@/lib/config/env';
 import { auth } from '@/lib/auth/server';
-import {
-  createUser,
-  getUserByAuthId,
-  type DbUser,
-} from '@/lib/db/queries/users';
+import { appEnv, devAuthEnv } from '@/lib/config/env';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
+import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { createRequestContext, withRequestContext } from './context';
 import { AuthError } from './errors';
 import {
@@ -98,6 +95,7 @@ type RouteHandlerParams = Record<string, string | undefined>;
 type HandlerCtx = {
   req: Request;
   userId: string;
+  user: DbUser;
   params: RouteHandlerParams;
 };
 
@@ -122,10 +120,10 @@ export function withAuth(handler: Handler): PlainHandler {
     if (appEnv.isTest) {
       const user = await requireCurrentUserRecord();
       const userId = user.authUserId;
-      const requestContext = createRequestContext(req, userId);
+      const requestContext = createRequestContext(req, { userId, user });
 
       return await withRequestContext(requestContext, () =>
-        handler({ req, userId, params })
+        handler({ req, userId, user, params })
       );
     }
 
@@ -135,11 +133,16 @@ export function withAuth(handler: Handler): PlainHandler {
     const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
     const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(userId);
 
-    const requestContext = createRequestContext(req, userId, rlsDb, cleanup);
+    const requestContext = createRequestContext(req, {
+      userId,
+      user,
+      db: rlsDb,
+      cleanup,
+    });
 
     try {
       return await withRequestContext(requestContext, () =>
-        handler({ req, userId, params })
+        handler({ req, userId, user, params })
       );
     } finally {
       await cleanup();

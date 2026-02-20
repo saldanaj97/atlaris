@@ -30,7 +30,10 @@ export function configureLocalNeon() {
   // Configure WebSocket security based on host
   try {
     const connectionStringUrl = new URL(
-      process.env.DATABASE_URL_NON_POOLING || process.env.DATABASE_URL || ''
+      process.env.DATABASE_URL_NON_POOLING ||
+        process.env.DATABASE_URL_UNPOOLED ||
+        process.env.DATABASE_URL ||
+        ''
     );
     neonConfig.useSecureWebSocket = connectionStringUrl.hostname !== localHost;
   } catch {

@@ -4,7 +4,9 @@ import { setTestUser, clearTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
-// Mock auth before importing the route
+// TODO: Prefer DI over module mock. The route uses withAuthAndRateLimit which
+// resolves auth via @/lib/auth/server; injecting getSession would require
+// refactoring the shared auth layer to accept an optional auth dependency.
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
@@ -49,7 +51,7 @@ describe('POST /api/v1/notifications/weekly-summary', () => {
 
     expect(response.status).toBe(501);
     const body = await response.json();
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    expect(body.code).toBe('NOT_IMPLEMENTED');
   });
 
   it('should require authentication', async () => {

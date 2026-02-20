@@ -1,3 +1,7 @@
+import type {
+  ModuleWithTasks,
+  TaskWithRelations,
+} from '@/lib/db/queries/types/modules.types';
 import {
   mapAttemptsToClient,
   mapDetailToClient,
@@ -6,9 +10,7 @@ import type {
   GenerationAttempt,
   GenerationStatus,
   LearningPlanDetail,
-  ModuleWithTasks,
   TaskProgress,
-  TaskWithRelations,
 } from '@/lib/types/db';
 import { describe, expect, it } from 'vitest';
 import {

@@ -22,7 +22,10 @@ export function derivePlanStatus(params: {
     return 'failed';
   }
 
-  if (generationStatus === 'generating') {
+  if (
+    generationStatus === 'generating' ||
+    generationStatus === 'pending_retry'
+  ) {
     return 'processing';
   }
 

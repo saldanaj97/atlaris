@@ -2,20 +2,27 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { setTestUser, clearTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+import { auth } from '../../mocks/shared/auth-server';
 
-// Mock auth before importing the route
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const authUserId = 'auth_resources_test_user';
+
+const authenticatedSession = {
+  data: {
+    user: {
+      id: authUserId,
+      email: 'resources@example.com',
+      name: 'Resources Test',
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      image: null,
+    },
+  },
+} as const;
 
 describe('GET /api/v1/resources', () => {
-  const authUserId = 'auth_resources_test_user';
-
   beforeEach(async () => {
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
-    });
+    vi.mocked(auth.getSession).mockResolvedValue(authenticatedSession);
 
     setTestUser(authUserId);
 
@@ -41,17 +48,14 @@ describe('GET /api/v1/resources', () => {
     expect(response.status).toBe(501);
     const body = await response.json();
     expect(body).toHaveProperty('error');
-    expect(body.error).toHaveProperty('message', 'Not Implemented');
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    expect(body.error).toBe('Not Implemented');
+    expect(body.code).toBe('NOT_IMPLEMENTED');
   });
 
   it('should require authentication', async () => {
     clearTestUser();
 
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: null },
-    });
+    vi.mocked(auth.getSession).mockResolvedValue({ data: null });
 
     const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest('http://localhost:3000/api/v1/resources', {

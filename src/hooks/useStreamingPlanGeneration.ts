@@ -2,7 +2,10 @@
 
 import { useCallback, useRef, useState } from 'react';
 
+import { StreamingEventSchema } from '@/lib/ai/streaming/schema';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
+import { parseApiErrorResponse } from '@/lib/api/error-response';
+import { clientLogger } from '@/lib/logging/client';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 
 type GenerationStatus =
@@ -79,7 +82,16 @@ const parseEventLine = (line: string): StreamingEvent | null => {
     : trimmed;
   if (!payload) return null;
   try {
-    return JSON.parse(payload) as StreamingEvent;
+    const parsed: unknown = JSON.parse(payload);
+    const result = StreamingEventSchema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
+    }
+    clientLogger.warn('Streaming event validation failed', {
+      issues: result.error.issues,
+      raw: payload,
+    });
+    return null;
   } catch {
     return null;
   }
@@ -118,27 +130,29 @@ export function useStreamingPlanGeneration() {
 
       if (!response.ok || !response.body) {
         const fallbackMessage = 'Unable to start streaming plan generation.';
-        let message = fallbackMessage;
-        let code: string | undefined;
-        try {
-          const json = (await response.json()) as {
-            error?: string;
-            code?: string;
-          };
-          if (json?.error) {
-            message = json.error;
-          }
-          if (json?.code) {
-            code = json.code;
-          }
-        } catch {
-          // ignore parse errors; use fallback
-        }
-        const error = new Error(message) as StreamingError;
+        const parsedError = await parseApiErrorResponse(
+          response,
+          fallbackMessage
+        );
+        const classification =
+          parsedError.classification ??
+          (response.status === 429 ? 'rate_limit' : 'provider_error');
+        const retryable =
+          classification === 'rate_limit' || classification === 'timeout';
+
+        setState((prev) => ({
+          ...prev,
+          status: 'error',
+          error: {
+            message: parsedError.error,
+            classification,
+            retryable,
+          },
+        }));
+
+        const error = new Error(parsedError.error) as StreamingError;
         error.status = response.status;
-        if (code) {
-          error.code = code;
-        }
+        error.code = parsedError.code;
         throw error;
       }
 
@@ -286,9 +300,7 @@ export function useStreamingPlanGeneration() {
           }
         };
 
-        void pump().then(() => {
-          // Resolve/reject handled by events; no-op on normal completion.
-        });
+        void pump();
       });
     },
     []

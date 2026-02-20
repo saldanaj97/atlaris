@@ -1,3 +1,7 @@
+import type {
+  ModuleWithTasks,
+  TaskResourceWithResource,
+} from '@/lib/db/queries/types/modules.types';
 import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import {
@@ -49,29 +53,15 @@ export type User = InferSelectModel<typeof users>;
 export type LearningPlan = InferSelectModel<typeof learningPlans>;
 export type Module = InferSelectModel<typeof modules>;
 export type Task = InferSelectModel<typeof tasks>;
-export type Resource = InferSelectModel<typeof resources>;
 export type TaskResource = InferSelectModel<typeof taskResources>;
 export type TaskProgress = InferSelectModel<typeof taskProgress>;
 export type PlanGeneration = InferSelectModel<typeof planGenerations>;
 export type GenerationAttempt = InferSelectModel<typeof generationAttempts>;
 
-export interface TaskResourceWithResource extends TaskResource {
-  resource: Resource;
-}
-
-export interface TaskWithRelations extends Task {
-  resources: TaskResourceWithResource[];
-  progress?: TaskProgress | null;
-}
-
 // Narrow variant without progress, kept for compatibility with older code
 export type TaskWithResources = Task & {
   resources: TaskResourceWithResource[];
 };
-
-export interface ModuleWithTasks extends Module {
-  tasks: TaskWithRelations[];
-}
 
 export interface LearningPlanWithModules extends LearningPlan {
   modules: ModuleWithTasks[];

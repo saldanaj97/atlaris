@@ -1,19 +1,24 @@
+import Stripe from 'stripe';
 import { z } from 'zod';
 
+import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { json, jsonError } from '@/lib/api/response';
+import { AppError, ValidationError } from '@/lib/api/errors';
+import { json } from '@/lib/api/response';
 import { appEnv } from '@/lib/config/env';
-import { getUserByAuthId } from '@/lib/db/queries/users';
+import { logger } from '@/lib/logging/logger';
 import { getStripe } from '@/lib/stripe/client';
 import { createCustomer } from '@/lib/stripe/subscriptions';
 
-const createCheckoutBodySchema = z.object({
-  priceId: z
-    .string({ message: 'priceId is required' })
-    .min(1, 'priceId is required'),
-  successUrl: z.string().optional(),
-  cancelUrl: z.string().optional(),
-});
+const createCheckoutBodySchema = z
+  .object({
+    priceId: z
+      .string({ message: 'priceId is required' })
+      .min(1, 'priceId is required'),
+    successUrl: z.string().optional(),
+    cancelUrl: z.string().optional(),
+  })
+  .strict();
 
 function isValidRedirectUrl(url: string | undefined): boolean {
   if (!url) return true;
@@ -47,70 +52,113 @@ function resolveRedirectUrl(
   return url;
 }
 
-// POST /api/v1/stripe/create-checkout
-export const POST = withErrorBoundary(
-  withAuthAndRateLimit('billing', async ({ req, userId: authUserId }) => {
-    const stripe = getStripe();
+/**
+ * Factory for the create-checkout POST handler. Accepts an optional Stripe
+ * client for tests; production uses getStripe() when omitted.
+ */
+export function createCreateCheckoutHandler(
+  stripeInstance?: Stripe
+): PlainHandler {
+  return withErrorBoundary(
+    withAuthAndRateLimit('billing', async ({ req, user }) => {
+      let body: unknown;
+      try {
+        body = await req.json();
+      } catch {
+        throw new ValidationError('Invalid JSON in request body');
+      }
 
-    const user = await getUserByAuthId(authUserId);
-    if (!user) {
-      return jsonError('User not found', { status: 404 });
-    }
+      const parseResult = createCheckoutBodySchema.safeParse(body);
+      if (!parseResult.success) {
+        const firstError = parseResult.error.issues[0];
+        throw new ValidationError(
+          firstError?.message ?? 'Invalid request body'
+        );
+      }
 
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      return jsonError('Invalid JSON in request body', { status: 400 });
-    }
+      const { priceId, successUrl, cancelUrl } = parseResult.data;
 
-    const parseResult = createCheckoutBodySchema.safeParse(body);
-    if (!parseResult.success) {
-      const firstError = parseResult.error.issues[0];
-      return jsonError(firstError?.message ?? 'Invalid request body', {
-        status: 400,
-      });
-    }
+      if (!isValidRedirectUrl(successUrl)) {
+        throw new ValidationError(
+          'successUrl must be a relative path or same-origin URL'
+        );
+      }
 
-    const { priceId, successUrl, cancelUrl } = parseResult.data;
+      if (!isValidRedirectUrl(cancelUrl)) {
+        throw new ValidationError(
+          'cancelUrl must be a relative path or same-origin URL'
+        );
+      }
 
-    if (!isValidRedirectUrl(successUrl)) {
-      return jsonError(
-        'successUrl must be a relative path or same-origin URL',
-        {
-          status: 400,
-        }
+      const customerId = await createCustomer(
+        user.id,
+        user.email,
+        stripeInstance
       );
-    }
 
-    if (!isValidRedirectUrl(cancelUrl)) {
-      return jsonError('cancelUrl must be a relative path or same-origin URL', {
-        status: 400,
-      });
-    }
+      const stripe = stripeInstance ?? getStripe();
+      let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
+      try {
+        session = await stripe.checkout.sessions.create({
+          customer: customerId,
+          line_items: [
+            {
+              price: priceId,
+              quantity: 1,
+            },
+          ],
+          mode: 'subscription',
+          success_url: resolveRedirectUrl(
+            successUrl,
+            '/settings/billing?session_id={CHECKOUT_SESSION_ID}'
+          ),
+          cancel_url: resolveRedirectUrl(cancelUrl, '/settings/billing'),
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const stripeType =
+          error instanceof Stripe.errors.StripeError ? error.type : undefined;
+        const stripeCode =
+          error instanceof Stripe.errors.StripeError ? error.code : undefined;
 
-    const customerId = await createCustomer(user.id, user.email);
+        logger.error(
+          {
+            userId: user.id,
+            priceId,
+            stripeErrorMessage: message,
+            stripeType,
+            stripeCode,
+            error,
+          },
+          'Stripe checkout session creation failed'
+        );
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: resolveRedirectUrl(
-        successUrl,
-        '/settings/billing?session_id={CHECKOUT_SESSION_ID}'
-      ),
-      cancel_url: resolveRedirectUrl(cancelUrl, '/settings/billing'),
-    });
+        const isClientError =
+          stripeType === 'StripeInvalidRequestError' ||
+          stripeCode === 'resource_missing';
 
-    if (!session.url) {
-      return jsonError('Failed to create checkout session', { status: 500 });
-    }
+        throw new AppError(
+          isClientError
+            ? 'Invalid checkout request. Please check the plan and try again.'
+            : 'Unable to start checkout. Please try again later.',
+          {
+            status: isClientError ? 400 : 500,
+            code: 'STRIPE_CHECKOUT_SESSION_CREATION_FAILED',
+          }
+        );
+      }
 
-    return json({ sessionUrl: session.url });
-  })
-);
+      if (!session.url) {
+        throw new AppError('Failed to create checkout session', {
+          status: 500,
+          code: 'STRIPE_CHECKOUT_SESSION_CREATION_FAILED',
+        });
+      }
+
+      return json({ sessionUrl: session.url });
+    })
+  );
+}
+
+// POST /api/v1/stripe/create-checkout
+export const POST = createCreateCheckoutHandler();

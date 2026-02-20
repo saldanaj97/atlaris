@@ -1,13 +1,12 @@
 import { and, eq, lt } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-import { db } from '@/lib/db/service-role';
 import { jobQueue, learningPlans, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import {
   completeJob,
   enqueueJob,
   failJob,
-  getJobsByPlanId,
   getNextJob,
   getUserJobCount,
 } from '@/lib/jobs/queue';
@@ -18,7 +17,7 @@ import {
 } from '@/lib/jobs/types';
 import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
 
-import { ensureUser } from '../../../../tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db';
 
 const JOB_TYPE = JOB_TYPES.PLAN_GENERATION;
 
@@ -123,17 +122,21 @@ describe('Job queue service', () => {
       getNextJob([JOB_TYPE]),
     ]);
 
-    expect(first?.id).toBeDefined();
-    expect(second?.id).toBeDefined();
-    expect(first?.id).not.toBe(second?.id);
-    expect(jobIds).toContain(first?.id ?? '');
-    expect(jobIds).toContain(second?.id ?? '');
+    if (!first || !second) {
+      throw new Error('expected first and second to be defined');
+    }
+
+    expect(first.id).toBeDefined();
+    expect(second.id).toBeDefined();
+    expect(first.id).not.toBe(second.id);
+    expect(jobIds).toContain(first.id);
+    expect(jobIds).toContain(second.id);
 
     const firstRow = await db.query.jobQueue.findFirst({
-      where: (fields, operators) => operators.eq(fields.id, first!.id),
+      where: (fields, operators) => operators.eq(fields.id, first.id),
     });
     const secondRow = await db.query.jobQueue.findFirst({
-      where: (fields, operators) => operators.eq(fields.id, second!.id),
+      where: (fields, operators) => operators.eq(fields.id, second.id),
     });
 
     expect(firstRow?.status).toBe('processing');
@@ -179,9 +182,11 @@ describe('Job queue service', () => {
 
     for (let i = 0; i < 4; i += 1) {
       const job = await getNextJob([JOB_TYPE]);
-      expect(job).not.toBeNull();
-      processed.push(job!.id);
-      priorities.push(job!.priority);
+      if (!job) {
+        throw new Error('expected job to be defined');
+      }
+      processed.push(job.id);
+      priorities.push(job.priority);
     }
 
     expect(priorities).toEqual([10, 5, 5, 0]);
@@ -355,53 +360,6 @@ describe('Job queue service', () => {
       durationMs: 10,
     });
     expect(duplicate?.result).toEqual(payload);
-  });
-
-  it('returns jobs by plan newest first', async () => {
-    const { plan, userId } = await createPlanFixture('plan-jobs');
-    const other = await createPlanFixture('plan-other');
-
-    const jobA = await enqueueJob(
-      JOB_TYPE,
-      plan.id,
-      userId,
-      buildPlanGenerationPayload(plan, { topic: 'order-a' })
-    );
-    const jobB = await enqueueJob(
-      JOB_TYPE,
-      plan.id,
-      userId,
-      buildPlanGenerationPayload(plan, { topic: 'order-b' })
-    );
-    const jobC = await enqueueJob(
-      JOB_TYPE,
-      plan.id,
-      userId,
-      buildPlanGenerationPayload(plan, { topic: 'order-c' })
-    );
-    await enqueueJob(
-      JOB_TYPE,
-      other.plan.id,
-      other.userId,
-      buildPlanGenerationPayload(other.plan, { topic: 'ignore-order' })
-    );
-
-    const now = Date.now();
-    await db
-      .update(jobQueue)
-      .set({ createdAt: new Date(now - 3000), updatedAt: new Date(now - 3000) })
-      .where(eq(jobQueue.id, jobA));
-    await db
-      .update(jobQueue)
-      .set({ createdAt: new Date(now - 2000), updatedAt: new Date(now - 2000) })
-      .where(eq(jobQueue.id, jobB));
-    await db
-      .update(jobQueue)
-      .set({ createdAt: new Date(now - 1000), updatedAt: new Date(now - 1000) })
-      .where(eq(jobQueue.id, jobC));
-
-    const jobs = await getJobsByPlanId(plan.id);
-    expect(jobs.map((job) => job.id)).toEqual([jobC, jobB, jobA]);
   });
 
   it('counts user jobs within the provided window', async () => {
