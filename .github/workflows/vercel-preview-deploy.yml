@@ -227,28 +227,3 @@ jobs:
             echo "headline=$headline"
             echo "details=$details"
           } >> "$GITHUB_OUTPUT"
-
-      - name: Delete stale preview deploy status comment
-        uses: thollander/actions-comment-pull-request@v3
-        with:
-          pr-number: ${{ github.event.pull_request.number }}
-          comment-tag: preview-deploy-status
-          mode: delete
-
-      - name: Delete legacy preview deploy trigger comment
-        uses: thollander/actions-comment-pull-request@v3
-        with:
-          pr-number: ${{ github.event.pull_request.number }}
-          comment-tag: preview-deploy-trigger-status
-          mode: delete
-
-      - name: Post preview deploy status comment
-        uses: thollander/actions-comment-pull-request@v3
-        with:
-          pr-number: ${{ github.event.pull_request.number }}
-          comment-tag: preview-deploy-status
-          message: |
-            **Preview Deploy Status**
-
-            - Status: ${{ steps.status.outputs.headline }}
-            - Details: ${{ steps.status.outputs.details }}
