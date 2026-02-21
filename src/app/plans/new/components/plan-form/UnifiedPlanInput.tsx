@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { appEnv } from '@/lib/config/env';
+import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
 import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
@@ -27,19 +27,28 @@ interface UnifiedPlanInputProps {
 interface PlanInputState {
   topic: string;
   topicTouched: boolean;
-  skillLevel: string;
-  weeklyHours: string;
-  learningStyle: string;
-  deadlineWeeks: string;
+  skillLevel: SkillLevel;
+  weeklyHours: WeeklyHours;
+  learningStyle: LearningStyle;
+  deadlineWeeks: DeadlineWeeks;
 }
+
+type SkillLevel = (typeof SKILL_LEVEL_OPTIONS)[number]['value'];
+type WeeklyHours = (typeof WEEKLY_HOURS_OPTIONS)[number]['value'];
+type LearningStyle = (typeof LEARNING_STYLE_OPTIONS)[number]['value'];
+type DeadlineWeeks = (typeof DEADLINE_OPTIONS)[number]['value'];
 
 type PlanInputAction =
   | { type: 'set-topic'; value: string }
   | { type: 'reset-topic'; value: string }
-  | { type: 'set-skill-level'; value: string }
-  | { type: 'set-weekly-hours'; value: string }
-  | { type: 'set-learning-style'; value: string }
-  | { type: 'set-deadline-weeks'; value: string };
+  | { type: 'set-skill-level'; value: SkillLevel }
+  | { type: 'set-weekly-hours'; value: WeeklyHours }
+  | { type: 'set-learning-style'; value: LearningStyle }
+  | { type: 'set-deadline-weeks'; value: DeadlineWeeks };
+
+function assertUnreachable(value: never): never {
+  throw new Error(`Unhandled action: ${String(value)}`);
+}
 
 function planInputReducer(
   state: PlanInputState,
@@ -79,7 +88,7 @@ function planInputReducer(
         deadlineWeeks: action.value,
       };
     default:
-      return state;
+      return assertUnreachable(action);
   }
 }
 
@@ -107,27 +116,24 @@ export function UnifiedPlanInput({
     deadlineWeeks: '4',
   });
 
-  const topicRef = useRef(state.topic);
-  const initialTopicRef = useRef(initialTopic);
+  const prevResetVersionRef = useRef(topicResetVersion);
 
   useEffect(() => {
-    topicRef.current = state.topic;
-  }, [state.topic]);
+    if (prevResetVersionRef.current === topicResetVersion) {
+      return;
+    }
 
-  useEffect(() => {
-    initialTopicRef.current = initialTopic;
-  }, [initialTopic]);
+    prevResetVersionRef.current = topicResetVersion;
 
-  useEffect(() => {
-    if (topicRef.current === initialTopicRef.current) {
+    if (state.topic === initialTopic) {
       return;
     }
 
     dispatch({
       type: 'reset-topic',
-      value: initialTopicRef.current,
+      value: initialTopic,
     });
-  }, [topicResetVersion]);
+  }, [initialTopic, state.topic, topicResetVersion]);
 
   const topic = state.topic;
 
@@ -135,7 +141,7 @@ export function UnifiedPlanInput({
 
   const handleSubmit = () => {
     if (!topic.trim() || isSubmitting || disabled) {
-      if (appEnv.isDevelopment && !topic.trim()) {
+      if (isDevelopment && !topic.trim()) {
         clientLogger.warn(
           '[UnifiedPlanInput] Empty topic submission prevented'
         );
@@ -203,7 +209,7 @@ export function UnifiedPlanInput({
               placeholder="I want to learn TypeScript for React development..."
               className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[72px] w-full resize-none bg-transparent text-lg focus:outline-none"
               rows={2}
-              disabled={isSubmitting}
+              disabled={isSubmitting || disabled}
             />
           </div>
         </div>

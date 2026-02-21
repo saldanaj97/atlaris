@@ -11,19 +11,21 @@ import { getCachedModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/data
 import { isModuleSuccess } from '@/app/plans/[id]/modules/[moduleId]/helpers';
 
 interface ModulePageProps {
-  params: Promise<{ id: string; moduleId: string }>;
+  params: { id: string; moduleId: string };
 }
+
+const MODULE_METADATA_DESCRIPTION =
+  'View module details, tasks, and resources for this learning plan module.';
 
 export async function generateMetadata({
   params,
 }: ModulePageProps): Promise<Metadata> {
-  const { moduleId } = await params;
+  const { moduleId } = params;
 
   if (!moduleId) {
     return {
       title: 'Module Details | Atlaris',
-      description:
-        'View module details, tasks, and resources for this learning plan module.',
+      description: MODULE_METADATA_DESCRIPTION,
     };
   }
 
@@ -37,14 +39,12 @@ export async function generateMetadata({
       title: moduleTitle
         ? `${moduleTitle} | Atlaris`
         : 'Module Details | Atlaris',
-      description:
-        'View module details, tasks, and resources for this learning plan module.',
+      description: MODULE_METADATA_DESCRIPTION,
     };
   } catch {
     return {
       title: 'Module Details | Atlaris',
-      description:
-        'View module details, tasks, and resources for this learning plan module.',
+      description: MODULE_METADATA_DESCRIPTION,
     };
   }
 }
@@ -55,10 +55,10 @@ export async function generateMetadata({
  * The page validates the route params and wraps all data-dependent content
  * (module details, error states) in a Suspense boundary.
  */
-export default async function ModuleDetailPage({
+export default function ModuleDetailPage({
   params,
-}: ModulePageProps): Promise<JSX.Element> {
-  const { id: planId, moduleId } = await params;
+}: ModulePageProps): JSX.Element {
+  const { id: planId, moduleId } = params;
 
   if (!moduleId) {
     return <ModuleDetailPageError planId={planId} />;

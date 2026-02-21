@@ -56,7 +56,7 @@ export function RegenerateButton({
       .catch((error: unknown) => {
         // Ignore abort errors (e.g., component unmounted or new request started)
         if (isAbortError(error)) return;
-        clientLogger.error('Regeneration failed:', error);
+        clientLogger.error('Regeneration failed', { planId, error });
         toast.error('Unable to enqueue regeneration');
       })
       .finally(() => {

@@ -8,11 +8,11 @@ import type { DropdownOption } from './types';
 
 type DropdownVariant = 'primary' | 'accent' | 'cyan' | 'rose';
 
-interface InlineDropdownProps {
+interface InlineDropdownProps<TValue extends string> {
   id?: string;
-  options: DropdownOption[];
-  value: string;
-  onChange: (value: string) => void;
+  options: readonly DropdownOption<TValue>[];
+  value: TValue;
+  onChange: (value: TValue) => void;
   icon?: React.ReactNode;
   variant?: DropdownVariant;
 }
@@ -61,21 +61,24 @@ const VARIANT_STYLES: Record<
  * - Proper ARIA attributes
  * - Outside click and escape key handling
  */
-export function InlineDropdown({
+export function InlineDropdown<TValue extends string>({
   id,
   options,
   value,
   icon,
   onChange,
   variant = 'primary',
-}: InlineDropdownProps) {
+}: InlineDropdownProps<TValue>) {
   const generatedId = useId();
   const componentId = id ?? generatedId;
   const styles = VARIANT_STYLES[variant];
   const selectedOption = options.find((opt) => opt.value === value);
 
   return (
-    <SelectPrimitive.Root value={value} onValueChange={onChange}>
+    <SelectPrimitive.Root
+      value={value}
+      onValueChange={(nextValue) => onChange(nextValue as TValue)}
+    >
       <SelectPrimitive.Trigger
         id={componentId}
         className={cn(
