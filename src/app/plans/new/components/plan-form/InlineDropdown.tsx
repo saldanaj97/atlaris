@@ -77,7 +77,13 @@ export function InlineDropdown<TValue extends string>({
   return (
     <SelectPrimitive.Root
       value={value}
-      onValueChange={(nextValue) => onChange(nextValue as TValue)}
+      onValueChange={(nextValue) => {
+        const nextOption = options.find((option) => option.value === nextValue);
+
+        if (nextOption) {
+          onChange(nextOption.value);
+        }
+      }}
     >
       <SelectPrimitive.Trigger
         id={componentId}

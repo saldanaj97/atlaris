@@ -30,42 +30,40 @@ export function RegenerateButton({
     };
   }, []);
 
-  const handleRegenerate = () => {
+  const handleRegenerate = async (): Promise<void> => {
     // Abort any in-flight request before starting a new one
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
     setLoading(true);
-    void fetch(`/api/v1/plans/${planId}/regenerate`, {
-      method: 'POST',
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const parsedError = await parseApiErrorResponse(
-            res,
-            'Failed to enqueue regeneration'
-          );
-          throw new Error(parsedError.error);
-        }
-      })
-      .then(() => {
-        toast.success('Plan regeneration enqueued');
-      })
-      .catch((error: unknown) => {
-        // Ignore abort errors (e.g., component unmounted or new request started)
-        if (isAbortError(error)) return;
-        clientLogger.error('Regeneration failed', { planId, error });
-        toast.error('Unable to enqueue regeneration');
-      })
-      .finally(() => {
-        setLoading(false);
+    try {
+      const res = await fetch(`/api/v1/plans/${planId}/regenerate`, {
+        method: 'POST',
+        signal: controller.signal,
       });
+
+      if (!res.ok) {
+        const parsedError = await parseApiErrorResponse(
+          res,
+          'Failed to enqueue regeneration'
+        );
+        throw new Error(parsedError.error);
+      }
+
+      toast.success('Plan regeneration enqueued');
+    } catch (error: unknown) {
+      // Ignore abort errors (e.g., component unmounted or new request started)
+      if (isAbortError(error)) return;
+      clientLogger.error('Regeneration failed', { planId, error });
+      toast.error('Unable to enqueue regeneration');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Button disabled={loading} onClick={handleRegenerate}>
+    <Button disabled={loading} onClick={() => void handleRegenerate()}>
       {loading ? 'Regenerating…' : 'Regenerate Plan'}
     </Button>
   );

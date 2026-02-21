@@ -26,7 +26,6 @@ interface UnifiedPlanInputProps {
 
 interface PlanInputState {
   topic: string;
-  topicTouched: boolean;
   skillLevel: SkillLevel;
   weeklyHours: WeeklyHours;
   learningStyle: LearningStyle;
@@ -59,13 +58,11 @@ function planInputReducer(
       return {
         ...state,
         topic: action.value,
-        topicTouched: true,
       };
     case 'reset-topic':
       return {
         ...state,
         topic: action.value,
-        topicTouched: false,
       };
     case 'set-skill-level':
       return {
@@ -109,7 +106,6 @@ export function UnifiedPlanInput({
   const baseId = useId();
   const [state, dispatch] = useReducer(planInputReducer, {
     topic: initialTopic,
-    topicTouched: false,
     skillLevel: 'beginner',
     weeklyHours: '3-5',
     learningStyle: 'mixed',
@@ -117,6 +113,8 @@ export function UnifiedPlanInput({
   });
 
   const prevResetVersionRef = useRef(topicResetVersion);
+  const topicRef = useRef(state.topic);
+  topicRef.current = state.topic;
 
   useEffect(() => {
     if (prevResetVersionRef.current === topicResetVersion) {
@@ -125,7 +123,7 @@ export function UnifiedPlanInput({
 
     prevResetVersionRef.current = topicResetVersion;
 
-    if (state.topic === initialTopic) {
+    if (topicRef.current === initialTopic) {
       return;
     }
 
@@ -133,7 +131,7 @@ export function UnifiedPlanInput({
       type: 'reset-topic',
       value: initialTopic,
     });
-  }, [initialTopic, state.topic, topicResetVersion]);
+  }, [initialTopic, topicResetVersion]);
 
   const topic = state.topic;
 
