@@ -1,164 +1,44 @@
-'use client';
-
 import { MouseGlowContainer } from '@/components/effects/MouseGlow';
-import { useRouter, useSearchParams } from 'next/navigation';
-import React, { Suspense, useCallback, useId, useState } from 'react';
+import { CreatePlanPageClient } from '@/app/plans/new/components/ManualCreatePanel';
+import type { CreateMethod } from '@/app/plans/new/components/CreateMethodToggle';
+import type { Metadata } from 'next';
+import type { JSX } from 'react';
 
-import {
-  CreateMethodToggle,
-  type CreateMethod,
-} from './components/CreateMethodToggle';
-import { ManualCreatePanel } from './components/ManualCreatePanel';
-
-const PdfCreatePanel = React.lazy(() =>
-  import('./components/PdfCreatePanel').then((module) => ({
-    default: module.PdfCreatePanel,
-  }))
-);
-
-function CreatePlanContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const panelIdBase = useId();
-  const tabIdBase = useId();
-  const manualPanelId = `${panelIdBase}-manual-panel`;
-  const pdfPanelId = `${panelIdBase}-pdf-panel`;
-  const manualTabId = `${tabIdBase}-manual-tab`;
-  const pdfTabId = `${tabIdBase}-pdf-tab`;
-
-  const methodParam = searchParams.get('method');
-  const currentMethod: CreateMethod = methodParam === 'pdf' ? 'pdf' : 'manual';
-
-  const [prefillTopic, setPrefillTopic] = useState<string | null>(null);
-
-  const handleMethodChange = useCallback(
-    (method: CreateMethod) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (method === 'manual') {
-        params.delete('method');
-      } else {
-        params.set('method', method);
-      }
-      const queryString = params.toString();
-      router.push(`/plans/new${queryString ? `?${queryString}` : ''}`, {
-        scroll: false,
-      });
-    },
-    [router, searchParams]
-  );
-
-  const handleSwitchToManual = useCallback(
-    (extractedTopic: string) => {
-      setPrefillTopic(extractedTopic);
-      handleMethodChange('manual');
-    },
-    [handleMethodChange]
-  );
-
-  const handleTopicUsed = useCallback(() => {
-    setPrefillTopic(null);
-  }, []);
-
-  return (
-    <>
-      <div className="mb-8 text-center">
-        <div className="dark:border-border dark:bg-card/50 border-primary/30 mb-4 inline-flex items-center rounded-full border bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
-          <span className="from-primary to-accent mr-2 h-2 w-2 rounded-full bg-gradient-to-r" />
-          <span className="text-primary text-sm font-medium">
-            AI-Powered Learning Plans
-          </span>
-        </div>
-
-        <h1 className="text-foreground mb-3 text-4xl font-bold tracking-tight md:text-5xl">
-          What do you want to{' '}
-          <span className="from-primary via-accent to-primary bg-gradient-to-r bg-clip-text text-transparent">
-            learn?
-          </span>
-        </h1>
-
-        <p className="text-muted-foreground mx-auto max-w-xl text-lg">
-          {currentMethod === 'manual'
-            ? "Describe your learning goal. We'll create a personalized, time-blocked schedule that syncs to your calendar."
-            : "Upload a PDF document and we'll extract the key topics to create a personalized learning plan."}
-        </p>
-      </div>
-
-      <div className="mb-8">
-        <CreateMethodToggle
-          value={currentMethod}
-          onChange={handleMethodChange}
-          manualPanelId={manualPanelId}
-          pdfPanelId={pdfPanelId}
-          manualTabId={manualTabId}
-          pdfTabId={pdfTabId}
-        />
-      </div>
-
-      <div
-        id={manualPanelId}
-        role="tabpanel"
-        aria-labelledby={manualTabId}
-        aria-hidden={currentMethod !== 'manual'}
-        className={currentMethod !== 'manual' ? 'hidden' : undefined}
-      >
-        <ManualCreatePanel
-          initialTopic={prefillTopic}
-          onTopicUsed={handleTopicUsed}
-        />
-      </div>
-
-      <div
-        id={pdfPanelId}
-        role="tabpanel"
-        aria-labelledby={pdfTabId}
-        aria-hidden={currentMethod !== 'pdf'}
-        className={currentMethod !== 'pdf' ? 'hidden' : undefined}
-      >
-        <Suspense
-          fallback={
-            <div className="text-muted-foreground text-center text-sm">
-              Loading PDF options...
-            </div>
-          }
-        >
-          <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
-        </Suspense>
-      </div>
-    </>
-  );
+interface CreateNewPlanPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-function CreatePlanLoading() {
-  return (
-    <div className="flex flex-col items-center">
-      <div className="mb-8 text-center">
-        <div className="dark:border-border dark:bg-card/50 border-primary/30 mb-4 inline-flex items-center rounded-full border bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
-          <span className="from-primary to-accent mr-2 h-2 w-2 rounded-full bg-gradient-to-r" />
-          <span className="text-primary text-sm font-medium">
-            AI-Powered Learning Plans
-          </span>
-        </div>
+export const metadata: Metadata = {
+  title: 'Create Learning Plan | Atlaris',
+  description:
+    'Create a personalized, time-blocked learning plan from your goal or a PDF.',
+};
 
-        <h1 className="text-foreground mb-3 text-4xl font-bold tracking-tight md:text-5xl">
-          What do you want to{' '}
-          <span className="from-primary via-accent to-primary bg-gradient-to-r bg-clip-text text-transparent">
-            learn?
-          </span>
-        </h1>
-
-        <p className="text-muted-foreground mx-auto max-w-xl text-lg">
-          Loading...
-        </p>
-      </div>
-
-      <div className="mb-8">
-        <div className="dark:border-border dark:bg-card/50 inline-flex h-12 w-64 animate-pulse items-center gap-1 rounded-full border border-white/40 bg-white/30 p-1 shadow-lg backdrop-blur-sm" />
-      </div>
-    </div>
-  );
+function resolveMethod(
+  methodValue: string | string[] | undefined
+): CreateMethod {
+  if (Array.isArray(methodValue)) {
+    return methodValue[0] === 'pdf' ? 'pdf' : 'manual';
+  }
+  return methodValue === 'pdf' ? 'pdf' : 'manual';
 }
 
-export default function CreateNewPlanPage(): React.JSX.Element {
+function resolveTopic(
+  topicValue: string | string[] | undefined
+): string | null {
+  if (Array.isArray(topicValue)) {
+    return typeof topicValue[0] === 'string' ? topicValue[0] : null;
+  }
+  return typeof topicValue === 'string' ? topicValue : null;
+}
+
+export default async function CreateNewPlanPage({
+  searchParams,
+}: CreateNewPlanPageProps): Promise<JSX.Element> {
+  const resolvedSearchParams = await searchParams;
+  const initialMethod = resolveMethod(resolvedSearchParams.method);
+  const initialTopic = resolveTopic(resolvedSearchParams.topic);
+
   return (
     <MouseGlowContainer className="from-accent/30 via-primary/10 to-accent/20 dark:bg-background fixed inset-0 overflow-hidden bg-linear-to-br dark:from-transparent dark:via-transparent dark:to-transparent">
       <div
@@ -175,9 +55,10 @@ export default function CreateNewPlanPage(): React.JSX.Element {
       />
 
       <div className="relative z-10 flex h-full flex-col items-center justify-center overflow-y-auto px-6 py-8">
-        <Suspense fallback={<CreatePlanLoading />}>
-          <CreatePlanContent />
-        </Suspense>
+        <CreatePlanPageClient
+          initialMethod={initialMethod}
+          initialTopic={initialTopic}
+        />
       </div>
     </MouseGlowContainer>
   );

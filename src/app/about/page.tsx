@@ -1,4 +1,19 @@
+import type { Metadata } from 'next';
+
 import { Card } from '@/components/ui/card';
+
+export const metadata: Metadata = {
+  title: 'About | Atlaris',
+  description:
+    'Learn about Atlaris and how we help learners turn goals into scheduled execution.',
+  openGraph: {
+    title: 'About | Atlaris',
+    description:
+      'Learn about Atlaris and how we help learners turn goals into scheduled execution.',
+    url: '/about',
+    images: ['/og-default.jpg'],
+  },
+};
 
 export default function Page() {
   return (

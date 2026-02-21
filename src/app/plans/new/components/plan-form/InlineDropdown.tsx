@@ -4,15 +4,17 @@ import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown } from 'lucide-react';
 import { useId } from 'react';
-import type { DropdownOption } from './types';
+import type { JSX } from 'react';
+
+import type { DropdownOption } from '@/app/plans/new/components/plan-form/types';
 
 type DropdownVariant = 'primary' | 'accent' | 'cyan' | 'rose';
 
-interface InlineDropdownProps {
+interface InlineDropdownProps<TValue extends string> {
   id?: string;
-  options: DropdownOption[];
-  value: string;
-  onChange: (value: string) => void;
+  options: readonly DropdownOption<TValue>[];
+  value: TValue;
+  onChange: (value: TValue) => void;
   icon?: React.ReactNode;
   variant?: DropdownVariant;
 }
@@ -61,21 +63,30 @@ const VARIANT_STYLES: Record<
  * - Proper ARIA attributes
  * - Outside click and escape key handling
  */
-export function InlineDropdown({
+export function InlineDropdown<TValue extends string>({
   id,
   options,
   value,
   icon,
   onChange,
   variant = 'primary',
-}: InlineDropdownProps) {
+}: InlineDropdownProps<TValue>): JSX.Element {
   const generatedId = useId();
   const componentId = id ?? generatedId;
   const styles = VARIANT_STYLES[variant];
   const selectedOption = options.find((opt) => opt.value === value);
 
   return (
-    <SelectPrimitive.Root value={value} onValueChange={onChange}>
+    <SelectPrimitive.Root
+      value={value}
+      onValueChange={(nextValue) => {
+        const nextOption = options.find((option) => option.value === nextValue);
+
+        if (nextOption) {
+          onChange(nextOption.value);
+        }
+      }}
+    >
       <SelectPrimitive.Trigger
         id={componentId}
         className={cn(

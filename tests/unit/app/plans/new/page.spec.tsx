@@ -38,6 +38,20 @@ vi.mock('@/hooks/useStreamingPlanGeneration', () => ({
     startGeneration: mockStartGeneration,
     cancel: mockCancel,
   })),
+  isStreamingError: vi.fn((error: unknown) => {
+    if (error instanceof Error) {
+      return true;
+    }
+
+    if (error === null || typeof error !== 'object') {
+      return false;
+    }
+
+    return (
+      'message' in error &&
+      typeof (error as { message?: unknown }).message === 'string'
+    );
+  }),
 }));
 
 // Mock PlanDraftView to simplify tests

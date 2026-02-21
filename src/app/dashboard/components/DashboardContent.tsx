@@ -101,9 +101,9 @@ export function DashboardContentSkeleton() {
 
           {/* Activity cards skeleton */}
           <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4].map((activitySkeletonId) => (
               <div
-                key={i}
+                key={`dashboard-activity-skeleton-${activitySkeletonId}`}
                 className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10"
               >
                 <div className="flex gap-4">
@@ -137,8 +137,11 @@ export function DashboardContentSkeleton() {
 
             {/* Events skeleton */}
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-3">
+              {[1, 2, 3].map((eventSkeletonId) => (
+                <div
+                  key={`dashboard-event-skeleton-${eventSkeletonId}`}
+                  className="flex gap-3"
+                >
                   <Skeleton className="h-8 w-8 flex-shrink-0 rounded-lg" />
                   <div className="min-w-0 flex-1 space-y-1.5 pb-3">
                     <Skeleton className="h-4 w-full" />

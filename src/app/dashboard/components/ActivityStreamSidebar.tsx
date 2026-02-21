@@ -7,10 +7,16 @@ import type { ScheduledEvent } from '../types';
 
 interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;
-  upcomingEvents?: ScheduledEvent[];
+  upcomingEvents?: readonly ScheduledEvent[];
 }
 
-function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
+const EMPTY_UPCOMING_EVENTS: readonly ScheduledEvent[] = [];
+
+function UpcomingScheduleCard({
+  events,
+}: {
+  events: readonly ScheduledEvent[];
+}) {
   return (
     <div className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10">
       {/* Header */}
@@ -133,7 +139,7 @@ function EmptyStateCard() {
 
 export function ActivityStreamSidebar({
   activePlan,
-  upcomingEvents = [],
+  upcomingEvents = EMPTY_UPCOMING_EVENTS,
 }: ActivityStreamSidebarProps) {
   return (
     <aside className="flex w-full flex-col gap-4">

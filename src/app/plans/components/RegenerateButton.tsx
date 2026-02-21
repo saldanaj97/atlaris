@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
+import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 
 interface RegenerateButtonProps {
@@ -17,7 +18,9 @@ interface RegenerateButtonProps {
  *
  * @param planId - The ID of the plan to regenerate
  */
-export function RegenerateButton({ planId }: RegenerateButtonProps) {
+export function RegenerateButton({
+  planId,
+}: RegenerateButtonProps): ReactElement {
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -27,17 +30,19 @@ export function RegenerateButton({ planId }: RegenerateButtonProps) {
     };
   }, []);
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = async (): Promise<void> => {
     // Abort any in-flight request before starting a new one
     abortControllerRef.current?.abort();
-    abortControllerRef.current = new AbortController();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setLoading(true);
     try {
       const res = await fetch(`/api/v1/plans/${planId}/regenerate`, {
         method: 'POST',
-        signal: abortControllerRef.current.signal,
+        signal: controller.signal,
       });
+
       if (!res.ok) {
         const parsedError = await parseApiErrorResponse(
           res,
@@ -45,24 +50,23 @@ export function RegenerateButton({ planId }: RegenerateButtonProps) {
         );
         throw new Error(parsedError.error);
       }
+
       toast.success('Plan regeneration enqueued');
-    } catch (error) {
+    } catch (error: unknown) {
       // Ignore abort errors (e.g., component unmounted or new request started)
-      if ((error as Error).name === 'AbortError') return;
-      clientLogger.error('Regeneration failed:', error);
+      if (isAbortError(error)) return;
+      clientLogger.error('Regeneration failed', { planId, error });
       toast.error('Unable to enqueue regeneration');
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+        abortControllerRef.current = null;
+      }
     }
   };
 
   return (
-    <Button
-      disabled={loading}
-      onClick={() => {
-        void handleRegenerate();
-      }}
-    >
+    <Button disabled={loading} onClick={() => void handleRegenerate()}>
       {loading ? 'Regenerating…' : 'Regenerate Plan'}
     </Button>
   );

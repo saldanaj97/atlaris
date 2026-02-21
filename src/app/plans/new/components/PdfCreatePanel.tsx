@@ -10,18 +10,22 @@ import {
   type ErrorCode,
 } from '@/components/pdf/PdfUploadError';
 import { PdfUploadZone } from '@/components/pdf/PdfUploadZone';
+import { Button } from '@/components/ui/button';
 import {
   isStreamingError,
   useStreamingPlanGeneration,
 } from '@/hooks/useStreamingPlanGeneration';
 import { normalizeApiErrorResponse } from '@/lib/api/error-response';
+import { isAbortError, normalizeThrown } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { mapPdfSettingsToCreateInput } from '@/lib/mappers/learningPlans';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+
+const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
 
 const truncationSchema = z.object({
   truncated: z.boolean(),
@@ -52,10 +56,6 @@ const TRUNCATION_REASON_LABELS: Record<string, string> = {
 };
 
 const MAX_TRUNCATION_REASONS_IN_TOAST = 3;
-
-function normalizeThrown(value: unknown): Error | { message?: string } {
-  return value instanceof Error ? value : { message: String(value) };
-}
 
 function truncationReasonsSummary(
   reasons: string[] | undefined
@@ -166,6 +166,39 @@ type PageState =
   | { status: 'generating' }
   | { status: 'error'; error: string; code?: ErrorCode };
 
+type PdfMappingResult =
+  | { ok: true; payload: ReturnType<typeof mapPdfSettingsToCreateInput> }
+  | { ok: false; error: unknown };
+
+function buildPdfCreatePayload(params: {
+  mainTopic: string;
+  sections: ExtractionData['sections'];
+  settings: PdfPlanSettings;
+  proof: ExtractionProofData;
+}): PdfMappingResult {
+  const { mainTopic, sections, settings, proof } = params;
+  const { skillLevel, weeklyHours, learningStyle, deadlineWeeks } = settings;
+
+  try {
+    return {
+      ok: true,
+      payload: mapPdfSettingsToCreateInput({
+        mainTopic,
+        sections,
+        skillLevel,
+        weeklyHours,
+        learningStyle,
+        deadlineWeeks,
+        pdfProofToken: proof.token,
+        pdfExtractionHash: proof.extractionHash,
+        pdfProofVersion: proof.version,
+      }),
+    };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
 export function PdfCreatePanel({
   onSwitchToManual,
 }: PdfCreatePanelProps): React.ReactElement {
@@ -173,12 +206,53 @@ export function PdfCreatePanel({
   const [state, setState] = useState<PageState>({ status: 'idle' });
   const isSubmittingRef = useRef(false);
   const planIdRef = useRef<string | undefined>(undefined);
+  const extractionAbortControllerRef = useRef<AbortController | null>(null);
+  const extractionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const extractionAbortReasonRef = useRef<'timeout' | 'cancel' | null>(null);
   const { startGeneration } = useStreamingPlanGeneration();
 
-  const handleFileSelect = async (file: File) => {
+  const clearExtractionTimeout = () => {
+    if (extractionTimeoutRef.current !== null) {
+      clearTimeout(extractionTimeoutRef.current);
+      extractionTimeoutRef.current = null;
+    }
+  };
+
+  const abortExtraction = (reason: 'timeout' | 'cancel') => {
+    extractionAbortReasonRef.current = reason;
+    extractionAbortControllerRef.current?.abort();
+    extractionAbortControllerRef.current = null;
+    clearExtractionTimeout();
+  };
+
+  const clearExtractionTracking = () => {
+    extractionAbortControllerRef.current = null;
+    extractionAbortReasonRef.current = null;
+    clearExtractionTimeout();
+  };
+
+  useEffect(() => {
+    return () => {
+      extractionAbortReasonRef.current = 'cancel';
+      extractionAbortControllerRef.current?.abort();
+      extractionAbortControllerRef.current = null;
+      if (extractionTimeoutRef.current !== null) {
+        clearTimeout(extractionTimeoutRef.current);
+        extractionTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleFileSelect = (file: File) => {
     if (file.type !== 'application/pdf') {
       toast.error('Please select a PDF file');
       return;
+    }
+
+    if (extractionAbortControllerRef.current) {
+      abortExtraction('cancel');
     }
 
     setState({ status: 'uploading' });
@@ -186,85 +260,120 @@ export function PdfCreatePanel({
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      const response = await fetch('/api/v1/plans/from-pdf/extract', {
-        method: 'POST',
-        body: formData,
-      });
+    const controller = new AbortController();
+    extractionAbortControllerRef.current = controller;
+    extractionAbortReasonRef.current = null;
+    clearExtractionTimeout();
+    extractionTimeoutRef.current = setTimeout(() => {
+      abortExtraction('timeout');
+    }, PDF_EXTRACTION_TIMEOUT_MS);
 
-      const rawData: unknown = await response.json();
-      const parseResult = extractionApiResponseSchema.safeParse(rawData);
+    void fetch('/api/v1/plans/from-pdf/extract', {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const rawData: unknown = await response.json();
+        const parseResult = extractionApiResponseSchema.safeParse(rawData);
 
-      if (!parseResult.success) {
-        const normalizedApiError = handleExtractionApiError({
-          rawData,
-          status: response.status,
-          fallbackMessage: 'Invalid response from server. Please try again.',
+        if (!parseResult.success) {
+          const normalizedApiError = handleExtractionApiError({
+            rawData,
+            status: response.status,
+            fallbackMessage: 'Invalid response from server. Please try again.',
+          });
+
+          clientLogger.error('PDF extraction response validation failed', {
+            error: parseResult.error.flatten(),
+            responseOk: response.ok,
+          });
+          setState({
+            status: 'error',
+            error: normalizedApiError.error,
+            code: normalizedApiError.code,
+          });
+          return;
+        }
+
+        const data: ExtractionApiResponse = parseResult.data;
+
+        if (!response.ok || !data.success || !data.extraction || !data.proof) {
+          const normalizedApiError = handleExtractionApiError({
+            rawData,
+            status: response.status,
+            fallbackMessage: 'Failed to extract PDF content',
+          });
+
+          setState({
+            status: 'error',
+            error: normalizedApiError.error,
+            code: normalizedApiError.code,
+          });
+          return;
+        }
+
+        setState({
+          status: 'preview',
+          extraction: {
+            mainTopic: data.extraction.structure.suggestedMainTopic,
+            sections: data.extraction.structure.sections,
+            pageCount: data.extraction.pageCount,
+            confidence: data.extraction.structure.confidence,
+            truncation: data.extraction.truncation,
+          },
+          proof: data.proof,
         });
 
-        clientLogger.error('PDF extraction response validation failed', {
-          error: parseResult.error.flatten(),
-          responseOk: response.ok,
-        });
+        if (data.extraction.truncation?.truncated) {
+          const summary = truncationReasonsSummary(
+            data.extraction.truncation.reasons
+          );
+          const message = summary
+            ? `Content trimmed: ${summary}. You can still edit the extracted sections before generating.`
+            : 'Large PDF content was trimmed for safety. You can still edit the extracted sections before generating.';
+          toast.info(message);
+        }
+      })
+      .catch((error: unknown) => {
+        if (isAbortError(error)) {
+          if (extractionAbortReasonRef.current === 'cancel') {
+            toast.info('Upload cancelled');
+            setState({ status: 'idle' });
+            return;
+          }
+
+          setState({
+            status: 'error',
+            error: 'Upload timed out. Please try again.',
+          });
+          return;
+        }
+
+        clientLogger.error('PDF extraction failed', error);
         setState({
           status: 'error',
-          error: normalizedApiError.error,
-          code: normalizedApiError.code,
+          error:
+            error instanceof Error
+              ? error.message
+              : 'An unexpected error occurred',
         });
-        return;
-      }
-
-      const data: ExtractionApiResponse = parseResult.data;
-
-      if (!response.ok || !data.success || !data.extraction || !data.proof) {
-        const normalizedApiError = handleExtractionApiError({
-          rawData,
-          status: response.status,
-          fallbackMessage: 'Failed to extract PDF content',
-        });
-
-        setState({
-          status: 'error',
-          error: normalizedApiError.error,
-          code: normalizedApiError.code,
-        });
-        return;
-      }
-
-      setState({
-        status: 'preview',
-        extraction: {
-          mainTopic: data.extraction.structure.suggestedMainTopic,
-          sections: data.extraction.structure.sections,
-          pageCount: data.extraction.pageCount,
-          confidence: data.extraction.structure.confidence,
-          truncation: data.extraction.truncation,
-        },
-        proof: data.proof,
+      })
+      .finally(() => {
+        clearExtractionTracking();
       });
-
-      if (data.extraction.truncation?.truncated) {
-        const summary = truncationReasonsSummary(
-          data.extraction.truncation.reasons
-        );
-        const message = summary
-          ? `Content trimmed: ${summary}. You can still edit the extracted sections before generating.`
-          : 'Large PDF content was trimmed for safety. You can still edit the extracted sections before generating.';
-        toast.info(message);
-      }
-    } catch (error) {
-      clientLogger.error('PDF extraction failed', error);
-      setState({
-        status: 'error',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'An unexpected error occurred',
-      });
-    }
   };
 
-  const handleGenerate = async (editedData: {
+  const handleCancelUpload = () => {
+    if (!extractionAbortControllerRef.current) {
+      setState({ status: 'idle' });
+      return;
+    }
+
+    abortExtraction('cancel');
+  };
+
+  const handleGenerate = (editedData: {
     mainTopic: string;
     sections: ExtractionData['sections'];
     settings: PdfPlanSettings;
@@ -282,72 +391,75 @@ export function PdfCreatePanel({
     isSubmittingRef.current = true;
     setState({ status: 'generating' });
 
-    const { mainTopic, sections, settings } = editedData;
-    const { skillLevel, weeklyHours, learningStyle, deadlineWeeks } = settings;
+    const payloadResult = buildPdfCreatePayload({
+      mainTopic: editedData.mainTopic,
+      sections: editedData.sections,
+      settings: editedData.settings,
+      proof,
+    });
 
-    try {
-      const createInput = mapPdfSettingsToCreateInput({
-        mainTopic,
-        sections,
-        skillLevel,
-        weeklyHours,
-        learningStyle,
-        deadlineWeeks,
-        pdfProofToken: proof.token,
-        pdfExtractionHash: proof.extractionHash,
-        pdfProofVersion: proof.version,
+    if (!payloadResult.ok) {
+      clientLogger.error('Failed to build plan payload from PDF settings', {
+        error: payloadResult.error,
       });
-      const streamPlanId = await startGeneration(createInput);
-
-      planIdRef.current = streamPlanId;
-      toast.success('Your learning plan is ready!');
-      router.push(`/plans/${streamPlanId}`);
-    } catch (streamError) {
-      const isAbort =
-        streamError instanceof DOMException &&
-        streamError.name === 'AbortError';
-      if (isAbort) {
-        toast.info('Generation cancelled');
-        setState({ status: 'idle' });
-        return;
-      }
-
-      clientLogger.error('Plan generation failed', streamError);
-
-      const streamErr = normalizeThrown(streamError);
-      const message =
-        streamErr instanceof Error
-          ? streamErr.message
-          : 'Failed to create learning plan. Please try again.';
-
-      const extractedPlanId = isStreamingError(streamErr)
-        ? (streamErr.planId ?? streamErr.data?.planId ?? planIdRef.current)
-        : planIdRef.current;
-
-      if (
-        extractedPlanId &&
-        typeof extractedPlanId === 'string' &&
-        extractedPlanId.length > 0
-      ) {
-        toast.error('Generation failed. You can retry from the plan page.');
-        router.push(`/plans/${extractedPlanId}`);
-        return;
-      }
-
-      const errorCode = isStreamingError(streamErr)
-        ? streamErr.code === 'QUOTA_EXCEEDED'
-          ? ('QUOTA_EXCEEDED' as ErrorCode)
-          : undefined
-        : undefined;
-
       setState({
         status: 'error',
-        error: message,
-        code: errorCode,
+        error: 'Failed to create learning plan. Please try again.',
       });
-    } finally {
       isSubmittingRef.current = false;
+      return;
     }
+
+    void startGeneration(payloadResult.payload)
+      .then((streamPlanId) => {
+        planIdRef.current = streamPlanId;
+        toast.success('Your learning plan is ready!');
+        router.push(`/plans/${streamPlanId}`);
+      })
+      .catch((streamError: unknown) => {
+        if (isAbortError(streamError)) {
+          toast.info('Generation cancelled');
+          setState({ status: 'idle' });
+          return;
+        }
+
+        clientLogger.error('Plan generation failed', streamError);
+
+        const streamErr = normalizeThrown(streamError);
+        const message =
+          streamErr instanceof Error
+            ? streamErr.message
+            : 'Failed to create learning plan. Please try again.';
+
+        const extractedPlanId = isStreamingError(streamErr)
+          ? (streamErr.planId ?? streamErr.data?.planId ?? planIdRef.current)
+          : planIdRef.current;
+
+        if (
+          extractedPlanId &&
+          typeof extractedPlanId === 'string' &&
+          extractedPlanId.length > 0
+        ) {
+          toast.error('Generation failed. You can retry from the plan page.');
+          router.push(`/plans/${extractedPlanId}`);
+          return;
+        }
+
+        const errorCode = isStreamingError(streamErr)
+          ? streamErr.code === 'QUOTA_EXCEEDED'
+            ? ('QUOTA_EXCEEDED' as ErrorCode)
+            : undefined
+          : undefined;
+
+        setState({
+          status: 'error',
+          error: message,
+          code: errorCode,
+        });
+      })
+      .finally(() => {
+        isSubmittingRef.current = false;
+      });
   };
 
   const handleRetry = () => {
@@ -374,13 +486,20 @@ export function PdfCreatePanel({
 
   if (state.status === 'uploading') {
     return (
-      <PdfUploadZone
-        onFileSelect={(file) => {
-          void handleFileSelect(file);
-        }}
-        isUploading={true}
-        disabled={true}
-      />
+      <div className="w-full max-w-2xl space-y-4">
+        <PdfUploadZone
+          onFileSelect={(file) => {
+            void handleFileSelect(file);
+          }}
+          isUploading={true}
+          disabled={true}
+        />
+        <div className="flex justify-center">
+          <Button type="button" variant="outline" onClick={handleCancelUpload}>
+            Cancel upload
+          </Button>
+        </div>
+      </div>
     );
   }
 

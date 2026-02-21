@@ -354,7 +354,10 @@ export function LessonAccordionItem({
               <div className="rounded-xl border border-stone-200/50 bg-white/50 p-6 dark:border-stone-700/50 dark:bg-stone-800/30">
                 <div className="prose prose-stone dark:prose-invert max-w-none">
                   {placeholderContent.map((block, index) => (
-                    <ContentBlockRenderer key={index} block={block} />
+                    <ContentBlockRenderer
+                      key={`${block.type}-${hashString(block.content)}-${index}`}
+                      block={block}
+                    />
                   ))}
                 </div>
 
