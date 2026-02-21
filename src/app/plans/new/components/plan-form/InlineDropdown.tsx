@@ -4,7 +4,9 @@ import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown } from 'lucide-react';
 import { useId } from 'react';
-import type { DropdownOption } from './types';
+import type { JSX } from 'react';
+
+import type { DropdownOption } from '@/app/plans/new/components/plan-form/types';
 
 type DropdownVariant = 'primary' | 'accent' | 'cyan' | 'rose';
 
@@ -68,7 +70,7 @@ export function InlineDropdown<TValue extends string>({
   icon,
   onChange,
   variant = 'primary',
-}: InlineDropdownProps<TValue>) {
+}: InlineDropdownProps<TValue>): JSX.Element {
   const generatedId = useId();
   const componentId = id ?? generatedId;
   const styles = VARIANT_STYLES[variant];

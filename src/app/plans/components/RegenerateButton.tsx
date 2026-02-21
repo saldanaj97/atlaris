@@ -58,7 +58,10 @@ export function RegenerateButton({
       clientLogger.error('Regeneration failed', { planId, error });
       toast.error('Unable to enqueue regeneration');
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+        abortControllerRef.current = null;
+      }
     }
   };
 

@@ -59,6 +59,7 @@ function planInputReducer(
         ...state,
         topic: action.value,
       };
+    // Keep this action separate so external resets remain distinct from user edits in reducer traces.
     case 'reset-topic':
       return {
         ...state,
@@ -114,6 +115,7 @@ export function UnifiedPlanInput({
 
   const prevResetVersionRef = useRef(topicResetVersion);
   const topicRef = useRef(state.topic);
+  // Keep topicRef in sync with state.topic so effect consumers read the latest topic without adding it to deps.
   topicRef.current = state.topic;
 
   useEffect(() => {
