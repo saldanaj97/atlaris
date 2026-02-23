@@ -72,7 +72,11 @@ describe('RLS attempt insertion', () => {
       error = e;
     }
 
-    // Expect an RLS/permission-denied error or plan ownership check error
+    // Expect an RLS/permission-denied error or plan ownership check error.
+    // We accept both: (1) RLS blocking the INSERT (permission denied / 42501), and
+    // (2) app-level "not found or inaccessible" when the orchestrator rejects
+    // before the DB (e.g. plan ownership mismatch). Both are valid guards
+    // for "non-owner cannot create attempt."
     expect(error).toBeTruthy();
     const err = error as Error & { code?: string; cause?: unknown };
     const msg = err.message ?? '';
@@ -82,7 +86,7 @@ describe('RLS attempt insertion', () => {
       err.code === '42501' ||
       (err.cause as { code?: string })?.code === '42501';
     const hasPermissionMessage =
-      /permission denied|row[- ]level security|not found or inaccessible|user not found for generation attempt reservation/i.test(
+      /permission denied|row[- ]level security|not found or inaccessible/i.test(
         combinedMsg
       );
     expect(

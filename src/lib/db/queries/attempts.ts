@@ -25,7 +25,7 @@ import type {
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, learningPlans, users } from '@/lib/db/schema';
+import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import {
   recordAttemptFailure,
@@ -44,9 +44,10 @@ import { count, eq, sql } from 'drizzle-orm';
 /**
  * Atomically reserves an attempt slot for a plan within a single transaction.
  *
- * 1. Locks user + plan rows with FOR UPDATE to serialize per-user reservations.
- * 2. Verifies ownership and durable per-user window limit.
- * 3. Enforces per-plan attempt cap and rejects in-progress duplicates.
+ * 1. Acquires a transaction-scoped advisory lock per user to serialize concurrent reservations.
+ * 2. Locks the owned plan row with FOR UPDATE and verifies ownership.
+ * 3. Enforces durable per-user window limit.
+ * 4. Enforces per-plan attempt cap and rejects in-progress duplicates.
  * 4. Inserts a placeholder attempt with status 'in_progress'.
  * 5. Sets the plan's generation_status to 'generating'.
  *
@@ -74,16 +75,15 @@ export async function reserveAttemptSlot(
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
 
-    const [lockedUser] = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1)
-      .for('update');
-
-    if (!lockedUser?.id) {
-      throw new Error('User not found for generation attempt reservation');
-    }
+    // Acquire per-user advisory lock to serialize concurrent reservations.
+    // Uses a standalone SELECT (no FROM clause) to avoid querying the users
+    // table, which is subject to RLS evaluation that can fail when the
+    // session's SET ROLE context does not propagate reliably into the
+    // Drizzle transaction. User existence is implicitly validated by
+    // lockOwnedPlanById below (plan ownership requires a valid user).
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${userId})::bigint)`
+    );
 
     const plan = await lockOwnedPlanById({
       planId,
