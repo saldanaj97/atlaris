@@ -23,23 +23,226 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
 const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
 
-const truncationSchema = z.object({
-  truncated: z.boolean(),
-  maxBytes: z.number(),
-  returnedBytes: z.number(),
-  reasons: z.array(z.string()),
-  limits: z.object({
-    maxTextChars: z.number(),
-    maxSections: z.number(),
-    maxSectionChars: z.number(),
-  }),
-});
+interface TruncationData {
+  truncated: boolean;
+  maxBytes: number;
+  returnedBytes: number;
+  reasons: string[];
+  limits: {
+    maxTextChars: number;
+    maxSections: number;
+    maxSectionChars: number;
+  };
+}
 
-type TruncationData = z.infer<typeof truncationSchema>;
+interface ExtractionSection {
+  title: string;
+  content: string;
+  level: number;
+  suggestedTopic?: string;
+}
+
+interface ExtractionProofData {
+  token: string;
+  extractionHash: string;
+  expiresAt: string;
+  version: 1;
+}
+
+interface ExtractionApiResponseData {
+  success: boolean;
+  extraction?: {
+    pageCount: number;
+    structure: {
+      sections: ExtractionSection[];
+      suggestedMainTopic: string;
+      confidence: 'high' | 'medium' | 'low';
+    };
+    truncation?: TruncationData;
+  };
+  proof?: ExtractionProofData;
+  error?: string;
+  code?: string;
+}
+
+type ExtractionApiParseResult =
+  | { ok: true; data: ExtractionApiResponseData }
+  | { ok: false; error: string };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseExtractionSection(value: unknown): ExtractionSection | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (
+    typeof value.title !== 'string' ||
+    typeof value.content !== 'string' ||
+    typeof value.level !== 'number'
+  ) {
+    return null;
+  }
+
+  const suggestedTopic =
+    typeof value.suggestedTopic === 'string' ? value.suggestedTopic : undefined;
+
+  return {
+    title: value.title,
+    content: value.content,
+    level: value.level,
+    suggestedTopic,
+  };
+}
+
+function parseTruncationData(value: unknown): TruncationData | null {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.limits) ||
+    !Array.isArray(value.reasons)
+  ) {
+    return null;
+  }
+
+  const reasons = value.reasons.filter(
+    (reason): reason is string => typeof reason === 'string'
+  );
+
+  if (
+    reasons.length !== value.reasons.length ||
+    typeof value.truncated !== 'boolean' ||
+    typeof value.maxBytes !== 'number' ||
+    typeof value.returnedBytes !== 'number' ||
+    typeof value.limits.maxTextChars !== 'number' ||
+    typeof value.limits.maxSections !== 'number' ||
+    typeof value.limits.maxSectionChars !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    truncated: value.truncated,
+    maxBytes: value.maxBytes,
+    returnedBytes: value.returnedBytes,
+    reasons,
+    limits: {
+      maxTextChars: value.limits.maxTextChars,
+      maxSections: value.limits.maxSections,
+      maxSectionChars: value.limits.maxSectionChars,
+    },
+  };
+}
+
+function parseExtractionApiResponse(
+  rawData: unknown
+): ExtractionApiParseResult {
+  if (!isRecord(rawData) || typeof rawData.success !== 'boolean') {
+    return {
+      ok: false,
+      error: 'Response must be an object with a boolean success field.',
+    };
+  }
+
+  let extraction: ExtractionApiResponseData['extraction'];
+  if (rawData.extraction !== undefined) {
+    if (
+      !isRecord(rawData.extraction) ||
+      !isRecord(rawData.extraction.structure)
+    ) {
+      return { ok: false, error: 'Response extraction payload is malformed.' };
+    }
+
+    const sectionsValue = rawData.extraction.structure.sections;
+    if (!Array.isArray(sectionsValue)) {
+      return {
+        ok: false,
+        error: 'Response extraction sections are malformed.',
+      };
+    }
+
+    const sections: ExtractionSection[] = [];
+    for (const sectionValue of sectionsValue) {
+      const section = parseExtractionSection(sectionValue);
+      if (!section) {
+        return {
+          ok: false,
+          error: 'Response extraction section entry is malformed.',
+        };
+      }
+
+      sections.push(section);
+    }
+
+    const confidence = rawData.extraction.structure.confidence;
+    if (
+      typeof rawData.extraction.pageCount !== 'number' ||
+      typeof rawData.extraction.structure.suggestedMainTopic !== 'string' ||
+      (confidence !== 'high' && confidence !== 'medium' && confidence !== 'low')
+    ) {
+      return {
+        ok: false,
+        error: 'Response extraction structure is malformed.',
+      };
+    }
+
+    const parsedTruncation =
+      rawData.extraction.truncation === undefined
+        ? undefined
+        : parseTruncationData(rawData.extraction.truncation);
+
+    if (rawData.extraction.truncation !== undefined && !parsedTruncation) {
+      return { ok: false, error: 'Response truncation payload is malformed.' };
+    }
+
+    const truncation = parsedTruncation ?? undefined;
+
+    extraction = {
+      pageCount: rawData.extraction.pageCount,
+      structure: {
+        sections,
+        suggestedMainTopic: rawData.extraction.structure.suggestedMainTopic,
+        confidence,
+      },
+      truncation,
+    };
+  }
+
+  let proof: ExtractionProofData | undefined;
+  if (rawData.proof !== undefined) {
+    if (
+      !isRecord(rawData.proof) ||
+      typeof rawData.proof.token !== 'string' ||
+      typeof rawData.proof.extractionHash !== 'string' ||
+      typeof rawData.proof.expiresAt !== 'string' ||
+      rawData.proof.version !== 1
+    ) {
+      return { ok: false, error: 'Response proof payload is malformed.' };
+    }
+
+    proof = {
+      token: rawData.proof.token,
+      extractionHash: rawData.proof.extractionHash,
+      expiresAt: rawData.proof.expiresAt,
+      version: 1,
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      success: rawData.success,
+      extraction,
+      proof,
+      error: typeof rawData.error === 'string' ? rawData.error : undefined,
+      code: typeof rawData.code === 'string' ? rawData.code : undefined,
+    },
+  };
+}
 
 const TRUNCATION_REASON_LABELS: Record<string, string> = {
   text_char_cap: 'raw text length limit',
@@ -69,48 +272,6 @@ function truncationReasonsSummary(
   return labels.join('; ');
 }
 
-const extractionApiResponseSchema = z.object({
-  success: z.boolean(),
-  extraction: z
-    .object({
-      text: z.string(),
-      pageCount: z.number(),
-      metadata: z
-        .object({
-          title: z.string().optional(),
-          author: z.string().optional(),
-          subject: z.string().optional(),
-        })
-        .optional(),
-      structure: z.object({
-        sections: z.array(
-          z.object({
-            title: z.string(),
-            content: z.string(),
-            level: z.number(),
-            suggestedTopic: z.string().optional(),
-          })
-        ),
-        suggestedMainTopic: z.string(),
-        confidence: z.enum(['high', 'medium', 'low']),
-      }),
-      truncation: truncationSchema.optional(),
-    })
-    .optional(),
-  proof: z
-    .object({
-      token: z.string(),
-      extractionHash: z.string(),
-      expiresAt: z.string(),
-      version: z.literal(1),
-    })
-    .optional(),
-  error: z.string().optional(),
-  code: z.string().optional(),
-});
-
-type ExtractionApiResponse = z.infer<typeof extractionApiResponseSchema>;
-
 function handleExtractionApiError(params: {
   rawData: unknown;
   status: number;
@@ -137,22 +298,10 @@ interface PdfCreatePanelProps {
 
 interface ExtractionData {
   mainTopic: string;
-  sections: Array<{
-    title: string;
-    content: string;
-    level: number;
-    suggestedTopic?: string;
-  }>;
+  sections: ExtractionSection[];
   pageCount: number;
   confidence: 'high' | 'medium' | 'low';
   truncation?: TruncationData;
-}
-
-interface ExtractionProofData {
-  token: string;
-  extractionHash: string;
-  expiresAt: string;
-  version: 1;
 }
 
 type PageState =
@@ -275,9 +424,9 @@ export function PdfCreatePanel({
     })
       .then(async (response) => {
         const rawData: unknown = await response.json();
-        const parseResult = extractionApiResponseSchema.safeParse(rawData);
+        const parseResult = parseExtractionApiResponse(rawData);
 
-        if (!parseResult.success) {
+        if (!parseResult.ok) {
           const normalizedApiError = handleExtractionApiError({
             rawData,
             status: response.status,
@@ -285,7 +434,7 @@ export function PdfCreatePanel({
           });
 
           clientLogger.error('PDF extraction response validation failed', {
-            error: parseResult.error.flatten(),
+            error: parseResult.error,
             responseOk: response.ok,
           });
           setState({
@@ -296,7 +445,7 @@ export function PdfCreatePanel({
           return;
         }
 
-        const data: ExtractionApiResponse = parseResult.data;
+        const data = parseResult.data;
 
         if (!response.ok || !data.success || !data.extraction || !data.proof) {
           const normalizedApiError = handleExtractionApiError({
