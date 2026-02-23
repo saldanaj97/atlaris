@@ -100,4 +100,49 @@ describe('RLS attempt insertion', () => {
       .where(eq(generationAttempts.planId, plan.id));
     expect(attempts.length).toBe(0);
   });
+
+  it('owner can insert attempt', async () => {
+    const ownerAuthUserId = buildTestAuthUserId('rls-insert-owner-pos');
+    setTestUser(ownerAuthUserId);
+    const ownerId = await ensureUser({
+      authUserId: ownerAuthUserId,
+      email: buildTestEmail(ownerAuthUserId),
+    });
+
+    const plan = await createTestPlan({
+      userId: ownerId,
+      topic: 'Owner Insert Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 3,
+      learningStyle: 'reading',
+      origin: 'ai',
+    });
+
+    const mock = createMockProvider({ scenario: 'success' });
+    const rlsDb = await createRlsDbForUser(ownerAuthUserId);
+
+    const planId = await runGenerationAttempt(
+      {
+        planId: plan.id,
+        userId: ownerId,
+        input: {
+          topic: 'Owner Insert Plan',
+          notes: 'Should succeed',
+          skillLevel: 'beginner',
+          weeklyHours: 3,
+          learningStyle: 'reading',
+        },
+      },
+      { provider: mock.provider, dbClient: rlsDb }
+    );
+
+    expect(planId).toBe(plan.id);
+
+    const attempts = await db
+      .select()
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, plan.id));
+    expect(attempts.length).toBe(1);
+    expect(attempts[0]?.status).toBe('success');
+  });
 });
