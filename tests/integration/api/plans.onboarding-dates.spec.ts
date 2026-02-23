@@ -87,7 +87,8 @@ describe('POST /api/v1/plans with dates in job payload', () => {
     expect(response.status).toBe(403);
 
     const payload = await response.json();
-    expect(payload).toEqual({
+    expect(payload).toMatchObject({
+      code: 'FORBIDDEN',
       error:
         'free tier limited to 2-week plans. Upgrade to pro for longer plans.',
     });

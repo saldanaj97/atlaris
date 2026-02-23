@@ -2,11 +2,10 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
-import { auth as mockAuth } from '../../mocks/shared/auth-server';
 
-vi.mock('@/lib/auth/server', () => {
-  return { auth: mockAuth };
-});
+vi.mock('@/lib/auth/server', () => ({
+  auth: { getSession: vi.fn() },
+}));
 
 describe('GET /api/v1/notifications/preferences', () => {
   const authUserId = 'auth_notif_prefs_test_user';

@@ -114,8 +114,9 @@ describe('POST /api/v1/plans/:planId/retry', () => {
         })
       );
       expect(response.status).toBe(400);
-      const body = (await response.json()) as { error?: string };
-      expect(body.error).toContain('not in a failed state');
+      const body = (await response.json()) as { error?: string; code?: string };
+      expect(body.code).toBe('VALIDATION_ERROR');
+      expect(body.error).toContain('not eligible for retry');
       expect(runSpy).not.toHaveBeenCalled();
     });
   });
