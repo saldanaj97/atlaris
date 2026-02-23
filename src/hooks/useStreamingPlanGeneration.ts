@@ -164,6 +164,7 @@ export function useStreamingPlanGeneration() {
         let completed = false;
         let errored = false;
         let latestPlanId: string | undefined;
+        let terminal = false;
 
         const handleEvent = (event: StreamingEvent) => {
           switch (event.type) {
@@ -214,6 +215,7 @@ export function useStreamingPlanGeneration() {
               break;
             case 'error': {
               errored = true;
+              terminal = true;
               const errorPlanId = event.data.planId ?? latestPlanId;
               setState((prev) => ({
                 ...prev,
@@ -236,6 +238,7 @@ export function useStreamingPlanGeneration() {
             }
             case 'cancelled': {
               errored = true;
+              terminal = true;
               latestPlanId = latestPlanId ?? event.data.planId;
               setState((prev) => ({
                 ...prev,
@@ -288,6 +291,10 @@ export function useStreamingPlanGeneration() {
                 const event = parseEventLine(line);
                 if (event) {
                   handleEvent(event);
+                  if (terminal) {
+                    void reader.cancel();
+                    return;
+                  }
                 }
               }
             }

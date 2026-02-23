@@ -19,7 +19,8 @@ function parseMockSeed(): number | undefined {
 export function getGenerationProviderWithModel(
   modelId: string
 ): AiPlanGenerationProvider {
-  // In test environment, still respect mock settings
+  // In test environment, still respect mock settings.
+  // Note: useMock check here is "!== 'false'" (opt-out); getGenerationProvider uses "=== 'false'" below — same outcome, different phrasing.
   if (appEnv.isTest) {
     const providerType = aiEnv.provider;
     if (providerType === 'mock' || aiEnv.useMock !== 'false') {
