@@ -111,7 +111,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('records timeout failure metrics, keeps plan generating, and emits failure log event', async () => {
+  it('records timeout failure metrics, marks plan pending retry, and emits failure log event', async () => {
     const startedAt = new Date('2026-01-02T10:00:00.000Z');
     const finishedAt = new Date('2026-01-02T10:00:02.000Z');
 
@@ -147,7 +147,7 @@ describe('Atomic attempt observability', () => {
     expect(snapshot.failure.count).toBe(1);
     expect(snapshot.failure.duration.last).toBe(2_000);
     expect(snapshot.failure.classifications.timeout).toBe(1);
-    expect(plan?.generationStatus).toBe('generating');
+    expect(plan?.generationStatus).toBe('pending_retry');
 
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] failure',
