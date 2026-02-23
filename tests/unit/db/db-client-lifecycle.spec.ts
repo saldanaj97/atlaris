@@ -47,14 +47,21 @@ describe('cleanupDbClient', () => {
     );
   });
 
-  it('throws TypeError when client has no cleanup or destroy methods', async () => {
-    await expect(cleanupDbClient({})).rejects.toThrow(TypeError);
+  it('logs warning and no-ops when client has no cleanup or destroy methods', async () => {
+    await expect(cleanupDbClient({})).resolves.toBeUndefined();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientType: 'object',
+        clientConstructor: 'Object',
+      }),
+      expect.stringContaining('skipping cleanup')
+    );
   });
 
   it.each([null, undefined, 42, 'string', true])(
-    'throws TypeError for non-object input: %s',
+    'logs warning and no-ops for non-cleanup input: %s',
     async (value) => {
-      await expect(cleanupDbClient(value)).rejects.toThrow(TypeError);
+      await expect(cleanupDbClient(value)).resolves.toBeUndefined();
     }
   );
 });

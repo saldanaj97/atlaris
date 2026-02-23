@@ -75,9 +75,15 @@ export async function cleanupDbClient(client: unknown): Promise<void> {
     const clientConstructor =
       (client as { constructor?: { name?: string } })?.constructor?.name ??
       'unknown';
-    throw new TypeError(
-      `db-client-lifecycle: expected a DB client with cleanup/destroy, got ${clientType} (${clientConstructor}) — verify correct client type is being passed`
+
+    logger.warn(
+      {
+        clientType,
+        clientConstructor,
+      },
+      'db-client-lifecycle: skipping cleanup; client has no cleanup()/destroy()'
     );
+    return;
   }
 
   await cleanupInternalDbClient(client);
