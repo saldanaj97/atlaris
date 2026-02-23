@@ -14,6 +14,7 @@ describe('Plan Queries - Tenant Scoping', () => {
   let ownerId: string;
   let attackerId: string;
   let ownerPlanId: string;
+  let ownerPlanTopic: string;
 
   beforeEach(async () => {
     const owner = await createTestUser();
@@ -27,6 +28,7 @@ describe('Plan Queries - Tenant Scoping', () => {
       generationStatus: 'ready',
     });
     ownerPlanId = plan.id;
+    ownerPlanTopic = plan.topic;
 
     const module = await createTestModule({
       planId: ownerPlanId,
@@ -71,7 +73,7 @@ describe('Plan Queries - Tenant Scoping', () => {
 
       expect(result).not.toBeNull();
       expect(result?.plan.id).toBe(ownerPlanId);
-      expect(result?.plan.topic).toBe('Owner Plan');
+      expect(result?.plan.topic).toBe(ownerPlanTopic);
       expect(result?.plan.generationStatus).toBe('ready');
       // Ownership is already enforced by the WHERE clause in the query
     });
