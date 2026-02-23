@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
@@ -23,7 +25,7 @@ const getCachedUsageSummary = cache(async (userId: string) => {
  * Async component that fetches usage data and renders the plan count badge.
  * Wrapped in its own Suspense boundary by the parent page.
  */
-export async function PlanCountBadgeContent() {
+export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
   const user = await getCachedCurrentUser();
   if (!user) {
     return null;
@@ -47,7 +49,7 @@ export async function PlanCountBadgeContent() {
  * Async component that fetches user plans and renders content.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function PlansContent() {
+export async function PlansContent(): Promise<JSX.Element> {
   const user = await getCachedCurrentUser();
   if (!user) {
     redirect('/sign-in?redirect_url=/plans');

@@ -1,5 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
+
 import { Accordion } from '@/components/ui/accordion';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -7,7 +9,7 @@ import { useMemo, useState } from 'react';
 
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/lib/types/db';
-import { LessonAccordionItem } from './LessonAccordionItem';
+import { LessonAccordionItem } from '@/app/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 
 interface ModuleLessonsClientProps {
   planId: string;
@@ -49,7 +51,7 @@ export function ModuleLessonsClient({
   nextModuleId,
   previousModulesComplete,
   initialStatuses,
-}: ModuleLessonsClientProps) {
+}: ModuleLessonsClientProps): JSX.Element {
   const [statuses, setStatuses] =
     useState<Record<string, ProgressStatus>>(initialStatuses);
 

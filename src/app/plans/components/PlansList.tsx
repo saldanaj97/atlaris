@@ -1,5 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -20,16 +22,15 @@ interface UsageData {
 interface PlansListProps {
   summaries: PlanSummary[];
   usage?: UsageData;
-  referenceTimestamp?: string;
+  referenceTimestamp: string;
 }
 
 export function PlansList({
   summaries,
   usage: _usage,
   referenceTimestamp,
-}: PlansListProps) {
-  const effectiveReferenceTimestamp =
-    referenceTimestamp ?? new Date().toISOString();
+}: PlansListProps): JSX.Element {
+  const [effectiveReferenceTimestamp] = useState(() => referenceTimestamp);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');

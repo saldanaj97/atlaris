@@ -273,27 +273,39 @@ export function CreatePlanPageClient({
         />
       </div>
 
-      {currentMethod === 'manual' ? (
-        <div id={manualPanelId} role="tabpanel" aria-labelledby={manualTabId}>
-          <ManualCreatePanel
-            initialTopic={prefillTopic}
-            topicResetVersion={topicResetVersion}
-            onTopicUsed={handleTopicUsed}
-          />
-        </div>
-      ) : (
-        <div id={pdfPanelId} role="tabpanel" aria-labelledby={pdfTabId}>
-          <Suspense
-            fallback={
-              <div className="text-muted-foreground text-center text-sm">
-                Loading PDF options...
-              </div>
-            }
-          >
-            <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
-          </Suspense>
-        </div>
-      )}
+      {/* Both panels are always mounted to preserve state and avoid broken ARIA targets.
+         The inactive panel uses hidden + inert to hide from the a11y tree. */}
+      <div
+        id={manualPanelId}
+        role="tabpanel"
+        aria-labelledby={manualTabId}
+        hidden={currentMethod !== 'manual'}
+        inert={currentMethod !== 'manual' ? true : undefined}
+      >
+        <ManualCreatePanel
+          initialTopic={prefillTopic}
+          topicResetVersion={topicResetVersion}
+          onTopicUsed={handleTopicUsed}
+        />
+      </div>
+
+      <div
+        id={pdfPanelId}
+        role="tabpanel"
+        aria-labelledby={pdfTabId}
+        hidden={currentMethod !== 'pdf'}
+        inert={currentMethod !== 'pdf' ? true : undefined}
+      >
+        <Suspense
+          fallback={
+            <div className="text-muted-foreground text-center text-sm">
+              Loading PDF options...
+            </div>
+          }
+        >
+          <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+        </Suspense>
+      </div>
     </>
   );
 }

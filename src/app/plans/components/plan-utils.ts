@@ -1,5 +1,10 @@
 import type { PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
+import {
+  differenceInDays,
+  differenceInHours,
+  differenceInMinutes,
+} from 'date-fns';
 
 type DateInput = Date | string | null | undefined;
 
@@ -42,10 +47,9 @@ export function getRelativeTime(
 
   if (!targetDate || !reference) return 'Recently';
 
-  const diffMs = reference.getTime() - targetDate.getTime();
-  const diffMinutes = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffMinutes = differenceInMinutes(reference, targetDate);
+  const diffHours = differenceInHours(reference, targetDate);
+  const diffDays = differenceInDays(reference, targetDate);
 
   if (diffMinutes < 60) {
     return diffMinutes <= 1 ? 'Just now' : `${diffMinutes}m ago`;
@@ -119,9 +123,7 @@ export function getPlanStatus(
   const updatedAt = toValidDate(summary.plan.updatedAt);
   const reference = toValidDate(referenceDate);
   if (updatedAt && reference) {
-    const daysSinceUpdate = Math.floor(
-      (reference.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysSinceUpdate = differenceInDays(reference, updatedAt);
     if (daysSinceUpdate >= 30) {
       return 'paused';
     }

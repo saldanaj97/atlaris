@@ -1,7 +1,9 @@
+import type { JSX } from 'react';
+
 import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/lib/types/db';
-import { ModuleLessonsClient } from './ModuleLessonsClient';
-import { ModuleHeader } from './ModuleHeader';
+import { ModuleLessonsClient } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
+import { ModuleHeader } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 
 interface ModuleDetailProps {
   moduleData: ModuleDetailData;
@@ -11,7 +13,7 @@ interface ModuleDetailProps {
  * Server-rendered module detail shell.
  * Keeps the header static on the server and delegates lesson interactions to a client island.
  */
-export function ModuleDetail({ moduleData }: ModuleDetailProps) {
+export function ModuleDetail({ moduleData }: ModuleDetailProps): JSX.Element {
   const {
     module,
     planId,

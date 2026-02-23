@@ -1,5 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
+
 import {
   Accordion,
   AccordionContent,
@@ -113,7 +115,7 @@ export function PlanTimeline({
   planId,
   modules,
   initialStatuses,
-}: ModuleTimelineProps) {
+}: ModuleTimelineProps): JSX.Element {
   const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
     () => {
       if (initialStatuses) {

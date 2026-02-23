@@ -20,6 +20,8 @@ vi.mock('next/link', () => ({
 }));
 
 describe('PlansList', () => {
+  const referenceTimestamp = '2024-06-01T00:00:00.000Z';
+
   const mockCompletedPlan = buildPlanSummary({
     plan: buildPlan({
       id: 'plan-1',
@@ -90,7 +92,9 @@ describe('PlansList', () => {
   });
 
   it('should render empty state when no plans provided', () => {
-    render(<PlansList summaries={[]} />);
+    render(
+      <PlansList summaries={[]} referenceTimestamp={referenceTimestamp} />
+    );
 
     // EmptyPlansList shows "No Plans Found" title
     expect(screen.getByText('No Plans Found')).toBeInTheDocument();
@@ -103,6 +107,7 @@ describe('PlansList', () => {
     render(
       <PlansList
         summaries={[mockCompletedPlan, mockActivePlan, mockBeginnerPlan]}
+        referenceTimestamp={referenceTimestamp}
       />
     );
 
@@ -112,46 +117,81 @@ describe('PlansList', () => {
   });
 
   it('should display correct progress percentage for completed plans', () => {
-    render(<PlansList summaries={[mockCompletedPlan]} />);
+    render(
+      <PlansList
+        summaries={[mockCompletedPlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     // 1.0 * 100 = 100%
     expect(screen.getByText('100%')).toBeInTheDocument();
   });
 
   it('should display correct progress percentage for active plans', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
+    render(
+      <PlansList
+        summaries={[mockActivePlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     // 0.4 * 100 = 40%
     expect(screen.getByText('40%')).toBeInTheDocument();
   });
 
   it('should display correct task completion count', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
+    render(
+      <PlansList
+        summaries={[mockActivePlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     // PlanRow shows tasks as X/Y format
     expect(screen.getByText('8/20')).toBeInTheDocument();
   });
 
   it('should display task completion count for completed plans', () => {
-    render(<PlansList summaries={[mockCompletedPlan]} />);
+    render(
+      <PlansList
+        summaries={[mockCompletedPlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     expect(screen.getByText('20/20')).toBeInTheDocument();
   });
 
   it('should display 0% for newly started plans', () => {
-    render(<PlansList summaries={[mockBeginnerPlan]} />);
+    render(
+      <PlansList
+        summaries={[mockBeginnerPlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     expect(screen.getByText('0%')).toBeInTheDocument();
   });
 
   it('should display task count for beginner plan', () => {
-    render(<PlansList summaries={[mockBeginnerPlan]} />);
+    render(
+      <PlansList
+        summaries={[mockBeginnerPlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     expect(screen.getByText('0/15')).toBeInTheDocument();
   });
 
   it('should render correct link for each plan', () => {
-    render(<PlansList summaries={[mockCompletedPlan, mockActivePlan]} />);
+    render(
+      <PlansList
+        summaries={[mockCompletedPlan, mockActivePlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     const links = screen.getAllByRole('link');
     const planLinks = links.filter(
@@ -163,13 +203,23 @@ describe('PlansList', () => {
   });
 
   it('should display search input', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
+    render(
+      <PlansList
+        summaries={[mockActivePlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     expect(screen.getByPlaceholderText('Search plans...')).toBeInTheDocument();
   });
 
   it('should display filter buttons', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
+    render(
+      <PlansList
+        summaries={[mockActivePlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     expect(screen.getByText('All Plans')).toBeInTheDocument();
     expect(screen.getByText(/Active/)).toBeInTheDocument();
@@ -178,7 +228,12 @@ describe('PlansList', () => {
   });
 
   it('should display view plan buttons', () => {
-    render(<PlansList summaries={[mockActivePlan]} />);
+    render(
+      <PlansList
+        summaries={[mockActivePlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     // PlanRow has a "View plan" button
     expect(
@@ -192,7 +247,12 @@ describe('PlansList', () => {
       modules: [],
     });
 
-    render(<PlansList summaries={[emptyModulesPlan]} />);
+    render(
+      <PlansList
+        summaries={[emptyModulesPlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
+    );
 
     // Should still render the plan topic
     expect(screen.getByText('Master React Hooks')).toBeInTheDocument();
@@ -200,7 +260,10 @@ describe('PlansList', () => {
 
   it('should maintain list layout structure', () => {
     const { container } = render(
-      <PlansList summaries={[mockCompletedPlan, mockActivePlan]} />
+      <PlansList
+        summaries={[mockCompletedPlan, mockActivePlan]}
+        referenceTimestamp={referenceTimestamp}
+      />
     );
 
     // New component uses space-y-1 div for list

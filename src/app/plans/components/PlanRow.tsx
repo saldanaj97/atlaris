@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import {
   ArrowRight,
@@ -16,7 +18,7 @@ interface PlanRowProps {
   summary: PlanSummary;
   isSelected: boolean;
   onSelect: () => void;
-  referenceTimestamp?: string;
+  referenceTimestamp: string;
 }
 
 export function PlanRow({
@@ -24,17 +26,12 @@ export function PlanRow({
   isSelected,
   onSelect,
   referenceTimestamp,
-}: PlanRowProps) {
-  const effectiveReferenceTimestamp =
-    referenceTimestamp ?? new Date().toISOString();
+}: PlanRowProps): JSX.Element {
   const { plan } = summary;
   const progressPercent = Math.round(summary.completion * 100);
-  const status = getPlanStatus(summary, effectiveReferenceTimestamp);
+  const status = getPlanStatus(summary, referenceTimestamp);
   const nextTask = getNextTaskName(summary);
-  const lastActivity = getRelativeTime(
-    plan.createdAt,
-    effectiveReferenceTimestamp
-  );
+  const lastActivity = getRelativeTime(plan.createdAt, referenceTimestamp);
 
   const statusColors: Record<PlanStatus, string> = {
     active: 'bg-emerald-500',

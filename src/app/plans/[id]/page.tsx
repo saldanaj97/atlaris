@@ -15,11 +15,7 @@ interface PlanPageProps {
 const PLAN_METADATA_DESCRIPTION =
   'View plan details, modules, tasks, and progress for this learning plan.';
 
-export async function generateMetadata({
-  params,
-}: PlanPageProps): Promise<Metadata> {
-  await params;
-
+export function generateMetadata({ params: _params }: PlanPageProps): Metadata {
   return {
     title: 'Plan Details | Atlaris',
     description: PLAN_METADATA_DESCRIPTION,
