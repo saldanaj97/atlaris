@@ -48,8 +48,8 @@ import { count, eq, sql } from 'drizzle-orm';
  * 2. Reads the owned plan row and verifies ownership.
  * 3. Enforces durable per-user window limit.
  * 4. Enforces per-plan attempt cap and rejects in-progress duplicates.
- * 4. Inserts a placeholder attempt with status 'in_progress'.
- * 5. Sets the plan's generation_status to 'generating'.
+ * 5. Inserts a placeholder attempt with status 'in_progress'.
+ * 6. Sets the plan's generation_status to 'generating'.
  *
  * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
  */
