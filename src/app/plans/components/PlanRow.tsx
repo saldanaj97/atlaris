@@ -16,14 +16,25 @@ interface PlanRowProps {
   summary: PlanSummary;
   isSelected: boolean;
   onSelect: () => void;
+  referenceTimestamp?: string;
 }
 
-export function PlanRow({ summary, isSelected, onSelect }: PlanRowProps) {
+export function PlanRow({
+  summary,
+  isSelected,
+  onSelect,
+  referenceTimestamp,
+}: PlanRowProps) {
+  const effectiveReferenceTimestamp =
+    referenceTimestamp ?? new Date().toISOString();
   const { plan } = summary;
   const progressPercent = Math.round(summary.completion * 100);
-  const status = getPlanStatus(summary);
+  const status = getPlanStatus(summary, effectiveReferenceTimestamp);
   const nextTask = getNextTaskName(summary);
-  const lastActivity = getRelativeTime(plan.createdAt);
+  const lastActivity = getRelativeTime(
+    plan.createdAt,
+    effectiveReferenceTimestamp
+  );
 
   const statusColors: Record<PlanStatus, string> = {
     active: 'bg-emerald-500',

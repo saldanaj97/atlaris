@@ -273,37 +273,27 @@ export function CreatePlanPageClient({
         />
       </div>
 
-      <div
-        id={manualPanelId}
-        role="tabpanel"
-        aria-labelledby={manualTabId}
-        aria-hidden={currentMethod !== 'manual'}
-        className={currentMethod !== 'manual' ? 'hidden' : undefined}
-      >
-        <ManualCreatePanel
-          initialTopic={prefillTopic}
-          topicResetVersion={topicResetVersion}
-          onTopicUsed={handleTopicUsed}
-        />
-      </div>
-
-      <div
-        id={pdfPanelId}
-        role="tabpanel"
-        aria-labelledby={pdfTabId}
-        aria-hidden={currentMethod !== 'pdf'}
-        className={currentMethod !== 'pdf' ? 'hidden' : undefined}
-      >
-        <Suspense
-          fallback={
-            <div className="text-muted-foreground text-center text-sm">
-              Loading PDF options...
-            </div>
-          }
-        >
-          <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
-        </Suspense>
-      </div>
+      {currentMethod === 'manual' ? (
+        <div id={manualPanelId} role="tabpanel" aria-labelledby={manualTabId}>
+          <ManualCreatePanel
+            initialTopic={prefillTopic}
+            topicResetVersion={topicResetVersion}
+            onTopicUsed={handleTopicUsed}
+          />
+        </div>
+      ) : (
+        <div id={pdfPanelId} role="tabpanel" aria-labelledby={pdfTabId}>
+          <Suspense
+            fallback={
+              <div className="text-muted-foreground text-center text-sm">
+                Loading PDF options...
+              </div>
+            }
+          >
+            <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+          </Suspense>
+        </div>
+      )}
     </>
   );
 }

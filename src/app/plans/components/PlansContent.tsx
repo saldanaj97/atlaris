@@ -46,6 +46,8 @@ export async function PlansContent() {
     redirect('/sign-in?redirect_url=/plans');
   }
 
+  const referenceTimestamp = new Date().toISOString();
+
   const db = getDb();
   const [summaries, usage] = await Promise.all([
     getPlanSummariesForUser(user.id, db),
@@ -90,6 +92,7 @@ export async function PlansContent() {
   return (
     <PlansList
       summaries={summaries}
+      referenceTimestamp={referenceTimestamp}
       usage={{
         tier: usage.tier,
         activePlans: usage.activePlans,

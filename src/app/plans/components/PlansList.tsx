@@ -20,9 +20,16 @@ interface UsageData {
 interface PlansListProps {
   summaries: PlanSummary[];
   usage?: UsageData;
+  referenceTimestamp?: string;
 }
 
-export function PlansList({ summaries, usage: _usage }: PlansListProps) {
+export function PlansList({
+  summaries,
+  usage: _usage,
+  referenceTimestamp,
+}: PlansListProps) {
+  const effectiveReferenceTimestamp =
+    referenceTimestamp ?? new Date().toISOString();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -35,7 +42,7 @@ export function PlansList({ summaries, usage: _usage }: PlansListProps) {
         summary.plan.topic.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Status filter
-      const status = getPlanStatus(summary);
+      const status = getPlanStatus(summary, effectiveReferenceTimestamp);
       const matchesStatus =
         filterStatus === 'all' ||
         status === filterStatus ||
@@ -43,12 +50,12 @@ export function PlansList({ summaries, usage: _usage }: PlansListProps) {
 
       return matchesSearch && matchesStatus;
     });
-  }, [summaries, searchQuery, filterStatus]);
+  }, [summaries, searchQuery, filterStatus, effectiveReferenceTimestamp]);
 
   const statusCounts = useMemo(() => {
     return summaries.reduce(
       (acc, summary) => {
-        const status = getPlanStatus(summary);
+        const status = getPlanStatus(summary, effectiveReferenceTimestamp);
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       },
@@ -60,7 +67,7 @@ export function PlansList({ summaries, usage: _usage }: PlansListProps) {
         failed: 0,
       } as Record<PlanStatus, number>
     );
-  }, [summaries]);
+  }, [summaries, effectiveReferenceTimestamp]);
 
   return (
     <div className="font-sans">
@@ -143,6 +150,7 @@ export function PlansList({ summaries, usage: _usage }: PlansListProps) {
                 summary={summary}
                 isSelected={index === selectedIndex}
                 onSelect={() => setSelectedIndex(index)}
+                referenceTimestamp={effectiveReferenceTimestamp}
               />
             ))}
           </div>

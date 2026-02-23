@@ -1,6 +1,14 @@
 import type { PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
 
+type DateInput = Date | string | null | undefined;
+
+function toValidDate(value: DateInput): Date | null {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 /**
  * Converts a date to a human-readable relative time string.
  *
@@ -25,11 +33,16 @@ import type { PlanSummary } from '@/lib/types/db';
  * getRelativeTime(null) // "Recently"
  * ```
  */
-export function getRelativeTime(date: Date | null | undefined): string {
-  if (!date) return 'Recently';
+export function getRelativeTime(
+  date: DateInput,
+  referenceDate: DateInput
+): string {
+  const targetDate = toValidDate(date);
+  const reference = toValidDate(referenceDate);
 
-  const now = new Date();
-  const diffMs = now.getTime() - new Date(date).getTime();
+  if (!targetDate || !reference) return 'Recently';
+
+  const diffMs = reference.getTime() - targetDate.getTime();
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -83,7 +96,10 @@ export function getRelativeTime(date: Date | null | undefined): string {
  * getPlanStatus(generatingSummary) // "generating"
  * ```
  */
-export function getPlanStatus(summary: PlanSummary): PlanStatus {
+export function getPlanStatus(
+  summary: PlanSummary,
+  referenceDate: DateInput
+): PlanStatus {
   // Check generation status first
   const generationStatus = summary.plan.generationStatus;
   if (
@@ -100,11 +116,11 @@ export function getPlanStatus(summary: PlanSummary): PlanStatus {
   if (progressPercent >= 100) return 'completed';
 
   // Check if plan is inactive/paused (not updated in 30+ days)
-  const updatedAt = summary.plan.updatedAt;
-  if (updatedAt) {
-    const now = new Date();
+  const updatedAt = toValidDate(summary.plan.updatedAt);
+  const reference = toValidDate(referenceDate);
+  if (updatedAt && reference) {
     const daysSinceUpdate = Math.floor(
-      (now.getTime() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24)
+      (reference.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24)
     );
     if (daysSinceUpdate >= 30) {
       return 'paused';
