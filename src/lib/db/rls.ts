@@ -85,18 +85,21 @@ export async function createAuthenticatedRlsClient(
     connect_timeout: 10, // Timeout for connection attempts
   });
 
+  // Reserve a dedicated connection to guarantee session state (SET ROLE,
+  // set_config) persists across all queries AND Drizzle transactions.
+  // Without reserve(), postgres.js begin() may acquire a connection that
+  // has lost the session context set on the pool's idle connection.
+  const reserved = await sql.reserve();
+
   // Switch to authenticated role (without BYPASSRLS privilege)
-  // CRITICAL: Must await to ensure role is switched before setting session variable
-  await sql.unsafe('SET ROLE authenticated');
+  await reserved.unsafe('SET ROLE authenticated');
 
   // Set search_path after SET ROLE (role switch may reset it)
-  await sql.unsafe('SET search_path = public');
+  await reserved.unsafe('SET search_path = public');
 
   // Set session variable with authenticated user ID using set_config for safety
-  // CRITICAL: Must await to ensure session variable is set before queries execute
-  // This persists for the connection lifetime
   // Using set_config() with template tag parameterization is safer than string interpolation
-  await sql`SELECT set_config('request.jwt.claims', ${jwtClaims}, false)`;
+  await reserved`SELECT set_config('request.jwt.claims', ${jwtClaims}, false)`;
 
   // Track cleanup state to make cleanup idempotent
   let isCleanedUp = false;
@@ -109,6 +112,7 @@ export async function createAuthenticatedRlsClient(
     isCleanedUp = true;
 
     try {
+      reserved.release();
       await sql.end({ timeout: 5 });
     } catch (error) {
       // Log but don't throw - connection cleanup errors shouldn't fail the request
@@ -121,7 +125,7 @@ export async function createAuthenticatedRlsClient(
   };
 
   return {
-    db: drizzle(sql, { schema }),
+    db: drizzle(reserved, { schema }),
     cleanup,
   };
 }
@@ -162,18 +166,19 @@ export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
     connect_timeout: 10,
   });
 
+  // Reserve a dedicated connection to guarantee session state persists
+  // across all queries AND Drizzle transactions (see createAuthenticatedRlsClient).
+  const reserved = await sql.reserve();
+
   // Switch to anonymous role (without BYPASSRLS privilege)
-  // CRITICAL: Must await to ensure role is switched before setting session variable
-  await sql.unsafe('SET ROLE anonymous');
+  await reserved.unsafe('SET ROLE anonymous');
 
   // Set search_path after SET ROLE (role switch may reset it)
-  await sql.unsafe('SET search_path = public');
+  await reserved.unsafe('SET search_path = public');
 
   // Set session variable to JSON null for RLS policy compatibility
-  // CRITICAL: Must await to ensure session variable is set before queries execute
-  // This allows policies to safely cast and check for null
   // Using set_config() with template tag parameterization is safer than string interpolation
-  await sql`SELECT set_config('request.jwt.claims', ${'null'}, false)`;
+  await reserved`SELECT set_config('request.jwt.claims', ${'null'}, false)`;
 
   // Track cleanup state to make cleanup idempotent
   let isCleanedUp = false;
@@ -186,6 +191,7 @@ export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
     isCleanedUp = true;
 
     try {
+      reserved.release();
       await sql.end({ timeout: 5 });
     } catch (error) {
       // Log but don't throw - connection cleanup errors shouldn't fail the request
@@ -198,7 +204,7 @@ export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
   };
 
   return {
-    db: drizzle(sql, { schema }),
+    db: drizzle(reserved, { schema }),
     cleanup,
   };
 }
