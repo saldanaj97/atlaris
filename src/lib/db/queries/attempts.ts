@@ -44,11 +44,12 @@ import { count, eq, sql } from 'drizzle-orm';
 /**
  * Atomically reserves an attempt slot for a plan within a single transaction.
  *
- * 1. Locks user + plan rows with FOR UPDATE to serialize per-user reservations.
- * 2. Verifies ownership and durable per-user window limit.
- * 3. Enforces per-plan attempt cap and rejects in-progress duplicates.
- * 4. Inserts a placeholder attempt with status 'in_progress'.
- * 5. Sets the plan's generation_status to 'generating'.
+ * 1. Verifies the user exists and acquires a transaction-scoped advisory lock per user.
+ * 2. Locks the owned plan row with FOR UPDATE.
+ * 3. Verifies ownership and durable per-user window limit.
+ * 4. Enforces per-plan attempt cap and rejects in-progress duplicates.
+ * 5. Inserts a placeholder attempt with status 'in_progress'.
+ * 6. Sets the plan's generation_status to 'generating'.
  *
  * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
  */
@@ -75,11 +76,13 @@ export async function reserveAttemptSlot(
     const startedAt = nowFn();
 
     const [lockedUser] = await tx
-      .select({ id: users.id })
+      .select({
+        id: users.id,
+        reservationLock: sql`pg_advisory_xact_lock(hashtext(${userId})::bigint)`,
+      })
       .from(users)
       .where(eq(users.id, userId))
-      .limit(1)
-      .for('update');
+      .limit(1);
 
     if (!lockedUser?.id) {
       throw new Error('User not found for generation attempt reservation');
