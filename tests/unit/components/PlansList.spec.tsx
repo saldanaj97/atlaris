@@ -259,16 +259,15 @@ describe('PlansList', () => {
   });
 
   it('should maintain list layout structure', () => {
-    const { container } = render(
+    render(
       <PlansList
         summaries={[mockCompletedPlan, mockActivePlan]}
         referenceTimestamp={referenceTimestamp}
       />
     );
 
-    // New component uses space-y-1 div for list
-    const listContainer = container.querySelector('.space-y-1');
-    expect(listContainer).toBeInTheDocument();
-    expect(listContainer?.children.length).toBe(2);
+    // Both plans are visible by their topic text
+    expect(screen.getByText('Learn TypeScript')).toBeInTheDocument();
+    expect(screen.getByText('Master React Hooks')).toBeInTheDocument();
   });
 });

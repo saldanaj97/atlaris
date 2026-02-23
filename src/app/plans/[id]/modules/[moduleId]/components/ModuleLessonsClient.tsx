@@ -7,9 +7,9 @@ import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
+import { LessonAccordionItem } from '@/app/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/lib/types/db';
-import { LessonAccordionItem } from '@/app/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 
 interface ModuleLessonsClientProps {
   planId: string;

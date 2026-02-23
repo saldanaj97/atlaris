@@ -5,9 +5,9 @@ import type { JSX } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { EmptyPlansList } from './EmptyPlansList';
-import { getPlanStatus } from './plan-utils';
-import { PlanRow } from './PlanRow';
+import { EmptyPlansList } from '@/app/plans/components/EmptyPlansList';
+import { getPlanStatus } from '@/app/plans/components/plan-utils';
+import { PlanRow } from '@/app/plans/components/PlanRow';
 
 import type { FilterStatus, PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';

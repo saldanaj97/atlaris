@@ -12,13 +12,27 @@ interface PlanPageProps {
   params: Promise<{ id: string }>;
 }
 
+const PLAN_METADATA_TITLE =
+  'Atlaris — Turn learning goals into a scheduled plan';
 const PLAN_METADATA_DESCRIPTION =
-  'View plan details, modules, tasks, and progress for this learning plan.';
+  'Generate a time-blocked study schedule from any goal and sync it to your calendar so you stay on track.';
+const PLAN_OG_IMAGE = '/images/hero-split.png';
 
 export function generateMetadata({ params: _params }: PlanPageProps): Metadata {
   return {
-    title: 'Plan Details | Atlaris',
+    title: PLAN_METADATA_TITLE,
     description: PLAN_METADATA_DESCRIPTION,
+    openGraph: {
+      title: PLAN_METADATA_TITLE,
+      description: PLAN_METADATA_DESCRIPTION,
+      type: 'website',
+      images: [
+        {
+          url: PLAN_OG_IMAGE,
+          alt: 'Atlaris hero – split view of a learning goal and its generated schedule',
+        },
+      ],
+    },
   };
 }
 

@@ -255,7 +255,7 @@ export function PdfCreatePanel({
 
         if (!response.ok || !data.success || !data.extraction || !data.proof) {
           const normalizedApiError = handleExtractionApiError({
-            rawData,
+            rawData: data,
             status: response.status,
             fallbackMessage: 'Failed to extract PDF content',
           });

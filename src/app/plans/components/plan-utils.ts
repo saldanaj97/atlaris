@@ -4,13 +4,14 @@ import {
   differenceInDays,
   differenceInHours,
   differenceInMinutes,
+  parseISO,
 } from 'date-fns';
 
 type DateInput = Date | string | null | undefined;
 
 function toValidDate(value: DateInput): Date | null {
   if (!value) return null;
-  const parsed = value instanceof Date ? value : new Date(value);
+  const parsed = value instanceof Date ? value : parseISO(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
@@ -47,9 +48,14 @@ export function getRelativeTime(
 
   if (!targetDate || !reference) return 'Recently';
 
-  const diffMinutes = differenceInMinutes(reference, targetDate);
-  const diffHours = differenceInHours(reference, targetDate);
-  const diffDays = differenceInDays(reference, targetDate);
+  const rawMinutes = differenceInMinutes(reference, targetDate);
+  const rawHours = differenceInHours(reference, targetDate);
+  const rawDays = differenceInDays(reference, targetDate);
+
+  // Clamp to non-negative so future dates degrade to "Just now"
+  const diffMinutes = Math.max(0, rawMinutes);
+  const diffHours = Math.max(0, rawHours);
+  const diffDays = Math.max(0, rawDays);
 
   if (diffMinutes < 60) {
     return diffMinutes <= 1 ? 'Just now' : `${diffMinutes}m ago`;

@@ -11,8 +11,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 
-import { PlanCountBadge } from './PlanCountBadge';
-import { PlansList } from './PlansList';
+import { PlanCountBadge } from '@/app/plans/components/PlanCountBadge';
+import { PlansList } from '@/app/plans/components/PlansList';
 
 const getCachedCurrentUser = cache(async () => getOrCreateCurrentUserRecord());
 

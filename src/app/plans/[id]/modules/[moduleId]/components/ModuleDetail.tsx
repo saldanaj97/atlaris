@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
 
+import { ModuleHeader } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleHeader';
+import { ModuleLessonsClient } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
 import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/lib/types/db';
-import { ModuleLessonsClient } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
-import { ModuleHeader } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 
 interface ModuleDetailProps {
   moduleData: ModuleDetailData;

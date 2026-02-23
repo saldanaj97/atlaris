@@ -209,6 +209,7 @@ export function CreatePlanPageClient({
   const manualTabId = `${tabIdBase}-manual-tab`;
   const pdfTabId = `${tabIdBase}-pdf-tab`;
   const currentMethod = initialMethod;
+  const [pdfOpened, setPdfOpened] = useState(initialMethod === 'pdf');
   const [prefillTopic, setPrefillTopic] = useState<string | null>(
     initialTopic ?? null
   );
@@ -218,6 +219,9 @@ export function CreatePlanPageClient({
 
   const handleMethodChange = useCallback(
     (method: CreateMethod) => {
+      if (method === 'pdf') {
+        setPdfOpened(true);
+      }
       const targetUrl =
         method === 'manual' ? '/plans/new' : '/plans/new?method=pdf';
       router.push(targetUrl, { scroll: false });
@@ -303,7 +307,9 @@ export function CreatePlanPageClient({
             </div>
           }
         >
-          <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+          {pdfOpened && (
+            <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+          )}
         </Suspense>
       </div>
     </>
