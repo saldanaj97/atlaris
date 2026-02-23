@@ -17,7 +17,7 @@ import {
   selectUserGenerationAttemptWindowStats,
   toPromptHashPayload,
 } from '@/lib/db/queries/helpers/attempts-helpers';
-import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import type {
   FinalizeFailureParams,
   FinalizeSuccessParams,
@@ -45,7 +45,7 @@ import { count, eq, sql } from 'drizzle-orm';
  * Atomically reserves an attempt slot for a plan within a single transaction.
  *
  * 1. Acquires a transaction-scoped advisory lock per user to serialize concurrent reservations.
- * 2. Locks the owned plan row with FOR UPDATE and verifies ownership.
+ * 2. Reads the owned plan row and verifies ownership.
  * 3. Enforces durable per-user window limit.
  * 4. Enforces per-plan attempt cap and rejects in-progress duplicates.
  * 4. Inserts a placeholder attempt with status 'in_progress'.
@@ -85,7 +85,7 @@ export async function reserveAttemptSlot(
       sql`SELECT pg_advisory_xact_lock(hashtext(${userId})::bigint)`
     );
 
-    const plan = await lockOwnedPlanById({
+    const plan = await selectOwnedPlanById({
       planId,
       ownerUserId: userId,
       dbClient: tx,
