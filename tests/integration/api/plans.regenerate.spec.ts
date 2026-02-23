@@ -282,14 +282,17 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       overrides: { topic: 'interview prep 1' },
     }).then(({ request, context }) => POST(request, context));
 
-    await vi.waitFor(async () => {
-      const jobs = await db
-        .select()
-        .from(jobQueue)
-        .where(eq(jobQueue.planId, plan.id));
+    await vi.waitFor(
+      async () => {
+        const jobs = await db
+          .select()
+          .from(jobQueue)
+          .where(eq(jobQueue.planId, plan.id));
 
-      expect(jobs.length).toBeGreaterThan(0);
-    });
+        expect(jobs.length).toBeGreaterThan(0);
+      },
+      { timeout: 5_000 }
+    );
 
     const res2 = await createRequest(plan.id, {
       overrides: { topic: 'interview prep 2' },

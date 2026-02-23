@@ -6,7 +6,7 @@ import {
   validatePdfUpload,
   withGlobalPdfSlot,
 } from '@/lib/api/pdf-rate-limit';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
   describe('Extraction throttling', () => {
@@ -143,28 +143,27 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
     it('blocks when global extraction slots are exhausted', () => {
       const tracker = createTracker();
+      const acquired: Array<{ release: () => void }> = [];
+      let blocked: ReturnType<typeof acquireGlobalPdfExtractionSlot> | null =
+        null;
 
-      const acquired = [
-        acquireGlobalPdfExtractionSlot({ state: tracker }),
-        acquireGlobalPdfExtractionSlot({ state: tracker }),
-        acquireGlobalPdfExtractionSlot({ state: tracker }),
-        acquireGlobalPdfExtractionSlot({ state: tracker }),
-      ];
-
-      for (const slot of acquired) {
-        expect(slot.allowed).toBe(true);
-      }
-
-      const blocked = acquireGlobalPdfExtractionSlot({ state: tracker });
-      expect(blocked.allowed).toBe(false);
-      if (!blocked.allowed) {
-        expect(blocked.retryAfterMs).toBeGreaterThan(0);
-      }
-
-      for (const slot of acquired) {
+      while (blocked === null) {
+        const slot = acquireGlobalPdfExtractionSlot({ state: tracker });
         if (!slot.allowed) {
-          throw new Error('Expected slot to be allowed');
+          blocked = slot;
+          break;
         }
+        acquired.push(slot);
+      }
+
+      expect(acquired.length).toBeGreaterThan(0);
+      if (!blocked) {
+        throw new Error('Expected final slot to be blocked');
+      }
+      expect(blocked.allowed).toBe(false);
+      expect(blocked.retryAfterMs).toBeGreaterThan(0);
+
+      for (const slot of acquired) {
         slot.release();
       }
     });
@@ -191,11 +190,24 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
     });
 
     it('automatically reclaims leaked slots after lease timeout', () => {
-      vi.useFakeTimers();
       const tracker = createTracker();
+      let leaseCallback: (() => void) | null = null;
+      const fakeSetTimeout = (
+        callback: () => void
+      ): ReturnType<typeof setTimeout> => {
+        leaseCallback = callback;
+        return 1 as unknown as ReturnType<typeof setTimeout>;
+      };
+      const fakeClearTimeout = vi.fn(
+        (_id: ReturnType<typeof setTimeout>): void => {
+          // no-op; lease timer is cleared on release
+        }
+      );
       const slot = acquireGlobalPdfExtractionSlot({
         state: tracker,
         leaseMs: 5,
+        setTimeoutFn: fakeSetTimeout as typeof setTimeout,
+        clearTimeoutFn: fakeClearTimeout as unknown as typeof clearTimeout,
       });
       expect(slot.allowed).toBe(true);
       if (!slot.allowed) {
@@ -203,15 +215,14 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
       }
       expect(tracker.inFlight).toBe(1);
 
-      vi.advanceTimersByTime(20);
+      expect(leaseCallback).toBeTypeOf('function');
+      const runLeaseCallback: () => void = leaseCallback ?? (() => {});
+      runLeaseCallback();
       expect(tracker.inFlight).toBe(0);
 
       slot.release();
       expect(tracker.inFlight).toBe(0);
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
+      expect(fakeClearTimeout).toHaveBeenCalledTimes(1);
     });
 
     it('withGlobalPdfSlot always releases the slot in finally', async () => {

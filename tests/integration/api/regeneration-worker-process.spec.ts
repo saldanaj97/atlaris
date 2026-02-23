@@ -1,14 +1,15 @@
 import { desc, eq } from 'drizzle-orm';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { POST as POST_REGENERATE } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { POST as POST_DRAIN } from '@/app/api/internal/jobs/regeneration/process/route';
+import { POST as POST_REGENERATE } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { jobQueue, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 import { createPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
@@ -40,6 +41,10 @@ async function createRegenerateRequest(planId: string, body: unknown) {
 }
 
 describe('POST /api/internal/jobs/regeneration/process', () => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+  });
+
   afterEach(() => {
     const envKeys: Array<keyof typeof ORIGINAL_ENV> = [
       'AI_PROVIDER',
@@ -53,8 +58,6 @@ describe('POST /api/internal/jobs/regeneration/process', () => {
   });
 
   it('drains queued regeneration jobs and finalizes plan state', async () => {
-    await resetDbForIntegrationTestFile();
-
     process.env.AI_PROVIDER = 'mock';
     process.env.AI_USE_MOCK = 'true';
     process.env.MOCK_GENERATION_FAILURE_RATE = '0';
@@ -62,11 +65,11 @@ describe('POST /api/internal/jobs/regeneration/process', () => {
     process.env.REGENERATION_INLINE_PROCESSING = 'false';
     process.env.REGENERATION_QUEUE_ENABLED = 'true';
 
-    const authUserId = 'auth_regeneration_worker_drain';
+    const authUserId = buildTestAuthUserId('regeneration-worker-drain');
     setTestUser(authUserId);
     const userId = await ensureUser({
       authUserId,
-      email: 'regeneration-worker-drain@example.com',
+      email: buildTestEmail(authUserId),
       subscriptionTier: 'pro',
     });
 

@@ -72,7 +72,11 @@ describe('RLS attempt insertion', () => {
       error = e;
     }
 
-    // Expect an RLS/permission-denied error or plan ownership check error
+    // Expect an RLS/permission-denied error or plan ownership check error.
+    // We accept both: (1) RLS blocking the INSERT (permission denied / 42501), and
+    // (2) app-level "user not found for generation attempt reservation" when the
+    // orchestrator rejects before the DB (e.g. auth context mismatch). Both are valid
+    // guards for "non-owner cannot create attempt."
     expect(error).toBeTruthy();
     const err = error as Error & { code?: string; cause?: unknown };
     const msg = err.message ?? '';
@@ -95,5 +99,50 @@ describe('RLS attempt insertion', () => {
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, plan.id));
     expect(attempts.length).toBe(0);
+  });
+
+  it('owner can insert attempt', async () => {
+    const ownerAuthUserId = buildTestAuthUserId('rls-insert-owner-pos');
+    setTestUser(ownerAuthUserId);
+    const ownerId = await ensureUser({
+      authUserId: ownerAuthUserId,
+      email: buildTestEmail(ownerAuthUserId),
+    });
+
+    const plan = await createTestPlan({
+      userId: ownerId,
+      topic: 'Owner Insert Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 3,
+      learningStyle: 'reading',
+      origin: 'ai',
+    });
+
+    const mock = createMockProvider({ scenario: 'success' });
+    const rlsDb = await createRlsDbForUser(ownerAuthUserId);
+
+    const planId = await runGenerationAttempt(
+      {
+        planId: plan.id,
+        userId: ownerId,
+        input: {
+          topic: 'Owner Insert Plan',
+          notes: 'Should succeed',
+          skillLevel: 'beginner',
+          weeklyHours: 3,
+          learningStyle: 'reading',
+        },
+      },
+      { provider: mock.provider, dbClient: rlsDb }
+    );
+
+    expect(planId).toBe(plan.id);
+
+    const attempts = await db
+      .select()
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, plan.id));
+    expect(attempts.length).toBe(1);
+    expect(attempts[0]?.status).toBe('success');
   });
 });
