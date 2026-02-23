@@ -31,6 +31,7 @@ import {
   recordAttemptFailure,
   recordAttemptSuccess,
 } from '@/lib/metrics/attempts';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { hashSha256 } from '@/lib/utils/hash';
 import { count, eq, sql } from 'drizzle-orm';
 
@@ -72,31 +73,38 @@ export async function reserveAttemptSlot(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
   );
 
-  // Resolve the authenticated subject up-front under the caller's RLS context.
-  // We intentionally re-apply this claim inside the transaction because some
-  // environments lose session claim state on tx-scoped query clients.
-  const [rlsScopedUser] = await dbClient
-    .select({ authUserId: users.authUserId })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+  const shouldNormalizeRlsContext = dbClient !== serviceDb;
+  let requestJwtClaims: string | null = null;
 
-  if (!rlsScopedUser?.authUserId) {
-    throw new Error(
-      'User not found or inaccessible for generation attempt reservation'
-    );
+  if (shouldNormalizeRlsContext) {
+    // Resolve the authenticated subject up-front under the caller's RLS context.
+    // We intentionally re-apply this claim inside the transaction because some
+    // environments lose session claim state on tx-scoped query clients.
+    const [rlsScopedUser] = await dbClient
+      .select({ authUserId: users.authUserId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!rlsScopedUser?.authUserId) {
+      throw new Error(
+        'User not found or inaccessible for generation attempt reservation'
+      );
+    }
+
+    requestJwtClaims = JSON.stringify({ sub: rlsScopedUser.authUserId });
   }
-
-  const requestJwtClaims = JSON.stringify({ sub: rlsScopedUser.authUserId });
 
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
 
-    await tx.execute(sql`SET LOCAL ROLE authenticated`);
+    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
+      await tx.execute(sql`SET LOCAL ROLE authenticated`);
 
-    await tx.execute(
-      sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
-    );
+      await tx.execute(
+        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
+      );
+    }
 
     // Acquire per-user advisory lock to serialize concurrent reservations.
     // Uses a standalone SELECT (no FROM clause) to avoid additional table
