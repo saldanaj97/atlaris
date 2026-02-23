@@ -2,13 +2,11 @@ import type { Metadata } from 'next';
 import type { JSX } from 'react';
 import { Suspense } from 'react';
 
-import { getCachedPlanForPage } from '@/app/plans/[id]/data';
 import { PlanDetailPageError } from '@/app/plans/[id]/components/Error';
 import {
   PlanDetailContent,
   PlanDetailContentSkeleton,
 } from '@/app/plans/[id]/components/PlanDetailContent';
-import { isPlanSuccess } from '@/app/plans/[id]/helpers';
 
 interface PlanPageProps {
   params: Promise<{ id: string }>;
@@ -20,31 +18,12 @@ const PLAN_METADATA_DESCRIPTION =
 export async function generateMetadata({
   params,
 }: PlanPageProps): Promise<Metadata> {
-  const { id } = await params;
+  await params;
 
-  if (!id) {
-    return {
-      title: 'Plan Details | Atlaris',
-      description: PLAN_METADATA_DESCRIPTION,
-    };
-  }
-
-  try {
-    const planResult = await getCachedPlanForPage(id);
-    const planTitle = isPlanSuccess(planResult)
-      ? planResult.data.plan.topic.trim()
-      : '';
-
-    return {
-      title: planTitle ? `${planTitle} | Atlaris` : 'Plan Details | Atlaris',
-      description: PLAN_METADATA_DESCRIPTION,
-    };
-  } catch {
-    return {
-      title: 'Plan Details | Atlaris',
-      description: PLAN_METADATA_DESCRIPTION,
-    };
-  }
+  return {
+    title: 'Plan Details | Atlaris',
+    description: PLAN_METADATA_DESCRIPTION,
+  };
 }
 
 /**

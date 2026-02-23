@@ -19,7 +19,7 @@ import {
   Target,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule, ClientTask } from '@/lib/types/client';
@@ -28,10 +28,7 @@ import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 interface ModuleTimelineProps {
   planId: string;
   modules: ClientModule[];
-  statuses: Record<string, ProgressStatus>;
-  setStatuses: React.Dispatch<
-    React.SetStateAction<Record<string, ProgressStatus>>
-  >;
+  initialStatuses?: Record<string, ProgressStatus>;
 }
 
 type ModuleStatus = 'completed' | 'active' | 'locked';
@@ -115,9 +112,21 @@ function getModuleStatus(
 export function PlanTimeline({
   planId,
   modules,
-  statuses,
-  setStatuses,
+  initialStatuses,
 }: ModuleTimelineProps) {
+  const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
+    () => {
+      if (initialStatuses) {
+        return initialStatuses;
+      }
+
+      const entries = modules.flatMap((mod) =>
+        (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
+      );
+      return Object.fromEntries(entries);
+    }
+  );
+
   // Transform modules into timeline items with computed status
   const timelineModules: TimelineModule[] = useMemo(() => {
     return modules.map((mod, index) => {

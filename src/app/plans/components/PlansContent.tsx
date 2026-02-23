@@ -7,22 +7,29 @@ import { getUsageSummary } from '@/lib/stripe/usage';
 import { Plus, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { cache } from 'react';
 
 import { PlanCountBadge } from './PlanCountBadge';
 import { PlansList } from './PlansList';
+
+const getCachedCurrentUser = cache(async () => getOrCreateCurrentUserRecord());
+
+const getCachedUsageSummary = cache(async (userId: string) => {
+  const db = getDb();
+  return getUsageSummary(userId, db);
+});
 
 /**
  * Async component that fetches usage data and renders the plan count badge.
  * Wrapped in its own Suspense boundary by the parent page.
  */
 export async function PlanCountBadgeContent() {
-  const user = await getOrCreateCurrentUserRecord();
+  const user = await getCachedCurrentUser();
   if (!user) {
     return null;
   }
 
-  const db = getDb();
-  const usage = await getUsageSummary(user.id, db);
+  const usage = await getCachedUsageSummary(user.id);
 
   return (
     <PlanCountBadge
@@ -41,7 +48,7 @@ export async function PlanCountBadgeContent() {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlansContent() {
-  const user = await getOrCreateCurrentUserRecord();
+  const user = await getCachedCurrentUser();
   if (!user) {
     redirect('/sign-in?redirect_url=/plans');
   }
@@ -51,7 +58,7 @@ export async function PlansContent() {
   const db = getDb();
   const [summaries, usage] = await Promise.all([
     getPlanSummariesForUser(user.id, db),
-    getUsageSummary(user.id, db),
+    getCachedUsageSummary(user.id),
   ]);
 
   if (!summaries.length) {
