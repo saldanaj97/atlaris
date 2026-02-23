@@ -25,7 +25,7 @@ import type {
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, learningPlans, users } from '@/lib/db/schema';
+import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import {
   recordAttemptFailure,
@@ -77,30 +77,22 @@ export async function reserveAttemptSlot(
   let requestJwtClaims: string | null = null;
 
   if (shouldNormalizeRlsContext) {
-    // Resolve the authenticated subject up-front under the caller's RLS context.
-    // We intentionally re-apply this claim inside the transaction because some
-    // environments lose session claim state on tx-scoped query clients.
-    const [rlsScopedUser] = await dbClient
-      .select({ authUserId: users.authUserId })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!rlsScopedUser?.authUserId) {
-      throw new Error(
-        'User not found or inaccessible for generation attempt reservation'
-      );
+    // Capture existing claims from the current RLS session and re-apply them
+    // inside the transaction. This avoids an extra users-table read here while
+    // still defending against tx-scoped claim drift in some environments.
+    const claimsRows = await dbClient.execute<{ claims: string | null }>(
+      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    );
+    const rawClaims = claimsRows[0]?.claims;
+    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
+      requestJwtClaims = rawClaims;
     }
-
-    requestJwtClaims = JSON.stringify({ sub: rlsScopedUser.authUserId });
   }
 
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
 
     if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
-      await tx.execute(sql`SET LOCAL ROLE authenticated`);
-
       await tx.execute(
         sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
       );
