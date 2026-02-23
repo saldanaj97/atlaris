@@ -99,11 +99,10 @@ export async function reserveAttemptSlot(
     }
 
     // Acquire per-user advisory lock to serialize concurrent reservations.
-    // Uses a standalone SELECT (no FROM clause) to avoid additional table
-    // reads while claim state is being normalized for this transaction.
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext(${userId})::bigint)`
-    );
+    // Uses the two-int4 overload so namespace 1 is separated from the
+    // per-user key, avoiding cross-domain collisions that the single-bigint
+    // form (hashtext → bigint) would allow with only 32-bit entropy.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`);
 
     const plan = await selectOwnedPlanById({
       planId,
@@ -325,7 +324,26 @@ export async function finalizeAttemptFailure({
     failure: { classification, timedOut },
   });
 
+  const shouldNormalizeRlsContext = dbClient !== serviceDb;
+  let requestJwtClaims: string | null = null;
+
+  if (shouldNormalizeRlsContext) {
+    const claimsRows = await dbClient.execute<{ claims: string | null }>(
+      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    );
+    const rawClaims = claimsRows[0]?.claims;
+    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
+      requestJwtClaims = rawClaims;
+    }
+  }
+
   const attempt = await dbClient.transaction(async (tx) => {
+    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
+      await tx.execute(
+        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
+      );
+    }
+
     const [updatedAttempt] = await tx
       .update(generationAttempts)
       .set({

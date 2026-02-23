@@ -1,6 +1,7 @@
 import { PLAN_GENERATION_WINDOW_MS } from '@/lib/ai/generation-policy';
 import { getCorrelationId } from '@/lib/api/context';
 import { appEnv } from '@/lib/config/env';
+import { db as serviceDb } from '@/lib/db/service-role';
 import type {
   AttemptError,
   AttemptMetadata,
@@ -34,7 +35,7 @@ import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
 } from '@/lib/validation/learningPlans';
-import { and, count, eq, gte, min } from 'drizzle-orm';
+import { and, count, eq, gte, min, sql } from 'drizzle-orm';
 
 import type { ParsedModule } from '@/lib/ai/parser';
 import type { GenerationInput } from '@/lib/ai/types/provider.types';
@@ -429,7 +430,26 @@ export async function persistSuccessfulAttempt(
     dbClient,
   } = params;
 
+  const shouldNormalizeRlsContext = dbClient !== serviceDb;
+  let requestJwtClaims: string | null = null;
+
+  if (shouldNormalizeRlsContext) {
+    const claimsRows = await dbClient.execute<{ claims: string | null }>(
+      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    );
+    const rawClaims = claimsRows[0]?.claims;
+    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
+      requestJwtClaims = rawClaims;
+    }
+  }
+
   return dbClient.transaction(async (tx) => {
+    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
+      await tx.execute(
+        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
+      );
+    }
+
     await tx.delete(modules).where(eq(modules.planId, planId));
 
     const moduleValues = normalizedModules.map(
