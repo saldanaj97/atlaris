@@ -25,7 +25,7 @@ import type {
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { generationAttempts, learningPlans, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import {
   recordAttemptFailure,
@@ -72,15 +72,35 @@ export async function reserveAttemptSlot(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
   );
 
+  // Resolve the authenticated subject up-front under the caller's RLS context.
+  // We intentionally re-apply this claim inside the transaction because some
+  // environments lose session claim state on tx-scoped query clients.
+  const [rlsScopedUser] = await dbClient
+    .select({ authUserId: users.authUserId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!rlsScopedUser?.authUserId) {
+    throw new Error(
+      'User not found or inaccessible for generation attempt reservation'
+    );
+  }
+
+  const requestJwtClaims = JSON.stringify({ sub: rlsScopedUser.authUserId });
+
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
 
+    await tx.execute(sql`SET LOCAL ROLE authenticated`);
+
+    await tx.execute(
+      sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
+    );
+
     // Acquire per-user advisory lock to serialize concurrent reservations.
-    // Uses a standalone SELECT (no FROM clause) to avoid querying the users
-    // table, which is subject to RLS evaluation that can fail when the
-    // session's SET ROLE context does not propagate reliably into the
-    // Drizzle transaction. User existence is implicitly validated by
-    // lockOwnedPlanById below (plan ownership requires a valid user).
+    // Uses a standalone SELECT (no FROM clause) to avoid additional table
+    // reads while claim state is being normalized for this transaction.
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${userId})::bigint)`
     );
