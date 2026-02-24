@@ -178,11 +178,16 @@ export function extractErrorCode(error: unknown): string | undefined {
  * Preserves the function name and relative path for debuggability.
  */
 function redactStackTrace(stack: string | undefined): string | undefined {
-  if (!stack) return undefined;
-  // Replace absolute paths like /Users/x/project/src/foo.ts:10:5
-  // with just the relative portion after the last node_modules/ or src/
-  return stack.replace(
-    /(?:\/[^\s:()]+\/)?((?:src|node_modules)\/[^\s:()]+)/g,
+  if (!stack) {
+    return undefined;
+  }
+
+  // Normalize separators first so Windows and POSIX stacks are handled equally.
+  const normalizedStack = stack.replace(/\\/g, '/');
+
+  // Strip absolute prefixes while keeping relative app/build paths.
+  return normalizedStack.replace(
+    /(?:[A-Za-z]:)?(?:\/\/[^/\s:()]+)?(?:\/[^/\s:()]+)*\/((?:src|node_modules|\.next|dist)\/[^\s:()]+)/g,
     '$1'
   );
 }

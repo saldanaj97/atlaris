@@ -38,6 +38,19 @@ export interface IpRateLimitConfig {
   maxTrackedIps?: number;
 }
 
+export type IpTrustMode =
+  | 'leftmost'
+  | 'rightmost-untrusted'
+  | 'trusted-proxies';
+
+export interface IpExtractionConfig {
+  ipTrustMode?: IpTrustMode;
+  trustedProxyList?: readonly string[];
+}
+
+const UNKNOWN_IP_WARN_INTERVAL_MS = 60_000;
+let lastUnknownIpWarnTimestamp = 0;
+
 /**
  * Default rate limit configurations for different endpoint types
  */
@@ -78,29 +91,32 @@ export const IP_RATE_LIMIT_CONFIGS = {
  * Extracts client IP address from a request, handling proxies correctly.
  *
  * IP extraction priority:
- * 1. X-Forwarded-For header (leftmost IP from trusted proxy chain)
+ * 1. X-Forwarded-For header (mode depends on IpExtractionConfig)
  * 2. X-Real-IP header
  * 3. CF-Connecting-IP (Cloudflare deployments)
  * 4. Falls back to 'unknown' if no IP can be determined
  *
- * DEPLOYMENT ASSUMPTION: This app runs behind Vercel's edge network, which
- * overwrites X-Forwarded-For with the verified client IP as the leftmost
- * entry. If deployed behind a different proxy that does NOT sanitize this
- * header, an attacker can prepend a spoofed IP to bypass rate limiting.
- * In that case, switch to rightmost-untrusted-IP extraction.
+ * Trust modes:
+ * - leftmost: first IP in the chain (Vercel-friendly default)
+ * - rightmost-untrusted: trim trusted proxies from the right and pick the
+ *   first untrusted IP
+ * - trusted-proxies: pick the first IP in the chain that is not trusted
  *
  * @param request - The incoming HTTP request
+ * @param config - Optional extraction config for proxy trust model
  * @returns The client IP address or 'unknown' if not determinable
  */
-export function getClientIp(request: Request): string {
+export function getClientIp(
+  request: Request,
+  config?: IpExtractionConfig
+): string {
+  const resolvedConfig = resolveIpExtractionConfig(config);
+
   // Try X-Forwarded-For first (common with reverse proxies/load balancers)
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
-    // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
-    // The leftmost IP is the original client (in trusted proxy setups)
-    const ips = forwardedFor.split(',').map((ip) => ip.trim());
-    const clientIp = ips[0];
-    if (clientIp && isValidIp(clientIp)) {
+    const clientIp = extractIpFromForwardedFor(forwardedFor, resolvedConfig);
+    if (clientIp) {
       return clientIp;
     }
   }
@@ -118,10 +134,69 @@ export function getClientIp(request: Request): string {
   }
 
   // Fallback - in serverless environments, there's often no direct socket access
+  logUnknownIpFallback();
+  return 'unknown';
+}
+
+function resolveIpExtractionConfig(
+  config?: IpExtractionConfig
+): Required<IpExtractionConfig> {
+  return {
+    ipTrustMode: config?.ipTrustMode ?? 'leftmost',
+    trustedProxyList: config?.trustedProxyList ?? [],
+  };
+}
+
+function extractIpFromForwardedFor(
+  forwardedFor: string,
+  config: Required<IpExtractionConfig>
+): string | undefined {
+  const ips = forwardedFor
+    .split(',')
+    .map((ip) => ip.trim())
+    .filter((ip) => ip.length > 0 && isValidIp(ip));
+
+  if (ips.length === 0) {
+    return undefined;
+  }
+
+  const trustedProxySet = new Set(
+    config.trustedProxyList.map((ip) => ip.trim()).filter((ip) => isValidIp(ip))
+  );
+
+  if (config.ipTrustMode === 'leftmost') {
+    return ips[0];
+  }
+
+  if (config.ipTrustMode === 'rightmost-untrusted') {
+    for (let index = ips.length - 1; index >= 0; index--) {
+      const ip = ips[index];
+      if (!trustedProxySet.has(ip)) {
+        return ip;
+      }
+    }
+    return undefined;
+  }
+
+  for (const ip of ips) {
+    if (!trustedProxySet.has(ip)) {
+      return ip;
+    }
+  }
+
+  return undefined;
+}
+
+function logUnknownIpFallback(): void {
+  const now = Date.now();
+  if (now - lastUnknownIpWarnTimestamp < UNKNOWN_IP_WARN_INTERVAL_MS) {
+    return;
+  }
+
+  lastUnknownIpWarnTimestamp = now;
   logger.warn(
     'Unable to determine client IP for rate limiting — all unidentified requests share a single bucket'
   );
-  return 'unknown';
 }
 
 /**
@@ -280,9 +355,10 @@ function getRateLimiter(
  */
 export function checkIpRateLimit(
   request: Request,
-  type: keyof typeof IP_RATE_LIMIT_CONFIGS
+  type: keyof typeof IP_RATE_LIMIT_CONFIGS,
+  config?: IpExtractionConfig
 ): void {
-  const ip = getClientIp(request);
+  const ip = getClientIp(request, config);
   const limiter = getRateLimiter(type);
   limiter.check(ip);
 }
@@ -296,18 +372,19 @@ export function checkIpRateLimit(
  */
 export function getRateLimitHeaders(
   request: Request,
-  type: keyof typeof IP_RATE_LIMIT_CONFIGS
+  type: keyof typeof IP_RATE_LIMIT_CONFIGS,
+  config?: IpExtractionConfig
 ): Record<string, string> {
-  const ip = getClientIp(request);
+  const ip = getClientIp(request, config);
   const limiter = getRateLimiter(type);
-  const config = IP_RATE_LIMIT_CONFIGS[type];
+  const rateLimitConfig = IP_RATE_LIMIT_CONFIGS[type];
   const remaining = limiter.getRemainingRequests(ip);
 
   return {
-    'X-RateLimit-Limit': String(config.maxRequests),
+    'X-RateLimit-Limit': String(rateLimitConfig.maxRequests),
     'X-RateLimit-Remaining': String(remaining),
     'X-RateLimit-Reset': String(
-      Math.ceil((Date.now() + config.windowMs) / 1000)
+      Math.ceil((Date.now() + rateLimitConfig.windowMs) / 1000)
     ),
   };
 }
