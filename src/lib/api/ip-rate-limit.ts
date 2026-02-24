@@ -164,27 +164,31 @@ function extractIpFromForwardedFor(
     config.trustedProxyList.map((ip) => ip.trim()).filter((ip) => isValidIp(ip))
   );
 
-  if (config.ipTrustMode === 'leftmost') {
-    return ips[0];
-  }
-
-  if (config.ipTrustMode === 'rightmost-untrusted') {
-    for (let index = ips.length - 1; index >= 0; index--) {
-      const ip = ips[index];
-      if (!trustedProxySet.has(ip)) {
-        return ip;
+  switch (config.ipTrustMode) {
+    case 'leftmost':
+      return ips[0];
+    case 'rightmost-untrusted':
+      for (let index = ips.length - 1; index >= 0; index--) {
+        const ip = ips[index];
+        if (!trustedProxySet.has(ip)) {
+          return ip;
+        }
       }
-    }
-    return undefined;
+      return undefined;
+    case 'trusted-proxies':
+      for (const ip of ips) {
+        if (!trustedProxySet.has(ip)) {
+          return ip;
+        }
+      }
+      return undefined;
+    default:
+      return assertNever(config.ipTrustMode);
   }
+}
 
-  for (const ip of ips) {
-    if (!trustedProxySet.has(ip)) {
-      return ip;
-    }
-  }
-
-  return undefined;
+function assertNever(value: never): never {
+  throw new Error(`Unhandled ipTrustMode: ${String(value)}`);
 }
 
 function logUnknownIpFallback(): void {
@@ -243,6 +247,7 @@ function isValidIp(ip: string): boolean {
 export function createIpRateLimiter(config: IpRateLimitConfig): {
   check: (ip: string) => void;
   getRemainingRequests: (ip: string) => number;
+  getResetTime: (ip: string) => number;
   reset: (ip: string) => void;
   clear: () => void;
 } {
@@ -312,6 +317,20 @@ export function createIpRateLimiter(config: IpRateLimitConfig): {
   }
 
   /**
+   * Gets the Unix timestamp (seconds) when the current rate limit window resets.
+   */
+  function getResetTime(ip: string): number {
+    const now = Date.now();
+    const entry = cache.get(ip);
+
+    if (!entry || now - entry.windowStart >= windowMs) {
+      return Math.ceil((now + windowMs) / 1000);
+    }
+
+    return Math.ceil((entry.windowStart + windowMs) / 1000);
+  }
+
+  /**
    * Resets the rate limit counter for an IP.
    */
   function reset(ip: string): void {
@@ -325,7 +344,7 @@ export function createIpRateLimiter(config: IpRateLimitConfig): {
     cache.clear();
   }
 
-  return { check, getRemainingRequests, reset, clear };
+  return { check, getRemainingRequests, getResetTime, reset, clear };
 }
 
 // Pre-configured rate limiters for common endpoint types
@@ -383,9 +402,7 @@ export function getRateLimitHeaders(
   return {
     'X-RateLimit-Limit': String(rateLimitConfig.maxRequests),
     'X-RateLimit-Remaining': String(remaining),
-    'X-RateLimit-Reset': String(
-      Math.ceil((Date.now() + rateLimitConfig.windowMs) / 1000)
-    ),
+    'X-RateLimit-Reset': String(limiter.getResetTime(ip)),
   };
 }
 
@@ -395,4 +412,5 @@ export function getRateLimitHeaders(
 export function clearAllRateLimiters(): void {
   rateLimiters.forEach((limiter) => limiter.clear());
   rateLimiters.clear();
+  lastUnknownIpWarnTimestamp = 0;
 }

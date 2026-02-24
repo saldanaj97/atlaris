@@ -67,6 +67,30 @@ describe('IP Rate Limiting', () => {
       ).toBe('198.51.100.4');
     });
 
+    it('falls back to unknown when rightmost-untrusted has only trusted IPs', () => {
+      const request = createMockRequest({
+        'x-forwarded-for': '70.41.3.18, 150.172.238.178',
+      });
+      expect(
+        getClientIp(request, {
+          ipTrustMode: 'rightmost-untrusted',
+          trustedProxyList: ['70.41.3.18', '150.172.238.178'],
+        })
+      ).toBe('unknown');
+    });
+
+    it('falls back to unknown when trusted-proxies has only trusted IPs', () => {
+      const request = createMockRequest({
+        'x-forwarded-for': '70.41.3.18, 150.172.238.178',
+      });
+      expect(
+        getClientIp(request, {
+          ipTrustMode: 'trusted-proxies',
+          trustedProxyList: ['70.41.3.18', '150.172.238.178'],
+        })
+      ).toBe('unknown');
+    });
+
     it('extracts IP from X-Real-IP header when X-Forwarded-For is absent', () => {
       const request = createMockRequest({
         'x-real-ip': '10.0.0.1',
