@@ -32,8 +32,9 @@ tests/
 │   ├── unit/          # Unit test mocks
 │   └── e2e/           # E2E mocks
 ├── setup/
-│   └── test-env.ts    # Environment defaults
-└── setup.ts           # Global setup (integration/e2e/security)
+│   ├── test-env.ts          # Environment defaults
+│   └── testcontainers.ts    # Vitest globalSetup: ephemeral Postgres via Testcontainers
+└── setup.ts                 # Global setup (integration/e2e/security)
 ```
 
 ## Test Types
@@ -51,9 +52,35 @@ tests/
 ```bash
 pnpm test                              # Unit tests only
 pnpm test:changed                      # Changed files
-pnpm test:integration                  # Integration tests
+pnpm test:integration                  # Integration tests (full suite)
 RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/  # Security (RLS) tests
-./scripts/test-unit.sh path/to/file    # Single file
+./scripts/test-unit.sh path/to/file    # Single unit test file
+```
+
+### Running a Single Integration Test File
+
+Testcontainers spins up a Postgres container automatically — no manual Docker required.
+
+```bash
+# Via script (recommended)
+./scripts/test-integration.sh tests/integration/db/plans.spec.ts
+
+# Via vitest directly
+NODE_ENV=test pnpm vitest run --project integration tests/integration/db/plans.spec.ts
+
+# Legacy Docker Compose mode (if needed)
+./scripts/test-integration.sh tests/integration/db/plans.spec.ts --docker
+```
+
+The container starts once, runs the targeted file, then tears down. Use this for
+quick iteration instead of running the full integration suite.
+
+**Prerequisite:** Docker must be running (Testcontainers talks to the Docker daemon).
+
+To skip Testcontainers and use an existing database (e.g. CI):
+
+```bash
+SKIP_TESTCONTAINERS=true DATABASE_URL="..." pnpm vitest run --project integration tests/integration/db/plans.spec.ts
 ```
 
 ## Local Development Testing

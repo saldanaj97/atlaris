@@ -17,7 +17,7 @@ import {
   selectUserGenerationAttemptWindowStats,
   toPromptHashPayload,
 } from '@/lib/db/queries/helpers/attempts-helpers';
-import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import type {
   FinalizeFailureParams,
   FinalizeSuccessParams,
@@ -25,7 +25,8 @@ import type {
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, learningPlans, users } from '@/lib/db/schema';
+import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import {
   recordAttemptFailure,
@@ -44,11 +45,12 @@ import { count, eq, sql } from 'drizzle-orm';
 /**
  * Atomically reserves an attempt slot for a plan within a single transaction.
  *
- * 1. Locks user + plan rows with FOR UPDATE to serialize per-user reservations.
- * 2. Verifies ownership and durable per-user window limit.
- * 3. Enforces per-plan attempt cap and rejects in-progress duplicates.
- * 4. Inserts a placeholder attempt with status 'in_progress'.
- * 5. Sets the plan's generation_status to 'generating'.
+ * 1. Acquires a transaction-scoped advisory lock per user to serialize concurrent reservations.
+ * 2. Reads the owned plan row and verifies ownership.
+ * 3. Enforces durable per-user window limit.
+ * 4. Enforces per-plan attempt cap and rejects in-progress duplicates.
+ * 5. Inserts a placeholder attempt with status 'in_progress'.
+ * 6. Sets the plan's generation_status to 'generating'.
  *
  * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
  */
@@ -71,21 +73,37 @@ export async function reserveAttemptSlot(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
   );
 
+  const shouldNormalizeRlsContext = dbClient !== serviceDb;
+  let requestJwtClaims: string | null = null;
+
+  if (shouldNormalizeRlsContext) {
+    // Capture existing claims from the current RLS session and re-apply them
+    // inside the transaction. This avoids an extra users-table read here while
+    // still defending against tx-scoped claim drift in some environments.
+    const claimsRows = await dbClient.execute<{ claims: string | null }>(
+      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    );
+    const rawClaims = claimsRows[0]?.claims;
+    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
+      requestJwtClaims = rawClaims;
+    }
+  }
+
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
-
-    const [lockedUser] = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1)
-      .for('update');
-
-    if (!lockedUser?.id) {
-      throw new Error('User not found for generation attempt reservation');
+    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
+      await tx.execute(
+        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
+      );
     }
 
-    const plan = await lockOwnedPlanById({
+    // Acquire per-user advisory lock to serialize concurrent reservations.
+    // Uses the two-int4 overload so namespace 1 is separated from the
+    // per-user key, avoiding cross-domain collisions that the single-bigint
+    // form (hashtext → bigint) would allow with only 32-bit entropy.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`);
+
+    const plan = await selectOwnedPlanById({
       planId,
       ownerUserId: userId,
       dbClient: tx,
@@ -305,7 +323,26 @@ export async function finalizeAttemptFailure({
     failure: { classification, timedOut },
   });
 
+  const shouldNormalizeRlsContext = dbClient !== serviceDb;
+  let requestJwtClaims: string | null = null;
+
+  if (shouldNormalizeRlsContext) {
+    const claimsRows = await dbClient.execute<{ claims: string | null }>(
+      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    );
+    const rawClaims = claimsRows[0]?.claims;
+    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
+      requestJwtClaims = rawClaims;
+    }
+  }
+
   const attempt = await dbClient.transaction(async (tx) => {
+    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
+      await tx.execute(
+        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
+      );
+    }
+
     const [updatedAttempt] = await tx
       .update(generationAttempts)
       .set({

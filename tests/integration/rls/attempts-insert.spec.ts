@@ -74,9 +74,9 @@ describe('RLS attempt insertion', () => {
 
     // Expect an RLS/permission-denied error or plan ownership check error.
     // We accept both: (1) RLS blocking the INSERT (permission denied / 42501), and
-    // (2) app-level "user not found for generation attempt reservation" when the
-    // orchestrator rejects before the DB (e.g. auth context mismatch). Both are valid
-    // guards for "non-owner cannot create attempt."
+    // (2) app-level "not found or inaccessible" when the orchestrator rejects
+    // before the DB (e.g. plan ownership mismatch). Both are valid guards
+    // for "non-owner cannot create attempt."
     expect(error).toBeTruthy();
     const err = error as Error & { code?: string; cause?: unknown };
     const msg = err.message ?? '';
@@ -86,7 +86,7 @@ describe('RLS attempt insertion', () => {
       err.code === '42501' ||
       (err.cause as { code?: string })?.code === '42501';
     const hasPermissionMessage =
-      /permission denied|row[- ]level security|not found or inaccessible|user not found for generation attempt reservation/i.test(
+      /permission denied|row[- ]level security|not found or inaccessible/i.test(
         combinedMsg
       );
     expect(
@@ -121,7 +121,7 @@ describe('RLS attempt insertion', () => {
     const mock = createMockProvider({ scenario: 'success' });
     const rlsDb = await createRlsDbForUser(ownerAuthUserId);
 
-    const planId = await runGenerationAttempt(
+    const result = await runGenerationAttempt(
       {
         planId: plan.id,
         userId: ownerId,
@@ -136,7 +136,8 @@ describe('RLS attempt insertion', () => {
       { provider: mock.provider, dbClient: rlsDb }
     );
 
-    expect(planId).toBe(plan.id);
+    expect(result.status).toBe('success');
+    expect(result.attempt.planId).toBe(plan.id);
 
     const attempts = await db
       .select()

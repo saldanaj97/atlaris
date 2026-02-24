@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import {
   ArrowRight,
@@ -7,7 +9,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
-import { getNextTaskName, getPlanStatus, getRelativeTime } from './plan-utils';
+import {
+  getNextTaskName,
+  getPlanStatus,
+  getRelativeTime,
+} from '@/app/plans/components/plan-utils';
 
 import type { PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
@@ -16,14 +22,23 @@ interface PlanRowProps {
   summary: PlanSummary;
   isSelected: boolean;
   onSelect: () => void;
+  referenceTimestamp: string;
 }
 
-export function PlanRow({ summary, isSelected, onSelect }: PlanRowProps) {
+export function PlanRow({
+  summary,
+  isSelected,
+  onSelect,
+  referenceTimestamp,
+}: PlanRowProps): JSX.Element {
   const { plan } = summary;
   const progressPercent = Math.round(summary.completion * 100);
-  const status = getPlanStatus(summary);
+  const status = getPlanStatus(summary, referenceTimestamp);
   const nextTask = getNextTaskName(summary);
-  const lastActivity = getRelativeTime(plan.createdAt);
+  const lastActivity = getRelativeTime(
+    plan.updatedAt ?? plan.createdAt,
+    referenceTimestamp
+  );
 
   const statusColors: Record<PlanStatus, string> = {
     active: 'bg-emerald-500',

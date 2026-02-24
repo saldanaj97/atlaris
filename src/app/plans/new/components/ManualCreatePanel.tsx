@@ -209,6 +209,7 @@ export function CreatePlanPageClient({
   const manualTabId = `${tabIdBase}-manual-tab`;
   const pdfTabId = `${tabIdBase}-pdf-tab`;
   const currentMethod = initialMethod;
+  const [pdfOpened, setPdfOpened] = useState(initialMethod === 'pdf');
   const [prefillTopic, setPrefillTopic] = useState<string | null>(
     initialTopic ?? null
   );
@@ -218,6 +219,9 @@ export function CreatePlanPageClient({
 
   const handleMethodChange = useCallback(
     (method: CreateMethod) => {
+      if (method === 'pdf') {
+        setPdfOpened(true);
+      }
       const targetUrl =
         method === 'manual' ? '/plans/new' : '/plans/new?method=pdf';
       router.push(targetUrl, { scroll: false });
@@ -273,12 +277,14 @@ export function CreatePlanPageClient({
         />
       </div>
 
+      {/* Both panels are always mounted to preserve state and avoid broken ARIA targets.
+         The inactive panel uses hidden + inert to hide from the a11y tree. */}
       <div
         id={manualPanelId}
         role="tabpanel"
         aria-labelledby={manualTabId}
-        aria-hidden={currentMethod !== 'manual'}
-        className={currentMethod !== 'manual' ? 'hidden' : undefined}
+        hidden={currentMethod !== 'manual'}
+        inert={currentMethod !== 'manual' ? true : undefined}
       >
         <ManualCreatePanel
           initialTopic={prefillTopic}
@@ -291,8 +297,8 @@ export function CreatePlanPageClient({
         id={pdfPanelId}
         role="tabpanel"
         aria-labelledby={pdfTabId}
-        aria-hidden={currentMethod !== 'pdf'}
-        className={currentMethod !== 'pdf' ? 'hidden' : undefined}
+        hidden={currentMethod !== 'pdf'}
+        inert={currentMethod !== 'pdf' ? true : undefined}
       >
         <Suspense
           fallback={
@@ -301,7 +307,9 @@ export function CreatePlanPageClient({
             </div>
           }
         >
-          <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+          {pdfOpened && (
+            <PdfCreatePanel onSwitchToManual={handleSwitchToManual} />
+          )}
         </Suspense>
       </div>
     </>

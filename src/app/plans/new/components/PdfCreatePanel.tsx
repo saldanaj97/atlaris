@@ -19,27 +19,36 @@ import { normalizeApiErrorResponse } from '@/lib/api/error-response';
 import { isAbortError, normalizeThrown } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { mapPdfSettingsToCreateInput } from '@/lib/mappers/learningPlans';
+import {
+  extractionApiResponseSchema,
+  type ExtractionApiResponseData,
+  type ExtractionProofData,
+  type ExtractionSection,
+  type TruncationData,
+} from '@/lib/validation/pdf';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 
 const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
 
-const truncationSchema = z.object({
-  truncated: z.boolean(),
-  maxBytes: z.number(),
-  returnedBytes: z.number(),
-  reasons: z.array(z.string()),
-  limits: z.object({
-    maxTextChars: z.number(),
-    maxSections: z.number(),
-    maxSectionChars: z.number(),
-  }),
-});
+type ExtractionApiParseResult =
+  | { ok: true; data: ExtractionApiResponseData }
+  | { ok: false; error: string };
 
-type TruncationData = z.infer<typeof truncationSchema>;
+function parseExtractionApiResponse(
+  rawData: unknown
+): ExtractionApiParseResult {
+  const result = extractionApiResponseSchema.safeParse(rawData);
+  if (!result.success) {
+    return {
+      ok: false,
+      error: result.error.issues[0]?.message ?? 'Invalid extraction response.',
+    };
+  }
+  return { ok: true, data: result.data };
+}
 
 const TRUNCATION_REASON_LABELS: Record<string, string> = {
   text_char_cap: 'raw text length limit',
@@ -69,48 +78,6 @@ function truncationReasonsSummary(
   return labels.join('; ');
 }
 
-const extractionApiResponseSchema = z.object({
-  success: z.boolean(),
-  extraction: z
-    .object({
-      text: z.string(),
-      pageCount: z.number(),
-      metadata: z
-        .object({
-          title: z.string().optional(),
-          author: z.string().optional(),
-          subject: z.string().optional(),
-        })
-        .optional(),
-      structure: z.object({
-        sections: z.array(
-          z.object({
-            title: z.string(),
-            content: z.string(),
-            level: z.number(),
-            suggestedTopic: z.string().optional(),
-          })
-        ),
-        suggestedMainTopic: z.string(),
-        confidence: z.enum(['high', 'medium', 'low']),
-      }),
-      truncation: truncationSchema.optional(),
-    })
-    .optional(),
-  proof: z
-    .object({
-      token: z.string(),
-      extractionHash: z.string(),
-      expiresAt: z.string(),
-      version: z.literal(1),
-    })
-    .optional(),
-  error: z.string().optional(),
-  code: z.string().optional(),
-});
-
-type ExtractionApiResponse = z.infer<typeof extractionApiResponseSchema>;
-
 function handleExtractionApiError(params: {
   rawData: unknown;
   status: number;
@@ -137,22 +104,10 @@ interface PdfCreatePanelProps {
 
 interface ExtractionData {
   mainTopic: string;
-  sections: Array<{
-    title: string;
-    content: string;
-    level: number;
-    suggestedTopic?: string;
-  }>;
+  sections: ExtractionSection[];
   pageCount: number;
   confidence: 'high' | 'medium' | 'low';
   truncation?: TruncationData;
-}
-
-interface ExtractionProofData {
-  token: string;
-  extractionHash: string;
-  expiresAt: string;
-  version: 1;
 }
 
 type PageState =
@@ -275,9 +230,9 @@ export function PdfCreatePanel({
     })
       .then(async (response) => {
         const rawData: unknown = await response.json();
-        const parseResult = extractionApiResponseSchema.safeParse(rawData);
+        const parseResult = parseExtractionApiResponse(rawData);
 
-        if (!parseResult.success) {
+        if (!parseResult.ok) {
           const normalizedApiError = handleExtractionApiError({
             rawData,
             status: response.status,
@@ -285,7 +240,7 @@ export function PdfCreatePanel({
           });
 
           clientLogger.error('PDF extraction response validation failed', {
-            error: parseResult.error.flatten(),
+            error: parseResult.error,
             responseOk: response.ok,
           });
           setState({
@@ -296,11 +251,11 @@ export function PdfCreatePanel({
           return;
         }
 
-        const data: ExtractionApiResponse = parseResult.data;
+        const data = parseResult.data;
 
         if (!response.ok || !data.success || !data.extraction || !data.proof) {
           const normalizedApiError = handleExtractionApiError({
-            rawData,
+            rawData: data,
             status: response.status,
             fallbackMessage: 'Failed to extract PDF content',
           });
