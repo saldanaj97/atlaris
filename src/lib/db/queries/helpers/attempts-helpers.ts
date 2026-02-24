@@ -1,7 +1,6 @@
 import { PLAN_GENERATION_WINDOW_MS } from '@/lib/ai/generation-policy';
 import { getCorrelationId } from '@/lib/api/context';
 import { appEnv } from '@/lib/config/env';
-import { db as serviceDb } from '@/lib/db/service-role';
 import type {
   AttemptError,
   AttemptMetadata,
@@ -23,6 +22,7 @@ import {
   modules,
   tasks,
 } from '@/lib/db/schema';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import {
   aggregateNormalizationFlags,

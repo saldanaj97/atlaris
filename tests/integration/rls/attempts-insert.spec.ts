@@ -121,7 +121,7 @@ describe('RLS attempt insertion', () => {
     const mock = createMockProvider({ scenario: 'success' });
     const rlsDb = await createRlsDbForUser(ownerAuthUserId);
 
-    const planId = await runGenerationAttempt(
+    const result = await runGenerationAttempt(
       {
         planId: plan.id,
         userId: ownerId,
@@ -136,7 +136,8 @@ describe('RLS attempt insertion', () => {
       { provider: mock.provider, dbClient: rlsDb }
     );
 
-    expect(planId).toBe(plan.id);
+    expect(result.status).toBe('success');
+    expect(result.attempt.planId).toBe(plan.id);
 
     const attempts = await db
       .select()

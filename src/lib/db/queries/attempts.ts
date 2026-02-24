@@ -26,12 +26,12 @@ import type {
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import {
   recordAttemptFailure,
   recordAttemptSuccess,
 } from '@/lib/metrics/attempts';
-import { db as serviceDb } from '@/lib/db/service-role';
 import { hashSha256 } from '@/lib/utils/hash';
 import { count, eq, sql } from 'drizzle-orm';
 
@@ -91,7 +91,6 @@ export async function reserveAttemptSlot(
 
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
-
     if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
       await tx.execute(
         sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
