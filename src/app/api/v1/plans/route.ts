@@ -1,15 +1,11 @@
 import { ZodError } from 'zod';
 
 import {
-  PLAN_GENERATION_LIMIT,
-  PLAN_GENERATION_WINDOW_MINUTES,
-} from '@/lib/ai/generation-policy';
-import {
   type PlainHandler,
   withAuthAndRateLimit,
   withErrorBoundary,
 } from '@/lib/api/auth';
-import { RateLimitError, ValidationError } from '@/lib/api/errors';
+import { ValidationError } from '@/lib/api/errors';
 import {
   insertPlanWithRollback,
   preparePlanCreationPreflight,
@@ -55,28 +51,9 @@ export const POST: PlainHandler = withErrorBoundary(
       dbClient: db,
     });
 
-    // Draft plan creation should not be blocked by the durable generation
-    // window cap; execution endpoints enforce that cap. We still expose
-    // advisory remaining headers for clients.
-    let generationRateLimitHeaders: Record<string, string>;
-    try {
-      const rateLimit = await checkPlanGenerationRateLimit(
-        preflight.user.id,
-        db
-      );
-      generationRateLimitHeaders = getPlanGenerationRateLimitHeaders(rateLimit);
-    } catch (error) {
-      if (error instanceof RateLimitError) {
-        const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
-        generationRateLimitHeaders = getPlanGenerationRateLimitHeaders({
-          remaining: 0,
-          limit: error.limit ?? PLAN_GENERATION_LIMIT,
-          reset: error.reset ?? Math.ceil(Date.now() / 1000) + windowSeconds,
-        });
-      } else {
-        throw error;
-      }
-    }
+    const rateLimit = await checkPlanGenerationRateLimit(preflight.user.id, db);
+    const generationRateLimitHeaders =
+      getPlanGenerationRateLimitHeaders(rateLimit);
 
     const created = await insertPlanWithRollback({
       preflight,

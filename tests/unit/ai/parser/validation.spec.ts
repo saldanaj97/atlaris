@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseGenerationStream, ParserError } from '@/lib/ai/parser';
+import {
+  MAX_MODULE_COUNT,
+  MAX_RAW_RESPONSE_CHARS,
+  MAX_TASKS_PER_MODULE,
+  parseGenerationStream,
+  ParserError,
+} from '@/lib/ai/parser';
 
 async function* streamFromString(value: string) {
   yield value;
@@ -56,5 +62,55 @@ describe('Generation parser validation', () => {
 
     expect(callback).toHaveBeenCalledTimes(1);
     expect(result.modules).toHaveLength(1);
+  });
+
+  it('throws validation error when raw response exceeds max size', async () => {
+    await expect(
+      parseGenerationStream(
+        streamFromString('x'.repeat(MAX_RAW_RESPONSE_CHARS + 1))
+      )
+    ).rejects.toMatchObject({
+      kind: 'validation',
+    });
+  });
+
+  it('throws validation error when module count exceeds max', async () => {
+    const payload = JSON.stringify({
+      modules: Array.from({ length: MAX_MODULE_COUNT + 1 }, (_, index) => ({
+        title: `Module ${index + 1}`,
+        estimated_minutes: 60,
+        tasks: [{ title: 'Task 1', estimated_minutes: 30 }],
+      })),
+    });
+
+    await expect(
+      parseGenerationStream(streamFromString(payload))
+    ).rejects.toMatchObject({
+      kind: 'validation',
+    });
+  });
+
+  it('throws validation error when task count exceeds max per module', async () => {
+    const payload = JSON.stringify({
+      modules: [
+        {
+          title: 'Module 1',
+          estimated_minutes: 120,
+          tasks: Array.from(
+            { length: MAX_TASKS_PER_MODULE + 1 },
+            (_, taskIndex) => ({
+              title: `Task ${taskIndex + 1}`,
+              estimated_minutes: 30,
+            })
+          ),
+        },
+      ],
+    });
+
+    await expect(
+      parseGenerationStream(streamFromString(payload))
+    ).rejects.toMatchObject({
+      kind: 'validation',
+    });
   });
 });

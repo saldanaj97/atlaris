@@ -167,8 +167,8 @@ describe('Phase 4: API Integration', () => {
     });
   });
 
-  describe('T042: Plan creation is not blocked by durable generation window cap', () => {
-    it('still returns 201 for /plans when user has reached generation window limit', async () => {
+  describe('T042: Plan creation is blocked by durable generation window cap', () => {
+    it('returns 429 for /plans when user has reached generation window limit', async () => {
       setTestUser(authUserId);
       const userId = await ensureUser({
         authUserId,
@@ -204,8 +204,6 @@ describe('Phase 4: API Integration', () => {
         }))
       );
 
-      // Creating a draft plan should still be allowed; generation enforcement
-      // happens at execution boundaries (/plans/stream, retry, worker).
       const request = await createPlanRequest({
         topic: 'Rate Limited Plan',
         skillLevel: 'beginner',
@@ -216,14 +214,18 @@ describe('Phase 4: API Integration', () => {
       });
 
       const response = await POST(request);
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(429);
+      expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
 
       const payload = await response.json();
       expect(payload).toMatchObject({
-        topic: 'Rate Limited Plan',
-        status: 'generating',
+        code: 'RATE_LIMITED',
+        classification: 'rate_limit',
       });
-      expect(payload).toHaveProperty('id');
+      expect(typeof payload.retryAfter).toBe('number');
+
+      const finalPlans = await db.query.learningPlans.findMany();
+      expect(finalPlans).toHaveLength(attemptsAtLimit);
     });
   });
 
