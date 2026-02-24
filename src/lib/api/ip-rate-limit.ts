@@ -16,6 +16,7 @@
 import { LRUCache } from 'lru-cache';
 
 import { RateLimitError } from '@/lib/api/errors';
+import { logger } from '@/lib/logging/logger';
 
 /**
  * Rate limit window entry tracking request counts
@@ -77,16 +78,16 @@ export const IP_RATE_LIMIT_CONFIGS = {
  * Extracts client IP address from a request, handling proxies correctly.
  *
  * IP extraction priority:
- * 1. X-Forwarded-For header (leftmost non-private IP from trusted proxy)
+ * 1. X-Forwarded-For header (leftmost IP from trusted proxy chain)
  * 2. X-Real-IP header
- * 3. Socket remote address (for direct connections)
+ * 3. CF-Connecting-IP (Cloudflare deployments)
  * 4. Falls back to 'unknown' if no IP can be determined
  *
- * Security considerations:
- * - X-Forwarded-For can be spoofed by clients, but in a trusted proxy setup
- *   (like Vercel), the proxy appends the real client IP to the right side.
- * - We take the leftmost IP as that's the original client in a trusted chain.
- * - For Vercel deployments, X-Forwarded-For is automatically set correctly.
+ * DEPLOYMENT ASSUMPTION: This app runs behind Vercel's edge network, which
+ * overwrites X-Forwarded-For with the verified client IP as the leftmost
+ * entry. If deployed behind a different proxy that does NOT sanitize this
+ * header, an attacker can prepend a spoofed IP to bypass rate limiting.
+ * In that case, switch to rightmost-untrusted-IP extraction.
  *
  * @param request - The incoming HTTP request
  * @returns The client IP address or 'unknown' if not determinable
@@ -117,6 +118,9 @@ export function getClientIp(request: Request): string {
   }
 
   // Fallback - in serverless environments, there's often no direct socket access
+  logger.warn(
+    'Unable to determine client IP for rate limiting — all unidentified requests share a single bucket'
+  );
   return 'unknown';
 }
 
@@ -258,10 +262,13 @@ const rateLimiters = new Map<string, ReturnType<typeof createIpRateLimiter>>();
 function getRateLimiter(
   type: keyof typeof IP_RATE_LIMIT_CONFIGS
 ): ReturnType<typeof createIpRateLimiter> {
-  if (!rateLimiters.has(type)) {
-    rateLimiters.set(type, createIpRateLimiter(IP_RATE_LIMIT_CONFIGS[type]));
+  const existing = rateLimiters.get(type);
+  if (existing) {
+    return existing;
   }
-  return rateLimiters.get(type)!;
+  const limiter = createIpRateLimiter(IP_RATE_LIMIT_CONFIGS[type]);
+  rateLimiters.set(type, limiter);
+  return limiter;
 }
 
 /**

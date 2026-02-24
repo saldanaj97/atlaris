@@ -173,6 +173,21 @@ export function extractErrorCode(error: unknown): string | undefined {
 }
 
 /**
+ * Strips absolute file paths from stack traces to prevent internal
+ * directory structure disclosure in log aggregators.
+ * Preserves the function name and relative path for debuggability.
+ */
+function redactStackTrace(stack: string | undefined): string | undefined {
+  if (!stack) return undefined;
+  // Replace absolute paths like /Users/x/project/src/foo.ts:10:5
+  // with just the relative portion after the last node_modules/ or src/
+  return stack.replace(
+    /(?:\/[^\s:()]+\/)?((?:src|node_modules)\/[^\s:()]+)/g,
+    '$1'
+  );
+}
+
+/**
  * Internal utility function to serialize errors into a safe, loggable format.
  * Used for error logging when unexpected errors occur outside of AppError handling.
  * Not exported as it's only intended for internal use within this module.
@@ -191,7 +206,7 @@ function toSafeError(err: unknown): Record<string, unknown> {
     return {
       name: err.name,
       message: err.message,
-      stack: err.stack,
+      stack: redactStackTrace(err.stack),
     };
   }
 
