@@ -98,9 +98,16 @@ export const IP_RATE_LIMIT_CONFIGS = {
  *
  * Trust modes:
  * - leftmost: first IP in the chain (Vercel-friendly default)
- * - rightmost-untrusted: trim trusted proxies from the right and pick the
- *   first untrusted IP
- * - trusted-proxies: pick the first IP in the chain that is not trusted
+ * - rightmost-untrusted: traverse right -> left, trim trusted proxies from the
+ *   right edge, then return the first untrusted IP encountered
+ * - trusted-proxies: traverse left -> right and return the first IP in the
+ *   chain that is not trusted
+ *
+ * Example chain: "spoofed-client, real-client, trusted-proxy"
+ * - rightmost-untrusted => "real-client"
+ * - trusted-proxies => "spoofed-client"
+ *
+ * Prefer rightmost-untrusted when you trust only known right-edge proxies.
  *
  * @param request - The incoming HTTP request
  * @param config - Optional extraction config for proxy trust model
@@ -160,14 +167,23 @@ function extractIpFromForwardedFor(
     return undefined;
   }
 
-  const trustedProxySet = new Set(
-    config.trustedProxyList.map((ip) => ip.trim()).filter((ip) => isValidIp(ip))
-  );
+  let trustedProxySet: Set<string> | undefined;
+  const getTrustedProxySet = (): Set<string> => {
+    if (!trustedProxySet) {
+      trustedProxySet = new Set(
+        config.trustedProxyList
+          .map((ip) => ip.trim())
+          .filter((ip) => isValidIp(ip))
+      );
+    }
+    return trustedProxySet;
+  };
 
   switch (config.ipTrustMode) {
     case 'leftmost':
       return ips[0];
     case 'rightmost-untrusted':
+      trustedProxySet = getTrustedProxySet();
       for (let index = ips.length - 1; index >= 0; index--) {
         const ip = ips[index];
         if (!trustedProxySet.has(ip)) {
@@ -176,6 +192,7 @@ function extractIpFromForwardedFor(
       }
       return undefined;
     case 'trusted-proxies':
+      trustedProxySet = getTrustedProxySet();
       for (const ip of ips) {
         if (!trustedProxySet.has(ip)) {
           return ip;
@@ -398,11 +415,14 @@ export function getRateLimitHeaders(
   const limiter = getRateLimiter(type);
   const rateLimitConfig = IP_RATE_LIMIT_CONFIGS[type];
   const remaining = limiter.getRemainingRequests(ip);
+  const reset = limiter.getResetTime(ip);
+  const retryAfter = Math.max(0, Math.ceil((reset * 1000 - Date.now()) / 1000));
 
   return {
     'X-RateLimit-Limit': String(rateLimitConfig.maxRequests),
     'X-RateLimit-Remaining': String(remaining),
-    'X-RateLimit-Reset': String(limiter.getResetTime(ip)),
+    'X-RateLimit-Reset': String(reset),
+    'Retry-After': String(retryAfter),
   };
 }
 
