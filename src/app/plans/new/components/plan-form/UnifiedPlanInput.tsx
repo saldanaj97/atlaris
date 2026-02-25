@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
+import { assertNever } from '@/lib/utils';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
 import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
 import type { JSX } from 'react';
@@ -45,10 +46,6 @@ type PlanInputAction =
   | { type: 'set-learning-style'; value: LearningStyle }
   | { type: 'set-deadline-weeks'; value: DeadlineWeeks };
 
-function assertUnreachable(value: never): never {
-  throw new Error(`Unhandled action: ${String(value)}`);
-}
-
 function planInputReducer(
   state: PlanInputState,
   action: PlanInputAction
@@ -86,7 +83,7 @@ function planInputReducer(
         deadlineWeeks: action.value,
       };
     default:
-      return assertUnreachable(action);
+      return assertNever(action);
   }
 }
 

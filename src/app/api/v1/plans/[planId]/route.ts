@@ -30,8 +30,7 @@ export const GET = withErrorBoundary(
         {
           planId,
           userId: user.id,
-          error,
-          stack: error instanceof Error ? error.stack : undefined,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
         },
         'Failed fetching learning plan detail'
       );

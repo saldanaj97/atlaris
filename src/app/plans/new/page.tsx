@@ -1,5 +1,5 @@
 import { MouseGlowContainer } from '@/components/effects/MouseGlow';
-import { CreatePlanPageClient } from '@/app/plans/new/components/ManualCreatePanel';
+import { CreatePlanPageClient } from '@/app/plans/new/components/CreatePlanPageClient';
 import type { CreateMethod } from '@/app/plans/new/components/CreateMethodToggle';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';

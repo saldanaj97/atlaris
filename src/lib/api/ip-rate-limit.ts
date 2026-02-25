@@ -17,6 +17,7 @@ import { LRUCache } from 'lru-cache';
 
 import { RateLimitError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
+import { assertNever } from '@/lib/utils';
 
 /**
  * Rate limit window entry tracking request counts
@@ -202,10 +203,6 @@ function extractIpFromForwardedFor(
     default:
       return assertNever(config.ipTrustMode);
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unhandled ipTrustMode: ${String(value)}`);
 }
 
 function logUnknownIpFallback(): void {

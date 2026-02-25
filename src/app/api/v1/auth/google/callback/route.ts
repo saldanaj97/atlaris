@@ -173,7 +173,13 @@ export const GET = withErrorBoundary(async (req) => {
       new URL('/settings/integrations?google=connected', baseUrl)
     );
   } catch (err) {
-    logger.error({ error: err }, 'Google token exchange failed');
+    logger.error(
+      {
+        requestId,
+        errorMessage: err instanceof Error ? err.message : 'Unknown error',
+      },
+      'Google token exchange failed'
+    );
     return redirectWithRequestId(
       new URL('/settings/integrations?error=token_exchange_failed', baseUrl)
     );

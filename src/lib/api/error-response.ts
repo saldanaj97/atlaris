@@ -101,7 +101,7 @@ function asNonEmptyString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function isFailureClassification(
+export function isFailureClassification(
   value: unknown
 ): value is FailureClassification {
   return (

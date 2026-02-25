@@ -8,7 +8,6 @@ import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
-import { resolveUserTier } from '@/lib/stripe/usage';
 import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
 
 /**
@@ -27,7 +26,7 @@ export const GET = withErrorBoundary(
 
     logger.debug('User preferences retrieved successfully');
 
-    const userTier = await resolveUserTier(user.id);
+    const userTier = user.subscriptionTier;
     const availableModels = getModelsForTier(userTier);
 
     const fallbackModel = getDefaultModelForTier(userTier);
@@ -94,7 +93,7 @@ export const PATCH = withErrorBoundary(
       throw new ValidationError('Invalid preferences', parsed.error.flatten());
     }
 
-    const userTier = await resolveUserTier(user.id);
+    const userTier = user.subscriptionTier;
     const modelValidation = validateModelForTier(
       userTier,
       parsed.data.preferredAiModel
@@ -159,6 +158,17 @@ export const PATCH = withErrorBoundary(
       throw new AppError('Failed to persist preferences.', {
         status: 500,
         code: 'PREFERENCES_UPDATE_FAILED',
+      });
+    }
+
+    if (updatedUser.preferredAiModel === null) {
+      logger.error(
+        { userId: user.id },
+        'preferredAiModel unexpectedly null after update'
+      );
+      throw new AppError('Failed to persist preference value.', {
+        status: 500,
+        code: 'PREFERENCES_PERSISTED_NULL',
       });
     }
 

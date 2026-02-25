@@ -1,6 +1,6 @@
 'use client';
 
-import type { JSX } from 'react';
+import type { ElementType, JSX } from 'react';
 
 import {
   Accordion,
@@ -48,7 +48,7 @@ interface TimelineModule {
 
 const RESOURCE_CONFIG: Record<
   ResourceType,
-  { label: string; icon: React.ElementType; badgeClass: string }
+  { label: string; icon: ElementType; badgeClass: string }
 > = {
   youtube: {
     label: 'Video',

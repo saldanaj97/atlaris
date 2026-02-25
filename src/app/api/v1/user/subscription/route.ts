@@ -1,6 +1,10 @@
 import type Stripe from 'stripe';
 
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import {
+  type PlainHandler,
+  withAuthAndRateLimit,
+  withErrorBoundary,
+} from '@/lib/api/auth';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
@@ -48,7 +52,9 @@ async function getCancelAtPeriodEnd(
  * Factory for the subscription GET handler. Accepts an optional Stripe
  * client for tests; production uses getStripe() when omitted.
  */
-export function createSubscriptionGetHandler(stripeInstance?: Stripe) {
+export function createSubscriptionGetHandler(
+  stripeInstance?: Stripe
+): PlainHandler {
   return withErrorBoundary(
     withAuthAndRateLimit('read', async ({ user }) => {
       const db = getDb();

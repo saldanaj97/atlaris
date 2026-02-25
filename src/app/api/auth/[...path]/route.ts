@@ -34,8 +34,8 @@ function withAuthIpRateLimit(
           {
             method: request.method,
             url: request.url,
-            error,
-            stack: error instanceof Error ? error.stack : undefined,
+            errorName: error.name,
+            errorMessage: error.message,
           },
           'auth route error'
         );

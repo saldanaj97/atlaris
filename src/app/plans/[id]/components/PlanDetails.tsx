@@ -1,3 +1,7 @@
+'use client';
+
+import { useCallback, useMemo, useState } from 'react';
+
 import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
@@ -7,13 +11,14 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 import type { ClientPlanDetail } from '@/lib/types/client';
+import type { ProgressStatus } from '@/lib/types/db';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
 }
 
 /**
- * Server-rendered plan detail shell with a client timeline island.
+ * Client component that keeps header progress in sync with timeline status changes.
  */
 export function PlanDetails({ plan }: PlanDetailClientProps) {
   const modules = plan.modules ?? [];
@@ -23,8 +28,20 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
     )
   );
 
-  // Compute progress statistics (completion %, task counts, estimated weeks) for the header
-  const overviewStats = computeOverviewStats(plan, initialStatuses);
+  const [statuses, setStatuses] =
+    useState<Record<string, ProgressStatus>>(initialStatuses);
+
+  const overviewStats = useMemo(
+    () => computeOverviewStats(plan, statuses),
+    [plan, statuses]
+  );
+
+  const handleStatusChange = useCallback(
+    (taskId: string, newStatus: ProgressStatus) => {
+      setStatuses((prev) => ({ ...prev, [taskId]: newStatus }));
+    },
+    []
+  );
 
   const isPendingOrProcessing =
     plan.status === 'pending' || plan.status === 'processing';
@@ -57,6 +74,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
             planId={plan.id}
             modules={modules}
             initialStatuses={initialStatuses}
+            onStatusChange={handleStatusChange}
           />
         </>
       )}

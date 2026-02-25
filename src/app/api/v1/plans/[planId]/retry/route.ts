@@ -11,6 +11,7 @@ import {
   normalizeThrownError,
   toAttemptError,
 } from '@/lib/api/error-normalization';
+import { isFailureClassification } from '@/lib/api/error-response';
 import { AppError, RateLimitError } from '@/lib/api/errors';
 import {
   requireOwnedPlanById,
@@ -29,7 +30,6 @@ import { logger } from '@/lib/logging/logger';
 import { parsePersistedPdfContext } from '@/lib/pdf/context';
 import { resolveUserTier } from '@/lib/stripe/usage';
 import type { FailureClassification } from '@/lib/types/client';
-
 import {
   buildPlanStartEvent,
   executeGenerationStream,
@@ -40,15 +40,6 @@ import {
 export const maxDuration = 60;
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-const FAILURE_CLASSIFICATIONS = new Set<FailureClassification>([
-  'validation',
-  'conflict',
-  'provider_error',
-  'rate_limit',
-  'timeout',
-  'capped',
-]);
 
 const toIsoDateString = (value: string | null): IsoDateString | undefined => {
   if (!value) {
@@ -68,9 +59,9 @@ const extractFailureClassification = (
   const classification = (error as { classification?: unknown }).classification;
   if (
     typeof classification === 'string' &&
-    FAILURE_CLASSIFICATIONS.has(classification as FailureClassification)
+    isFailureClassification(classification)
   ) {
-    return classification as FailureClassification;
+    return classification;
   }
 
   return undefined;

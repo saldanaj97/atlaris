@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { JSX } from 'react';
 import { AuthView } from '@neondatabase/auth/react';
 import { authViewPaths } from '@neondatabase/auth/react/ui/server';
 
@@ -67,7 +68,9 @@ export async function generateMetadata({
   );
 }
 
-export default async function AuthPage({ params }: AuthPageProps) {
+export default async function AuthPage({
+  params,
+}: AuthPageProps): Promise<JSX.Element> {
   const { path } = await params;
   const safePath = getSafeAuthPath(path);
 

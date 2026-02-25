@@ -16,6 +16,13 @@ export const dynamic = 'force-dynamic';
 // Minimal shape required to safely log and handle dev-mode webhook events.
 const devWebhookEventSchema = z.object({ type: z.string() });
 
+// Startup validation: STRIPE_WEBHOOK_DEV_MODE must only be enabled in development/test
+if (stripeEnv.webhookDevMode && !(appEnv.isDevelopment || appEnv.isTest)) {
+  throw new Error(
+    'STRIPE_WEBHOOK_DEV_MODE is enabled outside development/test. This is a misconfiguration.'
+  );
+}
+
 /**
  * Factory for the webhook POST handler. Accepts an optional Stripe
  * client for tests (used when syncing subscription events); production uses getStripe() when omitted.
@@ -66,7 +73,8 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
     const signature = req.headers.get('stripe-signature');
     const webhookSecret = stripeEnv.webhookSecret;
     const isProd = appEnv.isProduction;
-    const allowDevPayloads = !isProd && stripeEnv.webhookDevMode;
+    const isDevOrTest = appEnv.isDevelopment || appEnv.isTest;
+    const allowDevPayloads = isDevOrTest && stripeEnv.webhookDevMode;
 
     if (bodySize > MAX_BYTES) {
       logger.warn(

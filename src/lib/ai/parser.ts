@@ -152,13 +152,13 @@ export async function parseGenerationStream(
 
   for await (const chunk of source) {
     callbacks.signal?.throwIfAborted();
-    buffer += chunk;
-    if (buffer.length > MAX_RAW_RESPONSE_CHARS) {
+    if (buffer.length + chunk.length > MAX_RAW_RESPONSE_CHARS) {
       throw new ParserError(
         'validation',
         `AI provider response exceeds maximum size (${MAX_RAW_RESPONSE_CHARS} chars).`
       );
     }
+    buffer += chunk;
     if (
       !moduleDetected &&
       callbacks.onFirstModuleDetected &&

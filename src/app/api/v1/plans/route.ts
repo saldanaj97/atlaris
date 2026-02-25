@@ -44,16 +44,16 @@ export const POST: PlainHandler = withErrorBoundary(
     }
 
     const db = getDb();
+    const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
+    const generationRateLimitHeaders =
+      getPlanGenerationRateLimitHeaders(rateLimit);
+
     const preflight = await preparePlanCreationPreflight({
       body,
       authUserId: userId,
       user,
       dbClient: db,
     });
-
-    const rateLimit = await checkPlanGenerationRateLimit(preflight.user.id, db);
-    const generationRateLimitHeaders =
-      getPlanGenerationRateLimitHeaders(rateLimit);
 
     const created = await insertPlanWithRollback({
       preflight,
