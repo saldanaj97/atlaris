@@ -7,3 +7,25 @@ export const auth = createNeonAuth({
     secret: neonAuthEnv.cookieSecret,
   },
 });
+
+/**
+ * Read-only session accessor safe for Server Components.
+ *
+ * `auth.getSession()` may attempt to refresh cookies when the session-data
+ * cache expires.  Cookie writes are forbidden outside Server Actions / Route
+ * Handlers, so the call throws in plain Server Components.
+ *
+ * This wrapper catches that error and returns `null`, letting the caller
+ * degrade gracefully (e.g. show unauthenticated UI).  The session will be
+ * properly refreshed on the next Route Handler or client-side fetch.
+ */
+export async function getSessionSafe(): Promise<{
+  session: { user: { id: string } } | null;
+}> {
+  try {
+    const { data } = await auth.getSession();
+    return { session: data };
+  } catch {
+    return { session: null };
+  }
+}

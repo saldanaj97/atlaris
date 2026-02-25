@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth/server';
+import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv } from '@/lib/config/env';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
@@ -28,7 +28,7 @@ export async function getEffectiveAuthUserId(): Promise<string | null> {
     }
   }
 
-  const { data: session } = await auth.getSession();
+  const { session } = await getSessionSafe();
   return session?.user?.id ?? null;
 }
 
@@ -37,6 +37,8 @@ export async function getEffectiveAuthUserId(): Promise<string | null> {
  * DEV_AUTH_USER_ID overrides. This is intended for security-sensitive flows
  * (e.g. OAuth callbacks) where we must validate the currently authenticated
  * end user rather than a test/development override.
+ *
+ * Only call from Route Handlers or Server Actions (not Server Components).
  */
 export async function getAuthUserId(): Promise<string | null> {
   const { data: session } = await auth.getSession();

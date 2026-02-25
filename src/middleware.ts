@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { appEnv } from '@/lib/config/env';
 
+const NEON_AUTH_COOKIE_CONFIG = { cookiePrefix: 'neon-auth.' };
+
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
@@ -115,7 +117,7 @@ export default function middleware(request: NextRequest): NextResponse {
 
   // Auth protection
   if (isProtectedRoute(pathname)) {
-    const sessionCookie = getSessionCookie(request);
+    const sessionCookie = getSessionCookie(request, NEON_AUTH_COOKIE_CONFIG);
     if (!sessionCookie) {
       return withCorrelationId(
         request,

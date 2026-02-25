@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth/server';
+import { getSessionSafe } from '@/lib/auth/server';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import {
   authenticatedNavItems,
@@ -33,7 +33,7 @@ import MobileHeader from './nav/MobileHeader';
  *
  */
 export default async function SiteHeader() {
-  const { data: session } = await auth.getSession();
+  const { session } = await getSessionSafe();
   const authUserId = session?.user?.id;
   const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
 
