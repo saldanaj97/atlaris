@@ -9,15 +9,16 @@ import {
 } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleDetailContent';
 
 interface ModulePageProps {
-  params: { id: string; moduleId: string };
+  params: Promise<{ id: string; moduleId: string }>;
 }
 
 const MODULE_METADATA_DESCRIPTION =
   'View module details, tasks, and resources for this learning plan module.';
 
-export function generateMetadata({
-  params: _params,
-}: ModulePageProps): Metadata {
+export async function generateMetadata({
+  params,
+}: ModulePageProps): Promise<Metadata> {
+  await params;
   return {
     title: 'Module Details | Atlaris',
     description: MODULE_METADATA_DESCRIPTION,
@@ -30,10 +31,10 @@ export function generateMetadata({
  * The page validates the route params and wraps all data-dependent content
  * (module details, error states) in a Suspense boundary.
  */
-export default function ModuleDetailPage({
+export default async function ModuleDetailPage({
   params,
-}: ModulePageProps): JSX.Element {
-  const { id: planId, moduleId } = params;
+}: ModulePageProps): Promise<JSX.Element> {
+  const { id: planId, moduleId } = await params;
 
   if (!moduleId) {
     return <ModuleDetailPageError planId={planId} />;

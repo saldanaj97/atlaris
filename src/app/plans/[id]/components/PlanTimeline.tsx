@@ -21,7 +21,7 @@ import {
   Target,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule, ClientTask } from '@/lib/types/client';
@@ -129,6 +129,21 @@ export function PlanTimeline({
     }
   );
 
+  // Reconcile statuses when props change (parent/server updates)
+  useEffect(() => {
+    setStatuses((prev) => {
+      if (initialStatuses) {
+        return { ...prev, ...initialStatuses };
+      }
+
+      const entries = modules.flatMap((mod) =>
+        (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
+      );
+      const fromProps = Object.fromEntries(entries);
+      return { ...prev, ...fromProps };
+    });
+  }, [modules, initialStatuses]);
+
   // Transform modules into timeline items with computed status
   const timelineModules: TimelineModule[] = useMemo(() => {
     return modules.map((mod, index) => {
@@ -137,10 +152,8 @@ export function PlanTimeline({
         .slice(0, index)
         .every((prevMod) => {
           const prevTasks = prevMod.tasks ?? [];
-          return (
-            prevTasks.length > 0 &&
-            prevTasks.every((task) => statuses[task.id] === 'completed')
-          );
+          // Empty modules are implicitly completed (vacuous truth)
+          return prevTasks.every((task) => statuses[task.id] === 'completed');
         });
       const completedCount = tasks.filter(
         (t) => statuses[t.id] === 'completed'
