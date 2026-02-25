@@ -5,7 +5,11 @@ import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { POST } from '@/app/api/v1/plans/route';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { getDurableWindowSeedCount } from '../../fixtures/attempts';
+import {
+  createFailedAttemptsInDb,
+  getDurableWindowSeedCount,
+} from '../../fixtures/attempts';
+import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
@@ -178,30 +182,22 @@ describe('Phase 4: API Integration', () => {
 
       // Create generation attempts at the durable window limit.
       const attemptsAtLimit = getDurableWindowSeedCount();
-      const plansToCreate = Array.from({ length: attemptsAtLimit }, (_, i) => ({
-        userId,
-        topic: `Plan ${i}`,
-        skillLevel: 'beginner' as const,
-        weeklyHours: 4,
-        learningStyle: 'reading' as const,
-        visibility: 'private' as const,
-        origin: 'ai' as const,
-      }));
+      const createdPlans = await Promise.all(
+        Array.from({ length: attemptsAtLimit }, (_, i) =>
+          createTestPlan({
+            userId,
+            topic: `Plan ${i}`,
+            skillLevel: 'beginner',
+            weeklyHours: 4,
+            learningStyle: 'reading',
+            visibility: 'private',
+            origin: 'ai',
+          })
+        )
+      );
 
-      const createdPlans = await db
-        .insert(learningPlans)
-        .values(plansToCreate)
-        .returning();
-
-      await db.insert(generationAttempts).values(
-        createdPlans.map((plan) => ({
-          planId: plan.id,
-          status: 'success' as const,
-          classification: null,
-          durationMs: 1000,
-          modulesCount: 1,
-          tasksCount: 1,
-        }))
+      await Promise.all(
+        createdPlans.map((plan) => createFailedAttemptsInDb(plan.id, 1))
       );
 
       const request = await createPlanRequest({
