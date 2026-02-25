@@ -16,7 +16,7 @@ import {
   useStreamingPlanGeneration,
 } from '@/hooks/useStreamingPlanGeneration';
 import { normalizeApiErrorResponse } from '@/lib/api/error-response';
-import { isAbortError, normalizeThrown } from '@/lib/errors';
+import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { mapPdfSettingsToCreateInput } from '@/lib/mappers/learningPlans';
 import {
@@ -30,6 +30,7 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
 
 const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
 
@@ -161,6 +162,7 @@ export function PdfCreatePanel({
   const [state, setState] = useState<PageState>({ status: 'idle' });
   const isSubmittingRef = useRef(false);
   const planIdRef = useRef<string | undefined>(undefined);
+  const cancellationToastShownRef = useRef(false);
   const extractionAbortControllerRef = useRef<AbortController | null>(null);
   const extractionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -344,6 +346,7 @@ export function PdfCreatePanel({
     const { proof } = state;
 
     isSubmittingRef.current = true;
+    cancellationToastShownRef.current = false;
     setState({ status: 'generating' });
 
     const payloadResult = buildPdfCreatePayload({
@@ -372,36 +375,26 @@ export function PdfCreatePanel({
         router.push(`/plans/${streamPlanId}`);
       })
       .catch((streamError: unknown) => {
-        if (isAbortError(streamError)) {
-          toast.info('Generation cancelled');
-          setState({ status: 'idle' });
+        const { handled, message, normalizedError } = handleStreamingPlanError({
+          streamError,
+          cancellationToastShownRef,
+          planIdRef,
+          clientLogger,
+          toast,
+          router,
+          logMessage: 'Plan generation failed',
+          fallbackMessage: 'Failed to create learning plan. Please try again.',
+          onAbort: () => {
+            setState({ status: 'idle' });
+          },
+        });
+
+        if (handled) {
           return;
         }
 
-        clientLogger.error('Plan generation failed', streamError);
-
-        const streamErr = normalizeThrown(streamError);
-        const message =
-          streamErr instanceof Error
-            ? streamErr.message
-            : 'Failed to create learning plan. Please try again.';
-
-        const extractedPlanId = isStreamingError(streamErr)
-          ? (streamErr.planId ?? streamErr.data?.planId ?? planIdRef.current)
-          : planIdRef.current;
-
-        if (
-          extractedPlanId &&
-          typeof extractedPlanId === 'string' &&
-          extractedPlanId.length > 0
-        ) {
-          toast.error('Generation failed. You can retry from the plan page.');
-          router.push(`/plans/${extractedPlanId}`);
-          return;
-        }
-
-        const errorCode = isStreamingError(streamErr)
-          ? streamErr.code === 'QUOTA_EXCEEDED'
+        const errorCode = isStreamingError(normalizedError)
+          ? normalizedError.code === 'QUOTA_EXCEEDED'
             ? ('QUOTA_EXCEEDED' as ErrorCode)
             : undefined
           : undefined;

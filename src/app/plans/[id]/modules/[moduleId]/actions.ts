@@ -84,7 +84,7 @@ export async function getModuleForPage(
 
   try {
     const moduleData = await withRequestContext(ctx, () =>
-      getModuleDetail(moduleId)
+      getModuleDetail(moduleId, rlsDb)
     );
 
     if (!moduleData) {
@@ -148,7 +148,7 @@ export async function updateModuleTaskProgressAction({
     let taskProgress: Awaited<ReturnType<typeof setTaskProgress>>;
     try {
       taskProgress = await withRequestContext(ctx, async () =>
-        setTaskProgress(user.id, taskId, status)
+        setTaskProgress(user.id, taskId, status, rlsDb)
       );
     } catch (error) {
       logger.error(

@@ -443,6 +443,36 @@ interface ExecuteGenerationStreamParams {
   fallbackClassification?: FailureClassification | 'unknown';
 }
 
+function omitCircularFields(
+  value: unknown,
+  seen: WeakSet<object> = new WeakSet<object>()
+): unknown {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return '[Circular]';
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.map((item) => omitCircularFields(item, seen));
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, fieldValue] of Object.entries(value)) {
+    sanitized[key] = omitCircularFields(fieldValue, seen);
+  }
+
+  return sanitized;
+}
+
 function toFallbackErrorLike(error: unknown): ErrorLike {
   if (error instanceof Error) {
     const errorLike: ErrorLike = {
@@ -452,6 +482,55 @@ function toFallbackErrorLike(error: unknown): ErrorLike {
     };
 
     const cause = error.cause;
+    if (
+      cause === null ||
+      typeof cause === 'string' ||
+      cause instanceof Error ||
+      (typeof cause === 'object' && cause !== null)
+    ) {
+      errorLike.cause = cause;
+    }
+
+    return errorLike;
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const objectError = error as Record<string, unknown>;
+    const errorLike: ErrorLike = {
+      name:
+        typeof objectError.name === 'string' && objectError.name.length > 0
+          ? objectError.name
+          : 'UnknownGenerationError',
+      message:
+        typeof objectError.message === 'string' &&
+        objectError.message.length > 0
+          ? objectError.message
+          : JSON.stringify(omitCircularFields(error)),
+    };
+
+    if (typeof objectError.stack === 'string') {
+      errorLike.stack = objectError.stack;
+    }
+    if (typeof objectError.status === 'number') {
+      errorLike.status = objectError.status;
+    }
+    if (typeof objectError.statusCode === 'number') {
+      errorLike.statusCode = objectError.statusCode;
+    }
+    if ('response' in objectError) {
+      const response = objectError.response;
+      if (response === null) {
+        errorLike.response = null;
+      } else if (typeof response === 'object' && response !== null) {
+        const responseRecord = response as Record<string, unknown>;
+        errorLike.response =
+          typeof responseRecord.status === 'number'
+            ? { status: responseRecord.status }
+            : {};
+      }
+    }
+
+    const cause = objectError.cause;
     if (
       cause === null ||
       typeof cause === 'string' ||

@@ -23,7 +23,7 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, type ElementType } from 'react';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
@@ -38,7 +38,7 @@ interface LessonAccordionItemProps {
 
 const RESOURCE_CONFIG: Record<
   ResourceType,
-  { label: string; icon: React.ElementType; badgeClass: string }
+  { label: string; icon: ElementType; badgeClass: string }
 > = {
   youtube: {
     label: 'Video',

@@ -289,8 +289,10 @@ async function postHandlerImpl(
         );
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
       logger.error(
-        { userId: user.id, error, fileSize: file.size },
+        { userId: user.id, fileSize: file.size, error: message, stack },
         'Malware scan failed for uploaded PDF'
       );
       return errorResponse(

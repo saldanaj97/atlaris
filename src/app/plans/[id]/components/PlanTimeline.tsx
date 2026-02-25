@@ -31,6 +31,7 @@ interface ModuleTimelineProps {
   planId: string;
   modules: ClientModule[];
   initialStatuses?: Record<string, ProgressStatus>;
+  onStatusChange?: (taskId: string, newStatus: ProgressStatus) => void;
 }
 
 type ModuleStatus = 'completed' | 'active' | 'locked';
@@ -115,6 +116,7 @@ export function PlanTimeline({
   planId,
   modules,
   initialStatuses,
+  onStatusChange,
 }: ModuleTimelineProps): JSX.Element {
   const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
     () => {
@@ -182,6 +184,7 @@ export function PlanTimeline({
       if (prev[taskId] === nextStatus) return prev;
       return { ...prev, [taskId]: nextStatus };
     });
+    onStatusChange?.(taskId, nextStatus);
   };
 
   if (modules.length === 0) {

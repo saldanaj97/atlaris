@@ -5,7 +5,7 @@ import type { JSX } from 'react';
 import { Accordion } from '@/components/ui/accordion';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import { LessonAccordionItem } from '@/app/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
@@ -17,7 +17,8 @@ interface ModuleLessonsClientProps {
   lessons: TaskWithRelations[];
   nextModuleId: string | null;
   previousModulesComplete: boolean;
-  initialStatuses: Record<string, ProgressStatus>;
+  statuses: Record<string, ProgressStatus>;
+  onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
 }
 
 function isLessonLocked(
@@ -50,11 +51,9 @@ export function ModuleLessonsClient({
   lessons,
   nextModuleId,
   previousModulesComplete,
-  initialStatuses,
+  statuses,
+  onStatusChange,
 }: ModuleLessonsClientProps): JSX.Element {
-  const [statuses, setStatuses] =
-    useState<Record<string, ProgressStatus>>(initialStatuses);
-
   const lessonIds = useMemo(
     () => lessons.map((lesson) => lesson.id),
     [lessons]
@@ -90,19 +89,6 @@ export function ModuleLessonsClient({
 
     return undefined;
   }, [lessonIds, lessons, previousModulesComplete, statuses]);
-
-  const handleStatusChange = (taskId: string, nextStatus: ProgressStatus) => {
-    setStatuses((previousStatuses) => {
-      if (previousStatuses[taskId] === nextStatus) {
-        return previousStatuses;
-      }
-
-      return {
-        ...previousStatuses,
-        [taskId]: nextStatus,
-      };
-    });
-  };
 
   return (
     <>
@@ -144,7 +130,7 @@ export function ModuleLessonsClient({
                   planId={planId}
                   moduleId={moduleId}
                   status={statuses[lesson.id] ?? 'not_started'}
-                  onStatusChange={handleStatusChange}
+                  onStatusChange={onStatusChange}
                   isLocked={locked}
                 />
               );

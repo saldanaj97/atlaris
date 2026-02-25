@@ -63,7 +63,7 @@ export function ActivityStream({ summaries }: ActivityStreamProps) {
         </div>
 
         {/* Sidebar */}
-        <ActivityStreamSidebar activePlan={activePlan} />
+        <ActivityStreamSidebar activePlan={activePlan} isVisible />
       </div>
     </div>
   );

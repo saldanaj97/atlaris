@@ -9,6 +9,7 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
+import type { ElementType, ReactElement } from 'react';
 
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/formatters';
@@ -26,7 +27,7 @@ interface TaskCardProps {
 
 const RESOURCE_CONFIG: Record<
   ResourceType,
-  { label: string; icon: React.ElementType; badgeClass: string }
+  { label: string; icon: ElementType; badgeClass: string }
 > = {
   youtube: {
     label: 'Video',
@@ -81,7 +82,7 @@ export function TaskCard({
   moduleId,
   status,
   onStatusChange,
-}: TaskCardProps) {
+}: TaskCardProps): ReactElement {
   const isCompleted = status === 'completed';
   const resources = task.resources ?? [];
 

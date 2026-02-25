@@ -2,20 +2,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
 
 import {
   findActivePlan,
   generateActivities,
 } from '@/app/dashboard/components/activity-utils';
-import { ActivityFeedClient } from './ActivityFeedClient';
-import { ActivityStreamSidebar } from './ActivityStreamSidebar';
-import { ResumeLearningHero } from './ResumeLearningHero';
+import { ActivityFeedClient } from '@/app/dashboard/components/ActivityFeedClient';
+import { ActivityStreamSidebar } from '@/app/dashboard/components/ActivityStreamSidebar';
+import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHero';
 
 /**
  * Async component that fetches user plan data and renders dashboard content.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function DashboardContent() {
+export async function DashboardContent(): Promise<JSX.Element> {
   const user = await getOrCreateCurrentUserRecord();
   if (!user) {
     redirect('/sign-in?redirect_url=/dashboard');
@@ -41,7 +42,7 @@ export async function DashboardContent() {
         <ActivityFeedClient activities={activities} />
 
         {/* Sidebar - server rendered */}
-        <ActivityStreamSidebar activePlan={activePlan} />
+        <ActivityStreamSidebar activePlan={activePlan} isVisible />
       </div>
     </>
   );
@@ -51,7 +52,7 @@ export async function DashboardContent() {
  * Skeleton for the dashboard content.
  * Shown while the async component is loading.
  */
-export function DashboardContentSkeleton() {
+export function DashboardContentSkeleton(): JSX.Element {
   return (
     <>
       {/* ResumeLearningHero skeleton */}

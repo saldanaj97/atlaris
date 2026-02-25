@@ -10,6 +10,7 @@ import {
   Lock,
 } from 'lucide-react';
 import Link from 'next/link';
+import type { JSX } from 'react';
 
 import {
   DropdownMenu,
@@ -59,7 +60,7 @@ export function ModuleHeader({
   statuses,
   previousModulesComplete,
   allModules,
-}: ModuleHeaderProps) {
+}: ModuleHeaderProps): JSX.Element {
   const tasks = module.tasks ?? [];
 
   // Calculate progress metrics
