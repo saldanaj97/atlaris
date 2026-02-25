@@ -148,7 +148,6 @@ export async function rollbackPdfUsageIfReserved(params: {
     logger.error(
       {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
       },
       'Failed to rollback PDF quota usage after reservation'
     );

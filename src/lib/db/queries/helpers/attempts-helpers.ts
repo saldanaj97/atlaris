@@ -527,7 +527,13 @@ export async function persistSuccessfulAttempt(
           normalizationFlags.modulesClamped || normalizationFlags.tasksClamped,
         metadata,
       })
-      .where(eq(generationAttempts.id, attemptId))
+      .where(
+        and(
+          eq(generationAttempts.id, attemptId),
+          eq(generationAttempts.planId, planId),
+          eq(generationAttempts.status, 'in_progress')
+        )
+      )
       .returning();
 
     if (!attempt) {

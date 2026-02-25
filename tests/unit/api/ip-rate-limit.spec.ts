@@ -9,6 +9,7 @@ import {
   IP_RATE_LIMIT_CONFIGS,
 } from '@/lib/api/ip-rate-limit';
 import { RateLimitError } from '@/lib/api/errors';
+import { logger } from '@/lib/logging/logger';
 
 function createMockRequest(headers: Record<string, string> = {}): Request {
   return {
@@ -40,6 +41,54 @@ describe('IP Rate Limiting', () => {
         'x-forwarded-for': '203.0.113.50, 70.41.3.18, 150.172.238.178',
       });
       expect(getClientIp(request)).toBe('203.0.113.50');
+    });
+
+    it('supports rightmost-untrusted trust mode', () => {
+      const request = createMockRequest({
+        'x-forwarded-for': '203.0.113.50, 70.41.3.18, 150.172.238.178',
+      });
+      expect(
+        getClientIp(request, {
+          ipTrustMode: 'rightmost-untrusted',
+          trustedProxyList: ['150.172.238.178', '70.41.3.18'],
+        })
+      ).toBe('203.0.113.50');
+    });
+
+    it('supports trusted-proxies trust mode', () => {
+      const request = createMockRequest({
+        'x-forwarded-for': '198.51.100.4, 192.0.2.10, 150.172.238.178',
+      });
+      expect(
+        getClientIp(request, {
+          ipTrustMode: 'trusted-proxies',
+          trustedProxyList: ['192.0.2.10', '150.172.238.178'],
+        })
+      ).toBe('198.51.100.4');
+    });
+
+    it('falls back to unknown when rightmost-untrusted has only trusted IPs', () => {
+      const request = createMockRequest({
+        'x-forwarded-for': '70.41.3.18, 150.172.238.178',
+      });
+      expect(
+        getClientIp(request, {
+          ipTrustMode: 'rightmost-untrusted',
+          trustedProxyList: ['70.41.3.18', '150.172.238.178'],
+        })
+      ).toBe('unknown');
+    });
+
+    it('falls back to unknown when trusted-proxies has only trusted IPs', () => {
+      const request = createMockRequest({
+        'x-forwarded-for': '70.41.3.18, 150.172.238.178',
+      });
+      expect(
+        getClientIp(request, {
+          ipTrustMode: 'trusted-proxies',
+          trustedProxyList: ['70.41.3.18', '150.172.238.178'],
+        })
+      ).toBe('unknown');
     });
 
     it('extracts IP from X-Real-IP header when X-Forwarded-For is absent', () => {
@@ -75,6 +124,25 @@ describe('IP Rate Limiting', () => {
     it('returns unknown when no IP headers present', () => {
       const request = createMockRequest({});
       expect(getClientIp(request)).toBe('unknown');
+    });
+
+    it('logs unknown-IP warning once per interval', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2100-01-01T00:00:00.000Z'));
+
+      const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+      const request = createMockRequest({});
+
+      expect(getClientIp(request)).toBe('unknown');
+      expect(getClientIp(request)).toBe('unknown');
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(60_001);
+      expect(getClientIp(request)).toBe('unknown');
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+
+      warnSpy.mockRestore();
+      vi.useRealTimers();
     });
 
     it('returns unknown for invalid IP in X-Forwarded-For', () => {
@@ -307,6 +375,7 @@ describe('IP Rate Limiting', () => {
         String(docsConfig.maxRequests)
       );
       expect(headers['X-RateLimit-Reset']).toBeDefined();
+      expect(parseInt(headers['Retry-After'], 10)).toBeGreaterThanOrEqual(0);
     });
 
     it('updates remaining count after requests', () => {

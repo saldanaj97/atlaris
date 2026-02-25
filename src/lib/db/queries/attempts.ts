@@ -33,7 +33,7 @@ import {
   recordAttemptSuccess,
 } from '@/lib/metrics/attempts';
 import { hashSha256 } from '@/lib/utils/hash';
-import { count, eq, sql } from 'drizzle-orm';
+import { and, count, eq, sql } from 'drizzle-orm';
 
 /**
  * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
@@ -354,7 +354,13 @@ export async function finalizeAttemptFailure({
         normalizedEffort: false,
         metadata,
       })
-      .where(eq(generationAttempts.id, attemptId))
+      .where(
+        and(
+          eq(generationAttempts.id, attemptId),
+          eq(generationAttempts.planId, planId),
+          eq(generationAttempts.status, 'in_progress')
+        )
+      )
       .returning();
 
     if (!updatedAttempt) {

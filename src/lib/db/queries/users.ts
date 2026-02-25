@@ -188,6 +188,16 @@ export async function updateUserPreferredAiModel(
 export async function deleteUserByAuthId(
   authUserId: string
 ): Promise<DeleteUserResult> {
+  // Guard: this function uses the service-role client and must never be
+  // called from within a request handler where RLS-scoped clients should
+  // be used instead. Detect request context via AsyncLocalStorage.
+  const ctx = getRequestContext();
+  if (ctx) {
+    throw new Error(
+      'deleteUserByAuthId must not be called from a request handler. Use an RLS-scoped client instead.'
+    );
+  }
+
   const result = await serviceDb
     .delete(users)
     .where(eq(users.authUserId, authUserId))
