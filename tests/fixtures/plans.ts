@@ -94,7 +94,7 @@ export async function createPlanForRetryTest(
   return createPlan(userId, { ...RETRY_TEST_PLAN_DEFAULTS, ...overrides });
 }
 
-export type CreateTestPlanParams = {
+type CreateTestPlanParams = {
   userId: string;
   topic?: string;
   skillLevel?: 'beginner' | 'intermediate' | 'advanced';

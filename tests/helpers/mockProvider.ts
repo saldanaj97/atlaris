@@ -11,20 +11,20 @@ import {
 } from '../../src/lib/ai/provider';
 import { asyncIterableToReadableStream } from '../../src/lib/ai/utils';
 
-export type MockProviderScenario =
+type MockProviderScenario =
   | 'success'
   | 'timeout'
   | 'validation'
   | 'rate_limit'
   | 'error';
 
-export interface MockProviderConfig {
+interface MockProviderConfig {
   scenario: MockProviderScenario;
   chunkSize?: number;
   delayBetweenChunksMs?: number;
 }
 
-export interface MockProvider {
+interface MockProvider {
   provider: AiPlanGenerationProvider;
   readonly invocationCount: number;
 }

@@ -13,8 +13,6 @@ const DEFAULT_GENERATION_INPUT: GenerationInput = {
   learningStyle: 'mixed',
 };
 
-export { DEFAULT_GENERATION_INPUT };
-
 export function createGenerationInput(
   overrides: Partial<GenerationInput> = {}
 ): GenerationInput {

@@ -25,7 +25,6 @@ ai/
 │   ├── error-sanitizer.ts # Client-safe SSE error mapping
 │   └── types.ts         # Stream event contracts
 ├── providers/
-│   ├── base.ts          # Provider contract adapters
 │   ├── router.ts        # Provider routing + transient retry policy
 │   ├── openrouter.ts    # OpenRouter transport adapter (streaming)
 │   └── mock.ts          # Test provider (deterministic)

@@ -4,7 +4,7 @@ import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 
 describe('runGenerationAttempt reservation rejection handling', () => {
   it('maps in_progress reservation rejections to a valid retryable classification', async () => {
-    // Stub must mirror ATTEMPTS_DB_METHODS in @/lib/db/queries/attempts.types.ts
+    // Stub must mirror ATTEMPTS_DB_METHODS in @/lib/db/queries/types/attempts.types.ts
     // (select, insert, update, delete, transaction) so isAttemptsDbClient passes.
     const dbClientStub = {
       select: () => ({}),

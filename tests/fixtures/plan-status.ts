@@ -1,6 +1,6 @@
 import type { PlanStatus } from '@/lib/types/client';
 
-export interface PlanStatusResponseData {
+interface PlanStatusResponseData {
   planId: string;
   status: PlanStatus;
   attempts: number;

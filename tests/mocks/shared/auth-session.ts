@@ -1,4 +1,4 @@
-export interface MockAuthSession {
+interface MockAuthSession {
   data: {
     user: {
       id: string;

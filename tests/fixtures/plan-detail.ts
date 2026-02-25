@@ -147,7 +147,7 @@ export function buildModule(
 }
 
 /** Builds a Module (plan row only, no tasks). Use for PlanSummary.modules. */
-export function buildModuleRow(overrides: Partial<Module> = {}): Module {
+function buildModuleRow(overrides: Partial<Module> = {}): Module {
   const { tasks: _tasks, ...row } = buildModule();
   return { ...row, ...overrides } satisfies Module;
 }
