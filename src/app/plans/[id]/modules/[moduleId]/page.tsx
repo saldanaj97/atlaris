@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+import type { JSX } from 'react';
 import { Suspense } from 'react';
 
 import { ModuleDetailPageError } from '@/app/plans/[id]/modules/[moduleId]/components/Error';
@@ -10,13 +12,28 @@ interface ModulePageProps {
   params: Promise<{ id: string; moduleId: string }>;
 }
 
+const MODULE_METADATA_DESCRIPTION =
+  'View module details, tasks, and resources for this learning plan module.';
+
+export async function generateMetadata({
+  params,
+}: ModulePageProps): Promise<Metadata> {
+  await params;
+  return {
+    title: 'Module Details | Atlaris',
+    description: MODULE_METADATA_DESCRIPTION,
+  };
+}
+
 /**
  * Module detail page with Suspense boundary for data-dependent content.
  *
  * The page validates the route params and wraps all data-dependent content
  * (module details, error states) in a Suspense boundary.
  */
-export default async function ModuleDetailPage({ params }: ModulePageProps) {
+export default async function ModuleDetailPage({
+  params,
+}: ModulePageProps): Promise<JSX.Element> {
   const { id: planId, moduleId } = await params;
 
   if (!moduleId) {

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestUser } from '../../fixtures/users';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
 
 // Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
@@ -9,20 +9,17 @@ vi.mock('@/lib/auth/server', () => ({
 }));
 
 describe('POST /api/v1/integrations/disconnect', () => {
-  const authUserId = 'auth_disconnect_test_user';
+  let testUser: Awaited<ReturnType<typeof createTestUser>>;
 
   beforeEach(async () => {
+    testUser = await createTestUser({ email: 'disconnect@example.test' });
+
     const { auth } = await import('@/lib/auth/server');
     vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
+      data: { user: { id: testUser.authUserId } },
     });
 
-    setTestUser(authUserId);
-
-    await ensureUser({
-      authUserId,
-      email: 'disconnect@example.com',
-    });
+    setTestUser(testUser.authUserId);
   });
 
   afterEach(() => {
@@ -44,7 +41,7 @@ describe('POST /api/v1/integrations/disconnect', () => {
 
     expect(response.status).toBe(501);
     const body = await response.json();
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    expect(body.code).toBe('NOT_IMPLEMENTED');
   });
 
   it('should require authentication', async () => {
@@ -65,4 +62,34 @@ describe('POST /api/v1/integrations/disconnect', () => {
 
     expect(response.status).toBe(401);
   });
+
+  // TODO: Implement disconnect flow tests
+  //
+  // When the POST handler is implemented (currently returns 501), replace or
+  // extend the "should return 501 Not Implemented" test above with the
+  // following scenarios:
+  //
+  // 1. Provider token revocation
+  //    - Seed an integration row with a stored access/refresh token.
+  //    - Mock the provider's revoke endpoint (e.g. Google's
+  //      https://oauth2.googleapis.com/revoke) and assert it is called with
+  //      the correct token value.
+  //    - Assert the mock revocation call returns a success response and that
+  //      no subsequent use of the token would succeed (i.e. the mock is not
+  //      called again or returns 401 on re-use).
+  //
+  // 2. DB record removal
+  //    - After a successful disconnect call, query the integrations table
+  //      directly and assert the row no longer exists for the test user.
+  //
+  // 3. Unsupported provider
+  //    - Pass an unknown `integration` value and assert a 400 / validation
+  //      error is returned (NOT a provider revocation attempt).
+  //
+  // 4. Revocation failure handling
+  //    - Mock the provider revocation endpoint to return an error and assert
+  //      the API either surfaces the error correctly or cleans up the DB row
+  //      depending on the chosen strategy (best-effort vs. strict).
+  //
+  // Reference: https://github.com/saldanaj97/atlaris/pull/218
 });

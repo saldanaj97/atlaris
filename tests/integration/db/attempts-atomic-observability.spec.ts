@@ -11,6 +11,7 @@ import {
 } from '@/lib/metrics/attempts';
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
+import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
@@ -25,9 +26,7 @@ const TEST_INPUT = {
 describe('Atomic attempt observability', () => {
   let userId = '';
   let planId = '';
-  // Spy is set in beforeEach; optional so it can be undefined before first run
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- vi.SpyInstance is required for expect().toHaveBeenCalledWith()
-  let consoleInfoSpy: ReturnType<typeof vi.spyOn> | undefined;
+  let consoleInfoSpy: MockInstance<(...args: unknown[]) => void> | undefined;
 
   beforeEach(async () => {
     await resetDbForIntegrationTestFile();
@@ -71,13 +70,6 @@ describe('Atomic attempt observability', () => {
       throw new Error(`Expected reservation, got ${reservation.reason}`);
     }
 
-    // reserveAttemptSlot intentionally advances a 'failed' plan to 'generating'
-    // in the state machine (see createPlan above with generationStatus: 'failed')
-    const planAfterReserve = await db.query.learningPlans.findFirst({
-      where: eq(learningPlans.id, planId),
-    });
-    expect(planAfterReserve?.generationStatus).toBe('generating');
-
     const attempt = await finalizeAttemptSuccess({
       attemptId: reservation.attemptId,
       planId,
@@ -105,7 +97,7 @@ describe('Atomic attempt observability', () => {
     const snapshot = getAttemptMetricsSnapshot();
     expect(snapshot.totalAttempts).toBe(1);
     expect(snapshot.success.count).toBe(1);
-    expect(snapshot.success.duration.last).toBe(9_999);
+    expect(snapshot.success.duration.last).toBe(1_250);
     expect(snapshot.success.modules.last).toBe(1);
     expect(snapshot.success.tasks.last).toBe(1);
 
@@ -119,7 +111,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('records timeout failure metrics, keeps plan generating, and emits failure log event', async () => {
+  it('records timeout failure metrics, marks plan pending retry, and emits failure log event', async () => {
     const startedAt = new Date('2026-01-02T10:00:00.000Z');
     const finishedAt = new Date('2026-01-02T10:00:02.000Z');
 
@@ -153,9 +145,9 @@ describe('Atomic attempt observability', () => {
     const snapshot = getAttemptMetricsSnapshot();
     expect(snapshot.totalAttempts).toBe(1);
     expect(snapshot.failure.count).toBe(1);
-    expect(snapshot.failure.duration.last).toBe(123);
+    expect(snapshot.failure.duration.last).toBe(2_000);
     expect(snapshot.failure.classifications.timeout).toBe(1);
-    expect(plan?.generationStatus).toBe('generating');
+    expect(plan?.generationStatus).toBe('pending_retry');
 
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] failure',

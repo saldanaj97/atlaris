@@ -36,6 +36,10 @@ export interface ParserCallbacks {
   signal?: AbortSignal;
 }
 
+export const MAX_RAW_RESPONSE_CHARS = 200_000;
+export const MAX_MODULE_COUNT = 12;
+export const MAX_TASKS_PER_MODULE = 20;
+
 function hasDetectedModule(buffer: string): boolean {
   // Efficiently check for "modules" as a key in the buffer using regex
   // This matches "modules": { or "modules": [
@@ -119,6 +123,12 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
       `Module ${moduleIndex + 1} must include at least one task.`
     );
   }
+  if (rawTasks.length > MAX_TASKS_PER_MODULE) {
+    throw new ParserError(
+      'validation',
+      `Module ${moduleIndex + 1} exceeds maximum tasks (${MAX_TASKS_PER_MODULE}).`
+    );
+  }
 
   const tasks = rawTasks.map((task, taskIndex) =>
     toParsedTask(task, moduleIndex, taskIndex)
@@ -142,6 +152,12 @@ export async function parseGenerationStream(
 
   for await (const chunk of source) {
     callbacks.signal?.throwIfAborted();
+    if (buffer.length + chunk.length > MAX_RAW_RESPONSE_CHARS) {
+      throw new ParserError(
+        'validation',
+        `AI provider response exceeds maximum size (${MAX_RAW_RESPONSE_CHARS} chars).`
+      );
+    }
     buffer += chunk;
     if (
       !moduleDetected &&
@@ -192,6 +208,12 @@ export async function parseGenerationStream(
   }
   if (modulesRaw.length === 0) {
     throw new ParserError('validation', 'AI provider returned zero modules.');
+  }
+  if (modulesRaw.length > MAX_MODULE_COUNT) {
+    throw new ParserError(
+      'validation',
+      `AI provider response exceeds maximum modules (${MAX_MODULE_COUNT}).`
+    );
   }
 
   const modules: ParsedModule[] = [];

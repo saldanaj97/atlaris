@@ -1,27 +1,13 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import { NotFoundError } from '@/lib/api/errors';
+import { requirePlanIdFromRequest } from '@/lib/api/plans/route-context';
 import { json } from '@/lib/api/response';
-import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
-import { getUserByAuthId } from '@/lib/db/queries/users';
 import { mapAttemptsToClient } from '@/lib/mappers/detailToClient';
 
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req, userId }) => {
-    const planId = getPlanIdFromUrl(req, 'second-to-last');
-    if (!planId) {
-      throw new ValidationError('Plan id is required in the request path.');
-    }
-    if (!isUuid(planId)) {
-      throw new ValidationError('Invalid plan id format.');
-    }
-
-    const user = await getUserByAuthId(userId);
-    if (!user) {
-      throw new Error(
-        'Authenticated user record missing despite provisioning.'
-      );
-    }
+  withAuthAndRateLimit('read', async ({ req, user }) => {
+    const planId = requirePlanIdFromRequest(req, 'second-to-last');
 
     const result = await getPlanAttemptsForUser(planId, user.id);
     if (!result) {

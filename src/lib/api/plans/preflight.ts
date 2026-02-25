@@ -1,8 +1,12 @@
-import { AttemptCapExceededError } from '@/lib/api/errors';
-import { jsonError } from '@/lib/api/response';
+import { AttemptCapExceededError, ForbiddenError } from '@/lib/api/errors';
+import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-import { atomicCheckAndInsertPlan, resolveUserTier } from '@/lib/stripe/usage';
+import {
+  atomicCheckAndInsertPlan,
+  checkPlanDurationCap,
+  resolveUserTier,
+} from '@/lib/stripe/usage';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 
 import {
@@ -14,15 +18,15 @@ import {
   requireInternalUserByAuthId,
   type PlansDbClient,
 } from '@/lib/api/plans/route-context';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
 import {
   calculateTotalWeeks,
-  ensurePlanDurationAllowed,
   findCappedPlanWithoutModules,
   normalizePlanDurationForTier,
 } from '@/lib/api/plans/shared';
 
 export interface PlanCreationPreflightData {
-  user: Awaited<ReturnType<typeof requireInternalUserByAuthId>>;
+  user: DbUser;
   userTier: SubscriptionTier;
   startDate: string | null;
   deadlineDate: string | null;
@@ -30,36 +34,27 @@ export interface PlanCreationPreflightData {
   preparedInput: PreparedPlanInput;
 }
 
-export type PlanCreationPreflightResult =
-  | {
-      ok: true;
-      data: PlanCreationPreflightData;
-    }
-  | {
-      ok: false;
-      response: Response;
-    };
-
 type PreparePlanCreationPreflightParams = {
   body: CreateLearningPlanInput;
   authUserId: string;
-  resolvedUser?: Awaited<ReturnType<typeof requireInternalUserByAuthId>>;
+  user?: DbUser;
   dbClient: PlansDbClient;
   enforceRequestedDurationCap?: boolean;
 };
 
 export async function preparePlanCreationPreflight(
   params: PreparePlanCreationPreflightParams
-): Promise<PlanCreationPreflightResult> {
+): Promise<PlanCreationPreflightData> {
   const {
     body,
     authUserId,
-    resolvedUser,
+    user: existingUser,
     dbClient,
     enforceRequestedDurationCap = true,
   } = params;
 
-  const user = resolvedUser ?? (await requireInternalUserByAuthId(authUserId));
+  const user =
+    existingUser ?? (await requireInternalUserByAuthId(authUserId, dbClient));
   const userTier = await resolveUserTier(user.id, dbClient);
 
   // First check: reject if the user's raw requested date range (before tier normalization) exceeds tier cap.
@@ -69,21 +64,15 @@ export async function preparePlanCreationPreflight(
       startDate: body.startDate ?? null,
       deadlineDate: body.deadlineDate ?? null,
     });
-    const requestedCap = ensurePlanDurationAllowed({
-      userTier,
+    const requestedCap = checkPlanDurationCap({
+      tier: userTier,
       weeklyHours: body.weeklyHours,
       totalWeeks: requestedWeeks,
     });
     if (!requestedCap.allowed) {
-      return {
-        ok: false,
-        response: jsonError(
-          requestedCap.reason ?? 'Plan duration exceeds tier cap',
-          {
-            status: 403,
-          }
-        ),
-      };
+      throw new ForbiddenError(
+        requestedCap.reason ?? 'Plan duration exceeds tier cap'
+      );
     }
   }
 
@@ -95,22 +84,15 @@ export async function preparePlanCreationPreflight(
   });
 
   // Second check: after normalizing (and possibly capping) duration to the tier, ensure the normalized plan still fits.
-  const cap = ensurePlanDurationAllowed({
-    userTier,
+  const cap = checkPlanDurationCap({
+    tier: userTier,
     weeklyHours: body.weeklyHours,
     totalWeeks,
   });
   if (!cap.allowed) {
-    return {
-      ok: false,
-      response: jsonError(cap.reason ?? 'Plan duration exceeds tier cap', {
-        status: 403,
-      }),
-    };
+    throw new ForbiddenError(cap.reason ?? 'Plan duration exceeds tier cap');
   }
 
-  // AttemptCapExceededError is thrown (not returned as ok: false) so the stream handler
-  // can map it to a specific status/error boundary; callers must handle both return and throw.
   const cappedPlanId = await findCappedPlanWithoutModules(user.id, dbClient);
   if (cappedPlanId) {
     throw new AttemptCapExceededError('attempt cap reached', {
@@ -125,34 +107,34 @@ export async function preparePlanCreationPreflight(
     dbClient,
   });
 
-  if (!preparedInput.ok) {
-    return preparedInput;
-  }
-
   return {
-    ok: true,
-    data: {
-      user,
-      userTier,
-      startDate,
-      deadlineDate,
-      totalWeeks,
-      preparedInput: preparedInput.data,
-    },
+    user,
+    userTier,
+    startDate,
+    deadlineDate,
+    totalWeeks,
+    preparedInput,
   };
 }
 
 export async function insertPlanWithRollback(params: {
-  body: CreateLearningPlanInput;
   preflight: PlanCreationPreflightData;
   dbClient: PlansDbClient;
 }): Promise<{ id: string }> {
-  const { body, preflight, dbClient } = params;
+  const { preflight, dbClient } = params;
   const {
     user,
     startDate,
     deadlineDate,
-    preparedInput: { origin, extractedContext, topic, pdfUsageReserved },
+    preparedInput: {
+      origin,
+      extractedContext,
+      topic,
+      skillLevel,
+      weeklyHours,
+      learningStyle,
+      pdfUsageReserved,
+    },
   } = preflight;
 
   try {
@@ -160,9 +142,9 @@ export async function insertPlanWithRollback(params: {
       user.id,
       {
         topic,
-        skillLevel: body.skillLevel,
-        weeklyHours: body.weeklyHours,
-        learningStyle: body.learningStyle,
+        skillLevel,
+        weeklyHours,
+        learningStyle,
         visibility: 'private',
         origin,
         extractedContext,
@@ -180,13 +162,9 @@ export async function insertPlanWithRollback(params: {
           reserved: pdfUsageReserved,
         });
       } catch (rollbackErr) {
-        logger.warn(
-          {
-            error: rollbackErr,
-            internalUserId: user.id,
-            reserved: pdfUsageReserved,
-          },
-          'rollbackPdfUsageIfReserved failed; original error preserved'
+        logger.error(
+          { rollbackErr, userId: user.id },
+          'Failed to rollback pdf plan usage'
         );
       }
     }
@@ -194,3 +172,5 @@ export async function insertPlanWithRollback(params: {
     throw error;
   }
 }
+
+export type PlanCreationDbClient = ReturnType<typeof getDb>;

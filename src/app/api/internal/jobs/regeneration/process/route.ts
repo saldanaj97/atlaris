@@ -1,7 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { NextResponse } from 'next/server';
-
+import { type PlainHandler, withErrorBoundary } from '@/lib/api/auth';
+import { AppError, AuthError, ServiceUnavailableError } from '@/lib/api/errors';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
+import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
 import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
 import getRequestContext from '@/lib/logging/request-context';
@@ -33,18 +35,15 @@ function tokensMatch(expectedToken: string, providedToken: string): boolean {
   return Boolean(Number(lengthMatch) & Number(matched));
 }
 
-export async function POST(request: Request): Promise<Response> {
+export const POST: PlainHandler = withErrorBoundary(async (request) => {
   const { logger } = getRequestContext(request);
   const pathname = new URL(request.url).pathname;
 
+  checkIpRateLimit(request, 'internal');
+
   if (!regenerationQueueEnv.enabled) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          'Regeneration queue is disabled. Enable REGENERATION_QUEUE_ENABLED to process jobs.',
-      },
-      { status: 503 }
+    throw new ServiceUnavailableError(
+      'Regeneration processing is currently unavailable.'
     );
   }
 
@@ -61,10 +60,7 @@ export async function POST(request: Request): Promise<Response> {
         'Unauthorized regeneration worker trigger attempt'
       );
 
-      return NextResponse.json(
-        { ok: false, error: 'Unauthorized worker trigger.' },
-        { status: 401 }
-      );
+      throw new AuthError('Unauthorized worker trigger.');
     }
   } else if (appEnv.isProduction) {
     logger.error(
@@ -72,13 +68,8 @@ export async function POST(request: Request): Promise<Response> {
       'Regeneration worker token missing in production'
     );
 
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          'Worker token is not configured. Set REGENERATION_WORKER_TOKEN in production.',
-      },
-      { status: 503 }
+    throw new ServiceUnavailableError(
+      'Regeneration processing is currently unavailable.'
     );
   }
 
@@ -91,16 +82,28 @@ export async function POST(request: Request): Promise<Response> {
 
     logger.info({ maxJobs, drained }, 'Completed regeneration queue drain');
 
-    return NextResponse.json({ ok: true, ...drained });
-  } catch (error) {
+    return json({ ok: true, ...drained });
+  } catch (error: unknown) {
     logger.error(
       { error, maxJobs },
       'Failed to drain regeneration queue from internal route'
     );
 
-    const errorCode =
-      error instanceof Error ? error.name || 'UnknownError' : 'UnknownError';
+    const diagnostic =
+      error == null
+        ? undefined
+        : error instanceof AppError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : undefined;
 
-    return NextResponse.json({ ok: false, error: errorCode }, { status: 500 });
+    throw new AppError('Failed to drain regeneration queue', {
+      status: 500,
+      code: 'REGENERATION_DRAIN_FAILED',
+      ...(diagnostic !== undefined && {
+        details: { cause: diagnostic },
+      }),
+    });
   }
-}
+});

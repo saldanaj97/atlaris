@@ -1,17 +1,37 @@
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { and, eq, asc, inArray } from 'drizzle-orm';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
 } from '@/lib/db/queries/schedules';
+import { getDb } from '@/lib/db/runtime';
+import { learningPlans, modules, tasks } from '@/lib/db/schema';
+import type { DbClient } from '@/lib/db/types';
 import { generateSchedule } from '@/lib/scheduling/generate';
 import { computeInputsHash } from '@/lib/scheduling/hash';
 import type { ScheduleInputs, ScheduleJson } from '@/lib/scheduling/types';
+import { format } from 'date-fns';
+import { and, asc, eq } from 'drizzle-orm';
 
 interface GetPlanScheduleParams {
   planId: string;
   userId: string;
+}
+
+/** Default timezone for schedule generation when no user timezone is available (e.g. not set in profile or preferences). */
+export const DEFAULT_SCHEDULE_TIMEZONE = 'UTC';
+
+/**
+ * Resolves the IANA timezone used for schedule generation for the given user.
+ * Currently returns {@link DEFAULT_SCHEDULE_TIMEZONE} only; when user timezone is added to profile, preferences, or request context, this will resolve from there and fall back to the default when none is set.
+ *
+ * @param _userId - User id (reserved for future lookup of user profile/preferences).
+ * @param _db - Database client (reserved for future user/preferences queries).
+ * @returns The timezone string (e.g. 'UTC', 'America/New_York').
+ */
+export async function resolveScheduleTimezone(
+  _userId: string,
+  _db: DbClient
+): Promise<string> {
+  return DEFAULT_SCHEDULE_TIMEZONE;
 }
 
 export const SCHEDULE_FETCH_ERROR_CODE = {
@@ -48,7 +68,13 @@ export async function getPlanSchedule(
 
   // Load plan with ownership check in WHERE clause (RLS-enforced)
   const [plan] = await db
-    .select()
+    .select({
+      id: learningPlans.id,
+      weeklyHours: learningPlans.weeklyHours,
+      startDate: learningPlans.startDate,
+      createdAt: learningPlans.createdAt,
+      deadlineDate: learningPlans.deadlineDate,
+    })
     .from(learningPlans)
     .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)))
     .limit(1);
@@ -60,32 +86,56 @@ export async function getPlanSchedule(
     );
   }
 
-  // Load modules and tasks in a single joined query
-  const planModules = await db
-    .select()
-    .from(modules)
-    .where(eq(modules.planId, planId))
-    .orderBy(asc(modules.order));
+  const timezone = await resolveScheduleTimezone(userId, db);
 
-  const flatTasks: Array<typeof tasks.$inferSelect & { moduleTitle: string }> =
-    planModules.length > 0
-      ? await (async () => {
-          const moduleIds = planModules.map((m) => m.id);
-          const taskRows = await db
-            .select({
-              task: tasks,
-              moduleTitle: modules.title,
-            })
-            .from(tasks)
-            .innerJoin(modules, eq(tasks.moduleId, modules.id))
-            .where(inArray(modules.id, moduleIds))
-            .orderBy(asc(modules.order), asc(tasks.order));
-          return taskRows.map((row) => ({
-            ...row.task,
-            moduleTitle: row.moduleTitle,
-          }));
-        })()
-      : [];
+  // Load modules and tasks in one query to avoid serial module->task round trips.
+  const moduleTaskRows = await db
+    .select({
+      moduleOrder: modules.order,
+      moduleTitle: modules.title,
+      taskId: tasks.id,
+      taskTitle: tasks.title,
+      taskEstimatedMinutes: tasks.estimatedMinutes,
+      taskOrder: tasks.order,
+      taskModuleId: tasks.moduleId,
+    })
+    .from(modules)
+    .leftJoin(tasks, eq(tasks.moduleId, modules.id))
+    .where(eq(modules.planId, planId))
+    .orderBy(asc(modules.order), asc(tasks.order));
+
+  const flatTasks: Array<{
+    id: string;
+    title: string;
+    estimatedMinutes: number;
+    order: number;
+    moduleId: string;
+    moduleTitle: string;
+  }> = moduleTaskRows
+    .filter(
+      (
+        row
+      ): row is typeof row & {
+        taskId: string;
+        taskTitle: string;
+        taskEstimatedMinutes: number;
+        taskOrder: number;
+        taskModuleId: string;
+      } =>
+        row.taskId !== null &&
+        row.taskTitle !== null &&
+        row.taskEstimatedMinutes !== null &&
+        row.taskOrder !== null &&
+        row.taskModuleId !== null
+    )
+    .map((row) => ({
+      id: row.taskId,
+      title: row.taskTitle,
+      estimatedMinutes: row.taskEstimatedMinutes,
+      order: row.taskOrder,
+      moduleId: row.taskModuleId,
+      moduleTitle: row.moduleTitle,
+    }));
 
   // Build schedule inputs
   if (plan.weeklyHours <= 0) {
@@ -103,17 +153,17 @@ export async function getPlanSchedule(
       order: idx + 1,
       moduleId: task.moduleId,
     })),
-    startDate: plan.startDate || plan.createdAt.toISOString().split('T')[0],
+    startDate: plan.startDate ?? format(plan.createdAt, 'yyyy-MM-dd'),
     deadline: plan.deadlineDate,
     weeklyHours: plan.weeklyHours,
-    timezone: 'UTC', // TODO: Get from user preferences
+    timezone,
   };
 
   // Compute hash
   const inputsHash = computeInputsHash(inputs);
 
   // Check cache
-  const cached = await getPlanScheduleCache(planId);
+  const cached = await getPlanScheduleCache(planId, userId, db);
   if (cached && cached.inputsHash === inputsHash) {
     return cached.scheduleJson;
   }
@@ -122,14 +172,19 @@ export async function getPlanSchedule(
   const schedule = generateSchedule(inputs);
 
   // Write through cache
-  await upsertPlanScheduleCache(planId, {
-    scheduleJson: schedule,
-    inputsHash,
-    timezone: inputs.timezone,
-    weeklyHours: inputs.weeklyHours,
-    startDate: inputs.startDate,
-    deadline: inputs.deadline,
-  });
+  await upsertPlanScheduleCache(
+    planId,
+    userId,
+    {
+      scheduleJson: schedule,
+      inputsHash,
+      timezone: inputs.timezone,
+      weeklyHours: inputs.weeklyHours,
+      startDate: inputs.startDate,
+      deadline: inputs.deadline,
+    },
+    db
+  );
 
   return schedule;
 }

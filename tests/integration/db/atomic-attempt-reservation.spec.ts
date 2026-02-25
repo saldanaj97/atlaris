@@ -269,6 +269,100 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     }
   });
 
+  it('requires in-progress status to finalize success', async () => {
+    const reservation = await reserveAttemptSlot({
+      planId,
+      userId,
+      input: {
+        topic: 'Test',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+      },
+      dbClient: db,
+    });
+    expect(reservation.reserved).toBe(true);
+
+    if (!reservation.reserved) {
+      return;
+    }
+
+    await db
+      .update(generationAttempts)
+      .set({
+        status: 'failure',
+        classification: 'timeout',
+      })
+      .where(eq(generationAttempts.id, reservation.attemptId));
+
+    await expect(
+      finalizeAttemptSuccess({
+        attemptId: reservation.attemptId,
+        planId,
+        preparation: reservation,
+        modules: [
+          {
+            title: 'Module 1',
+            description: 'Test module',
+            estimatedMinutes: 60,
+            tasks: [
+              {
+                title: 'Task 1',
+                description: 'Test task',
+                estimatedMinutes: 30,
+              },
+            ],
+          },
+        ],
+        durationMs: 3000,
+        extendedTimeout: false,
+        dbClient: db,
+      })
+    ).rejects.toThrow('Failed to finalize generation attempt as success.');
+  });
+
+  it('requires matching plan to finalize failure', async () => {
+    const reservation = await reserveAttemptSlot({
+      planId,
+      userId,
+      input: {
+        topic: 'Test',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+      },
+      dbClient: db,
+    });
+    expect(reservation.reserved).toBe(true);
+
+    if (!reservation.reserved) {
+      return;
+    }
+
+    const otherPlan = await createPlan(userId, {
+      topic: 'Other plan',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      visibility: 'private',
+      origin: 'ai',
+      generationStatus: 'failed',
+    });
+
+    await expect(
+      finalizeAttemptFailure({
+        attemptId: reservation.attemptId,
+        planId: otherPlan.id,
+        preparation: reservation,
+        classification: 'timeout',
+        durationMs: 5000,
+        timedOut: true,
+        extendedTimeout: false,
+        dbClient: db,
+      })
+    ).rejects.toThrow('Failed to finalize generation attempt as failure.');
+  });
+
   it('finalizes success correctly', async () => {
     const reservation = await reserveAttemptSlot({
       planId,

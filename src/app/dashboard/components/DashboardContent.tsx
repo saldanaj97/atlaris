@@ -2,20 +2,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
 
 import {
   findActivePlan,
   generateActivities,
 } from '@/app/dashboard/components/activity-utils';
-import { ActivityFeedClient } from './ActivityFeedClient';
-import { ActivityStreamSidebar } from './ActivityStreamSidebar';
-import { ResumeLearningHero } from './ResumeLearningHero';
+import { ActivityFeedClient } from '@/app/dashboard/components/ActivityFeedClient';
+import { ActivityStreamSidebar } from '@/app/dashboard/components/ActivityStreamSidebar';
+import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHero';
 
 /**
  * Async component that fetches user plan data and renders dashboard content.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function DashboardContent() {
+export async function DashboardContent(): Promise<JSX.Element> {
   const user = await getOrCreateCurrentUserRecord();
   if (!user) {
     redirect('/sign-in?redirect_url=/dashboard');
@@ -41,7 +42,7 @@ export async function DashboardContent() {
         <ActivityFeedClient activities={activities} />
 
         {/* Sidebar - server rendered */}
-        <ActivityStreamSidebar activePlan={activePlan} />
+        <ActivityStreamSidebar activePlan={activePlan} isVisible />
       </div>
     </>
   );
@@ -51,7 +52,7 @@ export async function DashboardContent() {
  * Skeleton for the dashboard content.
  * Shown while the async component is loading.
  */
-export function DashboardContentSkeleton() {
+export function DashboardContentSkeleton(): JSX.Element {
   return (
     <>
       {/* ResumeLearningHero skeleton */}
@@ -101,9 +102,9 @@ export function DashboardContentSkeleton() {
 
           {/* Activity cards skeleton */}
           <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4].map((activitySkeletonId) => (
               <div
-                key={i}
+                key={`dashboard-activity-skeleton-${activitySkeletonId}`}
                 className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10"
               >
                 <div className="flex gap-4">
@@ -137,8 +138,11 @@ export function DashboardContentSkeleton() {
 
             {/* Events skeleton */}
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex gap-3">
+              {[1, 2, 3].map((eventSkeletonId) => (
+                <div
+                  key={`dashboard-event-skeleton-${eventSkeletonId}`}
+                  className="flex gap-3"
+                >
                   <Skeleton className="h-8 w-8 flex-shrink-0 rounded-lg" />
                   <div className="min-w-0 flex-1 space-y-1.5 pb-3">
                     <Skeleton className="h-4 w-full" />

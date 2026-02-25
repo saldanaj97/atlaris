@@ -50,8 +50,28 @@ describe('POST /api/v1/ai/enhance-content', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(501);
-    const body = await response.json();
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    const body = (await response.json()) as Record<string, unknown>;
+
+    // Required error contract fields (docs/rules/api/error-contract.md)
+    expect(body).toHaveProperty('code');
+    expect(body).toHaveProperty('error');
+    expect(body.code).toBe('NOT_IMPLEMENTED');
+    expect(typeof body.code).toBe('string');
+    expect(typeof body.error).toBe('string');
+
+    // Optional contract fields: if present, must have correct types
+    if ('classification' in body && body.classification !== undefined) {
+      expect(typeof body.classification).toBe('string');
+    }
+    if ('retryAfter' in body && body.retryAfter !== undefined) {
+      expect(typeof body.retryAfter).toBe('number');
+    }
+    if ('retryable' in body && body.retryable !== undefined) {
+      expect(typeof body.retryable).toBe('boolean');
+    }
+    if ('requestId' in body && body.requestId !== undefined) {
+      expect(typeof body.requestId).toBe('string');
+    }
   });
 
   it('should require authentication', async () => {
@@ -71,5 +91,8 @@ describe('POST /api/v1/ai/enhance-content', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(401);
+    const body = (await response.json()) as { error: string; code: string };
+    expect(body.error).toBe('Unauthorized');
+    expect(body.code).toBe('UNAUTHORIZED');
   });
 });

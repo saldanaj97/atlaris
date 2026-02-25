@@ -43,7 +43,7 @@ describe('GET /api/v1/user/profile', () => {
     expect(response.status).toBe(501);
     const body = await response.json();
     expect(body).toHaveProperty('error');
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    expect(body).toHaveProperty('code', 'NOT_IMPLEMENTED');
   });
 });
 
@@ -83,6 +83,6 @@ describe('PUT /api/v1/user/profile', () => {
     expect(response.status).toBe(501);
     const body = await response.json();
     expect(body).toHaveProperty('error');
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    expect(body).toHaveProperty('code', 'NOT_IMPLEMENTED');
   });
 });

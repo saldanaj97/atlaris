@@ -5,12 +5,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/formatters';
-import type {
-  ProgressStatus,
-  ResourceType,
-  TaskWithRelations,
-} from '@/lib/types/db';
+import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 import {
   generatePlaceholderContent,
   hashString,
@@ -26,7 +23,7 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, type ElementType } from 'react';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
@@ -41,7 +38,7 @@ interface LessonAccordionItemProps {
 
 const RESOURCE_CONFIG: Record<
   ResourceType,
-  { label: string; icon: React.ElementType; badgeClass: string }
+  { label: string; icon: ElementType; badgeClass: string }
 > = {
   youtube: {
     label: 'Video',
@@ -357,7 +354,10 @@ export function LessonAccordionItem({
               <div className="rounded-xl border border-stone-200/50 bg-white/50 p-6 dark:border-stone-700/50 dark:bg-stone-800/30">
                 <div className="prose prose-stone dark:prose-invert max-w-none">
                   {placeholderContent.map((block, index) => (
-                    <ContentBlockRenderer key={index} block={block} />
+                    <ContentBlockRenderer
+                      key={`${block.type}-${hashString(block.content)}-${index}`}
+                      block={block}
+                    />
                   ))}
                 </div>
 

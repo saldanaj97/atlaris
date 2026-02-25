@@ -102,6 +102,7 @@ export type CreateTestPlanParams = {
   learningStyle?: 'reading' | 'video' | 'practice' | 'mixed';
   visibility?: string;
   origin?: 'ai' | 'template' | 'manual' | 'pdf';
+  generationStatus?: 'generating' | 'ready' | 'failed';
 };
 
 /**
@@ -119,6 +120,7 @@ export async function createTestPlan(
     learningStyle = 'mixed',
     visibility = 'private',
     origin = 'ai',
+    generationStatus,
   } = params;
 
   return insertPlanRow(userId, {
@@ -128,5 +130,6 @@ export async function createTestPlan(
     learningStyle,
     visibility,
     origin,
+    ...(generationStatus !== undefined && { generationStatus }),
   });
 }

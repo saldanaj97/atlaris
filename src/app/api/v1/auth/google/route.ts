@@ -1,10 +1,11 @@
+import { NextResponse } from 'next/server';
+
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { auth } from '@/lib/auth/server';
+import { ServiceUnavailableError } from '@/lib/api/errors';
 import { googleOAuthEnv } from '@/lib/config/env';
 import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state';
 import { logger } from '@/lib/logging/logger';
 import { google } from 'googleapis';
-import { NextResponse } from 'next/server';
 
 function getGoogleOAuthConfig() {
   try {
@@ -20,20 +21,12 @@ function getGoogleOAuthConfig() {
 }
 
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('oauth', async (_ctx): Promise<NextResponse> => {
-    const { data: session } = await auth.getSession();
-    const userId = session?.user?.id;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+  withAuthAndRateLimit('oauth', async ({ userId }) => {
     const config = getGoogleOAuthConfig();
     if (!config) {
-      return NextResponse.json(
-        { error: 'Google OAuth is not configured' },
-        { status: 503 }
-      );
+      throw new ServiceUnavailableError('Google OAuth is not configured', {
+        provider: 'google_calendar',
+      });
     }
 
     const stateToken = await generateAndStoreOAuthStateToken(
@@ -55,8 +48,8 @@ export const GET = withErrorBoundary(
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
-      state: stateToken, // Use secure token instead of user ID
-      prompt: 'consent', // Force consent to get refresh token
+      state: stateToken,
+      prompt: 'consent',
     });
 
     return NextResponse.redirect(authUrl);

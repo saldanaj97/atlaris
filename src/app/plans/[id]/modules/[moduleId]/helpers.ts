@@ -5,12 +5,12 @@
  * to create results, check success status, and safely extract error information.
  */
 
-import type { ModuleDetail } from '@/lib/db/queries/modules';
 import type {
   ModuleAccessError,
   ModuleAccessErrorCode,
   ModuleAccessResult,
-} from './types';
+} from '@/app/plans/[id]/modules/[moduleId]/types';
+import type { ModuleDetail } from '@/lib/db/queries/types/modules.types';
 
 /**
  * Helper to create success result

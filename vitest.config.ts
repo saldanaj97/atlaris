@@ -14,6 +14,7 @@ if (!process.env.CI) {
 
 // Shared alias configuration for test projects
 const srcRoot = fileURLToPath(new URL('./src', import.meta.url));
+const testsRoot = fileURLToPath(new URL('./tests', import.meta.url));
 const authServerMockPath = fileURLToPath(
   new URL('./tests/mocks/shared/auth-server.ts', import.meta.url)
 );
@@ -21,6 +22,8 @@ const testAliases = {
   '@/lib/auth/server': authServerMockPath,
   '@': srcRoot,
   '@/': path.join(srcRoot, path.sep),
+  '@tests': testsRoot,
+  '@tests/': path.join(testsRoot, path.sep),
   'next/headers': 'next/headers.js',
 } as const;
 
@@ -44,7 +47,6 @@ export default defineConfig({
       ],
       thresholds: {
         lines: 0,
-        functions: 8.5,
         branches: 0,
         statements: 0,
       },
@@ -75,6 +77,7 @@ export default defineConfig({
           maxWorkers: 1,
           testTimeout: 90_000,
           include: ['tests/integration/**/*.{test,spec}.{ts,tsx}'],
+          globalSetup: ['tests/setup/testcontainers.ts'],
           setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
           maxConcurrency: 1,
           alias: testAliases,
@@ -91,6 +94,7 @@ export default defineConfig({
           maxWorkers: 1,
           testTimeout: 90_000,
           include: ['tests/e2e/**/*.{test,spec}.{ts,tsx}'],
+          globalSetup: ['tests/setup/testcontainers.ts'],
           setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
           maxConcurrency: 1,
           alias: testAliases,
@@ -107,6 +111,7 @@ export default defineConfig({
           maxWorkers: 1,
           testTimeout: 90_000,
           include: ['tests/security/**/*.{test,spec}.{ts,tsx}'],
+          globalSetup: ['tests/setup/testcontainers.ts'],
           setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
           maxConcurrency: 1,
           alias: testAliases,

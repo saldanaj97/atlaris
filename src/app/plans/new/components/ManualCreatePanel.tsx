@@ -7,7 +7,6 @@ import {
   getTodayDateString,
 } from '@/app/plans/new/components/plan-form/helpers';
 import type { PlanFormData } from '@/app/plans/new/components/plan-form/types';
-import type { StreamingError } from '@/hooks/useStreamingPlanGeneration';
 import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
@@ -16,9 +15,28 @@ import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
+
 interface ManualCreatePanelProps {
   initialTopic?: string | null;
+  topicResetVersion?: number;
   onTopicUsed?: () => void;
+}
+
+type MappingResult =
+  | { ok: true; payload: ReturnType<typeof mapOnboardingToCreateInput> }
+  | { ok: false; error: unknown };
+
+function buildCreatePayload(data: PlanFormData): MappingResult {
+  try {
+    const onboardingValues = convertToOnboardingValues(data);
+    return {
+      ok: true,
+      payload: mapOnboardingToCreateInput(onboardingValues),
+    };
+  } catch (error) {
+    return { ok: false, error };
+  }
 }
 
 function convertToOnboardingValues(data: PlanFormData): OnboardingFormValues {
@@ -40,6 +58,7 @@ function convertToOnboardingValues(data: PlanFormData): OnboardingFormValues {
  */
 export function ManualCreatePanel({
   initialTopic,
+  topicResetVersion = 0,
   onTopicUsed,
 }: ManualCreatePanelProps): React.ReactElement {
   const router = useRouter();
@@ -64,17 +83,14 @@ export function ManualCreatePanel({
     }
   }, [streamingState.status]);
 
-  const handleSubmit = async (data: PlanFormData) => {
+  const handleSubmit = (data: PlanFormData) => {
     if (isSubmittingRef.current) {
       return;
     }
 
-    let payload: ReturnType<typeof mapOnboardingToCreateInput>;
-    try {
-      const onboardingValues = convertToOnboardingValues(data);
-      payload = mapOnboardingToCreateInput(onboardingValues);
-    } catch (error) {
-      clientLogger.error('Failed to map form values', error);
+    const mappingResult = buildCreatePayload(data);
+    if (!mappingResult.ok) {
+      clientLogger.error('Failed to map form values', mappingResult.error);
       toast.error('Please double-check the form and try again.');
       return;
     }
@@ -83,60 +99,42 @@ export function ManualCreatePanel({
 
     isSubmittingRef.current = true;
     setIsSubmitting(true);
-    try {
-      const planId = await startGeneration(payload);
-      toast.success('Your learning plan is ready!');
-      router.push(`/plans/${planId}`);
-    } catch (streamError) {
-      const isAbort =
-        streamError instanceof DOMException &&
-        streamError.name === 'AbortError';
-      if (isAbort) {
-        if (!cancellationToastShownRef.current) {
-          toast.info('Generation cancelled');
-          cancellationToastShownRef.current = true;
+
+    void startGeneration(mappingResult.payload)
+      .then((planId) => {
+        toast.success('Your learning plan is ready!');
+        router.push(`/plans/${planId}`);
+      })
+      .catch((streamError: unknown) => {
+        const { handled, message } = handleStreamingPlanError({
+          streamError,
+          cancellationToastShownRef,
+          planIdRef,
+          clientLogger,
+          toast,
+          router,
+          logMessage: 'Streaming plan generation failed',
+          fallbackMessage:
+            'We could not create your learning plan. Please try again.',
+        });
+        if (handled) {
+          return;
         }
-        return;
-      }
-
-      clientLogger.error('Streaming plan generation failed', streamError);
-
-      const errorWithStatus = streamError as StreamingError;
-      const message =
-        streamError instanceof Error
-          ? streamError.message
-          : 'We could not create your learning plan. Please try again.';
-
-      const extractedPlanId =
-        errorWithStatus.planId ??
-        errorWithStatus.data?.planId ??
-        planIdRef.current;
-
-      if (
-        (errorWithStatus.status === 200 || extractedPlanId) &&
-        typeof extractedPlanId === 'string' &&
-        extractedPlanId.length > 0
-      ) {
-        toast.error('Generation failed. You can retry from the plan page.');
-        router.push(`/plans/${extractedPlanId}`);
-        return;
-      }
-
-      toast.error(message);
-    } finally {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
-    }
+        toast.error(message);
+      })
+      .finally(() => {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+      });
   };
 
   return (
     <>
       <UnifiedPlanInput
-        onSubmit={(data) => {
-          void handleSubmit(data);
-        }}
+        onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
         initialTopic={initialTopic ?? undefined}
+        topicResetVersion={topicResetVersion}
       />
 
       {streamingState.status !== 'idle' && (

@@ -1,13 +1,15 @@
-import {
+import type {
+  ModuleWithTasks,
+  TaskResourceWithResource,
+} from '@/lib/db/queries/types/modules.types';
+import type {
   GenerationAttempt,
   LearningPlan,
   LearningPlanDetail,
   Module,
-  ModuleWithTasks,
   PlanSummary,
   Task,
   TaskProgress,
-  TaskResourceWithResource,
 } from '@/lib/types/db';
 
 // Narrow task row for summaries query (joined with modules to include planId)

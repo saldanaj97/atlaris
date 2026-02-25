@@ -16,6 +16,8 @@
 import { LRUCache } from 'lru-cache';
 
 import { RateLimitError } from '@/lib/api/errors';
+import { logger } from '@/lib/logging/logger';
+import { assertNever } from '@/lib/utils';
 
 /**
  * Rate limit window entry tracking request counts
@@ -36,6 +38,19 @@ export interface IpRateLimitConfig {
   /** Maximum unique IPs to track (LRU eviction) */
   maxTrackedIps?: number;
 }
+
+export type IpTrustMode =
+  | 'leftmost'
+  | 'rightmost-untrusted'
+  | 'trusted-proxies';
+
+export interface IpExtractionConfig {
+  ipTrustMode?: IpTrustMode;
+  trustedProxyList?: readonly string[];
+}
+
+const UNKNOWN_IP_WARN_INTERVAL_MS = 60_000;
+let lastUnknownIpWarnTimestamp = 0;
 
 /**
  * Default rate limit configurations for different endpoint types
@@ -66,35 +81,50 @@ export const IP_RATE_LIMIT_CONFIGS = {
     maxRequests: 30,
     windowMs: 60 * 1000, // 30 requests per minute
   },
+  /** Internal endpoints (cron/worker, e.g. /api/internal/) - permissive for single-worker traffic */
+  internal: {
+    maxRequests: 60,
+    windowMs: 60 * 1000, // 60 requests per minute
+  },
 } as const;
 
 /**
  * Extracts client IP address from a request, handling proxies correctly.
  *
  * IP extraction priority:
- * 1. X-Forwarded-For header (leftmost non-private IP from trusted proxy)
+ * 1. X-Forwarded-For header (mode depends on IpExtractionConfig)
  * 2. X-Real-IP header
- * 3. Socket remote address (for direct connections)
+ * 3. CF-Connecting-IP (Cloudflare deployments)
  * 4. Falls back to 'unknown' if no IP can be determined
  *
- * Security considerations:
- * - X-Forwarded-For can be spoofed by clients, but in a trusted proxy setup
- *   (like Vercel), the proxy appends the real client IP to the right side.
- * - We take the leftmost IP as that's the original client in a trusted chain.
- * - For Vercel deployments, X-Forwarded-For is automatically set correctly.
+ * Trust modes:
+ * - leftmost: first IP in the chain (Vercel-friendly default)
+ * - rightmost-untrusted: traverse right -> left, trim trusted proxies from the
+ *   right edge, then return the first untrusted IP encountered
+ * - trusted-proxies: traverse left -> right and return the first IP in the
+ *   chain that is not trusted
+ *
+ * Example chain: "spoofed-client, real-client, trusted-proxy"
+ * - rightmost-untrusted => "real-client"
+ * - trusted-proxies => "spoofed-client"
+ *
+ * Prefer rightmost-untrusted when you trust only known right-edge proxies.
  *
  * @param request - The incoming HTTP request
+ * @param config - Optional extraction config for proxy trust model
  * @returns The client IP address or 'unknown' if not determinable
  */
-export function getClientIp(request: Request): string {
+export function getClientIp(
+  request: Request,
+  config?: IpExtractionConfig
+): string {
+  const resolvedConfig = resolveIpExtractionConfig(config);
+
   // Try X-Forwarded-For first (common with reverse proxies/load balancers)
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
-    // X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
-    // The leftmost IP is the original client (in trusted proxy setups)
-    const ips = forwardedFor.split(',').map((ip) => ip.trim());
-    const clientIp = ips[0];
-    if (clientIp && isValidIp(clientIp)) {
+    const clientIp = extractIpFromForwardedFor(forwardedFor, resolvedConfig);
+    if (clientIp) {
       return clientIp;
     }
   }
@@ -112,7 +142,79 @@ export function getClientIp(request: Request): string {
   }
 
   // Fallback - in serverless environments, there's often no direct socket access
+  logUnknownIpFallback();
   return 'unknown';
+}
+
+function resolveIpExtractionConfig(
+  config?: IpExtractionConfig
+): Required<IpExtractionConfig> {
+  return {
+    ipTrustMode: config?.ipTrustMode ?? 'leftmost',
+    trustedProxyList: config?.trustedProxyList ?? [],
+  };
+}
+
+function extractIpFromForwardedFor(
+  forwardedFor: string,
+  config: Required<IpExtractionConfig>
+): string | undefined {
+  const ips = forwardedFor
+    .split(',')
+    .map((ip) => ip.trim())
+    .filter((ip) => ip.length > 0 && isValidIp(ip));
+
+  if (ips.length === 0) {
+    return undefined;
+  }
+
+  let trustedProxySet: Set<string> | undefined;
+  const getTrustedProxySet = (): Set<string> => {
+    if (!trustedProxySet) {
+      trustedProxySet = new Set(
+        config.trustedProxyList
+          .map((ip) => ip.trim())
+          .filter((ip) => isValidIp(ip))
+      );
+    }
+    return trustedProxySet;
+  };
+
+  switch (config.ipTrustMode) {
+    case 'leftmost':
+      return ips[0];
+    case 'rightmost-untrusted':
+      trustedProxySet = getTrustedProxySet();
+      for (let index = ips.length - 1; index >= 0; index--) {
+        const ip = ips[index];
+        if (!trustedProxySet.has(ip)) {
+          return ip;
+        }
+      }
+      return undefined;
+    case 'trusted-proxies':
+      trustedProxySet = getTrustedProxySet();
+      for (const ip of ips) {
+        if (!trustedProxySet.has(ip)) {
+          return ip;
+        }
+      }
+      return undefined;
+    default:
+      return assertNever(config.ipTrustMode);
+  }
+}
+
+function logUnknownIpFallback(): void {
+  const now = Date.now();
+  if (now - lastUnknownIpWarnTimestamp < UNKNOWN_IP_WARN_INTERVAL_MS) {
+    return;
+  }
+
+  lastUnknownIpWarnTimestamp = now;
+  logger.warn(
+    'Unable to determine client IP for rate limiting — all unidentified requests share a single bucket'
+  );
 }
 
 /**
@@ -159,6 +261,7 @@ function isValidIp(ip: string): boolean {
 export function createIpRateLimiter(config: IpRateLimitConfig): {
   check: (ip: string) => void;
   getRemainingRequests: (ip: string) => number;
+  getResetTime: (ip: string) => number;
   reset: (ip: string) => void;
   clear: () => void;
 } {
@@ -228,6 +331,20 @@ export function createIpRateLimiter(config: IpRateLimitConfig): {
   }
 
   /**
+   * Gets the Unix timestamp (seconds) when the current rate limit window resets.
+   */
+  function getResetTime(ip: string): number {
+    const now = Date.now();
+    const entry = cache.get(ip);
+
+    if (!entry || now - entry.windowStart >= windowMs) {
+      return Math.ceil((now + windowMs) / 1000);
+    }
+
+    return Math.ceil((entry.windowStart + windowMs) / 1000);
+  }
+
+  /**
    * Resets the rate limit counter for an IP.
    */
   function reset(ip: string): void {
@@ -241,7 +358,7 @@ export function createIpRateLimiter(config: IpRateLimitConfig): {
     cache.clear();
   }
 
-  return { check, getRemainingRequests, reset, clear };
+  return { check, getRemainingRequests, getResetTime, reset, clear };
 }
 
 // Pre-configured rate limiters for common endpoint types
@@ -253,10 +370,13 @@ const rateLimiters = new Map<string, ReturnType<typeof createIpRateLimiter>>();
 function getRateLimiter(
   type: keyof typeof IP_RATE_LIMIT_CONFIGS
 ): ReturnType<typeof createIpRateLimiter> {
-  if (!rateLimiters.has(type)) {
-    rateLimiters.set(type, createIpRateLimiter(IP_RATE_LIMIT_CONFIGS[type]));
+  const existing = rateLimiters.get(type);
+  if (existing) {
+    return existing;
   }
-  return rateLimiters.get(type)!;
+  const limiter = createIpRateLimiter(IP_RATE_LIMIT_CONFIGS[type]);
+  rateLimiters.set(type, limiter);
+  return limiter;
 }
 
 /**
@@ -268,9 +388,10 @@ function getRateLimiter(
  */
 export function checkIpRateLimit(
   request: Request,
-  type: keyof typeof IP_RATE_LIMIT_CONFIGS
+  type: keyof typeof IP_RATE_LIMIT_CONFIGS,
+  config?: IpExtractionConfig
 ): void {
-  const ip = getClientIp(request);
+  const ip = getClientIp(request, config);
   const limiter = getRateLimiter(type);
   limiter.check(ip);
 }
@@ -284,19 +405,21 @@ export function checkIpRateLimit(
  */
 export function getRateLimitHeaders(
   request: Request,
-  type: keyof typeof IP_RATE_LIMIT_CONFIGS
+  type: keyof typeof IP_RATE_LIMIT_CONFIGS,
+  config?: IpExtractionConfig
 ): Record<string, string> {
-  const ip = getClientIp(request);
+  const ip = getClientIp(request, config);
   const limiter = getRateLimiter(type);
-  const config = IP_RATE_LIMIT_CONFIGS[type];
+  const rateLimitConfig = IP_RATE_LIMIT_CONFIGS[type];
   const remaining = limiter.getRemainingRequests(ip);
+  const reset = limiter.getResetTime(ip);
+  const retryAfter = Math.max(0, Math.ceil((reset * 1000 - Date.now()) / 1000));
 
   return {
-    'X-RateLimit-Limit': String(config.maxRequests),
+    'X-RateLimit-Limit': String(rateLimitConfig.maxRequests),
     'X-RateLimit-Remaining': String(remaining),
-    'X-RateLimit-Reset': String(
-      Math.ceil((Date.now() + config.windowMs) / 1000)
-    ),
+    'X-RateLimit-Reset': String(reset),
+    'Retry-After': String(retryAfter),
   };
 }
 
@@ -306,4 +429,5 @@ export function getRateLimitHeaders(
 export function clearAllRateLimiters(): void {
   rateLimiters.forEach((limiter) => limiter.clear());
   rateLimiters.clear();
+  lastUnknownIpWarnTimestamp = 0;
 }

@@ -1,260 +1,149 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
-
-import { getDb } from '@/lib/db/runtime';
+import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import {
-  learningPlans,
-  modules,
-  resources,
-  taskProgress,
-  taskResources,
-  tasks,
-} from '@/lib/db/schema';
+  buildResourcesByTask,
+  computeModuleNavItemsFromCounts,
+} from '@/lib/db/queries/helpers/modules-helpers';
+import {
+  fetchTaskProgressRows,
+  fetchTaskResourceRows,
+} from '@/lib/db/queries/helpers/task-relations-helpers';
 import type {
-  Module,
+  ModuleDetail,
+  ModuleNavCompletionRaw,
   ModuleWithTasks,
-  Task,
-  TaskResourceWithResource,
-} from '@/lib/types/db';
+} from '@/lib/db/queries/types/modules.types';
+import { getDb } from '@/lib/db/runtime';
+import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
+import { and, asc, countDistinct, eq } from 'drizzle-orm';
 
-export async function getModuleWithTasks(
-  moduleId: string
-): Promise<Array<{ modules: Module | null; tasks: Task | null }>> {
-  const db = getDb();
-  return await db
-    .select()
-    .from(modules)
-    .leftJoin(tasks, eq(tasks.moduleId, modules.id))
-    .where(eq(modules.id, moduleId));
-}
+type ModulesDbClient = ReturnType<typeof getDb>;
 
 /**
- * Minimal module info for navigation dropdown
+ * Module queries: full module detail with plan context, resources, and progress.
+ * Uses getDb() for request-scoped RLS.
  */
-export interface ModuleNavItem {
-  id: string;
-  order: number;
-  title: string;
-  /** Whether this module is locked (previous modules not completed) */
-  isLocked: boolean;
-}
-
-/**
- * Module detail type including plan context for navigation
- */
-export interface ModuleDetail {
-  module: ModuleWithTasks;
-  planId: string;
-  planTopic: string;
-  totalModules: number;
-  previousModuleId: string | null;
-  nextModuleId: string | null;
-  /** Whether all previous modules have been fully completed */
-  previousModulesComplete: boolean;
-  /** All modules in the plan for navigation dropdown */
-  allModules: ModuleNavItem[];
-}
 
 /**
  * Retrieves detailed module data including tasks, resources, and progress.
  * Also includes plan context for breadcrumb navigation.
  *
  * @param moduleId - The ID of the module to fetch
- * @param userId - The ID of the user (for progress data)
  * @returns Module detail with plan context, or null if not found/unauthorized
  */
 export async function getModuleDetail(
   moduleId: string,
-  userId: string
+  dbClient?: ModulesDbClient
 ): Promise<ModuleDetail | null> {
-  const db = getDb();
+  const client = dbClient ?? getDb();
 
-  // First, get the module and verify ownership through the plan
-  const [moduleRow] = await db
-    .select({
-      module: modules,
-      planId: learningPlans.id,
-      planTopic: learningPlans.topic,
-      planUserId: learningPlans.userId,
-    })
-    .from(modules)
-    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(eq(modules.id, moduleId))
-    .limit(1);
+  try {
+    // RLS enforces ownership. If unauthorized, this query returns no rows.
+    const [moduleRow] = await client
+      .select({
+        module: modules,
+        planId: learningPlans.id,
+        planTopic: learningPlans.topic,
+      })
+      .from(modules)
+      .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+      .where(eq(modules.id, moduleId))
+      .limit(1);
 
-  if (!moduleRow) {
-    return null;
-  }
+    if (!moduleRow) {
+      return null;
+    }
 
-  // Verify user owns this plan
-  if (moduleRow.planUserId !== userId) {
-    return null;
-  }
+    const planId = moduleRow.planId;
 
-  const planId = moduleRow.planId;
-
-  // Get all modules for this plan to determine navigation
-  const allModulesRaw = await db
-    .select({ id: modules.id, order: modules.order, title: modules.title })
-    .from(modules)
-    .where(eq(modules.planId, planId))
-    .orderBy(asc(modules.order));
-
-  // Get all tasks for all modules to compute lock status
-  const allModuleIds = allModulesRaw.map((m) => m.id);
-  const allTasksInPlan = allModuleIds.length
-    ? await db
-        .select({ id: tasks.id, moduleId: tasks.moduleId })
-        .from(tasks)
-        .where(inArray(tasks.moduleId, allModuleIds))
-    : [];
-
-  // Get completion status for all tasks
-  const allTaskIds = allTasksInPlan.map((t) => t.id);
-  const allCompletedTasks = allTaskIds.length
-    ? await db
-        .select({ taskId: taskProgress.taskId })
-        .from(taskProgress)
-        .where(
+    const [allModulesRaw, taskRows] = await Promise.all([
+      client
+        .select({
+          id: modules.id,
+          order: modules.order,
+          title: modules.title,
+          totalTaskCount: countDistinct(tasks.id),
+          completedTaskCount: countDistinct(taskProgress.id),
+        })
+        .from(modules)
+        .leftJoin(tasks, eq(tasks.moduleId, modules.id))
+        .leftJoin(
+          taskProgress,
           and(
-            eq(taskProgress.userId, userId),
-            inArray(taskProgress.taskId, allTaskIds),
+            eq(taskProgress.taskId, tasks.id),
             eq(taskProgress.status, 'completed')
           )
         )
-    : [];
-
-  const completedTaskIds = new Set(allCompletedTasks.map((t) => t.taskId));
-
-  // Group tasks by module
-  const tasksByModule = new Map<string, string[]>();
-  for (const task of allTasksInPlan) {
-    const existing = tasksByModule.get(task.moduleId) ?? [];
-    existing.push(task.id);
-    tasksByModule.set(task.moduleId, existing);
-  }
-
-  // Compute isLocked for each module
-  // A module is locked if any task in any previous module is not completed
-  const allModules: ModuleNavItem[] = allModulesRaw.map((m, index) => {
-    if (index === 0) {
-      // First module is never locked
-      return { ...m, isLocked: false };
-    }
-
-    // Check if all tasks in previous modules are completed
-    const previousModules = allModulesRaw.slice(0, index);
-    for (const prevModule of previousModules) {
-      const prevModuleTasks = tasksByModule.get(prevModule.id) ?? [];
-      for (const taskId of prevModuleTasks) {
-        if (!completedTaskIds.has(taskId)) {
-          return { ...m, isLocked: true };
-        }
-      }
-    }
-
-    return { ...m, isLocked: false };
-  });
-
-  const currentIndex = allModules.findIndex((m) => m.id === moduleId);
-  const previousModuleId =
-    currentIndex > 0 ? allModules[currentIndex - 1].id : null;
-  const nextModuleId =
-    currentIndex < allModules.length - 1
-      ? allModules[currentIndex + 1].id
-      : null;
-
-  // previousModulesComplete is the inverse of isLocked for the current module
-  const previousModulesComplete = !allModules[currentIndex].isLocked;
-
-  // Get tasks for this module
-  const taskRows = await db
-    .select()
-    .from(tasks)
-    .where(eq(tasks.moduleId, moduleId))
-    .orderBy(asc(tasks.order));
-
-  const taskIds = taskRows.map((task) => task.id);
-
-  // Get progress for tasks
-  const progressRows = taskIds.length
-    ? await db
+        .where(eq(modules.planId, planId))
+        .groupBy(modules.id, modules.order, modules.title)
+        .orderBy(asc(modules.order)),
+      client
         .select()
-        .from(taskProgress)
-        .where(
-          and(
-            eq(taskProgress.userId, userId),
-            inArray(taskProgress.taskId, taskIds)
-          )
-        )
-    : [];
+        .from(tasks)
+        .where(eq(tasks.moduleId, moduleId))
+        .orderBy(asc(tasks.order)),
+    ]);
 
-  // Get resources for tasks
-  const resourceRows = taskIds.length
-    ? await db
-        .select({
-          id: taskResources.id,
-          taskId: taskResources.taskId,
-          resourceId: taskResources.resourceId,
-          order: taskResources.order,
-          notes: taskResources.notes,
-          createdAt: taskResources.createdAt,
-          resource: {
-            id: resources.id,
-            type: resources.type,
-            title: resources.title,
-            url: resources.url,
-            domain: resources.domain,
-            author: resources.author,
-            durationMinutes: resources.durationMinutes,
-            costCents: resources.costCents,
-            currency: resources.currency,
-            tags: resources.tags,
-            createdAt: resources.createdAt,
-          },
-        })
-        .from(taskResources)
-        .innerJoin(resources, eq(taskResources.resourceId, resources.id))
-        .where(inArray(taskResources.taskId, taskIds))
-        .orderBy(asc(taskResources.order))
-    : [];
+    const normalizedModuleRows: ModuleNavCompletionRaw[] = allModulesRaw.map(
+      (row) => ({
+        id: row.id,
+        order: row.order,
+        title: row.title,
+        totalTaskCount: Number(row.totalTaskCount),
+        completedTaskCount: Number(row.completedTaskCount),
+      })
+    );
 
-  // Map progress by task ID
-  const progressMap = new Map(progressRows.map((p) => [p.taskId, p]));
+    const allModules = computeModuleNavItemsFromCounts(normalizedModuleRows);
 
-  // Map resources by task ID
-  const resourcesByTask = new Map<string, TaskResourceWithResource[]>();
-  for (const row of resourceRows) {
-    const existing = resourcesByTask.get(row.taskId) ?? [];
-    existing.push({
-      id: row.id,
-      taskId: row.taskId,
-      resourceId: row.resourceId,
-      order: row.order,
-      notes: row.notes,
-      createdAt: row.createdAt,
-      resource: row.resource,
-    });
-    resourcesByTask.set(row.taskId, existing);
+    const currentIndex = allModules.findIndex((m) => m.id === moduleId);
+    if (currentIndex < 0) {
+      return null;
+    }
+
+    const previousModuleId =
+      currentIndex > 0 ? allModules[currentIndex - 1].id : null;
+    const nextModuleId =
+      currentIndex < allModules.length - 1
+        ? allModules[currentIndex + 1].id
+        : null;
+
+    // previousModulesComplete is the inverse of isLocked for the current module
+    const previousModulesComplete = !allModules[currentIndex].isLocked;
+
+    const taskIds = taskRows.map((task) => task.id);
+
+    const [progressRows, resourceRows] = await Promise.all([
+      fetchTaskProgressRows({ taskIds, dbClient: client }),
+      fetchTaskResourceRows({ taskIds, dbClient: client }),
+    ]);
+
+    const progressMap = new Map(
+      progressRows.map((progressRow) => [progressRow.taskId, progressRow])
+    );
+    const resourcesByTask = buildResourcesByTask(resourceRows);
+
+    const moduleWithTasks: ModuleWithTasks = {
+      ...moduleRow.module,
+      tasks: taskRows.map((task) => ({
+        ...task,
+        resources: resourcesByTask.get(task.id) ?? [],
+        progress: progressMap.get(task.id) ?? null,
+      })),
+    };
+
+    return {
+      module: moduleWithTasks,
+      planId,
+      planTopic: moduleRow.planTopic,
+      totalModules: allModules.length,
+      previousModuleId,
+      nextModuleId,
+      previousModulesComplete,
+      allModules,
+    };
+  } finally {
+    if (dbClient === undefined) {
+      await cleanupDbClient(client);
+    }
   }
-
-  // Build the module with tasks
-  const moduleWithTasks: ModuleWithTasks = {
-    ...moduleRow.module,
-    tasks: taskRows.map((task) => ({
-      ...task,
-      resources: resourcesByTask.get(task.id) ?? [],
-      progress: progressMap.get(task.id) ?? null,
-    })),
-  };
-
-  return {
-    module: moduleWithTasks,
-    planId,
-    planTopic: moduleRow.planTopic,
-    totalModules: allModules.length,
-    previousModuleId,
-    nextModuleId,
-    previousModulesComplete,
-    allModules,
-  };
 }

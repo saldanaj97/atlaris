@@ -2,6 +2,13 @@ import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionBut
 import MonthlyPricingCards from '@/components/billing/MonthlyPricingCards';
 import YearlyPricingCards from '@/components/billing/YearlyPricingCards';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Pricing | Atlaris',
+  description:
+    'Compare Atlaris plans and choose the subscription that fits your learning goals.',
+};
 
 export default function PricingPage() {
   return (

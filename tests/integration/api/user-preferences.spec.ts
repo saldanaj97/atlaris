@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
-import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
+import { getDefaultModelForTier, getModelsForTier } from '@/lib/ai/ai-models';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -11,8 +11,7 @@ if (process.env.DATABASE_URL?.includes('neon.tech')) {
   throw new Error('DO NOT RUN TESTS AGAINST REMOTE DB');
 }
 
-// TODO: [OPENROUTER-MIGRATION] Enable when preferredAiModel column is added to users table
-describe.skip('GET /api/v1/user/preferences', () => {
+describe('GET /api/v1/user/preferences', () => {
   const testAuthUserId = `preferences-get-user-${Date.now()}`;
 
   beforeAll(async () => {
@@ -39,10 +38,10 @@ describe.skip('GET /api/v1/user/preferences', () => {
     const data = await response.json();
     expect(data).toHaveProperty('availableModels');
     expect(Array.isArray(data.availableModels)).toBe(true);
-    expect(data.availableModels.length).toBe(AVAILABLE_MODELS.length);
+    expect(data.availableModels.length).toBe(getModelsForTier('free').length);
   });
 
-  it('returns null for preferredAiModel (not yet implemented)', async () => {
+  it('returns default preferredAiModel when user has not set one', async () => {
     setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
@@ -53,7 +52,7 @@ describe.skip('GET /api/v1/user/preferences', () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.preferredAiModel).toBeNull();
+    expect(data.preferredAiModel).toBe(getDefaultModelForTier('free'));
   });
 
   it('returns models with correct structure', async () => {
@@ -66,14 +65,33 @@ describe.skip('GET /api/v1/user/preferences', () => {
     const response = await GET(request);
     const data = await response.json();
 
-    // Verify first model has expected properties
     const firstModel = data.availableModels[0];
-    expect(firstModel).toHaveProperty('id');
-    expect(firstModel).toHaveProperty('name');
-    expect(firstModel).toHaveProperty('provider');
-    expect(firstModel).toHaveProperty('description');
-    expect(firstModel).toHaveProperty('tier');
-    expect(firstModel).toHaveProperty('contextWindow');
+    expect(firstModel).toBeDefined();
+
+    // API contract: id is a non-empty string
+    expect(typeof firstModel.id).toBe('string');
+    expect(firstModel.id.length).toBeGreaterThan(0);
+
+    // API contract: name is a non-empty string
+    expect(typeof firstModel.name).toBe('string');
+    expect(firstModel.name.length).toBeGreaterThan(0);
+
+    // API contract: provider is a non-empty string
+    expect(typeof firstModel.provider).toBe('string');
+    expect(firstModel.provider.length).toBeGreaterThan(0);
+
+    // API contract: description is a string (may be empty)
+    expect(typeof firstModel.description).toBe('string');
+
+    // API contract: tier is one of the allowed model tiers
+    expect(['free', 'pro']).toContain(firstModel.tier);
+    expect(typeof firstModel.tier).toBe('string');
+    expect(firstModel.tier.length).toBeGreaterThan(0);
+
+    // API contract: contextWindow is a positive integer
+    expect(typeof firstModel.contextWindow).toBe('number');
+    expect(Number.isInteger(firstModel.contextWindow)).toBe(true);
+    expect(firstModel.contextWindow).toBeGreaterThan(0);
   });
 
   it('returns 401 for unauthenticated request', async () => {
@@ -88,8 +106,7 @@ describe.skip('GET /api/v1/user/preferences', () => {
   });
 });
 
-// TODO: [OPENROUTER-MIGRATION] Enable when preferredAiModel column is added to users table
-describe.skip('PATCH /api/v1/user/preferences', () => {
+describe('PATCH /api/v1/user/preferences', () => {
   const testAuthUserId = `preferences-patch-user-${Date.now()}`;
 
   beforeAll(async () => {
@@ -124,24 +141,95 @@ describe.skip('PATCH /api/v1/user/preferences', () => {
     expect(data.preferredAiModel).toBe('google/gemini-2.0-flash-exp:free');
   });
 
+  it('persists preferredAiModel and returns it on GET', async () => {
+    setTestUser(testAuthUserId);
+    const defaultModel = getDefaultModelForTier('free');
+
+    const patchRequest = new Request(
+      'http://localhost/api/v1/user/preferences',
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferredAiModel: 'anthropic/claude-haiku-4.5',
+        }),
+      }
+    );
+
+    const patchResponse = await PATCH(patchRequest);
+    expect(patchResponse.status).toBe(200);
+
+    const getRequest = new Request('http://localhost/api/v1/user/preferences', {
+      method: 'GET',
+    });
+
+    const getResponse = await GET(getRequest);
+    expect(getResponse.status).toBe(200);
+
+    const getData = await getResponse.json();
+    expect(getData.preferredAiModel).toBe('anthropic/claude-haiku-4.5');
+
+    const resetRequest = new Request(
+      'http://localhost/api/v1/user/preferences',
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferredAiModel: defaultModel,
+        }),
+      }
+    );
+
+    const resetResponse = await PATCH(resetRequest);
+    expect(resetResponse.status).toBe(200);
+  });
+
   it('accepts another valid model ID', async () => {
     setTestUser(testAuthUserId);
 
-    const request = new Request('http://localhost/api/v1/user/preferences', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        preferredAiModel: 'anthropic/claude-haiku-4.5',
-      }),
-    });
+    const firstRequest = new Request(
+      'http://localhost/api/v1/user/preferences',
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferredAiModel: 'anthropic/claude-haiku-4.5',
+        }),
+      }
+    );
 
-    const response = await PATCH(request);
-    expect(response.status).toBe(200);
+    const firstResponse = await PATCH(firstRequest);
+    expect(firstResponse.status).toBe(200);
 
-    const data = await response.json();
-    expect(data.preferredAiModel).toBe('anthropic/claude-haiku-4.5');
+    const firstData = await firstResponse.json();
+    expect(firstData.preferredAiModel).toBe('anthropic/claude-haiku-4.5');
+
+    const secondRequest = new Request(
+      'http://localhost/api/v1/user/preferences',
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+        }),
+      }
+    );
+
+    const secondResponse = await PATCH(secondRequest);
+    expect(secondResponse.status).toBe(200);
+
+    const secondData = await secondResponse.json();
+    expect(secondData.preferredAiModel).toBe(
+      'google/gemini-2.0-flash-exp:free'
+    );
   });
 
   it('rejects invalid model ID with validation error', async () => {

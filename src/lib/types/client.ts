@@ -3,19 +3,25 @@
 // Keep separate from component files to avoid server<->client circular deps.
 
 import type {
-  LearningPlanWithModules,
   ModuleWithTasks,
-  ProgressStatus,
   Resource,
   TaskWithRelations,
-} from '@/lib/types/db';
+} from '@/lib/db/queries/types/modules.types';
+import type { LearningPlanWithModules, ProgressStatus } from '@/lib/types/db';
 
-export type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
+export const PLAN_STATUSES = [
+  'pending',
+  'processing',
+  'ready',
+  'failed',
+] as const;
+export type PlanStatus = (typeof PLAN_STATUSES)[number];
 
 export type AttemptStatus = 'success' | 'failure';
 
 export type FailureClassification =
   | 'validation'
+  | 'conflict'
   | 'provider_error'
   | 'rate_limit'
   | 'timeout'

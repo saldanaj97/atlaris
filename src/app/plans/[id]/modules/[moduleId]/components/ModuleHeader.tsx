@@ -1,5 +1,3 @@
-'use client';
-
 import {
   ArrowLeft,
   ArrowRight,
@@ -12,7 +10,7 @@ import {
   Lock,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import type { JSX } from 'react';
 
 import {
   DropdownMenu,
@@ -20,9 +18,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { ModuleNavItem } from '@/lib/db/queries/modules';
+import type {
+  ModuleNavItem,
+  ModuleWithTasks,
+} from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/formatters';
-import type { ModuleWithTasks, ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db';
 
 interface ModuleHeaderProps {
   module: ModuleWithTasks;
@@ -59,28 +60,20 @@ export function ModuleHeader({
   statuses,
   previousModulesComplete,
   allModules,
-}: ModuleHeaderProps) {
-  const tasks = useMemo(() => module.tasks ?? [], [module.tasks]);
+}: ModuleHeaderProps): JSX.Element {
+  const tasks = module.tasks ?? [];
 
   // Calculate progress metrics
-  const { completedTasks, totalTasks, completion, totalMinutes } =
-    useMemo(() => {
-      const total = tasks.length;
-      const completed = tasks.filter(
-        (t) => statuses[t.id] === 'completed'
-      ).length;
-      const minutes = tasks.reduce(
-        (sum, t) => sum + (t.estimatedMinutes ?? 0),
-        0
-      );
-
-      return {
-        completedTasks: completed,
-        totalTasks: total,
-        completion: total > 0 ? Math.round((completed / total) * 100) : 0,
-        totalMinutes: minutes,
-      };
-    }, [tasks, statuses]);
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter(
+    (task) => statuses[task.id] === 'completed'
+  ).length;
+  const totalMinutes = tasks.reduce(
+    (sum, task) => sum + (task.estimatedMinutes ?? 0),
+    0
+  );
+  const completion =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const gradient =
     MODULE_GRADIENTS[(module.order - 1) % MODULE_GRADIENTS.length];

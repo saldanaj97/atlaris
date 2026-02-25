@@ -11,5 +11,10 @@
     "**/.turbo": true,
     "**/.next": true,
     "**/dist": true
+  },
+  "chat.agentSkillsLocations": {
+    "~/.agents/skills": false,
+    "~/.copilot/skills": false,
+    "~/.claude/skills": false
   }
 }

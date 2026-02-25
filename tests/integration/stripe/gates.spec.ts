@@ -4,12 +4,24 @@ import { ensureUser, truncateAll } from '@/../tests/helpers/db';
 import { setTestUser } from '@/../tests/helpers/auth';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
+import { AppError, AuthError, NotFoundError } from '@/lib/api/errors';
 import {
   requireSubscription,
   checkFeatureLimit,
   hasSubscriptionTier,
   canUseFeature,
 } from '@/lib/api/gates';
+
+function assertAppError(
+  error: unknown,
+  expected: { status: number; code: string }
+): AppError {
+  expect(error).toBeInstanceOf(AppError);
+  const appError = error as AppError;
+  expect(appError.status()).toBe(expected.status);
+  expect(appError.code()).toBe(expected.code);
+  return appError;
+}
 
 describe('Gating Middleware', () => {
   beforeEach(async () => {
@@ -55,15 +67,23 @@ describe('Gating Middleware', () => {
       const mockHandler = vi.fn();
       const handler = middleware(mockHandler);
 
-      const response = await handler(new Request('http://localhost/test'));
+      try {
+        await handler(new Request('http://localhost/test'));
+        throw new Error('Expected requireSubscription to throw AppError');
+      } catch (error) {
+        const appError = assertAppError(error, {
+          status: 403,
+          code: 'INSUFFICIENT_SUBSCRIPTION_TIER',
+        });
+        const details = appError.details() as {
+          currentTier?: string;
+          requiredTier?: string;
+        };
+        expect(details.currentTier).toBe('free');
+        expect(details.requiredTier).toBe('pro');
+      }
 
-      expect(response.status).toBe(403);
       expect(mockHandler).not.toHaveBeenCalled();
-
-      const body = await response.json();
-      expect(body.error.code).toBe('INSUFFICIENT_SUBSCRIPTION_TIER');
-      expect(body.error.details.currentTier).toBe('free');
-      expect(body.error.details.requiredTier).toBe('pro');
     });
 
     it('allows pro tier access for starter-required endpoint', async () => {
@@ -97,9 +117,9 @@ describe('Gating Middleware', () => {
       const mockHandler = vi.fn();
       const handler = middleware(mockHandler);
 
-      const response = await handler(new Request('http://localhost/test'));
-
-      expect(response.status).toBe(401);
+      await expect(
+        handler(new Request('http://localhost/test'))
+      ).rejects.toBeInstanceOf(AuthError);
       expect(mockHandler).not.toHaveBeenCalled();
     });
 
@@ -110,9 +130,9 @@ describe('Gating Middleware', () => {
       const mockHandler = vi.fn();
       const handler = middleware(mockHandler);
 
-      const response = await handler(new Request('http://localhost/test'));
-
-      expect(response.status).toBe(404);
+      await expect(
+        handler(new Request('http://localhost/test'))
+      ).rejects.toBeInstanceOf(NotFoundError);
       expect(mockHandler).not.toHaveBeenCalled();
     });
   });
@@ -147,7 +167,7 @@ describe('Gating Middleware', () => {
 
         setTestUser('user_under_plan_limit');
 
-        const middleware = checkFeatureLimit('plan');
+        const middleware = checkFeatureLimit('plan', () => db);
         const mockHandler = vi.fn().mockResolvedValue(new Response('OK'));
         const handler = middleware(mockHandler);
 
@@ -193,19 +213,27 @@ describe('Gating Middleware', () => {
 
         setTestUser('user_at_plan_limit');
 
-        const middleware = checkFeatureLimit('plan');
+        const middleware = checkFeatureLimit('plan', () => db);
         const mockHandler = vi.fn();
         const handler = middleware(mockHandler);
 
-        const response = await handler(new Request('http://localhost/test'));
+        try {
+          await handler(new Request('http://localhost/test'));
+          throw new Error('Expected checkFeatureLimit to throw AppError');
+        } catch (error) {
+          const appError = assertAppError(error, {
+            status: 403,
+            code: 'FEATURE_LIMIT_EXCEEDED',
+          });
+          const details = appError.details() as {
+            feature?: string;
+            tier?: string;
+          };
+          expect(details.feature).toBe('plan');
+          expect(details.tier).toBe('free');
+        }
 
-        expect(response.status).toBe(403);
         expect(mockHandler).not.toHaveBeenCalled();
-
-        const body = await response.json();
-        expect(body.error.code).toBe('FEATURE_LIMIT_EXCEEDED');
-        expect(body.error.details.feature).toBe('plan');
-        expect(body.error.details.tier).toBe('free');
       });
     });
 
@@ -226,7 +254,7 @@ describe('Gating Middleware', () => {
 
         setTestUser('user_under_regen_limit');
 
-        const middleware = checkFeatureLimit('regeneration');
+        const middleware = checkFeatureLimit('regeneration', () => db);
         const mockHandler = vi.fn().mockResolvedValue(new Response('OK'));
         const handler = middleware(mockHandler);
 
@@ -252,18 +280,23 @@ describe('Gating Middleware', () => {
 
         setTestUser('user_at_regen_limit');
 
-        const middleware = checkFeatureLimit('regeneration');
+        const middleware = checkFeatureLimit('regeneration', () => db);
         const mockHandler = vi.fn();
         const handler = middleware(mockHandler);
 
-        const response = await handler(new Request('http://localhost/test'));
+        try {
+          await handler(new Request('http://localhost/test'));
+          throw new Error('Expected checkFeatureLimit to throw AppError');
+        } catch (error) {
+          const appError = assertAppError(error, {
+            status: 403,
+            code: 'FEATURE_LIMIT_EXCEEDED',
+          });
+          const details = appError.details() as { feature?: string };
+          expect(details.feature).toBe('regeneration');
+        }
 
-        expect(response.status).toBe(403);
         expect(mockHandler).not.toHaveBeenCalled();
-
-        const body = await response.json();
-        expect(body.error.code).toBe('FEATURE_LIMIT_EXCEEDED');
-        expect(body.error.details.feature).toBe('regeneration');
       });
     });
 
@@ -284,7 +317,7 @@ describe('Gating Middleware', () => {
 
         setTestUser('user_under_export_limit');
 
-        const middleware = checkFeatureLimit('export');
+        const middleware = checkFeatureLimit('export', () => db);
         const mockHandler = vi.fn().mockResolvedValue(new Response('OK'));
         const handler = middleware(mockHandler);
 
@@ -310,13 +343,22 @@ describe('Gating Middleware', () => {
 
         setTestUser('user_at_export_limit');
 
-        const middleware = checkFeatureLimit('export');
+        const middleware = checkFeatureLimit('export', () => db);
         const mockHandler = vi.fn();
         const handler = middleware(mockHandler);
 
-        const response = await handler(new Request('http://localhost/test'));
+        try {
+          await handler(new Request('http://localhost/test'));
+          throw new Error('Expected checkFeatureLimit to throw AppError');
+        } catch (error) {
+          const appError = assertAppError(error, {
+            status: 403,
+            code: 'FEATURE_LIMIT_EXCEEDED',
+          });
+          const details = appError.details() as { feature?: string };
+          expect(details.feature).toBe('export');
+        }
 
-        expect(response.status).toBe(403);
         expect(mockHandler).not.toHaveBeenCalled();
       });
     });
@@ -378,7 +420,7 @@ describe('Gating Middleware', () => {
         email: 'can.plan@example.com',
       });
 
-      const result = await canUseFeature(userId, 'plan');
+      const result = await canUseFeature(userId, 'plan', db);
       expect(result).toBe(true);
     });
 
@@ -416,7 +458,7 @@ describe('Gating Middleware', () => {
         },
       ]);
 
-      const result = await canUseFeature(userId, 'plan');
+      const result = await canUseFeature(userId, 'plan', db);
       expect(result).toBe(false);
     });
 
@@ -426,7 +468,7 @@ describe('Gating Middleware', () => {
         email: 'can.regen@example.com',
       });
 
-      const result = await canUseFeature(userId, 'regeneration');
+      const result = await canUseFeature(userId, 'regeneration', db);
       expect(result).toBe(true);
     });
 
@@ -436,7 +478,7 @@ describe('Gating Middleware', () => {
         email: 'can.export@example.com',
       });
 
-      const result = await canUseFeature(userId, 'export');
+      const result = await canUseFeature(userId, 'export', db);
       expect(result).toBe(true);
     });
   });

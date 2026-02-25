@@ -1,7 +1,17 @@
 // Centralized error types and helpers for API layer
 
+import { jsonError } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/lib/types/client';
+
+function hasStringCode(value: unknown): value is { code: string } {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const maybeRecord = value as Record<string, unknown>;
+  return typeof maybeRecord.code === 'string';
+}
 
 export class AppError extends Error {
   constructor(
@@ -11,26 +21,31 @@ export class AppError extends Error {
       code?: string;
       details?: unknown;
       classification?: FailureClassification;
+      headers?: Record<string, string>;
     } = {}
   ) {
     super(message);
     this.name = this.constructor.name;
   }
 
-  status() {
+  status(): number {
     return this.options.status ?? 500;
   }
 
-  code() {
+  code(): string {
     return this.options.code ?? 'INTERNAL_ERROR';
   }
 
-  details() {
+  details(): unknown {
     return this.options.details;
   }
 
-  classification() {
+  classification(): FailureClassification | undefined {
     return this.options.classification;
+  }
+
+  headers(): Record<string, string> {
+    return this.options.headers ?? {};
   }
 }
 
@@ -69,11 +84,21 @@ export class ConflictError extends AppError {
   }
 }
 
+export class ServiceUnavailableError extends AppError {
+  constructor(message = 'Service unavailable', details?: unknown) {
+    super(message, { status: 503, code: 'SERVICE_UNAVAILABLE', details });
+  }
+}
+
 export interface RateLimitErrorDetails {
   retryAfter?: number;
   remaining?: number;
   limit?: number;
   reset?: number;
+}
+
+interface RateLimitErrorOptions {
+  headers?: Record<string, string>;
 }
 
 export class RateLimitError extends AppError {
@@ -82,12 +107,17 @@ export class RateLimitError extends AppError {
   public limit?: number;
   public reset?: number;
 
-  constructor(message = 'Too Many Requests', details?: RateLimitErrorDetails) {
+  constructor(
+    message = 'Too Many Requests',
+    details?: RateLimitErrorDetails,
+    options?: RateLimitErrorOptions
+  ) {
     super(message, {
       status: 429,
       code: 'RATE_LIMITED',
       details,
       classification: 'rate_limit',
+      headers: options?.headers,
     });
     this.retryAfter = details?.retryAfter;
     this.remaining = details?.remaining;
@@ -132,6 +162,37 @@ export class ExportQuotaExceededError extends AppError {
 }
 
 /**
+ * Extracts a string `code` property from an unknown thrown value (e.g. Stripe errors).
+ * Returns `undefined` when the value has no string `code` field.
+ */
+export function extractErrorCode(error: unknown): string | undefined {
+  if (hasStringCode(error)) {
+    return error.code;
+  }
+  return undefined;
+}
+
+/**
+ * Strips absolute file paths from stack traces to prevent internal
+ * directory structure disclosure in log aggregators.
+ * Preserves the function name and relative path for debuggability.
+ */
+function redactStackTrace(stack: string | undefined): string | undefined {
+  if (!stack) {
+    return undefined;
+  }
+
+  // Normalize separators first so Windows and POSIX stacks are handled equally.
+  const normalizedStack = stack.replace(/\\/g, '/');
+
+  // Strip absolute prefixes while keeping relative app/build paths.
+  return normalizedStack.replace(
+    /(?:[A-Za-z]:)?(?:\/\/[^/\s:()]+)?(?:\/[^/\s:()]+)*\/((?:src|node_modules|\.next|dist)\/[^\s:()]+)/g,
+    '$1'
+  );
+}
+
+/**
  * Internal utility function to serialize errors into a safe, loggable format.
  * Used for error logging when unexpected errors occur outside of AppError handling.
  * Not exported as it's only intended for internal use within this module.
@@ -150,7 +211,7 @@ function toSafeError(err: unknown): Record<string, unknown> {
     return {
       name: err.name,
       message: err.message,
-      stack: err.stack,
+      stack: redactStackTrace(err.stack),
     };
   }
 
@@ -166,27 +227,14 @@ function toSafeError(err: unknown): Record<string, unknown> {
   };
 }
 
-export function toErrorResponse(err: unknown) {
+export function toErrorResponse(err: unknown): Response {
   if (err instanceof AppError) {
-    const body: Record<string, unknown> = {
-      error: err.message,
-      code: err.code(),
-    };
-    const headers: Record<string, string> = {};
-
-    const classification = err.classification();
-    if (classification) {
-      body.classification = classification;
-    }
-
-    const details = err.details();
-    if (details !== undefined) {
-      body.details = details;
-    }
+    const headers: Record<string, string> = { ...err.headers() };
+    let retryAfter: number | undefined;
 
     if (err instanceof RateLimitError) {
       if (err.retryAfter !== undefined) {
-        body.retryAfter = err.retryAfter;
+        retryAfter = err.retryAfter;
         headers['Retry-After'] = String(err.retryAfter);
       }
       if (err.limit !== undefined) {
@@ -200,11 +248,18 @@ export function toErrorResponse(err: unknown) {
       }
     }
 
-    return Response.json(body, { status: err.status(), headers });
+    return jsonError(err.message, {
+      status: err.status(),
+      code: err.code(),
+      classification: err.classification(),
+      details: err.details(),
+      retryAfter,
+      headers,
+    });
   }
   logger.error({ error: toSafeError(err) }, 'Unexpected API error');
-  return Response.json(
-    { error: 'Internal Server Error', code: 'INTERNAL_ERROR' },
-    { status: 500 }
-  );
+  return jsonError('Internal Server Error', {
+    status: 500,
+    code: 'INTERNAL_ERROR',
+  });
 }

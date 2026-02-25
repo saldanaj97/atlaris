@@ -22,7 +22,7 @@ interface PlanPendingStateProps {
 
 export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const router = useRouter();
-  const { status, attempts, error, isPolling } = usePlanStatus(
+  const { status, attempts, error, pollingError, isPolling } = usePlanStatus(
     plan.id,
     plan.status ?? 'pending'
   );
@@ -45,11 +45,13 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const isProcessing = status === 'processing' || retryStatus === 'retrying';
   // Check if plan generation has failed (we keep this block visible during retry to show progress)
   const isFailed = status === 'failed';
+  // Polling gave up (non-retriable or too many consecutive failures)
+  const hasPollingError = pollingError !== null;
   // Check if currently attempting a retry
   const isRetrying = retryStatus === 'retrying';
 
-  // Use retry error if available, otherwise use status error
-  const displayError = retryError ?? error;
+  // Use retry error if available, then polling failure, then server status error
+  const displayError = retryError ?? pollingError ?? error;
 
   // Check if user has exhausted all retry attempts
   const hasExhaustedRetries = attempts >= MAX_RETRY_ATTEMPTS;
@@ -106,7 +108,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                 </div>
               </div>
 
-              {/* Retry button */}
+              {/* Retry button - only for actually failed plans */}
               {!hasExhaustedRetries ? (
                 <Button
                   onClick={() => void retryGeneration()}
@@ -137,6 +139,29 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                   </p>
                 </div>
               )}
+            </div>
+          ) : hasPollingError && displayError ? (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
+                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-amber-600 dark:text-amber-400">
+                    Connection Issue
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {displayError}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => window.location.reload()}
+                className="w-full"
+                variant="outline"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
             </div>
           ) : isProcessing ? (
             <div className="bg-primary/5 flex items-start gap-3 rounded-lg p-4">

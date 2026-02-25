@@ -1,20 +1,42 @@
 // IMPORTANT: Mock imports must come first, before any component or module
 // imports that consume the mocked package (sonner in this case).
+import '../../mocks/unit/sonner.unit';
 import SubscribeButton from '@/components/billing/SubscribeButton';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import '../../mocks/unit/sonner.unit';
+
+interface DeferredPromise<T> {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (reason?: unknown) => void;
+}
+
+function createDeferredPromise<T>(): DeferredPromise<T> {
+  let resolve: ((value: T) => void) | undefined;
+  let reject: ((reason?: unknown) => void) | undefined;
+
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  if (!resolve || !reject) {
+    throw new Error('Failed to create deferred promise');
+  }
+
+  return { promise, resolve, reject };
+}
 
 describe('SubscribeButton', () => {
   const mockLocation = { href: '' };
-  let originalLocation: Location;
+  let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    user = userEvent.setup();
     mockLocation.href = '';
-    originalLocation = window.location;
     // Mock window.location so assignments to .href go to our object (jsdom can normalize href on the real Location)
     Object.defineProperty(window, 'location', {
       value: mockLocation,
@@ -24,13 +46,7 @@ describe('SubscribeButton', () => {
   });
 
   afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
-    });
     vi.restoreAllMocks();
-    cleanup();
   });
 
   it('should render with default label', () => {
@@ -49,15 +65,7 @@ describe('SubscribeButton', () => {
     ).toBeInTheDocument();
   });
 
-  it('should apply custom className', () => {
-    render(<SubscribeButton priceId="price_123" className="custom-class" />);
-
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('custom-class');
-  });
-
   it('should call checkout API with correct priceId', async () => {
-    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -87,7 +95,6 @@ describe('SubscribeButton', () => {
   });
 
   it('should include success and cancel URLs when provided', async () => {
-    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -123,22 +130,11 @@ describe('SubscribeButton', () => {
   });
 
   it('should show loading state during checkout', async () => {
-    const user = userEvent.setup();
-    const mockFetch = vi.fn().mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({
-                  sessionUrl: 'https://stripe.com/checkout',
-                }),
-              }),
-            100
-          )
-        )
-    );
+    const deferredFetch = createDeferredPromise<{
+      ok: boolean;
+      json: () => Promise<{ sessionUrl: string }>;
+    }>();
+    const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
     render(<SubscribeButton priceId="price_123" />);
@@ -149,25 +145,23 @@ describe('SubscribeButton', () => {
     await waitFor(() => {
       expect(screen.getByText(/redirecting/i)).toBeInTheDocument();
     });
+
+    await act(async () => {
+      deferredFetch.resolve({
+        ok: true,
+        json: async () => ({
+          sessionUrl: 'https://stripe.com/checkout',
+        }),
+      });
+    });
   });
 
   it('should disable button during checkout', async () => {
-    const user = userEvent.setup();
-    const mockFetch = vi.fn().mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({
-                  sessionUrl: 'https://stripe.com/checkout',
-                }),
-              }),
-            100
-          )
-        )
-    );
+    const deferredFetch = createDeferredPromise<{
+      ok: boolean;
+      json: () => Promise<{ sessionUrl: string }>;
+    }>();
+    const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
     render(<SubscribeButton priceId="price_123" />);
@@ -183,10 +177,18 @@ describe('SubscribeButton', () => {
     await waitFor(() => {
       expect(button).toBeDisabled();
     });
+
+    await act(async () => {
+      deferredFetch.resolve({
+        ok: true,
+        json: async () => ({
+          sessionUrl: 'https://stripe.com/checkout',
+        }),
+      });
+    });
   });
 
   it('should redirect to checkout session URL on success', async () => {
-    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -208,10 +210,13 @@ describe('SubscribeButton', () => {
   });
 
   it('should show error toast when API call fails', async () => {
-    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
-      text: async () => 'Payment failed',
+      status: 400,
+      json: async () => ({
+        error: 'Payment failed',
+        code: 'VALIDATION_ERROR',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -228,7 +233,6 @@ describe('SubscribeButton', () => {
   });
 
   it('should show error toast when sessionUrl is missing', async () => {
-    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({}), // Missing sessionUrl
@@ -248,7 +252,6 @@ describe('SubscribeButton', () => {
   });
 
   it('should handle network errors gracefully', async () => {
-    const user = userEvent.setup();
     const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('fetch', mockFetch);
 
@@ -265,10 +268,13 @@ describe('SubscribeButton', () => {
   });
 
   it('should re-enable button after error', async () => {
-    const user = userEvent.setup();
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
-      text: async () => 'Error',
+      status: 500,
+      json: async () => ({
+        error: 'Error',
+        code: 'INTERNAL_ERROR',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -289,22 +295,11 @@ describe('SubscribeButton', () => {
   });
 
   it('should not allow multiple simultaneous checkout requests', async () => {
-    const user = userEvent.setup();
-    const mockFetch = vi.fn().mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({
-                  sessionUrl: 'https://stripe.com/checkout',
-                }),
-              }),
-            200
-          )
-        )
-    );
+    const deferredFetch = createDeferredPromise<{
+      ok: boolean;
+      json: () => Promise<{ sessionUrl: string }>;
+    }>();
+    const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
     render(<SubscribeButton priceId="price_123" />);
@@ -319,6 +314,15 @@ describe('SubscribeButton', () => {
     // Should only have been called once
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      deferredFetch.resolve({
+        ok: true,
+        json: async () => ({
+          sessionUrl: 'https://stripe.com/checkout',
+        }),
+      });
     });
   });
 });

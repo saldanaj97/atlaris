@@ -8,7 +8,11 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { subscriptionStatus, subscriptionTier } from '../../enums';
+import {
+  preferredAiModel as preferredAiModelEnum,
+  subscriptionStatus,
+  subscriptionTier,
+} from '../../enums';
 import { timestampFields } from '../helpers';
 import { currentUserId } from './common';
 
@@ -31,9 +35,7 @@ export const users = pgTable(
       withTimezone: true,
     }),
     monthlyExportCount: integer('monthly_export_count').notNull().default(0),
-    // TODO: [OPENROUTER-MIGRATION] Add preferredAiModel column in future migration:
-    // preferredAiModel: text('preferred_ai_model'), // e.g., 'google/gemini-2.0-flash-exp:free'
-    // This will store the user's selected AI model from AVAILABLE_MODELS
+    preferredAiModel: preferredAiModelEnum('preferred_ai_model'),
     ...timestampFields,
   },
   (table) => [

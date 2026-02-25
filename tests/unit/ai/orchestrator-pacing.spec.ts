@@ -22,7 +22,7 @@ import type {
   AttemptReservation,
   AttemptsDbClient,
   GenerationAttemptRecord,
-} from '@/lib/db/queries/attempts.types';
+} from '@/lib/db/queries/types/attempts.types';
 
 type AttemptOpsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;
@@ -30,10 +30,48 @@ type AttemptOpsOverrides = {
   finalizeAttemptFailure: typeof finalizeAttemptFailure;
 };
 
-type RequiredDbMethods = Pick<
+/** Drizzle methods required by attempt operations; type-checked so signature changes are caught. */
+type RequiredAttemptsDbMethods = Pick<
   AttemptsDbClient,
   'select' | 'insert' | 'update' | 'delete' | 'transaction'
 >;
+
+/**
+ * Builds a type-safe AttemptsDbClient mock for unit tests. Required Drizzle methods are
+ * explicitly typed against AttemptsDbClient so signature changes are caught. If
+ * AttemptsDbClient gains new required methods used by the orchestrator or attempts module,
+ * add them to RequiredAttemptsDbMethods and provide implementations here.
+ */
+function createAttemptsDbClientMock(overrides: {
+  reserveAttemptSlot: AttemptOpsOverrides['reserveAttemptSlot'];
+  finalizeAttemptSuccess: AttemptOpsOverrides['finalizeAttemptSuccess'];
+  finalizeAttemptFailure: AttemptOpsOverrides['finalizeAttemptFailure'];
+}): AttemptsDbClient & AttemptOpsOverrides {
+  const requiredDbMethods: RequiredAttemptsDbMethods = {
+    select: () => {
+      throw new Error('select should not be called in this test');
+    },
+    insert: () => {
+      throw new Error('insert should not be called in this test');
+    },
+    update: () => {
+      throw new Error('update should not be called in this test');
+    },
+    delete: () => {
+      throw new Error('delete should not be called in this test');
+    },
+    transaction: () => {
+      throw new Error('transaction should not be called in this test');
+    },
+  };
+
+  return {
+    ...requiredDbMethods,
+    reserveAttemptSlot: overrides.reserveAttemptSlot,
+    finalizeAttemptSuccess: overrides.finalizeAttemptSuccess,
+    finalizeAttemptFailure: overrides.finalizeAttemptFailure,
+  } as AttemptsDbClient & AttemptOpsOverrides;
+}
 
 function buildId(prefix: string): string {
   return `${prefix}-${randomUUID()}`;
@@ -178,30 +216,11 @@ function createDbHarness(params?: {
     .fn<typeof finalizeAttemptFailure>()
     .mockResolvedValue(failureAttempt);
 
-  const requiredDbMethods: RequiredDbMethods = {
-    select: (() => {
-      throw new Error('select should not be called in this test');
-    }) as AttemptsDbClient['select'],
-    insert: (() => {
-      throw new Error('insert should not be called in this test');
-    }) as AttemptsDbClient['insert'],
-    update: (() => {
-      throw new Error('update should not be called in this test');
-    }) as AttemptsDbClient['update'],
-    delete: (() => {
-      throw new Error('delete should not be called in this test');
-    }) as AttemptsDbClient['delete'],
-    transaction: (() => {
-      throw new Error('transaction should not be called in this test');
-    }) as AttemptsDbClient['transaction'],
-  };
-
-  const dbClient = {
-    ...requiredDbMethods,
+  const dbClient = createAttemptsDbClientMock({
     reserveAttemptSlot: reserveAttemptSlotMock,
     finalizeAttemptSuccess: finalizeAttemptSuccessMock,
     finalizeAttemptFailure: finalizeAttemptFailureMock,
-  } as unknown as AttemptsDbClient & AttemptOpsOverrides;
+  });
 
   return {
     dbClient,

@@ -6,7 +6,7 @@
  * and not-found cases.
  */
 
-import type { ModuleDetail } from '@/lib/db/queries/modules';
+import type { ModuleDetail } from '@/lib/db/queries/types/modules.types';
 
 /**
  * Error codes for module access failures.

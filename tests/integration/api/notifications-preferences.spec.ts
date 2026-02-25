@@ -3,7 +3,6 @@ import { NextRequest } from 'next/server';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
@@ -43,7 +42,7 @@ describe('GET /api/v1/notifications/preferences', () => {
 
     expect(response.status).toBe(501);
     const body = await response.json();
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    expect(body.code).toBe('NOT_IMPLEMENTED');
   });
 });
 
@@ -85,6 +84,6 @@ describe('PUT /api/v1/notifications/preferences', () => {
 
     expect(response.status).toBe(501);
     const body = await response.json();
-    expect(body.error).toHaveProperty('code', 'NOT_IMPLEMENTED');
+    expect(body.code).toBe('NOT_IMPLEMENTED');
   });
 });

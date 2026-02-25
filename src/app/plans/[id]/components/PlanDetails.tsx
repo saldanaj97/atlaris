@@ -1,5 +1,7 @@
 'use client';
 
+import { useCallback, useMemo, useState } from 'react';
+
 import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
@@ -7,7 +9,6 @@ import { PlanTimeline } from '@/app/plans/[id]/components/PlanTimeline';
 import { computeOverviewStats } from '@/app/plans/[id]/helpers';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
 
 import type { ClientPlanDetail } from '@/lib/types/client';
 import type { ProgressStatus } from '@/lib/types/db';
@@ -17,22 +18,30 @@ interface PlanDetailClientProps {
 }
 
 /**
- * Renders the plan details view with a magazine-style layout.
- * Features a hero overview card and an interactive module timeline.
+ * Client component that keeps header progress in sync with timeline status changes.
  */
 export function PlanDetails({ plan }: PlanDetailClientProps) {
   const modules = plan.modules ?? [];
-  const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
-    () => {
-      const entries = modules.flatMap((mod) =>
-        (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
-      );
-      return Object.fromEntries(entries);
-    }
+  const initialStatuses = Object.fromEntries(
+    modules.flatMap((mod) =>
+      (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
+    )
   );
 
-  // Compute progress statistics (completion %, task counts, estimated weeks) for the header
-  const overviewStats = computeOverviewStats(plan, statuses);
+  const [statuses, setStatuses] =
+    useState<Record<string, ProgressStatus>>(initialStatuses);
+
+  const overviewStats = useMemo(
+    () => computeOverviewStats(plan, statuses),
+    [plan, statuses]
+  );
+
+  const handleStatusChange = useCallback(
+    (taskId: string, newStatus: ProgressStatus) => {
+      setStatuses((prev) => ({ ...prev, [taskId]: newStatus }));
+    },
+    []
+  );
 
   const isPendingOrProcessing =
     plan.status === 'pending' || plan.status === 'processing';
@@ -64,8 +73,8 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
           <PlanTimeline
             planId={plan.id}
             modules={modules}
-            statuses={statuses}
-            setStatuses={setStatuses}
+            initialStatuses={initialStatuses}
+            onStatusChange={handleStatusChange}
           />
         </>
       )}

@@ -1,10 +1,11 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
+import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
+import type {
+  ProgressStatusRow,
+  SummaryTaskRow,
+} from '@/lib/mappers/planQueries';
 import {
   mapLearningPlanDetail,
   mapPlanSummaries,
-  type ProgressStatusRow,
-  type SummaryTaskRow,
 } from '@/lib/mappers/planQueries';
 import type {
   GenerationAttempt,
@@ -12,11 +13,140 @@ import type {
   Module,
   Task,
   TaskProgress,
-  TaskResourceWithResource,
 } from '@/lib/types/db';
 import { describe, expect, it } from 'vitest';
 
 import { createId } from '../../fixtures/ids';
+
+function createLearningPlan(
+  overrides: Partial<LearningPlan> = {}
+): LearningPlan {
+  return {
+    id: createId('plan'),
+    userId: createId('user'),
+    topic: 'Test Plan',
+    skillLevel: 'beginner',
+    weeklyHours: 5,
+    learningStyle: 'mixed',
+    startDate: '2024-01-01',
+    deadlineDate: '2024-03-01',
+    visibility: 'private',
+    origin: 'ai',
+    extractedContext: null,
+    generationStatus: 'ready',
+    isQuotaEligible: false,
+    finalizedAt: null,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+    ...overrides,
+  };
+}
+
+function createModule(overrides: Partial<Module> = {}): Module {
+  return {
+    id: createId('module'),
+    planId: createId('plan'),
+    order: 1,
+    title: 'Module',
+    description: null,
+    estimatedMinutes: 60,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+    ...overrides,
+  };
+}
+
+function createTask(overrides: Partial<Task> = {}): Task {
+  return {
+    id: createId('task'),
+    moduleId: createId('module'),
+    order: 1,
+    title: 'Task',
+    description: null,
+    estimatedMinutes: 60,
+    hasMicroExplanation: false,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+    ...overrides,
+  };
+}
+
+function createTaskProgress(
+  overrides: Partial<TaskProgress> = {}
+): TaskProgress {
+  return {
+    id: createId('progress'),
+    taskId: createId('task'),
+    userId: createId('user'),
+    status: 'not_started',
+    completedAt: null,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+    ...overrides,
+  };
+}
+
+function createSummaryTaskRow(
+  overrides: Partial<SummaryTaskRow> = {}
+): SummaryTaskRow {
+  return {
+    id: createId('task'),
+    moduleId: createId('module'),
+    planId: createId('plan'),
+    estimatedMinutes: 60,
+    ...overrides,
+  };
+}
+
+function createTaskResourceWithResource(
+  overrides: Partial<TaskResourceWithResource> = {}
+): TaskResourceWithResource {
+  const resourceId = overrides.resourceId ?? createId('resource');
+
+  return {
+    id: createId('task-resource'),
+    taskId: createId('task'),
+    resourceId,
+    order: 1,
+    notes: null,
+    createdAt: new Date('2024-01-01'),
+    resource: {
+      id: resourceId,
+      type: 'article',
+      title: 'TypeScript Handbook',
+      url: 'https://example.com/handbook',
+      domain: null,
+      author: null,
+      durationMinutes: null,
+      costCents: null,
+      currency: null,
+      tags: null,
+      createdAt: new Date('2024-01-01'),
+    },
+    ...overrides,
+  };
+}
+
+function createGenerationAttempt(
+  overrides: Partial<GenerationAttempt> = {}
+): GenerationAttempt {
+  return {
+    id: createId('attempt'),
+    planId: createId('plan'),
+    status: 'success',
+    classification: null,
+    durationMs: 5000,
+    modulesCount: 5,
+    tasksCount: 20,
+    truncatedTopic: false,
+    truncatedNotes: false,
+    normalizedEffort: false,
+    promptHash: null,
+    metadata: null,
+    createdAt: new Date('2024-01-01'),
+    ...overrides,
+  };
+}
 
 describe('mapPlanSummaries', () => {
   it('should map plans with modules and tasks to summaries', () => {
@@ -29,66 +159,51 @@ describe('mapPlanSummaries', () => {
     const taskId3 = createId('task');
 
     const planRows: LearningPlan[] = [
-      {
+      createLearningPlan({
         id: planId,
         userId,
         topic: 'TypeScript Fundamentals',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private' as const,
-        origin: 'ai' as const,
-        startDate: '2024-01-01',
-        deadlineDate: '2024-03-01',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const moduleRows: Module[] = [
-      {
+      createModule({
         id: moduleId1,
         planId,
         order: 1,
         title: 'Introduction',
         description: 'Getting started',
         estimatedMinutes: 120,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
-      {
+      }),
+      createModule({
         id: moduleId2,
         planId,
         order: 2,
         title: 'Advanced Topics',
         description: 'Deep dive',
         estimatedMinutes: 180,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const taskRows: SummaryTaskRow[] = [
-      {
+      createSummaryTaskRow({
         id: taskId1,
         moduleId: moduleId1,
         planId,
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-      },
-      {
+      }),
+      createSummaryTaskRow({
         id: taskId2,
         moduleId: moduleId1,
         planId,
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-      },
-      {
+      }),
+      createSummaryTaskRow({
         id: taskId3,
         moduleId: moduleId2,
         planId,
         estimatedMinutes: 90,
-      },
+      }),
     ];
 
     const progressRows: ProgressStatusRow[] = [
@@ -118,20 +233,7 @@ describe('mapPlanSummaries', () => {
     const planId = createId('plan');
     const userId = createId('user');
     const planRows: LearningPlan[] = [
-      {
-        id: planId,
-        userId,
-        topic: 'Empty Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private' as const,
-        origin: 'ai' as const,
-        startDate: '2024-01-01',
-        deadlineDate: '2024-03-01',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      createLearningPlan({ id: planId, userId, topic: 'Empty Plan' }),
     ];
 
     const result = mapPlanSummaries({
@@ -157,29 +259,16 @@ describe('mapPlanSummaries', () => {
     const moduleId = createId('module');
     const taskId = createId('task');
     const planRows: LearningPlan[] = [
-      {
-        id: planId,
-        userId,
-        topic: 'Test Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private' as const,
-        origin: 'ai' as const,
-        startDate: '2024-01-01',
-        deadlineDate: '2024-03-01',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      createLearningPlan({ id: planId, userId, topic: 'Test Plan' }),
     ];
 
     const taskRows: SummaryTaskRow[] = [
-      {
+      createSummaryTaskRow({
         id: taskId,
         moduleId,
         planId,
         estimatedMinutes: null,
-      },
+      }),
     ];
 
     const result = mapPlanSummaries({
@@ -202,69 +291,43 @@ describe('mapPlanSummaries', () => {
     const taskId2 = createId('task');
     const taskId3 = createId('task');
     const planRows: LearningPlan[] = [
-      {
-        id: planId,
-        userId,
-        topic: 'Test Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private' as const,
-        origin: 'ai' as const,
-        startDate: '2024-01-01',
-        deadlineDate: '2024-03-01',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      createLearningPlan({ id: planId, userId, topic: 'Test Plan' }),
     ];
 
     const moduleRows: Module[] = [
-      {
+      createModule({
         id: moduleId1,
         planId,
         order: 1,
         title: 'Module 1',
-        description: null,
-        estimatedMinutes: 60,
-        hasMicroExplanation: false,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
-      {
+      }),
+      createModule({
         id: moduleId2,
         planId,
         order: 2,
         title: 'Module 2',
-        description: null,
-        estimatedMinutes: 60,
-        hasMicroExplanation: false,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const taskRows: SummaryTaskRow[] = [
-      {
+      createSummaryTaskRow({
         id: taskId1,
         moduleId: moduleId1,
         planId,
         estimatedMinutes: 30,
-        hasMicroExplanation: false,
-      },
-      {
+      }),
+      createSummaryTaskRow({
         id: taskId2,
         moduleId: moduleId1,
         planId,
         estimatedMinutes: 30,
-        hasMicroExplanation: false,
-      },
-      {
+      }),
+      createSummaryTaskRow({
         id: taskId3,
         moduleId: moduleId2,
         planId,
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-      },
+      }),
     ];
 
     const progressRows: ProgressStatusRow[] = [
@@ -290,50 +353,39 @@ describe('mapPlanSummaries', () => {
     const taskId1 = createId('task');
     const taskId2 = createId('task');
     const planRows: LearningPlan[] = [
-      {
+      createLearningPlan({
         id: planId1,
         userId,
         topic: 'Plan 1',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private' as const,
-        origin: 'ai' as const,
-        startDate: '2024-01-01',
-        deadlineDate: '2024-03-01',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
-      {
+      }),
+      createLearningPlan({
         id: planId2,
         userId,
         topic: 'Plan 2',
         skillLevel: 'intermediate',
         weeklyHours: 10,
         learningStyle: 'reading',
-        visibility: 'private',
         origin: 'manual',
         startDate: '2024-02-01',
         deadlineDate: '2024-04-01',
         createdAt: new Date('2024-02-01'),
         updatedAt: new Date('2024-02-01'),
-      },
+      }),
     ];
 
     const taskRows: SummaryTaskRow[] = [
-      {
+      createSummaryTaskRow({
         id: taskId1,
         moduleId: createId('module'),
         planId: planId1,
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-      },
-      {
+      }),
+      createSummaryTaskRow({
         id: taskId2,
         moduleId: createId('module'),
         planId: planId2,
         estimatedMinutes: 90,
-      },
+      }),
     ];
 
     const result = mapPlanSummaries({
@@ -361,100 +413,74 @@ describe('mapLearningPlanDetail', () => {
     const taskResourceId = createId('task-resource');
     const resourceId = createId('resource');
     const attemptId = createId('attempt');
-    const generationId = createId('gen');
-
-    const plan = {
+    const plan = createLearningPlan({
       id: planId,
       userId,
       topic: 'TypeScript',
       skillLevel: 'intermediate',
       weeklyHours: 10,
-      learningStyle: 'mixed',
-      visibility: 'private' as const,
-      origin: 'ai' as const,
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      notes: 'Test notes',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
+    });
 
     const moduleRows: Module[] = [
-      {
+      createModule({
         id: moduleId,
         planId,
         order: 1,
         title: 'Introduction',
         description: 'Getting started',
         estimatedMinutes: 120,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const taskRows: Task[] = [
-      {
+      createTask({
         id: taskId,
         moduleId,
         order: 1,
         title: 'Learn basics',
         description: 'Basic concepts',
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const progressRows: TaskProgress[] = [
-      {
+      createTaskProgress({
         id: progressId,
         taskId,
         userId,
         status: 'completed',
         completedAt: new Date('2024-01-02'),
-        createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
-      },
+      }),
     ];
 
     const resourceRows: TaskResourceWithResource[] = [
-      {
+      createTaskResourceWithResource({
         id: taskResourceId,
         taskId,
         resourceId,
         order: 1,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
         resource: {
           id: resourceId,
           type: 'article',
           title: 'TypeScript Handbook',
           url: 'https://example.com/handbook',
+          domain: null,
+          author: null,
           durationMinutes: 30,
+          costCents: null,
+          currency: null,
+          tags: null,
           createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2024-01-01'),
         },
-      },
+      }),
     ];
 
-    const latestAttempt: GenerationAttempt = {
+    const latestAttempt: GenerationAttempt = createGenerationAttempt({
       id: attemptId,
-      generationId,
-      attemptNumber: 1,
-      status: 'success',
-      classification: null,
-      durationMs: 5000,
-      modulesCount: 5,
-      tasksCount: 20,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
+      planId,
       promptHash: 'hash123',
-      metadata: null,
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
+    });
 
     const result = mapLearningPlanDetail({
       plan,
@@ -482,47 +508,26 @@ describe('mapLearningPlanDetail', () => {
     const userId = createId('user');
     const moduleId = createId('module');
     const taskId = createId('task');
-    const plan = {
-      id: planId,
-      userId,
-      topic: 'Test',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private' as const,
-      origin: 'ai' as const,
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
+    const plan = createLearningPlan({ id: planId, userId, topic: 'Test' });
 
     const moduleRows: Module[] = [
-      {
+      createModule({
         id: moduleId,
         planId,
         order: 1,
         title: 'Module',
-        description: null,
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const taskRows: Task[] = [
-      {
+      createTask({
         id: taskId,
         moduleId,
         order: 1,
         title: 'Task',
-        description: null,
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const result = mapLearningPlanDetail({
@@ -543,20 +548,11 @@ describe('mapLearningPlanDetail', () => {
   it('should handle empty modules and tasks', () => {
     const planId = createId('plan');
     const userId = createId('user');
-    const plan = {
+    const plan = createLearningPlan({
       id: planId,
       userId,
       topic: 'Empty Plan',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private' as const,
-      origin: 'ai' as const,
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
+    });
 
     const result = mapLearningPlanDetail({
       plan,
@@ -583,89 +579,65 @@ describe('mapLearningPlanDetail', () => {
     const taskId2 = createId('task');
     const taskId3 = createId('task');
     const progressId = createId('progress');
-    const plan = {
+    const plan = createLearningPlan({
       id: planId,
       userId,
       topic: 'Complex Plan',
       skillLevel: 'advanced',
       weeklyHours: 15,
-      learningStyle: 'mixed',
-      visibility: 'private' as const,
-      origin: 'ai' as const,
-      startDate: '2024-01-01',
       deadlineDate: '2024-06-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
+    });
 
     const moduleRows: Module[] = [
-      {
+      createModule({
         id: moduleId1,
         planId,
         order: 1,
         title: 'Module 1',
-        description: null,
         estimatedMinutes: 120,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
-      {
+      }),
+      createModule({
         id: moduleId2,
         planId,
         order: 2,
         title: 'Module 2',
-        description: null,
         estimatedMinutes: 180,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const taskRows: Task[] = [
-      {
+      createTask({
         id: taskId1,
         moduleId: moduleId1,
         order: 1,
         title: 'Task 1-1',
-        description: null,
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
-      {
+      }),
+      createTask({
         id: taskId2,
         moduleId: moduleId1,
         order: 2,
         title: 'Task 1-2',
-        description: null,
         estimatedMinutes: 60,
-        hasMicroExplanation: false,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
-      {
+      }),
+      createTask({
         id: taskId3,
         moduleId: moduleId2,
         order: 1,
         title: 'Task 2-1',
-        description: null,
         estimatedMinutes: 90,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      },
+      }),
     ];
 
     const progressRows: TaskProgress[] = [
-      {
+      createTaskProgress({
         id: progressId,
         taskId: taskId1,
         userId,
         status: 'completed',
         completedAt: new Date('2024-01-02'),
-        createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
-      },
+      }),
     ];
 
     const result = mapLearningPlanDetail({
@@ -689,20 +661,11 @@ describe('mapLearningPlanDetail', () => {
   it('should preserve attempt information when no modules exist', () => {
     const planId = createId('plan');
     const userId = createId('user');
-    const plan = {
+    const plan = createLearningPlan({
       id: planId,
       userId,
       topic: 'Failed Plan',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private' as const,
-      origin: 'ai' as const,
-      startDate: '2024-01-01',
-      deadlineDate: '2024-03-01',
-      createdAt: new Date('2024-01-01'),
-      updatedAt: new Date('2024-01-01'),
-    };
+    });
 
     const result = mapLearningPlanDetail({
       plan,

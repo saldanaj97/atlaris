@@ -14,7 +14,7 @@ import {
 } from '@/lib/ai/streaming/error-sanitizer';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { getCorrelationId } from '@/lib/api/context';
-import type { AttemptsDbClient } from '@/lib/db/queries/attempts.types';
+import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
@@ -73,6 +73,7 @@ interface EmitCancelledEventParams {
  * - `rate_limit`: provider throttled request (retryable)
  * - `timeout`: generation timed out (retryable)
  * - `capped`: attempt cap reached (non-retryable)
+ * - `in_progress`: generation already running for plan (retryable)
  * - `unknown`: fallback when no specific classification exists
  * @param params.planId - Learning plan id associated with the error
  * @param params.userId - User id associated with the error
@@ -442,26 +443,44 @@ interface ExecuteGenerationStreamParams {
   fallbackClassification?: FailureClassification | 'unknown';
 }
 
-/** Serialize an error to a safe record for logging (name, message, stack). */
-export function serializeError(error: unknown): Record<string, unknown> {
+function omitCircularFields(
+  value: unknown,
+  seen: WeakSet<object> = new WeakSet<object>()
+): unknown {
+  if (typeof value === 'bigint') {
+    return value.toString();
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return '[Circular]';
+  }
+
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value.map((item) => omitCircularFields(item, seen));
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, fieldValue] of Object.entries(value)) {
+    sanitized[key] = omitCircularFields(fieldValue, seen);
+  }
+
+  return sanitized;
+}
+
+function toFallbackErrorLike(error: unknown): ErrorLike {
   if (error instanceof Error) {
-    return {
+    const errorLike: ErrorLike = {
       name: error.name,
       message: error.message,
       stack: error.stack,
     };
-  }
-  return { value: String(error) };
-}
 
-function toFallbackErrorLike(error: unknown): ErrorLike {
-  const base = serializeError(error);
-  const errorLike: ErrorLike = {
-    name: (base.name as string) ?? 'UnknownGenerationError',
-    message: (base.message as string) ?? String(error),
-    stack: base.stack as string | undefined,
-  };
-  if (error instanceof Error && error.cause !== undefined) {
     const cause = error.cause;
     if (
       cause === null ||
@@ -471,8 +490,63 @@ function toFallbackErrorLike(error: unknown): ErrorLike {
     ) {
       errorLike.cause = cause;
     }
+
+    return errorLike;
   }
-  return errorLike;
+
+  if (typeof error === 'object' && error !== null) {
+    const objectError = error as Record<string, unknown>;
+    const errorLike: ErrorLike = {
+      name:
+        typeof objectError.name === 'string' && objectError.name.length > 0
+          ? objectError.name
+          : 'UnknownGenerationError',
+      message:
+        typeof objectError.message === 'string' &&
+        objectError.message.length > 0
+          ? objectError.message
+          : JSON.stringify(omitCircularFields(error)),
+    };
+
+    if (typeof objectError.stack === 'string') {
+      errorLike.stack = objectError.stack;
+    }
+    if (typeof objectError.status === 'number') {
+      errorLike.status = objectError.status;
+    }
+    if (typeof objectError.statusCode === 'number') {
+      errorLike.statusCode = objectError.statusCode;
+    }
+    if ('response' in objectError) {
+      const response = objectError.response;
+      if (response === null) {
+        errorLike.response = null;
+      } else if (typeof response === 'object' && response !== null) {
+        const responseRecord = response as Record<string, unknown>;
+        errorLike.response =
+          typeof responseRecord.status === 'number'
+            ? { status: responseRecord.status }
+            : {};
+      }
+    }
+
+    const cause = objectError.cause;
+    if (
+      cause === null ||
+      typeof cause === 'string' ||
+      cause instanceof Error ||
+      (typeof cause === 'object' && cause !== null)
+    ) {
+      errorLike.cause = cause;
+    }
+
+    return errorLike;
+  }
+
+  return {
+    name: 'UnknownGenerationError',
+    message: String(error),
+  };
 }
 
 export async function executeGenerationStream({

@@ -1,5 +1,16 @@
-import type { GenerationAttemptRecord } from '@/lib/db/queries/attempts.types';
+import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.types';
 import type { FailureClassification } from '@/lib/types/client';
+import { z } from 'zod';
+
+const TimingMetadataSchema = z
+  .object({
+    timing: z
+      .object({
+        duration_ms: z.number().optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
 
 export interface MetricStatsSnapshot {
   count: number;
@@ -125,14 +136,13 @@ function extractNumeric(value: unknown): number | null {
 function extractDuration(attempt: GenerationAttemptRecord): number {
   let metadataDuration: number | null = null;
 
-  const metadata = attempt.metadata;
-  if (metadata && typeof metadata === 'object' && 'timing' in metadata) {
-    const timing = (metadata as { timing?: { duration_ms?: unknown } }).timing;
-    if (timing && typeof timing === 'object') {
-      metadataDuration = extractNumeric(
-        (timing as { duration_ms?: unknown }).duration_ms
-      );
-    }
+  const parsed = TimingMetadataSchema.safeParse(attempt.metadata);
+  if (
+    parsed.success &&
+    typeof parsed.data.timing?.duration_ms === 'number' &&
+    Number.isFinite(parsed.data.timing.duration_ms)
+  ) {
+    metadataDuration = parsed.data.timing.duration_ms;
   }
 
   const attemptDuration = extractNumeric(attempt.durationMs);

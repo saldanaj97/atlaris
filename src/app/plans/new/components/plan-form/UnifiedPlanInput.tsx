@@ -1,9 +1,12 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
+import { assertNever } from '@/lib/utils';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
+import type { JSX } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
@@ -19,6 +22,69 @@ interface UnifiedPlanInputProps {
   isSubmitting?: boolean;
   disabled?: boolean;
   initialTopic?: string;
+  topicResetVersion?: number;
+}
+
+interface PlanInputState {
+  topic: string;
+  skillLevel: SkillLevel;
+  weeklyHours: WeeklyHours;
+  learningStyle: LearningStyle;
+  deadlineWeeks: DeadlineWeeks;
+}
+
+type SkillLevel = (typeof SKILL_LEVEL_OPTIONS)[number]['value'];
+type WeeklyHours = (typeof WEEKLY_HOURS_OPTIONS)[number]['value'];
+type LearningStyle = (typeof LEARNING_STYLE_OPTIONS)[number]['value'];
+type DeadlineWeeks = (typeof DEADLINE_OPTIONS)[number]['value'];
+
+type PlanInputAction =
+  | { type: 'set-topic'; value: string }
+  | { type: 'reset-topic'; value: string }
+  | { type: 'set-skill-level'; value: SkillLevel }
+  | { type: 'set-weekly-hours'; value: WeeklyHours }
+  | { type: 'set-learning-style'; value: LearningStyle }
+  | { type: 'set-deadline-weeks'; value: DeadlineWeeks };
+
+function planInputReducer(
+  state: PlanInputState,
+  action: PlanInputAction
+): PlanInputState {
+  switch (action.type) {
+    case 'set-topic':
+      return {
+        ...state,
+        topic: action.value,
+      };
+    // Keep this action separate so external resets remain distinct from user edits in reducer traces.
+    case 'reset-topic':
+      return {
+        ...state,
+        topic: action.value,
+      };
+    case 'set-skill-level':
+      return {
+        ...state,
+        skillLevel: action.value,
+      };
+    case 'set-weekly-hours':
+      return {
+        ...state,
+        weeklyHours: action.value,
+      };
+    case 'set-learning-style':
+      return {
+        ...state,
+        learningStyle: action.value,
+      };
+    case 'set-deadline-weeks':
+      return {
+        ...state,
+        deadlineWeeks: action.value,
+      };
+    default:
+      return assertNever(action);
+  }
 }
 
 /**
@@ -33,35 +99,46 @@ export function UnifiedPlanInput({
   isSubmitting = false,
   disabled = false,
   initialTopic = '',
-}: UnifiedPlanInputProps) {
+  topicResetVersion = 0,
+}: UnifiedPlanInputProps): JSX.Element {
   const baseId = useId();
-  const [topic, setTopic] = useState(initialTopic);
-  const [skillLevel, setSkillLevel] = useState('beginner');
-  const [weeklyHours, setWeeklyHours] = useState('3-5');
-  const [learningStyle, setLearningStyle] = useState('mixed');
-  const [deadlineWeeks, setDeadlineWeeks] = useState('4');
-  const topicTouchedRef = useRef(false);
+  const [state, dispatch] = useReducer(planInputReducer, {
+    topic: initialTopic,
+    skillLevel: 'beginner',
+    weeklyHours: '3-5',
+    learningStyle: 'mixed',
+    deadlineWeeks: '4',
+  });
+
+  const prevResetVersionRef = useRef(topicResetVersion);
+  const topicRef = useRef(state.topic);
+  // Keep topicRef in sync with state.topic so effect consumers read the latest topic without adding it to deps.
+  topicRef.current = state.topic;
 
   useEffect(() => {
-    if (
-      initialTopic !== undefined &&
-      initialTopic !== '' &&
-      !topicTouchedRef.current
-    ) {
-      setTopic(initialTopic);
+    if (prevResetVersionRef.current === topicResetVersion) {
+      return;
     }
-  }, [initialTopic]);
 
-  const handleTopicChange = (value: string) => {
-    topicTouchedRef.current = true;
-    setTopic(value);
-  };
+    prevResetVersionRef.current = topicResetVersion;
+
+    if (topicRef.current === initialTopic) {
+      return;
+    }
+
+    dispatch({
+      type: 'reset-topic',
+      value: initialTopic,
+    });
+  }, [initialTopic, topicResetVersion]);
+
+  const topic = state.topic;
 
   const topicInputId = `${baseId}-topic`;
 
   const handleSubmit = () => {
     if (!topic.trim() || isSubmitting || disabled) {
-      if (process.env.NODE_ENV === 'development' && !topic.trim()) {
+      if (isDevelopment && !topic.trim()) {
         clientLogger.warn(
           '[UnifiedPlanInput] Empty topic submission prevented'
         );
@@ -70,10 +147,10 @@ export function UnifiedPlanInput({
     }
     onSubmit({
       topic: topic.trim(),
-      skillLevel,
-      weeklyHours,
-      learningStyle,
-      deadlineWeeks,
+      skillLevel: state.skillLevel,
+      weeklyHours: state.weeklyHours,
+      learningStyle: state.learningStyle,
+      deadlineWeeks: state.deadlineWeeks,
     });
   };
 
@@ -122,12 +199,14 @@ export function UnifiedPlanInput({
             <textarea
               id={topicInputId}
               value={topic}
-              onChange={(e) => handleTopicChange(e.target.value)}
+              onChange={(e) =>
+                dispatch({ type: 'set-topic', value: e.target.value })
+              }
               onKeyDown={handleKeyDown}
               placeholder="I want to learn TypeScript for React development..."
               className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[72px] w-full resize-none bg-transparent text-lg focus:outline-none"
               rows={2}
-              disabled={isSubmitting}
+              disabled={isSubmitting || disabled}
             />
           </div>
         </div>
@@ -138,16 +217,16 @@ export function UnifiedPlanInput({
           <InlineDropdown
             id={`${baseId}-skill-level`}
             options={SKILL_LEVEL_OPTIONS}
-            value={skillLevel}
-            onChange={setSkillLevel}
+            value={state.skillLevel}
+            onChange={(value) => dispatch({ type: 'set-skill-level', value })}
             variant="primary"
           />
           <span className="text-sm">with</span>
           <InlineDropdown
             id={`${baseId}-weekly-hours`}
             options={WEEKLY_HOURS_OPTIONS}
-            value={weeklyHours}
-            onChange={setWeeklyHours}
+            value={state.weeklyHours}
+            onChange={(value) => dispatch({ type: 'set-weekly-hours', value })}
             icon={<Clock className="h-3.5 w-3.5" />}
             variant="accent"
           />
@@ -160,16 +239,20 @@ export function UnifiedPlanInput({
           <InlineDropdown
             id={`${baseId}-learning-style`}
             options={LEARNING_STYLE_OPTIONS}
-            value={learningStyle}
-            onChange={setLearningStyle}
+            value={state.learningStyle}
+            onChange={(value) =>
+              dispatch({ type: 'set-learning-style', value })
+            }
             variant="accent"
           />
           <span className="text-sm">and want to finish in</span>
           <InlineDropdown
             id={`${baseId}-deadline`}
             options={DEADLINE_OPTIONS}
-            value={deadlineWeeks}
-            onChange={setDeadlineWeeks}
+            value={state.deadlineWeeks}
+            onChange={(value) =>
+              dispatch({ type: 'set-deadline-weeks', value })
+            }
             icon={<Calendar className="h-3.5 w-3.5" />}
             variant="primary"
           />

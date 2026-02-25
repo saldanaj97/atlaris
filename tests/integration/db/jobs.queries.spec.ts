@@ -11,7 +11,7 @@ import {
 import { jobQueue, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { JOB_TYPES } from '@/lib/jobs/types';
-import { ensureUser } from '../../helpers/db';
+import { createTestUser } from '../../fixtures/users';
 
 type JobInsert = InferInsertModel<typeof jobQueue>;
 
@@ -41,11 +41,9 @@ describe('Job Queries', () => {
   }
 
   beforeEach(async () => {
-    // Create a user and plan for testing
-    userId = await ensureUser({
-      authUserId: 'auth_job_test_user',
-      email: 'jobtest@example.com',
-    });
+    // Create a user and plan for testing (unique per run to avoid parallel collisions)
+    const user = await createTestUser();
+    userId = user.id;
 
     const [plan] = await db
       .insert(learningPlans)
@@ -351,11 +349,26 @@ describe('Job Queries', () => {
   });
 
   describe('insertJobRecord deduplication', () => {
-    it('deduplicates regeneration jobs per user and plan', async () => {
-      const secondUserId = await ensureUser({
-        authUserId: 'auth_job_test_user_2',
-        email: 'jobtest-2@example.com',
-      });
+    it('deduplicates regeneration jobs per owner and plan', async () => {
+      const secondUser = await createTestUser();
+      const secondUserId = secondUser.id;
+      const [secondUserPlan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: secondUserId,
+          topic: 'Second User Job Plan',
+          skillLevel: 'intermediate',
+          weeklyHours: 8,
+          learningStyle: 'mixed',
+          visibility: 'private',
+          origin: 'ai',
+          generationStatus: 'ready',
+        })
+        .returning({ id: learningPlans.id });
+
+      if (!secondUserPlan) {
+        throw new Error('Failed to create second user plan for dedupe test');
+      }
 
       const firstInsert = await insertJobRecord(
         {
@@ -382,13 +395,26 @@ describe('Job Queries', () => {
       const secondUserInsert = await insertJobRecord(
         {
           type: JOB_TYPES.PLAN_REGENERATION,
-          planId,
+          planId: secondUserPlan.id,
           userId: secondUserId,
-          data: { planId },
+          data: { planId: secondUserPlan.id },
           priority: 0,
         },
         db
       );
+
+      await expect(
+        insertJobRecord(
+          {
+            type: JOB_TYPES.PLAN_REGENERATION,
+            planId,
+            userId: secondUserId,
+            data: { planId },
+            priority: 0,
+          },
+          db
+        )
+      ).rejects.toThrow(`Plan not found or inaccessible: ${planId}`);
 
       expect(firstInsert.deduplicated).toBe(false);
       expect(dedupedForSameUser.deduplicated).toBe(true);
@@ -402,7 +428,7 @@ describe('Job Queries', () => {
         db
       );
       const activeForSecondUser = await getActiveRegenerationJob(
-        planId,
+        secondUserPlan.id,
         secondUserId,
         db
       );

@@ -283,7 +283,11 @@ export const databaseEnv = {
     return getServerRequired('DATABASE_URL');
   },
   get nonPoolingUrl(): string {
-    return getServerOptional('DATABASE_URL_NON_POOLING') ?? this.url;
+    return (
+      getServerOptional('DATABASE_URL_NON_POOLING') ??
+      getServerOptional('DATABASE_URL_UNPOOLED') ??
+      this.url
+    );
   },
   get anonymousRoleUrl(): string {
     return getServerOptional('DATABASE_URL_ANONYMOUS_ROLE') ?? this.url;

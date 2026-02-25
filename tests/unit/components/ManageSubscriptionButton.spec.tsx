@@ -117,6 +117,10 @@ describe('ManageSubscriptionButton', () => {
     await waitFor(() => {
       expect(screen.getByText(/opening/i)).toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('https://billing.stripe.com/portal');
+    });
   });
 
   it('should disable button during portal creation', async () => {
@@ -150,6 +154,10 @@ describe('ManageSubscriptionButton', () => {
     await waitFor(() => {
       expect(button).toBeDisabled();
     });
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('https://billing.stripe.com/portal');
+    });
   });
 
   it('should redirect to portal URL on success', async () => {
@@ -176,7 +184,10 @@ describe('ManageSubscriptionButton', () => {
   it('should show error toast when API call fails', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
-      text: async () => 'Portal creation failed',
+      json: async () => ({
+        error: 'Portal creation failed',
+        code: 'VALIDATION_ERROR',
+      }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -208,13 +219,13 @@ describe('ManageSubscriptionButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        'Unable to open billing portal',
-        {
-          description: 'Missing portal URL',
-        }
-      );
+      expect(toast.error).toHaveBeenCalled();
     });
+
+    const latestCall = vi.mocked(toast.error).mock.calls.at(-1);
+    const payload = latestCall?.[1] as { description?: string } | undefined;
+    expect(payload?.description).toBeDefined();
+    expect(payload?.description).not.toBe('Missing portal URL');
   });
 
   it('should handle network errors gracefully', async () => {
@@ -239,7 +250,8 @@ describe('ManageSubscriptionButton', () => {
   it('should re-enable button after error', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,
-      text: async () => 'Error',
+      status: 500,
+      json: async () => ({ error: 'Server error' }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -248,12 +260,15 @@ describe('ManageSubscriptionButton', () => {
     const button = screen.getByRole('button');
     fireEvent.click(button);
 
-    // Wait for error
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith(
+        'Unable to open billing portal',
+        {
+          description: 'Server error',
+        }
+      );
     });
 
-    // Button should be enabled again
     await waitFor(() => {
       expect(button).not.toBeDisabled();
     });

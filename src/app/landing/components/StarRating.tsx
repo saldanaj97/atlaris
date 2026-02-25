@@ -13,7 +13,7 @@ export function StarRating({ count = 5 }: StarRatingProps) {
     <div className="flex" aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
         <svg
-          key={i}
+          key={`star-${i + 1}`}
           className="h-5 w-5 text-amber-400"
           fill="currentColor"
           viewBox="0 0 20 20"

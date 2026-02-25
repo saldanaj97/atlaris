@@ -3,48 +3,37 @@ import {
   ATTEMPT_CAP,
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
-  PLAN_GENERATION_WINDOW_MS,
 } from '@/lib/ai/generation-policy';
-import { getCorrelationId } from '@/lib/api/context';
-import { appEnv } from '@/lib/config/env';
 import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  tasks,
-  users,
-} from '@/lib/db/schema';
+  assertAttemptIdMatchesReservation,
+  buildMetadata,
+  computeRetryAfterSeconds,
+  getPdfProvenance,
+  isProviderErrorRetryable,
+  logAttemptEvent,
+  normalizeParsedModules,
+  persistSuccessfulAttempt,
+  sanitizeInput,
+  selectUserGenerationAttemptWindowStats,
+  toPromptHashPayload,
+} from '@/lib/db/queries/helpers/attempts-helpers';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import type {
+  FinalizeFailureParams,
+  FinalizeSuccessParams,
+  GenerationAttemptRecord,
+  ReserveAttemptResult,
+  ReserveAttemptSlotParams,
+} from '@/lib/db/queries/types/attempts.types';
+import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { db as serviceDb } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import {
   recordAttemptFailure,
   recordAttemptSuccess,
 } from '@/lib/metrics/attempts';
-import type { EffortNormalizationFlags } from '@/lib/utils/effort';
-import {
-  aggregateNormalizationFlags,
-  normalizeModuleMinutes,
-  normalizeTaskMinutes,
-} from '@/lib/utils/effort';
 import { hashSha256 } from '@/lib/utils/hash';
-import { truncateToLength } from '@/lib/utils/truncation';
-import {
-  NOTES_MAX_LENGTH,
-  TOPIC_MAX_LENGTH,
-} from '@/lib/validation/learningPlans';
-import { and, asc, count, eq, gte } from 'drizzle-orm';
-
-import type { ParsedModule } from '@/lib/ai/parser';
-import type {
-  GenerationInput,
-  ProviderMetadata,
-} from '@/lib/ai/types/provider.types';
-import type {
-  AttemptReservation,
-  AttemptsDbClient,
-  GenerationAttemptRecord,
-  ReserveAttemptResult,
-} from '@/lib/db/queries/attempts.types';
-import type { FailureClassification } from '@/lib/types/client';
+import { and, count, eq, sql } from 'drizzle-orm';
 
 /**
  * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
@@ -53,524 +42,29 @@ import type { FailureClassification } from '@/lib/types/client';
  * so RLS claims are preserved. See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
  */
 
-interface SanitizedField {
-  value: string | undefined;
-  truncated: boolean;
-  originalLength?: number;
-}
-
-interface SanitizedInput {
-  topic: SanitizedField & { value: string; originalLength: number };
-  notes: SanitizedField;
-}
-
-interface NormalizedTaskData {
-  title: string;
-  description: string | null;
-  estimatedMinutes: number;
-}
-
-interface NormalizedModuleData {
-  title: string;
-  description: string | null;
-  estimatedMinutes: number;
-  tasks: NormalizedTaskData[];
-}
-
-interface NormalizedModulesResult {
-  normalizedModules: NormalizedModuleData[];
-  normalizationFlags: EffortNormalizationFlags;
-}
-
-interface PdfProvenanceData {
-  extractionHash: string;
-  proofVersion: 1;
-  contextDigest: string;
-}
-
-interface AttemptMetadataFailure {
-  classification: FailureClassification;
-  timedOut: boolean;
-}
-
-interface AttemptMetadata {
-  input: {
-    topic: {
-      truncated: boolean;
-      original_length: number;
-    };
-    notes: {
-      truncated: boolean;
-      original_length: number;
-    } | null;
-  };
-  normalization: {
-    modules_clamped: boolean;
-    tasks_clamped: boolean;
-  };
-  timing: {
-    started_at: string;
-    finished_at: string;
-    duration_ms: number;
-    extended_timeout: boolean;
-  };
-  pdf: {
-    extraction_hash: string;
-    proof_version: 1;
-    context_digest: string;
-  } | null;
-  provider: ProviderMetadata | null;
-  failure: AttemptMetadataFailure | null;
-}
-
-interface MetadataParams {
-  sanitized: SanitizedInput;
-  providerMetadata?: ProviderMetadata;
-  modulesClamped: boolean;
-  tasksClamped: boolean;
-  startedAt: Date;
-  finishedAt: Date;
-  durationMs: number;
-  extendedTimeout: boolean;
-  pdfProvenance?: PdfProvenanceData | null;
-  failure?: AttemptMetadataFailure;
-}
-
-type AttemptsReadClient = Pick<AttemptsDbClient, 'select'>;
-
-interface ReserveAttemptSlotParams {
-  planId: string;
-  userId: string;
-  input: GenerationInput;
-  dbClient: AttemptsDbClient;
-  requiredGenerationStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
-  now?: () => Date;
-}
-
-/**
- * Security guardrail: keep `dbClient` required.
- * Callers must pass request-scoped `getDb()` so RLS claims flow through.
- * Reverting to optional `dbClient = getDb()` masks missing DI and is a security footgun.
- */
-interface FinalizeSuccessParams {
-  attemptId: string;
-  planId: string;
-  preparation: AttemptReservation;
-  modules: ParsedModule[];
-  providerMetadata?: ProviderMetadata;
-  durationMs: number;
-  extendedTimeout: boolean;
-  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
-  dbClient: AttemptsDbClient;
-  now?: () => Date;
-}
-
-interface FinalizeFailureParams {
-  attemptId: string;
-  planId: string;
-  preparation: AttemptReservation;
-  classification: FailureClassification;
-  durationMs: number;
-  timedOut?: boolean;
-  extendedTimeout?: boolean;
-  providerMetadata?: ProviderMetadata;
-  /**
-   * Optional error that caused the failure.
-   * When classification is 'provider_error', used to decide retryability
-   * (e.g. 5xx/transient → retryable, 4xx/validation-like → terminal).
-   */
-  error?: AttemptError;
-  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
-  dbClient: AttemptsDbClient;
-  now?: () => Date;
-}
-
-interface FinalizeSuccessPersistenceParams {
-  attemptId: string;
-  planId: string;
-  preparation: AttemptReservation;
-  normalizedModules: NormalizedModuleData[];
-  normalizationFlags: EffortNormalizationFlags;
-  modulesCount: number;
-  tasksCount: number;
-  durationMs: number;
-  metadata: AttemptMetadata;
-  finishedAt: Date;
-  dbClient: AttemptsDbClient;
-}
-
-/**
- * Determines if a provider_error is retryable based on error metadata.
- * 5xx or unknown → retryable; 4xx → terminal.
- */
-interface ProviderErrorStatusShape {
-  status?: number;
-  statusCode?: number;
-  httpStatus?: number;
-  response?: { status?: number } | null;
-}
-
-interface AttemptErrorFallbackShape {
-  message: string;
-  code?: string;
-}
-
-/** Error with at least one identifying status field for retryability. */
-type AttemptErrorWithStatus =
-  | (ProviderErrorStatusShape &
-      Partial<AttemptErrorFallbackShape> & { status: number })
-  | (ProviderErrorStatusShape &
-      Partial<AttemptErrorFallbackShape> & { statusCode: number })
-  | (ProviderErrorStatusShape &
-      Partial<AttemptErrorFallbackShape> & { httpStatus: number })
-  | (ProviderErrorStatusShape &
-      Partial<AttemptErrorFallbackShape> & { response: { status: number } });
-
-type AttemptError = AttemptErrorWithStatus | AttemptErrorFallbackShape;
-
-interface UserGenerationAttemptsSinceParams {
-  userId: string;
-  dbClient: AttemptsReadClient;
-  since: Date;
-}
-
-function getProviderErrorStatus(
-  error: AttemptError | null | undefined
-): number | undefined {
-  if (!error) return undefined;
-
-  const responseStatus =
-    'response' in error &&
-    typeof error.response === 'object' &&
-    error.response !== null &&
-    'status' in error.response &&
-    typeof error.response.status === 'number' &&
-    Number.isFinite(error.response.status)
-      ? error.response.status
-      : undefined;
-
-  const candidates = [
-    'status' in error ? error.status : undefined,
-    'statusCode' in error ? error.statusCode : undefined,
-    'httpStatus' in error ? error.httpStatus : undefined,
-    responseStatus,
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
-      return candidate;
-    }
-  }
-
-  return undefined;
-}
-
-function isProviderErrorRetryable(
-  error: AttemptError | null | undefined
-): boolean {
-  if (error == null) return true;
-  const status = getProviderErrorStatus(error);
-  if (status === undefined) return true;
-  if (status >= 500) return true;
-  if (status >= 400 && status < 500) return false;
-  return true;
-}
-
-function logAttemptEvent(
-  event: 'success' | 'failure',
-  payload: Record<string, unknown>
-) {
-  const correlationId = getCorrelationId();
-  const enriched = {
-    ...payload,
-    correlationId: correlationId ?? null,
-  } satisfies Record<string, unknown>;
-  logger.info(
-    {
-      source: 'attempts',
-      event,
-      ...enriched,
-    },
-    `attempts_${event}`
-  );
-
-  // In test environments, emit a lightweight console log that integration tests can assert on.
-  // This mirrors a human-readable log line without altering production logging behavior.
-  if (appEnv.isTest) {
-    // Example: "[attempts] success", { correlationId: '...', ...payload }
-    // eslint-disable-next-line no-console
-    console.info(`[attempts] ${event}`, enriched);
-  }
-}
-
-function stableSerialize(value: unknown): string {
-  if (value === undefined) {
-    return 'null';
-  }
-
-  if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value);
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableSerialize(entry)).join(',')}]`;
-  }
-
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`).join(',')}}`;
-}
-
-function getPdfContextDigest(input: GenerationInput): string | null {
-  if (!input.pdfContext) {
-    return null;
-  }
-
-  return hashSha256(stableSerialize(input.pdfContext));
-}
-
-function hasPdfProvenanceInput(
-  input: GenerationInput
-): input is GenerationInput & {
-  pdfContext: NonNullable<GenerationInput['pdfContext']>;
-  pdfExtractionHash: string;
-  pdfProofVersion?: 1;
-} {
-  return (
-    input.pdfContext !== undefined &&
-    input.pdfContext !== null &&
-    typeof input.pdfExtractionHash === 'string' &&
-    input.pdfExtractionHash !== ''
-  );
-}
-
-function getPdfProvenance(input: GenerationInput): PdfProvenanceData | null {
-  if (!hasPdfProvenanceInput(input)) {
-    return null;
-  }
-
-  const contextDigest = getPdfContextDigest(input);
-  if (!contextDigest) {
-    return null;
-  }
-
-  return {
-    extractionHash: input.pdfExtractionHash,
-    proofVersion: input.pdfProofVersion ?? 1,
-    contextDigest,
-  };
-}
-
-function buildMetadata(params: MetadataParams): AttemptMetadata {
-  const {
-    sanitized,
-    providerMetadata,
-    modulesClamped,
-    tasksClamped,
-    startedAt,
-    finishedAt,
-    durationMs,
-    extendedTimeout,
-    pdfProvenance,
-    failure,
-  } = params;
-
-  return {
-    input: {
-      topic: {
-        truncated: sanitized.topic.truncated,
-        original_length: sanitized.topic.originalLength,
-      },
-      notes:
-        sanitized.notes.originalLength !== undefined
-          ? {
-              truncated: sanitized.notes.truncated,
-              original_length: sanitized.notes.originalLength,
-            }
-          : null,
-    },
-    normalization: {
-      modules_clamped: modulesClamped,
-      tasks_clamped: tasksClamped,
-    },
-    timing: {
-      started_at: startedAt.toISOString(),
-      finished_at: finishedAt.toISOString(),
-      duration_ms: Math.max(0, Math.round(durationMs)),
-      extended_timeout: extendedTimeout,
-    },
-    pdf: pdfProvenance
-      ? {
-          extraction_hash: pdfProvenance.extractionHash,
-          proof_version: pdfProvenance.proofVersion,
-          context_digest: pdfProvenance.contextDigest,
-        }
-      : null,
-    provider: providerMetadata ?? null,
-    failure: failure ?? null,
-  };
-}
-
-function sanitizeInput(input: GenerationInput): SanitizedInput {
-  const topicResult = truncateToLength(input.topic, TOPIC_MAX_LENGTH);
-  if (topicResult.value === undefined) {
-    throw new Error('Topic is required for generation attempts.');
-  }
-
-  const topicValue = topicResult.value;
-
-  if (typeof topicValue !== 'string' || topicValue.trim().length === 0) {
-    throw new Error('GenerationInput.topic must be a non-empty string.');
-  }
-
-  const notesResult = truncateToLength(
-    input.notes ?? undefined,
-    NOTES_MAX_LENGTH
-  );
-
-  return {
-    topic: {
-      value: topicValue,
-      truncated: topicResult.truncated,
-      originalLength: topicResult.originalLength ?? topicValue.length,
-    },
-    notes: {
-      value: notesResult.value,
-      truncated: notesResult.truncated,
-      originalLength: notesResult.originalLength,
-    },
-  };
-}
-
-function toPromptHashPayload(
-  planId: string,
-  userId: string,
-  input: GenerationInput,
-  sanitized: SanitizedInput
-) {
-  const pdfContextDigest = getPdfContextDigest(input);
-
-  return {
-    planId,
-    userId,
-    topic: sanitized.topic.value,
-    notes: sanitized.notes.value ?? null,
-    skillLevel: input.skillLevel,
-    weeklyHours: input.weeklyHours,
-    learningStyle: input.learningStyle,
-    pdfExtractionHash: input.pdfExtractionHash ?? null,
-    pdfProofVersion: input.pdfProofVersion ?? null,
-    pdfContextDigest,
-  } satisfies Record<string, unknown>;
-}
-
-function normalizeParsedModules(
-  modulesInput: ParsedModule[]
-): NormalizedModulesResult {
-  const moduleFlags = [] as ReturnType<typeof normalizeModuleMinutes>[];
-  const taskFlags = [] as ReturnType<typeof normalizeTaskMinutes>[];
-
-  const normalizedModules = modulesInput.map((module) => {
-    const normalizedModule = normalizeModuleMinutes(module.estimatedMinutes);
-    moduleFlags.push(normalizedModule);
-
-    const normalizedTasks = module.tasks.map((task) => {
-      const normalizedTask = normalizeTaskMinutes(task.estimatedMinutes);
-      taskFlags.push(normalizedTask);
-      return {
-        title: task.title,
-        description: task.description ?? null,
-        estimatedMinutes: normalizedTask.value,
-      };
-    });
-
-    return {
-      title: module.title,
-      description: module.description ?? null,
-      estimatedMinutes: normalizedModule.value,
-      tasks: normalizedTasks,
-    };
-  });
-
-  const normalizationFlags = aggregateNormalizationFlags(
-    moduleFlags,
-    taskFlags
-  );
-
-  return { normalizedModules, normalizationFlags };
-}
-
-function userAttemptsSincePredicate(userId: string, since: Date) {
-  return and(
-    eq(learningPlans.userId, userId),
-    gte(generationAttempts.createdAt, since)
-  );
-}
-
-async function selectUserGenerationAttemptsSince({
-  userId,
-  dbClient,
-  since,
-}: UserGenerationAttemptsSinceParams): Promise<number> {
-  const [row] = await dbClient
-    .select({ value: count(generationAttempts.id) })
-    .from(generationAttempts)
-    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
-    .where(userAttemptsSincePredicate(userId, since));
-
-  return row?.value ?? 0;
-}
-
-async function selectOldestUserGenerationAttemptSince({
-  userId,
-  dbClient,
-  since,
-}: UserGenerationAttemptsSinceParams): Promise<Date | null> {
-  const [row] = await dbClient
-    .select({ createdAt: generationAttempts.createdAt })
-    .from(generationAttempts)
-    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
-    .where(userAttemptsSincePredicate(userId, since))
-    .orderBy(asc(generationAttempts.createdAt))
-    .limit(1);
-
-  return row?.createdAt ?? null;
-}
-
-function computeRetryAfterSeconds(
-  oldestAttemptCreatedAt: Date | null,
-  now: Date
-): number {
-  if (!oldestAttemptCreatedAt) {
-    return Math.floor(PLAN_GENERATION_WINDOW_MS / 1000);
-  }
-
-  return Math.max(
-    0,
-    Math.floor(
-      (oldestAttemptCreatedAt.getTime() +
-        PLAN_GENERATION_WINDOW_MS -
-        now.getTime()) /
-        1000
-    )
-  );
-}
-
 /**
  * Atomically reserves an attempt slot for a plan within a single transaction.
  *
- * 1. Locks user + plan rows with FOR UPDATE to serialize per-user reservations.
- * 2. Verifies ownership and durable per-user window limit.
- * 3. Enforces per-plan attempt cap and rejects in-progress duplicates.
- * 4. Inserts a placeholder attempt with status 'in_progress'.
- * 5. Sets the plan's generation_status to 'generating'.
+ * 1. Acquires a transaction-scoped advisory lock per user to serialize concurrent reservations.
+ * 2. Reads the owned plan row and verifies ownership.
+ * 3. Enforces durable per-user window limit.
+ * 4. Enforces per-plan attempt cap and rejects in-progress duplicates.
+ * 5. Inserts a placeholder attempt with status 'in_progress'.
+ * 6. Sets the plan's generation_status to 'generating'.
  *
  * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
  */
 export async function reserveAttemptSlot(
   params: ReserveAttemptSlotParams
 ): Promise<ReserveAttemptResult> {
-  const { planId, userId, input, dbClient, requiredGenerationStatus } = params;
+  const {
+    planId,
+    userId,
+    input,
+    dbClient,
+    allowedGenerationStatuses,
+    requiredGenerationStatus,
+  } = params;
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
@@ -579,45 +73,57 @@ export async function reserveAttemptSlot(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
   );
 
+  const shouldNormalizeRlsContext = dbClient !== serviceDb;
+  let requestJwtClaims: string | null = null;
+
+  if (shouldNormalizeRlsContext) {
+    // Capture existing claims from the current RLS session and re-apply them
+    // inside the transaction. This avoids an extra users-table read here while
+    // still defending against tx-scoped claim drift in some environments.
+    const claimsRows = await dbClient.execute<{ claims: string | null }>(
+      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    );
+    const rawClaims = claimsRows[0]?.claims;
+    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
+      requestJwtClaims = rawClaims;
+    }
+  }
+
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
-
-    // Lock user row first so per-user durable throttling is serialized across
-    // all plans owned by the same user.
-    const [lockedUser] = await tx
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1)
-      .for('update');
-
-    if (!lockedUser?.id) {
-      throw new Error('User not found for generation attempt reservation');
+    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
+      await tx.execute(
+        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
+      );
     }
 
-    // Lock the plan row to serialize concurrent reservation attempts
-    const [plan] = await tx
-      .select({
-        id: learningPlans.id,
-        userId: learningPlans.userId,
-        generationStatus: learningPlans.generationStatus,
-      })
-      .from(learningPlans)
-      .where(eq(learningPlans.id, planId))
-      .for('update');
+    // Acquire per-user advisory lock to serialize concurrent reservations.
+    // Uses the two-int4 overload so namespace 1 is separated from the
+    // per-user key, avoiding cross-domain collisions that the single-bigint
+    // form (hashtext → bigint) would allow with only 32-bit entropy.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`);
 
-    if (!plan || plan.userId !== userId) {
+    const plan = await selectOwnedPlanById({
+      planId,
+      ownerUserId: userId,
+      dbClient: tx,
+    });
+
+    if (!plan) {
       throw new Error('Learning plan not found or inaccessible for user');
     }
 
-    if (
-      requiredGenerationStatus !== undefined &&
-      plan.generationStatus !== requiredGenerationStatus
-    ) {
+    const statusAllowed =
+      allowedGenerationStatuses !== undefined
+        ? allowedGenerationStatuses.includes(plan.generationStatus)
+        : requiredGenerationStatus === undefined
+          ? true
+          : plan.generationStatus === requiredGenerationStatus;
+    if (!statusAllowed) {
       logger.debug(
         {
           planId,
-          expectedStatus: requiredGenerationStatus,
+          allowed: allowedGenerationStatuses ?? requiredGenerationStatus,
           actualStatus: plan.generationStatus,
         },
         'Plan reservation aborted: generation status mismatch'
@@ -631,68 +137,48 @@ export async function reserveAttemptSlot(
 
     const windowStart = getPlanGenerationWindowStart(startedAt);
 
-    // Enforce durable per-user generation window cap inside this transaction so
-    // concurrent requests cannot overrun the limit.
-    const attemptsInWindow = await selectUserGenerationAttemptsSince({
+    const attemptWindowStats = await selectUserGenerationAttemptWindowStats({
       userId,
       dbClient: tx,
       since: windowStart,
     });
+    const attemptsInWindow = attemptWindowStats.count;
 
     if (attemptsInWindow >= PLAN_GENERATION_LIMIT) {
-      const oldestAttemptCreatedAt =
-        await selectOldestUserGenerationAttemptSince({
-          userId,
-          dbClient: tx,
-          since: windowStart,
-        });
       const retryAfter = computeRetryAfterSeconds(
-        oldestAttemptCreatedAt,
+        attemptWindowStats.oldestAttemptCreatedAt,
         startedAt
       );
-      const reset = oldestAttemptCreatedAt
-        ? Math.ceil(
-            (oldestAttemptCreatedAt.getTime() + PLAN_GENERATION_WINDOW_MS) /
-              1000
-          )
-        : Math.ceil(startedAt.getTime() / 1000) +
-          Math.floor(PLAN_GENERATION_WINDOW_MS / 1000);
 
       return {
         reserved: false,
         reason: 'rate_limited',
         retryAfter,
-        reset,
       } as const;
     }
 
-    // Count ALL existing attempts (including any lingering in_progress ones)
-    const [{ value: existingAttempts = 0 } = { value: 0 }] = await tx
-      .select({ value: count(generationAttempts.id) })
+    const [attemptState] = await tx
+      .select({
+        existingAttempts: count(generationAttempts.id),
+        inProgressAttempts:
+          sql`count(*) filter (where ${generationAttempts.status} = 'in_progress')`.mapWith(
+            Number
+          ),
+      })
       .from(generationAttempts)
       .where(eq(generationAttempts.planId, planId));
+
+    const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
+    const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
 
     if (existingAttempts >= ATTEMPT_CAP) {
       return { reserved: false, reason: 'capped' } as const;
     }
 
-    // Reject if another attempt is already in-progress for this plan
-    const [inProgressAttempt] = await tx
-      .select({ id: generationAttempts.id })
-      .from(generationAttempts)
-      .where(
-        and(
-          eq(generationAttempts.planId, planId),
-          eq(generationAttempts.status, 'in_progress')
-        )
-      )
-      .limit(1);
-
-    if (inProgressAttempt) {
+    if (inProgressAttempts > 0) {
       return { reserved: false, reason: 'in_progress' } as const;
     }
 
-    // Insert a placeholder attempt record
     const [attempt] = await tx
       .insert(generationAttempts)
       .values({
@@ -714,7 +200,6 @@ export async function reserveAttemptSlot(
       throw new Error('Failed to reserve generation attempt slot.');
     }
 
-    // Transition plan to 'generating' (idempotent if already generating)
     await tx
       .update(learningPlans)
       .set({
@@ -732,125 +217,6 @@ export async function reserveAttemptSlot(
       promptHash,
       pdfProvenance,
     } as const;
-  });
-}
-
-async function persistSuccessfulAttempt(
-  params: FinalizeSuccessPersistenceParams
-): Promise<GenerationAttemptRecord> {
-  const {
-    attemptId,
-    planId,
-    preparation,
-    normalizedModules,
-    normalizationFlags,
-    modulesCount,
-    tasksCount,
-    durationMs,
-    metadata,
-    finishedAt,
-    dbClient,
-  } = params;
-
-  return dbClient.transaction(async (tx) => {
-    // Replace existing modules for the plan
-    await tx.delete(modules).where(eq(modules.planId, planId));
-
-    // Bulk insert modules
-    const moduleValues = normalizedModules.map((normalizedModule, index) => ({
-      planId,
-      order: index + 1,
-      title: normalizedModule.title,
-      description: normalizedModule.description,
-      estimatedMinutes: normalizedModule.estimatedMinutes,
-    }));
-    const insertedModuleRows =
-      moduleValues.length > 0
-        ? await tx
-            .insert(modules)
-            .values(moduleValues)
-            .returning({ id: modules.id })
-        : [];
-
-    if (insertedModuleRows.length !== normalizedModules.length) {
-      throw new Error('Failed to insert all modules for generation attempt.');
-    }
-
-    // Bulk insert tasks across all modules in one statement.
-    const taskValues: Array<{
-      moduleId: string;
-      order: number;
-      title: string;
-      description: string | null;
-      estimatedMinutes: number;
-    }> = [];
-
-    for (let i = 0; i < insertedModuleRows.length; i++) {
-      const moduleRow = insertedModuleRows[i];
-      const moduleEntry = normalizedModules[i];
-
-      if (!moduleRow || !moduleEntry) {
-        throw new Error('Failed to map inserted modules to generated tasks.');
-      }
-
-      for (
-        let taskIndex = 0;
-        taskIndex < moduleEntry.tasks.length;
-        taskIndex++
-      ) {
-        const task = moduleEntry.tasks[taskIndex];
-        if (!task) {
-          throw new Error('Failed to map generated task for insertion.');
-        }
-
-        taskValues.push({
-          moduleId: moduleRow.id,
-          order: taskIndex + 1,
-          title: task.title,
-          description: task.description,
-          estimatedMinutes: task.estimatedMinutes,
-        });
-      }
-    }
-
-    if (taskValues.length > 0) {
-      await tx.insert(tasks).values(taskValues);
-    }
-
-    // Finalize the reserved attempt record
-    const [attempt] = await tx
-      .update(generationAttempts)
-      .set({
-        status: 'success',
-        classification: null,
-        durationMs: Math.max(0, Math.round(durationMs)),
-        modulesCount,
-        tasksCount,
-        truncatedTopic: preparation.sanitized.topic.truncated,
-        truncatedNotes: preparation.sanitized.notes.truncated ?? false,
-        normalizedEffort:
-          normalizationFlags.modulesClamped || normalizationFlags.tasksClamped,
-        metadata,
-      })
-      .where(eq(generationAttempts.id, attemptId))
-      .returning();
-
-    if (!attempt) {
-      throw new Error('Failed to finalize generation attempt as success.');
-    }
-
-    // Keep plan status and attempt finalization atomic.
-    await tx
-      .update(learningPlans)
-      .set({
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-        finalizedAt: finishedAt,
-        updatedAt: finishedAt,
-      })
-      .where(eq(learningPlans.id, planId));
-
-    return attempt;
   });
 }
 
@@ -892,7 +258,6 @@ export async function finalizeAttemptSuccess({
     tasksClamped: normalizationFlags.tasksClamped,
     startedAt: preparation.startedAt,
     finishedAt,
-    durationMs,
     extendedTimeout,
     pdfProvenance: preparation.pdfProvenance ?? null,
   });
@@ -953,13 +318,31 @@ export async function finalizeAttemptFailure({
     tasksClamped: false,
     startedAt: preparation.startedAt,
     finishedAt,
-    durationMs,
     extendedTimeout,
     pdfProvenance: preparation.pdfProvenance ?? null,
     failure: { classification, timedOut },
   });
 
+  const shouldNormalizeRlsContext = dbClient !== serviceDb;
+  let requestJwtClaims: string | null = null;
+
+  if (shouldNormalizeRlsContext) {
+    const claimsRows = await dbClient.execute<{ claims: string | null }>(
+      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    );
+    const rawClaims = claimsRows[0]?.claims;
+    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
+      requestJwtClaims = rawClaims;
+    }
+  }
+
   const attempt = await dbClient.transaction(async (tx) => {
+    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
+      await tx.execute(
+        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
+      );
+    }
+
     const [updatedAttempt] = await tx
       .update(generationAttempts)
       .set({
@@ -971,16 +354,19 @@ export async function finalizeAttemptFailure({
         normalizedEffort: false,
         metadata,
       })
-      .where(eq(generationAttempts.id, attemptId))
+      .where(
+        and(
+          eq(generationAttempts.id, attemptId),
+          eq(generationAttempts.planId, planId),
+          eq(generationAttempts.status, 'in_progress')
+        )
+      )
       .returning();
 
     if (!updatedAttempt) {
       throw new Error('Failed to finalize generation attempt as failure.');
     }
 
-    // Only transition plan to failed when terminal or at attempt cap.
-    // Retryable failures (rate_limit, timeout) with attempts < cap keep plan as generating.
-    // For provider_error: use error metadata (HTTP status) to decide retryability.
     const effectiveRetryable =
       classification === 'provider_error'
         ? isProviderErrorRetryable(error)
@@ -1000,7 +386,10 @@ export async function finalizeAttemptFailure({
     } else {
       await tx
         .update(learningPlans)
-        .set({ updatedAt: finishedAt })
+        .set({
+          generationStatus: 'pending_retry',
+          updatedAt: finishedAt,
+        })
         .where(eq(learningPlans.id, planId));
     }
 
@@ -1019,40 +408,4 @@ export async function finalizeAttemptFailure({
   });
 
   return attempt;
-}
-
-function assertAttemptIdMatchesReservation(
-  attemptId: string,
-  preparation: AttemptReservation
-): void {
-  if (attemptId !== preparation.attemptId) {
-    throw new Error('Attempt ID mismatch between params and reserved attempt.');
-  }
-}
-
-/**
- * Counts generation attempts for the given user since the given timestamp.
- * Joins with learning_plans to enforce ownership by ownerId (user id).
- *
- * @param params - Options object containing userId, dbClient, and since
- * @returns Number of generation attempts in the window
- */
-export async function countUserGenerationAttemptsSince(
-  params: UserGenerationAttemptsSinceParams
-): Promise<number> {
-  return selectUserGenerationAttemptsSince(params);
-}
-
-/**
- * Returns the createdAt timestamp of the oldest generation attempt for the user
- * within the given window. Used to compute accurate retry-after when rate limit
- * is exceeded (the oldest attempt determines when the window will free a slot).
- *
- * @param params - Options object containing userId, dbClient, and since
- * @returns The createdAt of the oldest attempt, or null if none exist
- */
-export async function getOldestUserGenerationAttemptSince(
-  params: UserGenerationAttemptsSinceParams
-): Promise<Date | null> {
-  return selectOldestUserGenerationAttemptSince(params);
 }

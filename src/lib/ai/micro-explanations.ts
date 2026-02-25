@@ -91,8 +91,8 @@ async function generateWithOpenRouter(
     experimental_telemetry: {
       isEnabled: true,
       functionId: 'micro-explanation',
-      recordInputs: true,
-      recordOutputs: true,
+      recordInputs: false,
+      recordOutputs: false,
     },
   });
 

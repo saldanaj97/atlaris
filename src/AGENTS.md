@@ -250,3 +250,4 @@ const apiKey = env.OPENROUTER_API_KEY;
 - [lib/db/AGENTS.md](lib/db/AGENTS.md) - Database patterns
 - [lib/integrations/AGENTS.md](lib/integrations/AGENTS.md) - Integration patterns
 - [tests/AGENTS.md](../tests/AGENTS.md) - Testing patterns
+- [docs/rules/api/error-contract.md](../docs/rules/api/error-contract.md) - Canonical API error shape and client parsing rules

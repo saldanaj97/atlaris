@@ -56,7 +56,10 @@ describe('jsonError', () => {
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body).toEqual({ error: 'Validation failed' });
+    expect(body).toEqual({
+      error: 'Validation failed',
+      code: 'BAD_REQUEST',
+    });
   });
 
   it('should create error response with custom status', async () => {
@@ -64,7 +67,10 @@ describe('jsonError', () => {
 
     expect(response.status).toBe(404);
     const body = await response.json();
-    expect(body).toEqual({ error: 'Not found' });
+    expect(body).toEqual({
+      error: 'Not found',
+      code: 'NOT_FOUND',
+    });
   });
 
   it('should create structured error with code', async () => {
@@ -76,10 +82,8 @@ describe('jsonError', () => {
     expect(response.status).toBe(422);
     const body = await response.json();
     expect(body).toEqual({
-      error: {
-        message: 'Invalid input',
-        code: 'INVALID_INPUT',
-      },
+      error: 'Invalid input',
+      code: 'INVALID_INPUT',
     });
   });
 
@@ -91,10 +95,9 @@ describe('jsonError', () => {
 
     const body = await response.json();
     expect(body).toEqual({
-      error: {
-        message: 'Rate limited',
-        classification: 'rate_limit',
-      },
+      error: 'Rate limited',
+      code: 'RATE_LIMITED',
+      classification: 'rate_limit',
     });
   });
 
@@ -107,11 +110,9 @@ describe('jsonError', () => {
 
     const body = await response.json();
     expect(body).toEqual({
-      error: {
-        message: 'Validation failed',
-        code: 'VALIDATION_ERROR',
-        details: { field: 'email', reason: 'invalid format' },
-      },
+      error: 'Validation failed',
+      code: 'VALIDATION_ERROR',
+      details: { field: 'email', reason: 'invalid format' },
     });
   });
 
@@ -126,12 +127,10 @@ describe('jsonError', () => {
     expect(response.status).toBe(403);
     const body = await response.json();
     expect(body).toEqual({
-      error: {
-        message: 'Request failed',
-        code: 'FORBIDDEN',
-        classification: 'provider_error',
-        details: { reason: 'insufficient permissions' },
-      },
+      error: 'Request failed',
+      code: 'FORBIDDEN',
+      classification: 'provider_error',
+      details: { reason: 'insufficient permissions' },
     });
   });
 
@@ -147,7 +146,10 @@ describe('jsonError', () => {
     const response = jsonError('Simple error');
 
     const body = await response.json();
-    expect(body).toEqual({ error: 'Simple error' });
+    expect(body).toEqual({
+      error: 'Simple error',
+      code: 'BAD_REQUEST',
+    });
   });
 
   it('should handle details with value 0 or false', async () => {
@@ -157,7 +159,7 @@ describe('jsonError', () => {
     });
 
     const body = await response.json();
-    expect(body.error.details).toEqual({ count: 0, enabled: false });
+    expect(body.details).toEqual({ count: 0, enabled: false });
   });
 });
 
@@ -172,10 +174,8 @@ describe('notImplemented', () => {
     const body = await response.json();
 
     expect(body).toEqual({
-      error: {
-        message: 'Not Implemented',
-        code: 'NOT_IMPLEMENTED',
-      },
+      error: 'Not Implemented',
+      code: 'NOT_IMPLEMENTED',
     });
   });
 });
@@ -191,10 +191,8 @@ describe('methodNotAllowed', () => {
     const body = await response.json();
 
     expect(body).toEqual({
-      error: {
-        message: 'Method Not Allowed',
-        code: 'METHOD_NOT_ALLOWED',
-      },
+      error: 'Method Not Allowed',
+      code: 'METHOD_NOT_ALLOWED',
     });
   });
 });

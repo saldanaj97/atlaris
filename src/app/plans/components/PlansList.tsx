@@ -1,11 +1,13 @@
 'use client';
 
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { EmptyPlansList } from './EmptyPlansList';
-import { getPlanStatus } from './plan-utils';
-import { PlanRow } from './PlanRow';
+import { EmptyPlansList } from '@/app/plans/components/EmptyPlansList';
+import { getPlanStatus } from '@/app/plans/components/plan-utils';
+import { PlanRow } from '@/app/plans/components/PlanRow';
 
 import type { FilterStatus, PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
@@ -20,9 +22,15 @@ interface UsageData {
 interface PlansListProps {
   summaries: PlanSummary[];
   usage?: UsageData;
+  referenceTimestamp: string;
 }
 
-export function PlansList({ summaries, usage: _usage }: PlansListProps) {
+export function PlansList({
+  summaries,
+  usage: _usage,
+  referenceTimestamp,
+}: PlansListProps): JSX.Element {
+  const [effectiveReferenceTimestamp] = useState(() => referenceTimestamp);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -35,7 +43,7 @@ export function PlansList({ summaries, usage: _usage }: PlansListProps) {
         summary.plan.topic.toLowerCase().includes(searchQuery.toLowerCase());
 
       // Status filter
-      const status = getPlanStatus(summary);
+      const status = getPlanStatus(summary, effectiveReferenceTimestamp);
       const matchesStatus =
         filterStatus === 'all' ||
         status === filterStatus ||
@@ -43,12 +51,12 @@ export function PlansList({ summaries, usage: _usage }: PlansListProps) {
 
       return matchesSearch && matchesStatus;
     });
-  }, [summaries, searchQuery, filterStatus]);
+  }, [summaries, searchQuery, filterStatus, effectiveReferenceTimestamp]);
 
   const statusCounts = useMemo(() => {
     return summaries.reduce(
       (acc, summary) => {
-        const status = getPlanStatus(summary);
+        const status = getPlanStatus(summary, effectiveReferenceTimestamp);
         acc[status] = (acc[status] || 0) + 1;
         return acc;
       },
@@ -60,7 +68,7 @@ export function PlansList({ summaries, usage: _usage }: PlansListProps) {
         failed: 0,
       } as Record<PlanStatus, number>
     );
-  }, [summaries]);
+  }, [summaries, effectiveReferenceTimestamp]);
 
   return (
     <div className="font-sans">
@@ -143,6 +151,7 @@ export function PlansList({ summaries, usage: _usage }: PlansListProps) {
                 summary={summary}
                 isSelected={index === selectedIndex}
                 onSelect={() => setSelectedIndex(index)}
+                referenceTimestamp={effectiveReferenceTimestamp}
               />
             ))}
           </div>

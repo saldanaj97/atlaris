@@ -5,12 +5,10 @@ import { ensureUser, truncateAll } from '@/../tests/helpers/db';
 import { setTestUser } from '@/../tests/helpers/auth';
 import { db } from '@/lib/db/service-role';
 import { users } from '@/lib/db/schema';
-import { POST } from '@/app/api/v1/stripe/create-checkout/route';
-import * as stripeClient from '@/lib/stripe/client';
-
-vi.mock('@/lib/stripe/client', () => ({
-  getStripe: vi.fn(),
-}));
+import {
+  createCreateCheckoutHandler,
+  POST,
+} from '@/app/api/v1/stripe/create-checkout/route';
 
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
@@ -49,7 +47,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     } as unknown as Stripe;
 
-    vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
+    const POST = createCreateCheckoutHandler(mockStripe);
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -128,7 +126,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     } as unknown as Stripe;
 
-    vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
+    const handlerPOST = createCreateCheckoutHandler(mockStripe);
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -144,7 +142,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       }
     );
 
-    const response = await POST(request);
+    const response = await handlerPOST(request);
 
     expect(response.status).toBe(200);
 
@@ -189,7 +187,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     } as unknown as Stripe;
 
-    vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
+    const handlerPOST = createCreateCheckoutHandler(mockStripe);
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -205,7 +203,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       }
     );
 
-    const response = await POST(request);
+    const response = await handlerPOST(request);
 
     expect(response.status).toBe(200);
 
@@ -313,7 +311,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     } as unknown as Stripe;
 
-    vi.mocked(stripeClient.getStripe).mockReturnValue(mockStripe);
+    const handlerPOST = createCreateCheckoutHandler(mockStripe);
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -328,7 +326,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       }
     );
 
-    const response = await POST(request);
+    const response = await handlerPOST(request);
 
     expect(response.status).toBe(500);
   });

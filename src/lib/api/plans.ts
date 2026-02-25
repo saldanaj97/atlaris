@@ -1,14 +1,7 @@
-import { clientLogger } from '@/lib/logging/client';
+import { parseApiErrorResponse } from '@/lib/api/error-response';
 import type { PlanStatus } from '@/lib/types/client';
 import type { LearningStyle, SkillLevel } from '@/lib/types/db';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
-
-interface ErrorResponse {
-  error?: string | null;
-  message?: string | null;
-  code?: string | null;
-  classification?: string | null;
-}
 
 export interface CreatePlanSuccessResponse {
   id: string;
@@ -20,19 +13,6 @@ export interface CreatePlanSuccessResponse {
   origin: CreateLearningPlanInput['origin'];
   createdAt?: string;
   status?: PlanStatus;
-}
-
-function extractErrorMessage(
-  body: Partial<ErrorResponse> | null | undefined,
-  fallback: string
-) {
-  const candidates = [body?.error, body?.message, body?.code];
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string' && candidate.trim().length > 0) {
-      return candidate;
-    }
-  }
-  return fallback;
 }
 
 export async function createPlan(
@@ -47,15 +27,9 @@ export async function createPlan(
   });
 
   if (!response.ok) {
-    let message = 'Unable to create learning plan.';
-    try {
-      const errorBody =
-        (await response.json()) as Partial<ErrorResponse> | null;
-      message = extractErrorMessage(errorBody, message);
-    } catch (error) {
-      clientLogger.error('Failed to parse createPlan error response', error);
-    }
-    throw new Error(message);
+    const fallbackMessage = 'Unable to create learning plan.';
+    const parsedError = await parseApiErrorResponse(response, fallbackMessage);
+    throw new Error(parsedError.error);
   }
 
   const payload = (await response.json()) as CreatePlanSuccessResponse;

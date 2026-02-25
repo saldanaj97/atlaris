@@ -1,5 +1,7 @@
 'use client';
 
+import type { ElementType, JSX } from 'react';
+
 import {
   Accordion,
   AccordionContent,
@@ -19,7 +21,7 @@ import {
   Target,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule, ClientTask } from '@/lib/types/client';
@@ -28,10 +30,8 @@ import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 interface ModuleTimelineProps {
   planId: string;
   modules: ClientModule[];
-  statuses: Record<string, ProgressStatus>;
-  setStatuses: React.Dispatch<
-    React.SetStateAction<Record<string, ProgressStatus>>
-  >;
+  initialStatuses?: Record<string, ProgressStatus>;
+  onStatusChange?: (taskId: string, newStatus: ProgressStatus) => void;
 }
 
 type ModuleStatus = 'completed' | 'active' | 'locked';
@@ -49,7 +49,7 @@ interface TimelineModule {
 
 const RESOURCE_CONFIG: Record<
   ResourceType,
-  { label: string; icon: React.ElementType; badgeClass: string }
+  { label: string; icon: ElementType; badgeClass: string }
 > = {
   youtube: {
     label: 'Video',
@@ -115,23 +115,52 @@ function getModuleStatus(
 export function PlanTimeline({
   planId,
   modules,
-  statuses,
-  setStatuses,
-}: ModuleTimelineProps) {
+  initialStatuses,
+  onStatusChange,
+}: ModuleTimelineProps): JSX.Element {
+  const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
+    () => {
+      if (initialStatuses) {
+        return initialStatuses;
+      }
+
+      const entries = modules.flatMap((mod) =>
+        (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
+      );
+      return Object.fromEntries(entries);
+    }
+  );
+
+  // Reconcile statuses when props change (parent/server updates)
+  useEffect(() => {
+    setStatuses((prev) => {
+      if (initialStatuses) {
+        return { ...prev, ...initialStatuses };
+      }
+
+      const entries = modules.flatMap((mod) =>
+        (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
+      );
+      const fromProps = Object.fromEntries(entries);
+      return { ...prev, ...fromProps };
+    });
+  }, [modules, initialStatuses]);
+
   // Transform modules into timeline items with computed status
   const timelineModules: TimelineModule[] = useMemo(() => {
-    let previousModulesCompleted = true;
-
     return modules.map((mod, index) => {
       const tasks = mod.tasks ?? [];
+      const previousModulesCompleted = modules
+        .slice(0, index)
+        .every((prevMod) => {
+          const prevTasks = prevMod.tasks ?? [];
+          // Empty modules are implicitly completed (vacuous truth)
+          return prevTasks.every((task) => statuses[task.id] === 'completed');
+        });
       const completedCount = tasks.filter(
         (t) => statuses[t.id] === 'completed'
       ).length;
       const status = getModuleStatus(mod, statuses, previousModulesCompleted);
-
-      if (status !== 'completed') {
-        previousModulesCompleted = false;
-      }
 
       return {
         id: mod.id,
@@ -155,6 +184,7 @@ export function PlanTimeline({
       if (prev[taskId] === nextStatus) return prev;
       return { ...prev, [taskId]: nextStatus };
     });
+    onStatusChange?.(taskId, nextStatus);
   };
 
   if (modules.length === 0) {

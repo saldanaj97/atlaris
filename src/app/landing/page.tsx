@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+
 import {
   FeaturesSection,
   GradientBlobBackground,
@@ -9,6 +11,12 @@ import {
   FinalCtaSectionWithAnalytics,
   HeroSectionWithAnalytics,
 } from './components/LandingAnalyticsWrapper';
+import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
+
+export const metadata: Metadata = {
+  title: LANDING_CANONICAL_TITLE,
+  description: LANDING_DESCRIPTION,
+};
 
 /**
  * Landing page for Atlaris - AI-powered learning roadmap and schedule generator.

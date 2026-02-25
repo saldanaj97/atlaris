@@ -107,3 +107,57 @@ export const pdfExtractionFormDataSchema = z
     file: pdfUploadFileSchema,
   })
   .strict();
+
+/* ─── Extraction API response schemas (client-side parsing) ─── */
+
+/** Permissive section schema for API response parsing (no length constraints). */
+const extractionApiSectionSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  level: z.number(),
+  suggestedTopic: z.string().optional(),
+});
+
+const truncationDataSchema = z.object({
+  truncated: z.boolean(),
+  maxBytes: z.number(),
+  returnedBytes: z.number(),
+  reasons: z.array(z.string()),
+  limits: z.object({
+    maxTextChars: z.number(),
+    maxSections: z.number(),
+    maxSectionChars: z.number(),
+  }),
+});
+
+const extractionProofSchema = z.object({
+  token: z.string(),
+  extractionHash: z.string(),
+  expiresAt: z.string(),
+  version: z.literal(1),
+});
+
+export const extractionApiResponseSchema = z.object({
+  success: z.boolean(),
+  extraction: z
+    .object({
+      pageCount: z.number(),
+      structure: z.object({
+        sections: z.array(extractionApiSectionSchema),
+        suggestedMainTopic: z.string(),
+        confidence: z.enum(['high', 'medium', 'low']),
+      }),
+      truncation: truncationDataSchema.optional(),
+    })
+    .optional(),
+  proof: extractionProofSchema.optional(),
+  error: z.string().optional(),
+  code: z.string().optional(),
+});
+
+export type ExtractionApiResponseData = z.infer<
+  typeof extractionApiResponseSchema
+>;
+export type ExtractionSection = z.infer<typeof extractionApiSectionSchema>;
+export type TruncationData = z.infer<typeof truncationDataSchema>;
+export type ExtractionProofData = z.infer<typeof extractionProofSchema>;

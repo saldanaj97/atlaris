@@ -1,5 +1,7 @@
 import { BookOpen, Calendar, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { Activity } from 'react';
+import type { JSX } from 'react';
 import { getEventTypeConfig, getRelativeTime } from './activity-utils';
 
 import type { PlanSummary } from '@/lib/types/db';
@@ -7,10 +9,17 @@ import type { ScheduledEvent } from '../types';
 
 interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;
-  upcomingEvents?: ScheduledEvent[];
+  upcomingEvents?: readonly ScheduledEvent[];
+  isVisible?: boolean;
 }
 
-function UpcomingScheduleCard({ events }: { events: ScheduledEvent[] }) {
+const EMPTY_UPCOMING_EVENTS: readonly ScheduledEvent[] = [];
+
+function UpcomingScheduleCard({
+  events,
+}: {
+  events: readonly ScheduledEvent[];
+}) {
   return (
     <div className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10">
       {/* Header */}
@@ -131,17 +140,49 @@ function EmptyStateCard() {
   );
 }
 
+function NoUpcomingEventsCard() {
+  return (
+    <div className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10">
+      <div className="flex flex-col items-center py-6 text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/20 dark:bg-zinc-800">
+          <Calendar className="h-6 w-6 text-zinc-400" />
+        </div>
+        <h3 className="mb-2 font-medium text-zinc-900 dark:text-zinc-100">
+          No upcoming events
+        </h3>
+        <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
+          Add sessions to your active plan to keep learning momentum.
+        </p>
+        <Link
+          href="/plans"
+          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          View Plans
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export function ActivityStreamSidebar({
   activePlan,
-  upcomingEvents = [],
-}: ActivityStreamSidebarProps) {
+  upcomingEvents = EMPTY_UPCOMING_EVENTS,
+  isVisible = true,
+}: ActivityStreamSidebarProps): JSX.Element {
+  const activityMode: 'visible' | 'hidden' = isVisible ? 'visible' : 'hidden';
+  const hasUpcomingEvents = upcomingEvents.length > 0;
+
   return (
-    <aside className="flex w-full flex-col gap-4">
-      {activePlan ? (
-        <UpcomingScheduleCard events={upcomingEvents} />
-      ) : (
-        <EmptyStateCard />
-      )}
-    </aside>
+    <Activity mode={activityMode}>
+      <aside className="flex w-full flex-col gap-4">
+        {!activePlan ? (
+          <EmptyStateCard />
+        ) : hasUpcomingEvents ? (
+          <UpcomingScheduleCard events={upcomingEvents} />
+        ) : (
+          <NoUpcomingEventsCard />
+        )}
+      </aside>
+    </Activity>
   );
 }
