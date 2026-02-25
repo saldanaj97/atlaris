@@ -1,11 +1,16 @@
 import { oauthEncryptionEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { integrationTokens } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 import { and, eq } from 'drizzle-orm';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
+const GOOGLE_OAUTH_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
+const GOOGLE_OAUTH_REVOKE_TIMEOUT_MS = 10_000;
+
+type FetchLike = typeof fetch;
 
 export interface OAuthTokenData {
   accessToken: string;
@@ -73,6 +78,59 @@ export function decryptToken(encryptedData: string): OAuthTokenData {
 }
 
 export type IntegrationProvider = 'google_calendar';
+
+export async function revokeGoogleTokens(
+  accessToken: string,
+  fetchImpl: FetchLike = fetch
+): Promise<void> {
+  const body = new URLSearchParams({ token: accessToken });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, GOOGLE_OAUTH_REVOKE_TIMEOUT_MS);
+
+  try {
+    const response = await fetchImpl(GOOGLE_OAUTH_REVOKE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      logger.warn(
+        {
+          status: response.status,
+          provider: 'google_calendar',
+        },
+        'Google OAuth token revocation failed; continuing disconnect cleanup'
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      logger.warn(
+        {
+          provider: 'google_calendar',
+          timeoutMs: GOOGLE_OAUTH_REVOKE_TIMEOUT_MS,
+        },
+        'Google OAuth token revocation timed out; continuing disconnect cleanup'
+      );
+      return;
+    }
+
+    logger.warn(
+      {
+        error,
+        provider: 'google_calendar',
+      },
+      'Google OAuth token revocation threw; continuing disconnect cleanup'
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 interface StoreTokensParams {
   userId: string;
