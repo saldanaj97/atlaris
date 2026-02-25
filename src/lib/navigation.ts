@@ -2,7 +2,7 @@
  * Navigation configuration for authenticated and unauthenticated users.
  *
  * Authenticated users see: Dashboard, Plans, Analytics, Settings
- * Unauthenticated users see: Explore, Pricing, About
+ * Unauthenticated users see: Pricing, About
  */
 
 export type NavItem = {
@@ -59,7 +59,6 @@ export const authenticatedNavItems: NavItem[] = [
  */
 export const unauthenticatedNavItems: NavItem[] = [
   { label: 'Home', href: '/' },
-  { label: 'Explore', href: '/explore' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'About', href: '/about' },
 ];
