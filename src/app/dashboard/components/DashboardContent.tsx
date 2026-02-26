@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
+import { withServerComponentContext } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
@@ -17,14 +17,16 @@ import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHer
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function DashboardContent(): Promise<JSX.Element> {
-  const user = await getOrCreateCurrentUserRecord();
-  if (!user) {
-    redirect('/sign-in?redirect_url=/dashboard');
+  const result = await withServerComponentContext(async (user) => {
+    const summaries = await getPlanSummariesForUser(user.id);
+    return { summaries };
+  });
+
+  if (!result) {
+    redirect('/auth/sign-in');
   }
 
-  const summaries = await getPlanSummariesForUser(user.id);
-
-  // Server-side computation
+  const { summaries } = result;
   const activities = generateActivities(summaries);
   const activePlan = findActivePlan(summaries);
 

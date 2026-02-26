@@ -1,8 +1,13 @@
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv } from '@/lib/config/env';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
+import type { RlsClient } from '@/lib/db/rls';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
-import { createRequestContext, withRequestContext } from './context';
+import {
+  createRequestContext,
+  withRequestContext,
+  type RequestContext,
+} from './context';
 import { AuthError } from './errors';
 import {
   checkUserRateLimit,
@@ -45,6 +50,10 @@ export async function getAuthUserId(): Promise<string | null> {
   return session?.user?.id ?? null;
 }
 
+/**
+ * Resolves the current auth user ID or throws AuthError.
+ * Used internally by `withAuth` and `requireCurrentUserRecord`.
+ */
 export async function requireUser(): Promise<string> {
   const userId = await getEffectiveAuthUserId();
   if (!userId) throw new AuthError();
@@ -81,15 +90,41 @@ async function ensureUserRecord(authUserId: string): Promise<DbUser> {
   return created;
 }
 
-export async function getOrCreateCurrentUserRecord(): Promise<DbUser | null> {
-  const userId = await getEffectiveAuthUserId();
-  if (!userId) return null;
-  return ensureUserRecord(userId);
-}
-
 export async function requireCurrentUserRecord(): Promise<DbUser> {
   const userId = await requireUser();
   return ensureUserRecord(userId);
+}
+
+/**
+ * Private helper encapsulating shared auth + RLS + context + cleanup logic
+ * used by withAuth, withServerComponentContext, and withServerActionContext.
+ */
+async function runWithAuthenticatedContext<T>(
+  authUserId: string,
+  fn: (user: DbUser, rlsDb: RlsClient) => Promise<T>,
+  req?: Request
+): Promise<T> {
+  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
+
+  const requestContext: RequestContext = req
+    ? createRequestContext(req, { userId: authUserId, db: rlsDb, cleanup })
+    : {
+        correlationId: crypto.randomUUID(),
+        userId: authUserId,
+        db: rlsDb,
+        cleanup,
+      };
+
+  try {
+    return await withRequestContext(requestContext, async () => {
+      const user = await ensureUserRecord(authUserId);
+      requestContext.user = { id: user.id, authUserId: user.authUserId };
+      return fn(user, rlsDb);
+    });
+  } finally {
+    await cleanup();
+  }
 }
 
 type RouteHandlerParams = Record<string, string | undefined>;
@@ -129,26 +164,13 @@ export function withAuth(handler: Handler): PlainHandler {
       );
     }
 
-    const user = await requireCurrentUserRecord();
-    const userId = user.authUserId;
+    const authUserId = await requireUser();
 
-    const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-    const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(userId);
-
-    const requestContext = createRequestContext(req, {
-      userId,
-      user,
-      db: rlsDb,
-      cleanup,
-    });
-
-    try {
-      return await withRequestContext(requestContext, () =>
-        handler({ req, userId, user, params })
-      );
-    } finally {
-      await cleanup();
-    }
+    return runWithAuthenticatedContext(
+      authUserId,
+      (user) => handler({ req, userId: authUserId, user, params }),
+      req
+    );
   };
 }
 
@@ -166,6 +188,45 @@ export function withErrorBoundary(fn: PlainHandler): PlainHandler {
 export function compose(...fns: ((h: PlainHandler) => PlainHandler)[]) {
   return (final: PlainHandler): PlainHandler =>
     fns.reduceRight((acc, fn) => fn(acc), final);
+}
+
+/**
+ * Establishes an RLS-enforced DB context for Server Components.
+ * This is the Server Component equivalent of `withAuth` for API routes.
+ *
+ * Returns null if the user is not authenticated.
+ */
+export async function withServerComponentContext<T>(
+  fn: (user: DbUser) => Promise<T>
+): Promise<T | null> {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) return null;
+
+  if (appEnv.isTest) {
+    const user = await ensureUserRecord(authUserId);
+    return fn(user);
+  }
+
+  return runWithAuthenticatedContext(authUserId, (user) => fn(user));
+}
+
+/**
+ * Wrapper for Server Actions that sets up authenticated RLS context.
+ * Equivalent to withServerComponentContext but designed for 'use server' functions.
+ * Handles auth, RLS client creation, user lookup, and cleanup.
+ *
+ * Also passes the RLS db client to the callback since server actions
+ * often need to pass it explicitly to query functions.
+ *
+ * Returns null if user is not authenticated (caller should handle).
+ */
+export async function withServerActionContext<T>(
+  fn: (user: DbUser, db: RlsClient) => Promise<T>
+): Promise<T | null> {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) return null;
+
+  return runWithAuthenticatedContext(authUserId, fn);
 }
 
 export function withRateLimit(

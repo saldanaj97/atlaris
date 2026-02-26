@@ -3,8 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getEffectiveAuthUserId } from '@/lib/api/auth';
-import { getUserByAuthId } from '@/lib/db/queries/users';
+import { withServerComponentContext } from '@/lib/api/auth';
 import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
 import { getUsageSummary } from '@/lib/stripe/usage';
@@ -15,17 +14,18 @@ import { redirect } from 'next/navigation';
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function BillingCards() {
-  const authUserId = await getEffectiveAuthUserId();
-  if (!authUserId) redirect('/sign-in?redirect_url=/settings/billing');
+  const result = await withServerComponentContext(async (user) => {
+    const db = getDb();
+    const [usage, sub] = await Promise.all([
+      getUsageSummary(user.id, db),
+      getSubscriptionTier(user.id, db),
+    ]);
+    return { usage, sub };
+  });
 
-  const dbUser = await getUserByAuthId(authUserId);
-  if (!dbUser) redirect('/plans/new');
+  if (!result) redirect('/auth/sign-in');
 
-  const db = getDb();
-  const [usage, sub] = await Promise.all([
-    getUsageSummary(dbUser.id, db),
-    getSubscriptionTier(dbUser.id, db),
-  ]);
+  const { usage, sub } = result;
 
   const nextBilling = sub.subscriptionPeriodEnd
     ? new Date(sub.subscriptionPeriodEnd).toLocaleDateString('en-US', {

@@ -2,8 +2,7 @@ import { ModelSelector } from '@/components/settings/model-selector';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SubscriptionTier } from '@/lib/ai/types/model.types';
-import { getEffectiveAuthUserId } from '@/lib/api/auth';
-import { getUserByAuthId } from '@/lib/db/queries/users';
+import { withServerComponentContext } from '@/lib/api/auth';
 import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
 import { redirect } from 'next/navigation';
@@ -14,23 +13,23 @@ import type { JSX } from 'react';
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function ModelSelectionCard(): Promise<JSX.Element> {
-  const authUserId = await getEffectiveAuthUserId();
-  if (!authUserId) redirect('/sign-in?redirect_url=/settings/ai');
+  const result = await withServerComponentContext(async (user) => {
+    const db = getDb();
+    const sub = await getSubscriptionTier(user.id, db);
+    return { sub, preferredAiModel: user.preferredAiModel };
+  });
 
-  const dbUser = await getUserByAuthId(authUserId);
-  if (!dbUser) redirect('/plans/new');
+  if (!result) redirect('/auth/sign-in');
 
-  const db = getDb();
-  const sub = await getSubscriptionTier(dbUser.id, db);
   const userTier: SubscriptionTier =
-    sub.subscriptionTier === 'starter'
+    result.sub.subscriptionTier === 'starter'
       ? 'starter'
-      : sub.subscriptionTier === 'pro'
+      : result.sub.subscriptionTier === 'pro'
         ? 'pro'
         : 'free';
 
   // TODO: [OPENROUTER-MIGRATION] Get user's preferred model from database when column exists:
-  // const userPreferredModel = dbUser.preferredAiModel;
+  // const userPreferredModel = result.preferredAiModel;
   const userPreferredModel = null;
 
   return (

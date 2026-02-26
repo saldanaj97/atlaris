@@ -10,12 +10,9 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { getEffectiveAuthUserId } from '@/lib/api/auth';
-import { createRequestContext, withRequestContext } from '@/lib/api/context';
+import { withServerActionContext } from '@/lib/api/auth';
 import { getModuleDetail } from '@/lib/db/queries/modules';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
-import { getUserByAuthId } from '@/lib/db/queries/users';
-import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
@@ -55,42 +52,11 @@ function assertNonEmpty(value: string | undefined, message: string) {
 export async function getModuleForPage(
   moduleId: string
 ): Promise<ModuleAccessResult> {
-  const authUserId = await getEffectiveAuthUserId();
-  if (!authUserId) {
-    logger.debug({ moduleId }, 'Module access denied: user not authenticated');
-    return moduleError(
-      'UNAUTHORIZED',
-      'You must be signed in to view this module.'
-    );
-  }
-
-  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-
-  try {
-    const user = await getUserByAuthId(authUserId, rlsDb);
-    if (!user) {
-      logger.warn(
-        { moduleId, authUserId },
-        'Module access denied: authenticated user not found in database'
-      );
-      return moduleError(
-        'UNAUTHORIZED',
-        'Your account could not be found. Please sign in again.'
-      );
-    }
-
-    const ctx = createRequestContext(
-      new Request('http://localhost/server-action/get-module'),
-      { userId: authUserId, db: rlsDb, cleanup }
-    );
-
-    const moduleData = await withRequestContext(ctx, () =>
-      getModuleDetail(moduleId, rlsDb)
-    );
-
+  const result = await withServerActionContext(async (_user, rlsDb) => {
+    const moduleData = await getModuleDetail(moduleId, rlsDb);
     if (!moduleData) {
       logger.debug(
-        { moduleId, userId: user.id },
+        { moduleId },
         'Module not found or user does not have access'
       );
       return moduleError(
@@ -98,14 +64,17 @@ export async function getModuleForPage(
         'This module does not exist or you do not have access to it.'
       );
     }
-
     return moduleSuccess(moduleData);
-  } catch (error) {
-    logger.error({ moduleId, error }, 'Failed to fetch module');
-    return moduleError('INTERNAL_ERROR', 'An unexpected error occurred.');
-  } finally {
-    await cleanup();
+  });
+
+  if (!result) {
+    logger.debug({ moduleId }, 'Module access denied: user not authenticated');
+    return moduleError(
+      'UNAUTHORIZED',
+      'You must be signed in to view this module.'
+    );
   }
+  return result;
 }
 
 /**
@@ -126,29 +95,18 @@ export async function updateModuleTaskProgressAction({
     throw new Error('Invalid progress status.');
   }
 
-  const authUserId = await getEffectiveAuthUserId();
-  if (!authUserId) {
-    throw new Error('You must be signed in to update progress.');
-  }
-
-  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-
-  try {
-    const user = await getUserByAuthId(authUserId, rlsDb);
-    if (!user) {
-      throw new Error('User not found.');
-    }
-
-    const ctx = createRequestContext(
-      new Request('http://localhost/server-action/update-module-task-progress'),
-      { userId: authUserId, db: rlsDb, cleanup }
-    );
-
-    let taskProgress: Awaited<ReturnType<typeof setTaskProgress>>;
+  const result = await withServerActionContext(async (user, rlsDb) => {
     try {
-      taskProgress = await withRequestContext(ctx, async () =>
-        setTaskProgress(user.id, taskId, status, rlsDb)
+      const taskProgress = await setTaskProgress(
+        user.id,
+        taskId,
+        status,
+        rlsDb
       );
+      revalidatePath(`/plans/${planId}/modules/${moduleId}`);
+      revalidatePath(`/plans/${planId}`);
+      revalidatePath('/plans');
+      return { taskId: taskProgress.taskId, status: taskProgress.status };
     } catch (error) {
       logger.error(
         {
@@ -163,16 +121,8 @@ export async function updateModuleTaskProgressAction({
       );
       throw new Error('Unable to update task progress right now.');
     }
+  });
 
-    revalidatePath(`/plans/${planId}/modules/${moduleId}`);
-    revalidatePath(`/plans/${planId}`);
-    revalidatePath('/plans');
-
-    return {
-      taskId: taskProgress.taskId,
-      status: taskProgress.status,
-    };
-  } finally {
-    await cleanup();
-  }
+  if (!result) throw new Error('You must be signed in to update progress.');
+  return result;
 }

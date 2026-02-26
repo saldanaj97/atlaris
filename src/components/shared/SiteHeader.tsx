@@ -1,6 +1,5 @@
+import { withServerComponentContext } from '@/lib/api/auth';
 import { getSessionSafe } from '@/lib/auth/server';
-import { getUserByAuthId } from '@/lib/db/queries/users';
-import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
@@ -42,14 +41,10 @@ export default async function SiteHeader() {
   let tier: SubscriptionTier | undefined;
   if (authUserId) {
     try {
-      const { db: rlsDb, cleanup } =
-        await createAuthenticatedRlsClient(authUserId);
-      try {
-        const user = await getUserByAuthId(authUserId, rlsDb);
-        tier = user?.subscriptionTier;
-      } finally {
-        await cleanup();
-      }
+      const result = await withServerComponentContext(
+        async (user) => user.subscriptionTier
+      );
+      tier = result ?? undefined;
     } catch {
       // Silently fail - tier badge is non-critical
     }

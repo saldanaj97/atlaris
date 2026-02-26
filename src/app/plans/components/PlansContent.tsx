@@ -2,44 +2,37 @@ import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getOrCreateCurrentUserRecord } from '@/lib/api/auth';
+import { withServerComponentContext } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
 import { getUsageSummary } from '@/lib/stripe/usage';
 import { Plus, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { cache } from 'react';
 
 import { PlanCountBadge } from '@/app/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/plans/components/PlansList';
-
-const getCachedCurrentUser = cache(async () => getOrCreateCurrentUserRecord());
-
-const getCachedUsageSummary = cache(async (userId: string) => {
-  const db = getDb();
-  return getUsageSummary(userId, db);
-});
 
 /**
  * Async component that fetches usage data and renders the plan count badge.
  * Wrapped in its own Suspense boundary by the parent page.
  */
 export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
-  const user = await getCachedCurrentUser();
-  if (!user) {
-    return null;
-  }
+  const result = await withServerComponentContext(async (user) => {
+    const db = getDb();
+    const usage = await getUsageSummary(user.id, db);
+    return { usage };
+  });
 
-  const usage = await getCachedUsageSummary(user.id);
+  if (!result) return null;
 
   return (
     <PlanCountBadge
       usage={{
-        tier: usage.tier,
-        activePlans: usage.activePlans,
-        regenerations: usage.regenerations,
-        exports: usage.exports,
+        tier: result.usage.tier,
+        activePlans: result.usage.activePlans,
+        regenerations: result.usage.regenerations,
+        exports: result.usage.exports,
       }}
     />
   );
@@ -50,18 +43,21 @@ export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlansContent(): Promise<JSX.Element> {
-  const user = await getCachedCurrentUser();
-  if (!user) {
-    redirect('/sign-in?redirect_url=/plans');
+  const result = await withServerComponentContext(async (user) => {
+    const db = getDb();
+    const [summaries, usage] = await Promise.all([
+      getPlanSummariesForUser(user.id, db),
+      getUsageSummary(user.id, db),
+    ]);
+    return { summaries, usage };
+  });
+
+  if (!result) {
+    redirect('/auth/sign-in');
   }
 
+  const { summaries, usage } = result;
   const referenceTimestamp = new Date().toISOString();
-
-  const db = getDb();
-  const [summaries, usage] = await Promise.all([
-    getPlanSummariesForUser(user.id, db),
-    getCachedUsageSummary(user.id),
-  ]);
 
   if (!summaries.length) {
     return (
