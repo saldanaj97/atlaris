@@ -1,10 +1,10 @@
-import React from 'react';
+import type { JSX } from 'react';
 
 /**
  * Team section with placeholder member cards.
  * TODO: Replace with real team data
  */
-export function TeamSection(): React.ReactElement {
+export function TeamSection(): JSX.Element {
   return (
     <section className="relative py-24 lg:py-32" aria-labelledby="team-heading">
       <div className="relative z-10 mx-auto max-w-screen-xl px-6">
@@ -18,7 +18,6 @@ export function TeamSection(): React.ReactElement {
         </div>
 
         <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {/* TODO: Replace with real team data */}
           {TEAM_MEMBERS.map((member) => (
             <div
               key={member.name}

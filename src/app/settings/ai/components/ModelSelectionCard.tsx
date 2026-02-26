@@ -16,7 +16,7 @@ export async function ModelSelectionCard(): Promise<JSX.Element> {
   const result = await withServerComponentContext(async (user) => {
     const db = getDb();
     const sub = await getSubscriptionTier(user.id, db);
-    return { sub, preferredAiModel: user.preferredAiModel };
+    return { sub };
   });
 
   if (!result) redirect('/auth/sign-in');
@@ -28,8 +28,7 @@ export async function ModelSelectionCard(): Promise<JSX.Element> {
         ? 'pro'
         : 'free';
 
-  // TODO: [OPENROUTER-MIGRATION] Get user's preferred model from database when column exists:
-  // const userPreferredModel = result.preferredAiModel;
+  // TODO: [OPENROUTER-MIGRATION] Get user's preferred model from database when column exists
   const userPreferredModel = null;
 
   return (

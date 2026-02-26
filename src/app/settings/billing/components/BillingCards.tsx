@@ -8,12 +8,13 @@ import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
 import { getUsageSummary } from '@/lib/stripe/usage';
 import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
 
 /**
  * Async component that fetches subscription and usage data.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function BillingCards() {
+export async function BillingCards(): Promise<JSX.Element> {
   const result = await withServerComponentContext(async (user) => {
     const db = getDb();
     const [usage, sub] = await Promise.all([
@@ -142,7 +143,7 @@ export async function BillingCards() {
  * Skeleton for the billing cards.
  * Shown while the async component is loading.
  */
-export function BillingCardsSkeleton() {
+export function BillingCardsSkeleton(): JSX.Element {
   return (
     <>
       {/* Current Plan Card skeleton */}

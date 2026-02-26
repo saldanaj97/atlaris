@@ -1,6 +1,9 @@
 import { Suspense } from 'react';
 
-import { ProfileForm, ProfileFormSkeleton } from './components/ProfileForm';
+import {
+  ProfileForm,
+  ProfileFormSkeleton,
+} from '@/app/settings/profile/components/ProfileForm';
 
 /**
  * Profile Settings page with Suspense boundary for data-dependent content.

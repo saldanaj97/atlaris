@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 
@@ -113,12 +114,12 @@ export function ProfileForm(): React.ReactElement {
         <h2 className="mb-4 text-xl font-semibold">Personal Information</h2>
         <div className="space-y-4">
           <div>
-            <label
+            <Label
               htmlFor="profile-name"
-              className="text-muted-foreground mb-1 block text-sm"
+              className="text-muted-foreground mb-1"
             >
               Name
-            </label>
+            </Label>
             <input
               id="profile-name"
               type="text"

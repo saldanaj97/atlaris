@@ -56,11 +56,11 @@ function assertNonEmpty(value: string | undefined, message: string) {
 }
 
 async function ensureTaskOwnership(
+  db: ReturnType<typeof getDb>,
   planId: string,
   taskId: string,
   userId: string
 ) {
-  const db = getDb();
   const [ownership] = await db
     .select({
       planId: learningPlans.id,
@@ -90,9 +90,9 @@ export async function updateTaskProgressAction({
     throw new Error('Invalid progress status.');
   }
 
-  const result = await withServerActionContext(async (user) => {
-    await ensureTaskOwnership(planId, taskId, user.id);
-    const taskProgress = await setTaskProgress(user.id, taskId, status);
+  const result = await withServerActionContext(async (user, rlsDb) => {
+    await ensureTaskOwnership(rlsDb, planId, taskId, user.id);
+    const taskProgress = await setTaskProgress(user.id, taskId, status, rlsDb);
     revalidatePath(`/plans/${planId}`);
     revalidatePath('/plans');
     return { taskId: taskProgress.taskId, status: taskProgress.status };

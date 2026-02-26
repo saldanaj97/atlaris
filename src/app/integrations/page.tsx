@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import type { Metadata } from 'next';
 
 import { IntegrationGrid, RequestIntegration } from './components';
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
     'Connect Atlaris with tools like Google Calendar and export learning schedules with ease.',
 };
 
-export default function Page() {
+export default function Page(): JSX.Element {
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
       <header className="mb-6">

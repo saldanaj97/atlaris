@@ -1,20 +1,22 @@
-import React from 'react';
+import type { JSX } from 'react';
+
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 /**
  * Bottom call-to-action section.
  */
-export function CtaSection(): React.ReactElement {
+export function CtaSection(): JSX.Element {
   return (
     <section
       className="relative overflow-hidden py-24 lg:py-32"
       aria-labelledby="about-cta-heading"
     >
       <div className="relative z-10 mx-auto max-w-screen-xl px-6 text-center">
-        <div className="dark:bg-card/40 mx-auto max-w-3xl rounded-3xl border border-white/50 bg-white/40 p-12 shadow-xl backdrop-blur-sm dark:border-white/10">
+        <Card className="dark:bg-card/40 mx-auto max-w-3xl rounded-3xl border border-white/50 bg-white/40 p-12 shadow-xl backdrop-blur-sm dark:border-white/10">
           <h2
             id="about-cta-heading"
             className="text-foreground marketing-h2 mb-2"
@@ -35,7 +37,7 @@ export function CtaSection(): React.ReactElement {
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
-        </div>
+        </Card>
       </div>
     </section>
   );

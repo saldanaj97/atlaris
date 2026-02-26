@@ -1,8 +1,10 @@
+import type { JSX } from 'react';
+
 import type { IntegrationCardProps } from './IntegrationCard';
 
 import { IntegrationCard } from './IntegrationCard';
 
-const integrations: IntegrationCardProps[] = [
+const INTEGRATIONS: IntegrationCardProps[] = [
   {
     name: 'Google Calendar',
     icon: '📅',
@@ -15,7 +17,7 @@ const integrations: IntegrationCardProps[] = [
       'Time-block scheduling',
       'Calendar conflict detection',
     ],
-    // {/* TODO: Wire to Google Calendar OAuth flow in src/lib/integrations/ */}
+    // TODO: Wire to Google Calendar OAuth flow in src/lib/integrations/
   },
   {
     name: 'Notion',
@@ -29,7 +31,7 @@ const integrations: IntegrationCardProps[] = [
       'Resource link sync',
       'Template customization',
     ],
-    // {/* TODO: Wire to Notion OAuth flow in src/lib/integrations/ */}
+    // TODO: Wire to Notion OAuth flow in src/lib/integrations/
   },
   {
     name: 'CSV Export',
@@ -43,7 +45,7 @@ const integrations: IntegrationCardProps[] = [
       'Custom date ranges',
       'Bulk export',
     ],
-    // {/* TODO: Implement CSV download endpoint */}
+    // TODO: Implement CSV download endpoint
   },
   {
     name: 'Slack',
@@ -86,10 +88,10 @@ const integrations: IntegrationCardProps[] = [
   },
 ];
 
-export function IntegrationGrid() {
+export function IntegrationGrid(): JSX.Element {
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      {integrations.map((integration) => (
+      {INTEGRATIONS.map((integration) => (
         <IntegrationCard key={integration.name} {...integration} />
       ))}
     </div>

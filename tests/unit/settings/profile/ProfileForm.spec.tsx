@@ -16,14 +16,9 @@ import { toast } from 'sonner';
 
 import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
 
-const MOCK_PROFILE = {
-  id: 'user-123',
-  name: 'Ada Lovelace',
-  email: 'ada@example.com',
-  subscriptionTier: 'free',
-  subscriptionStatus: 'active',
-  createdAt: '2025-06-15T10:00:00.000Z',
-};
+import { buildProfile } from '../../../fixtures/profile';
+
+const MOCK_PROFILE = buildProfile();
 
 function mockFetchSuccess(data: unknown = MOCK_PROFILE): void {
   vi.stubGlobal(

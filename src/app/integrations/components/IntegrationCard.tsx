@@ -1,7 +1,10 @@
+import type { JSX } from 'react';
+
 import { Check } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 export type IntegrationStatus = 'available' | 'coming_soon' | 'connected';
 
@@ -33,7 +36,7 @@ function ActionButton({ status }: { status: IntegrationStatus }) {
   switch (status) {
     case 'available':
       return (
-        // {/* TODO: Implement OAuth/connection flow */}
+        // TODO: Implement OAuth/connection flow
         <Button variant="default">Connect</Button>
       );
     case 'coming_soon':
@@ -44,7 +47,7 @@ function ActionButton({ status }: { status: IntegrationStatus }) {
       );
     case 'connected':
       return (
-        // {/* TODO: Implement manage/disconnect flow */}
+        // TODO: Implement manage/disconnect flow
         <Button variant="outline">Manage</Button>
       );
   }
@@ -56,9 +59,9 @@ export function IntegrationCard({
   icon,
   status,
   features,
-}: IntegrationCardProps) {
+}: IntegrationCardProps): JSX.Element {
   return (
-    <div className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10">
+    <Card className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10">
       <div className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30" />
 
       <div className="relative flex flex-col gap-5">
@@ -96,6 +99,6 @@ export function IntegrationCard({
           <ActionButton status={status} />
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

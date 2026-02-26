@@ -18,7 +18,6 @@ export type NavItem = {
 
 /**
  * Navigation items for authenticated users.
- * Dashboard is clickable and has a dropdown with My Plans and Create a Plan.
  */
 export const authenticatedNavItems: NavItem[] = [
   {

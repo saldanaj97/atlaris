@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { USER_PROFILE_NAME_MAX_LENGTH } from '@/lib/validation/user-profile';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -183,7 +184,9 @@ describe('PUT /api/v1/user/profile', () => {
       'http://localhost:3000/api/v1/user/profile',
       {
         method: 'PUT',
-        body: JSON.stringify({ name: 'a'.repeat(101) }),
+        body: JSON.stringify({
+          name: 'a'.repeat(USER_PROFILE_NAME_MAX_LENGTH + 1),
+        }),
       }
     );
 

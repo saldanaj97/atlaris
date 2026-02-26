@@ -7,6 +7,7 @@ import { json } from '@/lib/api/response';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 import { updateUserProfileSchema } from '@/lib/validation/user-profile';
 
 type UserProfileResponse = Pick<
@@ -36,6 +37,7 @@ export const GET = withErrorBoundary(
     const db = getDb();
     const user = await requireInternalUserByAuthId(userId, db);
 
+    logger.info({ action: 'profile.read', userId }, 'Profile read');
     return json(toUserProfileResponse(user));
   })
 );
@@ -78,6 +80,7 @@ export const PUT = withErrorBoundary(
       );
     }
 
+    logger.info({ action: 'profile.update', userId }, 'Profile updated');
     return json(toUserProfileResponse(updatedUser));
   })
 );

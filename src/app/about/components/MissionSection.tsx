@@ -1,9 +1,11 @@
-import React from 'react';
+import type { JSX } from 'react';
+
+import { Card } from '@/components/ui/card';
 
 /**
  * Mission section explaining what Atlaris does.
  */
-export function MissionSection(): React.ReactElement {
+export function MissionSection(): JSX.Element {
   return (
     <section
       className="relative py-24 lg:py-32"
@@ -38,7 +40,7 @@ export function MissionSection(): React.ReactElement {
             </p>
           </div>
 
-          <div className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm dark:border-white/10">
+          <Card className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm dark:border-white/10">
             <div
               className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30"
               aria-hidden="true"
@@ -61,7 +63,7 @@ export function MissionSection(): React.ReactElement {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </section>

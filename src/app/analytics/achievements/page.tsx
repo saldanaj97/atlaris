@@ -1,13 +1,23 @@
 import type { Metadata } from 'next';
+import type { JSX } from 'react';
 
 import { BookOpen, Flame, Lock, Star, Target, Trophy, Zap } from 'lucide-react';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+
 export const metadata: Metadata = {
-  title: 'Achievements',
+  title: 'Achievements | Atlaris',
   description: 'Celebrate your learning milestones and unlock badges.',
+  openGraph: {
+    title: 'Achievements | Atlaris',
+    description: 'Celebrate your learning milestones and unlock badges.',
+    url: '/analytics/achievements',
+    images: ['/og-default.jpg'],
+  },
 };
 
-const achievements = [
+const ACHIEVEMENTS = [
   {
     icon: Trophy,
     name: 'First Steps',
@@ -45,7 +55,7 @@ const achievements = [
   },
 ] as const;
 
-export default function AchievementsPage(): React.JSX.Element {
+export default function AchievementsPage(): JSX.Element {
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
       <header className="mb-6">
@@ -56,46 +66,41 @@ export default function AchievementsPage(): React.JSX.Element {
       </header>
 
       {/* Coming soon banner */}
-      <div className="mb-8 rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10">
-        <div className="flex items-center gap-3">
-          <Trophy className="text-primary h-5 w-5 shrink-0" />
-          <p className="text-muted-foreground text-sm">
-            <span className="text-foreground font-medium">
-              Your achievements are being crafted.
-            </span>{' '}
-            Earn badges, track milestones, and showcase your progress —
-            launching soon.
-          </p>
-        </div>
-      </div>
+      <Alert className="mb-8">
+        <Trophy className="h-4 w-4" />
+        <AlertTitle>Your achievements are being crafted.</AlertTitle>
+        <AlertDescription>
+          Earn badges, track milestones, and showcase your progress — launching
+          soon.
+        </AlertDescription>
+      </Alert>
 
       {/* Achievement preview grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {achievements.map((achievement) => (
-          <div
-            key={achievement.name}
-            className="group relative rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10"
-          >
-            {/* Lock overlay */}
-            <div className="absolute top-4 right-4">
-              <Lock className="text-muted-foreground/60 h-4 w-4" />
-            </div>
-
-            <div className="flex flex-col gap-3 opacity-50">
-              <achievement.icon className="text-primary h-8 w-8" />
-              <div>
-                <h3 className="font-medium">{achievement.name}</h3>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {achievement.description}
-                </p>
+        {ACHIEVEMENTS.map((achievement) => (
+          <Card key={achievement.name} className="group relative">
+            <CardContent>
+              {/* Lock overlay */}
+              <div className="absolute top-4 right-4">
+                <Lock className="text-muted-foreground/60 h-4 w-4" />
               </div>
-            </div>
 
-            {/* Locked progress bar */}
-            <div className="mt-4">
-              <div className="bg-muted/50 h-1.5 w-full rounded-full" />
-            </div>
-          </div>
+              <div className="flex flex-col gap-3 opacity-50">
+                <achievement.icon className="text-primary h-8 w-8" />
+                <div>
+                  <h3 className="font-medium">{achievement.name}</h3>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    {achievement.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Locked progress bar */}
+              <div className="mt-4">
+                <div className="bg-muted/50 h-1.5 w-full rounded-full" />
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

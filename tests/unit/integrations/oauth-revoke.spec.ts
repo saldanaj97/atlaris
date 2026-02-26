@@ -48,4 +48,17 @@ describe('revokeGoogleTokens', () => {
       revokeGoogleTokens('stale-token', fetchMock as typeof fetch)
     ).resolves.toBeUndefined();
   });
+
+  it('does not throw when fetch is aborted', async () => {
+    const abortError = new Error('The operation was aborted');
+    abortError.name = 'AbortError';
+
+    const fetchMock = vi
+      .fn<(..._args: unknown[]) => Promise<Response>>()
+      .mockRejectedValue(abortError);
+
+    await expect(
+      revokeGoogleTokens('stale-token', fetchMock as typeof fetch)
+    ).resolves.toBeUndefined();
+  });
 });

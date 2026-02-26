@@ -7,13 +7,15 @@ import {
   createRequestContext,
   withRequestContext,
   type RequestContext,
-} from './context';
+} from '@/lib/api/context';
 import { AuthError } from './errors';
 import {
   checkUserRateLimit,
   getUserRateLimitHeaders,
   type UserRateLimitCategory,
 } from './user-rate-limit';
+
+type MaybePromise<T> = T | Promise<T>;
 
 /**
  * Returns the effective auth user id for the current request.
@@ -101,7 +103,7 @@ export async function requireCurrentUserRecord(): Promise<DbUser> {
  */
 async function runWithAuthenticatedContext<T>(
   authUserId: string,
-  fn: (user: DbUser, rlsDb: RlsClient) => Promise<T>,
+  fn: (user: DbUser, rlsDb: RlsClient) => MaybePromise<T>,
   req?: Request
 ): Promise<T> {
   const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
@@ -197,7 +199,7 @@ export function compose(...fns: ((h: PlainHandler) => PlainHandler)[]) {
  * Returns null if the user is not authenticated.
  */
 export async function withServerComponentContext<T>(
-  fn: (user: DbUser) => Promise<T>
+  fn: (user: DbUser) => MaybePromise<T>
 ): Promise<T | null> {
   const authUserId = await getEffectiveAuthUserId();
   if (!authUserId) return null;
@@ -221,7 +223,7 @@ export async function withServerComponentContext<T>(
  * Returns null if user is not authenticated (caller should handle).
  */
 export async function withServerActionContext<T>(
-  fn: (user: DbUser, db: RlsClient) => Promise<T>
+  fn: (user: DbUser, db: RlsClient) => MaybePromise<T>
 ): Promise<T | null> {
   const authUserId = await getEffectiveAuthUserId();
   if (!authUserId) return null;

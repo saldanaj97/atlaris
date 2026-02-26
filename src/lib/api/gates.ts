@@ -6,7 +6,7 @@ import {
   checkPlanLimit,
   checkRegenerationLimit,
 } from '@/lib/stripe/usage';
-import type { PlainHandler } from './auth';
+import type { PlainHandler, RouteHandlerContext } from './auth';
 
 /**
  * Subscription tier hierarchy
@@ -60,7 +60,7 @@ async function resolveGateUser(): Promise<GateUser> {
  */
 export function requireSubscription(minTier: SubscriptionTier) {
   return (handler: PlainHandler): PlainHandler => {
-    return async (req: Request) => {
+    return async (req: Request, routeContext?: RouteHandlerContext) => {
       const user = await resolveGateUser();
 
       const userTierLevel = TIER_HIERARCHY[user.subscriptionTier];
@@ -80,8 +80,7 @@ export function requireSubscription(minTier: SubscriptionTier) {
         );
       }
 
-      // Proceed with the handler
-      return handler(req);
+      return handler(req, routeContext);
     };
   };
 }
@@ -106,7 +105,7 @@ export function checkFeatureLimit(
   getDbClient: GateDbClientResolver
 ): (handler: PlainHandler) => PlainHandler {
   return (handler: PlainHandler): PlainHandler => {
-    return async (req: Request) => {
+    return async (req: Request, routeContext?: RouteHandlerContext) => {
       const user = await resolveGateUser();
 
       // Check limits based on feature type
@@ -147,8 +146,7 @@ export function checkFeatureLimit(
         });
       }
 
-      // Proceed with the handler
-      return handler(req);
+      return handler(req, routeContext);
     };
   };
 }

@@ -9,6 +9,7 @@ import {
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 
 export const metadata: Metadata = {
@@ -62,26 +63,18 @@ export default function UsageAnalyticsPage(): JSX.Element {
       </header>
 
       {/* Coming soon callout */}
-      <div className="mb-10 rounded-2xl border border-white/40 bg-black/5 p-6 shadow-lg backdrop-blur-xl dark:border-white/10">
-        <div className="flex items-start gap-4">
-          <div className="bg-primary/10 text-primary rounded-xl p-3">
-            <Sparkles className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-foreground text-lg font-semibold">
-                We&apos;re building something special
-              </h2>
-              <TrendingUp className="text-primary h-4 w-4" aria-hidden="true" />
-            </div>
-            <p className="text-muted-foreground max-w-2xl leading-relaxed">
-              Usage analytics will give you a clear picture of your learning
-              habits and progress. We&apos;re putting the finishing touches on
-              it&nbsp;— we&apos;ll let you know when it&apos;s ready.
-            </p>
-          </div>
-        </div>
-      </div>
+      <Alert className="mb-10">
+        <Sparkles className="h-4 w-4" />
+        <AlertTitle className="flex items-center gap-2">
+          We&apos;re building something special
+          <TrendingUp className="text-primary h-4 w-4" aria-hidden="true" />
+        </AlertTitle>
+        <AlertDescription>
+          Usage analytics will give you a clear picture of your learning habits
+          and progress. We&apos;re putting the finishing touches on it&nbsp;—
+          we&apos;ll let you know when it&apos;s ready.
+        </AlertDescription>
+      </Alert>
 
       {/* Preview cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
