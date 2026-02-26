@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Metadata } from 'next';
 
 import { GradientBlobBackground } from '@/app/landing/components';
@@ -8,7 +9,7 @@ import {
   ValuesSection,
   TeamSection,
   CtaSection,
-} from './components';
+} from '@/app/about/components';
 
 export const metadata: Metadata = {
   title: 'About | Atlaris',
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+export default function Page(): React.ReactElement {
   return (
     <div className="from-primary/5 via-accent/5 to-background text-foreground relative min-h-screen w-full overflow-hidden bg-linear-to-br font-sans">
       <GradientBlobBackground />

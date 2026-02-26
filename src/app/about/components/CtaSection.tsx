@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 /**
  * Bottom call-to-action section.
  */
-export function CtaSection() {
+export function CtaSection(): React.ReactElement {
   return (
     <section
       className="relative overflow-hidden py-24 lg:py-32"

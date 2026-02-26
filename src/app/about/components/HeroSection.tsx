@@ -1,9 +1,11 @@
+import React from 'react';
+
 import { Badge } from '@/components/ui/badge';
 
 /**
  * Hero section for the About page with mission statement.
  */
-export function HeroSection() {
+export function HeroSection(): React.ReactElement {
   return (
     <section
       className="relative py-24 lg:py-32"

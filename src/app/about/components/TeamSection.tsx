@@ -1,8 +1,10 @@
+import React from 'react';
+
 /**
  * Team section with placeholder member cards.
  * TODO: Replace with real team data
  */
-export function TeamSection() {
+export function TeamSection(): React.ReactElement {
   return (
     <section className="relative py-24 lg:py-32" aria-labelledby="team-heading">
       <div className="relative z-10 mx-auto max-w-screen-xl px-6">

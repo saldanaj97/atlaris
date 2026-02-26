@@ -1,7 +1,9 @@
+import React from 'react';
+
 /**
  * Mission section explaining what Atlaris does.
  */
-export function MissionSection() {
+export function MissionSection(): React.ReactElement {
   return (
     <section
       className="relative py-24 lg:py-32"

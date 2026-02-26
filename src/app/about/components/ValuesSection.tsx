@@ -1,7 +1,9 @@
+import React from 'react';
+
 /**
  * Core values section with glassmorphism cards.
  */
-export function ValuesSection() {
+export function ValuesSection(): React.ReactElement {
   return (
     <section
       className="relative py-24 lg:py-32"
