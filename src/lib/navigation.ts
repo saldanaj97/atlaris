@@ -2,7 +2,7 @@
  * Navigation configuration for authenticated and unauthenticated users.
  *
  * Authenticated users see: Dashboard, Plans, Analytics, Settings
- * Unauthenticated users see: Pricing, About
+ * Unauthenticated users see: Home, Pricing, About
  */
 
 export type NavItem = {

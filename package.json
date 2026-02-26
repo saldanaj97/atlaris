@@ -120,7 +120,8 @@
       "@eslint/eslintrc>minimatch": "3.1.2",
       "eslint>minimatch": "3.1.2",
       "minimatch": "^10.2.1",
-      "tar": "^7.5.8"
+      "tar": "^7.5.8",
+      "rollup": ">=4.59.0"
     }
   }
 }
