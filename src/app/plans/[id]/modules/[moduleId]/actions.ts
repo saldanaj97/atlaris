@@ -64,25 +64,26 @@ export async function getModuleForPage(
     );
   }
 
-  const user = await getUserByAuthId(authUserId);
-  if (!user) {
-    logger.warn(
-      { moduleId, authUserId },
-      'Module access denied: authenticated user not found in database'
-    );
-    return moduleError(
-      'UNAUTHORIZED',
-      'Your account could not be found. Please sign in again.'
-    );
-  }
-
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-  const ctx = createRequestContext(
-    new Request('http://localhost/server-action/get-module'),
-    { userId: authUserId, db: rlsDb, cleanup }
-  );
 
   try {
+    const user = await getUserByAuthId(authUserId, rlsDb);
+    if (!user) {
+      logger.warn(
+        { moduleId, authUserId },
+        'Module access denied: authenticated user not found in database'
+      );
+      return moduleError(
+        'UNAUTHORIZED',
+        'Your account could not be found. Please sign in again.'
+      );
+    }
+
+    const ctx = createRequestContext(
+      new Request('http://localhost/server-action/get-module'),
+      { userId: authUserId, db: rlsDb, cleanup }
+    );
+
     const moduleData = await withRequestContext(ctx, () =>
       getModuleDetail(moduleId, rlsDb)
     );
@@ -100,10 +101,7 @@ export async function getModuleForPage(
 
     return moduleSuccess(moduleData);
   } catch (error) {
-    logger.error(
-      { moduleId, userId: user.id, error },
-      'Failed to fetch module'
-    );
+    logger.error({ moduleId, error }, 'Failed to fetch module');
     return moduleError('INTERNAL_ERROR', 'An unexpected error occurred.');
   } finally {
     await cleanup();
@@ -133,18 +131,19 @@ export async function updateModuleTaskProgressAction({
     throw new Error('You must be signed in to update progress.');
   }
 
-  const user = await getUserByAuthId(authUserId);
-  if (!user) {
-    throw new Error('User not found.');
-  }
-
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-  const ctx = createRequestContext(
-    new Request('http://localhost/server-action/update-module-task-progress'),
-    { userId: authUserId, db: rlsDb, cleanup }
-  );
 
   try {
+    const user = await getUserByAuthId(authUserId, rlsDb);
+    if (!user) {
+      throw new Error('User not found.');
+    }
+
+    const ctx = createRequestContext(
+      new Request('http://localhost/server-action/update-module-task-progress'),
+      { userId: authUserId, db: rlsDb, cleanup }
+    );
+
     let taskProgress: Awaited<ReturnType<typeof setTaskProgress>>;
     try {
       taskProgress = await withRequestContext(ctx, async () =>
@@ -165,7 +164,6 @@ export async function updateModuleTaskProgressAction({
       throw new Error('Unable to update task progress right now.');
     }
 
-    // Revalidate both the module page and the parent plan page
     revalidatePath(`/plans/${planId}/modules/${moduleId}`);
     revalidatePath(`/plans/${planId}`);
     revalidatePath('/plans');
