@@ -33,15 +33,16 @@ docs/
 
 ## Where to Look
 
-| Task                | Location                     | Notes                                             |
-| ------------------- | ---------------------------- | ------------------------------------------------- |
-| Add API endpoint    | `src/app/api/v1/`            | Use `withAuthAndRateLimit`, see rate-limiting.md  |
-| DB schema change    | `src/lib/db/schema/tables/`  | Run `pnpm db:generate` after                      |
-| AI generation logic | `src/lib/ai/orchestrator.ts` | Provider abstraction in `provider-factory.ts`     |
-| Add integration     | `src/lib/integrations/`      | Follow DI pattern (factory + types + sync)        |
-| Environment var     | `src/lib/config/env.ts`      | Add to grouped config, validate with Zod          |
-| Logging             | `src/lib/logging/`           | Server logger vs clientLogger, see logging.md     |
-| Write tests         | `tests/`                     | Unit in `tests/unit/`, integration needs DB setup |
+| Task                | Location                     | Notes                                                           |
+| ------------------- | ---------------------------- | --------------------------------------------------------------- |
+| Add API endpoint    | `src/app/api/v1/`            | Use `withAuthAndRateLimit`, see rate-limiting.md                |
+| Add server action   | `src/app/**/actions.ts`      | Wrap with `withServerActionContext`, see auth-and-data-layer.md |
+| DB schema change    | `src/lib/db/schema/tables/`  | Run `pnpm db:generate` after                                    |
+| AI generation logic | `src/lib/ai/orchestrator.ts` | Provider abstraction in `provider-factory.ts`                   |
+| Add integration     | `src/lib/integrations/`      | Follow DI pattern (factory + types + sync)                      |
+| Environment var     | `src/lib/config/env.ts`      | Add to grouped config, validate with Zod                        |
+| Logging             | `src/lib/logging/`           | Server logger vs clientLogger, see logging.md                   |
+| Write tests         | `tests/`                     | Unit in `tests/unit/`, integration needs DB setup               |
 
 ## Commands
 
@@ -153,6 +154,7 @@ Instructions:
 
 Documentation explaining how our code works, architecture decisions, and system flows:
 
+- **Auth & Data Layer**: `@docs/context/architecture/auth-and-data-layer.md`
 - **Plan Generation**: `@docs/context/architecture/plan-generation-architecture.md`
 - **CI/CD & Branching**: `@docs/context/ci/branching-strategy.md`
 
