@@ -45,7 +45,7 @@ async function resolveGateUser(): Promise<GateUser> {
     throw new AuthError();
   }
 
-  const user = await getUserByAuthId(authUserId);
+  const user = await getUserByAuthId(authUserId, context?.db);
   if (!user) {
     throw new NotFoundError('User not found');
   }

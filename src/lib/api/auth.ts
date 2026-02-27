@@ -225,7 +225,7 @@ export async function withServerComponentContext<T>(
 export async function withServerActionContext<T>(
   fn: (user: DbUser, db: RlsClient) => MaybePromise<T>
 ): Promise<T | null> {
-  const authUserId = await getEffectiveAuthUserId();
+  const authUserId = await getEffectiveAuthUserId({ strict: true });
   if (!authUserId) return null;
 
   return runWithAuthenticatedContext(authUserId, fn);
