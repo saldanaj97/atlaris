@@ -11,7 +11,7 @@ export function PlansContentSkeleton(): JSX.Element {
   return (
     <>
       {/* Search Bar skeleton */}
-      <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-xl border px-4 py-3">
+      <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-2xl border px-4 py-3">
         <Search className="text-muted-foreground h-4 w-4" />
         <Skeleton className="h-5 w-48" />
       </div>

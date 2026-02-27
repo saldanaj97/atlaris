@@ -8,7 +8,7 @@ export function RequestIntegration(): JSX.Element {
   return (
     <div className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/30 bg-white/30 p-8 text-center backdrop-blur-sm dark:border-white/5">
       {/* TODO: Implement integration request form/modal */}
-      <h2 className="text-lg font-semibold">Don&apos;t see what you need?</h2>
+      <h3 className="text-lg font-semibold">Don&apos;t see what you need?</h3>
       <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
         We&apos;re always looking to add new integrations. Let us know what
         tools you&apos;d like to connect.

@@ -13,7 +13,10 @@ export const metadata: Metadata = {
 
 function DisabledToggle(): ReactElement {
   return (
-    <div className="bg-muted h-5 w-9 rounded-full opacity-50">
+    <div
+      aria-hidden="true"
+      className="bg-muted h-5 w-9 rounded-full opacity-50"
+    >
       <div className="bg-muted-foreground/30 m-0.5 h-4 w-4 rounded-full" />
     </div>
   );

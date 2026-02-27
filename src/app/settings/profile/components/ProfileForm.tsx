@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 
-import { ProfileFormSkeleton } from './ProfileFormSkeleton';
+import { ProfileFormSkeleton } from '@/app/settings/profile/components/ProfileFormSkeleton';
 
 const profileSchema = z.object({
   id: z.string(),

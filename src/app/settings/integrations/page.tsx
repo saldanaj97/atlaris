@@ -9,7 +9,7 @@ import {
  * Settings → Integrations sub-page.
  *
  * Rendered inside the shared settings layout.
- * Displays the same integration management UI that lives at /integrations.
+ * Displays the integration management UI within Settings.
  */
 export default function SettingsIntegrationsPage(): JSX.Element {
   return (

@@ -3,6 +3,8 @@
 import AuthControls from '@/components/shared/AuthControls';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import type { JSX } from 'react';
+
 import type { NavItem } from '@/lib/navigation';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { Plus } from 'lucide-react';
@@ -26,7 +28,7 @@ export default function DesktopHeader({
   navItems,
   tier,
   isAuthenticated,
-}: DesktopHeaderProps) {
+}: DesktopHeaderProps): JSX.Element {
   return (
     <div className="dark:bg-card-background hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl lg:grid dark:border-white/10">
       {/* Brand (left) */}

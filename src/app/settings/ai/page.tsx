@@ -31,7 +31,7 @@ export default function AISettingsPage(): ReactElement {
 
         {/* Static content - renders immediately */}
         <Card className="p-6">
-          <h2 className="mb-4 text-xl font-semibold">About AI Models</h2>
+          <h3 className="mb-4 text-xl font-semibold">About AI Models</h3>
           <div className="text-muted-foreground space-y-4 text-sm">
             <p>
               We offer a variety of AI models from leading providers including

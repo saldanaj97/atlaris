@@ -78,7 +78,7 @@ export function PlanRow({
             <Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-500" />
           )}
           {/* Tasks count */}
-          <div className="text-muted-foreground hidden w-15 shrink-0 items-center gap-1.5 text-xs sm:flex">
+          <div className="text-muted-foreground hidden w-[3.75rem] shrink-0 items-center gap-1.5 text-xs sm:flex">
             <CheckCircle2 className="h-3.5 w-3.5" />
             <span>
               {summary.completedTasks}/{summary.totalTasks}
