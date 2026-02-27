@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
+import type { ReactElement } from 'react';
 
 import { BellRing, BookOpen, Clock, CreditCard } from 'lucide-react';
 
+import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card } from '@/components/ui/card';
 
 export const metadata: Metadata = {
@@ -9,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Manage your notification preferences.',
 };
 
-function DisabledToggle(): React.ReactElement {
+function DisabledToggle(): ReactElement {
   return (
     <div className="bg-muted h-5 w-9 rounded-full opacity-50">
       <div className="bg-muted-foreground/30 m-0.5 h-4 w-4 rounded-full" />
@@ -17,7 +19,7 @@ function DisabledToggle(): React.ReactElement {
   );
 }
 
-function ToggleRow({ label }: { label: string }): React.ReactElement {
+function ToggleRow({ label }: { label: string }): ReactElement {
   return (
     <div className="flex items-center justify-between py-2">
       <span className="text-muted-foreground text-sm">{label}</span>
@@ -26,42 +28,30 @@ function ToggleRow({ label }: { label: string }): React.ReactElement {
   );
 }
 
-export default function NotificationsSettingsPage(): React.ReactElement {
+export default function NotificationsSettingsPage(): ReactElement {
   return (
-    <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
+    <>
       <header className="mb-6">
-        <h1>Notifications</h1>
-        <p className="subtitle">
+        <h2 className="text-xl font-semibold">Notifications</h2>
+        <p className="text-muted-foreground text-sm">
           Manage how you stay informed about your learning progress and account
           activity
         </p>
       </header>
 
-      {/* Coming soon banner */}
-      <Card className="border-border bg-muted/50 mb-6 p-6">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
-            <BellRing className="text-primary h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold">
-              Personalized alerts are on the way
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              We&apos;re fine-tuning your notification experience. Soon
-              you&apos;ll be able to customize exactly how and when you receive
-              updates about your learning journey.
-            </p>
-          </div>
-        </div>
-      </Card>
+      <ComingSoonAlert
+        title="Personalized alerts are on the way"
+        description="We're fine-tuning your notification experience. Soon you'll be able to customize exactly how and when you receive updates about your learning journey."
+        icon={BellRing}
+        className="mb-6"
+      />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Learning Reminders */}
         <Card className="p-6">
           <div className="mb-4 flex items-center gap-3">
             <Clock className="text-muted-foreground h-5 w-5" />
-            <h2 className="text-xl font-semibold">Learning Reminders</h2>
+            <h3 className="text-xl font-semibold">Learning Reminders</h3>
           </div>
           <p className="text-muted-foreground mb-4 text-sm">
             Stay on track with daily and weekly nudges that keep your learning
@@ -78,7 +68,7 @@ export default function NotificationsSettingsPage(): React.ReactElement {
         <Card className="p-6">
           <div className="mb-4 flex items-center gap-3">
             <BookOpen className="text-muted-foreground h-5 w-5" />
-            <h2 className="text-xl font-semibold">Plan Updates</h2>
+            <h3 className="text-xl font-semibold">Plan Updates</h3>
           </div>
           <p className="text-muted-foreground mb-4 text-sm">
             Get notified when your learning plans are ready and when new
@@ -95,7 +85,7 @@ export default function NotificationsSettingsPage(): React.ReactElement {
         <Card className="p-6">
           <div className="mb-4 flex items-center gap-3">
             <CreditCard className="text-muted-foreground h-5 w-5" />
-            <h2 className="text-xl font-semibold">Account & Billing</h2>
+            <h3 className="text-xl font-semibold">Account & Billing</h3>
           </div>
           <p className="text-muted-foreground mb-4 text-sm">
             Important notifications about your subscription, usage limits, and
@@ -108,6 +98,6 @@ export default function NotificationsSettingsPage(): React.ReactElement {
           </div>
         </Card>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,5 +1,4 @@
 'use client';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,22 +16,22 @@ interface DesktopNavigationProps {
   navItems: NavItem[];
 }
 
-/**
- * Computes the className for navigation button based on active state.
- */
-function getNavButtonClass(isActive: boolean): string {
-  return cn(
-    'flex items-center space-x-1 text-sm font-medium transition',
-    'hover:text-primary dark:hover:text-primary',
-    'focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
-    isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground'
-  );
-}
-
 interface DropdownNavItemProps {
   item: NavItem;
   isActive: boolean;
   pathname: string;
+}
+
+/**
+ * Computes the className for a nav item based on active state.
+ */
+function getNavItemClass(isActive: boolean): string {
+  return cn(
+    'flex items-center gap-1 text-sm font-medium transition',
+    'hover:text-primary dark:hover:text-primary',
+    'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
+    isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground'
+  );
 }
 
 /**
@@ -44,27 +43,22 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
+        <button
+          type="button"
           aria-haspopup="menu"
           aria-expanded={isOpen}
-          className={getNavButtonClass(isActive)}
+          className={getNavItemClass(isActive)}
         >
           <span>{item.label}</span>
-          <ChevronDown className="h-4 w-4" />
-        </Button>
+          <ChevronDown className="h-3.5 w-3.5" />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="min-w-[160px] rounded-xl border border-white/40 bg-white/80 shadow-lg backdrop-blur-md"
-      >
+      <DropdownMenuContent align="start" className="min-w-40">
         {item.dropdown?.map((dropdownItem) => (
           <DropdownMenuItem key={dropdownItem.href} asChild>
             <Link
               href={dropdownItem.href}
               className={cn(
-                'cursor-pointer px-4 py-2 text-sm transition-colors',
-                'hover:bg-primary/10 hover:text-primary',
                 pathname === dropdownItem.href
                   ? 'text-primary font-semibold'
                   : 'text-muted-foreground'
@@ -89,7 +83,10 @@ export default function DesktopNavigation({
   const pathname = usePathname();
 
   const renderNavItem = (item: NavItem) => {
-    const isActive = pathname === item.href;
+    const isActive =
+      item.href === '/'
+        ? pathname === '/'
+        : pathname === item.href || pathname.startsWith(item.href + '/');
 
     if (item.dropdown) {
       return (
@@ -107,11 +104,7 @@ export default function DesktopNavigation({
       <Link
         key={item.href}
         href={item.href}
-        className={cn(
-          'text-sm font-medium transition',
-          'hover:text-primary dark:hover:text-primary',
-          isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground'
-        )}
+        className={getNavItemClass(isActive)}
       >
         {item.label}
       </Link>
@@ -119,7 +112,7 @@ export default function DesktopNavigation({
   };
 
   return (
-    <nav className="hidden items-center space-x-8 md:flex">
+    <nav className="hidden items-center gap-6 md:flex">
       {navItems.map((item) => renderNavItem(item))}
     </nav>
   );

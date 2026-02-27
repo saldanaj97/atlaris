@@ -66,14 +66,18 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
               });
               setOpen(false);
             }}
-            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 mb-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r px-4 py-3 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
+            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 mb-2 flex items-center justify-center gap-2 rounded-xl bg-linear-to-r px-4 py-3 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
           >
             <Plus className="h-4 w-4" />
             Create New Plan
           </Link>
 
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              item.href === '/'
+                ? pathname === '/'
+                : pathname === item.href ||
+                  pathname.startsWith(item.href + '/');
             return (
               <div key={item.href} className="flex flex-col gap-1">
                 <Link
@@ -82,7 +86,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
                   aria-current={isActive ? 'page' : undefined}
                   className={`rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                     isActive
-                      ? 'from-primary to-accent bg-gradient-to-r text-white shadow-md'
+                      ? 'from-primary to-accent bg-linear-to-r text-white shadow-md'
                       : 'text-muted-foreground hover:text-primary dark:hover:text-primary hover:bg-white/60 dark:hover:bg-white/10'
                   }`}
                 >

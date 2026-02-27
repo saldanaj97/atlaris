@@ -83,7 +83,8 @@ describe('ProfileForm', () => {
       expect(screen.getByText('Personal Information')).toBeInTheDocument();
     });
 
-    expect(screen.getByDisplayValue(MOCK_PROFILE.name)).toBeInTheDocument();
+    // Name is displayed in a click-to-edit button, not an input
+    expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.subscriptionTier)).toBeInTheDocument();
     expect(
@@ -117,7 +118,7 @@ describe('ProfileForm', () => {
 
   // ── Name Editing ───────────────────────────────────────────────────
 
-  it('disables save button when name is unchanged', async () => {
+  it('does not show save button when name is unchanged', async () => {
     mockFetchSuccess();
 
     render(<ProfileForm />);
@@ -126,18 +127,23 @@ describe('ProfileForm', () => {
       expect(screen.getByText('Personal Information')).toBeInTheDocument();
     });
 
-    const saveButton = screen.getByRole('button', { name: /save changes/i });
-    expect(saveButton).toBeDisabled();
+    // Save button only renders when the name has been changed
+    expect(
+      screen.queryByRole('button', { name: /save changes/i })
+    ).not.toBeInTheDocument();
   });
 
-  it('enables save button when name is edited', async () => {
+  it('shows save button when name is edited', async () => {
     mockFetchSuccess();
 
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
+
+    // Click the name button to enter edit mode
+    await user.click(screen.getByText(MOCK_PROFILE.name));
 
     const nameInput = screen.getByLabelText('Name');
     await user.clear(nameInput);
@@ -169,8 +175,11 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue(MOCK_PROFILE.name)).toBeInTheDocument();
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
+
+    // Click to enter edit mode
+    await user.click(screen.getByText(MOCK_PROFILE.name));
 
     const nameInput = screen.getByLabelText('Name');
     await user.clear(nameInput);
@@ -192,9 +201,11 @@ describe('ProfileForm', () => {
       name: 'Charles Babbage',
     });
 
-    // Save button should be disabled again after successful save
+    // Save button should disappear after successful save (name is no longer dirty)
     await waitFor(() => {
-      expect(saveButton).toBeDisabled();
+      expect(
+        screen.queryByRole('button', { name: /save changes/i })
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -223,8 +234,11 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue(MOCK_PROFILE.name)).toBeInTheDocument();
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
+
+    // Click to enter edit mode
+    await user.click(screen.getByText(MOCK_PROFILE.name));
 
     const nameInput = screen.getByLabelText('Name');
     await user.clear(nameInput);
@@ -251,8 +265,11 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue(MOCK_PROFILE.name)).toBeInTheDocument();
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
+
+    // Click to enter edit mode
+    await user.click(screen.getByText(MOCK_PROFILE.name));
 
     const nameInput = screen.getByLabelText('Name');
     await user.clear(nameInput);

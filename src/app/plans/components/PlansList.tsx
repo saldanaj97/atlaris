@@ -2,12 +2,12 @@
 
 import type { JSX } from 'react';
 
-import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
 import { EmptyPlansList } from '@/app/plans/components/EmptyPlansList';
 import { getPlanStatus } from '@/app/plans/components/plan-utils';
 import { PlanRow } from '@/app/plans/components/PlanRow';
+import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import type { FilterStatus, PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
@@ -73,7 +73,7 @@ export function PlansList({
   return (
     <div className="font-sans">
       {/* Search Bar */}
-      <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-xl border px-4 py-3">
+      <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-2xl border px-4 py-3">
         <Search className="text-muted-foreground h-4 w-4" aria-hidden="true" />
         <input
           type="text"
@@ -144,7 +144,7 @@ export function PlansList({
             filterStatus={filterStatus}
           />
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {filteredPlans.map((summary, index) => (
               <PlanRow
                 key={summary.plan.id}

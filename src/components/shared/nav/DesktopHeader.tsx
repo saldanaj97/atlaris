@@ -15,7 +15,6 @@ interface DesktopHeaderProps {
   navItems: NavItem[];
   tier?: SubscriptionTier;
   isAuthenticated: boolean;
-  onNewPlanClick?: () => void;
 }
 
 /**
@@ -27,39 +26,11 @@ export default function DesktopHeader({
   navItems,
   tier,
   isAuthenticated,
-  onNewPlanClick,
 }: DesktopHeaderProps) {
-  const handleNewPlanClick = () => {
-    // Fire analytics event with location="nav"
-    if (typeof window !== 'undefined') {
-      try {
-        if ('gtag' in window) {
-          (
-            window as typeof window & { gtag: (...args: unknown[]) => void }
-          ).gtag('event', 'cta_click', {
-            event_category: 'engagement',
-            event_label: 'New Plan',
-            cta_location: 'nav',
-          });
-        }
-        if ('dataLayer' in window) {
-          (window as typeof window & { dataLayer: unknown[] }).dataLayer.push({
-            event: 'cta_click',
-            ctaLocation: 'nav',
-            ctaLabel: 'New Plan',
-          });
-        }
-      } catch {
-        // Silently handle analytics errors
-      }
-    }
-    onNewPlanClick?.();
-  };
-
   return (
-    <div className="dark:bg-card-background hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-6 py-3 shadow-lg backdrop-blur-xl lg:grid dark:border-white/10">
+    <div className="dark:bg-card-background hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl lg:grid dark:border-white/10">
       {/* Brand (left) */}
-      <div className="flex justify-start">
+      <div className="flex items-center">
         <BrandLogo />
       </div>
 
@@ -69,35 +40,23 @@ export default function DesktopHeader({
       </div>
 
       {/* Auth controls (right) */}
-      <div className="flex items-center justify-end gap-3">
-        {isAuthenticated ? (
-          <Button
-            variant="default"
-            size="sm"
-            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center gap-1.5 bg-gradient-to-r text-white"
-            onClick={handleNewPlanClick}
-            asChild
-          >
-            <Link href="/plans/new">
-              <Plus className="h-4 w-4" />
-              <span>New Plan</span>
-            </Link>
-          </Button>
-        ) : (
-          <Button
-            variant="default"
-            size="sm"
-            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center gap-1.5 bg-gradient-to-r text-white"
-            onClick={handleNewPlanClick}
-            asChild
-          >
-            <Link href="/auth/sign-in">
-              <Plus className="h-4 w-4" />
-              <span>New Plan</span>
-            </Link>
-          </Button>
-        )}
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-foreground gap-1.5"
+          asChild
+        >
+          <Link href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}>
+            <Plus className="h-3.5 w-3.5" />
+            <span>New Plan</span>
+          </Link>
+        </Button>
+
         <ThemeToggle />
+
+        <div className="bg-border mx-1 h-5 w-px" />
+
         <AuthControls
           isAuthenticated={isAuthenticated}
           tier={isAuthenticated ? tier : undefined}

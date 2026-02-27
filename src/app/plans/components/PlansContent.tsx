@@ -1,7 +1,6 @@
 import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
@@ -63,7 +62,7 @@ export async function PlansContent(): Promise<JSX.Element> {
     return (
       <>
         {/* Disabled search bar for empty state */}
-        <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-xl border px-4 py-3 opacity-50">
+        <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-2xl border px-4 py-3 opacity-50">
           <Search className="text-muted-foreground h-4 w-4" />
           <span className="text-muted-foreground flex-1 text-sm">
             Search plans...
@@ -105,69 +104,5 @@ export async function PlansContent(): Promise<JSX.Element> {
         exports: usage.exports,
       }}
     />
-  );
-}
-
-/**
- * Skeleton for the plans content (search, filters, list).
- * Header title and button are static and rendered by the page.
- */
-export function PlansContentSkeleton() {
-  return (
-    <>
-      {/* Search Bar skeleton */}
-      <div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-xl border px-4 py-3">
-        <Search className="text-muted-foreground h-4 w-4" />
-        <Skeleton className="h-5 w-48" />
-      </div>
-
-      {/* Filters Bar skeleton */}
-      <div className="border-border mb-6 flex items-center gap-4 border-b pb-4">
-        <Skeleton className="h-9 w-24 rounded-lg" />
-        <Skeleton className="h-9 w-24 rounded-lg" />
-        <Skeleton className="h-9 w-28 rounded-lg" />
-        <Skeleton className="h-9 w-24 rounded-lg" />
-        <Skeleton className="h-9 w-28 rounded-lg" />
-        <Skeleton className="h-9 w-20 rounded-lg" />
-      </div>
-
-      {/* Plans List skeleton */}
-      <div className="space-y-1">
-        {[1, 2, 3, 4, 5].map((planSkeletonId) => (
-          <PlanRowSkeleton key={`plan-row-skeleton-${planSkeletonId}`} />
-        ))}
-      </div>
-    </>
-  );
-}
-
-function PlanRowSkeleton() {
-  return (
-    <div className="group flex cursor-pointer items-center gap-4 rounded-xl border border-transparent bg-transparent p-4 transition-all hover:border-white/20 hover:bg-white/5">
-      {/* Status indicator skeleton */}
-      <Skeleton className="h-2.5 w-2.5 flex-shrink-0 rounded-full" />
-
-      {/* Plan info skeleton */}
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <Skeleton className="h-5 w-64" />
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-3.5 w-20" />
-          <Skeleton className="h-3.5 w-24" />
-          <Skeleton className="h-3.5 w-16" />
-        </div>
-      </div>
-
-      {/* Progress bar skeleton */}
-      <div className="flex w-32 flex-shrink-0 items-center gap-2">
-        <Skeleton className="h-1.5 flex-1 rounded-full" />
-        <Skeleton className="h-4 w-8" />
-      </div>
-
-      {/* Timestamp skeleton */}
-      <Skeleton className="h-4 w-20 flex-shrink-0" />
-
-      {/* Arrow skeleton */}
-      <Skeleton className="h-4 w-4 flex-shrink-0" />
-    </div>
   );
 }
