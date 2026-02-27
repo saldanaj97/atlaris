@@ -1,4 +1,6 @@
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
+
+import { CalendarDays, Library, Sparkles } from 'lucide-react';
 
 import { Card } from '@/components/ui/card';
 
@@ -71,26 +73,26 @@ export function MissionSection(): JSX.Element {
 }
 
 interface Highlight {
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
 }
 
 const HIGHLIGHTS: Highlight[] = [
   {
-    icon: '✨',
+    icon: <Sparkles className="h-5 w-5 text-white" aria-hidden="true" />,
     title: 'AI-Powered Plans',
     description:
       'Intelligent scheduling that adapts to your pace, goals, and availability.',
   },
   {
-    icon: '📅',
+    icon: <CalendarDays className="h-5 w-5 text-white" aria-hidden="true" />,
     title: 'Calendar Sync',
     description:
       'Plans sync directly to Google Calendar so learning fits your life.',
   },
   {
-    icon: '📚',
+    icon: <Library className="h-5 w-5 text-white" aria-hidden="true" />,
     title: 'Curated Resources',
     description:
       'Top-ranked videos, articles, and docs selected for each topic.',

@@ -1,4 +1,8 @@
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
+
+import { Eye, Globe, Target } from 'lucide-react';
+
+import { Card } from '@/components/ui/card';
 
 /**
  * Core values section with glassmorphism cards.
@@ -21,7 +25,7 @@ export function ValuesSection(): JSX.Element {
 
         <div className="grid gap-6 md:grid-cols-3">
           {VALUES.map((value) => (
-            <div
+            <Card
               key={value.title}
               className="group dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10"
             >
@@ -39,7 +43,7 @@ export function ValuesSection(): JSX.Element {
               <p className="text-muted-foreground leading-relaxed">
                 {value.description}
               </p>
-            </div>
+            </Card>
           ))}
         </div>
       </div>
@@ -48,26 +52,26 @@ export function ValuesSection(): JSX.Element {
 }
 
 interface Value {
-  icon: string;
+  icon: ReactNode;
   title: string;
   description: string;
 }
 
 const VALUES: Value[] = [
   {
-    icon: '🔮',
+    icon: <Eye className="h-6 w-6 text-white" aria-hidden="true" />,
     title: 'Clarity',
     description:
       "Learning shouldn't feel chaotic. We strip away noise and give you a crystal-clear path from where you are to where you want to be.",
   },
   {
-    icon: '🎯',
+    icon: <Target className="h-6 w-6 text-white" aria-hidden="true" />,
     title: 'Personalization',
     description:
       'No two learners are the same. Every plan is tailored to your goals, schedule, and preferred learning style.',
   },
   {
-    icon: '🌍',
+    icon: <Globe className="h-6 w-6 text-white" aria-hidden="true" />,
     title: 'Accessibility',
     description:
       'Great education should be available to everyone. We curate free and open resources alongside premium content.',

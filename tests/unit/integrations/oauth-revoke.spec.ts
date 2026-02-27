@@ -22,6 +22,7 @@ describe('revokeGoogleTokens', () => {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
+        signal: expect.any(AbortSignal),
       })
     );
 

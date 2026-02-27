@@ -83,11 +83,21 @@ describe('ProfileForm', () => {
       expect(screen.getByText('Personal Information')).toBeInTheDocument();
     });
 
-    expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
-    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
-    expect(screen.getByText('free')).toBeInTheDocument();
-    expect(screen.getByText('active')).toBeInTheDocument();
-    expect(screen.getByText('June 15, 2025')).toBeInTheDocument();
+    expect(screen.getByDisplayValue(MOCK_PROFILE.name)).toBeInTheDocument();
+    expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
+    expect(screen.getByText(MOCK_PROFILE.subscriptionTier)).toBeInTheDocument();
+    expect(
+      screen.getByText(MOCK_PROFILE.subscriptionStatus)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        new Date(MOCK_PROFILE.createdAt).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      )
+    ).toBeInTheDocument();
   });
 
   it('shows error message when profile fetch fails', async () => {
@@ -159,7 +169,7 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByDisplayValue(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
     const nameInput = screen.getByLabelText('Name');
@@ -213,7 +223,7 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByDisplayValue(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
     const nameInput = screen.getByLabelText('Name');
@@ -241,7 +251,7 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByDisplayValue(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
     const nameInput = screen.getByLabelText('Name');

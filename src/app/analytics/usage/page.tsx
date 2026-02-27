@@ -64,7 +64,7 @@ export default function UsageAnalyticsPage(): JSX.Element {
 
       {/* Coming soon callout */}
       <Alert className="mb-10">
-        <Sparkles className="h-4 w-4" />
+        <Sparkles className="h-4 w-4" aria-hidden="true" />
         <AlertTitle className="flex items-center gap-2">
           We&apos;re building something special
           <TrendingUp className="text-primary h-4 w-4" aria-hidden="true" />

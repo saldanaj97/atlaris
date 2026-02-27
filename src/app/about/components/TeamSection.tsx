@@ -1,8 +1,13 @@
 import type { JSX } from 'react';
 
+import { User } from 'lucide-react';
+
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
+
 /**
  * Team section with placeholder member cards.
- * TODO: Replace with real team data
+ * TODO(#228): Replace with real team data
  */
 export function TeamSection(): JSX.Element {
   return (
@@ -19,7 +24,7 @@ export function TeamSection(): JSX.Element {
 
         <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {TEAM_MEMBERS.map((member) => (
-            <div
+            <Card
               key={member.name}
               className="group dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 text-center shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10"
             >
@@ -28,14 +33,16 @@ export function TeamSection(): JSX.Element {
                 aria-hidden="true"
               />
 
-              <div className="gradient-brand-interactive mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-2xl shadow-lg">
-                {member.avatar}
-              </div>
+              <Avatar className="gradient-brand-interactive mx-auto mb-4 h-16 w-16 shadow-lg">
+                <AvatarFallback className="bg-transparent">
+                  <User className="h-7 w-7 text-white" aria-hidden="true" />
+                </AvatarFallback>
+              </Avatar>
               <h3 className="text-foreground mb-1 font-semibold">
                 {member.name}
               </h3>
               <p className="text-muted-foreground text-sm">{member.role}</p>
-            </div>
+            </Card>
           ))}
         </div>
       </div>
@@ -44,14 +51,13 @@ export function TeamSection(): JSX.Element {
 }
 
 interface TeamMember {
-  avatar: string;
   name: string;
   role: string;
 }
 
 const TEAM_MEMBERS: TeamMember[] = [
-  { avatar: '👤', name: 'Alex Rivera', role: 'Founder & CEO' },
-  { avatar: '👤', name: 'Jordan Chen', role: 'Lead Engineer' },
-  { avatar: '👤', name: 'Sam Patel', role: 'AI / ML' },
-  { avatar: '👤', name: 'Taylor Kim', role: 'Design' },
+  { name: 'Alex Rivera', role: 'Founder & CEO' },
+  { name: 'Jordan Chen', role: 'Lead Engineer' },
+  { name: 'Sam Patel', role: 'AI / ML' },
+  { name: 'Taylor Kim', role: 'Design' },
 ];

@@ -5,6 +5,7 @@ import { BookOpen, Flame, Lock, Star, Target, Trophy, Zap } from 'lucide-react';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 export const metadata: Metadata = {
   title: 'Achievements | Atlaris',
@@ -67,7 +68,7 @@ export default function AchievementsPage(): JSX.Element {
 
       {/* Coming soon banner */}
       <Alert className="mb-8">
-        <Trophy className="h-4 w-4" />
+        <Trophy className="h-4 w-4" aria-hidden="true" />
         <AlertTitle>Your achievements are being crafted.</AlertTitle>
         <AlertDescription>
           Earn badges, track milestones, and showcase your progress — launching
@@ -96,9 +97,7 @@ export default function AchievementsPage(): JSX.Element {
               </div>
 
               {/* Locked progress bar */}
-              <div className="mt-4">
-                <div className="bg-muted/50 h-1.5 w-full rounded-full" />
-              </div>
+              <Progress value={0} className="mt-4 h-1.5" />
             </CardContent>
           </Card>
         ))}

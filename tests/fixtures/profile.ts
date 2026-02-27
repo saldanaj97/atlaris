@@ -15,7 +15,7 @@ export function buildProfile(
   overrides: Partial<ProfileFixture> = {}
 ): ProfileFixture {
   return {
-    id: 'user-123',
+    id: crypto.randomUUID(),
     name: 'Ada Lovelace',
     email: 'ada@example.com',
     subscriptionTier: 'free',

@@ -2,22 +2,26 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 
-interface ProfileData {
-  id: string;
-  name: string;
-  email: string;
-  subscriptionTier: string;
-  subscriptionStatus: string;
-  createdAt: string;
-}
+const profileSchema = z.object({
+  id: z.string(),
+  name: z.string().nullable(),
+  email: z.string(),
+  subscriptionTier: z.string(),
+  subscriptionStatus: z.string(),
+  createdAt: z.string(),
+});
+
+type ProfileData = z.infer<typeof profileSchema>;
 
 export function ProfileForm(): React.ReactElement {
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -26,7 +30,7 @@ export function ProfileForm(): React.ReactElement {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isDirty = profile !== null && name !== profile.name;
+  const isDirty = profile !== null && name !== (profile.name ?? '');
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -43,9 +47,10 @@ export function ProfileForm(): React.ReactElement {
         throw new Error(parsed.error);
       }
 
-      const data = (await res.json()) as ProfileData;
+      const raw: unknown = await res.json();
+      const data = profileSchema.parse(raw);
       setProfile(data);
-      setName(data.name);
+      setName(data.name ?? '');
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to load profile';
@@ -80,9 +85,10 @@ export function ProfileForm(): React.ReactElement {
         throw new Error(parsed.error);
       }
 
-      const data = (await res.json()) as ProfileData;
+      const raw: unknown = await res.json();
+      const data = profileSchema.parse(raw);
       setProfile(data);
-      setName(data.name);
+      setName(data.name ?? '');
       toast.success('Profile updated');
     } catch (err) {
       const message =
@@ -120,12 +126,11 @@ export function ProfileForm(): React.ReactElement {
             >
               Name
             </Label>
-            <input
+            <Input
               id="profile-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border-input bg-background focus:border-primary focus:ring-primary/20 w-full rounded-lg border px-3 py-2 text-sm transition outline-none focus:ring-2"
             />
           </div>
           <div>

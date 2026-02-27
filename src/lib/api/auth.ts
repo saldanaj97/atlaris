@@ -205,6 +205,11 @@ export async function withServerComponentContext<T>(
   if (!authUserId) return null;
 
   if (appEnv.isTest) {
+    // In test mode, withServerComponentContext intentionally skips full request
+    // context setup (correlationId, RLS client, cleanup) because Server Components
+    // don't have a Request object and tests calling this path only need the user
+    // record. withAuth and withServerActionContext set up request context because
+    // they operate within a request/action lifecycle.
     const user = await ensureUserRecord(authUserId);
     return fn(user);
   }

@@ -7,6 +7,8 @@ import {
   checkRegenerationLimit,
 } from '@/lib/stripe/usage';
 import type { PlainHandler, RouteHandlerContext } from './auth';
+import { getEffectiveAuthUserId } from './auth';
+import { getRequestContext } from './context';
 
 /**
  * Subscription tier hierarchy
@@ -30,8 +32,6 @@ type GateUser = NonNullable<Awaited<ReturnType<typeof getUserByAuthId>>>;
  * succeed for the subsequent user lookup.
  */
 async function resolveGateUser(): Promise<GateUser> {
-  const { getRequestContext } = await import('./context');
-  const { getEffectiveAuthUserId } = await import('./auth');
   const context = getRequestContext();
   let authUserId: string | undefined = context?.userId;
 

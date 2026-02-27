@@ -1,15 +1,11 @@
-import { Suspense } from 'react';
-
-import {
-  ProfileForm,
-  ProfileFormSkeleton,
-} from '@/app/settings/profile/components/ProfileForm';
+import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
 
 /**
- * Profile Settings page with Suspense boundary for data-dependent content.
+ * Profile Settings page.
  *
  * Static elements (title, subtitle) render immediately.
- * The profile form waits for user data from the API.
+ * ProfileForm is a client component that manages its own loading state
+ * via useEffect, so it renders ProfileFormSkeleton internally while fetching.
  */
 export default function ProfileSettingsPage(): React.ReactElement {
   return (
@@ -23,10 +19,7 @@ export default function ProfileSettingsPage(): React.ReactElement {
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Data-dependent form - wrapped in Suspense */}
-        <Suspense fallback={<ProfileFormSkeleton />}>
-          <ProfileForm />
-        </Suspense>
+        <ProfileForm />
       </div>
     </div>
   );

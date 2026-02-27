@@ -1,7 +1,10 @@
 import type { JSX } from 'react';
 import type { Metadata } from 'next';
 
-import { IntegrationGrid, RequestIntegration } from './components';
+import {
+  IntegrationGrid,
+  RequestIntegration,
+} from '@/app/integrations/components';
 
 export const metadata: Metadata = {
   title: 'Integrations | Atlaris',
