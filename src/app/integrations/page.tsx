@@ -16,7 +16,7 @@ export default function Page(): JSX.Element {
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
       <header className="mb-6">
-        <h1>Integrations</h1>
+        <h1 className="text-3xl font-bold">Integrations</h1>
         <p className="subtitle">
           Connect your favorite tools to supercharge your learning workflow
         </p>

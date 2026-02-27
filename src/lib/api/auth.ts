@@ -3,11 +3,7 @@ import { appEnv, devAuthEnv } from '@/lib/config/env';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import type { RlsClient } from '@/lib/db/rls';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
-import {
-  createRequestContext,
-  withRequestContext,
-  type RequestContext,
-} from '@/lib/api/context';
+import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { AuthError } from './errors';
 import {
   checkUserRateLimit,
@@ -22,7 +18,9 @@ type MaybePromise<T> = T | Promise<T>;
  * In development or test (Vitest), if DEV_AUTH_USER_ID is set, that value is returned
  * (allowing you to bypass real Neon auth provisioning while seeding a deterministic user).
  */
-export async function getEffectiveAuthUserId(): Promise<string | null> {
+export async function getEffectiveAuthUserId(options?: {
+  strict?: boolean;
+}): Promise<string | null> {
   if (appEnv.vitestWorkerId) {
     const devUserId = devAuthEnv.userId;
     return devUserId || null;
@@ -35,7 +33,7 @@ export async function getEffectiveAuthUserId(): Promise<string | null> {
     }
   }
 
-  const { session } = await getSessionSafe();
+  const { session } = await getSessionSafe({ strict: options?.strict });
   return session?.user?.id ?? null;
 }
 
@@ -57,7 +55,7 @@ export async function getAuthUserId(): Promise<string | null> {
  * Used internally by `withAuth` and `requireCurrentUserRecord`.
  */
 export async function requireUser(): Promise<string> {
-  const userId = await getEffectiveAuthUserId();
+  const userId = await getEffectiveAuthUserId({ strict: true });
   if (!userId) throw new AuthError();
   return userId;
 }
@@ -109,14 +107,11 @@ async function runWithAuthenticatedContext<T>(
   const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
 
-  const requestContext: RequestContext = req
-    ? createRequestContext(req, { userId: authUserId, db: rlsDb, cleanup })
-    : {
-        correlationId: crypto.randomUUID(),
-        userId: authUserId,
-        db: rlsDb,
-        cleanup,
-      };
+  const requestContext = createRequestContext(req, {
+    userId: authUserId,
+    db: rlsDb,
+    cleanup,
+  });
 
   try {
     return await withRequestContext(requestContext, async () => {

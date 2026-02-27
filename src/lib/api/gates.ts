@@ -1,14 +1,14 @@
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import type { getDb } from '@/lib/db/runtime';
-import { AppError, AuthError, NotFoundError } from './errors';
+import { AppError, AuthError, NotFoundError } from '@/lib/api/errors';
 import {
   checkExportLimit,
   checkPlanLimit,
   checkRegenerationLimit,
 } from '@/lib/stripe/usage';
-import type { PlainHandler, RouteHandlerContext } from './auth';
-import { getEffectiveAuthUserId } from './auth';
-import { getRequestContext } from './context';
+import type { PlainHandler, RouteHandlerContext } from '@/lib/api/auth';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
+import { getRequestContext } from '@/lib/api/context';
 
 /**
  * Subscription tier hierarchy
