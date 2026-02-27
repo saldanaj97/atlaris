@@ -9,7 +9,7 @@ import { ATTEMPT_CAP, PLAN_GENERATION_LIMIT } from '@/lib/ai/generation-policy';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
-export type CreateFailedAttemptParams = {
+type CreateFailedAttemptParams = {
   planId: string;
   classification?: string;
   durationMs?: number;
@@ -32,7 +32,7 @@ const FailedAttemptDefaults = {
  * Builds a failed generation attempt record for DB insertion.
  * Centralizes defaults so schema changes are reflected in one place.
  */
-export function createFailedAttempt(
+function createFailedAttempt(
   overrides: CreateFailedAttemptParams
 ): InferInsertModel<typeof generationAttempts> {
   const {
@@ -138,9 +138,7 @@ export async function seedFailedAttemptsForDurableWindow(
   }));
 }
 
-export type GenerationAttemptInsert = InferInsertModel<
-  typeof generationAttempts
->;
+type GenerationAttemptInsert = InferInsertModel<typeof generationAttempts>;
 
 /**
  * Seeds ATTEMPT_CAP failed attempts for a plan to simulate max retries reached.

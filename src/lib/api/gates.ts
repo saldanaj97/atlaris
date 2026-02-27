@@ -1,12 +1,14 @@
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import type { getDb } from '@/lib/db/runtime';
-import { AppError, AuthError, NotFoundError } from './errors';
+import { AppError, AuthError, NotFoundError } from '@/lib/api/errors';
 import {
   checkExportLimit,
   checkPlanLimit,
   checkRegenerationLimit,
 } from '@/lib/stripe/usage';
-import type { PlainHandler } from './auth';
+import type { PlainHandler, RouteHandlerContext } from '@/lib/api/auth';
+import { getEffectiveAuthUserId } from '@/lib/api/auth';
+import { getRequestContext } from '@/lib/api/context';
 
 /**
  * Subscription tier hierarchy
@@ -21,9 +23,15 @@ type SubscriptionTier = keyof typeof TIER_HIERARCHY;
 
 type GateUser = NonNullable<Awaited<ReturnType<typeof getUserByAuthId>>>;
 
+/**
+ * Resolves the authenticated user for gate checks.
+ * MUST be called inside a `withAuth` context (or equivalent) where
+ * the request context has a DB client set up via `createRequestContext`.
+ * Falls back to `getEffectiveAuthUserId()` for tests or edge cases
+ * where middleware wasn't applied, but still assumes `getDb()` will
+ * succeed for the subsequent user lookup.
+ */
 async function resolveGateUser(): Promise<GateUser> {
-  const { getRequestContext } = await import('./context');
-  const { getEffectiveAuthUserId } = await import('./auth');
   const context = getRequestContext();
   let authUserId: string | undefined = context?.userId;
 
@@ -37,7 +45,7 @@ async function resolveGateUser(): Promise<GateUser> {
     throw new AuthError();
   }
 
-  const user = await getUserByAuthId(authUserId);
+  const user = await getUserByAuthId(authUserId, context?.db);
   if (!user) {
     throw new NotFoundError('User not found');
   }
@@ -46,12 +54,13 @@ async function resolveGateUser(): Promise<GateUser> {
 }
 
 /**
- * Middleware to require a minimum subscription tier
+ * Middleware to require a minimum subscription tier.
+ * NOTE: Defined but not yet wired into any route handlers.
  * @param minTier Minimum subscription tier required
  */
 export function requireSubscription(minTier: SubscriptionTier) {
   return (handler: PlainHandler): PlainHandler => {
-    return async (req: Request) => {
+    return async (req: Request, routeContext?: RouteHandlerContext) => {
       const user = await resolveGateUser();
 
       const userTierLevel = TIER_HIERARCHY[user.subscriptionTier];
@@ -71,8 +80,7 @@ export function requireSubscription(minTier: SubscriptionTier) {
         );
       }
 
-      // Proceed with the handler
-      return handler(req);
+      return handler(req, routeContext);
     };
   };
 }
@@ -87,7 +95,8 @@ export type GateDbClient = ReturnType<typeof getDb>;
 export type GateDbClientResolver = () => GateDbClient;
 
 /**
- * Middleware to check feature usage limits
+ * Middleware to check feature usage limits.
+ * NOTE: Defined but not yet wired into any route handlers.
  * @param feature Feature type to check
  * @param getDbClient Resolves the request-scoped DB client
  */
@@ -96,7 +105,7 @@ export function checkFeatureLimit(
   getDbClient: GateDbClientResolver
 ): (handler: PlainHandler) => PlainHandler {
   return (handler: PlainHandler): PlainHandler => {
-    return async (req: Request) => {
+    return async (req: Request, routeContext?: RouteHandlerContext) => {
       const user = await resolveGateUser();
 
       // Check limits based on feature type
@@ -137,20 +146,23 @@ export function checkFeatureLimit(
         });
       }
 
-      // Proceed with the handler
-      return handler(req);
+      return handler(req, routeContext);
     };
   };
 }
 
 /**
- * Helper to check if user has a specific subscription tier or higher
+ * Helper to check if user has a specific subscription tier or higher.
+ * @param authUserId - The external auth provider user ID
+ * @param minTier - Minimum subscription tier required
+ * @param dbClient - Optional RLS-enforced client; defaults to getDb() via request context
  */
 export async function hasSubscriptionTier(
   authUserId: string,
-  minTier: SubscriptionTier
+  minTier: SubscriptionTier,
+  dbClient?: GateDbClient
 ): Promise<boolean> {
-  const user = await getUserByAuthId(authUserId);
+  const user = await getUserByAuthId(authUserId, dbClient);
   if (!user) {
     return false;
   }

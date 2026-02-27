@@ -1,6 +1,10 @@
+import type { JSX } from 'react';
 import type { Metadata } from 'next';
 
-import { Card } from '@/components/ui/card';
+import {
+  IntegrationGrid,
+  RequestIntegration,
+} from '@/app/integrations/components';
 
 export const metadata: Metadata = {
   title: 'Integrations | Atlaris',
@@ -8,15 +12,21 @@ export const metadata: Metadata = {
     'Connect Atlaris with tools like Google Calendar and export learning schedules with ease.',
 };
 
-export default function Page() {
+export default function Page(): JSX.Element {
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-      <Card className="p-8">
+      <header className="mb-6">
         <h1 className="text-3xl font-bold">Integrations</h1>
-        <p className="text-muted-foreground mt-4">
-          Showcase for Google Calendar and CSV exports coming soon.
+        <p className="subtitle">
+          Connect your favorite tools to supercharge your learning workflow
         </p>
-      </Card>
+      </header>
+
+      <IntegrationGrid />
+
+      <div className="mt-10">
+        <RequestIntegration />
+      </div>
     </div>
   );
 }

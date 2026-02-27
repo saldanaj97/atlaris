@@ -16,8 +16,6 @@ const DEFAULT_MICRO_EXPLANATION_PARAMS: MicroExplanationPromptParams = {
   skillLevel: 'beginner',
 };
 
-export { DEFAULT_MICRO_EXPLANATION_PARAMS, DEFAULT_PROMPT_PARAMS };
-
 export function createPromptParams(
   overrides: Partial<PromptParams> = {}
 ): PromptParams {

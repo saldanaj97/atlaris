@@ -13,7 +13,7 @@ import { db } from '@/lib/db/service-role';
 type UserRow = InferSelectModel<typeof users>;
 type UserInsert = InferInsertModel<typeof users>;
 
-export type CreateTestUserParams = Partial<
+type CreateTestUserParams = Partial<
   Pick<UserInsert, 'authUserId' | 'email' | 'name' | 'subscriptionTier'>
 >;
 

@@ -17,10 +17,7 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { getEffectiveAuthUserId } from '@/lib/api/auth';
-import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { createAuthenticatedRlsClient } from '@/lib/db/rls';
-import { getDb } from '@/lib/db/runtime';
+import { withServerActionContext } from '@/lib/api/auth';
 import {
   getPlanSchedule,
   ScheduleFetchError,
@@ -28,7 +25,7 @@ import {
 } from '@/lib/api/schedule';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress } from '@/lib/db/queries/tasks';
-import { getUserByAuthId } from '@/lib/db/queries/users';
+import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
@@ -59,11 +56,11 @@ function assertNonEmpty(value: string | undefined, message: string) {
 }
 
 async function ensureTaskOwnership(
+  db: ReturnType<typeof getDb>,
   planId: string,
   taskId: string,
   userId: string
 ) {
-  const db = getDb();
   const [ownership] = await db
     .select({
       planId: learningPlans.id,
@@ -93,42 +90,16 @@ export async function updateTaskProgressAction({
     throw new Error('Invalid progress status.');
   }
 
-  const authUserId = await getEffectiveAuthUserId();
-  if (!authUserId) {
-    throw new Error('You must be signed in to update progress.');
-  }
-
-  const user = await getUserByAuthId(authUserId);
-  if (!user) {
-    throw new Error('User not found.');
-  }
-
-  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-  const ctx = createRequestContext(
-    new Request('http://localhost/server-action/update-task-progress'),
-    { userId: authUserId, db: rlsDb, cleanup }
-  );
-
-  try {
-    await withRequestContext(ctx, async () => {
-      await ensureTaskOwnership(planId, taskId, user.id);
-    });
-
-    const taskProgress = await withRequestContext(ctx, async () =>
-      setTaskProgress(user.id, taskId, status)
-    );
-
+  const result = await withServerActionContext(async (user, rlsDb) => {
+    await ensureTaskOwnership(rlsDb, planId, taskId, user.id);
+    const taskProgress = await setTaskProgress(user.id, taskId, status, rlsDb);
     revalidatePath(`/plans/${planId}`);
     revalidatePath('/plans');
+    return { taskId: taskProgress.taskId, status: taskProgress.status };
+  });
 
-    // API route removed; surface the minimal payload expected by clients.
-    return {
-      taskId: taskProgress.taskId,
-      status: taskProgress.status,
-    };
-  } finally {
-    await cleanup();
-  }
+  if (!result) throw new Error('You must be signed in to update progress.');
+  return result;
 }
 
 /**
@@ -143,43 +114,9 @@ export async function updateTaskProgressAction({
 export async function getPlanForPage(
   planId: string
 ): Promise<PlanAccessResult> {
-  const authUserId = await getEffectiveAuthUserId();
-  if (!authUserId) {
-    logger.debug({ planId }, 'Plan access denied: user not authenticated');
-    return planError(
-      'UNAUTHORIZED',
-      'You must be signed in to view this plan.'
-    );
-  }
-
-  const user = await getUserByAuthId(authUserId);
-  if (!user) {
-    logger.warn(
-      { planId, authUserId },
-      'Plan access denied: authenticated user not found in database'
-    );
-    return planError(
-      'UNAUTHORIZED',
-      'Your account could not be found. Please sign in again.'
-    );
-  }
-
-  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-  const ctx = createRequestContext(
-    new Request('http://localhost/server-action/get-plan'),
-    { userId: authUserId, db: rlsDb, cleanup }
-  );
-
-  try {
-    const plan = await withRequestContext(ctx, () =>
-      getLearningPlanDetail(planId, user.id)
-    );
-
+  const result = await withServerActionContext(async (user) => {
+    const plan = await getLearningPlanDetail(planId, user.id);
     if (!plan) {
-      // Plan not found could mean:
-      // 1. Plan doesn't exist at all
-      // 2. Plan exists but user doesn't own it (RLS filtered)
-      // We return NOT_FOUND to avoid leaking information about plan existence
       logger.debug(
         { planId, userId: user.id },
         'Plan not found or user does not have access'
@@ -189,14 +126,17 @@ export async function getPlanForPage(
         'This plan does not exist or you do not have access to it.'
       );
     }
-
     return planSuccess(plan);
-  } catch (error) {
-    logger.error({ planId, userId: user.id, error }, 'Failed to fetch plan');
-    return planError('INTERNAL_ERROR', 'An unexpected error occurred.');
-  } finally {
-    await cleanup();
+  });
+
+  if (!result) {
+    logger.debug({ planId }, 'Plan access denied: user not authenticated');
+    return planError(
+      'UNAUTHORIZED',
+      'You must be signed in to view this plan.'
+    );
   }
+  return result;
 }
 
 /**
@@ -211,68 +151,43 @@ export async function getPlanForPage(
 export async function getPlanScheduleForPage(
   planId: string
 ): Promise<ScheduleAccessResult> {
-  const authUserId = await getEffectiveAuthUserId();
-  if (!authUserId) {
+  const result = await withServerActionContext(async (user) => {
+    try {
+      const schedule = await getPlanSchedule({ planId, userId: user.id });
+      return scheduleSuccess(schedule);
+    } catch (error) {
+      if (error instanceof ScheduleFetchError) {
+        if (
+          error.code ===
+          SCHEDULE_FETCH_ERROR_CODE.PLAN_NOT_FOUND_OR_ACCESS_DENIED
+        ) {
+          logger.debug({ planId }, 'Schedule not found or access denied');
+          return scheduleError(
+            'NOT_FOUND',
+            'Schedule not found or you do not have access.'
+          );
+        }
+
+        if (error.code === SCHEDULE_FETCH_ERROR_CODE.INVALID_WEEKLY_HOURS) {
+          logger.warn(
+            { planId, code: error.code },
+            'Schedule generation blocked by invalid weekly hours'
+          );
+          return scheduleError('INTERNAL_ERROR', 'Failed to load schedule.');
+        }
+      }
+
+      logger.error({ planId, error }, 'Failed to fetch plan schedule');
+      return scheduleError('INTERNAL_ERROR', 'Failed to load schedule.');
+    }
+  });
+
+  if (!result) {
     logger.debug({ planId }, 'Schedule access denied: user not authenticated');
     return scheduleError(
       'UNAUTHORIZED',
       'You must be signed in to view this schedule.'
     );
   }
-
-  const user = await getUserByAuthId(authUserId);
-  if (!user) {
-    logger.warn(
-      { planId, authUserId },
-      'Schedule access denied: authenticated user not found in database'
-    );
-    return scheduleError(
-      'UNAUTHORIZED',
-      'Your account could not be found. Please sign in again.'
-    );
-  }
-
-  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-  const ctx = createRequestContext(
-    new Request('http://localhost/server-action/get-schedule'),
-    { userId: authUserId, db: rlsDb, cleanup }
-  );
-
-  try {
-    const schedule = await withRequestContext(ctx, () =>
-      getPlanSchedule({ planId, userId: user.id })
-    );
-    return scheduleSuccess(schedule);
-  } catch (error) {
-    if (error instanceof ScheduleFetchError) {
-      if (
-        error.code === SCHEDULE_FETCH_ERROR_CODE.PLAN_NOT_FOUND_OR_ACCESS_DENIED
-      ) {
-        logger.debug(
-          { planId, userId: user.id },
-          'Schedule not found or access denied'
-        );
-        return scheduleError(
-          'NOT_FOUND',
-          'Schedule not found or you do not have access.'
-        );
-      }
-
-      if (error.code === SCHEDULE_FETCH_ERROR_CODE.INVALID_WEEKLY_HOURS) {
-        logger.warn(
-          { planId, userId: user.id, code: error.code },
-          'Schedule generation blocked by invalid weekly hours'
-        );
-        return scheduleError('INTERNAL_ERROR', 'Failed to load schedule.');
-      }
-    }
-
-    logger.error(
-      { planId, userId: user.id, error },
-      'Failed to fetch plan schedule'
-    );
-    return scheduleError('INTERNAL_ERROR', 'Failed to load schedule.');
-  } finally {
-    await cleanup();
-  }
+  return result;
 }

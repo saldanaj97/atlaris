@@ -2,7 +2,7 @@
  * Navigation configuration for authenticated and unauthenticated users.
  *
  * Authenticated users see: Dashboard, Plans, Analytics, Settings
- * Unauthenticated users see: Explore, Pricing, About
+ * Unauthenticated users see: Home, Pricing, About
  */
 
 export type NavItem = {
@@ -18,7 +18,6 @@ export type NavItem = {
 
 /**
  * Navigation items for authenticated users.
- * Dashboard is clickable and has a dropdown with My Plans and Create a Plan.
  */
 export const authenticatedNavItems: NavItem[] = [
   {
@@ -59,7 +58,6 @@ export const authenticatedNavItems: NavItem[] = [
  */
 export const unauthenticatedNavItems: NavItem[] = [
   { label: 'Home', href: '/' },
-  { label: 'Explore', href: '/explore' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'About', href: '/about' },
 ];

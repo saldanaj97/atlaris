@@ -42,7 +42,7 @@ Defined in `src/lib/db/enums.ts`:
 RLS policies enforce tenant isolation using role switching + session variables:
 
 - Request-scoped DB sessions run as `authenticated` or `anonymous` roles (via `src/lib/db/rls.ts`)
-- `request.jwt.claims` carries Clerk `sub` for ownership checks
+- `request.jwt.claims` carries Neon Auth `sub` for ownership checks
 - User-facing policies are explicitly scoped with `to` (no implicit `PUBLIC` policies)
 - User-facing app data is authenticated-only; anonymous role does not have app-data read policies
 

@@ -113,14 +113,6 @@ describe('Navigation', () => {
       expect(homeItem?.href).toBe('/');
     });
 
-    it('should contain Explore nav item', () => {
-      const exploreItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'Explore'
-      );
-      expect(exploreItem).toBeDefined();
-      expect(exploreItem?.href).toBe('/explore');
-    });
-
     it('should contain Pricing nav item', () => {
       const pricingItem = unauthenticatedNavItems.find(
         (item) => item.label === 'Pricing'
@@ -138,7 +130,7 @@ describe('Navigation', () => {
     });
 
     it('should have correct number of nav items', () => {
-      expect(unauthenticatedNavItems.length).toBe(4);
+      expect(unauthenticatedNavItems.length).toBe(3);
     });
 
     it('should not have Dashboard, Analytics, or Settings nav items', () => {
@@ -201,10 +193,9 @@ describe('Navigation', () => {
       expect(authLabels).toContain('Analytics');
       expect(authLabels).toContain('Settings');
 
-      // Unauthenticated users have Home, Explore, Pricing, About
+      // Unauthenticated users have Home, Pricing, About
       const unauthLabels = unauthenticatedNavItems.map((item) => item.label);
       expect(unauthLabels).toContain('Home');
-      expect(unauthLabels).toContain('Explore');
       expect(unauthLabels).toContain('Pricing');
       expect(unauthLabels).toContain('About');
     });

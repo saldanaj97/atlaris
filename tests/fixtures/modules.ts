@@ -13,7 +13,7 @@ type ModuleInsert = InferInsertModel<typeof modules>;
 type TaskRow = InferSelectModel<typeof tasks>;
 type TaskInsert = InferInsertModel<typeof tasks>;
 
-export type CreateTestModuleParams = {
+type CreateTestModuleParams = {
   planId: string;
   order?: number;
   title?: string;
@@ -21,7 +21,7 @@ export type CreateTestModuleParams = {
   estimatedMinutes?: number;
 };
 
-export type CreateTestTaskParams = {
+type CreateTestTaskParams = {
   moduleId: string;
   order?: number;
   title?: string;

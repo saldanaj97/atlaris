@@ -1,6 +1,15 @@
+import React from 'react';
 import type { Metadata } from 'next';
 
-import { Card } from '@/components/ui/card';
+import { GradientBlobBackground } from '@/app/landing/components';
+
+import {
+  HeroSection,
+  MissionSection,
+  ValuesSection,
+  TeamSection,
+  CtaSection,
+} from '@/app/about/components';
 
 export const metadata: Metadata = {
   title: 'About | Atlaris',
@@ -15,15 +24,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+export default function Page(): React.ReactElement {
   return (
-    <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-      <Card className="p-8">
-        <h1 className="text-3xl font-bold">About</h1>
-        <p className="text-muted-foreground mt-4">
-          Company info and blog links coming soon.
-        </p>
-      </Card>
+    <div className="from-primary/5 via-accent/5 to-background text-foreground relative min-h-screen w-full overflow-hidden bg-linear-to-br font-sans">
+      <GradientBlobBackground />
+      <HeroSection />
+      <MissionSection />
+      <ValuesSection />
+      <TeamSection />
+      <CtaSection />
     </div>
   );
 }

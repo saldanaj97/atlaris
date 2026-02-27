@@ -63,10 +63,10 @@ export interface CreateContextOptions {
 }
 
 export function createRequestContext(
-  req: Request,
+  req: Request | undefined,
   options?: CreateContextOptions
 ): RequestContext {
-  const correlationId = ensureCorrelationId(req.headers);
+  const correlationId = ensureCorrelationId(req?.headers);
   return {
     correlationId,
     userId: options?.userId,

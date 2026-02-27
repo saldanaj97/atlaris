@@ -4,13 +4,9 @@ import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 export type SubscriptionTier = 'free' | 'starter' | 'pro';
-export type SubscriptionStatus =
-  | 'active'
-  | 'canceled'
-  | 'past_due'
-  | 'trialing';
+type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
 
-export interface MarkUserAsSubscribedOptions {
+interface MarkUserAsSubscribedOptions {
   subscriptionTier?: SubscriptionTier;
   subscriptionStatus?: SubscriptionStatus;
   subscriptionPeriodEnd?: Date | null;

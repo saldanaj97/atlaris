@@ -5,6 +5,11 @@
       "source": "neondatabase/agent-skills",
       "sourceType": "github",
       "computedHash": "c44cf3bc64e834680c67640f09b5baf61af8cf2b1028ffd0759807f373578b5c"
+    },
+    "sentry-fix-issues": {
+      "source": "getsentry/sentry-agent-skills",
+      "sourceType": "github",
+      "computedHash": "5673b169d2a0eb6e4651a57eba4263d1c04dce10e2955c97902f1e9f80109a52"
     }
   }
 }

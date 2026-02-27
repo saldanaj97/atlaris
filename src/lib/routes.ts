@@ -23,7 +23,6 @@ export const ROUTES = {
     BILLING: '/settings/billing',
     AI: '/settings/ai',
   },
-  EXPLORE: '/explore',
   PRICING: '/pricing',
   ABOUT: '/about',
   MAINTENANCE: '/maintenance',

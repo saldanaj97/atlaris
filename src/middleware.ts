@@ -1,7 +1,9 @@
-import { getSessionCookie } from 'better-auth/cookies';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { auth } from '@/lib/auth/server';
 import { appEnv } from '@/lib/config/env';
+
+const authMiddleware = auth.middleware({ loginUrl: '/auth/sign-in' });
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -88,7 +90,9 @@ const withSecurityHeaders = (response: NextResponse): NextResponse => {
   return response;
 };
 
-export default function middleware(request: NextRequest): NextResponse {
+export default async function middleware(
+  request: NextRequest
+): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
   // Stripe webhooks bypass all checks including maintenance mode
@@ -113,15 +117,18 @@ export default function middleware(request: NextRequest): NextResponse {
     );
   }
 
-  // Auth protection
+  // Auth protection — delegate to Neon Auth middleware for session
+  // validation, token refresh, and OAuth callback handling
   if (isProtectedRoute(pathname)) {
-    const sessionCookie = getSessionCookie(request);
-    if (!sessionCookie) {
-      return withCorrelationId(
-        request,
-        NextResponse.redirect(new URL('/auth/sign-in', request.url))
-      );
-    }
+    const correlationId = getCorrelationId(request);
+    const authResponse = await authMiddleware(request);
+
+    authResponse.headers.set('x-correlation-id', correlationId);
+    authResponse.headers.set(
+      'x-middleware-request-x-correlation-id',
+      correlationId
+    );
+    return withSecurityHeaders(authResponse);
   }
 
   return nextWithCorrelationId(request);

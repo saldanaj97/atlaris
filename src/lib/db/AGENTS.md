@@ -25,6 +25,21 @@ import { db } from '@/lib/db/service-role';
 **Why?** Service-role bypasses RLS → security vulnerability if used in request handlers.  
 ESLint enforces this in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`.
 
+## Auth Wrappers (How DB Context Gets Established)
+
+`getDb()` requires an active request context — it doesn't work in isolation. Three wrappers in `@/lib/api/auth` set up that context:
+
+| Consumer          | Wrapper                          | When to use                      |
+| ----------------- | -------------------------------- | -------------------------------- |
+| API routes        | `withAuth(handler)`              | Route handlers in `src/app/api/` |
+| Server actions    | `withServerActionContext(fn)`    | `'use server'` functions         |
+| Server components | `withServerComponentContext(fn)` | Async server components          |
+
+All three create an RLS client, set up request context, resolve the DB user, and guarantee cleanup.  
+**Never call `getDb()` or query functions outside one of these wrappers** — it will throw `MissingRequestDbContextError`.
+
+Full architecture: `@docs/context/architecture/auth-and-data-layer.md`
+
 ## Structure
 
 ```

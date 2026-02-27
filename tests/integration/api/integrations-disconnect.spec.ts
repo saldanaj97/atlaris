@@ -1,5 +1,8 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { getOAuthTokens, storeOAuthTokens } from '@/lib/integrations/oauth';
+
 import { createTestUser } from '../../fixtures/users';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 
@@ -23,25 +26,155 @@ describe('POST /api/v1/integrations/disconnect', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
     clearTestUser();
   });
 
-  it('should return 501 Not Implemented', async () => {
+  it('revokes Google access and refresh tokens and deletes integration tokens', async () => {
+    await storeOAuthTokens({
+      userId: testUser.id,
+      provider: 'google_calendar',
+      tokenData: {
+        accessToken: 'test_access_token',
+        refreshToken: 'test_refresh_token',
+        scope: 'https://www.googleapis.com/auth/calendar',
+      },
+    });
+
+    const fetchMock = vi
+      .fn<(..._args: unknown[]) => Promise<Response>>()
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
     const { POST } = await import('@/app/api/v1/integrations/disconnect/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/integrations/disconnect',
       {
         method: 'POST',
-        body: JSON.stringify({ integration: 'google_calendar' }),
+        body: JSON.stringify({ provider: 'google_calendar' }),
       }
     );
 
     const response = await POST(request);
 
-    expect(response.status).toBe(501);
+    expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.code).toBe('NOT_IMPLEMENTED');
+    expect(body).toEqual({
+      provider: 'google_calendar',
+      disconnected: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://oauth2.googleapis.com/revoke',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      })
+    );
+
+    const requestBodies = fetchMock.mock.calls
+      .map((call) => call[1] as RequestInit | undefined)
+      .map((requestInit) => requestInit?.body);
+    expect(requestBodies).toContain('token=test_access_token');
+    expect(requestBodies).toContain('token=test_refresh_token');
+
+    const remainingTokens = await getOAuthTokens(
+      testUser.id,
+      'google_calendar'
+    );
+    expect(remainingTokens).toBeNull();
+  });
+
+  it('returns 404 when no integration exists for provider', async () => {
+    const fetchMock = vi
+      .fn<(..._args: unknown[]) => Promise<Response>>()
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { POST } = await import('@/app/api/v1/integrations/disconnect/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/integrations/disconnect',
+      {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'google_calendar' }),
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body.code).toBe('NOT_FOUND');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for unsupported provider payload', async () => {
+    const { POST } = await import('@/app/api/v1/integrations/disconnect/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/integrations/disconnect',
+      {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'notion' }),
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('continues deletion when access and refresh token revocation fails', async () => {
+    await storeOAuthTokens({
+      userId: testUser.id,
+      provider: 'google_calendar',
+      tokenData: {
+        accessToken: 'stale_access_token',
+        refreshToken: 'stale_refresh_token',
+        scope: 'https://www.googleapis.com/auth/calendar',
+      },
+    });
+
+    const fetchMock = vi
+      .fn<(..._args: unknown[]) => Promise<Response>>()
+      .mockResolvedValue(new Response(null, { status: 400 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { POST } = await import('@/app/api/v1/integrations/disconnect/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/integrations/disconnect',
+      {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'google_calendar' }),
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual({
+      provider: 'google_calendar',
+      disconnected: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const requestBodies = fetchMock.mock.calls
+      .map((call) => call[1] as RequestInit | undefined)
+      .map((requestInit) => requestInit?.body);
+    expect(requestBodies).toContain('token=stale_access_token');
+    expect(requestBodies).toContain('token=stale_refresh_token');
+
+    const remainingTokens = await getOAuthTokens(
+      testUser.id,
+      'google_calendar'
+    );
+    expect(remainingTokens).toBeNull();
   });
 
   it('should require authentication', async () => {
@@ -62,34 +195,4 @@ describe('POST /api/v1/integrations/disconnect', () => {
 
     expect(response.status).toBe(401);
   });
-
-  // TODO: Implement disconnect flow tests
-  //
-  // When the POST handler is implemented (currently returns 501), replace or
-  // extend the "should return 501 Not Implemented" test above with the
-  // following scenarios:
-  //
-  // 1. Provider token revocation
-  //    - Seed an integration row with a stored access/refresh token.
-  //    - Mock the provider's revoke endpoint (e.g. Google's
-  //      https://oauth2.googleapis.com/revoke) and assert it is called with
-  //      the correct token value.
-  //    - Assert the mock revocation call returns a success response and that
-  //      no subsequent use of the token would succeed (i.e. the mock is not
-  //      called again or returns 401 on re-use).
-  //
-  // 2. DB record removal
-  //    - After a successful disconnect call, query the integrations table
-  //      directly and assert the row no longer exists for the test user.
-  //
-  // 3. Unsupported provider
-  //    - Pass an unknown `integration` value and assert a 400 / validation
-  //      error is returned (NOT a provider revocation attempt).
-  //
-  // 4. Revocation failure handling
-  //    - Mock the provider revocation endpoint to return an error and assert
-  //      the API either surfaces the error correctly or cleans up the DB row
-  //      depending on the chosen strategy (best-effort vs. strict).
-  //
-  // Reference: https://github.com/saldanaj97/atlaris/pull/218
 });
