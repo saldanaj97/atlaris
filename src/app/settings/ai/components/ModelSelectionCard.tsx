@@ -1,6 +1,11 @@
 import { ModelSelector } from '@/components/settings/model-selector';
-import { Card } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import type { SubscriptionTier } from '@/lib/ai/types/model.types';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { getDb } from '@/lib/db/runtime';
@@ -32,55 +37,21 @@ export async function ModelSelectionCard(): Promise<JSX.Element> {
   const userPreferredModel = null;
 
   return (
-    <Card className="p-6">
-      <h2 className="mb-4 text-xl font-semibold">Model Selection</h2>
-      <ModelSelector
-        currentModel={userPreferredModel}
-        userTier={userTier}
-        // TODO: [OPENROUTER-MIGRATION] Implement onSave when API is ready
-        onSave={undefined}
-      />
-      <p className="text-muted-foreground mt-2 text-sm">
-        Model preference saving will be available soon.
-      </p>
-    </Card>
-  );
-}
-
-/**
- * Skeleton for the Model Selection card.
- * Shown while the async component is loading.
- */
-export function ModelSelectionCardSkeleton(): JSX.Element {
-  return (
-    <Card className="p-6">
-      <Skeleton className="mb-4 h-6 w-36" />
-
-      {/* Model selector dropdown skeleton */}
-      <Skeleton className="mb-4 h-10 w-full rounded-md" />
-
-      {/* Model cards skeleton */}
-      <div className="space-y-3">
-        {[1, 2, 3].map((modelSkeletonId) => (
-          <div
-            key={`model-skeleton-${modelSkeletonId}`}
-            className="rounded-lg border p-3"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-8 w-8 rounded-lg" />
-                <div>
-                  <Skeleton className="mb-1 h-4 w-32" />
-                  <Skeleton className="h-3 w-20" />
-                </div>
-              </div>
-              <Skeleton className="h-5 w-12 rounded-full" />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <Skeleton className="mt-4 h-4 w-56" />
+    <Card>
+      <CardHeader>
+        <CardTitle>Model Selection</CardTitle>
+        <CardDescription>
+          Model preference saving will be available soon.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ModelSelector
+          currentModel={userPreferredModel}
+          userTier={userTier}
+          // TODO: [OPENROUTER-MIGRATION] Implement onSave when API is ready
+          onSave={undefined}
+        />
+      </CardContent>
     </Card>
   );
 }

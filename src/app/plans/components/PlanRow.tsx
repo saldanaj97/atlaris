@@ -1,5 +1,10 @@
 import type { JSX } from 'react';
 
+import {
+  getNextTaskName,
+  getPlanStatus,
+  getRelativeTime,
+} from '@/app/plans/components/plan-utils';
 import { Button } from '@/components/ui/button';
 import {
   ArrowRight,
@@ -9,11 +14,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
-import {
-  getNextTaskName,
-  getPlanStatus,
-  getRelativeTime,
-} from '@/app/plans/components/plan-utils';
 
 import type { PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
@@ -52,14 +52,14 @@ export function PlanRow({
     <Link
       href={`/plans/${plan.id}`}
       onClick={onSelect}
-      className={`group flex cursor-pointer items-center gap-4 rounded-lg px-4 py-3 transition ${
+      className={`group flex cursor-pointer items-center gap-4 rounded-2xl px-5 py-4 transition ${
         isSelected
           ? 'bg-primary/5 ring-primary/30 dark:bg-primary/10 ring-1'
-          : 'hover:bg-muted-foreground/[0.03] dark:hover:bg-foreground/5'
+          : 'hover:bg-muted-foreground/3 dark:hover:bg-foreground/5'
       }`}
     >
       {/* Status indicator */}
-      <div className="relative flex-shrink-0">
+      <div className="relative shrink-0">
         <div className={`h-3 w-3 rounded-full ${statusColors[status]}`} />
         {status === 'generating' && (
           <div
@@ -75,10 +75,10 @@ export function PlanRow({
             {plan.topic}
           </span>
           {progressPercent >= 80 && (
-            <Sparkles className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-500" />
           )}
           {/* Tasks count */}
-          <div className="text-muted-foreground hidden w-15 flex-shrink-0 items-center gap-1.5 text-xs sm:flex">
+          <div className="text-muted-foreground hidden w-[3.75rem] shrink-0 items-center gap-1.5 text-xs sm:flex">
             <CheckCircle2 className="h-3.5 w-3.5" />
             <span>
               {summary.completedTasks}/{summary.totalTasks}
@@ -96,7 +96,7 @@ export function PlanRow({
       </div>
 
       {/* Progress */}
-      <div className="flex w-32 flex-shrink-0 items-center gap-2">
+      <div className="flex w-32 shrink-0 items-center gap-2">
         <div className="bg-muted-foreground/10 h-1.5 flex-1 overflow-hidden rounded-full">
           <div
             className="bg-primary h-full rounded-full"
@@ -109,7 +109,7 @@ export function PlanRow({
       </div>
 
       {/* Last activity */}
-      <div className="text-muted-foreground hidden w-24 flex-shrink-0 items-center justify-end gap-1.5 text-xs md:flex">
+      <div className="text-muted-foreground hidden w-48 shrink-0 items-center justify-end gap-1.5 text-xs md:flex">
         <Clock className="h-3.5 w-3.5" />
         {lastActivity}
       </div>
@@ -120,7 +120,6 @@ export function PlanRow({
         size="icon"
         title="View plan"
         aria-label="View plan"
-        aria-describedby="View plan"
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

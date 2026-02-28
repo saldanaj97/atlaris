@@ -28,7 +28,7 @@ export default function MobileHeader({
   isAuthenticated,
 }: MobileHeaderProps) {
   return (
-    <div className="dark:bg-card-background relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2.5 shadow-lg backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-3 lg:hidden dark:border-white/10">
+    <div className="dark:bg-card-background relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 lg:hidden dark:border-white/10">
       {/* Left: hamburger */}
       <div className="flex shrink-0">
         <MobileNavigation navItems={navItems} />
@@ -45,14 +45,13 @@ export default function MobileHeader({
       </div>
 
       {/* Right: new plan + theme toggle + user/auth */}
-      <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5">
-        {/* New Plan quick action */}
+      <div className="flex min-w-0 shrink-0 items-center gap-1">
         <Link
           href={isAuthenticated ? ROUTES.PLANS.NEW : '/auth/sign-in'}
-          className="from-primary to-accent focus-visible:ring-ring focus-visible:ring-offset-card flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-r text-white shadow-md transition-shadow hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none sm:h-9 sm:w-9 sm:rounded-xl"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
         >
-          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+          <Plus className="h-4 w-4" />
         </Link>
         <div className="shrink-0">
           <ThemeToggle size="icon-sm" />
