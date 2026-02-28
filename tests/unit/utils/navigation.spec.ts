@@ -32,30 +32,13 @@ describe('Navigation', () => {
       });
     });
 
-    it('should contain Settings nav item with dropdown', () => {
+    it('should contain Settings nav item without dropdown', () => {
       const settingsItem = authenticatedNavItems.find(
         (item) => item.label === 'Settings'
       );
       expect(settingsItem).toBeDefined();
       expect(settingsItem?.href).toBe('/settings');
-      expect(settingsItem?.dropdown).toBeDefined();
-      expect(settingsItem?.dropdown?.length).toBe(4);
-      expect(settingsItem?.dropdown).toContainEqual({
-        label: 'Profile',
-        href: '/settings/profile',
-      });
-      expect(settingsItem?.dropdown).toContainEqual({
-        label: 'Notifications',
-        href: '/settings/notifications',
-      });
-      expect(settingsItem?.dropdown).toContainEqual({
-        label: 'Integrations',
-        href: '/settings/integrations',
-      });
-      expect(settingsItem?.dropdown).toContainEqual({
-        label: 'Billing',
-        href: '/settings/billing',
-      });
+      expect(settingsItem?.dropdown).toBeUndefined();
     });
 
     it('should contain Plans nav item', () => {
@@ -77,13 +60,12 @@ describe('Navigation', () => {
       expect(highlightedItems.length).toBe(0);
     });
 
-    it('should have dropdowns on Analytics and Settings items', () => {
+    it('should have dropdown only on Analytics item', () => {
       const dropdownItems = authenticatedNavItems.filter(
         (item) => item.dropdown
       );
-      expect(dropdownItems.length).toBe(2);
+      expect(dropdownItems.length).toBe(1);
       expect(dropdownItems.map((item) => item.label)).toContain('Analytics');
-      expect(dropdownItems.map((item) => item.label)).toContain('Settings');
     });
 
     it('should have valid href for all items', () => {

@@ -1,23 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+
+import { Pencil } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
+
+import { ProfileFormSkeleton } from '@/app/settings/profile/components/ProfileFormSkeleton';
 
 const profileSchema = z.object({
   id: z.string(),
   name: z.string().nullable(),
   email: z.string(),
   subscriptionTier: z.string(),
-  subscriptionStatus: z.string(),
+  subscriptionStatus: z.string().nullable(),
   createdAt: z.string(),
 });
 
@@ -26,9 +29,11 @@ type ProfileData = z.infer<typeof profileSchema>;
 export function ProfileForm(): React.ReactElement {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [name, setName] = useState('');
+  const [editingName, setEditingName] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const isDirty = profile !== null && name !== (profile.name ?? '');
 
@@ -89,6 +94,7 @@ export function ProfileForm(): React.ReactElement {
       const data = profileSchema.parse(raw);
       setProfile(data);
       setName(data.name ?? '');
+      setEditingName(false);
       toast.success('Profile updated');
     } catch (err) {
       const message =
@@ -116,7 +122,7 @@ export function ProfileForm(): React.ReactElement {
   return (
     <>
       {/* Personal Information */}
-      <Card className="p-6">
+      <Card className="flex min-h-80 flex-col p-6">
         <h2 className="mb-4 text-xl font-semibold">Personal Information</h2>
         <div className="space-y-4">
           <div>
@@ -126,12 +132,34 @@ export function ProfileForm(): React.ReactElement {
             >
               Name
             </Label>
-            <Input
-              id="profile-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            {editingName ? (
+              <Input
+                ref={nameInputRef}
+                id="profile-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => {
+                  if (!isDirty) setEditingName(false);
+                }}
+                autoFocus
+              />
+            ) : (
+              <Button
+                id="profile-name"
+                type="button"
+                variant="outline"
+                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal"
+                onClick={() => {
+                  setEditingName(true);
+                }}
+              >
+                <span className={name ? '' : 'text-muted-foreground'}>
+                  {name || 'No name set'}
+                </span>
+                <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />
+              </Button>
+            )}
           </div>
           <div>
             <span className="text-muted-foreground mb-1 block text-sm">
@@ -139,15 +167,21 @@ export function ProfileForm(): React.ReactElement {
             </span>
             <p className="text-sm">{profile.email}</p>
           </div>
-          <Button
-            disabled={!isDirty || saving}
-            onClick={() => {
-              void handleSave();
-            }}
-          >
-            {saving ? 'Saving…' : 'Save Changes'}
-          </Button>
         </div>
+
+        {/* Save button pinned to bottom-right of card */}
+        {isDirty && (
+          <div className="mt-auto flex justify-end pt-4">
+            <Button
+              disabled={saving}
+              onClick={() => {
+                void handleSave();
+              }}
+            >
+              {saving ? 'Saving…' : 'Save Changes'}
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* Account Details */}
@@ -160,7 +194,7 @@ export function ProfileForm(): React.ReactElement {
           </div>
           <div>
             <span className="mb-1 block">Status</span>
-            <p>{profile.subscriptionStatus}</p>
+            <p>{profile.subscriptionStatus ?? 'N/A'}</p>
           </div>
           <div>
             <span className="mb-1 block">Member Since</span>
@@ -184,45 +218,6 @@ export function ProfileForm(): React.ReactElement {
               page.
             </p>
           </div>
-        </div>
-      </Card>
-    </>
-  );
-}
-
-export function ProfileFormSkeleton(): React.ReactElement {
-  return (
-    <>
-      <Card className="p-6">
-        <Skeleton className="mb-4 h-7 w-48" />
-        <div className="space-y-4">
-          <div>
-            <Skeleton className="mb-1 h-4 w-12" />
-            <Skeleton className="h-9 w-full rounded-lg" />
-          </div>
-          <div>
-            <Skeleton className="mb-1 h-4 w-12" />
-            <Skeleton className="h-4 w-40" />
-          </div>
-          <Skeleton className="h-9 w-28" />
-        </div>
-      </Card>
-      <Card className="p-6">
-        <Skeleton className="mb-4 h-7 w-40" />
-        <div className="space-y-4">
-          <div>
-            <Skeleton className="mb-1 h-4 w-32" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-          </div>
-          <div>
-            <Skeleton className="mb-1 h-4 w-16" />
-            <Skeleton className="h-4 w-20" />
-          </div>
-          <div>
-            <Skeleton className="mb-1 h-4 w-28" />
-            <Skeleton className="h-4 w-36" />
-          </div>
-          <Skeleton className="h-16 w-full rounded-lg" />
         </div>
       </Card>
     </>

@@ -30,7 +30,7 @@ export default function LandingNavigation({
       className="fixed start-0 top-0 z-50 w-full"
       aria-label="Main navigation"
     >
-      <div className="mx-auto max-w-screen-xl px-6 py-4">
+      <div className="mx-auto max-w-7xl px-6 py-4">
         <div className="flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl">
           {/* Logo + Brand */}
           <BrandLogo />

@@ -44,12 +44,6 @@ export const authenticatedNavItems: NavItem[] = [
   {
     label: 'Settings',
     href: '/settings',
-    dropdown: [
-      { label: 'Profile', href: '/settings/profile' },
-      { label: 'Notifications', href: '/settings/notifications' },
-      { label: 'Integrations', href: '/settings/integrations' },
-      { label: 'Billing', href: '/settings/billing' },
-    ],
   },
 ];
 

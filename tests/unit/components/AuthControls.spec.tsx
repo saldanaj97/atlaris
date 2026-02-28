@@ -39,7 +39,14 @@ describe('AuthControls', () => {
   });
 
   describe('tier badge', () => {
-    it.each(['free', 'starter', 'pro'] as const)(
+    it('does not render badge for free tier', () => {
+      render(<AuthControls isAuthenticated={true} tier="free" />);
+
+      expect(screen.queryByText('free')).not.toBeInTheDocument();
+      expect(screen.getByTestId('user-button')).toBeInTheDocument();
+    });
+
+    it.each(['starter', 'pro'] as const)(
       'renders %s tier when authenticated and tier is provided',
       (tier) => {
         render(<AuthControls isAuthenticated={true} tier={tier} />);

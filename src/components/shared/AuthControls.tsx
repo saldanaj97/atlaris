@@ -26,25 +26,25 @@ export default function AuthControls({
   tier,
 }: AuthControlsProps): ReactElement {
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4">
+    <div className="flex items-center gap-2">
       {isAuthenticated ? (
-        <>
-          {tier && (
+        <div className="relative">
+          <UserButton size="icon" />
+          {tier && tier !== 'free' && (
             <Badge
               variant={tierVariants[tier]}
-              className="hidden capitalize lg:inline-flex"
+              className="pointer-events-none absolute -right-1.5 -bottom-1 hidden px-1 py-0 text-[10px] leading-tight capitalize lg:inline-flex"
             >
               {tier}
             </Badge>
           )}
-          <UserButton />
-        </>
+        </div>
       ) : (
         <>
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
-            className="hidden text-xs sm:inline-flex"
+            className="text-muted-foreground hover:text-foreground hidden text-xs sm:inline-flex"
             asChild
           >
             <Link href="/auth/sign-in">Sign In</Link>

@@ -1,10 +1,10 @@
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   PlanCountBadgeContent,
   PlansContent,
-  PlansContentSkeleton,
 } from '@/app/plans/components/PlansContent';
+import { PlansContentSkeleton } from '@/app/plans/components/PlansContentSkeleton';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Plus } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';

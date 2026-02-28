@@ -87,6 +87,11 @@ export default function RootLayout({
           redirectTo="/dashboard"
           emailOTP
           social={{ providers: ['google'] }}
+          account={{
+            basePath: '/settings',
+            fields: ['image', 'name'],
+            viewPaths: { SETTINGS: 'profile' },
+          }}
         >
           <ThemeProvider>
             <SiteHeader />

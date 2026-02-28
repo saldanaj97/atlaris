@@ -1,16 +1,11 @@
-import {
-  BarChart3,
-  Clock,
-  Flame,
-  Sparkles,
-  Target,
-  TrendingUp,
-} from 'lucide-react';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { BarChart3, Clock, Flame, Lock, Target } from 'lucide-react';
+
+import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 export const metadata: Metadata = {
   title: 'Usage Analytics | Atlaris',
@@ -56,41 +51,43 @@ export default function UsageAnalyticsPage(): JSX.Element {
   return (
     <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
       <header className="mb-6">
-        <h1>Usage Analytics</h1>
+        <h1>Usage</h1>
         <p className="subtitle">
           Understand how you learn, so you can learn even better
         </p>
       </header>
 
-      {/* Coming soon callout */}
-      <Alert className="mb-10">
-        <Sparkles className="h-4 w-4" aria-hidden="true" />
-        <AlertTitle className="flex items-center gap-2">
-          We&apos;re building something special
-          <TrendingUp className="text-primary h-4 w-4" aria-hidden="true" />
-        </AlertTitle>
-        <AlertDescription>
-          Usage analytics will give you a clear picture of your learning habits
-          and progress. We&apos;re putting the finishing touches on it&nbsp;—
-          we&apos;ll let you know when it&apos;s ready.
-        </AlertDescription>
-      </Alert>
+      <ComingSoonAlert
+        title="We're building something special"
+        description="Usage analytics will give you a clear picture of your learning habits and progress. We're putting the finishing touches on it — we'll let you know when it's ready."
+        className="mb-10"
+      />
 
       {/* Preview cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {PREVIEW_CARDS.map((card) => (
-          <Card
-            key={card.title}
-            className="pointer-events-none opacity-60 transition-none select-none"
-          >
-            <CardContent className="space-y-3">
-              <div className="bg-muted/50 text-muted-foreground w-fit rounded-lg p-2.5">
-                <card.icon className="h-5 w-5" aria-hidden="true" />
+          <Card key={card.title} className="group relative rounded-2xl">
+            <CardContent>
+              {/* Lock overlay */}
+              <div className="absolute top-4 right-4">
+                <Lock className="text-muted-foreground/60 h-4 w-4" />
               </div>
-              <h3 className="text-foreground font-medium">{card.title}</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                {card.description}
-              </p>
+
+              <div className="flex flex-col gap-3 opacity-50">
+                <card.icon
+                  className="text-primary h-8 w-8"
+                  aria-hidden="true"
+                />
+                <div>
+                  <h3 className="font-medium">{card.title}</h3>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    {card.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Locked progress bar */}
+              <Progress value={0} className="mt-4 h-1.5" />
             </CardContent>
           </Card>
         ))}

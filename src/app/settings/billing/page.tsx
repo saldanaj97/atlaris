@@ -1,27 +1,30 @@
+import type { ReactElement } from 'react';
 import { Suspense } from 'react';
 
-import { BillingCards, BillingCardsSkeleton } from './components/BillingCards';
+import { BillingCards } from '@/app/settings/billing/components/BillingCards';
+import { BillingCardsSkeleton } from '@/app/settings/billing/components/BillingCardsSkeleton';
 
 /**
- * Billing Settings page with Suspense boundary for data-dependent content.
+ * Billing Settings sub-page.
  *
- * Static elements (title) render immediately.
+ * Rendered inside the shared settings layout.
  * The billing cards (Current Plan + Usage) wait for subscription and usage data.
  */
-export default function BillingSettingsPage() {
+export default function BillingSettingsPage(): ReactElement {
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        {/* Static content - renders immediately */}
-        <h1 className="mb-6 text-3xl font-bold">Billing</h1>
+    <>
+      <header className="mb-6">
+        <h2 className="text-xl font-semibold">Billing</h2>
+        <p className="text-muted-foreground text-sm">
+          Manage your subscription and view usage
+        </p>
+      </header>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Data-dependent cards - wrapped in Suspense */}
-          <Suspense fallback={<BillingCardsSkeleton />}>
-            <BillingCards />
-          </Suspense>
-        </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Suspense fallback={<BillingCardsSkeleton />}>
+          <BillingCards />
+        </Suspense>
       </div>
-    </div>
+    </>
   );
 }
