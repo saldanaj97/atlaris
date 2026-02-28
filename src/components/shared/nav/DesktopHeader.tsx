@@ -11,8 +11,8 @@ import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
-import BrandLogo from '../BrandLogo';
-import DesktopNavigation from './DesktopNavigation';
+import BrandLogo from '@/components/shared/BrandLogo';
+import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 
 interface DesktopHeaderProps {
   navItems: NavItem[];
@@ -31,7 +31,7 @@ export default function DesktopHeader({
   isAuthenticated,
 }: DesktopHeaderProps): JSX.Element {
   return (
-    <div className="dark:bg-card-background hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl lg:grid dark:border-white/10">
+    <div className="dark:bg-card hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl lg:grid dark:border-white/10">
       {/* Brand (left) */}
       <div className="flex items-center">
         <BrandLogo />

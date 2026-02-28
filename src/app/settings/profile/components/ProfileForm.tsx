@@ -146,6 +146,7 @@ export function ProfileForm(): React.ReactElement {
               />
             ) : (
               <Button
+                id="profile-name"
                 type="button"
                 variant="outline"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal"
