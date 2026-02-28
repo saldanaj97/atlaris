@@ -122,7 +122,7 @@ export function ProfileForm(): React.ReactElement {
   return (
     <>
       {/* Personal Information */}
-      <Card className="flex min-h-85 flex-col p-6">
+      <Card className="flex min-h-80 flex-col p-6">
         <h2 className="mb-4 text-xl font-semibold">Personal Information</h2>
         <div className="space-y-4">
           <div>
@@ -145,9 +145,10 @@ export function ProfileForm(): React.ReactElement {
                 autoFocus
               />
             ) : (
-              <button
+              <Button
                 type="button"
-                className="border-input bg-background flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm"
+                variant="outline"
+                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal"
                 onClick={() => {
                   setEditingName(true);
                 }}
@@ -156,7 +157,7 @@ export function ProfileForm(): React.ReactElement {
                   {name || 'No name set'}
                 </span>
                 <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />
-              </button>
+              </Button>
             )}
           </div>
           <div>

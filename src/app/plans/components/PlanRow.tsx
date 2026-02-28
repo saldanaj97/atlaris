@@ -110,10 +110,8 @@ export function PlanRow({
 
       {/* Last activity */}
       <div className="text-muted-foreground hidden w-48 shrink-0 items-center justify-end gap-1.5 text-xs md:flex">
-        <div className="flex flex-row items-center justify-evenly gap-1.5">
-          <Clock className="h-3.5 w-3.5" />
-          {lastActivity}
-        </div>
+        <Clock className="h-3.5 w-3.5" />
+        {lastActivity}
       </div>
 
       {/* View Plan */}
@@ -122,7 +120,6 @@ export function PlanRow({
         size="icon"
         title="View plan"
         aria-label="View plan"
-        aria-describedby="View plan"
       >
         <ChevronRight className="h-4 w-4" />
       </Button>

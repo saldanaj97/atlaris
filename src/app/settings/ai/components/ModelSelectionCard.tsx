@@ -32,7 +32,7 @@ export async function ModelSelectionCard(): Promise<JSX.Element> {
 
   return (
     <Card className="p-6">
-      <h2 className="mb-4 text-xl font-semibold">Model Selection</h2>
+      <h3 className="mb-4 text-xl font-semibold">Model Selection</h3>
       <ModelSelector
         currentModel={userPreferredModel}
         userTier={userTier}

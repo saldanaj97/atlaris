@@ -3,6 +3,7 @@
 import AuthControls from '@/components/shared/AuthControls';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import type { JSX } from 'react';
 
 import type { NavItem } from '@/lib/navigation';
@@ -57,7 +58,7 @@ export default function DesktopHeader({
 
         <ThemeToggle />
 
-        <div className="bg-border mx-1 h-5 w-px" />
+        <Separator orientation="vertical" className="mx-1 h-5" />
 
         <AuthControls
           isAuthenticated={isAuthenticated}
