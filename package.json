@@ -19,7 +19,7 @@
     "test:integration": "./scripts/test-integration.sh tests/integration --changed",
     "test:all": "./scripts/full-test-suite.sh",
     "type-check": "tsc --noEmit",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.48",
