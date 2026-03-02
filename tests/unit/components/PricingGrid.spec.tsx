@@ -1,13 +1,13 @@
-import type { TierConfig } from '@/components/billing/pricing-config';
-import { PricingGrid } from '@/components/billing/PricingGrid';
-import type { TierKey } from '@/components/billing/PricingTiers';
-import type { StripeTierData } from '@/components/billing/stripe-pricing';
+import type { TierConfig } from '@/app/pricing/components/pricing-config';
+import { PricingGrid } from '@/app/pricing/components/PricingGrid';
+import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 // Mock SubscribeButton
-vi.mock('@/components/billing/SubscribeButton', () => ({
+vi.mock('@/app/pricing/components/SubscribeButton', () => ({
   default: ({ priceId, label }: { priceId: string; label: string }) => (
     <button data-testid={`subscribe-${priceId}`}>{label}</button>
   ),
@@ -29,17 +29,14 @@ describe('PricingGrid', () => {
     {
       key: 'free' as TierKey,
       priceId: null,
-      badgeVariant: 'secondary',
     },
     {
       key: 'starter' as TierKey,
       priceId: 'price_starter_monthly',
-      badgeVariant: 'default',
     },
     {
       key: 'pro' as TierKey,
       priceId: 'price_pro_monthly',
-      badgeVariant: 'default',
     },
   ];
 
@@ -59,7 +56,7 @@ describe('PricingGrid', () => {
       />
     );
 
-    expect(screen.getByText('Free')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Free' })).toBeInTheDocument();
     expect(screen.getByText('Starter')).toBeInTheDocument();
     expect(screen.getByText('Pro')).toBeInTheDocument();
   });
@@ -164,7 +161,7 @@ describe('PricingGrid', () => {
     const grid = container.querySelector('.grid');
     expect(grid).toBeInTheDocument();
     expect(grid).toHaveClass('gap-6');
-    expect(grid).toHaveClass('md:grid-cols-3');
+    expect(grid).toHaveClass('lg:grid-cols-3');
   });
 
   it('should render correct number of cards', () => {
@@ -195,7 +192,7 @@ describe('PricingGrid', () => {
     );
 
     // Should still render tier names from defaults
-    expect(screen.getByText('Free')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Free' })).toBeInTheDocument();
     expect(screen.getByText('Starter')).toBeInTheDocument();
     expect(screen.getByText('Pro')).toBeInTheDocument();
   });
@@ -205,7 +202,6 @@ describe('PricingGrid', () => {
       {
         key: 'starter' as TierKey,
         priceId: 'price_starter_monthly',
-        badgeVariant: 'default',
       },
     ];
 
@@ -261,9 +257,9 @@ describe('PricingGrid', () => {
     );
 
     // Check for tier badges
-    expect(screen.getByText('Current')).toBeInTheDocument(); // Free tier
-    expect(screen.getByText('Popular')).toBeInTheDocument(); // Starter tier
-    expect(screen.getByText('Best')).toBeInTheDocument(); // Pro tier
+    expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Most Popular')).toBeInTheDocument();
+    expect(screen.getByText('Best Value')).toBeInTheDocument();
   });
 
   it('should handle missing priceId for free tier', () => {

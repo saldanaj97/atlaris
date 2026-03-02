@@ -1,5 +1,5 @@
 import '../../mocks/unit/sonner.unit';
-import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
+import ManageSubscriptionButton from '@/app/pricing/components/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

@@ -112,8 +112,12 @@ export function UnifiedPlanInput({
 
   const prevResetVersionRef = useRef(topicResetVersion);
   const topicRef = useRef(state.topic);
-  // Keep topicRef in sync with state.topic so effect consumers read the latest topic without adding it to deps.
-  topicRef.current = state.topic;
+
+  // Keep topicRef in sync with state.topic so the reset-version effect reads the latest topic without adding it to deps.
+  // Declared before the consumer effect so React runs it first (effects fire in declaration order).
+  useEffect(() => {
+    topicRef.current = state.topic;
+  });
 
   useEffect(() => {
     if (prevResetVersionRef.current === topicResetVersion) {
@@ -178,7 +182,7 @@ export function UnifiedPlanInput({
   return (
     <div className="w-full max-w-2xl">
       {/* Main input card with glassmorphism */}
-      <div className="dark:border-border dark:bg-card/60 dark:focus-within:shadow-primary/10 focus-within:shadow-primary/20 border-border bg-card/60 relative rounded-3xl border px-6 py-5 shadow-2xl backdrop-blur-xl transition-all">
+      <div className="dark:border-border dark:bg-card/60 dark:focus-within:shadow-primary/10 focus-within:shadow-primary/20 border-border bg-card/60 relative rounded-3xl border px-4 py-4 shadow-2xl backdrop-blur-xl transition-all sm:px-6 sm:py-5">
         {/* Decorative gradient glow - clipped to card bounds */}
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
@@ -188,13 +192,13 @@ export function UnifiedPlanInput({
         </div>
 
         {/* Topic input */}
-        <div className="relative mb-4">
+        <div className="relative mb-3">
           <label htmlFor={topicInputId} className="sr-only">
             What do you want to learn?
           </label>
-          <div className="flex items-start gap-3">
-            <div className="from-primary to-accent flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-lg">
-              <Sparkles className="h-5 w-5 text-white" />
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="from-primary to-accent flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-lg sm:h-10 sm:w-10">
+              <Sparkles className="h-4 w-4 text-white sm:h-5 sm:w-5" />
             </div>
             <textarea
               id={topicInputId}
@@ -204,7 +208,7 @@ export function UnifiedPlanInput({
               }
               onKeyDown={handleKeyDown}
               placeholder="I want to learn TypeScript for React development..."
-              className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[72px] w-full resize-none bg-transparent text-lg focus:outline-none"
+              className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[56px] w-full resize-none bg-transparent text-base focus:outline-none sm:min-h-[72px] sm:text-lg"
               rows={2}
               disabled={isSubmitting || disabled}
             />
@@ -212,7 +216,7 @@ export function UnifiedPlanInput({
         </div>
 
         {/* Inline sentence with dropdowns - Row 1 */}
-        <div className="dark:text-foreground text-foreground mb-3 flex flex-wrap items-center gap-2">
+        <div className="dark:text-foreground text-foreground mb-2.5 flex flex-wrap items-center gap-2">
           <span className="text-sm">I&apos;m a</span>
           <InlineDropdown
             id={`${baseId}-skill-level`}
@@ -234,7 +238,7 @@ export function UnifiedPlanInput({
         </div>
 
         {/* Inline sentence with dropdowns - Row 2 */}
-        <div className="dark:text-foreground text-foreground mb-4 flex flex-wrap items-center gap-2">
+        <div className="dark:text-foreground text-foreground mb-3 flex flex-wrap items-center gap-2">
           <span className="text-sm">I prefer</span>
           <InlineDropdown
             id={`${baseId}-learning-style`}
@@ -264,7 +268,7 @@ export function UnifiedPlanInput({
             type="button"
             onClick={handleSubmit}
             disabled={isDisabled}
-            className="group from-primary via-accent to-primary shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl bg-gradient-to-r px-6 py-3 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl"
+            className="group from-primary via-accent to-primary shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl bg-gradient-to-r px-5 py-2.5 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl sm:px-6 sm:py-3"
           >
             {isSubmitting ? (
               <>
@@ -282,7 +286,7 @@ export function UnifiedPlanInput({
       </div>
 
       {/* Subtext with keyboard hint */}
-      <p className="dark:text-muted-foreground text-muted-foreground mt-4 text-center text-sm">
+      <p className="dark:text-muted-foreground text-muted-foreground mt-3 text-center text-xs sm:mt-4 sm:text-sm">
         Takes about 60 seconds. Press{' '}
         <kbd
           className="dark:bg-muted bg-muted/60 rounded px-1.5 py-0.5 text-xs font-medium"

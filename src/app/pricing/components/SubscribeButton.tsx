@@ -11,6 +11,7 @@ import { createCheckoutResponseSchema } from '@/lib/validation/stripe';
 interface SubscribeButtonProps {
   priceId: string;
   label?: string;
+  variant?: 'default' | 'outline' | 'secondary';
   className?: string;
   successUrl?: string;
   cancelUrl?: string;
@@ -19,6 +20,7 @@ interface SubscribeButtonProps {
 export default function SubscribeButton({
   priceId,
   label = 'Subscribe',
+  variant = 'default',
   className,
   successUrl,
   cancelUrl,
@@ -68,6 +70,7 @@ export default function SubscribeButton({
 
   return (
     <Button
+      variant={variant}
       className={className}
       disabled={loading}
       onClick={() => {

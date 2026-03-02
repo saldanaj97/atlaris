@@ -13,12 +13,6 @@ interface PdfUploadZoneProps {
   error?: string;
 }
 
-/**
- * PDF Upload Zone Component
- *
- * Drag-drop or click to upload PDF files.
- * Features glassmorphism design matching the landing page aesthetic.
- */
 export function PdfUploadZone({
   onFileSelect,
   isUploading = false,
@@ -30,10 +24,6 @@ export function PdfUploadZone({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
 
-  /**
-   * Validates that a file is actually a PDF by checking its magic bytes signature (%PDF-).
-   * This security guard prevents spoofed files that claim to be PDFs via extension/MIME type.
-   */
   const isPdfMagicBytes = useCallback(async (file: File): Promise<boolean> => {
     try {
       const buffer = await file.slice(0, 5).arrayBuffer();

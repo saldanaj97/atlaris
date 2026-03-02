@@ -28,7 +28,7 @@ export default function MobileHeader({
   isAuthenticated,
 }: MobileHeaderProps) {
   return (
-    <div className="dark:bg-card-background relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 lg:hidden dark:border-white/10">
+    <div className="dark:bg-card/50 relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 lg:hidden dark:border-white/10">
       {/* Left: hamburger */}
       <div className="flex shrink-0">
         <MobileNavigation navItems={navItems} />

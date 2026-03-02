@@ -31,7 +31,7 @@ export default function LandingNavigation({
       aria-label="Main navigation"
     >
       <div className="mx-auto max-w-7xl px-6 py-4">
-        <div className="flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl">
+        <div className="dark:bg-card/50 flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl dark:border-white/10">
           {/* Logo + Brand */}
           <BrandLogo />
 
@@ -78,7 +78,7 @@ export default function LandingNavigation({
         <div
           id={mobileMenuId}
           className={cn(
-            'mt-2 overflow-hidden rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl transition-all duration-200 ease-in-out md:hidden',
+            'dark:bg-card/50 mt-2 overflow-hidden rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl transition-all duration-200 ease-in-out md:hidden dark:border-white/10',
             isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
           )}
         >

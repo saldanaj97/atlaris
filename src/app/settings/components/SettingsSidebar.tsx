@@ -18,7 +18,7 @@ interface SettingsNavItem {
   icon: LucideIcon;
 }
 
-const settingsNavItems: SettingsNavItem[] = [
+const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   { label: 'Profile', href: '/settings/profile', icon: User },
   { label: 'Billing', href: '/settings/billing', icon: CreditCard },
   { label: 'AI Preferences', href: '/settings/ai', icon: Bot },
@@ -31,7 +31,7 @@ export function SettingsSidebar(): React.ReactElement {
 
   return (
     <nav aria-label="Settings" className="flex flex-col gap-1">
-      {settingsNavItems.map((item) => {
+      {SETTINGS_NAV_ITEMS.map((item) => {
         const isActive =
           pathname === item.href || pathname.startsWith(item.href + '/');
         const Icon = item.icon;

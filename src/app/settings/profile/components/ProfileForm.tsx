@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -33,7 +34,11 @@ export function ProfileForm(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  const nameInputCallbackRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) {
+      node.focus();
+    }
+  }, []);
 
   const isDirty = profile !== null && name !== (profile.name ?? '');
 
@@ -134,7 +139,7 @@ export function ProfileForm(): React.ReactElement {
             </Label>
             {editingName ? (
               <Input
-                ref={nameInputRef}
+                ref={nameInputCallbackRef}
                 id="profile-name"
                 type="text"
                 value={name}
@@ -142,7 +147,6 @@ export function ProfileForm(): React.ReactElement {
                 onBlur={() => {
                   if (!isDirty) setEditingName(false);
                 }}
-                autoFocus
               />
             ) : (
               <Button
@@ -209,12 +213,12 @@ export function ProfileForm(): React.ReactElement {
           <div className="border-border bg-muted/50 rounded-lg border p-3">
             <p className="text-xs">
               <strong>Note:</strong> To manage your subscription, visit the{' '}
-              <a
+              <Link
                 href="/settings/billing"
                 className="text-primary underline underline-offset-2"
               >
                 billing settings
-              </a>{' '}
+              </Link>{' '}
               page.
             </p>
           </div>

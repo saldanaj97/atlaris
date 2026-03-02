@@ -180,7 +180,6 @@ export async function syncSubscriptionToDb(
     }
   }
 
-  // Map Stripe subscription status to our enum
   const statusMap: Record<
     Stripe.Subscription.Status,
     'active' | 'canceled' | 'past_due' | 'trialing' | null
@@ -201,7 +200,6 @@ export async function syncSubscriptionToDb(
   const periodEnd = (subscription as unknown as { current_period_end?: number })
     .current_period_end;
 
-  // Update user record
   await db
     .update(users)
     .set({
@@ -226,7 +224,6 @@ export async function createCustomer(
 ): Promise<string> {
   const stripe = stripeInstance ?? getStripe();
 
-  // Check if user already has a Stripe customer ID
   const [existingUser] = await db
     .select({ stripeCustomerId: users.stripeCustomerId })
     .from(users)
@@ -237,7 +234,6 @@ export async function createCustomer(
     return existingUser.stripeCustomerId;
   }
 
-  // Create new Stripe customer
   const customer = await stripe.customers.create({
     email,
     metadata: {
@@ -245,7 +241,6 @@ export async function createCustomer(
     },
   });
 
-  // Update user record with Stripe customer ID
   await db
     .update(users)
     .set({

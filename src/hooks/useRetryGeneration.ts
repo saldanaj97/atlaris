@@ -20,19 +20,7 @@ function getErrorMessage(raw: unknown): string {
     const m = parsed.data.message ?? parsed.data.error;
     if (m !== undefined) return m;
   }
-  if (typeof raw === 'object' && raw !== null) {
-    const o = raw as Record<string, unknown>;
-    if (typeof o.message === 'string') return o.message;
-    if (typeof o.error === 'string') return o.error;
-  }
-  if (
-    typeof raw === 'string' ||
-    typeof raw === 'number' ||
-    typeof raw === 'boolean' ||
-    typeof raw === 'bigint'
-  ) {
-    return `${raw}`;
-  }
+  if (typeof raw === 'string') return raw;
   return 'Generation failed.';
 }
 
@@ -90,25 +78,20 @@ export function useRetryGeneration(
     status === 'retrying' || currentAttempts >= maxAttempts || cooldownActive;
 
   const retryGeneration = useCallback(async () => {
-    // Prevent retry if cooldown is active
     if (cooldownActive) {
       return;
     }
 
-    // Abort any existing request
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
 
-    // Start cooldown
     setCooldownActive(true);
 
-    // Clear any existing cooldown timer
     if (cooldownTimerRef.current) {
       clearTimeout(cooldownTimerRef.current);
     }
 
-    // Set timer to end cooldown
     cooldownTimerRef.current = setTimeout(() => {
       setCooldownActive(false);
       cooldownTimerRef.current = null;
@@ -126,7 +109,6 @@ export function useRetryGeneration(
         signal: controller.signal,
       });
 
-      // Handle non-streaming error responses
       if (!response.ok || !response.body) {
         const parsedError = await parseApiErrorResponse(
           response,
@@ -137,7 +119,6 @@ export function useRetryGeneration(
         return;
       }
 
-      // Process streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';

@@ -5,28 +5,18 @@ import { BellRing, BookOpen, Clock, CreditCard } from 'lucide-react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 
 export const metadata: Metadata = {
   title: 'Notifications',
   description: 'Manage your notification preferences.',
 };
 
-function DisabledToggle(): ReactElement {
-  return (
-    <div
-      aria-hidden="true"
-      className="bg-muted h-5 w-9 rounded-full opacity-50"
-    >
-      <div className="bg-muted-foreground/30 m-0.5 h-4 w-4 rounded-full" />
-    </div>
-  );
-}
-
 function ToggleRow({ label }: { label: string }): ReactElement {
   return (
     <div className="flex items-center justify-between py-2">
       <span className="text-muted-foreground text-sm">{label}</span>
-      <DisabledToggle />
+      <Switch disabled checked={false} />
     </div>
   );
 }

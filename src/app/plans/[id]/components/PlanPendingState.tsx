@@ -16,6 +16,15 @@ import { useEffect } from 'react';
 // Maximum retry attempts (shared constant used by both client and server)
 const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;
 
+function getStatusBadgeVariant(
+  failed: boolean,
+  processing: boolean
+): 'destructive' | 'default' | 'secondary' {
+  if (failed) return 'destructive';
+  if (processing) return 'default';
+  return 'secondary';
+}
+
 interface PlanPendingStateProps {
   plan: ClientPlanDetail;
 }
@@ -55,15 +64,6 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
 
   // Check if user has exhausted all retry attempts
   const hasExhaustedRetries = attempts >= MAX_RETRY_ATTEMPTS;
-
-  const getStatusBadgeVariant = (
-    failed: boolean,
-    processing: boolean
-  ): 'destructive' | 'default' | 'secondary' => {
-    if (failed) return 'destructive';
-    if (processing) return 'default';
-    return 'secondary';
-  };
 
   return (
     <div className="space-y-6">

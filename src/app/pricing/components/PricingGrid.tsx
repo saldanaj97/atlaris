@@ -1,4 +1,5 @@
-import { Button } from '../ui/button';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { PRICING_TIERS, type TierKey } from './PricingTiers';
 import { PricingCard } from './PricingCard';
 import { type TierConfig } from './pricing-config';
@@ -19,7 +20,7 @@ export function PricingGrid({
   subscribeLabel,
 }: PricingGridProps) {
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-3">
       {configs.map((config) => {
         const tier = PRICING_TIERS[config.key];
         const stripeInfo = stripeData.get(config.key);
@@ -31,21 +32,24 @@ export function PricingGrid({
             name={stripeInfo?.name ?? tier.name}
             price={stripeInfo?.amount ?? tier.price ?? '$—'}
             intervalLabel={intervalLabel}
+            description={tier.description}
             features={[...tier.features]}
-            badge={{
-              label: tier.badge,
-              variant: config.badgeVariant ?? tier.variant,
-            }}
+            badge={tier.badge}
             cta={
               isPaidTier ? (
                 <SubscribeButton
                   priceId={config.priceId ?? ''}
                   label={subscribeLabel}
-                  className="w-full"
+                  variant={tier.recommended ? 'default' : 'outline'}
+                  className="w-full rounded-full"
                 />
               ) : (
-                <Button asChild variant={tier.variant} className="w-full">
-                  {tier.button}
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full rounded-full"
+                >
+                  <Link href="/dashboard">Continue Free</Link>
                 </Button>
               )
             }

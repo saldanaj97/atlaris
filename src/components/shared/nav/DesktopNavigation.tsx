@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +44,8 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           aria-haspopup="menu"
           aria-expanded={isOpen}
@@ -51,7 +53,7 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
         >
           <span>{item.label}</span>
           <ChevronDown className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-40">
         {item.dropdown?.map((dropdownItem) => (

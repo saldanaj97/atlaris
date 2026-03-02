@@ -18,6 +18,14 @@ import Link from 'next/link';
 import type { PlanStatus } from '@/app/plans/types';
 import type { PlanSummary } from '@/lib/types/db';
 
+const STATUS_COLORS: Record<PlanStatus, string> = {
+  active: 'bg-emerald-500',
+  paused: 'bg-amber-500',
+  completed: 'bg-blue-500',
+  generating: 'bg-purple-500',
+  failed: 'bg-red-500',
+};
+
 interface PlanRowProps {
   summary: PlanSummary;
   isSelected: boolean;
@@ -40,14 +48,6 @@ export function PlanRow({
     referenceTimestamp
   );
 
-  const statusColors: Record<PlanStatus, string> = {
-    active: 'bg-emerald-500',
-    paused: 'bg-amber-500',
-    completed: 'bg-blue-500',
-    generating: 'bg-purple-500',
-    failed: 'bg-red-500',
-  };
-
   return (
     <Link
       href={`/plans/${plan.id}`}
@@ -60,10 +60,10 @@ export function PlanRow({
     >
       {/* Status indicator */}
       <div className="relative shrink-0">
-        <div className={`h-3 w-3 rounded-full ${statusColors[status]}`} />
+        <div className={`h-3 w-3 rounded-full ${STATUS_COLORS[status]}`} />
         {status === 'generating' && (
           <div
-            className={`absolute inset-0 animate-ping rounded-full ${statusColors[status]} opacity-50`}
+            className={`absolute inset-0 animate-ping rounded-full ${STATUS_COLORS[status]} opacity-50`}
           />
         )}
       </div>

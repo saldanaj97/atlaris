@@ -131,7 +131,6 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
         DEFAULT_BILLING_SETTINGS_PATH
       );
 
-      // Create portal session
       let portalUrl: string | null = null;
       try {
         portalUrl = await getCustomerPortalUrl(

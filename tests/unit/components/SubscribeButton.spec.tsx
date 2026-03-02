@@ -1,7 +1,7 @@
 // IMPORTANT: Mock imports must come first, before any component or module
 // imports that consume the mocked package (sonner in this case).
 import '../../mocks/unit/sonner.unit';
-import SubscribeButton from '@/components/billing/SubscribeButton';
+import SubscribeButton from '@/app/pricing/components/SubscribeButton';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';

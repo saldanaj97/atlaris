@@ -44,6 +44,13 @@ interface PdfExtractionPreviewProps {
   isGenerating?: boolean;
 }
 
+const CONFIDENCE_COLORS = {
+  high: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
+  medium:
+    'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20',
+  low: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
+};
+
 export function PdfExtractionPreview({
   mainTopic: initialTopic,
   sections: initialSections,
@@ -90,13 +97,6 @@ export function PdfExtractionPreview({
     });
   };
 
-  const confidenceColors = {
-    high: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
-    medium:
-      'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20',
-    low: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
-  };
-
   return (
     <div className="w-full max-w-3xl space-y-6">
       <div className="dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-6 shadow-2xl backdrop-blur-xl">
@@ -123,7 +123,7 @@ export function PdfExtractionPreview({
               </div>
             </div>
 
-            <Badge className={`${confidenceColors[confidence]} border`}>
+            <Badge className={`${CONFIDENCE_COLORS[confidence]} border`}>
               <CheckCircle2 className="mr-1 h-3 w-3" />
               {confidence} confidence
             </Badge>

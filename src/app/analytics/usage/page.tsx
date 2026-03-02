@@ -70,7 +70,10 @@ export default function UsageAnalyticsPage(): JSX.Element {
             <CardContent>
               {/* Lock overlay */}
               <div className="absolute top-4 right-4">
-                <Lock className="text-muted-foreground/60 h-4 w-4" />
+                <Lock
+                  className="text-muted-foreground/60 h-4 w-4"
+                  aria-hidden="true"
+                />
               </div>
 
               <div className="flex flex-col gap-3 opacity-50">
@@ -87,7 +90,7 @@ export default function UsageAnalyticsPage(): JSX.Element {
               </div>
 
               {/* Locked progress bar */}
-              <Progress value={0} className="mt-4 h-1.5" />
+              <Progress value={0} className="mt-4 h-1.5" aria-hidden="true" />
             </CardContent>
           </Card>
         ))}
