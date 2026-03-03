@@ -15,6 +15,21 @@
       "source": "getsentry/sentry-agent-skills",
       "sourceType": "github",
       "computedHash": "5673b169d2a0eb6e4651a57eba4263d1c04dce10e2955c97902f1e9f80109a52"
+    },
+    "sentry-nextjs-sdk": {
+      "source": "getsentry/sentry-agent-skills",
+      "sourceType": "github",
+      "computedHash": "6bbb2bce22fa8fc3e0385dbe06fe5a26770b2f91f66ad8e78d80c1df3d4b2e05"
+    },
+    "sentry-react-sdk": {
+      "source": "getsentry/sentry-agent-skills",
+      "sourceType": "github",
+      "computedHash": "adeb2b14aa923976f0f7d4ffad7177f5f38d97d74ea0caadead521f6d17500f9"
+    },
+    "sentry-setup-ai-monitoring": {
+      "source": "getsentry/sentry-agent-skills",
+      "sourceType": "github",
+      "computedHash": "91959d0839b0399b395c2a6200c457b99571050481a44894559cb2a5f3d8c165"
     }
   }
 }

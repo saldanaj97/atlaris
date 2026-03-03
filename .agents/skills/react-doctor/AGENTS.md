@@ -1,10 +1,6 @@
----
-name: react-doctor
-description: Run after making React changes to catch issues early. Use when reviewing code, finishing a feature, or fixing bugs in a React project.
-version: 1.0.0
----
-
 # React Doctor
+
+Run after making React changes to catch issues early. Use when reviewing code, finishing a feature, or fixing bugs in a React project.
 
 Scans your React codebase for security, performance, correctness, and architecture issues. Outputs a 0-100 score with actionable diagnostics.
 
