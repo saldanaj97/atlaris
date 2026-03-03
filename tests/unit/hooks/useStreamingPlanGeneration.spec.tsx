@@ -80,12 +80,18 @@ describe('useStreamingPlanGeneration', () => {
 
     const { result } = renderHook(() => useStreamingPlanGeneration());
 
+    let notifiedPlanId: string | undefined;
     await act(async () => {
-      await expect(result.current.startGeneration(basePayload)).rejects.toThrow(
-        'boom'
-      );
+      await expect(
+        result.current.startGeneration(basePayload, {
+          onPlanIdReady: (id) => {
+            notifiedPlanId = id;
+          },
+        })
+      ).rejects.toThrow('boom');
     });
 
+    expect(notifiedPlanId).toBe('plan-err');
     expect(result.current.state.status).toBe('error');
     expect(result.current.state.error?.classification).toBe('validation');
   });

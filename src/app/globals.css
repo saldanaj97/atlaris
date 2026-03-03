@@ -301,14 +301,14 @@
 }
 
 @layer utilities {
-  /* Brand gradient - used for buttons, badges, highlights */
-  .gradient-brand {
-    @apply from-primary to-accent bg-gradient-to-r;
+  /* Brand solid fill - used for buttons, badges, highlights */
+  .brand-fill {
+    @apply bg-primary;
   }
 
-  /* Brand gradient with hover states */
-  .gradient-brand-interactive {
-    @apply from-primary to-accent hover:from-primary/90 hover:to-accent/90 bg-gradient-to-r;
+  /* Brand solid fill with hover states */
+  .brand-fill-interactive {
+    @apply bg-primary hover:bg-primary/90;
   }
 
   /* Decorative background glow effect */

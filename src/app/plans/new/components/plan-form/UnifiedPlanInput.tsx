@@ -268,7 +268,7 @@ export function UnifiedPlanInput({
             type="button"
             onClick={handleSubmit}
             disabled={isDisabled}
-            className="group from-primary via-accent to-primary shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl bg-gradient-to-r px-5 py-2.5 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl sm:px-6 sm:py-3"
+            className="group bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl px-5 py-2.5 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl sm:px-6 sm:py-3"
           >
             {isSubmitting ? (
               <>

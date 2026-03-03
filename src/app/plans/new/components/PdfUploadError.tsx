@@ -96,7 +96,7 @@ export function PdfUploadError({
               <Button
                 type="button"
                 onClick={onRetry}
-                className="from-primary via-accent to-primary shadow-primary/25 hover:shadow-primary/30 rounded-2xl bg-linear-to-r text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+                className="bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 rounded-2xl text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
               >
                 Try Again
               </Button>

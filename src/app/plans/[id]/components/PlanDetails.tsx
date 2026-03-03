@@ -6,8 +6,10 @@ import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
 import { PlanTimeline } from '@/app/plans/[id]/components/PlanTimeline';
+import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
 import { computeOverviewStats } from '@/app/plans/[id]/helpers';
-import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 import type { ClientPlanDetail } from '@/lib/types/client';
@@ -46,16 +48,36 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
   const isPendingOrProcessing =
     plan.status === 'pending' || plan.status === 'processing';
 
+  const isGenerating = plan.status === 'processing';
+
   return (
     <div className="mx-auto min-h-screen max-w-7xl py-8">
-      {/* Back to Dashboard Link */}
-      <Link
-        href="/dashboard"
-        className="mb-6 inline-flex items-center gap-2 text-sm text-stone-500 transition-colors hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
-      >
-        <ArrowLeft size={16} aria-hidden="true" />
-        Back to Dashboard
-      </Link>
+      {/* Navigation & Actions */}
+      <div className="mb-6 flex items-center justify-between">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/dashboard">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back to Dashboard
+          </Link>
+        </Button>
+
+        <DeletePlanDialog
+          planId={plan.id}
+          planTopic={plan.topic}
+          isGenerating={isGenerating}
+          redirectTo="/plans"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isGenerating}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete plan
+          </Button>
+        </DeletePlanDialog>
+      </div>
 
       {isPendingOrProcessing ? (
         <PlanPendingState plan={plan} />

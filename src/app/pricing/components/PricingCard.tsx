@@ -54,7 +54,7 @@ export function PricingCard({
               variant={isPopular ? 'default' : 'secondary'}
               className={cn(
                 'px-3 py-1 font-semibold',
-                isPopular && 'gradient-brand border-transparent text-white'
+                isPopular && 'brand-fill border-transparent text-white'
               )}
             >
               {badge}

@@ -48,7 +48,7 @@ export function CreateMethodToggle({
         className={cn(
           'h-auto rounded-full px-4 py-2 text-sm font-medium transition-all',
           value === 'manual'
-            ? 'from-primary to-accent bg-gradient-to-r text-white shadow-md hover:bg-gradient-to-r hover:text-white'
+            ? 'bg-primary hover:bg-primary/90 text-white shadow-md hover:text-white'
             : 'text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-white/10'
         )}
       >
@@ -67,7 +67,7 @@ export function CreateMethodToggle({
         className={cn(
           'h-auto rounded-full px-4 py-2 text-sm font-medium transition-all',
           value === 'pdf'
-            ? 'from-primary to-accent bg-gradient-to-r text-white shadow-md hover:bg-gradient-to-r hover:text-white'
+            ? 'bg-primary hover:bg-primary/90 text-white shadow-md hover:text-white'
             : 'text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-white/10'
         )}
       >

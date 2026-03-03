@@ -58,7 +58,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps) {
             <div className="dark:from-card/60 dark:to-card/40 rounded-2xl bg-linear-to-br from-white/80 to-white/40 p-6">
               <div className="from-primary/20 to-accent/20 flex aspect-video items-center justify-center rounded-xl bg-linear-to-br">
                 <div className="text-center">
-                  <div className="gradient-brand mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shadow-lg">
+                  <div className="brand-fill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shadow-lg">
                     <PlayCircle
                       className="h-8 w-8 text-white"
                       aria-hidden="true"

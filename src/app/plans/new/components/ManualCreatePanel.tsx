@@ -1,6 +1,5 @@
 'use client';
 
-import { PlanDraftView } from '@/app/plans/[id]/components/PlanDraftView';
 import { UnifiedPlanInput } from '@/app/plans/new/components/plan-form';
 import {
   deadlineWeeksToDate,
@@ -63,11 +62,8 @@ export function ManualCreatePanel({
 }: ManualCreatePanelProps): React.ReactElement {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const {
-    state: streamingState,
-    startGeneration,
-    cancel: cancelStreaming,
-  } = useStreamingPlanGeneration();
+  const { state: streamingState, startGeneration } =
+    useStreamingPlanGeneration();
 
   const planIdRef = useRef<string | undefined>(undefined);
   const cancellationToastShownRef = useRef(false);
@@ -100,10 +96,14 @@ export function ManualCreatePanel({
     isSubmittingRef.current = true;
     setIsSubmitting(true);
 
-    void startGeneration(mappingResult.payload)
-      .then((planId) => {
-        toast.success('Your learning plan is ready!');
+    void startGeneration(mappingResult.payload, {
+      onPlanIdReady: (planId) => {
+        toast.success('Your learning plan generation has started.');
         router.push(`/plans/${planId}`);
+      },
+    })
+      .then(() => {
+        // Promise resolves on stream completion; navigation already handled by onPlanIdReady
       })
       .catch((streamError: unknown) => {
         const { handled, message } = handleStreamingPlanError({
@@ -129,29 +129,11 @@ export function ManualCreatePanel({
   };
 
   return (
-    <>
-      <UnifiedPlanInput
-        onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
-        initialTopic={initialTopic ?? undefined}
-        topicResetVersion={topicResetVersion}
-      />
-
-      {streamingState.status !== 'idle' && (
-        <div className="mt-8 w-full max-w-2xl">
-          <PlanDraftView
-            state={streamingState}
-            onCancel={() => {
-              cancelStreaming();
-              setIsSubmitting(false);
-              if (!cancellationToastShownRef.current) {
-                toast.info('Generation cancelled');
-                cancellationToastShownRef.current = true;
-              }
-            }}
-          />
-        </div>
-      )}
-    </>
+    <UnifiedPlanInput
+      onSubmit={handleSubmit}
+      isSubmitting={isSubmitting}
+      initialTopic={initialTopic ?? undefined}
+      topicResetVersion={topicResetVersion}
+    />
   );
 }

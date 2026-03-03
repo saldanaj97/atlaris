@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 
+import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
 import {
   getNextTaskName,
   getPlanStatus,
@@ -7,11 +8,20 @@ import {
 } from '@/app/plans/components/plan-utils';
 import { Button } from '@/components/ui/button';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   ArrowRight,
   CheckCircle2,
-  ChevronRight,
   Clock,
+  ExternalLink,
+  MoreVertical,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -114,15 +124,49 @@ export function PlanRow({
         {lastActivity}
       </div>
 
-      {/* View Plan */}
-      <Button
-        variant="ghost"
-        size="icon"
-        title="View plan"
-        aria-label="View plan"
+      {/* Actions menu */}
+      <div
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
       >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Plan actions"
+              aria-label="Plan actions"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href={`/plans/${plan.id}`}>
+                <ExternalLink className="mr-2 h-4 w-4" />
+                View plan
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DeletePlanDialog
+              planId={plan.id}
+              planTopic={plan.topic}
+              isGenerating={status === 'generating'}
+            >
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={status === 'generating'}
+                onSelect={(e) => e.preventDefault()}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete plan
+              </DropdownMenuItem>
+            </DeletePlanDialog>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </Link>
   );
 }

@@ -6,7 +6,6 @@ import { getDb } from '@/lib/db/runtime';
 
 const mockedGetRequestContext = vi.fn();
 const mockedGetDb = vi.fn();
-const mockedCleanupDbClient = vi.fn();
 
 describe('users queries optimization', () => {
   beforeEach(() => {
@@ -24,12 +23,10 @@ describe('users queries optimization', () => {
     const user = await getUserByAuthId(fixtureUser.authUserId, undefined, {
       getRequestContext: mockedGetRequestContext,
       getDb: mockedGetDb,
-      cleanupDbClient: mockedCleanupDbClient,
     });
 
     expect(user?.id).toBe(fixtureUser.id);
     expect(mockedGetDb).not.toHaveBeenCalled();
-    expect(mockedCleanupDbClient).not.toHaveBeenCalled();
   });
 
   it('falls back to database query when context user is absent', async () => {
@@ -56,12 +53,10 @@ describe('users queries optimization', () => {
     const user = await getUserByAuthId('auth-user-2', undefined, {
       getRequestContext: mockedGetRequestContext,
       getDb: mockedGetDb,
-      cleanupDbClient: mockedCleanupDbClient,
     });
 
     expect(user?.id).toBe('internal-user-2');
     expect(mockedGetDb).toHaveBeenCalledTimes(1);
-    expect(mockedCleanupDbClient).toHaveBeenCalledWith(dbClient);
   });
 
   it('bypasses request context cache when explicit db client provided', async () => {
@@ -78,12 +73,10 @@ describe('users queries optimization', () => {
     const user = await getUserByAuthId('auth-user-3', explicitClient, {
       getRequestContext: mockedGetRequestContext,
       getDb: mockedGetDb,
-      cleanupDbClient: mockedCleanupDbClient,
     });
 
     expect(user?.id).toBe('internal-user-3-db');
     expect(mockedGetRequestContext).not.toHaveBeenCalled();
     expect(mockedGetDb).not.toHaveBeenCalled();
-    expect(mockedCleanupDbClient).not.toHaveBeenCalled();
   });
 });

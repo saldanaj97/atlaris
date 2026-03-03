@@ -275,7 +275,7 @@ export function PdfExtractionPreview({
               type="button"
               onClick={handleGenerate}
               disabled={isGenerating || !mainTopic.trim()}
-              className="group from-primary via-accent to-primary shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl bg-gradient-to-r px-6 py-3 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl"
+              className="group bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl px-6 py-3 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl"
             >
               <span className="font-medium">
                 {isGenerating ? 'Generating...' : 'Generate Learning Plan'}

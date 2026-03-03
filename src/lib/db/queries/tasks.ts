@@ -1,6 +1,5 @@
 import { and, eq } from 'drizzle-orm';
 
-import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import type {
   DbTask,
   DbTaskProgress,
@@ -14,7 +13,7 @@ import type { ProgressStatus } from '@/lib/types/db';
  * Retrieves all tasks in a specific learning plan for a user.
  * @param userId - The ID of the user.
  * @param planId - The ID of the learning plan.
- * @param dbClient - Optional TasksDbClient used for transactions/internal testing. When omitted, the function calls getDb() and cleanupDbClient will run.
+ * @param dbClient - Optional TasksDbClient used for transactions/internal testing.
  * @returns A promise that resolves to an array of tasks.
  */
 export async function getAllTasksInPlan(
@@ -24,21 +23,13 @@ export async function getAllTasksInPlan(
 ): Promise<DbTask[]> {
   const client = dbClient ?? getDb();
 
-  try {
-    const rows = await client
-      .select({ task: tasks })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-      .where(
-        and(eq(learningPlans.userId, userId), eq(learningPlans.id, planId))
-      );
-    return rows.map((row) => row.task);
-  } finally {
-    if (dbClient === undefined) {
-      await cleanupDbClient(client);
-    }
-  }
+  const rows = await client
+    .select({ task: tasks })
+    .from(tasks)
+    .innerJoin(modules, eq(tasks.moduleId, modules.id))
+    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+    .where(and(eq(learningPlans.userId, userId), eq(learningPlans.id, planId)));
+  return rows.map((row) => row.task);
 }
 
 /**
@@ -48,7 +39,7 @@ export async function getAllTasksInPlan(
  * @param userId - The ID of the user.
  * @param taskId - The ID of the task.
  * @param status - The new progress status to set.
- * @param dbClient - Optional TasksDbClient used for transactions/internal testing. When omitted, the function calls getDb() and cleanupDbClient will run.
+ * @param dbClient - Optional TasksDbClient used for transactions/internal testing.
  * @returns A promise that resolves to the task progress record.
  * @throws Error if the task is not found or access is denied
  */
@@ -60,54 +51,48 @@ export async function setTaskProgress(
 ): Promise<DbTaskProgress> {
   const client = dbClient ?? getDb();
 
-  try {
-    return await client.transaction(async (tx) => {
-      const [taskRow] = await tx
-        .select({ id: tasks.id })
-        .from(tasks)
-        .innerJoin(modules, eq(tasks.moduleId, modules.id))
-        .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-        .where(and(eq(tasks.id, taskId), eq(learningPlans.userId, userId)))
-        .limit(1)
-        .for('update');
+  return await client.transaction(async (tx) => {
+    const [taskRow] = await tx
+      .select({ id: tasks.id })
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+      .where(and(eq(tasks.id, taskId), eq(learningPlans.userId, userId)))
+      .limit(1)
+      .for('update');
 
-      if (!taskRow) {
-        throw new Error('Task not found or access denied');
-      }
+    if (!taskRow) {
+      throw new Error('Task not found or access denied');
+    }
 
-      const now = new Date();
-      const completedAt = status === 'completed' ? now : null;
+    const now = new Date();
+    const completedAt = status === 'completed' ? now : null;
 
-      const [progress] = await tx
-        .insert(taskProgress)
-        .values({
-          taskId,
-          userId,
+    const [progress] = await tx
+      .insert(taskProgress)
+      .values({
+        taskId,
+        userId,
+        status,
+        completedAt,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [taskProgress.taskId, taskProgress.userId],
+        set: {
           status,
           completedAt,
           updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: [taskProgress.taskId, taskProgress.userId],
-          set: {
-            status,
-            completedAt,
-            updatedAt: now,
-          },
-        })
-        .returning();
+        },
+      })
+      .returning();
 
-      if (!progress) {
-        throw new Error(
-          'Failed to update task progress: operation returned no rows'
-        );
-      }
-
-      return progress;
-    });
-  } finally {
-    if (dbClient === undefined) {
-      await cleanupDbClient(client);
+    if (!progress) {
+      throw new Error(
+        'Failed to update task progress: operation returned no rows'
+      );
     }
-  }
+
+    return progress;
+  });
 }

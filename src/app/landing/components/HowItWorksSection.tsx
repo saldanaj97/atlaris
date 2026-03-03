@@ -209,7 +209,7 @@ function SyncVisual() {
       {/* Sync toast notification */}
       <div className="dark:bg-card/90 border-primary/30 from-primary/10 to-accent/10 mx-auto max-w-[220px] overflow-hidden rounded-2xl border bg-gradient-to-r shadow-lg backdrop-blur-sm dark:border-white/10">
         <div className="flex items-center gap-3 px-4 py-3">
-          <div className="gradient-brand flex h-8 w-8 items-center justify-center rounded-xl shadow-md">
+          <div className="brand-fill flex h-8 w-8 items-center justify-center rounded-xl shadow-md">
             <Check className="text-foreground h-4 w-4" />
           </div>
           <div>

@@ -1,6 +1,5 @@
 import { getRequestContext } from '@/lib/api/context';
 import { isValidModelId } from '@/lib/ai/ai-models';
-import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import type {
   CreateUserData,
   DbUser,
@@ -65,13 +64,11 @@ function isDbUser(user: unknown): user is DbUser {
 interface GetUserByAuthIdDeps {
   getRequestContext: typeof getRequestContext;
   getDb: typeof getDb;
-  cleanupDbClient: typeof cleanupDbClient;
 }
 
 const defaultGetUserByAuthIdDeps: GetUserByAuthIdDeps = {
   getRequestContext,
   getDb,
-  cleanupDbClient,
 };
 
 /**
@@ -100,17 +97,11 @@ export async function getUserByAuthId(
 
   const client = dbClient ?? deps.getDb();
 
-  try {
-    const result = await client
-      .select()
-      .from(users)
-      .where(eq(users.authUserId, authUserId));
-    return result[0];
-  } finally {
-    if (dbClient === undefined) {
-      await deps.cleanupDbClient(client);
-    }
-  }
+  const result = await client
+    .select()
+    .from(users)
+    .where(eq(users.authUserId, authUserId));
+  return result[0];
 }
 
 /**
@@ -126,20 +117,14 @@ export async function createUser(
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? getDb();
 
-  try {
-    const insertData = {
-      authUserId: userData.authUserId,
-      email: userData.email,
-      name: userData.name,
-    };
+  const insertData = {
+    authUserId: userData.authUserId,
+    email: userData.email,
+    name: userData.name,
+  };
 
-    const result = await client.insert(users).values(insertData).returning();
-    return result[0];
-  } finally {
-    if (dbClient === undefined) {
-      await cleanupDbClient(client);
-    }
-  }
+  const result = await client.insert(users).values(insertData).returning();
+  return result[0];
 }
 
 /**
@@ -157,22 +142,16 @@ export async function updateUserPreferredAiModel(
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? getDb();
 
-  try {
-    const result = await client
-      .update(users)
-      .set({
-        preferredAiModel,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
+  const result = await client
+    .update(users)
+    .set({
+      preferredAiModel,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
 
-    return result[0];
-  } finally {
-    if (dbClient === undefined) {
-      await cleanupDbClient(client);
-    }
-  }
+  return result[0];
 }
 
 /**

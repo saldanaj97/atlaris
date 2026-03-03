@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "c44cf3bc64e834680c67640f09b5baf61af8cf2b1028ffd0759807f373578b5c"
     },
+    "openrouter-typescript-sdk": {
+      "source": "OpenRouterTeam/agent-skills",
+      "sourceType": "github",
+      "computedHash": "0cb0e2f07f6b42fb8974c2ee89ca3ba3a103dfe565f12bc7ca9f41945fc7227a"
+    },
     "sentry-fix-issues": {
       "source": "getsentry/sentry-agent-skills",
       "sourceType": "github",

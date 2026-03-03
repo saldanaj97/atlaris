@@ -68,7 +68,7 @@ export function IntegrationCard({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="gradient-brand-interactive inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg">
+            <div className="brand-fill-interactive inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg">
               {icon}
             </div>
             <h3 className="text-lg font-semibold">{name}</h3>

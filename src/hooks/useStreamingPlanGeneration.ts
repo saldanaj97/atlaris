@@ -97,6 +97,10 @@ const parseEventLine = (line: string): StreamingEvent | null => {
   }
 };
 
+type StartGenerationOptions = {
+  onPlanIdReady?: (planId: string) => void;
+};
+
 export function useStreamingPlanGeneration() {
   const [state, setState] = useState<StreamingPlanState>(INITIAL_STATE);
   const abortRef = useRef<AbortController | null>(null);
@@ -106,7 +110,10 @@ export function useStreamingPlanGeneration() {
   }, []);
 
   const startGeneration = useCallback(
-    async (input: CreateLearningPlanInput): Promise<string> => {
+    async (
+      input: CreateLearningPlanInput,
+      options?: StartGenerationOptions
+    ): Promise<string> => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -156,6 +163,21 @@ export function useStreamingPlanGeneration() {
         throw error;
       }
 
+      // Guard against non-SSE responses (e.g. auth redirect followed to HTML)
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!contentType.includes('text/event-stream')) {
+        setState((prev) => ({
+          ...prev,
+          status: 'error',
+          error: {
+            message: 'Unexpected server response. Please try again.',
+            classification: 'provider_error',
+            retryable: false,
+          },
+        }));
+        throw new Error('Unexpected server response. Please try again.');
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -163,13 +185,22 @@ export function useStreamingPlanGeneration() {
       return await new Promise<string>((resolve, reject) => {
         let completed = false;
         let errored = false;
+        let planIdNotified = false;
         let latestPlanId: string | undefined;
         let terminal = false;
+        const notifyPlanId = (planId: string | undefined) => {
+          if (planIdNotified || !planId) {
+            return;
+          }
+          planIdNotified = true;
+          options?.onPlanIdReady?.(planId);
+        };
 
         const handleEvent = (event: StreamingEvent) => {
           switch (event.type) {
             case 'plan_start':
               latestPlanId = event.data.planId;
+              notifyPlanId(latestPlanId);
               setState((prev) => ({
                 ...prev,
                 status: 'generating',
@@ -178,6 +209,7 @@ export function useStreamingPlanGeneration() {
               break;
             case 'module_summary':
               latestPlanId = latestPlanId ?? event.data.planId;
+              notifyPlanId(latestPlanId);
               setState((prev) => ({
                 ...prev,
                 status: 'generating',
@@ -206,12 +238,21 @@ export function useStreamingPlanGeneration() {
             case 'complete':
               completed = true;
               latestPlanId = latestPlanId ?? event.data.planId;
+              notifyPlanId(latestPlanId);
               setState((prev) => ({
                 ...prev,
                 status: 'complete',
                 planId: prev.planId ?? latestPlanId,
               }));
-              resolve(event.data.planId);
+              if (latestPlanId) {
+                resolve(latestPlanId);
+              } else {
+                reject(
+                  new Error(
+                    'Plan generation completed but no plan ID was received.'
+                  )
+                );
+              }
               break;
             case 'error': {
               errored = true;
@@ -266,6 +307,19 @@ export function useStreamingPlanGeneration() {
             while (true) {
               const { done, value } = await reader.read();
               if (done) {
+                // Flush any remaining bytes from the TextDecoder
+                const remaining = decoder.decode();
+                if (remaining) {
+                  buffer += remaining;
+                }
+                if (buffer.trim()) {
+                  const event = parseEventLine(buffer);
+                  if (event) {
+                    handleEvent(event);
+                  }
+                  buffer = '';
+                }
+
                 setState((prev) => ({
                   ...prev,
                   status:

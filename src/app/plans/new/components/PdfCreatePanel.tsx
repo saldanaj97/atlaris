@@ -368,11 +368,15 @@ export function PdfCreatePanel({
       return;
     }
 
-    void startGeneration(payloadResult.payload)
-      .then((streamPlanId) => {
+    void startGeneration(payloadResult.payload, {
+      onPlanIdReady: (streamPlanId) => {
         planIdRef.current = streamPlanId;
-        toast.success('Your learning plan is ready!');
+        toast.success('Your learning plan generation has started.');
         router.push(`/plans/${streamPlanId}`);
+      },
+    })
+      .then(() => {
+        // Promise resolves on stream completion; navigation already handled by onPlanIdReady
       })
       .catch((streamError: unknown) => {
         const { handled, message, normalizedError } = handleStreamingPlanError({

@@ -106,7 +106,7 @@ function UpcomingScheduleCard({
         </Link>
         <Link
           href="/plans/new"
-          className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r py-2 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
+          className="bg-primary hover:bg-primary/90 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
         >
           <Plus className="h-4 w-4" />
           New Plan

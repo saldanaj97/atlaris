@@ -48,7 +48,7 @@ export default function LandingNavigation({
             </Link>
             <Button
               asChild
-              className="from-primary to-accent shadow-primary/25 hover:shadow-primary/30 focus-visible:ring-ring h-auto rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2"
+              className="bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 focus-visible:ring-ring h-auto rounded-xl px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2"
             >
               <Link href="/plans/new" onClick={onCtaClick}>
                 Get Started
@@ -106,7 +106,7 @@ export default function LandingNavigation({
             </Link>
             <Button
               asChild
-              className="from-primary to-accent shadow-primary/25 hover:shadow-primary/30 w-full rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl"
+              className="bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 focus-visible:ring-ring w-full rounded-xl px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2"
             >
               <Link
                 href="/plans/new"

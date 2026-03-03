@@ -54,24 +54,6 @@ vi.mock('@/hooks/useStreamingPlanGeneration', () => ({
   }),
 }));
 
-// Mock PlanDraftView to simplify tests
-vi.mock('@/app/plans/[id]/components/PlanDraftView', () => ({
-  PlanDraftView: ({
-    state,
-    onCancel,
-  }: {
-    state: unknown;
-    onCancel: () => void;
-  }) => (
-    <div data-testid="plan-draft-view">
-      <button type="button" onClick={onCancel}>
-        Cancel
-      </button>
-      <div data-testid="streaming-status">{String(state)}</div>
-    </div>
-  ),
-}));
-
 // Mock mapOnboardingToCreateInput to return a valid payload
 const mockMappedPayload = {
   topic: 'Test Topic',
@@ -140,7 +122,15 @@ describe('ManualCreatePanel', () => {
   describe('handleSubmit - successful generation', () => {
     it('should handle successful plan generation with full streaming flow', async () => {
       const planId = 'plan-123';
-      mockStartGeneration.mockResolvedValue(planId);
+      mockStartGeneration.mockImplementation(
+        (
+          _input: unknown,
+          options?: { onPlanIdReady?: (id: string) => void }
+        ) => {
+          options?.onPlanIdReady?.(planId);
+          return Promise.resolve(planId);
+        }
+      );
 
       render(<ManualCreatePanel />);
 
@@ -166,7 +156,7 @@ describe('ManualCreatePanel', () => {
 
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalledWith(
-          'Your learning plan is ready!'
+          'Your learning plan generation has started.'
         );
       });
 
@@ -433,57 +423,6 @@ describe('ManualCreatePanel', () => {
       expect(callArgs.topic).toBe('Test Topic');
       expect(callArgs.skillLevel).toBe('beginner');
       expect(callArgs.learningStyle).toBe('mixed');
-    });
-  });
-
-  describe('PlanDraftView integration', () => {
-    it('should render PlanDraftView when streaming status is not idle', () => {
-      Object.assign(mockState, {
-        status: 'generating' as const,
-        planId: 'plan-draft-123',
-        modules: [
-          {
-            index: 0,
-            title: 'Module 1',
-            description: 'Introduction',
-            estimatedMinutes: 120,
-            tasksCount: 3,
-          },
-        ],
-      });
-
-      render(<ManualCreatePanel />);
-
-      expect(screen.getByTestId('plan-draft-view')).toBeInTheDocument();
-    });
-
-    it('should not render PlanDraftView when status is idle', () => {
-      Object.assign(mockState, {
-        status: 'idle' as const,
-      });
-
-      render(<ManualCreatePanel />);
-
-      expect(screen.queryByTestId('plan-draft-view')).not.toBeInTheDocument();
-    });
-
-    it('should handle cancel from PlanDraftView', async () => {
-      Object.assign(mockState, {
-        status: 'generating' as const,
-        planId: 'plan-cancel-123',
-      });
-
-      render(<ManualCreatePanel />);
-
-      const cancelButton = screen.getByText('Cancel');
-      await act(async () => {
-        fireEvent.click(cancelButton);
-      });
-
-      expect(mockCancel).toHaveBeenCalled();
-      await waitFor(() => {
-        expect(toast.info).toHaveBeenCalledWith('Generation cancelled');
-      });
     });
   });
 });
