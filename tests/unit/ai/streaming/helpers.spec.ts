@@ -180,7 +180,10 @@ describe('stream helpers', () => {
       getCorrelationId: mockGetCorrelationId,
     });
 
-    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(planId, expect.anything());
+    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
+      planId,
+      expect.anything()
+    );
     expect(mockRecordUsage).not.toHaveBeenCalled();
 
     const errorEvent = emittedEvents.find((event) => event.type === 'error');
