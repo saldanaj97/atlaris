@@ -71,9 +71,7 @@ export function CreatePlanPageClient({
       <div className="mb-5 text-center sm:mb-6">
         <h1 className="text-foreground mb-2 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
           What do you want to{' '}
-          <span className="from-primary via-accent to-primary bg-linear-to-r bg-clip-text text-transparent">
-            learn?
-          </span>
+          <span className="gradient-text-symmetric">learn?</span>
         </h1>
 
         <p className="text-muted-foreground mx-auto max-w-md text-base sm:max-w-xl sm:text-lg">

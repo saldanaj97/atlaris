@@ -316,8 +316,19 @@
     @apply from-primary/30 to-accent/20 rounded-full bg-linear-to-br opacity-60 blur-3xl;
   }
 
-  /* Gradient text effect */
+  /* Gradient text effect - light mode uses primary-dark for visibility on light backgrounds */
   .gradient-text {
-    @apply from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent;
+    @apply from-primary to-primary-dark bg-linear-to-r bg-clip-text text-transparent;
+  }
+  .dark .gradient-text {
+    @apply from-primary to-accent;
+  }
+
+  /* Symmetric gradient (primary -> middle -> primary) for headings */
+  .gradient-text-symmetric {
+    @apply from-primary via-primary-dark to-primary bg-linear-to-r bg-clip-text text-transparent;
+  }
+  .dark .gradient-text-symmetric {
+    @apply from-primary via-accent to-primary;
   }
 }

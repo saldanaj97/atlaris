@@ -49,7 +49,10 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
           type="button"
           aria-haspopup="menu"
           aria-expanded={isOpen}
-          className={getNavItemClass(isActive)}
+          className={cn(
+            getNavItemClass(isActive),
+            'px-0 hover:bg-transparent dark:hover:bg-transparent'
+          )}
         >
           <span>{item.label}</span>
           <ChevronDown className="h-3.5 w-3.5" />
@@ -60,6 +63,7 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
           <DropdownMenuItem key={dropdownItem.href} asChild>
             <Link
               href={dropdownItem.href}
+              onClick={() => setIsOpen(false)}
               className={cn(
                 pathname === dropdownItem.href
                   ? 'text-primary font-semibold'
@@ -104,9 +108,9 @@ export default function DesktopNavigation({
     // Regular nav item
     return (
       <Link
-        key={item.href}
         href={item.href}
         className={getNavItemClass(isActive)}
+        key={item.href}
       >
         {item.label}
       </Link>

@@ -29,7 +29,7 @@ export function ActivityFilterTabs({
           onClick={() => onFilterChange(tab.id)}
           className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
             activeFilter === tab.id
-              ? 'bg-slate-900 text-white'
+              ? 'bg-primary text-primary-foreground'
               : 'text-slate-500 hover:bg-slate-100'
           }`}
         >

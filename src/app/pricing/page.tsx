@@ -18,10 +18,7 @@ export default function PricingPage() {
 
       <div className="relative z-10 mb-5 text-center sm:mb-6">
         <h1 className="text-foreground mb-2 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-          Invest in your{' '}
-          <span className="from-primary via-accent to-primary bg-linear-to-r bg-clip-text text-transparent">
-            growth
-          </span>
+          Invest in your <span className="gradient-text-symmetric">growth</span>
         </h1>
         <p className="text-muted-foreground mx-auto max-w-md text-base sm:max-w-xl sm:text-lg">
           Choose the plan that matches your learning ambitions. Start free,

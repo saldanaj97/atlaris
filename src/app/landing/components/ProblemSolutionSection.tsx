@@ -23,9 +23,7 @@ export function ProblemSolutionSection() {
             className="text-foreground marketing-h2 mb-4"
           >
             Most people don&apos;t fail to learn.{' '}
-            <span className="from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent">
-              They fail to start.
-            </span>
+            <span className="gradient-text">They fail to start.</span>
           </h2>
         </div>
 
