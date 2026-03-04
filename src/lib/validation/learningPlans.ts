@@ -328,13 +328,18 @@ export const onboardingFormSchema = z
       : false;
     const deadlineIsValid = !Number.isNaN(Date.parse(deadlineDate));
 
-    // Normalize "today" to UTC date-only (midnight UTC) to avoid TZ edge cases.
-    const todayUTC = new Date(new Date().toISOString().slice(0, 10));
+    // Use local date-only for comparison to match getTodayDateString() and form display.
+    const now = new Date();
+    const todayLocal = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
 
     // Validate: deadlineDate must not be in the past (date-only comparison)
     if (deadlineIsValid) {
-      const deadline = new Date(deadlineDate);
-      if (deadline < todayUTC) {
+      const deadline = new Date(deadlineDate + 'T12:00:00');
+      if (deadline < todayLocal) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['deadlineDate'],
@@ -343,8 +348,8 @@ export const onboardingFormSchema = z
       }
 
       // Cap: deadline within 1 year of today
-      const oneYearFromToday = new Date(todayUTC);
-      oneYearFromToday.setUTCFullYear(oneYearFromToday.getUTCFullYear() + 1);
+      const oneYearFromToday = new Date(todayLocal);
+      oneYearFromToday.setFullYear(oneYearFromToday.getFullYear() + 1);
       if (deadline > oneYearFromToday) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -356,8 +361,8 @@ export const onboardingFormSchema = z
 
     // Validate: if startDate provided, it must be today or later
     if (startIsProvided && startIsValid) {
-      const start = new Date(startDate as string);
-      if (start < todayUTC) {
+      const start = new Date((startDate as string) + 'T12:00:00');
+      if (start < todayLocal) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['startDate'],
@@ -368,8 +373,8 @@ export const onboardingFormSchema = z
 
     // Validate: if startDate provided, it must be on or before deadlineDate
     if (startIsProvided && startIsValid && deadlineIsValid) {
-      const start = new Date(startDate as string);
-      const deadline = new Date(deadlineDate);
+      const start = new Date((startDate as string) + 'T12:00:00');
+      const deadline = new Date(deadlineDate + 'T12:00:00');
       if (start > deadline) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

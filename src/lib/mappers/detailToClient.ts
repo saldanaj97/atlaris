@@ -12,6 +12,7 @@ import type { GenerationAttempt, LearningPlanDetail } from '@/lib/types/db';
 const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set([
   'success',
   'failure',
+  'in_progress',
 ]);
 
 const VALID_CLASSIFICATIONS: ReadonlySet<FailureClassification> = new Set([
