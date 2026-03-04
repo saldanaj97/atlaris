@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth/server';
-import { appEnv } from '@/lib/config/env';
+import { appEnv, devAuthEnv } from '@/lib/config/env';
 
 const authMiddleware = auth.middleware({ loginUrl: '/auth/sign-in' });
 
@@ -121,6 +121,19 @@ export default async function middleware(
   // Auth protection — delegate to Neon Auth middleware for session
   // validation, token refresh, and OAuth callback handling
   if (isProtectedRoute(pathname)) {
+    // In development, when DEV_AUTH_USER_ID is set, bypass middleware auth for
+    // API routes. The Neon Auth middleware does not use this override and would
+    // redirect with 307 even when the route handler would accept the dev user.
+    // Route handlers still run withAuth and use getEffectiveAuthUserId.
+    const devBypass =
+      appEnv.isDevelopment &&
+      devAuthEnv.userId !== undefined &&
+      pathname.startsWith('/api/');
+
+    if (devBypass) {
+      return nextWithCorrelationId(request);
+    }
+
     const correlationId = getCorrelationId(request);
     const authResponse = await authMiddleware(request);
 
