@@ -2,7 +2,6 @@
 // Stream Result Handlers
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { attachAbortListener } from '@/lib/ai/abort';
 import { getModelById } from '@/lib/ai/ai-models';
 import { isRetryableClassification } from '@/lib/ai/failures';
 import type { GenerationResult } from '@/lib/ai/orchestrator';
@@ -191,8 +190,9 @@ export async function handleFailedGeneration(
   const classification = result.classification ?? 'unknown';
   const retryable = isRetryableClassification(classification);
 
+  await markFailure(planId, dbClient);
+
   if (!retryable) {
-    await markFailure(planId, dbClient);
     await tryRecordUsage(userId, result, dbClient, {
       recordUsage: ctx.recordUsage,
     });
@@ -562,16 +562,14 @@ export async function executeGenerationStream({
   fallbackClassification = 'provider_error',
 }: ExecuteGenerationStreamParams): Promise<void> {
   const startedAt = Date.now();
-  const abortController = new AbortController();
-  const cleanupRequestAbort = attachAbortListener(reqSignal, () =>
-    abortController.abort()
-  );
-  const cleanupStreamAbort = attachAbortListener(streamSignal, () =>
-    abortController.abort()
-  );
+
+  // Generation runs to completion regardless of client connection state.
+  // reqSignal/streamSignal are NOT linked to the generation abort controller
+  // so that page refreshes or early navigation don't kill in-progress work.
+  // The generation has its own internal adaptive timeout for cancellation.
 
   try {
-    const result = await runGeneration(abortController.signal);
+    const result = await runGeneration(new AbortController().signal);
 
     if (result.status === 'success') {
       await handleSuccessfulGeneration(result, {
@@ -591,33 +589,7 @@ export async function executeGenerationStream({
       emit,
     });
   } catch (error: unknown) {
-    if (abortController.signal.aborted) {
-      const clientError = mapUnhandledErrorToClientError
-        ? mapUnhandledErrorToClientError(error)
-        : toFallbackErrorLike(error);
-
-      try {
-        await onUnhandledError(error, startedAt);
-      } catch (cleanupError) {
-        logger.error(
-          {
-            cleanupError,
-            planId,
-            userId,
-            sourceError: error,
-          },
-          'Failed cleanup after aborted generation stream'
-        );
-      }
-
-      emitCancelledEvent({
-        emit,
-        error: clientError,
-        planId,
-        userId,
-      });
-      return;
-    }
+    const clientDisconnected = reqSignal.aborted || streamSignal.aborted;
 
     const clientError = mapUnhandledErrorToClientError
       ? mapUnhandledErrorToClientError(error)
@@ -632,8 +604,16 @@ export async function executeGenerationStream({
           planId,
           userId,
           sourceError: error,
+          clientDisconnected,
         },
         'Failed cleanup after generation stream error'
+      );
+    }
+
+    if (clientDisconnected) {
+      logger.info(
+        { planId, userId },
+        'Client disconnected during generation; result saved to DB'
       );
     }
 
@@ -644,8 +624,5 @@ export async function executeGenerationStream({
       planId,
       userId,
     });
-  } finally {
-    cleanupRequestAbort();
-    cleanupStreamAbort();
   }
 }

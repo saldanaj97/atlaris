@@ -395,7 +395,6 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
               stream: true,
               temperature: this.temperature,
               responseFormat: { type: 'json_object' },
-              provider: { requireParameters: true },
             },
             requestOptions
           );
