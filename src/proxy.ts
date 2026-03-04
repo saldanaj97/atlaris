@@ -91,7 +91,7 @@ const withSecurityHeaders = (response: NextResponse): NextResponse => {
   return response;
 };
 
-export default async function middleware(
+export default async function proxy(
   request: NextRequest
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
