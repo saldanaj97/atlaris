@@ -447,10 +447,10 @@ export const avScannerEnv = {
 
 export const aiTimeoutEnv = {
   get baseMs() {
-    return toNumber(getServerOptional('AI_TIMEOUT_BASE_MS'), 30_000);
+    return toNumber(getServerOptional('AI_TIMEOUT_BASE_MS'), 120_000);
   },
   get extensionMs() {
-    return toNumber(getServerOptional('AI_TIMEOUT_EXTENSION_MS'), 15_000);
+    return toNumber(getServerOptional('AI_TIMEOUT_EXTENSION_MS'), 60_000);
   },
   get extensionThresholdMs() {
     const override = toNumber(
