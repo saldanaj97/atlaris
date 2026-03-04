@@ -161,7 +161,7 @@ describe('stream helpers', () => {
     vi.clearAllMocks();
   });
 
-  it('emits sanitized retryable error payload and skips terminal side-effects', async () => {
+  it('marks plan failed for retryable errors but skips usage recording', async () => {
     const planId = createId('plan');
     const userId = createId('user');
     const emittedEvents: StreamingEvent[] = [];
@@ -180,7 +180,7 @@ describe('stream helpers', () => {
       getCorrelationId: mockGetCorrelationId,
     });
 
-    expect(mockMarkPlanGenerationFailure).not.toHaveBeenCalled();
+    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(planId, expect.anything());
     expect(mockRecordUsage).not.toHaveBeenCalled();
 
     const errorEvent = emittedEvents.find((event) => event.type === 'error');

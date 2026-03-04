@@ -133,6 +133,7 @@ export function useStreamingPlanGeneration() {
         },
         body: JSON.stringify(input),
         signal: controller.signal,
+        credentials: 'include',
       });
 
       if (!response.ok || !response.body) {
@@ -166,6 +167,25 @@ export function useStreamingPlanGeneration() {
       // Guard against non-SSE responses (e.g. auth redirect followed to HTML)
       const contentType = response.headers.get('content-type') ?? '';
       if (!contentType.includes('text/event-stream')) {
+        const isAuthRedirect = response.redirected;
+
+        if (isAuthRedirect) {
+          const authError = new Error(
+            'Please sign in to create a learning plan.'
+          ) as StreamingError;
+          authError.code = 'AUTH_REQUIRED';
+          setState((prev) => ({
+            ...prev,
+            status: 'error',
+            error: {
+              message: authError.message,
+              classification: 'auth_required',
+              retryable: false,
+            },
+          }));
+          throw authError;
+        }
+
         setState((prev) => ({
           ...prev,
           status: 'error',

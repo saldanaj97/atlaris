@@ -52,6 +52,17 @@ export function handleStreamingPlanError({
     return { handled: true, normalizedError, message: 'Generation cancelled' };
   }
 
+  const isAuthRequired =
+    isStreamingError(normalizedError) &&
+    normalizedError.code === 'AUTH_REQUIRED';
+  if (isAuthRequired) {
+    toast.error('Please sign in to create a learning plan.');
+    router.push(
+      `/auth/sign-in?redirect_url=${encodeURIComponent('/plans/new')}`
+    );
+    return { handled: true, normalizedError, message: 'Auth required' };
+  }
+
   clientLogger.error(logMessage, streamError);
 
   const message =
