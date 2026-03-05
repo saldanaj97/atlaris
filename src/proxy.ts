@@ -135,7 +135,21 @@ export default async function proxy(
     }
 
     const correlationId = getCorrelationId(request);
-    const authResponse = await authMiddleware(request);
+
+    // Neon Auth middleware forwards the original request method to the
+    // upstream /get-session endpoint and only checks the session cache
+    // for GET requests. Server actions (POST) and other non-GET methods
+    // cause /get-session to fail, resulting in a false redirect to sign-in.
+    // Normalise to GET so session validation works for all methods.
+    const authRequest =
+      request.method !== 'GET'
+        ? new NextRequest(request.url, {
+            method: 'GET',
+            headers: request.headers,
+          })
+        : request;
+
+    const authResponse = await authMiddleware(authRequest);
 
     authResponse.headers.set('x-correlation-id', correlationId);
     authResponse.headers.set(
