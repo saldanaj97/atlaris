@@ -6,7 +6,6 @@ import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
 } from '@/components/ui/accordion';
 import { formatMinutes } from '@/lib/formatters';
 import {
@@ -21,7 +20,7 @@ import {
   Target,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule, ClientTask } from '@/lib/types/client';
@@ -47,45 +46,24 @@ interface TimelineModule {
   completedTasks: number;
 }
 
-const RESOURCE_CONFIG: Record<
-  ResourceType,
-  { label: string; icon: ElementType; badgeClass: string }
-> = {
-  youtube: {
-    label: 'Video',
-    icon: PlayCircle,
-    badgeClass:
-      'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400',
-  },
-  article: {
-    label: 'Article',
-    icon: FileText,
-    badgeClass:
-      'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400',
-  },
-  course: {
-    label: 'Course',
-    icon: Target,
-    badgeClass:
-      'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400',
-  },
-  doc: {
-    label: 'Documentation',
-    icon: FileText,
-    badgeClass:
-      'bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400',
-  },
-  other: {
-    label: 'Resource',
-    icon: LinkIcon,
-    badgeClass:
-      'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400',
-  },
+const RESOURCE_CONFIG: Record<ResourceType, ElementType> = {
+  youtube: PlayCircle,
+  article: FileText,
+  course: Target,
+  doc: FileText,
+  other: LinkIcon,
 };
 
-/**
- * Determines the status of a module based on its tasks' progress.
- */
+function getStatusesFromModules(
+  modules: ClientModule[]
+): Record<string, ProgressStatus> {
+  return Object.fromEntries(
+    modules.flatMap((mod) =>
+      (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
+    )
+  );
+}
+
 function getModuleStatus(
   mod: ClientModule,
   statuses: Record<string, ProgressStatus>,
@@ -108,45 +86,24 @@ function getModuleStatus(
   return 'locked';
 }
 
-/**
- * Interactive timeline showing module progress with expandable task lists.
- * Uses shadcn Accordion for accessible expand/collapse functionality.
- */
 export function PlanTimeline({
   planId,
   modules,
   initialStatuses,
   onStatusChange,
 }: ModuleTimelineProps): JSX.Element {
-  const [statuses, setStatuses] = useState<Record<string, ProgressStatus>>(
-    () => {
-      if (initialStatuses) {
-        return initialStatuses;
-      }
-
-      const entries = modules.flatMap((mod) =>
-        (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
-      );
-      return Object.fromEntries(entries);
-    }
+  const baseStatuses = useMemo(
+    () => initialStatuses ?? getStatusesFromModules(modules),
+    [initialStatuses, modules]
+  );
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, ProgressStatus>
+  >({});
+  const statuses = useMemo(
+    () => ({ ...baseStatuses, ...statusOverrides }),
+    [baseStatuses, statusOverrides]
   );
 
-  // Reconcile statuses when props change (parent/server updates)
-  useEffect(() => {
-    setStatuses((prev) => {
-      if (initialStatuses) {
-        return { ...prev, ...initialStatuses };
-      }
-
-      const entries = modules.flatMap((mod) =>
-        (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
-      );
-      const fromProps = Object.fromEntries(entries);
-      return { ...prev, ...fromProps };
-    });
-  }, [modules, initialStatuses]);
-
-  // Transform modules into timeline items with computed status
   const timelineModules: TimelineModule[] = useMemo(() => {
     return modules.map((mod, index) => {
       const tasks = mod.tasks ?? [];
@@ -154,7 +111,6 @@ export function PlanTimeline({
         .slice(0, index)
         .every((prevMod) => {
           const prevTasks = prevMod.tasks ?? [];
-          // Empty modules are implicitly completed (vacuous truth)
           return prevTasks.every((task) => statuses[task.id] === 'completed');
         });
       const completedCount = tasks.filter(
@@ -175,16 +131,27 @@ export function PlanTimeline({
     });
   }, [modules, statuses]);
 
-  // Find the active module for default expansion and header display
-  const activeModule = timelineModules.find((m) => m.status === 'active');
-  const defaultExpandedId = activeModule?.id;
+  const defaultExpandedId = timelineModules.find(
+    (mod) => mod.status === 'active'
+  )?.id;
+  const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() =>
+    defaultExpandedId ? [defaultExpandedId] : []
+  );
 
   const handleStatusChange = (taskId: string, nextStatus: ProgressStatus) => {
-    setStatuses((prev) => {
+    setStatusOverrides((prev) => {
       if (prev[taskId] === nextStatus) return prev;
       return { ...prev, [taskId]: nextStatus };
     });
     onStatusChange?.(taskId, nextStatus);
+  };
+
+  const handleModuleToggle = (moduleId: string) => {
+    setExpandedModuleIds((prev) =>
+      prev.includes(moduleId)
+        ? prev.filter((id) => id !== moduleId)
+        : [...prev, moduleId]
+    );
   };
 
   if (modules.length === 0) {
@@ -199,8 +166,7 @@ export function PlanTimeline({
 
   return (
     <section className="mt-12">
-      {/* Section Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">
           Learning Modules
         </h2>
@@ -209,26 +175,24 @@ export function PlanTimeline({
         </span>
       </div>
 
-      {/* Timeline Container */}
       <div className="relative">
-        {/* Vertical Line - positioned at center of the 64px (w-16) node column */}
-        <div className="from-primary/40 via-primary dark:from-primary/60 dark:via-primary absolute top-0 bottom-0 left-8 w-0.5 -translate-x-1/2 bg-gradient-to-b to-stone-200 dark:to-stone-700" />
+        <div className="from-primary/40 via-primary dark:from-primary/60 dark:via-primary absolute top-0 bottom-0 left-8 w-0.5 -translate-x-1/2 bg-linear-to-b to-stone-200 dark:to-stone-700" />
 
         <Accordion
           type="multiple"
-          defaultValue={defaultExpandedId ? [defaultExpandedId] : []}
+          value={expandedModuleIds}
           className="space-y-4"
         >
           {timelineModules.map((mod) => {
             const isLocked = mod.status === 'locked';
+            const isOpen = expandedModuleIds.includes(mod.id);
 
             return (
               <div
                 key={mod.id}
                 id={`module-${mod.id}`}
-                className={`group relative flex items-stretch ${isLocked ? 'opacity-60' : ''}`}
+                className="group relative flex items-stretch"
               >
-                {/* Timeline Node Container - Self-centering with the module card */}
                 <div className="relative flex w-16 shrink-0 items-center justify-center">
                   <div
                     className={`z-10 flex h-6 w-6 items-center justify-center rounded-full border-[3px] bg-white transition-all duration-500 ease-out dark:bg-stone-900 ${
@@ -249,23 +213,28 @@ export function PlanTimeline({
                   </div>
                 </div>
 
-                {/* Module Card using Accordion */}
                 <AccordionItem
                   value={mod.id}
                   disabled={isLocked}
-                  className={`flex-1 rounded-2xl border transition-all duration-300 ${
+                  className={`group/accordion flex flex-1 flex-col rounded-2xl border transition-all duration-300 ${
                     mod.status === 'active'
                       ? 'border-primary/30 dark:border-primary/50 bg-white shadow-md dark:bg-stone-900'
-                      : 'border-stone-100 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900'
+                      : isLocked
+                        ? 'border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-900/70'
+                        : 'border-stone-100 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900'
                   }`}
                 >
-                  <AccordionTrigger
-                    hideChevron
-                    className={`w-full p-4 hover:no-underline ${
+                  <button
+                    type="button"
+                    disabled={isLocked}
+                    onClick={() => handleModuleToggle(mod.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={`module-content-${mod.id}`}
+                    className={`flex w-full items-start gap-4 p-4 text-left ${
                       isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
                     }`}
                   >
-                    <div className="flex-1 text-left">
+                    <div className="min-w-0 flex-1">
                       <div className="mb-2 flex items-center gap-2">
                         <span
                           className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
@@ -287,30 +256,39 @@ export function PlanTimeline({
                           </span>
                         )}
                       </div>
-                      <h4
-                        className={`font-semibold ${
+                      <h3
+                        className={`font-semibold wrap-break-word ${
                           mod.status === 'active'
                             ? 'text-stone-900 dark:text-stone-100'
-                            : 'text-stone-700 dark:text-stone-300'
+                            : mod.status === 'locked'
+                              ? 'text-stone-600 dark:text-stone-400'
+                              : 'text-stone-700 dark:text-stone-300'
                         }`}
                       >
                         {mod.title}
-                      </h4>
+                      </h3>
                       {mod.description && (
-                        <p className="mt-1 line-clamp-1 text-sm text-stone-500 group-[[data-state=open]]:hidden dark:text-stone-400">
-                          {mod.description}
-                        </p>
+                        <div className="mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none">
+                          <p className="text-sm text-stone-500 dark:text-stone-400">
+                            {mod.description}
+                          </p>
+                        </div>
                       )}
                     </div>
                     {!isLocked && (
                       <ChevronRight
                         size={20}
-                        className="mt-1 ml-4 shrink-0 rotate-90 text-stone-400 transition-transform duration-300 dark:text-stone-500"
+                        className={`mt-0.5 shrink-0 text-stone-400 transition-transform duration-300 dark:text-stone-500 ${
+                          isOpen ? 'rotate-270' : 'rotate-90'
+                        }`}
                       />
                     )}
-                  </AccordionTrigger>
+                  </button>
 
-                  <AccordionContent className="px-4 pb-4">
+                  <AccordionContent
+                    id={`module-content-${mod.id}`}
+                    className="px-4 pb-4"
+                  >
                     <div className="border-t border-stone-100 pt-4 dark:border-stone-800">
                       {mod.tasks.length === 0 ? (
                         <p className="text-sm text-stone-400 dark:text-stone-500">
@@ -327,70 +305,77 @@ export function PlanTimeline({
                             return (
                               <div
                                 key={task.id}
-                                className={`rounded-xl border p-4 transition-colors ${
+                                className={`rounded-2xl border p-4 transition-colors ${
                                   isCompleted
                                     ? 'border-green-200 bg-green-50/50 dark:border-green-800/50 dark:bg-green-950/20'
                                     : 'hover:border-primary/30 dark:hover:border-primary/50 border-stone-100 bg-stone-50/50 dark:border-stone-800 dark:bg-stone-800/50'
                                 }`}
                               >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <CheckCircle2
-                                        size={18}
-                                        className={
-                                          isCompleted
-                                            ? 'fill-green-100 text-green-600 dark:text-green-400'
-                                            : 'text-stone-300 dark:text-stone-600'
-                                        }
-                                      />
-                                      <h5
+                                <div className="flex h-full flex-col gap-3 sm:flex-row sm:items-center">
+                                  <div className="flex shrink-0 items-center">
+                                    <CheckCircle2
+                                      size={18}
+                                      className={
+                                        isCompleted
+                                          ? 'fill-green-100 text-green-600 dark:text-green-400'
+                                          : 'text-stone-300 dark:text-stone-600'
+                                      }
+                                    />
+                                  </div>
+                                  <div className="flex min-w-0 flex-1 flex-col items-start justify-center">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p
                                         className={`font-medium ${
                                           isCompleted
                                             ? 'text-green-700 dark:text-green-400'
                                             : 'text-stone-800 dark:text-stone-200'
-                                        }`}
+                                        } wrap-break-word`}
                                       >
                                         {task.title}
-                                      </h5>
+                                      </p>
+                                      <span className="text-xs text-stone-400 dark:text-stone-500">
+                                        {formatMinutes(task.estimatedMinutes)}
+                                      </span>
                                     </div>
                                     {task.description && (
-                                      <p className="mt-1 ml-6 text-sm text-stone-500 dark:text-stone-400">
+                                      <p className="mt-1 text-sm wrap-break-word text-stone-500 dark:text-stone-400">
                                         {task.description}
                                       </p>
                                     )}
-                                    <div className="mt-2 ml-6 text-xs text-stone-400 dark:text-stone-500">
-                                      {formatMinutes(task.estimatedMinutes)}
-                                    </div>
                                   </div>
-                                  <UpdateTaskStatusButton
-                                    planId={planId}
-                                    taskId={task.id}
-                                    status={taskStatus}
-                                    onStatusChange={handleStatusChange}
-                                  />
+                                  <div className="flex shrink-0 items-center self-end sm:self-auto">
+                                    <UpdateTaskStatusButton
+                                      planId={planId}
+                                      taskId={task.id}
+                                      status={taskStatus}
+                                      onStatusChange={handleStatusChange}
+                                    />
+                                  </div>
                                 </div>
 
-                                {/* Resources */}
                                 {resources.length > 0 && (
-                                  <div className="mt-3 ml-6 flex flex-wrap gap-2">
+                                  <div className="mt-3 ml-0 flex flex-wrap gap-2 sm:ml-6">
                                     {resources.map((resource) => {
-                                      const config =
+                                      const Icon =
                                         RESOURCE_CONFIG[resource.type];
-                                      const Icon = config.icon;
                                       return (
                                         <a
                                           key={resource.id}
                                           href={resource.url}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="hover:border-primary/40 hover:text-primary dark:hover:border-primary/60 dark:hover:text-primary inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 transition-colors dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
+                                          className="hover:border-primary/40 hover:text-primary focus-visible:ring-ring dark:hover:border-primary/60 dark:hover:text-primary inline-flex max-w-full items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 transition-colors focus-visible:ring-2 focus-visible:outline-none dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
                                         >
-                                          <Icon size={14} />
-                                          {resource.title}
+                                          <Icon
+                                            size={14}
+                                            className="shrink-0"
+                                          />
+                                          <span className="wrap-break-word">
+                                            {resource.title}
+                                          </span>
                                           <ExternalLink
                                             size={12}
-                                            className="opacity-50"
+                                            className="shrink-0 opacity-50"
                                           />
                                         </a>
                                       );
@@ -403,11 +388,10 @@ export function PlanTimeline({
                         </div>
                       )}
 
-                      {/* View Module Link */}
                       <div className="mt-4 flex justify-end">
                         <Link
                           href={`/plans/${planId}/modules/${mod.id}`}
-                          className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 dark:border-primary/50 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors"
+                          className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 focus-visible:ring-ring dark:border-primary/50 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
                         >
                           View Full Module
                           <ArrowRight size={16} />

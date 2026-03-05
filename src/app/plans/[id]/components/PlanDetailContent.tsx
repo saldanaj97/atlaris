@@ -81,50 +81,38 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
 export function PlanDetailContentSkeleton() {
   return (
     <>
-      {/* PlanOverviewHeader skeleton */}
-      <article className="lg:col-span-2">
-        {/* Cover Image Area skeleton */}
-        <div className="from-primary/20 via-accent/20 relative mb-6 overflow-hidden rounded-3xl bg-linear-to-br to-rose-500/20 p-8 shadow-2xl">
-          <div className="relative z-10 flex min-h-[280px] flex-col justify-between">
-            {/* Top row: tags */}
-            <div className="flex items-start justify-between">
-              <div className="flex flex-wrap gap-2">
-                <Skeleton className="h-6 w-20 rounded-full bg-white/30" />
-                <Skeleton className="h-6 w-16 rounded-full bg-white/30" />
-                <Skeleton className="h-6 w-24 rounded-full bg-white/30" />
-              </div>
-            </div>
-
-            {/* Bottom: title and subtitle */}
-            <div>
-              <Skeleton className="mb-2 h-4 w-28 bg-white/30" />
-              <Skeleton className="mb-1 h-12 w-full max-w-lg bg-white/30 md:h-14" />
-              <Skeleton className="h-6 w-64 bg-white/30" />
-            </div>
-          </div>
-
-          {/* Progress bar overlay */}
-          <div className="absolute right-0 bottom-0 left-0 h-1 bg-black/20">
-            <Skeleton className="h-full w-1/3 bg-white/50" />
-          </div>
+      <header className="mb-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-8 w-28" />
         </div>
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-full max-w-2xl" />
+          <Skeleton className="h-4 w-full max-w-md" />
+        </div>
+      </header>
 
-        {/* Stats Grid skeleton */}
+      <section className="mb-10 space-y-4">
+        <Skeleton className="h-6 w-36" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-6 w-28 rounded-full" />
+        </div>
+        <Skeleton className="h-4 w-48" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((statSkeletonId) => (
             <StatCardSkeleton key={`plan-stat-skeleton-${statSkeletonId}`} />
           ))}
         </div>
-      </article>
+      </section>
 
-      {/* PlanTimeline skeleton */}
-      <section className="mt-8">
+      <section>
         <div className="mb-6 flex items-center justify-between">
           <Skeleton className="h-8 w-40" />
           <Skeleton className="h-5 w-24" />
         </div>
 
-        {/* Module accordion items skeleton */}
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((moduleSkeletonId) => (
             <ModuleAccordionSkeleton
@@ -139,7 +127,7 @@ export function PlanDetailContentSkeleton() {
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-stone-100 bg-white p-4 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+    <div className="bg-card rounded-2xl border p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <Skeleton className="h-5 w-5" />
         <Skeleton className="h-3 w-16" />
@@ -152,10 +140,9 @@ function StatCardSkeleton() {
 
 function ModuleAccordionSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/40 bg-white/30 p-5 shadow-lg backdrop-blur-xl dark:border-stone-800/50 dark:bg-stone-900/30">
+    <div className="bg-card rounded-2xl border p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          {/* Module number badge skeleton */}
           <Skeleton className="h-10 w-10 rounded-full" />
           <div className="space-y-1.5">
             <Skeleton className="h-5 w-48" />

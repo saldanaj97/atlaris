@@ -29,6 +29,7 @@ export const UpdateTaskStatusButton = (props: UpdateTaskStatusButtonProps) => {
   const { planId, taskId, status, onStatusChange } = props;
   const isCompleted = status === 'completed';
   const [isPending, startTransition] = useTransition();
+  const buttonLabel = isCompleted ? 'Completed' : 'Mark Complete';
 
   /**
    * Handles the click event to toggle the task status between 'not_started' and 'completed'.
@@ -69,10 +70,10 @@ export const UpdateTaskStatusButton = (props: UpdateTaskStatusButtonProps) => {
       aria-label={
         isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'
       }
-      className={`flex items-center rounded-xl px-4 py-2 text-left text-sm font-medium ${
+      className={`flex items-center rounded-xl border px-4 py-2 text-left text-sm font-medium ${
         isCompleted
-          ? 'text-secondary hover:bg-secondary hover:text-primary bg-green-500'
-          : 'text-muted-foreground bg-secondary hover:text-secondary hover:bg-green-500'
+          ? 'border-green-600 bg-green-600 text-white hover:bg-green-700 dark:border-green-500 dark:bg-green-500 dark:text-green-950 dark:hover:bg-green-400'
+          : 'border-border bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
       }`}
     >
       <div className="flex items-center gap-2">
@@ -83,7 +84,7 @@ export const UpdateTaskStatusButton = (props: UpdateTaskStatusButtonProps) => {
         ) : (
           <CircleX className="h-5 w-5" />
         )}
-        {isCompleted ? 'Completed' : 'Mark Complete'}
+        {isPending ? 'Updating…' : buttonLabel}
       </div>
     </Button>
   );

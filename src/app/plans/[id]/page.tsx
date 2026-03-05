@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 import { Suspense } from 'react';
+import type { JSX } from 'react';
 
 import { PlanDetailPageError } from '@/app/plans/[id]/components/Error';
 import {
@@ -43,11 +43,8 @@ export default async function PlanDetailPage({
   if (!id) return <PlanDetailPageError />;
 
   return (
-    <div className="mx-auto min-h-screen max-w-7xl py-8">
-      {/* Data-dependent content - wrapped in Suspense */}
-      <Suspense fallback={<PlanDetailContentSkeleton />}>
-        <PlanDetailContent planId={id} />
-      </Suspense>
-    </div>
+    <Suspense fallback={<PlanDetailContentSkeleton />}>
+      <PlanDetailContent planId={id} />
+    </Suspense>
   );
 }

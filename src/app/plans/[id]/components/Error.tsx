@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 
 interface PlanDetailPageErrorProps {
@@ -15,23 +17,19 @@ interface PlanDetailPageErrorProps {
  */
 export function PlanDetailPageError({ message }: PlanDetailPageErrorProps) {
   return (
-    <div
-      role="alert"
-      className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4"
-    >
-      <h1 className="mb-4 text-3xl font-bold text-red-600">
-        Error Loading Plan
-      </h1>
-      <p className="mb-6 text-gray-700">
-        {message ??
-          'There was an error loading the learning plan. Please try again later.'}
-      </p>
-      <Link
-        href="/plans"
-        className="rounded bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
-      >
-        Back to Plans
-      </Link>
+    <div className="mx-auto max-w-2xl py-10">
+      <Card>
+        <CardContent className="space-y-5 p-6" role="alert">
+          <h1>Error Loading Plan</h1>
+          <p className="text-muted-foreground">
+            {message ??
+              'There was an error loading the learning plan. Please try again later.'}
+          </p>
+          <Button asChild>
+            <Link href="/plans">Back to Plans</Link>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -6,8 +6,8 @@ import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
 import { PlanTimeline } from '@/app/plans/[id]/components/PlanTimeline';
-import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
 import { computeOverviewStats } from '@/app/plans/[id]/helpers';
+import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -51,45 +51,50 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
   const isGenerating = plan.status === 'processing';
 
   return (
-    <div className="mx-auto min-h-screen max-w-7xl py-8">
-      {/* Navigation & Actions */}
-      <div className="mb-6 flex items-center justify-between">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard">
-            <ArrowLeft size={16} aria-hidden="true" />
-            Back to Dashboard
-          </Link>
-        </Button>
-
-        <DeletePlanDialog
-          planId={plan.id}
-          planTopic={plan.topic}
-          isGenerating={isGenerating}
-          redirectTo="/plans"
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={isGenerating}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete plan
+    <div>
+      <header className="mb-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/dashboard">
+              <ArrowLeft size={16} aria-hidden="true" />
+              Back to Dashboard
+            </Link>
           </Button>
-        </DeletePlanDialog>
-      </div>
+
+          <DeletePlanDialog
+            planId={plan.id}
+            planTopic={plan.topic}
+            isGenerating={isGenerating}
+            redirectTo="/plans"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isGenerating}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete plan
+            </Button>
+          </DeletePlanDialog>
+        </div>
+
+        <div className="space-y-2">
+          <h1 className="wrap-break-word">{plan.topic}</h1>
+          <p className="subtitle">
+            Track modules, update task progress, and keep your plan on schedule.
+          </p>
+        </div>
+      </header>
 
       {isPendingOrProcessing ? (
         <PlanPendingState plan={plan} />
       ) : (
         <>
-          {/* Hero Overview */}
+          {/* Plan Overview */}
           <PlanOverviewHeader plan={plan} stats={overviewStats} />
 
-          {/* Export Buttons */}
-          <div className="mt-6">
-            <ExportButtons planId={plan.id} />
-          </div>
+          <ExportButtons planId={plan.id} />
 
           {/* Module Timeline */}
           <PlanTimeline
