@@ -29,7 +29,7 @@ import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 interface ModuleTimelineProps {
   planId: string;
   modules: ClientModule[];
-  initialStatuses?: Record<string, ProgressStatus>;
+  statuses?: Record<string, ProgressStatus>;
   onStatusChange?: (taskId: string, newStatus: ProgressStatus) => void;
 }
 
@@ -89,19 +89,12 @@ function getModuleStatus(
 export function PlanTimeline({
   planId,
   modules,
-  initialStatuses,
+  statuses,
   onStatusChange,
 }: ModuleTimelineProps): JSX.Element {
-  const baseStatuses = useMemo(
-    () => initialStatuses ?? getStatusesFromModules(modules),
-    [initialStatuses, modules]
-  );
-  const [statusOverrides, setStatusOverrides] = useState<
-    Record<string, ProgressStatus>
-  >({});
-  const statuses = useMemo(
-    () => ({ ...baseStatuses, ...statusOverrides }),
-    [baseStatuses, statusOverrides]
+  const effectiveStatuses = useMemo(
+    () => statuses ?? getStatusesFromModules(modules),
+    [statuses, modules]
   );
 
   const timelineModules: TimelineModule[] = useMemo(() => {
@@ -111,12 +104,18 @@ export function PlanTimeline({
         .slice(0, index)
         .every((prevMod) => {
           const prevTasks = prevMod.tasks ?? [];
-          return prevTasks.every((task) => statuses[task.id] === 'completed');
+          return prevTasks.every(
+            (task) => effectiveStatuses[task.id] === 'completed'
+          );
         });
       const completedCount = tasks.filter(
-        (t) => statuses[t.id] === 'completed'
+        (t) => effectiveStatuses[t.id] === 'completed'
       ).length;
-      const status = getModuleStatus(mod, statuses, previousModulesCompleted);
+      const status = getModuleStatus(
+        mod,
+        effectiveStatuses,
+        previousModulesCompleted
+      );
 
       return {
         id: mod.id,
@@ -129,7 +128,7 @@ export function PlanTimeline({
         completedTasks: completedCount,
       };
     });
-  }, [modules, statuses]);
+  }, [modules, effectiveStatuses]);
 
   const defaultExpandedId = timelineModules.find(
     (mod) => mod.status === 'active'
@@ -137,14 +136,6 @@ export function PlanTimeline({
   const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() =>
     defaultExpandedId ? [defaultExpandedId] : []
   );
-
-  const handleStatusChange = (taskId: string, nextStatus: ProgressStatus) => {
-    setStatusOverrides((prev) => {
-      if (prev[taskId] === nextStatus) return prev;
-      return { ...prev, [taskId]: nextStatus };
-    });
-    onStatusChange?.(taskId, nextStatus);
-  };
 
   const handleModuleToggle = (moduleId: string) => {
     setExpandedModuleIds((prev) =>
@@ -298,7 +289,7 @@ export function PlanTimeline({
                         <div className="space-y-3">
                           {mod.tasks.map((task) => {
                             const taskStatus =
-                              statuses[task.id] ?? 'not_started';
+                              effectiveStatuses[task.id] ?? 'not_started';
                             const isCompleted = taskStatus === 'completed';
                             const resources = task.resources ?? [];
 
@@ -348,7 +339,9 @@ export function PlanTimeline({
                                       planId={planId}
                                       taskId={task.id}
                                       status={taskStatus}
-                                      onStatusChange={handleStatusChange}
+                                      onStatusChange={
+                                        onStatusChange ?? (() => {})
+                                      }
                                     />
                                   </div>
                                 </div>

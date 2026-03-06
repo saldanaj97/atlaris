@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type JSX } from 'react';
+import { useCallback, useOptimistic, type JSX } from 'react';
 
 import { ModuleHeader } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 import { ModuleLessonsClient } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
@@ -28,21 +28,23 @@ export function ModuleDetailClient({
   } = moduleData;
 
   const lessons = module.tasks ?? [];
-  const [statuses, setStatuses] =
-    useState<Record<string, ProgressStatus>>(initialStatuses);
+  const [statuses, addOptimisticStatus] = useOptimistic(
+    initialStatuses,
+    (
+      current: Record<string, ProgressStatus>,
+      update: { taskId: string; status: ProgressStatus }
+    ) => ({
+      ...current,
+      [update.taskId]: update.status,
+    })
+  );
 
-  const handleStatusChange = (taskId: string, nextStatus: ProgressStatus) => {
-    setStatuses((previousStatuses) => {
-      if (previousStatuses[taskId] === nextStatus) {
-        return previousStatuses;
-      }
-
-      return {
-        ...previousStatuses,
-        [taskId]: nextStatus,
-      };
-    });
-  };
+  const handleStatusChange = useCallback(
+    (taskId: string, status: ProgressStatus) => {
+      addOptimisticStatus({ taskId, status });
+    },
+    [addOptimisticStatus]
+  );
 
   return (
     <div className="space-y-8">

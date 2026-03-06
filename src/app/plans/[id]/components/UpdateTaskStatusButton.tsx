@@ -2,7 +2,7 @@
 
 import { updateTaskProgressAction } from '@/app/plans/[id]/actions';
 import { Button } from '@/components/ui/button';
-import { ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db';
 import { CheckCircle2, CircleX, Loader2Icon } from 'lucide-react';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
@@ -16,14 +16,15 @@ interface UpdateTaskStatusButtonProps {
 
 /**
  * A button component for updating the progress status of a task in a learning plan.
- * It toggles between 'not_started' and 'completed' statuses, with optimistic UI updates
- * and server-side persistence via a server action. Displays a loading state during updates
- * and shows error toasts on failure.
+ * It toggles between 'not_started' and 'completed' statuses, using the React 19
+ * `useOptimistic` pattern (update inside `startTransition`) for automatic rollback
+ * and server-side persistence via a server action. Displays a loading state during
+ * updates and shows error toasts on failure.
  *
  * @param planId - The ID of the learning plan containing the task.
  * @param taskId - The ID of the task whose status is being updated.
  * @param status - The current progress status of the task.
- * @param onStatusChange - Callback function to update the status in the parent component's state.
+ * @param onStatusChange - Callback function to optimistically update the status via `useOptimistic`.
  */
 export const UpdateTaskStatusButton = (props: UpdateTaskStatusButtonProps) => {
   const { planId, taskId, status, onStatusChange } = props;
@@ -33,32 +34,25 @@ export const UpdateTaskStatusButton = (props: UpdateTaskStatusButtonProps) => {
 
   /**
    * Handles the click event to toggle the task status between 'not_started' and 'completed'.
-   * Performs optimistic UI updates and calls the server action for persistence.
-   * Reverts the status on error and displays a toast notification.
+   * Uses the `useOptimistic` pattern: the optimistic update runs inside `startTransition`
+   * so React automatically reverts on failure. Shows an error toast if the action fails.
    */
   const handleClick = () => {
-    // Prevent multiple clicks while pending
     if (isPending) {
       return;
     }
 
-    // Store the previous status and determine the next status
-    const previousStatus = status;
     const nextStatus: ProgressStatus = isCompleted
       ? 'not_started'
       : 'completed';
 
-    // Optimistically update the UI
-    onStatusChange(taskId, nextStatus);
-
-    // Call the server action to update the status
-    startTransition(() => {
-      updateTaskProgressAction({ planId, taskId, status: nextStatus }).catch(
-        () => {
-          onStatusChange(taskId, previousStatus);
-          toast.error('Failed to update task status. Please try again.');
-        }
-      );
+    startTransition(async () => {
+      onStatusChange(taskId, nextStatus);
+      try {
+        await updateTaskProgressAction({ planId, taskId, status: nextStatus });
+      } catch {
+        toast.error('Failed to update task status. Please try again.');
+      }
     });
   };
 

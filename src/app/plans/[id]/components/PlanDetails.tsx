@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useOptimistic } from 'react';
 
 import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
@@ -30,8 +30,16 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
     )
   );
 
-  const [statuses, setStatuses] =
-    useState<Record<string, ProgressStatus>>(initialStatuses);
+  const [statuses, addOptimisticStatus] = useOptimistic(
+    initialStatuses,
+    (
+      current: Record<string, ProgressStatus>,
+      update: { taskId: string; status: ProgressStatus }
+    ) => ({
+      ...current,
+      [update.taskId]: update.status,
+    })
+  );
 
   const overviewStats = useMemo(
     () => computeOverviewStats(plan, statuses),
@@ -40,9 +48,9 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
 
   const handleStatusChange = useCallback(
     (taskId: string, newStatus: ProgressStatus) => {
-      setStatuses((prev) => ({ ...prev, [taskId]: newStatus }));
+      addOptimisticStatus({ taskId, status: newStatus });
     },
-    []
+    [addOptimisticStatus]
   );
 
   const isPendingOrProcessing =
@@ -100,7 +108,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
           <PlanTimeline
             planId={plan.id}
             modules={modules}
-            initialStatuses={initialStatuses}
+            statuses={statuses}
             onStatusChange={handleStatusChange}
           />
         </>

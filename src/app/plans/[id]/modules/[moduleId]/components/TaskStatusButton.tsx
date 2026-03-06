@@ -17,7 +17,8 @@ interface TaskStatusButtonProps {
 
 /**
  * A button component for updating the progress status of a task from the module detail page.
- * It toggles between 'not_started' and 'completed' statuses, with optimistic UI updates
+ * It toggles between 'not_started' and 'completed' statuses, using the React 19
+ * `useOptimistic` pattern (update inside `startTransition`) for automatic rollback
  * and server-side persistence via a server action.
  */
 export function TaskStatusButton({
@@ -35,25 +36,22 @@ export function TaskStatusButton({
       return;
     }
 
-    const previousStatus = status;
     const nextStatus: ProgressStatus = isCompleted
       ? 'not_started'
       : 'completed';
 
-    // Optimistically update the UI
-    onStatusChange(taskId, nextStatus);
-
-    // Call the server action to update the status
-    startTransition(() => {
-      updateModuleTaskProgressAction({
-        planId,
-        moduleId,
-        taskId,
-        status: nextStatus,
-      }).catch(() => {
-        onStatusChange(taskId, previousStatus);
+    startTransition(async () => {
+      onStatusChange(taskId, nextStatus);
+      try {
+        await updateModuleTaskProgressAction({
+          planId,
+          moduleId,
+          taskId,
+          status: nextStatus,
+        });
+      } catch {
         toast.error('Failed to update task status. Please try again.');
-      });
+      }
     });
   };
 
