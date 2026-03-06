@@ -1,7 +1,7 @@
 'use client';
 
-import { type ReactElement, useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { type ReactElement, useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -88,7 +88,10 @@ export function DeletePlanDialog({
           <AlertDialogTitle>Delete plan</AlertDialogTitle>
           <AlertDialogDescription>
             This will permanently delete &quot;{planTopic}&quot; and all its
-            modules, tasks, and progress. This action cannot be undone.
+            modules, tasks, and progress. This action cannot be undone and you
+            will not receive a refund for the AI generation credit used to
+            generate this plan. <br /> <br /> Are you sure you want to delete
+            this plan?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

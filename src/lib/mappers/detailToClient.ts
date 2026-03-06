@@ -97,7 +97,7 @@ function toClientAttempt(attempt: GenerationAttempt): ClientGenerationAttempt {
     id: attempt.id,
     status,
     classification:
-      status === 'success' ? null : toClassification(attempt.classification),
+      status === 'failure' ? toClassification(attempt.classification) : null,
     durationMs: attempt.durationMs,
     modulesCount: attempt.modulesCount,
     tasksCount: attempt.tasksCount,

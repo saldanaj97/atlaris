@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { logger } from '@/lib/logging/logger';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
@@ -78,7 +80,7 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
  * Skeleton for the plan detail content.
  * Shown while the async component is loading.
  */
-export function PlanDetailContentSkeleton() {
+export function PlanDetailContentSkeleton(): JSX.Element {
   return (
     <>
       <header className="mb-6 space-y-4">

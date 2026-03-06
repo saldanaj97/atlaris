@@ -65,15 +65,31 @@ export const DELETE = withErrorBoundary(
 
     logger.info({ planId, userId: user.id }, 'Deleting learning plan');
 
-    const result = await deletePlan(planId, user.id);
+    let result: Awaited<ReturnType<typeof deletePlan>>;
+    try {
+      result = await deletePlan(planId, user.id);
+    } catch (error) {
+      logger.error(
+        {
+          planId,
+          userId: user.id,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+        },
+        'Failed to delete learning plan'
+      );
+      throw error;
+    }
 
     if (!result.success) {
       if (result.reason === 'not_found') {
         throw new NotFoundError('Learning plan not found.');
       }
-      throw new ConflictError(
-        'Cannot delete a plan that is currently generating.'
-      );
+      if (result.reason === 'currently_generating') {
+        throw new ConflictError(
+          'Cannot delete a plan that is currently generating.'
+        );
+      }
+      throw new ConflictError(`Cannot delete plan: ${result.reason as string}`);
     }
 
     logger.info({ planId, userId: user.id }, 'Learning plan deleted');

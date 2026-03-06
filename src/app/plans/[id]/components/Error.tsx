@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
@@ -15,7 +17,9 @@ interface PlanDetailPageErrorProps {
  * @param message - Optional custom error message to display instead of the default text
  * @returns The React element representing the error page UI
  */
-export function PlanDetailPageError({ message }: PlanDetailPageErrorProps) {
+export function PlanDetailPageError({
+  message,
+}: PlanDetailPageErrorProps): JSX.Element {
   return (
     <div className="mx-auto max-w-2xl py-10">
       <Card>
