@@ -12,7 +12,7 @@ import { revalidatePath } from 'next/cache';
 
 import { withServerActionContext } from '@/lib/api/auth';
 import { getModuleDetail } from '@/lib/db/queries/modules';
-import { setTaskProgress } from '@/lib/db/queries/tasks';
+import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
@@ -125,4 +125,56 @@ export async function updateModuleTaskProgressAction({
 
   if (!result) throw new Error('You must be signed in to update progress.');
   return result;
+}
+
+interface BatchUpdateModuleTaskProgressInput {
+  planId: string;
+  moduleId: string;
+  updates: Array<{ taskId: string; status: ProgressStatus }>;
+}
+
+/**
+ * Server action to batch update multiple task progress records from the module detail page.
+ * Validates all updates, persists in a single transaction, and revalidates affected paths.
+ */
+export async function batchUpdateModuleTaskProgressAction({
+  planId,
+  moduleId,
+  updates,
+}: BatchUpdateModuleTaskProgressInput): Promise<void> {
+  assertNonEmpty(planId, 'A plan id is required to update progress.');
+  assertNonEmpty(moduleId, 'A module id is required to update progress.');
+  if (updates.length === 0) return;
+
+  for (const update of updates) {
+    assertNonEmpty(update.taskId, 'A task id is required to update progress.');
+    if (!PROGRESS_STATUSES.includes(update.status)) {
+      throw new Error('Invalid progress status.');
+    }
+  }
+
+  const result = await withServerActionContext(async (user, rlsDb) => {
+    try {
+      await setTaskProgressBatch(user.id, updates, rlsDb);
+      revalidatePath(`/plans/${planId}/modules/${moduleId}`);
+      revalidatePath(`/plans/${planId}`);
+      revalidatePath('/plans');
+    } catch (error) {
+      logger.error(
+        {
+          planId,
+          moduleId,
+          userId: user.id,
+          updateCount: updates.length,
+          err: error,
+        },
+        'Failed to batch update module task progress'
+      );
+      throw new Error('Unable to update task progress right now.');
+    }
+  });
+
+  if (result === null) {
+    throw new Error('You must be signed in to update progress.');
+  }
 }

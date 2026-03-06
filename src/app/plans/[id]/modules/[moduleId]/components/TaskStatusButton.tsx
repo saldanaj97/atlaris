@@ -1,64 +1,36 @@
 'use client';
 
-import { updateModuleTaskProgressAction } from '@/app/plans/[id]/modules/[moduleId]/actions';
 import { Button } from '@/components/ui/button';
 import type { ProgressStatus } from '@/lib/types/db';
-import { CheckCircle2, Circle, Loader2Icon } from 'lucide-react';
-import { useTransition } from 'react';
-import { toast } from 'sonner';
+import { CheckCircle2, Circle } from 'lucide-react';
 
 interface TaskStatusButtonProps {
-  planId: string;
-  moduleId: string;
   taskId: string;
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
 }
 
 /**
- * A button component for updating the progress status of a task from the module detail page.
- * It toggles between 'not_started' and 'completed' statuses, using the React 19
- * `useOptimistic` pattern (update inside `startTransition`) for automatic rollback
- * and server-side persistence via a server action.
+ * Presentational button for toggling task completion. Calls onStatusChange on click;
+ * the parent handles optimistic updates, batching, and error recovery.
  */
 export function TaskStatusButton({
-  planId,
-  moduleId,
   taskId,
   status,
   onStatusChange,
 }: TaskStatusButtonProps) {
   const isCompleted = status === 'completed';
-  const [isPending, startTransition] = useTransition();
 
   const handleClick = () => {
-    if (isPending) {
-      return;
-    }
-
     const nextStatus: ProgressStatus = isCompleted
       ? 'not_started'
       : 'completed';
-
-    startTransition(async () => {
-      onStatusChange(taskId, nextStatus);
-      try {
-        await updateModuleTaskProgressAction({
-          planId,
-          moduleId,
-          taskId,
-          status: nextStatus,
-        });
-      } catch {
-        toast.error('Failed to update task status. Please try again.');
-      }
-    });
+    onStatusChange(taskId, nextStatus);
   };
 
   return (
     <Button
       onClick={handleClick}
-      disabled={isPending}
       aria-pressed={isCompleted}
       aria-label={
         isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'
@@ -70,9 +42,7 @@ export function TaskStatusButton({
       }`}
     >
       <div className="flex items-center gap-2">
-        {isPending ? (
-          <Loader2Icon className="h-5 w-5 animate-spin" />
-        ) : isCompleted ? (
+        {isCompleted ? (
           <CheckCircle2 className="h-5 w-5" />
         ) : (
           <Circle className="h-5 w-5" />

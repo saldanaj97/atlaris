@@ -19,8 +19,6 @@ import { TaskStatusButton } from './TaskStatusButton';
 
 interface TaskCardProps {
   task: TaskWithRelations;
-  planId: string;
-  moduleId: string;
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
 }
@@ -78,8 +76,6 @@ const DEFAULT_CLASSES =
  */
 export function TaskCard({
   task,
-  planId,
-  moduleId,
   status,
   onStatusChange,
 }: TaskCardProps): ReactElement {
@@ -144,8 +140,6 @@ export function TaskCard({
 
         {/* Status Button */}
         <TaskStatusButton
-          planId={planId}
-          moduleId={moduleId}
           taskId={task.id}
           status={status}
           onStatusChange={onStatusChange}

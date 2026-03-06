@@ -336,7 +336,6 @@ export function PlanTimeline({
                                   </div>
                                   <div className="flex shrink-0 items-center self-end sm:self-auto">
                                     <UpdateTaskStatusButton
-                                      planId={planId}
                                       taskId={task.id}
                                       status={taskStatus}
                                       onStatusChange={

@@ -24,7 +24,7 @@ import {
   SCHEDULE_FETCH_ERROR_CODE,
 } from '@/lib/api/schedule';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
-import { setTaskProgress } from '@/lib/db/queries/tasks';
+import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
@@ -100,6 +100,53 @@ export async function updateTaskProgressAction({
 
   if (!result) throw new Error('You must be signed in to update progress.');
   return result;
+}
+
+interface BatchUpdateTaskProgressInput {
+  planId: string;
+  updates: Array<{ taskId: string; status: ProgressStatus }>;
+}
+
+/**
+ * Server action to batch update multiple task progress records from the plan overview page.
+ * Validates all updates, persists in a single transaction, and revalidates affected paths.
+ */
+export async function batchUpdateTaskProgressAction({
+  planId,
+  updates,
+}: BatchUpdateTaskProgressInput): Promise<void> {
+  assertNonEmpty(planId, 'A plan id is required to update progress.');
+  if (updates.length === 0) return;
+
+  for (const update of updates) {
+    assertNonEmpty(update.taskId, 'A task id is required to update progress.');
+    if (!PROGRESS_STATUSES.includes(update.status)) {
+      throw new Error('Invalid progress status.');
+    }
+  }
+
+  const result = await withServerActionContext(async (user, rlsDb) => {
+    try {
+      await setTaskProgressBatch(user.id, updates, rlsDb);
+      revalidatePath(`/plans/${planId}`);
+      revalidatePath('/plans');
+    } catch (error) {
+      logger.error(
+        {
+          planId,
+          userId: user.id,
+          updateCount: updates.length,
+          err: error,
+        },
+        'Failed to batch update task progress'
+      );
+      throw new Error('Unable to update task progress right now.');
+    }
+  });
+
+  if (result === null) {
+    throw new Error('You must be signed in to update progress.');
+  }
 }
 
 /**

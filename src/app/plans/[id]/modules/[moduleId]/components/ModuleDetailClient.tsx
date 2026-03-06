@@ -1,9 +1,17 @@
 'use client';
 
-import { useCallback, useOptimistic, type JSX } from 'react';
+import {
+  useCallback,
+  useOptimistic,
+  useRef,
+  useTransition,
+  type JSX,
+} from 'react';
 
+import { batchUpdateModuleTaskProgressAction } from '@/app/plans/[id]/modules/[moduleId]/actions';
 import { ModuleHeader } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 import { ModuleLessonsClient } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
+import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
 import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/lib/types/db';
 
@@ -39,11 +47,36 @@ export function ModuleDetailClient({
     })
   );
 
-  const handleStatusChange = useCallback(
-    (taskId: string, status: ProgressStatus) => {
-      addOptimisticStatus({ taskId, status });
+  const statusesRef = useRef(statuses);
+  statusesRef.current = statuses;
+
+  const [, startTransition] = useTransition();
+
+  const batcher = useTaskStatusBatcher({
+    flushAction: async (updates) => {
+      await batchUpdateModuleTaskProgressAction({
+        planId,
+        moduleId: module.id,
+        updates,
+      });
     },
-    [addOptimisticStatus]
+  });
+
+  const handleStatusChange = useCallback(
+    (taskId: string, nextStatus: ProgressStatus) => {
+      const previousStatus = statusesRef.current[taskId] ?? 'not_started';
+
+      startTransition(async () => {
+        addOptimisticStatus({ taskId, status: nextStatus });
+        try {
+          await batcher.queue(taskId, nextStatus, previousStatus);
+        } catch {
+          // Transition settling auto-reverts optimistic state.
+          // Toast is shown by the batcher.
+        }
+      });
+    },
+    [addOptimisticStatus, batcher, startTransition]
   );
 
   return (
@@ -62,7 +95,6 @@ export function ModuleDetailClient({
 
       <ModuleLessonsClient
         planId={planId}
-        moduleId={module.id}
         lessons={lessons}
         nextModuleId={nextModuleId}
         previousModulesComplete={previousModulesComplete}

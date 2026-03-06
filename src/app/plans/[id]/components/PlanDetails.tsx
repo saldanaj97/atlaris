@@ -1,7 +1,14 @@
 'use client';
 
-import { useCallback, useMemo, useOptimistic } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useTransition,
+} from 'react';
 
+import { batchUpdateTaskProgressAction } from '@/app/plans/[id]/actions';
 import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
@@ -9,6 +16,7 @@ import { PlanTimeline } from '@/app/plans/[id]/components/PlanTimeline';
 import { computeOverviewStats } from '@/app/plans/[id]/helpers';
 import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
 import { Button } from '@/components/ui/button';
+import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -41,16 +49,37 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
     })
   );
 
+  const statusesRef = useRef(statuses);
+  statusesRef.current = statuses;
+
+  const [, startTransition] = useTransition();
+
+  const batcher = useTaskStatusBatcher({
+    flushAction: async (updates) => {
+      await batchUpdateTaskProgressAction({ planId: plan.id, updates });
+    },
+  });
+
   const overviewStats = useMemo(
     () => computeOverviewStats(plan, statuses),
     [plan, statuses]
   );
 
   const handleStatusChange = useCallback(
-    (taskId: string, newStatus: ProgressStatus) => {
-      addOptimisticStatus({ taskId, status: newStatus });
+    (taskId: string, nextStatus: ProgressStatus) => {
+      const previousStatus = statusesRef.current[taskId] ?? 'not_started';
+
+      startTransition(async () => {
+        addOptimisticStatus({ taskId, status: nextStatus });
+        try {
+          await batcher.queue(taskId, nextStatus, previousStatus);
+        } catch {
+          // Transition settling auto-reverts optimistic state.
+          // Toast is shown by the batcher.
+        }
+      });
     },
-    [addOptimisticStatus]
+    [addOptimisticStatus, batcher, startTransition]
   );
 
   const isPendingOrProcessing =
@@ -60,7 +89,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
 
   return (
     <div>
-      <header className="mb-6 space-y-4">
+      <header className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard">
@@ -85,13 +114,6 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
               Delete plan
             </Button>
           </DeletePlanDialog>
-        </div>
-
-        <div className="space-y-2">
-          <h1 className="wrap-break-word">{plan.topic}</h1>
-          <p className="subtitle">
-            Track modules, update task progress, and keep your plan on schedule.
-          </p>
         </div>
       </header>
 

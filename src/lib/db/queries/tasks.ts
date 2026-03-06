@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import type {
   DbTask,
@@ -94,5 +94,74 @@ export async function setTaskProgress(
     }
 
     return progress;
+  });
+}
+
+/**
+ * Batch updates task progress for multiple tasks in a single transaction.
+ * Validates ownership for all tasks via a single query, then bulk upserts.
+ * Falls back to single-update for single-item batches.
+ */
+export async function setTaskProgressBatch(
+  userId: string,
+  updates: Array<{ taskId: string; status: ProgressStatus }>,
+  dbClient?: TasksDbClient
+): Promise<DbTaskProgress[]> {
+  if (updates.length === 0) return [];
+  if (updates.length === 1) {
+    const result = await setTaskProgress(
+      userId,
+      updates[0].taskId,
+      updates[0].status,
+      dbClient
+    );
+    return [result];
+  }
+
+  const client = dbClient ?? getDb();
+  const taskIds = updates.map((u) => u.taskId);
+
+  return await client.transaction(async (tx) => {
+    const ownedTasks = await tx
+      .select({ id: tasks.id })
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+      .where(and(inArray(tasks.id, taskIds), eq(learningPlans.userId, userId)))
+      .for('update');
+
+    const ownedIds = new Set(ownedTasks.map((t) => t.id));
+    const missingIds = taskIds.filter((id) => !ownedIds.has(id));
+    if (missingIds.length > 0) {
+      throw new Error('One or more tasks not found or access denied');
+    }
+
+    const now = new Date();
+    const values = updates.map((u) => ({
+      taskId: u.taskId,
+      userId,
+      status: u.status,
+      completedAt: u.status === 'completed' ? now : null,
+      updatedAt: now,
+    }));
+
+    const results = await tx
+      .insert(taskProgress)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [taskProgress.taskId, taskProgress.userId],
+        set: {
+          status: sql`excluded.status`,
+          completedAt: sql`excluded.completed_at`,
+          updatedAt: sql`excluded.updated_at`,
+        },
+      })
+      .returning();
+
+    if (results.length !== updates.length) {
+      throw new Error('Batch update returned unexpected number of rows');
+    }
+
+    return results;
   });
 }

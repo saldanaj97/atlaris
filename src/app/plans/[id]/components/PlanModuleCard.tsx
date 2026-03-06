@@ -26,7 +26,6 @@ import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 import type { ElementType } from 'react';
 
 interface PlanModuleCardProps {
-  planId: string;
   module: ClientModule;
   statuses: Record<string, ProgressStatus>;
   setStatuses: React.Dispatch<
@@ -66,7 +65,6 @@ const RESOURCE_CONFIG: Record<
 };
 
 export function PlanModuleCard({
-  planId,
   module,
   statuses,
   setStatuses,
@@ -226,7 +224,6 @@ export function PlanModuleCard({
               <div className="mt-4 flex justify-end px-4">
                 <CardAction>
                   <UpdateTaskStatusButton
-                    planId={planId}
                     taskId={task.id}
                     status={status}
                     onStatusChange={handleStatusChange}

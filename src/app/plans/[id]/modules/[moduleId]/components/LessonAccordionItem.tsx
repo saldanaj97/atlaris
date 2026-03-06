@@ -28,8 +28,6 @@ import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
   lesson: TaskWithRelations;
-  planId: string;
-  moduleId: string;
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
   /** Whether this lesson is locked (previous lessons/modules not complete) */
@@ -158,8 +156,6 @@ function LockedContentOverlay() {
  */
 export function LessonAccordionItem({
   lesson,
-  planId,
-  moduleId,
   status,
   onStatusChange,
   isLocked = false,
@@ -371,8 +367,6 @@ export function LessonAccordionItem({
               {/* Status Button - At the bottom of the lesson */}
               <div className="mt-6 flex justify-end">
                 <TaskStatusButton
-                  planId={planId}
-                  moduleId={moduleId}
                   taskId={lesson.id}
                   status={status}
                   onStatusChange={onStatusChange}
