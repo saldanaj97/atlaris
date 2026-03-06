@@ -24,7 +24,7 @@ import type {
   LearningPlanDetail,
   PlanSummary,
 } from '@/lib/types/db';
-import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;
@@ -236,4 +236,48 @@ export async function getPlanAttemptsForUser(
   };
 
   return { plan: planMeta, attempts };
+}
+
+/** Result of a plan deletion attempt. */
+export type DeletePlanResult =
+  | { success: true }
+  | { success: false; reason: 'not_found' | 'currently_generating' };
+
+/**
+ * Deletes a plan owned by the authenticated user.
+ * Blocks deletion when the plan is actively generating.
+ * All child records (modules, tasks, schedules, generations, attempts) are
+ * cascade-deleted by the database.
+ *
+ * @param planId - Plan ID to delete
+ * @param userId - Authenticated user ID (ownership enforced via WHERE + RLS)
+ * @param dbClient - Optional client; defaults to getDb()
+ * @returns DeletePlanResult indicating success or failure reason
+ */
+export async function deletePlan(
+  planId: string,
+  userId: string,
+  dbClient?: DbClient
+): Promise<DeletePlanResult> {
+  const client = dbClient ?? getDb();
+
+  const plan = await selectOwnedPlanById({
+    planId,
+    ownerUserId: userId,
+    dbClient: client,
+  });
+
+  if (!plan) {
+    return { success: false, reason: 'not_found' };
+  }
+
+  if (plan.generationStatus === 'generating') {
+    return { success: false, reason: 'currently_generating' };
+  }
+
+  await client
+    .delete(learningPlans)
+    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)));
+
+  return { success: true };
 }
