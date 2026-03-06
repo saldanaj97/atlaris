@@ -235,9 +235,9 @@ describe('PlansList', () => {
       />
     );
 
-    // PlanRow has a "View plan" button
+    // PlanRow has a "Plan actions" dropdown trigger button
     expect(
-      screen.getByRole('button', { name: /view plan/i })
+      screen.getByRole('button', { name: /plan actions/i })
     ).toBeInTheDocument();
   });
 

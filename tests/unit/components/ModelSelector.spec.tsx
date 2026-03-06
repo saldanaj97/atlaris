@@ -34,10 +34,7 @@ describe('ModelSelector', () => {
 
     it('renders with a current model selected', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
@@ -45,10 +42,7 @@ describe('ModelSelector', () => {
 
     it('displays model details card when a model is selected', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // Should show model details - use getAllBy for elements that may appear multiple times
@@ -81,30 +75,21 @@ describe('ModelSelector', () => {
   describe('Model Selection', () => {
     it('shows model description when selected', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
-      const model = AVAILABLE_MODELS.find(
-        (m) => m.id === 'google/gemini-2.0-flash-exp:free'
-      );
-      if (model) {
-        expect(screen.getByText(model.description)).toBeInTheDocument();
-      }
+      expect(
+        screen.getByText(FIRST_FREE_MODEL.description)
+      ).toBeInTheDocument();
     });
 
     it('displays correct model name', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // The model name appears multiple times (trigger and card)
-      const modelNames = screen.getAllByText('Gemini 2.0 Flash');
+      const modelNames = screen.getAllByText(FIRST_FREE_MODEL.name);
       expect(modelNames.length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -280,10 +265,7 @@ describe('ModelSelector', () => {
   describe('Tier Badge Display', () => {
     it('displays tier badge on selected model card', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // The selected model card should show a FREE badge
@@ -295,10 +277,7 @@ describe('ModelSelector', () => {
   describe('Model Details Display', () => {
     it('displays context window for selected model', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // Check for context window display (should show as "XK tokens")
@@ -311,10 +290,7 @@ describe('ModelSelector', () => {
 
     it('displays cost information for selected model', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // Free models should show "Free" for costs
@@ -324,14 +300,13 @@ describe('ModelSelector', () => {
 
     it('displays provider name for selected model', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
-      // Should show "by Google" for Gemini model
-      expect(screen.getByText(/google/i)).toBeInTheDocument();
+      // Should show provider name (e.g. "by OpenRouter")
+      expect(
+        screen.getByText(new RegExp(FIRST_FREE_MODEL.provider, 'i'))
+      ).toBeInTheDocument();
     });
   });
 });

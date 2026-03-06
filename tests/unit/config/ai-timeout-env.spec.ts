@@ -40,9 +40,9 @@ describe('aiTimeoutEnv', () => {
   });
 
   it('uses sane defaults when env vars are absent', () => {
-    expect(aiTimeoutEnv.baseMs).toBe(30_000);
-    expect(aiTimeoutEnv.extensionMs).toBe(15_000);
-    expect(aiTimeoutEnv.extensionThresholdMs).toBe(25_000);
+    expect(aiTimeoutEnv.baseMs).toBe(120_000);
+    expect(aiTimeoutEnv.extensionMs).toBe(60_000);
+    expect(aiTimeoutEnv.extensionThresholdMs).toBe(115_000);
   });
 
   it('honors explicit overrides for all timeout knobs', () => {

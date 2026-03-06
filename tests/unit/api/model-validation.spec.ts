@@ -50,12 +50,12 @@ describe('Model Validation (API Layer)', () => {
 
   describe('Model override validation logic (without tier-gating)', () => {
     it('uses override when valid model ID is provided', () => {
-      const modelOverride = 'google/gemini-2.0-flash-exp:free';
+      const modelOverride = 'openai/gpt-oss-20b:free';
       const model =
         modelOverride && isValidModelId(modelOverride)
           ? modelOverride
           : AI_DEFAULT_MODEL;
-      expect(model).toBe('google/gemini-2.0-flash-exp:free');
+      expect(model).toBe('openai/gpt-oss-20b:free');
     });
 
     it('falls back to DEFAULT_MODEL when invalid model ID is provided', () => {
@@ -103,13 +103,13 @@ describe('Model Validation (API Layer)', () => {
     }
 
     it('allows free-tier model for free user', () => {
-      const model = resolveModel('google/gemini-2.0-flash-exp:free', 'free');
-      expect(model).toBe('google/gemini-2.0-flash-exp:free');
+      const model = resolveModel('openai/gpt-oss-20b:free', 'free');
+      expect(model).toBe('openai/gpt-oss-20b:free');
     });
 
     it('allows free-tier model for pro user', () => {
-      const model = resolveModel('google/gemini-2.0-flash-exp:free', 'pro');
-      expect(model).toBe('google/gemini-2.0-flash-exp:free');
+      const model = resolveModel('openai/gpt-oss-20b:free', 'pro');
+      expect(model).toBe('openai/gpt-oss-20b:free');
     });
 
     it('allows pro-tier model for pro user', () => {
@@ -214,7 +214,7 @@ describe('Model Validation (API Layer)', () => {
   describe('isValidModelId integration', () => {
     it('is imported and works correctly', () => {
       expect(typeof isValidModelId).toBe('function');
-      expect(isValidModelId('google/gemini-2.0-flash-exp:free')).toBe(true);
+      expect(isValidModelId('openai/gpt-oss-20b:free')).toBe(true);
       expect(isValidModelId('fake-model')).toBe(false);
     });
 

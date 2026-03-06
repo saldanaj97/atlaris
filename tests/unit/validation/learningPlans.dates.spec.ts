@@ -13,7 +13,10 @@ function baseInput() {
 }
 
 function yyyyMmDd(date: Date) {
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 describe('onboardingFormSchema date validations', () => {
@@ -29,7 +32,7 @@ describe('onboardingFormSchema date validations', () => {
 
   it('rejects past deadline', () => {
     const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    yesterday.setDate(yesterday.getDate() - 1);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(yesterday),
@@ -55,7 +58,7 @@ describe('onboardingFormSchema date validations', () => {
   it('rejects start date in the past when provided', () => {
     const today = new Date();
     const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    yesterday.setDate(yesterday.getDate() - 1);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(today),
@@ -72,7 +75,7 @@ describe('onboardingFormSchema date validations', () => {
   it('enforces startDate <= deadlineDate', () => {
     const today = new Date();
     const tomorrow = new Date();
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(today),
@@ -101,7 +104,7 @@ describe('onboardingFormSchema date validations', () => {
 
   it('caps deadlines to within 1 year', () => {
     const farFuture = new Date();
-    farFuture.setUTCFullYear(farFuture.getUTCFullYear() + 2);
+    farFuture.setFullYear(farFuture.getFullYear() + 2);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(farFuture),

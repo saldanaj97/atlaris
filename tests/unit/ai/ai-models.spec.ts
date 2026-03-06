@@ -90,17 +90,17 @@ describe('AI Models Configuration', () => {
     });
 
     it('has the expected value', () => {
-      expect(AI_DEFAULT_MODEL).toBe('google/gemini-2.0-flash-exp:free');
+      expect(AI_DEFAULT_MODEL).toBe('openrouter/free');
     });
   });
 
   describe('getModelById', () => {
     it('returns correct model for valid ID', () => {
-      const model = getModelById('google/gemini-2.0-flash-exp:free');
+      const model = getModelById('openrouter/free');
       expect(model).toBeDefined();
-      expect(model?.id).toBe('google/gemini-2.0-flash-exp:free');
-      expect(model?.name).toBe('Gemini 2.0 Flash');
-      expect(model?.provider).toBe('Google');
+      expect(model?.id).toBe('openrouter/free');
+      expect(model?.name).toBe('Free Models Router');
+      expect(model?.provider).toBe('OpenRouter');
     });
 
     it('returns correct model for each model in AVAILABLE_MODELS', () => {
