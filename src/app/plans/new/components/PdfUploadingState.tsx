@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactElement } from 'react';
+
 import { PdfUploadZone } from '@/app/plans/new/components/PdfUploadZone';
 import { Button } from '@/components/ui/button';
 
@@ -11,7 +13,7 @@ interface PdfUploadingStateProps {
 export function PdfUploadingState({
   onFileSelect,
   onCancelUpload,
-}: PdfUploadingStateProps): React.ReactElement {
+}: PdfUploadingStateProps): ReactElement {
   return (
     <div className="w-full max-w-2xl space-y-4">
       <PdfUploadZone

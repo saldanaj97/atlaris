@@ -30,8 +30,8 @@ export const AVAILABLE_MODELS = [
     description:
       'Automatically selects a free model for each request. Zero cost, no credit card required.',
     tier: 'free',
-    contextWindow: 1_000_000,
-    maxOutputTokens: 64_000,
+    contextWindow: 131_000,
+    maxOutputTokens: 65_500,
     inputCostPerMillion: 0,
     outputCostPerMillion: 0,
   },
