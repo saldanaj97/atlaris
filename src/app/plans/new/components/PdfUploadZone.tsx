@@ -1,8 +1,9 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
-import { FileText, Loader2, Upload } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, Upload } from 'lucide-react';
 import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react';
 import React, { useCallback, useId, useRef, useState } from 'react';
 
@@ -12,6 +13,10 @@ interface PdfUploadZoneProps {
   disabled?: boolean;
   error?: string;
 }
+
+const CLIENT_PDF_SIZE_LIMIT_BYTES = 50 * 1024 * 1024;
+const CLIENT_PDF_SIZE_LIMIT_MB = CLIENT_PDF_SIZE_LIMIT_BYTES / (1024 * 1024);
+const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46, 0x2d] as const;
 
 export function PdfUploadZone({
   onFileSelect,
@@ -28,11 +33,10 @@ export function PdfUploadZone({
     try {
       const buffer = await file.slice(0, 5).arrayBuffer();
       const bytes = new Uint8Array(buffer);
-      const magicBytes = [0x25, 0x50, 0x44, 0x46, 0x2d];
-      if (bytes.length < magicBytes.length) {
+      if (bytes.length < PDF_MAGIC_BYTES.length) {
         return false;
       }
-      return magicBytes.every((byte, index) => bytes[index] === byte);
+      return PDF_MAGIC_BYTES.every((byte, index) => bytes[index] === byte);
     } catch {
       return false;
     }
@@ -44,6 +48,10 @@ export function PdfUploadZone({
       const hasPdfMime = file.type === 'application/pdf';
       if (!hasPdfExtension && !hasPdfMime) {
         setLocalError('Please select a valid PDF file.');
+        return false;
+      }
+      if (file.size > CLIENT_PDF_SIZE_LIMIT_BYTES) {
+        setLocalError(`PDF must be ${CLIENT_PDF_SIZE_LIMIT_MB}MB or smaller.`);
         return false;
       }
       const hasMagicBytes = await isPdfMagicBytes(file);
@@ -84,20 +92,15 @@ export function PdfUploadZone({
 
       const run = async (): Promise<void> => {
         const files = Array.from(e.dataTransfer.files);
-        const pdfFile = files.find(
-          (file) =>
-            file.type === 'application/pdf' ||
-            file.name.toLowerCase().endsWith('.pdf')
-        );
+        const candidate = files[0];
 
-        if (!pdfFile) {
-          setLocalError('Please select a PDF file.');
+        if (!candidate) {
           return;
         }
 
-        const isValid = await validatePdfFile(pdfFile);
+        const isValid = await validatePdfFile(candidate);
         if (isValid) {
-          onFileSelect(pdfFile);
+          onFileSelect(candidate);
         }
       };
 
@@ -212,9 +215,13 @@ export function PdfUploadZone({
           )}
 
           {(localError ?? error) && (
-            <div className="bg-destructive/10 border-destructive/20 text-destructive mt-4 rounded-lg border px-4 py-2 text-sm">
-              {localError ?? error}
-            </div>
+            <Alert
+              variant="destructive"
+              className="border-destructive/20 bg-destructive/10 mt-4"
+            >
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{localError ?? error}</AlertDescription>
+            </Alert>
           )}
 
           <p className="text-muted-foreground mt-6 text-xs">

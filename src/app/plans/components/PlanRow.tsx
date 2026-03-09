@@ -11,14 +11,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   ArrowRight,
   CheckCircle2,
   Clock,
-  ExternalLink,
   MoreVertical,
   Sparkles,
   Trash2,
@@ -125,48 +123,38 @@ export function PlanRow({
       </div>
 
       {/* Actions menu */}
-      <div
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-      >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Plan actions"
-              aria-label="Plan actions"
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Plan actions"
+            aria-label="Plan actions"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DeletePlanDialog
+            planId={plan.id}
+            planTopic={plan.topic}
+            isGenerating={status === 'generating'}
+          >
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={status === 'generating'}
+              onSelect={(e) => e.preventDefault()}
             >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link href={`/plans/${plan.id}`}>
-                <ExternalLink className="mr-2 h-4 w-4" />
-                View plan
-              </Link>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete plan
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DeletePlanDialog
-              planId={plan.id}
-              planTopic={plan.topic}
-              isGenerating={status === 'generating'}
-            >
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={status === 'generating'}
-                onSelect={(e) => e.preventDefault()}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete plan
-              </DropdownMenuItem>
-            </DeletePlanDialog>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          </DeletePlanDialog>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </Link>
   );
 }

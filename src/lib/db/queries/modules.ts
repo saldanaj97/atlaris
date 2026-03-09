@@ -95,6 +95,12 @@ export async function getModuleDetail(
 
   const currentIndex = allModules.findIndex((m) => m.id === moduleId);
   if (currentIndex < 0) {
+    // `moduleRow` was resolved earlier, so under the normal invariant it should also
+    // exist in `allModules` (which is derived from `allModulesRaw` for the same
+    // `planId`). Keep this guard as a narrow defense against a race where the module
+    // is deleted or otherwise disappears between the `moduleRow` lookup and the
+    // `allModulesRaw` fetch; in that case `computeModuleNavItemsFromCounts` cannot
+    // produce a valid position for the missing module.
     return null;
   }
 

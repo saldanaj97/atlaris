@@ -89,7 +89,9 @@ export const DELETE = withErrorBoundary(
           'Cannot delete a plan that is currently generating.'
         );
       }
-      throw new ConflictError(`Cannot delete plan: ${result.reason as string}`);
+      throw new ConflictError(
+        'Cannot delete learning plan in its current state.'
+      );
     }
 
     logger.info({ planId, userId: user.id }, 'Learning plan deleted');

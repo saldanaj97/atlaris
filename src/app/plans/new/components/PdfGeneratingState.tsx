@@ -3,11 +3,12 @@
 import type { ReactElement } from 'react';
 
 import { Loader2 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 export function PdfGeneratingState(): ReactElement {
   return (
     <div className="w-full max-w-3xl">
-      <div className="dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-12 shadow-2xl backdrop-blur-xl">
+      <Card className="border-border bg-card/60 relative rounded-3xl px-6 py-12 shadow-2xl backdrop-blur-xl">
         <div
           className="flex flex-col items-center text-center"
           role="status"
@@ -26,7 +27,7 @@ export function PdfGeneratingState(): ReactElement {
             This will only take a moment
           </p>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

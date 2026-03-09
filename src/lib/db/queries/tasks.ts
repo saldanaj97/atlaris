@@ -120,6 +120,18 @@ export async function setTaskProgressBatch(
 
   const client = dbClient ?? getDb();
   const taskIds = updates.map((u) => u.taskId);
+  const duplicateIds = Array.from(
+    taskIds.reduce((counts, taskId) => {
+      counts.set(taskId, (counts.get(taskId) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>())
+  )
+    .filter(([_taskId, count]) => count > 1)
+    .map(([taskId]) => taskId);
+
+  if (duplicateIds.length > 0) {
+    throw new Error(`Duplicate taskIds in updates: ${duplicateIds.join(', ')}`);
+  }
 
   return await client.transaction(async (tx) => {
     const ownedTasks = await tx

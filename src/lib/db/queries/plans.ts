@@ -28,9 +28,29 @@ import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;
+type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
 
 /** Maximum number of generation attempts to return in attempt history queries. */
 const MAX_ATTEMPTS_HISTORY_LIMIT = 10;
+const DELETABLE_PLAN_STATUSES = ['ready', 'failed', 'pending_retry'] as const;
+type PlanGenerationStatus =
+  (typeof learningPlans.$inferSelect)['generationStatus'];
+
+interface DeletePlanDeps {
+  selectOwnedPlanById: typeof selectOwnedPlanById;
+}
+
+const defaultDeletePlanDeps: DeletePlanDeps = {
+  selectOwnedPlanById,
+};
+
+function isDeletablePlanStatus(
+  status: PlanGenerationStatus
+): status is (typeof DELETABLE_PLAN_STATUSES)[number] {
+  return DELETABLE_PLAN_STATUSES.includes(
+    status as (typeof DELETABLE_PLAN_STATUSES)[number]
+  );
+}
 
 /**
  * Fetches plan summaries with completion metrics for a user.
@@ -238,10 +258,13 @@ export async function getPlanAttemptsForUser(
   return { plan: planMeta, attempts };
 }
 
+/** Explicit failure reasons returned by deletePlan. */
+export type DeletePlanFailureReason = 'not_found' | 'currently_generating';
+
 /** Result of a plan deletion attempt. */
 export type DeletePlanResult =
   | { success: true }
-  | { success: false; reason: 'not_found' | 'currently_generating' };
+  | { success: false; reason: DeletePlanFailureReason };
 
 /**
  * Deletes a plan owned by the authenticated user.
@@ -257,11 +280,12 @@ export type DeletePlanResult =
 export async function deletePlan(
   planId: string,
   userId: string,
-  dbClient?: DbClient
+  dbClient?: DeletePlanDbClient,
+  deps: DeletePlanDeps = defaultDeletePlanDeps
 ): Promise<DeletePlanResult> {
   const client = dbClient ?? getDb();
 
-  const plan = await selectOwnedPlanById({
+  const plan = await deps.selectOwnedPlanById({
     planId,
     ownerUserId: userId,
     dbClient: client,
@@ -271,13 +295,34 @@ export async function deletePlan(
     return { success: false, reason: 'not_found' };
   }
 
-  if (plan.generationStatus === 'generating') {
+  if (!isDeletablePlanStatus(plan.generationStatus)) {
     return { success: false, reason: 'currently_generating' };
   }
 
-  await client
+  const deletedPlans = await client
     .delete(learningPlans)
-    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)));
+    .where(
+      and(
+        eq(learningPlans.id, planId),
+        eq(learningPlans.userId, userId),
+        inArray(learningPlans.generationStatus, DELETABLE_PLAN_STATUSES)
+      )
+    )
+    .returning({ id: learningPlans.id });
 
-  return { success: true };
+  if (deletedPlans.length > 0) {
+    return { success: true };
+  }
+
+  const currentPlan = await deps.selectOwnedPlanById({
+    planId,
+    ownerUserId: userId,
+    dbClient: client,
+  });
+
+  if (currentPlan?.generationStatus === 'generating') {
+    return { success: false, reason: 'currently_generating' };
+  }
+
+  return { success: false, reason: 'not_found' };
 }

@@ -113,6 +113,7 @@ export function ManualCreatePanel({
           clientLogger,
           toast,
           router,
+          redirectPath: '/plans/new',
           logMessage: 'Streaming plan generation failed',
           fallbackMessage:
             'We could not create your learning plan. Please try again.',

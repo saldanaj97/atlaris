@@ -9,6 +9,8 @@ import {
 import { InlineDropdown } from '@/app/plans/new/components/plan-form/InlineDropdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import type { ExtractedSection } from '@/lib/pdf/types';
 import {
   ArrowRight,
@@ -137,12 +139,12 @@ export function PdfExtractionPreview({
               >
                 Main Topic
               </label>
-              <input
+              <Input
                 id={mainTopicId}
                 type="text"
                 value={mainTopic}
                 onChange={(e) => setMainTopic(e.target.value)}
-                className="dark:bg-input/30 dark:border-input dark:text-foreground bg-background border-border text-foreground focus:border-primary focus:ring-primary/20 w-full rounded-xl border px-4 py-3 text-base focus:ring-2 focus:outline-none"
+                className="border-border bg-background text-foreground focus-visible:border-primary focus-visible:ring-primary/20 dark:border-input dark:bg-input/30 dark:text-foreground h-auto w-full rounded-xl px-4 py-3 text-base shadow-none focus-visible:ring-2 md:text-base"
                 disabled={isGenerating}
               />
             </div>
@@ -176,14 +178,14 @@ export function PdfExtractionPreview({
                       >
                         Section {index + 1} title
                       </label>
-                      <input
+                      <Input
                         id={`section-title-${section.id}`}
                         type="text"
                         value={section.title}
                         onChange={(e) =>
                           handleSectionEdit(index, 'title', e.target.value)
                         }
-                        className="text-foreground flex-1 bg-transparent text-sm font-medium focus:outline-none"
+                        className="text-foreground h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-sm font-medium shadow-none focus-visible:ring-0 md:text-sm"
                         disabled={isGenerating}
                       />
                       <Badge variant="outline" className="text-xs">
@@ -196,14 +198,14 @@ export function PdfExtractionPreview({
                     >
                       Section {index + 1} content
                     </label>
-                    <textarea
+                    <Textarea
                       id={`section-content-${section.id}`}
                       value={section.content}
                       onChange={(e) =>
                         handleSectionEdit(index, 'content', e.target.value)
                       }
                       rows={3}
-                      className="text-muted-foreground w-full resize-none bg-transparent text-xs focus:outline-none"
+                      className="text-muted-foreground min-h-0 w-full resize-none rounded-none border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0 md:text-xs"
                       disabled={isGenerating}
                     />
                   </div>

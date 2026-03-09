@@ -14,7 +14,7 @@
  * - src/lib/api/auth.ts — commentary on current non-RLS behavior in request handlers.
  */
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { withServerActionContext } from '@/lib/api/auth';
@@ -78,6 +78,33 @@ async function ensureTaskOwnership(
   }
 }
 
+async function ensureBatchTaskOwnership(
+  db: ReturnType<typeof getDb>,
+  planId: string,
+  taskIds: string[],
+  userId: string
+): Promise<void> {
+  const uniqueTaskIds = Array.from(new Set(taskIds));
+  if (uniqueTaskIds.length === 0) return;
+
+  const ownedTasks = await db
+    .select({ taskId: tasks.id })
+    .from(tasks)
+    .innerJoin(modules, eq(tasks.moduleId, modules.id))
+    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+    .where(
+      and(
+        inArray(tasks.id, uniqueTaskIds),
+        eq(learningPlans.id, planId),
+        eq(learningPlans.userId, userId)
+      )
+    );
+
+  if (ownedTasks.length !== uniqueTaskIds.length) {
+    throw new Error('One or more tasks not found.');
+  }
+}
+
 export async function updateTaskProgressAction({
   planId,
   taskId,
@@ -107,9 +134,11 @@ interface BatchUpdateTaskProgressInput {
   updates: Array<{ taskId: string; status: ProgressStatus }>;
 }
 
+const MAX_BATCH_UPDATES = 500;
+
 /**
  * Server action to batch update multiple task progress records from the plan overview page.
- * Validates all updates, persists in a single transaction, and revalidates affected paths.
+ * Validates all updates, persists via `setTaskProgressBatch`, and revalidates affected paths.
  */
 export async function batchUpdateTaskProgressAction({
   planId,
@@ -117,6 +146,11 @@ export async function batchUpdateTaskProgressAction({
 }: BatchUpdateTaskProgressInput): Promise<void> {
   assertNonEmpty(planId, 'A plan id is required to update progress.');
   if (updates.length === 0) return;
+  if (updates.length > MAX_BATCH_UPDATES) {
+    throw new Error(
+      `Batch update limit exceeded: received ${updates.length} updates, but the maximum allowed is ${MAX_BATCH_UPDATES}.`
+    );
+  }
 
   for (const update of updates) {
     assertNonEmpty(update.taskId, 'A task id is required to update progress.');
@@ -127,6 +161,12 @@ export async function batchUpdateTaskProgressAction({
 
   const result = await withServerActionContext(async (user, rlsDb) => {
     try {
+      await ensureBatchTaskOwnership(
+        rlsDb,
+        planId,
+        updates.map((update) => update.taskId),
+        user.id
+      );
       await setTaskProgressBatch(user.id, updates, rlsDb);
       revalidatePath(`/plans/${planId}`);
       revalidatePath('/plans');

@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useLayoutEffect,
   useMemo,
   useOptimistic,
   useRef,
@@ -50,9 +51,12 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
   );
 
   const statusesRef = useRef(statuses);
-  statusesRef.current = statuses;
 
-  const [, startTransition] = useTransition();
+  useLayoutEffect(() => {
+    statusesRef.current = statuses;
+  }, [statuses]);
+
+  const [_isPending, startTransition] = useTransition();
 
   const batcher = useTaskStatusBatcher({
     flushAction: async (updates) => {

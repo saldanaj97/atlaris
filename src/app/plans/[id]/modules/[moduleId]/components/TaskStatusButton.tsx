@@ -1,5 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import type { ProgressStatus } from '@/lib/types/db';
 import { CheckCircle2, Circle } from 'lucide-react';
@@ -18,7 +20,7 @@ export function TaskStatusButton({
   taskId,
   status,
   onStatusChange,
-}: TaskStatusButtonProps) {
+}: TaskStatusButtonProps): JSX.Element {
   const isCompleted = status === 'completed';
 
   const handleClick = () => {

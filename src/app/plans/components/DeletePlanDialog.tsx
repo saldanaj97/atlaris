@@ -1,7 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { type ReactElement, useCallback, useRef, useState } from 'react';
+import {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -39,6 +45,15 @@ export function DeletePlanDialog({
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, []);
 
   const handleDelete = useCallback(async (): Promise<void> => {
     abortControllerRef.current?.abort();
@@ -61,19 +76,31 @@ export function DeletePlanDialog({
       }
 
       toast.success('Plan deleted successfully');
-      setOpen(false);
+      if (isMountedRef.current) {
+        setOpen(false);
+      }
       router.push(redirectTo);
       router.refresh();
     } catch (error: unknown) {
-      if (isAbortError(error)) return;
+      if (isAbortError(error)) {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+          if (isMountedRef.current) {
+            setDeleting(false);
+          }
+        }
+        return;
+      }
       const message =
         error instanceof Error ? error.message : 'Failed to delete plan';
       clientLogger.error('Plan deletion failed', { planId, error });
       toast.error(message);
-    } finally {
-      if (abortControllerRef.current === controller) {
+    }
+
+    if (abortControllerRef.current === controller) {
+      abortControllerRef.current = null;
+      if (isMountedRef.current) {
         setDeleting(false);
-        abortControllerRef.current = null;
       }
     }
   }, [planId, redirectTo, router]);
@@ -86,12 +113,14 @@ export function DeletePlanDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete plan</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete &quot;{planTopic}&quot; and all its
-            modules, tasks, and progress. This action cannot be undone and you
-            will not receive a refund for the AI generation credit used to
-            generate this plan. <br /> <br /> Are you sure you want to delete
-            this plan?
+          <AlertDialogDescription className="space-y-2">
+            <p>
+              This will permanently delete &quot;{planTopic}&quot; and all its
+              modules, tasks, and progress. This action cannot be undone and you
+              will not receive a refund for the AI generation credit used to
+              generate this plan.
+            </p>
+            <p>Are you sure you want to delete this plan?</p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

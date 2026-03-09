@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { formatMinutes } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 import {
   CheckCircle2,
   ExternalLink,
@@ -146,21 +147,28 @@ export function PlanModuleCard({
           return (
             <div
               key={task.id}
-              className={`hover:border-primary/30 rounded-md border p-4 transition-colors ${isCompleted ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20' : 'bg-card-background'}`}
+              className={cn(
+                'hover:border-primary/30 rounded-md border p-4 transition-colors',
+                isCompleted
+                  ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+                  : 'bg-card-background'
+              )}
             >
               <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
                   <CardTitle
-                    className={`flex items-center text-left ${
+                    className={cn(
+                      'flex items-center text-left',
                       isCompleted ? 'text-green-600' : 'text-muted-foreground'
-                    }`}
+                    )}
                   >
                     <CheckCircle2
-                      className={`mr-2 h-5 w-5 ${
+                      className={cn(
+                        'mr-2 h-5 w-5',
                         isCompleted
                           ? 'fill-white text-green-600'
                           : 'text-muted-foreground'
-                      }`}
+                      )}
                     />
                     {task.title}
                   </CardTitle>

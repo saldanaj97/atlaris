@@ -27,10 +27,10 @@ export const DEFAULT_SCHEDULE_TIMEZONE = 'UTC';
  * @param _db - Database client (reserved for future user/preferences queries).
  * @returns The timezone string (e.g. 'UTC', 'America/New_York').
  */
-export async function resolveScheduleTimezone(
+export function resolveScheduleTimezone(
   _userId: string,
   _db: DbClient
-): Promise<string> {
+): string {
   return DEFAULT_SCHEDULE_TIMEZONE;
 }
 
@@ -86,7 +86,7 @@ export async function getPlanSchedule(
     );
   }
 
-  const timezone = await resolveScheduleTimezone(userId, db);
+  const timezone = resolveScheduleTimezone(userId, db);
 
   // Load modules and tasks in one query to avoid serial module->task round trips.
   const moduleTaskRows = await db

@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useLayoutEffect,
   useOptimistic,
   useRef,
   useTransition,
@@ -13,6 +14,7 @@ import { ModuleHeader } from '@/app/plans/[id]/modules/[moduleId]/components/Mod
 import { ModuleLessonsClient } from '@/app/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
 import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
 import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/types/modules.types';
+import { clientLogger } from '@/lib/logging/client';
 import type { ProgressStatus } from '@/lib/types/db';
 
 interface ModuleDetailClientProps {
@@ -47,10 +49,15 @@ export function ModuleDetailClient({
     })
   );
 
+  // Ref mirrors optimistic state so handleStatusChange reads the latest value
+  // without adding `statuses` to its dependency array (avoids callback churn).
   const statusesRef = useRef(statuses);
-  statusesRef.current = statuses;
 
-  const [, startTransition] = useTransition();
+  useLayoutEffect(() => {
+    statusesRef.current = statuses;
+  }, [statuses]);
+
+  const [_isPending, startTransition] = useTransition();
 
   const batcher = useTaskStatusBatcher({
     flushAction: async (updates) => {
@@ -70,13 +77,19 @@ export function ModuleDetailClient({
         addOptimisticStatus({ taskId, status: nextStatus });
         try {
           await batcher.queue(taskId, nextStatus, previousStatus);
-        } catch {
+        } catch (error: unknown) {
+          clientLogger.error('Module task status batch failed', {
+            error,
+            moduleId: module.id,
+            planId,
+            taskId,
+          });
           // Transition settling auto-reverts optimistic state.
           // Toast is shown by the batcher.
         }
       });
     },
-    [addOptimisticStatus, batcher, startTransition]
+    [addOptimisticStatus, batcher, module.id, planId, startTransition]
   );
 
   return (

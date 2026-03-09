@@ -19,6 +19,7 @@ interface HandleStreamingPlanErrorParams {
   clientLogger: PlanGenerationLogger;
   toast: PlanGenerationToast;
   router: AppRouterInstance;
+  redirectPath: string;
   logMessage: string;
   fallbackMessage: string;
   onAbort?: () => void;
@@ -37,6 +38,7 @@ export function handleStreamingPlanError({
   clientLogger,
   toast,
   router,
+  redirectPath,
   logMessage,
   fallbackMessage,
   onAbort,
@@ -58,7 +60,7 @@ export function handleStreamingPlanError({
   if (isAuthRequired) {
     toast.error('Please sign in to create a learning plan.');
     router.push(
-      `/auth/sign-in?redirect_url=${encodeURIComponent('/plans/new')}`
+      `/auth/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`
     );
     return { handled: true, normalizedError, message: 'Auth required' };
   }

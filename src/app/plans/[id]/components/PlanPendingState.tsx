@@ -31,10 +31,8 @@ interface PlanPendingStateProps {
 
 export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const router = useRouter();
-  const { status, attempts, error, pollingError, isPolling } = usePlanStatus(
-    plan.id,
-    plan.status ?? 'pending'
-  );
+  const { status, attempts, error, pollingError, isPolling, revalidate } =
+    usePlanStatus(plan.id, plan.status ?? 'pending');
 
   const {
     status: retryStatus,
@@ -158,7 +156,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
               </div>
 
               <Button
-                onClick={() => window.location.reload()}
+                onClick={() => void revalidate()}
                 className="w-full"
                 variant="outline"
               >

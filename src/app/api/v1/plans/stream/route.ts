@@ -231,14 +231,14 @@ export function createStreamHandler(deps?: {
                 userId: dbUser.id,
                 dbClient: streamDb,
                 emit,
-                runGeneration: async (signal) => {
+                runGeneration: async () => {
                   const result = await runGen(
                     {
                       planId: plan.id,
                       userId: dbUser.id,
                       input: generationInput,
                     },
-                    { provider, signal, dbClient: streamDb }
+                    { provider, dbClient: streamDb }
                   );
                   return result;
                 },

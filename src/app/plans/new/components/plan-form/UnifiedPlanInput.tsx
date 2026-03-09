@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
 import { assertNever } from '@/lib/utils';
@@ -111,13 +112,6 @@ export function UnifiedPlanInput({
   });
 
   const prevResetVersionRef = useRef(topicResetVersion);
-  const topicRef = useRef(state.topic);
-
-  // Keep topicRef in sync with state.topic so the reset-version effect reads the latest topic without adding it to deps.
-  // Declared before the consumer effect so React runs it first (effects fire in declaration order).
-  useEffect(() => {
-    topicRef.current = state.topic;
-  });
 
   useEffect(() => {
     if (prevResetVersionRef.current === topicResetVersion) {
@@ -126,7 +120,7 @@ export function UnifiedPlanInput({
 
     prevResetVersionRef.current = topicResetVersion;
 
-    if (topicRef.current === initialTopic) {
+    if (state.topic === initialTopic) {
       return;
     }
 
@@ -134,7 +128,7 @@ export function UnifiedPlanInput({
       type: 'reset-topic',
       value: initialTopic,
     });
-  }, [initialTopic, topicResetVersion]);
+  }, [initialTopic, state.topic, topicResetVersion]);
 
   const topic = state.topic;
 
@@ -197,10 +191,10 @@ export function UnifiedPlanInput({
             What do you want to learn?
           </label>
           <div className="flex items-start gap-2.5 sm:gap-3">
-            <div className="from-primary to-accent flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-lg sm:h-10 sm:w-10">
+            <div className="from-primary to-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-lg sm:h-10 sm:w-10">
               <Sparkles className="h-4 w-4 text-white sm:h-5 sm:w-5" />
             </div>
-            <textarea
+            <Textarea
               id={topicInputId}
               value={topic}
               onChange={(e) =>
@@ -208,7 +202,7 @@ export function UnifiedPlanInput({
               }
               onKeyDown={handleKeyDown}
               placeholder="I want to learn TypeScript for React development..."
-              className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[56px] w-full resize-none bg-transparent text-base focus:outline-none sm:min-h-[72px] sm:text-lg"
+              className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[56px] w-full resize-none border-0 bg-transparent px-0 py-0 text-base shadow-none focus-visible:ring-0 sm:min-h-[72px] sm:text-lg md:text-lg"
               rows={2}
               disabled={isSubmitting || disabled}
             />

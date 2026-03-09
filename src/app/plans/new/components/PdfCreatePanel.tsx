@@ -375,9 +375,6 @@ export function PdfCreatePanel({
         router.push(`/plans/${streamPlanId}`);
       },
     })
-      .then(() => {
-        // Promise resolves on stream completion; navigation already handled by onPlanIdReady
-      })
       .catch((streamError: unknown) => {
         const { handled, message, normalizedError } = handleStreamingPlanError({
           streamError,
@@ -386,6 +383,7 @@ export function PdfCreatePanel({
           clientLogger,
           toast,
           router,
+          redirectPath: '/plans/new',
           logMessage: 'Plan generation failed',
           fallbackMessage: 'Failed to create learning plan. Please try again.',
           onAbort: () => {
@@ -427,9 +425,7 @@ export function PdfCreatePanel({
   if (state.status === 'idle') {
     return (
       <PdfUploadZone
-        onFileSelect={(file) => {
-          void handleFileSelect(file);
-        }}
+        onFileSelect={handleFileSelect}
         isUploading={false}
         disabled={false}
       />

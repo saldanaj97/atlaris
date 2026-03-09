@@ -326,6 +326,43 @@ describe('usePlanStatus', () => {
     expect(clientLogger.error).not.toHaveBeenCalled();
   });
 
+  it('should revalidate after a polling error and resume polling', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          error: 'Bad request',
+          code: 'BAD_REQUEST',
+        }),
+      })
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'processing', attempts: 1 })
+        )
+      );
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch)
+    );
+
+    await waitFor(() => {
+      expect(result.current.pollingError).toBe('Bad request');
+      expect(result.current.isPolling).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.revalidate();
+    });
+
+    await waitFor(() => {
+      expect(result.current.pollingError).toBeNull();
+      expect(result.current.status).toBe('processing');
+      expect(result.current.isPolling).toBe(true);
+    });
+  });
+
   it('should clean up polling interval on unmount', async () => {
     vi.useFakeTimers();
 

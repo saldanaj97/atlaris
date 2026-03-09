@@ -52,11 +52,17 @@ describe('useStreamingPlanGeneration', () => {
     const { result } = renderHook(() => useStreamingPlanGeneration());
 
     let planId: string | undefined;
+    let notifiedPlanId: string | undefined;
     await act(async () => {
-      planId = await result.current.startGeneration(basePayload);
+      planId = await result.current.startGeneration(basePayload, {
+        onPlanIdReady: (id) => {
+          notifiedPlanId = id;
+        },
+      });
     });
 
     expect(planId).toBe('plan-1');
+    expect(notifiedPlanId).toBe(planId);
     expect(result.current.state.status).toBe('complete');
     expect(result.current.state.modules).toHaveLength(1);
     expect(result.current.state.progress?.modulesParsed).toBe(1);
@@ -130,6 +136,39 @@ describe('useStreamingPlanGeneration', () => {
       message: 'Rate limit exceeded. Please wait and retry.',
       classification: 'rate_limit',
       retryable: true,
+    });
+  });
+
+  it('throws a StreamingError for unexpected non-SSE responses', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('<html>sign-in</html>', {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' },
+        })
+      )
+    );
+
+    const { result } = renderHook(() => useStreamingPlanGeneration());
+
+    await act(async () => {
+      await expect(
+        result.current.startGeneration(basePayload)
+      ).rejects.toMatchObject({
+        message: 'Unexpected server response. Please try again.',
+        code: 'INVALID_STREAM_RESPONSE',
+        classification: 'provider_error',
+        retryable: false,
+        status: 200,
+      });
+    });
+
+    expect(result.current.state.status).toBe('error');
+    expect(result.current.state.error).toMatchObject({
+      message: 'Unexpected server response. Please try again.',
+      classification: 'provider_error',
+      retryable: false,
     });
   });
 });

@@ -5,6 +5,7 @@ import {
   type CreateMethod,
 } from '@/app/plans/new/components/CreateMethodToggle';
 import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import React, { Suspense, useCallback, useId, useState } from 'react';
 
@@ -117,9 +118,10 @@ export function CreatePlanPageClient({
       >
         <Suspense
           fallback={
-            <div className="text-muted-foreground text-center text-sm">
-              Loading PDF options...
-            </div>
+            <Skeleton
+              className="mx-auto h-88 w-full max-w-2xl rounded-3xl"
+              aria-label="Loading PDF options"
+            />
           }
         >
           {pdfOpened && (

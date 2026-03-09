@@ -227,7 +227,7 @@ describe('PlansList', () => {
     expect(screen.getByText(/Inactive/)).toBeInTheDocument();
   });
 
-  it('should display view plan buttons', () => {
+  it('should display plan actions button', () => {
     render(
       <PlansList
         summaries={[mockActivePlan]}

@@ -3,8 +3,9 @@
 import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { ProgressStatus } from '@/lib/types/db';
-import { CheckCircle2, CircleX } from 'lucide-react';
+import { CheckCircle2, CircleDashed } from 'lucide-react';
 
 interface UpdateTaskStatusButtonProps {
   taskId: string;
@@ -38,17 +39,18 @@ export const UpdateTaskStatusButton = (
       aria-label={
         isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'
       }
-      className={`flex items-center rounded-xl border px-4 py-2 text-left text-sm font-medium ${
+      className={cn(
+        'flex items-center rounded-xl border px-4 py-2 text-left text-sm font-medium',
         isCompleted
           ? 'border-green-600 bg-green-600 text-white hover:bg-green-700 dark:border-green-500 dark:bg-green-500 dark:text-green-950 dark:hover:bg-green-400'
           : 'border-border bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-      }`}
+      )}
     >
       <div className="flex items-center gap-2">
         {isCompleted ? (
           <CheckCircle2 className="h-5 w-5" />
         ) : (
-          <CircleX className="h-5 w-5" />
+          <CircleDashed className="h-5 w-5" />
         )}
         {buttonLabel}
       </div>

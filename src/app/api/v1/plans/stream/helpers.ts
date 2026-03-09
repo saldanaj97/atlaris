@@ -435,7 +435,7 @@ interface ExecuteGenerationStreamParams {
   userId: string;
   dbClient: AttemptsDbClient;
   emit: EmitFn;
-  runGeneration: (signal: AbortSignal) => Promise<GenerationResult>;
+  runGeneration: () => Promise<GenerationResult>;
   onUnhandledError: (error: unknown, startedAt: number) => Promise<void>;
   mapUnhandledErrorToClientError?: (
     error: unknown
@@ -564,12 +564,12 @@ export async function executeGenerationStream({
   const startedAt = Date.now();
 
   // Generation runs to completion regardless of client connection state.
-  // reqSignal/streamSignal are NOT linked to the generation abort controller
-  // so that page refreshes or early navigation don't kill in-progress work.
-  // The generation has its own internal adaptive timeout for cancellation.
+  // reqSignal/streamSignal are NOT forwarded to runGeneration so that page
+  // refreshes or early navigation don't kill in-progress work. The
+  // orchestrator still enforces its own adaptive timeout/cancellation.
 
   try {
-    const result = await runGeneration(new AbortController().signal);
+    const result = await runGeneration();
 
     if (result.status === 'success') {
       await handleSuccessfulGeneration(result, {

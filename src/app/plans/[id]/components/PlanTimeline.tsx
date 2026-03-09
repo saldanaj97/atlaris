@@ -7,6 +7,7 @@ import {
   AccordionContent,
   AccordionItem,
 } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
 import { formatMinutes } from '@/lib/formatters';
 import {
   ArrowRight,
@@ -30,7 +31,7 @@ interface ModuleTimelineProps {
   planId: string;
   modules: ClientModule[];
   statuses?: Record<string, ProgressStatus>;
-  onStatusChange?: (taskId: string, newStatus: ProgressStatus) => void;
+  onStatusChange: (taskId: string, newStatus: ProgressStatus) => void;
 }
 
 type ModuleStatus = 'completed' | 'active' | 'locked';
@@ -130,12 +131,12 @@ export function PlanTimeline({
     });
   }, [modules, effectiveStatuses]);
 
-  const defaultExpandedId = timelineModules.find(
-    (mod) => mod.status === 'active'
-  )?.id;
-  const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() =>
-    defaultExpandedId ? [defaultExpandedId] : []
-  );
+  const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() => {
+    const activeModuleId = timelineModules.find(
+      (mod) => mod.status === 'active'
+    )?.id;
+    return activeModuleId ? [activeModuleId] : [];
+  });
 
   const handleModuleToggle = (moduleId: string) => {
     setExpandedModuleIds((prev) =>
@@ -215,66 +216,71 @@ export function PlanTimeline({
                         : 'border-stone-100 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900'
                   }`}
                 >
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    asChild
                     disabled={isLocked}
-                    onClick={() => handleModuleToggle(mod.id)}
-                    aria-expanded={isOpen}
-                    aria-controls={`module-content-${mod.id}`}
-                    className={`flex w-full items-start gap-4 p-4 text-left ${
+                    className={`h-auto w-full justify-start gap-4 rounded-[inherit] p-4 text-left whitespace-normal ${
                       isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
                     }`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-2 flex items-center gap-2">
-                        <span
-                          className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                    <button
+                      type="button"
+                      onClick={() => handleModuleToggle(mod.id)}
+                      aria-expanded={isOpen}
+                      aria-controls={`module-content-${mod.id}`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span
+                            className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                              mod.status === 'active'
+                                ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                                : mod.status === 'completed'
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                                  : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                            }`}
+                          >
+                            Week {mod.order}
+                          </span>
+                          <span className="text-xs text-stone-400 dark:text-stone-500">
+                            {mod.duration}
+                          </span>
+                          {mod.tasks.length > 0 && (
+                            <span className="text-xs text-stone-400 dark:text-stone-500">
+                              • {mod.completedTasks}/{mod.tasks.length} tasks
+                            </span>
+                          )}
+                        </div>
+                        <h3
+                          className={`font-semibold wrap-break-word ${
                             mod.status === 'active'
-                              ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-                              : mod.status === 'completed'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                                : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                              ? 'text-stone-900 dark:text-stone-100'
+                              : mod.status === 'locked'
+                                ? 'text-stone-600 dark:text-stone-400'
+                                : 'text-stone-700 dark:text-stone-300'
                           }`}
                         >
-                          Week {mod.order}
-                        </span>
-                        <span className="text-xs text-stone-400 dark:text-stone-500">
-                          {mod.duration}
-                        </span>
-                        {mod.tasks.length > 0 && (
-                          <span className="text-xs text-stone-400 dark:text-stone-500">
-                            • {mod.completedTasks}/{mod.tasks.length} tasks
-                          </span>
+                          {mod.title}
+                        </h3>
+                        {mod.description && (
+                          <div className="mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none">
+                            <p className="text-sm text-stone-500 dark:text-stone-400">
+                              {mod.description}
+                            </p>
+                          </div>
                         )}
                       </div>
-                      <h3
-                        className={`font-semibold wrap-break-word ${
-                          mod.status === 'active'
-                            ? 'text-stone-900 dark:text-stone-100'
-                            : mod.status === 'locked'
-                              ? 'text-stone-600 dark:text-stone-400'
-                              : 'text-stone-700 dark:text-stone-300'
-                        }`}
-                      >
-                        {mod.title}
-                      </h3>
-                      {mod.description && (
-                        <div className="mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none">
-                          <p className="text-sm text-stone-500 dark:text-stone-400">
-                            {mod.description}
-                          </p>
-                        </div>
+                      {!isLocked && (
+                        <ChevronRight
+                          size={20}
+                          className={`mt-0.5 shrink-0 text-stone-400 transition-transform duration-300 dark:text-stone-500 ${
+                            isOpen ? '-rotate-90' : 'rotate-90'
+                          }`}
+                        />
                       )}
-                    </div>
-                    {!isLocked && (
-                      <ChevronRight
-                        size={20}
-                        className={`mt-0.5 shrink-0 text-stone-400 transition-transform duration-300 dark:text-stone-500 ${
-                          isOpen ? 'rotate-270' : 'rotate-90'
-                        }`}
-                      />
-                    )}
-                  </button>
+                    </button>
+                  </Button>
 
                   <AccordionContent
                     id={`module-content-${mod.id}`}
@@ -338,9 +344,7 @@ export function PlanTimeline({
                                     <UpdateTaskStatusButton
                                       taskId={task.id}
                                       status={taskStatus}
-                                      onStatusChange={
-                                        onStatusChange ?? (() => {})
-                                      }
+                                      onStatusChange={onStatusChange}
                                     />
                                   </div>
                                 </div>
@@ -351,25 +355,30 @@ export function PlanTimeline({
                                       const Icon =
                                         RESOURCE_CONFIG[resource.type];
                                       return (
-                                        <a
+                                        <Button
                                           key={resource.id}
-                                          href={resource.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="hover:border-primary/40 hover:text-primary focus-visible:ring-ring dark:hover:border-primary/60 dark:hover:text-primary inline-flex max-w-full items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 transition-colors focus-visible:ring-2 focus-visible:outline-none dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
+                                          variant="outline"
+                                          asChild
+                                          className="h-auto max-w-full justify-start rounded-lg px-2.5 py-1.5 text-left text-xs whitespace-normal"
                                         >
-                                          <Icon
-                                            size={14}
-                                            className="shrink-0"
-                                          />
-                                          <span className="wrap-break-word">
-                                            {resource.title}
-                                          </span>
-                                          <ExternalLink
-                                            size={12}
-                                            className="shrink-0 opacity-50"
-                                          />
-                                        </a>
+                                          <a
+                                            href={resource.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                          >
+                                            <Icon
+                                              size={14}
+                                              className="shrink-0"
+                                            />
+                                            <span className="wrap-break-word">
+                                              {resource.title}
+                                            </span>
+                                            <ExternalLink
+                                              size={12}
+                                              className="shrink-0 opacity-50"
+                                            />
+                                          </a>
+                                        </Button>
                                       );
                                     })}
                                   </div>
