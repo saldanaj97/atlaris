@@ -1,19 +1,19 @@
 'use client';
 
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import type { JSX } from 'react';
+
+import type { NavItem } from '@/lib/navigation';
+import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+
 import AuthControls from '@/components/shared/AuthControls';
+import BrandLogo from '@/components/shared/BrandLogo';
+import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import type { JSX } from 'react';
-
 import { trackEvent } from '@/lib/analytics';
-import type { NavItem } from '@/lib/navigation';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
-
-import BrandLogo from '@/components/shared/BrandLogo';
-import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 
 interface DesktopHeaderProps {
   navItems: NavItem[];

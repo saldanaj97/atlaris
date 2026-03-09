@@ -33,6 +33,20 @@ vi.mock('@/lib/db/service-role', () => {
   };
 });
 
+// Shim DOM methods missing in jsdom (required by Radix UI primitives)
+if (typeof Element.prototype.hasPointerCapture !== 'function') {
+  Element.prototype.hasPointerCapture = () => false;
+}
+if (typeof Element.prototype.setPointerCapture !== 'function') {
+  Element.prototype.setPointerCapture = () => {};
+}
+if (typeof Element.prototype.releasePointerCapture !== 'function') {
+  Element.prototype.releasePointerCapture = () => {};
+}
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 // Extend expect with jest-dom matchers
 import '@testing-library/jest-dom';
 

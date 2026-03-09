@@ -4,6 +4,10 @@
 
 import * as Sentry from '@sentry/nextjs';
 
+const sendDefaultPii =
+  process.env.NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII?.trim().toLowerCase() ===
+  'true';
+
 Sentry.init({
   dsn: 'https://443a1b04060b39f8cb7665becc8d21d6@o4510462002462720.ingest.us.sentry.io/4510462272667648',
 
@@ -23,9 +27,9 @@ Sentry.init({
   // Define how likely Replay events are sampled when an error occurs.
   replaysOnErrorSampleRate: 1.0,
 
-  // Enable sending user PII (Personally Identifiable Information)
+  // Intentionally gated: enable PII forwarding only with explicit opt-in via env.
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+  sendDefaultPii,
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

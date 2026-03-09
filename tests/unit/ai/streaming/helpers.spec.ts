@@ -1,9 +1,9 @@
-import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/helpers';
 import {
   handleFailedGeneration,
   handleSuccessfulGeneration,
   safeMarkPlanFailed,
 } from '@/app/api/v1/plans/stream/helpers';
+import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/helpers';
 import type {
   GenerationFailureResult,
   GenerationSuccessResult,
@@ -165,6 +165,7 @@ describe('stream helpers', () => {
     const planId = createId('plan');
     const userId = createId('user');
     const emittedEvents: StreamingEvent[] = [];
+    const dbClient = {} as AttemptsDbClient;
     const failureResult = buildFailureResult({
       classification: 'provider_error',
       error: new Error('sensitive provider details: sk-live-secret'),
@@ -173,7 +174,7 @@ describe('stream helpers', () => {
     await handleFailedGeneration(failureResult, {
       planId,
       userId,
-      dbClient: {} as AttemptsDbClient,
+      dbClient,
       emit: (event) => emittedEvents.push(event),
       markPlanGenerationFailure: mockMarkPlanGenerationFailure,
       recordUsage: mockRecordUsage,
@@ -182,7 +183,7 @@ describe('stream helpers', () => {
 
     expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
       planId,
-      expect.anything()
+      dbClient
     );
     expect(mockRecordUsage).not.toHaveBeenCalled();
 

@@ -28,10 +28,20 @@ export const AVAILABLE_MODELS = [
     name: 'Free Models Router',
     provider: 'OpenRouter',
     description:
-      'Automatically selects a free model for each request. Zero cost, no credit card required.',
+      'Routes each request to a compatible free OpenRouter model. Zero cost, but the exact backend and output limits vary by request.',
     tier: 'free',
-    contextWindow: 131_000,
-    maxOutputTokens: 65_500,
+    contextWindow: 200_000,
+    inputCostPerMillion: 0,
+    outputCostPerMillion: 0,
+  },
+  {
+    id: 'google/gemini-2.0-flash-exp:free',
+    name: 'Gemini 2.0 Flash',
+    provider: 'Google',
+    description:
+      'Fast free Gemini option with a 1M-token context window for large prompts and reference material.',
+    tier: 'free',
+    contextWindow: 1_048_576,
     inputCostPerMillion: 0,
     outputCostPerMillion: 0,
   },

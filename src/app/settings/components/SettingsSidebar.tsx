@@ -42,10 +42,10 @@ export function SettingsSidebar(): React.ReactElement {
             href={item.href}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              'bg-sidebar flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-sm font-medium transition-colors',
               isActive
-                ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                ? 'border-sidebar-border bg-sidebar-primary text-sidebar-primary-foreground'
+                : 'text-sidebar-foreground hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />

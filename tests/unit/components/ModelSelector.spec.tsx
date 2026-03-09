@@ -1,25 +1,76 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import '../../mocks/unit/client-logger.unit';
 import '../../mocks/unit/sonner.unit';
 
-import { ModelSelector } from '@/components/settings/model-selector';
-import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
+import type {
+  AvailableModel,
+  SubscriptionTier,
+} from '@/lib/ai/types/model.types';
+import { createTestModel } from '../../fixtures/model.factory';
 
-// Get test data
-const FREE_MODELS = AVAILABLE_MODELS.filter((m) => m.tier === 'free');
+const FREE_MODELS: AvailableModel[] = [
+  createTestModel({
+    id: 'test-free-model-1',
+    name: 'Test Free Model 1',
+  }),
+  createTestModel({
+    id: 'test-free-model-2',
+    name: 'Test Free Model 2',
+    provider: 'Backup Provider',
+  }),
+];
 const FIRST_FREE_MODEL = FREE_MODELS[0];
+const PRO_MODELS: AvailableModel[] = [
+  ...FREE_MODELS,
+  createTestModel({
+    id: 'test-pro-model-1',
+    name: 'Test Pro Model 1',
+    tier: 'pro',
+    inputCostPerMillion: 3,
+    outputCostPerMillion: 15,
+  }),
+];
+const MODELS_BY_TIER: Record<SubscriptionTier, AvailableModel[]> = {
+  free: FREE_MODELS,
+  starter: FREE_MODELS,
+  pro: PRO_MODELS,
+};
+
+vi.mock('@/lib/ai/ai-models', () => ({
+  getModelsForTier: (tier: SubscriptionTier): AvailableModel[] =>
+    MODELS_BY_TIER[tier],
+}));
+
+let ModelSelector: typeof import('@/components/settings/model-selector').ModelSelector;
 
 // Mock scrollIntoView which is not available in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 describe('ModelSelector', () => {
+  beforeAll(async () => {
+    ({ ModelSelector } = await import('@/components/settings/model-selector'));
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterAll(() => {
+    vi.resetModules();
   });
 
   describe('Rendering', () => {
@@ -97,10 +148,7 @@ describe('ModelSelector', () => {
   describe('Save Button', () => {
     it('save button is disabled when no changes made', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       const saveButton = screen.getByRole('button', {
@@ -305,7 +353,10 @@ describe('ModelSelector', () => {
 
       // Should show provider name (e.g. "by OpenRouter")
       expect(
-        screen.getByText(new RegExp(FIRST_FREE_MODEL.provider, 'i'))
+        screen.getByText(
+          (_content, element) =>
+            element?.textContent?.trim() === `by ${FIRST_FREE_MODEL.provider}`
+        )
       ).toBeInTheDocument();
     });
   });

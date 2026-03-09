@@ -31,7 +31,7 @@ export default function LandingNavigation({
       aria-label="Main navigation"
     >
       <div className="mx-auto max-w-7xl px-6 py-4">
-        <div className="dark:bg-card/50 flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl dark:border-white/10">
+        <div className="dark:bg-card/50 hover:border-primary/30 dark:hover:border-primary/50 flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl dark:border-white/10">
           {/* Logo + Brand */}
           <BrandLogo />
 

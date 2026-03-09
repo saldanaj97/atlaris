@@ -20,6 +20,10 @@ const SUBSCRIPTION_STATUSES = new Set([
   'trialing',
 ]);
 
+interface UsersQueryDeps {
+  getDb: typeof getDb;
+}
+
 function isOptionalString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
@@ -61,14 +65,18 @@ function isDbUser(user: unknown): user is DbUser {
   );
 }
 
-interface GetUserByAuthIdDeps {
+interface GetUserByAuthIdDeps extends UsersQueryDeps {
   getRequestContext: typeof getRequestContext;
-  getDb: typeof getDb;
+  cleanupDbClient?: () => Promise<void>;
 }
+
+const defaultUsersQueryDeps: UsersQueryDeps = {
+  getDb,
+};
 
 const defaultGetUserByAuthIdDeps: GetUserByAuthIdDeps = {
   getRequestContext,
-  getDb,
+  ...defaultUsersQueryDeps,
 };
 
 /**
@@ -113,9 +121,10 @@ export async function getUserByAuthId(
  */
 export async function createUser(
   userData: CreateUserData,
-  dbClient?: UsersDbClient
+  dbClient?: UsersDbClient,
+  deps: UsersQueryDeps = defaultUsersQueryDeps
 ): Promise<DbUser | undefined> {
-  const client = dbClient ?? getDb();
+  const client = dbClient ?? deps.getDb();
 
   const insertData = {
     authUserId: userData.authUserId,
@@ -138,9 +147,10 @@ export async function createUser(
 export async function updateUserPreferredAiModel(
   userId: string,
   preferredAiModel: PreferredAiModel | null,
-  dbClient?: UsersDbClient
+  dbClient?: UsersDbClient,
+  deps: UsersQueryDeps = defaultUsersQueryDeps
 ): Promise<DbUser | undefined> {
-  const client = dbClient ?? getDb();
+  const client = dbClient ?? deps.getDb();
 
   const result = await client
     .update(users)

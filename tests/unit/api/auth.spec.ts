@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { requireCurrentUserRecord } from '@/lib/api/auth';
 import { AuthError } from '@/lib/api/errors';
-import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { clearTestUser } from '../../helpers/auth';
 
 const mocks = vi.hoisted(() => ({
   getUserByAuthId: vi.fn(),

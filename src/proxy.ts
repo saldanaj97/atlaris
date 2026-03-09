@@ -5,9 +5,16 @@ import { appEnv, devAuthEnv } from '@/lib/config/env';
 
 const authMiddleware = auth.middleware({ loginUrl: '/auth/sign-in' });
 
+// Next.js injects inline bootstrap scripts today, so keep unsafe-inline until
+// we migrate this middleware to a nonce-based CSP. unsafe-eval is only needed
+// for local dev tooling and must stay out of production.
+const SCRIPT_SRC = appEnv.isDevelopment
+  ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
+  : ["'self'", "'unsafe-inline'"];
+
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  `script-src ${SCRIPT_SRC.join(' ')}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
@@ -19,7 +26,7 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-const protectedPrefixes = ['/dashboard', '/api', '/plans', '/account'];
+const PROTECTED_PREFIXES = ['/dashboard', '/api', '/plans', '/account'];
 
 function isProtectedRoute(pathname: string): boolean {
   // Auth API routes must NOT be protected (they handle sign-in/sign-up)
@@ -30,7 +37,7 @@ function isProtectedRoute(pathname: string): boolean {
   if (pathname.startsWith('/api/v1/stripe/webhook')) {
     return false;
   }
-  return protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
+  return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -131,6 +138,13 @@ export default async function proxy(
       pathname.startsWith('/api/');
 
     if (devBypass) {
+      // eslint-disable-next-line no-console -- Edge runtime; Pino unavailable, dev-only path
+      console.debug('[dev_auth_bypass]', {
+        event: 'dev_auth_bypass',
+        userId: devAuthEnv.userId,
+        pathname,
+        correlationId: getCorrelationId(request),
+      });
       return nextWithCorrelationId(request);
     }
 

@@ -5,6 +5,7 @@ import { BellRing, BookOpen, Clock, CreditCard } from 'lucide-react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
 export const metadata: Metadata = {
@@ -12,11 +13,19 @@ export const metadata: Metadata = {
   description: 'Manage your notification preferences.',
 };
 
-function ToggleRow({ label }: { label: string }): ReactElement {
+function ToggleRow({
+  label,
+  switchId,
+}: {
+  label: string;
+  switchId: string;
+}): ReactElement {
   return (
     <div className="flex items-center justify-between py-2">
-      <span className="text-muted-foreground text-sm">{label}</span>
-      <Switch disabled checked={false} />
+      <Label htmlFor={switchId} className="text-muted-foreground font-normal">
+        {label}
+      </Label>
+      <Switch id={switchId} disabled checked={false} />
     </div>
   );
 }
@@ -51,9 +60,18 @@ export default function NotificationsSettingsPage(): ReactElement {
             momentum going.
           </p>
           <div className="divide-border divide-y">
-            <ToggleRow label="Daily study reminder" />
-            <ToggleRow label="Weekly progress summary" />
-            <ToggleRow label="Streak at risk" />
+            <ToggleRow
+              label="Daily study reminder"
+              switchId="learning-daily-study-reminder"
+            />
+            <ToggleRow
+              label="Weekly progress summary"
+              switchId="learning-weekly-progress-summary"
+            />
+            <ToggleRow
+              label="Streak at risk"
+              switchId="learning-streak-at-risk"
+            />
           </div>
         </Card>
 
@@ -68,9 +86,18 @@ export default function NotificationsSettingsPage(): ReactElement {
             resources become available.
           </p>
           <div className="divide-border divide-y">
-            <ToggleRow label="Plan generation complete" />
-            <ToggleRow label="New resources available" />
-            <ToggleRow label="Module milestones" />
+            <ToggleRow
+              label="Plan generation complete"
+              switchId="plan-generation-complete"
+            />
+            <ToggleRow
+              label="New resources available"
+              switchId="plan-new-resources-available"
+            />
+            <ToggleRow
+              label="Module milestones"
+              switchId="plan-module-milestones"
+            />
           </div>
         </Card>
 
@@ -85,9 +112,18 @@ export default function NotificationsSettingsPage(): ReactElement {
             account security.
           </p>
           <div className="divide-border divide-y">
-            <ToggleRow label="Subscription changes" />
-            <ToggleRow label="Usage limit warnings" />
-            <ToggleRow label="Security alerts" />
+            <ToggleRow
+              label="Subscription changes"
+              switchId="account-subscription-changes"
+            />
+            <ToggleRow
+              label="Usage limit warnings"
+              switchId="account-usage-limit-warnings"
+            />
+            <ToggleRow
+              label="Security alerts"
+              switchId="account-security-alerts"
+            />
           </div>
         </Card>
       </div>

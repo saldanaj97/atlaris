@@ -1,4 +1,5 @@
 import { ArrowDownCircle, Calendar, Check, X } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 
@@ -101,7 +102,7 @@ export function ProblemSolutionSection() {
 }
 
 interface ItemProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 /**

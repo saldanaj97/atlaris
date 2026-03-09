@@ -301,6 +301,16 @@
 }
 
 @layer utilities {
+  /* Brand gradient - used for badges, highlights, and decorative fills */
+  .gradient-brand {
+    @apply from-primary to-accent bg-linear-to-r;
+  }
+
+  /* Brand gradient with interactive states */
+  .gradient-brand-interactive {
+    @apply from-primary to-accent hover:from-primary/90 hover:to-accent/90 focus-visible:ring-ring focus-visible:ring-offset-background bg-linear-to-r focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none;
+  }
+
   /* Brand solid fill - used for buttons, badges, highlights */
   .brand-fill {
     @apply bg-primary;
@@ -308,7 +318,7 @@
 
   /* Brand solid fill with hover states */
   .brand-fill-interactive {
-    @apply bg-primary hover:bg-primary/90;
+    @apply bg-primary hover:bg-primary/90 focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none;
   }
 
   /* Decorative background glow effect */

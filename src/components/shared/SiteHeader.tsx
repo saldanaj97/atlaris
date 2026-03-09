@@ -42,7 +42,7 @@ export default async function SiteHeader() {
   if (authUserId) {
     try {
       const result = await withServerComponentContext(
-        async (user) => user.subscriptionTier
+        (user) => user.subscriptionTier
       );
       tier = result ?? undefined;
     } catch {

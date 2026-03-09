@@ -51,7 +51,7 @@ export function MissionSection(): JSX.Element {
             <div className="space-y-6">
               {HIGHLIGHTS.map((item) => (
                 <div key={item.title} className="flex items-start gap-4">
-                  <div className="brand-fill-interactive inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl shadow-lg">
+                  <div className="gradient-brand inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl shadow-lg">
                     {item.icon}
                   </div>
                   <div>
