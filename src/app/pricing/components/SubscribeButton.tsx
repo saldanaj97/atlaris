@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 
 import { parseApiErrorResponse } from '@/lib/api/error-response';
+import { clientLogger } from '@/lib/logging/client';
 import { createCheckoutResponseSchema } from '@/lib/validation/stripe';
+import { toast } from 'sonner';
 
 interface SubscribeButtonProps {
   priceId: string;
@@ -28,8 +29,9 @@ export default function SubscribeButton({
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
+    setLoading(true);
+
     try {
-      setLoading(true);
       const res = await fetch('/api/v1/stripe/create-checkout', {
         method: 'POST',
         headers: {
@@ -62,8 +64,13 @@ export default function SubscribeButton({
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Something went wrong';
+      clientLogger.error('Failed to start checkout', {
+        cancelUrl,
+        error: err,
+        priceId,
+        successUrl,
+      });
       toast.error('Unable to start checkout', { description: message });
-    } finally {
       setLoading(false);
     }
   }

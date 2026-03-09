@@ -1,4 +1,4 @@
-import ManageSubscriptionButton from '@/app/pricing/components/ManageSubscriptionButton';
+import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';

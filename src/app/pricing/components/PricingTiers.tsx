@@ -1,6 +1,6 @@
 import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
 
-interface TierConfig {
+export interface TierConfig {
   name: string;
   price: string | null;
   description: string;
@@ -9,17 +9,25 @@ interface TierConfig {
   recommended: boolean;
 }
 
+function formatTierLimit(value: number | null): string {
+  return value === Infinity || value === null ? 'Unlimited' : String(value);
+}
+
+function formatSchedulingHorizon(value: number | null): string {
+  return value === null ? 'Unlimited' : `${value}-week`;
+}
+
 export const PRICING_TIERS = {
   free: {
     name: 'Free',
     price: '$0',
     description: 'Get started with structured learning plans.',
     features: [
-      `${TIER_LIMITS.free.maxActivePlans} active learning plans`,
-      `${TIER_LIMITS.free.monthlyRegenerations} plan regenerations per month`,
-      `${TIER_LIMITS.free.monthlyExports} exports per month`,
+      `${formatTierLimit(TIER_LIMITS.free.maxActivePlans)} active learning plans`,
+      `${formatTierLimit(TIER_LIMITS.free.monthlyRegenerations)} plan regenerations per month`,
+      `${formatTierLimit(TIER_LIMITS.free.monthlyExports)} exports per month`,
       `PDF imports up to ${TIER_LIMITS.free.maxPdfPages} pages`,
-      `${TIER_LIMITS.free.maxWeeks}-week scheduling horizon`,
+      `${formatSchedulingHorizon(TIER_LIMITS.free.maxWeeks)} scheduling horizon`,
     ],
     badge: 'Free',
     recommended: false,
@@ -29,11 +37,11 @@ export const PRICING_TIERS = {
     price: null,
     description: 'For dedicated learners ready to go further.',
     features: [
-      `${TIER_LIMITS.starter.maxActivePlans} active learning plans`,
-      `${TIER_LIMITS.starter.monthlyRegenerations} plan regenerations per month`,
-      `${TIER_LIMITS.starter.monthlyExports} exports per month`,
+      `${formatTierLimit(TIER_LIMITS.starter.maxActivePlans)} active learning plans`,
+      `${formatTierLimit(TIER_LIMITS.starter.monthlyRegenerations)} plan regenerations per month`,
+      `${formatTierLimit(TIER_LIMITS.starter.monthlyExports)} exports per month`,
       `PDF imports up to ${TIER_LIMITS.starter.maxPdfPages} pages`,
-      `${TIER_LIMITS.starter.maxWeeks}-week scheduling horizon`,
+      `${formatSchedulingHorizon(TIER_LIMITS.starter.maxWeeks)} scheduling horizon`,
       'Priority queue access',
     ],
     badge: 'Most Popular',
@@ -44,11 +52,11 @@ export const PRICING_TIERS = {
     price: null,
     description: 'Unlimited power for serious learners.',
     features: [
-      'Unlimited active plans',
-      `${TIER_LIMITS.pro.monthlyRegenerations} plan regenerations per month`,
-      'Unlimited exports',
+      `${formatTierLimit(TIER_LIMITS.pro.maxActivePlans)} active plans`,
+      `${formatTierLimit(TIER_LIMITS.pro.monthlyRegenerations)} plan regenerations per month`,
+      `${formatTierLimit(TIER_LIMITS.pro.monthlyExports)} exports`,
       `PDF imports up to ${TIER_LIMITS.pro.maxPdfPages} pages`,
-      'Unlimited scheduling horizon',
+      `${formatSchedulingHorizon(TIER_LIMITS.pro.maxWeeks)} scheduling horizon`,
       'Priority queue + analytics',
     ],
     badge: 'Best Value',

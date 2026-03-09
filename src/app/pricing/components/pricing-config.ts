@@ -1,5 +1,5 @@
 import { stripeEnv } from '@/lib/config/env';
-import { type TierKey } from './PricingTiers';
+import type { TierKey } from './PricingTiers';
 
 export interface TierConfig {
   key: TierKey;

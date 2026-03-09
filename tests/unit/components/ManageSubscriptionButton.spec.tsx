@@ -1,5 +1,5 @@
 import '../../mocks/unit/sonner.unit';
-import ManageSubscriptionButton from '@/app/pricing/components/ManageSubscriptionButton';
+import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -56,13 +56,15 @@ describe('ManageSubscriptionButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/stripe/create-portal', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ returnUrl: undefined }),
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/stripe/create-portal',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ returnUrl: undefined }),
+          signal: expect.any(AbortSignal),
+        })
+      );
     });
   });
 
@@ -81,31 +83,30 @@ describe('ManageSubscriptionButton', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/stripe/create-portal', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ returnUrl: '/dashboard' }),
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/stripe/create-portal',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ returnUrl: '/dashboard' }),
+          signal: expect.any(AbortSignal),
+        })
+      );
     });
   });
 
   it('should show loading state during portal creation', async () => {
+    type PortalResponse = {
+      ok: true;
+      json: () => Promise<{ portalUrl: string }>;
+    };
+
+    let resolvePortal: ((value: PortalResponse) => void) | undefined;
     const mockFetch = vi.fn().mockImplementation(
       () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({
-                  portalUrl: 'https://billing.stripe.com/portal',
-                }),
-              }),
-            100
-          )
-        )
+        new Promise<PortalResponse>((resolve) => {
+          resolvePortal = resolve;
+        })
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -114,8 +115,14 @@ describe('ManageSubscriptionButton', () => {
     const button = screen.getByRole('button');
     fireEvent.click(button);
 
-    await waitFor(() => {
-      expect(screen.getByText(/opening/i)).toBeInTheDocument();
+    expect(screen.getByText(/opening/i)).toBeInTheDocument();
+    expect(button).toBeDisabled();
+
+    resolvePortal?.({
+      ok: true,
+      json: async () => ({
+        portalUrl: 'https://billing.stripe.com/portal',
+      }),
     });
 
     await waitFor(() => {

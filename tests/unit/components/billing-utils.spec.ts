@@ -50,6 +50,25 @@ describe('formatAmount', () => {
       expect(result).toContain('9.99');
       expect(result).toMatch(/[£9]|9[£,]/); // GBP symbol varies by locale
     });
+
+    it('formats unknown but well-formed currency codes using the code itself', () => {
+      expect(formatAmount(999, 'ZZZ')).toBe('ZZZ 9.99');
+    });
+
+    it('falls back to a plain numeric string for malformed currency codes', () => {
+      expect(formatAmount(999, 'INVALID')).toBe('9.99');
+    });
+
+    it('formats using an explicit locale when provided', () => {
+      const result = formatAmount(999, 'EUR', 2, 'de-DE');
+
+      expect(result).toContain('9,99');
+      expect(result).toContain('€');
+    });
+
+    it('falls back to the default locale when the provided locale is invalid', () => {
+      expect(formatAmount(999, 'USD', 2, 'not_a_locale')).toBe('$9.99');
+    });
   });
 
   describe('edge cases', () => {
@@ -69,6 +88,12 @@ describe('formatAmount', () => {
       expect(formatAmount(1001, 'USD', 2)).toBe('$10.01');
       expect(formatAmount(1000, 'USD', 0)).toBe('$10');
       expect(formatAmount(1001, 'USD', 0)).toBe('$10');
+    });
+
+    it('normalizes fractionDigits to a non-negative integer', () => {
+      expect(formatAmount(999, 'USD', -1)).toBe('$10');
+      expect(formatAmount(999, 'USD', 1.9)).toBe('$10.0');
+      expect(formatAmount(999, 'INVALID', Number.NaN)).toBe('9.99');
     });
   });
 });

@@ -27,3 +27,28 @@ export type CreateCheckoutResponse = z.infer<
 >;
 
 export type CreatePortalResponse = z.infer<typeof createPortalResponseSchema>;
+
+/**
+ * Subset of Stripe Price fields consumed by the pricing page.
+ * Guards against Stripe API changes or unexpected field types at runtime.
+ */
+export const stripePriceFieldsSchema = z.object({
+  unit_amount: z.number().int().nullable(),
+  currency: z.string().min(1),
+});
+
+export type StripePriceFields = z.infer<typeof stripePriceFieldsSchema>;
+
+/**
+ * Subset of Stripe Product fields consumed by the pricing page.
+ * Handles both active and soft-deleted products.
+ */
+export const stripeProductFieldsSchema = z.union([
+  z.object({ deleted: z.literal(true) }),
+  z.object({
+    deleted: z.literal(false).optional(),
+    name: z.string().optional(),
+  }),
+]);
+
+export type StripeProductFields = z.infer<typeof stripeProductFieldsSchema>;

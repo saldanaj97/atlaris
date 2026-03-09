@@ -6,28 +6,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-interface DeferredPromise<T> {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason?: unknown) => void;
-}
-
-function createDeferredPromise<T>(): DeferredPromise<T> {
-  let resolve: ((value: T) => void) | undefined;
-  let reject: ((reason?: unknown) => void) | undefined;
-
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-
-  if (!resolve || !reject) {
-    throw new Error('Failed to create deferred promise');
-  }
-
-  return { promise, resolve, reject };
-}
+import { createDeferredPromise } from '../../helpers/deferred-promise';
 
 describe('SubscribeButton', () => {
   const mockLocation = { href: '' };

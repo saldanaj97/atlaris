@@ -1,10 +1,13 @@
 import Link from 'next/link';
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
-import { PRICING_TIERS, type TierKey } from './PricingTiers';
-import { PricingCard } from './PricingCard';
-import { type TierConfig } from './pricing-config';
-import SubscribeButton from './SubscribeButton';
-import { type StripeTierData } from './stripe-pricing';
+import { PricingCard } from '@/app/pricing/components/PricingCard';
+import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
+import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import { type TierConfig } from '@/app/pricing/components/pricing-config';
+import SubscribeButton from '@/app/pricing/components/SubscribeButton';
+import { type StripeTierData } from '@/app/pricing/components/stripe-pricing';
 
 interface PricingGridProps {
   configs: TierConfig[];
@@ -18,13 +21,16 @@ export function PricingGrid({
   intervalLabel,
   stripeData,
   subscribeLabel,
-}: PricingGridProps) {
+}: PricingGridProps): JSX.Element {
   return (
     <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-3">
       {configs.map((config) => {
         const tier = PRICING_TIERS[config.key];
         const stripeInfo = stripeData.get(config.key);
-        const isPaidTier = config.priceId != null;
+        const priceId =
+          typeof config.priceId === 'string' && config.priceId.trim().length > 0
+            ? config.priceId
+            : null;
 
         return (
           <PricingCard
@@ -36,20 +42,28 @@ export function PricingGrid({
             features={[...tier.features]}
             badge={tier.badge}
             cta={
-              isPaidTier ? (
-                <SubscribeButton
-                  priceId={config.priceId ?? ''}
-                  label={subscribeLabel}
-                  variant={tier.recommended ? 'default' : 'outline'}
-                  className="w-full rounded-full"
-                />
-              ) : (
+              config.key === 'free' ? (
                 <Button
                   asChild
                   variant="outline"
                   className="w-full rounded-full"
                 >
                   <Link href="/dashboard">Continue Free</Link>
+                </Button>
+              ) : priceId ? (
+                <SubscribeButton
+                  priceId={priceId}
+                  label={subscribeLabel}
+                  variant={tier.recommended ? 'default' : 'outline'}
+                  className="w-full rounded-full"
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full rounded-full"
+                  disabled
+                >
+                  Unavailable
                 </Button>
               )
             }

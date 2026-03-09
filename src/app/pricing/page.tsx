@@ -1,8 +1,20 @@
-import ManageSubscriptionButton from '@/app/pricing/components/ManageSubscriptionButton';
-import MonthlyPricingCards from '@/app/pricing/components/MonthlyPricingCards';
-import YearlyPricingCards from '@/app/pricing/components/YearlyPricingCards';
+import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
+import { PricingGrid } from '@/app/pricing/components/PricingGrid';
+import { PricingMissingStripeNotice } from '@/app/pricing/components/PricingMissingStripeNotice';
+import { type TierKey } from '@/app/pricing/components/PricingTiers';
+import {
+  MONTHLY_TIER_CONFIGS,
+  YEARLY_TIER_CONFIGS,
+  type TierConfig,
+} from '@/app/pricing/components/pricing-config';
+import {
+  fetchStripeTierData,
+  type StripeTierData,
+} from '@/app/pricing/components/stripe-pricing';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Metadata } from 'next';
+import type { ReactElement } from 'react';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',
@@ -10,7 +22,47 @@ export const metadata: Metadata = {
     'Compare Atlaris plans and choose the subscription that fits your learning goals.',
 };
 
-export default function PricingPage() {
+interface PaidTierPriceIds {
+  starterId: string;
+  proId: string;
+}
+
+function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {
+  const starterId = configs.find((config) => config.key === 'starter')?.priceId;
+  const proId = configs.find((config) => config.key === 'pro')?.priceId;
+
+  if (
+    typeof starterId !== 'string' ||
+    starterId.trim().length === 0 ||
+    typeof proId !== 'string' ||
+    proId.trim().length === 0
+  ) {
+    return null;
+  }
+
+  return { starterId, proId };
+}
+
+async function loadStripeTierData(
+  priceIds: PaidTierPriceIds | null
+): Promise<Map<TierKey, StripeTierData>> {
+  if (priceIds === null) {
+    return new Map<TierKey, StripeTierData>();
+  }
+
+  return fetchStripeTierData(priceIds);
+}
+
+export default async function PricingPage(): Promise<ReactElement> {
+  const monthlyPriceIds = getPaidTierPriceIds(MONTHLY_TIER_CONFIGS);
+  const yearlyPriceIds = getPaidTierPriceIds(YEARLY_TIER_CONFIGS);
+  const [monthlyStripeData, yearlyStripeData] = await Promise.all([
+    loadStripeTierData(monthlyPriceIds),
+    loadStripeTierData(yearlyPriceIds),
+  ]);
+  const showMissingStripeNotice =
+    monthlyPriceIds === null || yearlyPriceIds === null;
+
   return (
     <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-start gap-y-10 overflow-hidden px-6 py-16">
       <div className="from-primary/30 to-accent/20 absolute -top-20 -left-32 h-96 w-96 rounded-full bg-linear-to-br opacity-40 blur-3xl dark:opacity-20" />
@@ -27,6 +79,7 @@ export default function PricingPage() {
       </div>
 
       <div className="relative z-10 w-full">
+        {showMissingStripeNotice ? <PricingMissingStripeNotice /> : null}
         <Tabs defaultValue="monthly">
           <div className="flex justify-center">
             <TabsList className="h-11 rounded-full border border-white/40 bg-white/40 p-1.5 backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/40">
@@ -41,17 +94,27 @@ export default function PricingPage() {
                 className="h-full rounded-full border-none px-6 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white/10 dark:data-[state=active]:shadow-none"
               >
                 Yearly
-                <span className="ml-1.5 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                <Badge className="ml-1.5 border-transparent bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
                   Save 20%
-                </span>
+                </Badge>
               </TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="monthly">
-            <MonthlyPricingCards />
+            <PricingGrid
+              configs={MONTHLY_TIER_CONFIGS}
+              intervalLabel="/month"
+              stripeData={monthlyStripeData}
+              subscribeLabel="Subscribe monthly"
+            />
           </TabsContent>
           <TabsContent value="yearly">
-            <YearlyPricingCards />
+            <PricingGrid
+              configs={YEARLY_TIER_CONFIGS}
+              intervalLabel="/year"
+              stripeData={yearlyStripeData}
+              subscribeLabel="Subscribe yearly"
+            />
           </TabsContent>
         </Tabs>
       </div>

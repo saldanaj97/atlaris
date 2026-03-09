@@ -1,12 +1,14 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import React, { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 import { toast } from 'sonner';
 
+import { Button } from '@/components/ui/button';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 import { createPortalResponseSchema } from '@/lib/validation/stripe';
+
+const PORTAL_TIMEOUT_MS = 15_000;
 
 interface ManageSubscriptionButtonProps {
   label?: string;
@@ -18,7 +20,7 @@ export default function ManageSubscriptionButton({
   label = 'Manage Subscription',
   className,
   returnUrl,
-}: ManageSubscriptionButtonProps): React.ReactElement {
+}: ManageSubscriptionButtonProps): ReactElement {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
@@ -30,6 +32,7 @@ export default function ManageSubscriptionButton({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ returnUrl }),
+        signal: AbortSignal.timeout(PORTAL_TIMEOUT_MS),
       });
 
       if (!res.ok) {
@@ -68,8 +71,13 @@ export default function ManageSubscriptionButton({
 
       window.location.href = portalUrl.toString();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Something went wrong';
+      const isTimeout =
+        err instanceof DOMException && err.name === 'TimeoutError';
+      const message = isTimeout
+        ? 'Request timed out — please try again'
+        : err instanceof Error
+          ? err.message
+          : 'Something went wrong';
       toast.error('Unable to open billing portal', { description: message });
       setLoading(false);
     }

@@ -27,15 +27,14 @@ vi.mock('next/link', () => ({
 describe('PricingGrid', () => {
   const mockConfigs: TierConfig[] = [
     {
-      key: 'free' as TierKey,
-      priceId: null,
+      key: 'free',
     },
     {
-      key: 'starter' as TierKey,
+      key: 'starter',
       priceId: 'price_starter_monthly',
     },
     {
-      key: 'pro' as TierKey,
+      key: 'pro',
       priceId: 'price_pro_monthly',
     },
   ];
@@ -200,7 +199,7 @@ describe('PricingGrid', () => {
   it('should render single tier when only one config provided', () => {
     const singleConfig: TierConfig[] = [
       {
-        key: 'starter' as TierKey,
+        key: 'starter',
         priceId: 'price_starter_monthly',
       },
     ];
@@ -217,6 +216,19 @@ describe('PricingGrid', () => {
     expect(screen.getByText('Starter')).toBeInTheDocument();
     expect(screen.queryByText('Free')).not.toBeInTheDocument();
     expect(screen.queryByText('Pro')).not.toBeInTheDocument();
+  });
+
+  it('should disable the CTA when a paid tier is missing its priceId', () => {
+    render(
+      <PricingGrid
+        configs={[{ key: 'starter' }]}
+        intervalLabel="/month"
+        stripeData={mockStripeData}
+        subscribeLabel="Subscribe"
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Unavailable' })).toBeDisabled();
   });
 
   it('should pass custom subscribe label to buttons', () => {
@@ -276,6 +288,27 @@ describe('PricingGrid', () => {
     expect(screen.queryByTestId('subscribe-null')).not.toBeInTheDocument();
     // But should have the Continue Free link
     expect(screen.getByText('Continue Free')).toBeInTheDocument();
+  });
+
+  it('should not render SubscribeButton when a paid tier priceId is empty', () => {
+    const configsWithEmptyPriceId: TierConfig[] = [
+      {
+        key: 'starter',
+        priceId: '',
+      },
+    ];
+
+    render(
+      <PricingGrid
+        configs={configsWithEmptyPriceId}
+        intervalLabel="/month"
+        stripeData={mockStripeData}
+        subscribeLabel="Subscribe"
+      />
+    );
+
+    expect(screen.queryByTestId('subscribe-')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Unavailable' })).toBeDisabled();
   });
 
   it('should fall back to default price when Stripe data is missing', () => {
