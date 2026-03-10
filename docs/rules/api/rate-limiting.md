@@ -160,8 +160,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `DELETE /api/v1/plans/[planId]`
 - `PATCH /api/v1/user/preferences`
 - `PUT /api/v1/user/profile`
-- `PUT /api/v1/notifications/preferences`
-- `POST /api/v1/notifications/weekly-summary`
 
 ### Read (`read`)
 
@@ -173,7 +171,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `GET /api/v1/user/preferences`
 - `GET /api/v1/user/subscription`
 - `GET /api/v1/user/profile`
-- `GET /api/v1/notifications/preferences`
 - `GET /api/v1/templates`
 - `GET /api/v1/resources`
 

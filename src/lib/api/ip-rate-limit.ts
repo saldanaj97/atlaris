@@ -44,6 +44,9 @@ export interface IpExtractionConfig {
 
 const UNKNOWN_IP_WARN_INTERVAL_MS = 60_000;
 let lastUnknownIpWarnTimestamp = 0;
+const IPV4_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
+const IPV6_PATTERN = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
+const IPV6_V4_PATTERN = /^::ffff:(\d{1,3}\.){3}\d{1,3}$/i;
 
 /**
  * Default rate limit configurations for different endpoint types
@@ -220,8 +223,7 @@ function isValidIp(ip: string): boolean {
   }
 
   // IPv4 pattern: four octets separated by dots
-  const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
-  if (ipv4Pattern.test(ip)) {
+  if (IPV4_PATTERN.test(ip)) {
     // Validate each octet is 0-255
     const octets = ip.split('.');
     return octets.every((octet) => {
@@ -231,14 +233,12 @@ function isValidIp(ip: string): boolean {
   }
 
   // IPv6 pattern: allows full form and compressed form with ::
-  const ipv6Pattern = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
-  if (ipv6Pattern.test(ip)) {
+  if (IPV6_PATTERN.test(ip)) {
     return true;
   }
 
   // IPv6 with IPv4 suffix (e.g., ::ffff:192.168.1.1)
-  const ipv6v4Pattern = /^::ffff:(\d{1,3}\.){3}\d{1,3}$/i;
-  if (ipv6v4Pattern.test(ip)) {
+  if (IPV6_V4_PATTERN.test(ip)) {
     return true;
   }
 
