@@ -184,13 +184,19 @@ export function DeletePlanDialog({
 
     switch (result.kind) {
       case 'success':
+        finalizeDeleteRequest({
+          controller,
+          abortControllerRef,
+          isMountedRef,
+          setDeleting,
+        });
         completeDeleteSuccess({
           isMountedRef,
           setOpen,
           router,
           redirectTo,
         });
-        return; // navigation initiated; skip post-navigation state cleanup below
+        return;
       case 'aborted':
         finalizeDeleteRequest({
           controller,

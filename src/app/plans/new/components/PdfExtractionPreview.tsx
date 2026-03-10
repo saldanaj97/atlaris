@@ -21,7 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import React, { useEffect, useId, useReducer } from 'react';
+import React, { useEffect, useId, useReducer, useRef } from 'react';
 
 export interface PdfPlanSettings {
   skillLevel: string;
@@ -31,6 +31,7 @@ export interface PdfPlanSettings {
 }
 
 type SectionWithId = ExtractedSection & { id: string };
+type EditableSectionField = 'title' | 'content';
 
 interface PdfExtractionPreviewState {
   mainTopic: string;
@@ -44,7 +45,7 @@ type PdfExtractionPreviewAction =
   | {
       type: 'section-field-changed';
       sectionId: string;
-      field: keyof ExtractedSection;
+      field: EditableSectionField;
       value: string;
     }
   | {
@@ -138,7 +139,9 @@ function pdfExtractionPreviewReducer(
       };
     default: {
       const _exhaustiveCheck: never = action;
-      return _exhaustiveCheck;
+      throw new Error(
+        `PdfExtractionPreview received an unexpected action: ${JSON.stringify(_exhaustiveCheck)}`
+      );
     }
   }
 }
@@ -153,6 +156,7 @@ export function PdfExtractionPreview({
   isGenerating = false,
 }: PdfExtractionPreviewProps): React.JSX.Element {
   const sectionSeed = useId();
+  const didMountRef = useRef(false);
   const [state, dispatch] = useReducer(
     pdfExtractionPreviewReducer,
     {
@@ -167,6 +171,11 @@ export function PdfExtractionPreview({
   const baseId = useId();
 
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
     dispatch({
       type: 'reset',
       mainTopic: initialTopic,

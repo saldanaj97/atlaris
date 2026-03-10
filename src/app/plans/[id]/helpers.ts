@@ -19,6 +19,11 @@ import type {
   ScheduleAccessResult,
 } from './types';
 
+/**
+ * Builds a task-status lookup from the modules attached to a plan.
+ * @param modules Array of `ClientModule` objects whose tasks should be flattened into the lookup.
+ * @returns A `Record` mapping each task id to its `ProgressStatus`, built from `mod.tasks ?? []`.
+ */
 export function getStatusesFromModules(
   modules: ClientModule[]
 ): Record<string, ProgressStatus> {

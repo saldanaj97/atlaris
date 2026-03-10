@@ -182,7 +182,7 @@ export function UnifiedPlanInput({
   return (
     <div className="w-full max-w-2xl">
       {/* Main input card with glassmorphism */}
-      <div className="dark:border-border dark:bg-card/60 dark:focus-within:border-primary/40 dark:focus-within:ring-primary/20 dark:focus-within:shadow-primary/10 focus-within:border-primary/50 focus-within:ring-primary/20 focus-within:shadow-primary/20 border-border bg-card/60 relative rounded-3xl border px-4 py-4 shadow-2xl backdrop-blur-xl transition-all focus-within:ring-4 sm:px-6 sm:py-5">
+      <div className="dark:border-border dark:bg-card/60 dark:focus-within:border-ring dark:focus-within:ring-offset-background border-border bg-card/60 focus-within:border-ring focus-within:ring-ring relative rounded-3xl border px-4 py-4 shadow-2xl backdrop-blur-xl transition-all focus-within:ring-2 focus-within:ring-offset-2 sm:px-6 sm:py-5">
         {/* Decorative gradient glow - clipped to card bounds */}
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"

@@ -222,7 +222,9 @@ function PdfCreatePanelBody({
   }
 
   const _exhaustiveCheck: never = state;
-  return _exhaustiveCheck;
+  throw new Error(
+    `PdfCreatePanel reached an unexpected state: ${JSON.stringify(_exhaustiveCheck)}`
+  );
 }
 
 export function PdfCreatePanel({

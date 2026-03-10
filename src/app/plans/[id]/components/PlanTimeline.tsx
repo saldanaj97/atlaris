@@ -155,69 +155,71 @@ function TimelineModuleCard({
         }`}
       >
         <Button
+          type="button"
           variant="ghost"
-          asChild
           disabled={isLocked}
+          onClick={() => {
+            if (isLocked) {
+              return;
+            }
+
+            onModuleToggle(module.id);
+          }}
+          aria-expanded={isOpen}
+          aria-controls={`module-content-${module.id}`}
           className={`h-auto w-full justify-start gap-4 rounded-[inherit] p-4 text-left whitespace-normal ${
             isLocked ? 'cursor-not-allowed' : 'cursor-pointer'
           }`}
         >
-          <button
-            type="button"
-            onClick={() => onModuleToggle(module.id)}
-            aria-expanded={isOpen}
-            aria-controls={`module-content-${module.id}`}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="mb-2 flex items-center gap-2">
-                <span
-                  className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
-                    module.status === 'active'
-                      ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
-                      : module.status === 'completed'
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                        : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
-                  }`}
-                >
-                  Week {module.order}
-                </span>
-                <span className="text-xs text-stone-400 dark:text-stone-500">
-                  {module.duration}
-                </span>
-                {module.tasks.length > 0 && (
-                  <span className="text-xs text-stone-400 dark:text-stone-500">
-                    • {module.completedTasks}/{module.tasks.length} tasks
-                  </span>
-                )}
-              </div>
-              <h3
-                className={`font-semibold wrap-break-word ${
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center gap-2">
+              <span
+                className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
                   module.status === 'active'
-                    ? 'text-stone-900 dark:text-stone-100'
-                    : module.status === 'locked'
-                      ? 'text-stone-600 dark:text-stone-400'
-                      : 'text-stone-700 dark:text-stone-300'
+                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                    : module.status === 'completed'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                      : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
                 }`}
               >
-                {module.title}
-              </h3>
-              {module.description && (
-                <div className="mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none">
-                  <p className="text-sm text-stone-500 dark:text-stone-400">
-                    {module.description}
-                  </p>
-                </div>
+                Week {module.order}
+              </span>
+              <span className="text-xs text-stone-400 dark:text-stone-500">
+                {module.duration}
+              </span>
+              {module.tasks.length > 0 && (
+                <span className="text-xs text-stone-400 dark:text-stone-500">
+                  • {module.completedTasks}/{module.tasks.length} tasks
+                </span>
               )}
             </div>
-            {!isLocked && (
-              <ChevronRight
-                size={20}
-                className={`mt-0.5 shrink-0 text-stone-400 transition-transform duration-300 dark:text-stone-500 ${
-                  isOpen ? '-rotate-90' : 'rotate-90'
-                }`}
-              />
+            <h3
+              className={`font-semibold wrap-break-word ${
+                module.status === 'active'
+                  ? 'text-stone-900 dark:text-stone-100'
+                  : module.status === 'locked'
+                    ? 'text-stone-600 dark:text-stone-400'
+                    : 'text-stone-700 dark:text-stone-300'
+              }`}
+            >
+              {module.title}
+            </h3>
+            {module.description && (
+              <div className="mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none">
+                <p className="text-sm text-stone-500 dark:text-stone-400">
+                  {module.description}
+                </p>
+              </div>
             )}
-          </button>
+          </div>
+          {!isLocked && (
+            <ChevronRight
+              size={20}
+              className={`mt-0.5 shrink-0 text-stone-400 transition-transform duration-300 dark:text-stone-500 ${
+                isOpen ? '-rotate-90' : 'rotate-90'
+              }`}
+            />
+          )}
         </Button>
 
         <AccordionContent
@@ -323,13 +325,17 @@ function TimelineModuleCard({
             )}
 
             <div className="mt-4 flex justify-end">
-              <Link
-                href={`/plans/${planId}/modules/${module.id}`}
-                className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 focus-visible:ring-ring dark:border-primary/50 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 dark:border-primary/50 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 h-auto rounded-xl px-4 py-2"
               >
-                View Full Module
-                <ArrowRight size={16} />
-              </Link>
+                <Link href={`/plans/${planId}/modules/${module.id}`}>
+                  View Full Module
+                  <ArrowRight size={16} />
+                </Link>
+              </Button>
             </div>
           </div>
         </AccordionContent>

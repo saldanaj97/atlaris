@@ -96,7 +96,7 @@ export function CreatePlanPageClient({
         role="tabpanel"
         aria-labelledby={manualTabId}
         hidden={currentMethod !== 'manual'}
-        inert={currentMethod !== 'manual' ? true : undefined}
+        inert={currentMethod !== 'manual' || undefined}
       >
         <ManualCreatePanel
           initialTopic={prefillTopic}
@@ -110,7 +110,7 @@ export function CreatePlanPageClient({
         role="tabpanel"
         aria-labelledby={pdfTabId}
         hidden={currentMethod !== 'pdf'}
-        inert={currentMethod !== 'pdf' ? true : undefined}
+        inert={currentMethod !== 'pdf' || undefined}
       >
         <Suspense
           fallback={

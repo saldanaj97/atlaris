@@ -63,7 +63,7 @@ async function requestCheckoutSession(params: {
     return {
       kind: 'error',
       message: parsedError.error,
-      error: new Error(parsedError.error),
+      error: null,
     };
   }
 
@@ -82,12 +82,8 @@ async function requestCheckoutSession(params: {
 
   const parsed = createCheckoutResponseSchema.safeParse(bodyResult.raw);
   if (!parsed.success) {
-    const missingSessionUrl = parsed.error.issues.some(
-      (issue) => issue.path[0] === 'sessionUrl'
-    );
-    const message = missingSessionUrl
-      ? 'Missing session URL'
-      : (parsed.error.issues[0]?.message ?? 'Invalid checkout response');
+    const message =
+      parsed.error.issues[0]?.message ?? 'Invalid checkout response';
 
     return {
       kind: 'error',
@@ -137,7 +133,22 @@ export default function SubscribeButton({
       return;
     }
 
-    window.location.href = result.sessionUrl;
+    try {
+      window.location.href = result.sessionUrl;
+    } catch (error: unknown) {
+      clientLogger.error('Failed to redirect to checkout', {
+        cancelUrl,
+        error,
+        priceId,
+        sessionUrl: result.sessionUrl,
+        successUrl,
+      });
+      toast.error('Unable to redirect to checkout', {
+        description: getErrorMessage(error, 'Please try again.'),
+      });
+      setLoading(false);
+      pendingRef.current = false;
+    }
   }
 
   return (

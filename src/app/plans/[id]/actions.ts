@@ -17,6 +17,10 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
+import type {
+  PlanAccessResult,
+  ScheduleAccessResult,
+} from '@/app/plans/[id]/types';
 import { withServerActionContext } from '@/lib/api/auth';
 import {
   getPlanSchedule,
@@ -36,7 +40,6 @@ import {
   scheduleError,
   scheduleSuccess,
 } from './helpers';
-import type { PlanAccessResult, ScheduleAccessResult } from './types';
 
 interface UpdateTaskProgressInput {
   planId: string;

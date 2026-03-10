@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  type ReactElement,
   useCallback,
   useLayoutEffect,
   useMemo,
@@ -32,10 +33,50 @@ interface PlanDetailClientProps {
   plan: ClientPlanDetail;
 }
 
+function getLoggableErrorDetails(error: unknown): {
+  errorMessage: string;
+  errorStack?: string;
+} {
+  if (error instanceof Error) {
+    return {
+      errorMessage: error.message,
+      errorStack: error.stack,
+    };
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const errorMessage =
+      'message' in error && typeof error.message === 'string'
+        ? error.message
+        : undefined;
+    const errorStack =
+      'stack' in error && typeof error.stack === 'string'
+        ? error.stack
+        : undefined;
+
+    if (errorMessage || errorStack) {
+      return {
+        errorMessage: errorMessage ?? 'Unknown error object',
+        ...(errorStack ? { errorStack } : {}),
+      };
+    }
+
+    try {
+      return {
+        errorMessage: JSON.stringify(error) ?? 'Unknown error object',
+      };
+    } catch {
+      return { errorMessage: 'Unserializable error object' };
+    }
+  }
+
+  return { errorMessage: String(error) };
+}
+
 /**
  * Client component that keeps header progress in sync with timeline status changes.
  */
-export function PlanDetails({ plan }: PlanDetailClientProps) {
+export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules ?? [];
   const initialStatuses = getStatusesFromModules(modules);
 
@@ -81,8 +122,10 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
         try {
           await batcher.queue(taskId, nextStatus, previousStatus);
         } catch (error: unknown) {
+          const { errorMessage, errorStack } = getLoggableErrorDetails(error);
           clientLogger.error('Optimistic status revert', {
-            error,
+            errorMessage,
+            errorStack,
             taskId,
             previousStatus,
             nextStatus,

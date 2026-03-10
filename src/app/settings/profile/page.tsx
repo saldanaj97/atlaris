@@ -1,5 +1,7 @@
 import type { ReactElement } from 'react';
 
+import { headers } from 'next/headers';
+
 import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
 
 /**
@@ -9,7 +11,12 @@ import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
  * ProfileForm is a client component that manages its own loading state
  * via useEffect, so it renders ProfileFormSkeleton internally while fetching.
  */
-export default function ProfileSettingsPage(): ReactElement {
+export default async function ProfileSettingsPage(): Promise<ReactElement> {
+  const locale = (await headers())
+    .get('accept-language')
+    ?.split(',')[0]
+    ?.trim();
+
   return (
     <>
       <header className="mb-6">
@@ -20,7 +27,7 @@ export default function ProfileSettingsPage(): ReactElement {
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <ProfileForm />
+        <ProfileForm locale={locale} />
       </div>
     </>
   );

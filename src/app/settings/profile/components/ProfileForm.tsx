@@ -28,6 +28,10 @@ const profileSchema = z.object({
 
 type ProfileData = z.infer<typeof profileSchema>;
 
+interface ProfileFormProps {
+  locale?: string;
+}
+
 interface ProfileFormState {
   profile: ProfileData | null;
   name: string;
@@ -37,8 +41,18 @@ interface ProfileFormState {
   error: string | null;
 }
 
-type ProfileRequestResult =
+type ProfileLoadResult =
   | { kind: 'success'; profile: ProfileData }
+  | { kind: 'aborted' }
+  | { kind: 'error'; message: string; error: unknown };
+
+type ProfileMutationResult =
+  | { kind: 'success'; profile: ProfileData }
+  | { kind: 'error'; message: string; error: unknown };
+
+type ApiRequestResult<T> =
+  | { kind: 'success'; data: T }
+  | { kind: 'aborted' }
   | { kind: 'error'; message: string; error: unknown };
 
 type ProfileFormAction =
@@ -46,6 +60,7 @@ type ProfileFormAction =
   | { type: 'load-succeeded'; profile: ProfileData }
   | { type: 'load-failed'; message: string }
   | { type: 'start-editing' }
+  | { type: 'cancel-editing' }
   | { type: 'stop-editing' }
   | { type: 'name-changed'; name: string }
   | { type: 'save-started' }
@@ -63,6 +78,10 @@ const INITIAL_PROFILE_FORM_STATE: ProfileFormState = {
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof Error ? error.message : fallbackMessage;
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
 }
 
 function profileFormReducer(
@@ -101,6 +120,12 @@ function profileFormReducer(
         ...state,
         editingName: false,
       };
+    case 'cancel-editing':
+      return {
+        ...state,
+        name: state.profile?.name ?? '',
+        editingName: false,
+      };
     case 'name-changed':
       return {
         ...state,
@@ -132,26 +157,30 @@ function profileFormReducer(
   }
 }
 
-async function requestProfile(): Promise<ProfileRequestResult> {
-  const responseResult = await fetch('/api/v1/user/profile')
-    .then((response) => ({ kind: 'response' as const, response }))
-    .catch((error: unknown) => ({ kind: 'network-error' as const, error }));
+async function fetchApi<T>(
+  url: string,
+  options: RequestInit,
+  schema: z.ZodType<T>,
+  fallbackMessage: string
+): Promise<ApiRequestResult<T>> {
+  let response: Response;
 
-  if (responseResult.kind === 'network-error') {
+  try {
+    response = await fetch(url, options);
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      return { kind: 'aborted' };
+    }
+
     return {
       kind: 'error',
-      message: getErrorMessage(responseResult.error, 'Failed to load profile'),
-      error: responseResult.error,
+      message: getErrorMessage(error, fallbackMessage),
+      error,
     };
   }
 
-  const { response } = responseResult;
-
   if (!response.ok) {
-    const parsed = await parseApiErrorResponse(
-      response,
-      'Failed to load profile'
-    );
+    const parsed = await parseApiErrorResponse(response, fallbackMessage);
     return {
       kind: 'error',
       message: parsed.error,
@@ -159,99 +188,88 @@ async function requestProfile(): Promise<ProfileRequestResult> {
     };
   }
 
-  const bodyResult = await response
-    .json()
-    .then((raw: unknown) => ({ kind: 'body' as const, raw }))
-    .catch((error: unknown) => ({ kind: 'parse-error' as const, error }));
+  let rawBody: unknown;
 
-  if (bodyResult.kind === 'parse-error') {
+  try {
+    rawBody = await response.json();
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      return { kind: 'aborted' };
+    }
+
     return {
       kind: 'error',
-      message: 'Failed to load profile',
-      error: bodyResult.error,
+      message: fallbackMessage,
+      error,
     };
   }
 
-  const parsedProfile = profileSchema.safeParse(bodyResult.raw);
-  if (!parsedProfile.success) {
+  const parsedData = schema.safeParse(rawBody);
+  if (!parsedData.success) {
     return {
       kind: 'error',
-      message:
-        parsedProfile.error.issues[0]?.message ?? 'Failed to load profile',
-      error: parsedProfile.error,
-    };
-  }
-
-  return {
-    kind: 'success',
-    profile: parsedProfile.data,
-  };
-}
-
-async function saveProfileName(name: string): Promise<ProfileRequestResult> {
-  const responseResult = await fetch('/api/v1/user/profile', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
-  })
-    .then((response) => ({ kind: 'response' as const, response }))
-    .catch((error: unknown) => ({ kind: 'network-error' as const, error }));
-
-  if (responseResult.kind === 'network-error') {
-    return {
-      kind: 'error',
-      message: getErrorMessage(
-        responseResult.error,
-        'Failed to update profile'
-      ),
-      error: responseResult.error,
-    };
-  }
-
-  const { response } = responseResult;
-
-  if (!response.ok) {
-    const parsed = await parseApiErrorResponse(
-      response,
-      'Failed to update profile'
-    );
-    return {
-      kind: 'error',
-      message: parsed.error,
-      error: new Error(parsed.error),
-    };
-  }
-
-  const bodyResult = await response
-    .json()
-    .then((raw: unknown) => ({ kind: 'body' as const, raw }))
-    .catch((error: unknown) => ({ kind: 'parse-error' as const, error }));
-
-  if (bodyResult.kind === 'parse-error') {
-    return {
-      kind: 'error',
-      message: 'Failed to update profile',
-      error: bodyResult.error,
-    };
-  }
-
-  const parsedProfile = profileSchema.safeParse(bodyResult.raw);
-  if (!parsedProfile.success) {
-    return {
-      kind: 'error',
-      message:
-        parsedProfile.error.issues[0]?.message ?? 'Failed to update profile',
-      error: parsedProfile.error,
+      message: parsedData.error.issues[0]?.message ?? fallbackMessage,
+      error: parsedData.error,
     };
   }
 
   return {
     kind: 'success',
-    profile: parsedProfile.data,
+    data: parsedData.data,
   };
 }
 
-export function ProfileForm(): ReactElement {
+async function requestProfile(
+  signal?: AbortSignal
+): Promise<ProfileLoadResult> {
+  const result = await fetchApi(
+    '/api/v1/user/profile',
+    { signal },
+    profileSchema,
+    'Failed to load profile'
+  );
+
+  if (result.kind !== 'success') {
+    return result;
+  }
+
+  return {
+    kind: 'success',
+    profile: result.data,
+  };
+}
+
+async function saveProfileName(name: string): Promise<ProfileMutationResult> {
+  const result = await fetchApi(
+    '/api/v1/user/profile',
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    },
+    profileSchema,
+    'Failed to update profile'
+  );
+
+  if (result.kind !== 'success') {
+    if (result.kind === 'aborted') {
+      return {
+        kind: 'error',
+        message: 'Failed to update profile',
+        error: new Error('Unexpected aborted profile update request'),
+      };
+    }
+
+    return result;
+  }
+
+  return {
+    kind: 'success',
+    profile: result.data,
+  };
+}
+
+export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
   const [state, dispatch] = useReducer(
     profileFormReducer,
     INITIAL_PROFILE_FORM_STATE
@@ -265,23 +283,37 @@ export function ProfileForm(): ReactElement {
   const isDirty =
     state.profile !== null && state.name !== (state.profile.name ?? '');
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback((): AbortController => {
+    const controller = new AbortController();
+
     dispatch({ type: 'load-started' });
 
-    const result = await requestProfile();
+    void (async () => {
+      const result = await requestProfile(controller.signal);
 
-    if (result.kind === 'success') {
-      dispatch({ type: 'load-succeeded', profile: result.profile });
-      return;
-    }
+      if (controller.signal.aborted || result.kind === 'aborted') {
+        return;
+      }
 
-    clientLogger.error('Failed to load profile', { error: result.error });
-    dispatch({ type: 'load-failed', message: result.message });
-    toast.error(result.message);
+      if (result.kind === 'success') {
+        dispatch({ type: 'load-succeeded', profile: result.profile });
+        return;
+      }
+
+      clientLogger.error('Failed to load profile', { error: result.error });
+      dispatch({ type: 'load-failed', message: result.message });
+      toast.error(result.message);
+    })();
+
+    return controller;
   }, []);
 
   useEffect(() => {
-    void fetchProfile();
+    const controller = fetchProfile();
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchProfile]);
 
   async function handleSave(): Promise<void> {
@@ -372,17 +404,28 @@ export function ProfileForm(): ReactElement {
           </div>
         </div>
 
-        {/* Save button pinned to bottom-right of card */}
-        {isDirty && (
-          <div className="mt-auto flex justify-end pt-4">
+        {state.editingName && (
+          <div className="mt-auto flex justify-end gap-2 pt-4">
             <Button
+              type="button"
+              variant="ghost"
               disabled={state.saving}
               onClick={() => {
-                void handleSave();
+                dispatch({ type: 'cancel-editing' });
               }}
             >
-              {state.saving ? 'Saving…' : 'Save Changes'}
+              Cancel
             </Button>
+            {isDirty && (
+              <Button
+                disabled={state.saving}
+                onClick={() => {
+                  void handleSave();
+                }}
+              >
+                {state.saving ? 'Saving…' : 'Save Changes'}
+              </Button>
+            )}
           </div>
         )}
       </Card>
@@ -402,7 +445,7 @@ export function ProfileForm(): ReactElement {
           <div>
             <span className="mb-1 block">Member Since</span>
             <p>
-              {new Date(state.profile.createdAt).toLocaleDateString('en-US', {
+              {new Date(state.profile.createdAt).toLocaleDateString(locale, {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',

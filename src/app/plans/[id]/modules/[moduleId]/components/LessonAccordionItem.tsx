@@ -78,7 +78,7 @@ interface PlaceholderContentEntry {
 function createPlaceholderContentEntries(params: {
   lessonId: string;
   lessonTitle: string;
-}): PlaceholderContentEntry[] {
+}): readonly PlaceholderContentEntry[] {
   const occurrenceCounts = new Map<string, number>();
   const blocks = generatePlaceholderContent({
     seed: hashString(params.lessonId),

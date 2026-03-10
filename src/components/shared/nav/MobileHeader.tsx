@@ -54,7 +54,7 @@ export default function MobileHeader({
           className="text-muted-foreground hover:text-foreground shrink-0"
         >
           <Link
-            href={isAuthenticated ? ROUTES.PLANS.NEW : '/auth/sign-in'}
+            href={isAuthenticated ? ROUTES.PLANS.NEW : ROUTES.AUTH.SIGN_IN}
             aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
           >
             <Plus className="h-4 w-4" />

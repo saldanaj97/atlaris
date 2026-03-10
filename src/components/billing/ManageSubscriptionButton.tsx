@@ -102,20 +102,29 @@ async function requestBillingPortal(params: {
     };
   }
 
-  const portalUrl = new URL(parsed.data.portalUrl);
-  if (portalUrl.protocol !== 'http:' && portalUrl.protocol !== 'https:') {
+  try {
+    const portalUrl = new URL(parsed.data.portalUrl);
+    if (portalUrl.protocol !== 'http:' && portalUrl.protocol !== 'https:') {
+      return {
+        kind: 'error',
+        message: 'Invalid billing portal URL protocol.',
+        error: new Error('Invalid billing portal URL protocol.'),
+        reason: 'invalid-url',
+      };
+    }
+
+    return {
+      kind: 'success',
+      portalUrl: portalUrl.toString(),
+    };
+  } catch (error: unknown) {
     return {
       kind: 'error',
-      message: 'Invalid billing portal URL protocol.',
-      error: new Error('Invalid billing portal URL protocol.'),
+      message: getErrorMessage(error, 'Invalid billing portal URL'),
+      error,
       reason: 'invalid-url',
     };
   }
-
-  return {
-    kind: 'success',
-    portalUrl: portalUrl.toString(),
-  };
 }
 
 interface ManageSubscriptionButtonProps {
