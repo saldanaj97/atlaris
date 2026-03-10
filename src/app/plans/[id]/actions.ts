@@ -20,23 +20,23 @@ import { revalidatePath } from 'next/cache';
 import { withServerActionContext } from '@/lib/api/auth';
 import {
   getPlanSchedule,
-  ScheduleFetchError,
   SCHEDULE_FETCH_ERROR_CODE,
+  ScheduleFetchError,
 } from '@/lib/api/schedule';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import type { ProgressStatus } from '@/lib/types/db';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
-import type { PlanAccessResult, ScheduleAccessResult } from './types';
+import type { ProgressStatus } from '@/lib/types/db';
 import {
   planError,
   planSuccess,
   scheduleError,
   scheduleSuccess,
 } from './helpers';
+import type { PlanAccessResult, ScheduleAccessResult } from './types';
 
 interface UpdateTaskProgressInput {
   planId: string;
@@ -143,6 +143,7 @@ export async function batchUpdateTaskProgressAction({
           planId,
           userId: user.id,
           updateCount: updates.length,
+          taskIds: updates.map((update) => update.taskId),
           err: error,
         },
         'Failed to batch update task progress'

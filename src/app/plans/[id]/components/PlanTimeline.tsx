@@ -2,6 +2,7 @@
 
 import type { ElementType, JSX } from 'react';
 
+import { getStatusesFromModules } from '@/app/plans/[id]/helpers';
 import {
   Accordion,
   AccordionContent,
@@ -21,7 +22,7 @@ import {
   Target,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule, ClientTask } from '@/lib/types/client';
@@ -54,16 +55,6 @@ const RESOURCE_CONFIG: Record<ResourceType, ElementType> = {
   doc: FileText,
   other: LinkIcon,
 };
-
-function getStatusesFromModules(
-  modules: ClientModule[]
-): Record<string, ProgressStatus> {
-  return Object.fromEntries(
-    modules.flatMap((mod) =>
-      (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
-    )
-  );
-}
 
 function getModuleStatus(
   mod: ClientModule,
@@ -131,25 +122,24 @@ export function PlanTimeline({
     });
   }, [modules, effectiveStatuses]);
 
+  const activeModuleId = useMemo(
+    () => timelineModules.find((mod) => mod.status === 'active')?.id ?? null,
+    [timelineModules]
+  );
+
   const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() => {
-    const activeModuleId = timelineModules.find(
-      (mod) => mod.status === 'active'
-    )?.id;
     return activeModuleId ? [activeModuleId] : [];
   });
 
   // When the active module changes (e.g. after a task completes and a new module unlocks),
   // ensure it is automatically expanded.
   useEffect(() => {
-    const activeModuleId = timelineModules.find(
-      (mod) => mod.status === 'active'
-    )?.id;
     if (activeModuleId) {
       setExpandedModuleIds((prev) =>
         prev.includes(activeModuleId) ? prev : [...prev, activeModuleId]
       );
     }
-  }, [timelineModules]);
+  }, [activeModuleId]);
 
   const handleModuleToggle = (moduleId: string) => {
     setExpandedModuleIds((prev) =>

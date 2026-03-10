@@ -14,10 +14,14 @@ import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
 import { PlanTimeline } from '@/app/plans/[id]/components/PlanTimeline';
-import { computeOverviewStats } from '@/app/plans/[id]/helpers';
+import {
+  computeOverviewStats,
+  getStatusesFromModules,
+} from '@/app/plans/[id]/helpers';
 import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
 import { Button } from '@/components/ui/button';
 import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
+import { clientLogger } from '@/lib/logging/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -33,11 +37,7 @@ interface PlanDetailClientProps {
  */
 export function PlanDetails({ plan }: PlanDetailClientProps) {
   const modules = plan.modules ?? [];
-  const initialStatuses = Object.fromEntries(
-    modules.flatMap((mod) =>
-      (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
-    )
-  );
+  const initialStatuses = getStatusesFromModules(modules);
 
   const [statuses, addOptimisticStatus] = useOptimistic(
     initialStatuses,
@@ -50,8 +50,11 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
     })
   );
 
+  // Store the ref object, not a snapshot value, so `handleStatusChange` can read
+  // the pre-optimistic status from `statusesRef.current` when queueing a revert.
+  // `useLayoutEffect` then updates the ref after each committed render so the next
+  // interaction always sees the latest committed statuses.
   const statusesRef = useRef(statuses);
-
   useLayoutEffect(() => {
     statusesRef.current = statuses;
   }, [statuses]);
@@ -77,7 +80,13 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
         addOptimisticStatus({ taskId, status: nextStatus });
         try {
           await batcher.queue(taskId, nextStatus, previousStatus);
-        } catch {
+        } catch (error: unknown) {
+          clientLogger.error('Optimistic status revert', {
+            error,
+            taskId,
+            previousStatus,
+            nextStatus,
+          });
           // Transition settling auto-reverts optimistic state.
           // Toast is shown by the batcher.
         }

@@ -1,4 +1,3 @@
-import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { PricingGrid } from '@/app/pricing/components/PricingGrid';
 import { PricingMissingStripeNotice } from '@/app/pricing/components/PricingMissingStripeNotice';
 import { type TierKey } from '@/app/pricing/components/PricingTiers';
@@ -11,9 +10,10 @@ import {
   fetchStripeTierData,
   type StripeTierData,
 } from '@/app/pricing/components/stripe-pricing';
-import { logger } from '@/lib/logging/logger';
+import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { logger } from '@/lib/logging/logger';
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 
@@ -70,7 +70,10 @@ export default async function PricingPage(): Promise<ReactElement> {
     loadStripeTierData(yearlyPriceIds),
   ]);
   const showMissingStripeNotice =
-    monthlyPriceIds === null || yearlyPriceIds === null;
+    monthlyPriceIds === null ||
+    yearlyPriceIds === null ||
+    monthlyStripeData.size === 0 ||
+    yearlyStripeData.size === 0;
 
   return (
     <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-start gap-y-10 overflow-hidden px-6 py-16">

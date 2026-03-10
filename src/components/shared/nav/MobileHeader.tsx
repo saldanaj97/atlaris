@@ -1,16 +1,16 @@
 'use client';
 
 import AuthControls from '@/components/shared/AuthControls';
+import BrandLogo from '@/components/shared/BrandLogo';
+import MobileNavigation from '@/components/shared/nav/MobileNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { Button } from '@/components/ui/button';
 import type { NavItem } from '@/lib/navigation';
 import { ROUTES } from '@/lib/routes';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import type { JSX } from 'react';
-
-import BrandLogo from '../BrandLogo';
-import MobileNavigation from './MobileNavigation';
 
 interface MobileHeaderProps {
   navItems: NavItem[];
@@ -47,13 +47,19 @@ export default function MobileHeader({
 
       {/* Right: new plan + theme toggle + user/auth */}
       <div className="flex min-w-0 shrink-0 items-center gap-1">
-        <Link
-          href={isAuthenticated ? ROUTES.PLANS.NEW : '/auth/sign-in'}
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
+        <Button
+          asChild
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-foreground shrink-0"
         >
-          <Plus className="h-4 w-4" />
-        </Link>
+          <Link
+            href={isAuthenticated ? ROUTES.PLANS.NEW : '/auth/sign-in'}
+            aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
+          >
+            <Plus className="h-4 w-4" />
+          </Link>
+        </Button>
         <div className="shrink-0">
           <ThemeToggle size="icon-sm" />
         </div>

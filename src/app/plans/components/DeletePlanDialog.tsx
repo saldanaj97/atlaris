@@ -87,6 +87,10 @@ export function DeletePlanDialog({
   }, []);
 
   const handleDelete = useCallback(async (): Promise<void> => {
+    if (isGenerating || deleting) {
+      return;
+    }
+
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -135,7 +139,7 @@ export function DeletePlanDialog({
         setDeleting(false);
       }
     }
-  }, [planId, redirectTo, router, setOpen]);
+  }, [deleting, isGenerating, planId, redirectTo, router, setOpen]);
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -161,7 +165,7 @@ export function DeletePlanDialog({
           <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            disabled={deleting}
+            disabled={deleting || isGenerating}
             onClick={(e) => {
               e.preventDefault();
               void handleDelete();

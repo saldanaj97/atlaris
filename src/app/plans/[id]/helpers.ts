@@ -19,6 +19,16 @@ import type {
   ScheduleAccessResult,
 } from './types';
 
+export function getStatusesFromModules(
+  modules: ClientModule[]
+): Record<string, ProgressStatus> {
+  return Object.fromEntries(
+    modules.flatMap((mod) =>
+      (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
+    )
+  );
+}
+
 /**
  * Computes stats for PlanOverviewHeader from plan and task statuses.
  * Pure function - can be called on server or client.
