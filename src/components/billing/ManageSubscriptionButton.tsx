@@ -16,12 +16,7 @@ type PortalRequestResult =
       kind: 'error';
       message: string;
       error: unknown;
-      reason:
-        | 'timeout'
-        | 'api'
-        | 'invalid-response'
-        | 'invalid-url'
-        | 'network';
+      reason: 'timeout' | 'api' | 'invalid-response' | 'network';
     };
 
 function isTimeoutError(error: unknown): error is DOMException {
@@ -32,28 +27,64 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof Error ? error.message : fallbackMessage;
 }
 
+function createPortalTimeoutSignal(timeoutMs: number): {
+  signal: AbortSignal;
+  cleanup: () => void;
+  didTimeout: () => boolean;
+} {
+  if (typeof AbortSignal.timeout === 'function') {
+    return {
+      signal: AbortSignal.timeout(timeoutMs),
+      cleanup: () => {},
+      didTimeout: () => false,
+    };
+  }
+
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeoutId = globalThis.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      globalThis.clearTimeout(timeoutId);
+    },
+    didTimeout: () => timedOut,
+  };
+}
+
 async function requestBillingPortal(params: {
   returnUrl?: string;
 }): Promise<PortalRequestResult> {
+  const timeoutSignal = createPortalTimeoutSignal(PORTAL_TIMEOUT_MS);
   const responseResult = await fetch('/api/v1/stripe/create-portal', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ returnUrl: params.returnUrl }),
-    signal: AbortSignal.timeout(PORTAL_TIMEOUT_MS),
+    signal: timeoutSignal.signal,
   })
     .then((response) => ({ kind: 'response' as const, response }))
-    .catch((error: unknown) => ({ kind: 'network-error' as const, error }));
+    .catch((error: unknown) => ({ kind: 'network-error' as const, error }))
+    .finally(() => {
+      timeoutSignal.cleanup();
+    });
 
   if (responseResult.kind === 'network-error') {
+    const requestTimedOut =
+      isTimeoutError(responseResult.error) || timeoutSignal.didTimeout();
+
     return {
       kind: 'error',
-      message: isTimeoutError(responseResult.error)
+      message: requestTimedOut
         ? 'Request timed out — please try again'
         : getErrorMessage(responseResult.error, 'Something went wrong'),
       error: responseResult.error,
-      reason: isTimeoutError(responseResult.error) ? 'timeout' : 'network',
+      reason: requestTimedOut ? 'timeout' : 'network',
     };
   }
 
@@ -102,29 +133,10 @@ async function requestBillingPortal(params: {
     };
   }
 
-  try {
-    const portalUrl = new URL(parsed.data.portalUrl);
-    if (portalUrl.protocol !== 'http:' && portalUrl.protocol !== 'https:') {
-      return {
-        kind: 'error',
-        message: 'Invalid billing portal URL protocol.',
-        error: new Error('Invalid billing portal URL protocol.'),
-        reason: 'invalid-url',
-      };
-    }
-
-    return {
-      kind: 'success',
-      portalUrl: portalUrl.toString(),
-    };
-  } catch (error: unknown) {
-    return {
-      kind: 'error',
-      message: getErrorMessage(error, 'Invalid billing portal URL'),
-      error,
-      reason: 'invalid-url',
-    };
-  }
+  return {
+    kind: 'success',
+    portalUrl: parsed.data.portalUrl,
+  };
 }
 
 interface ManageSubscriptionButtonProps {
@@ -149,27 +161,47 @@ export default function ManageSubscriptionButton({
     pendingRef.current = true;
     setLoading(true);
 
-    const result = await requestBillingPortal({ returnUrl });
+    let isRedirecting = false;
 
-    if (result.kind === 'error') {
-      if (result.reason === 'timeout') {
-        clientLogger.warn('Billing portal request timed out', { returnUrl });
-      } else {
-        clientLogger.error('Failed to open billing portal', {
-          error: result.error,
+    await requestBillingPortal({ returnUrl })
+      .then((result) => {
+        if (result.kind === 'error') {
+          if (result.reason === 'timeout') {
+            clientLogger.warn('Billing portal request timed out', {
+              returnUrl,
+            });
+          } else {
+            clientLogger.error('Failed to open billing portal', {
+              error: result.error,
+              returnUrl,
+            });
+          }
+
+          toast.error('Unable to open billing portal', {
+            description: result.message,
+          });
+          return;
+        }
+
+        isRedirecting = true;
+        window.location.href = result.portalUrl;
+      })
+      .catch((error: unknown) => {
+        clientLogger.error('Unexpected billing portal failure', {
+          error,
           returnUrl,
         });
-      }
+        toast.error('Unable to open billing portal', {
+          description: getErrorMessage(error, 'Something went wrong'),
+        });
+      })
+      .finally(() => {
+        pendingRef.current = false;
 
-      toast.error('Unable to open billing portal', {
-        description: result.message,
+        if (!isRedirecting) {
+          setLoading(false);
+        }
       });
-      setLoading(false);
-      pendingRef.current = false;
-      return;
-    }
-
-    window.location.href = result.portalUrl;
   }
 
   return (

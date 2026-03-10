@@ -343,10 +343,21 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
 
   if (state.error || !state.profile) {
     return (
-      <Card className="col-span-full p-6">
+      <Card className="col-span-full space-y-4 p-6">
         <p className="text-muted-foreground text-sm">
           {state.error ?? 'Unable to load profile data.'}
         </p>
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void fetchProfile();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
       </Card>
     );
   }
@@ -381,7 +392,6 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               />
             ) : (
               <Button
-                id="profile-name"
                 type="button"
                 variant="outline"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal"

@@ -1,11 +1,11 @@
+import { addDaysToDate, getWeekBoundaries } from './dates';
 import type {
+  Day,
   ScheduleInputs,
   ScheduleJson,
-  Week,
-  Day,
   SessionAssignment,
+  Week,
 } from './types';
-import { addDaysToDate, getWeekBoundaries } from './dates';
 
 const DEFAULT_SESSIONS_PER_WEEK = 3;
 const SESSION_DAYS_OFFSET = [0, 2, 4]; // Mon, Wed, Fri (0=Mon, 2=Wed, 4=Fri)
@@ -61,9 +61,8 @@ export function distributeTasksToSessions(
   // Sort tasks by order to ensure deterministic distribution
   // Filter out tasks with zero estimatedMinutes as they don't need scheduling
   const sortedTasks = inputs.tasks
-    .slice()
     .filter((t) => t.estimatedMinutes > 0)
-    .sort((a, b) => a.order - b.order);
+    .toSorted((a, b) => a.order - b.order);
 
   // Distribute tasks across weeks and sessions
   const weeks: Week[] = [];

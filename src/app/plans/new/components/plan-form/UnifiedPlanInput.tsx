@@ -6,7 +6,7 @@ import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
 import { assertNever } from '@/lib/utils';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useId, useReducer, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { InlineDropdown } from './InlineDropdown';
 import {
@@ -169,15 +169,14 @@ export function UnifiedPlanInput({
   const isFormValid = topic.trim().length > 0;
   const isDisabled = isSubmitting || disabled || !isFormValid;
 
-  // Memoize platform detection to avoid re-running on every render
-  const isMac = useMemo(() => {
+  const [isMac] = useState(() => {
     if (typeof navigator === 'undefined') return false;
     return (
       (navigator as Navigator & { userAgentData?: { platform?: string } })
         .userAgentData?.platform === 'macOS' ||
       /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
     );
-  }, []);
+  });
 
   return (
     <div className="w-full max-w-2xl">
@@ -272,7 +271,9 @@ export function UnifiedPlanInput({
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <div className="mr-2 h-4 w-4 animate-spin">
+                  <Loader2 className="h-full w-full" />
+                </div>
                 <span className="font-medium">Generating...</span>
               </>
             ) : (

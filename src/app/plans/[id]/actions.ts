@@ -128,10 +128,16 @@ export async function batchUpdateTaskProgressAction({
     );
   }
 
-  for (const update of updates) {
-    assertNonEmpty(update.taskId, 'A task id is required to update progress.');
+  for (const [index, update] of updates.entries()) {
+    const taskId = update.taskId.trim();
+    assertNonEmpty(
+      update.taskId,
+      `A task id is required to update progress for update at index ${index} (taskId="${taskId || '<empty>'}", status="${update.status}").`
+    );
     if (!PROGRESS_STATUSES.includes(update.status)) {
-      throw new Error('Invalid progress status.');
+      throw new Error(
+        `Invalid progress status for update at index ${index} (taskId="${taskId}", status="${update.status}").`
+      );
     }
   }
 

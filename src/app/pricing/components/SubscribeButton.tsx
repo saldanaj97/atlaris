@@ -26,6 +26,22 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof Error ? error.message : fallbackMessage;
 }
 
+function getCheckoutResponseErrorMessage(rawIssue: {
+  code?: string;
+  message?: string;
+  path?: readonly PropertyKey[];
+}): string {
+  if (
+    rawIssue.path?.[0] === 'sessionUrl' &&
+    (rawIssue.code === 'invalid_type' ||
+      rawIssue.message === 'sessionUrl is required')
+  ) {
+    return 'Missing session URL';
+  }
+
+  return rawIssue.message ?? 'Invalid checkout response';
+}
+
 async function requestCheckoutSession(params: {
   priceId: string;
   successUrl?: string;
@@ -82,8 +98,9 @@ async function requestCheckoutSession(params: {
 
   const parsed = createCheckoutResponseSchema.safeParse(bodyResult.raw);
   if (!parsed.success) {
-    const message =
-      parsed.error.issues[0]?.message ?? 'Invalid checkout response';
+    const message = getCheckoutResponseErrorMessage(
+      parsed.error.issues[0] ?? {}
+    );
 
     return {
       kind: 'error',

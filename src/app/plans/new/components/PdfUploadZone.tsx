@@ -4,8 +4,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
 import { AlertCircle, FileText, Loader2, Upload } from 'lucide-react';
-import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react';
 import React, { useCallback, useId, useRef, useState } from 'react';
+import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react';
 
 interface PdfUploadZoneProps {
   onFileSelect: (file: File) => void;
@@ -180,7 +180,9 @@ export function PdfUploadZone({
         <div className="relative flex flex-col items-center text-center">
           <div className="from-primary to-accent mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br shadow-lg">
             {isUploading ? (
-              <Loader2 className="h-10 w-10 animate-spin text-white" />
+              <div className="h-10 w-10 animate-spin">
+                <Loader2 className="h-full w-full text-white" />
+              </div>
             ) : (
               <FileText className="h-10 w-10 text-white" />
             )}

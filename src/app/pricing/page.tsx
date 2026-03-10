@@ -1,15 +1,13 @@
 import { PricingGrid } from '@/app/pricing/components/PricingGrid';
 import { PricingMissingStripeNotice } from '@/app/pricing/components/PricingMissingStripeNotice';
-import { type TierKey } from '@/app/pricing/components/PricingTiers';
+import type { TierKey } from '@/app/pricing/components/PricingTiers';
 import {
   MONTHLY_TIER_CONFIGS,
   YEARLY_TIER_CONFIGS,
-  type TierConfig,
 } from '@/app/pricing/components/pricing-config';
-import {
-  fetchStripeTierData,
-  type StripeTierData,
-} from '@/app/pricing/components/stripe-pricing';
+import type { TierConfig } from '@/app/pricing/components/pricing-config';
+import { fetchStripeTierData } from '@/app/pricing/components/stripe-pricing';
+import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,6 +26,11 @@ interface PaidTierPriceIds {
   proId: string;
 }
 
+type PaidTierKey = Exclude<TierKey, 'free'>;
+
+const PAID_TIER_KEYS: readonly PaidTierKey[] = ['starter', 'pro'];
+const EMPTY_STRIPE_TIER_DATA = new Map<TierKey, StripeTierData>();
+
 function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {
   const starterId = configs.find((config) => config.key === 'starter')?.priceId;
   const proId = configs.find((config) => config.key === 'pro')?.priceId;
@@ -42,6 +45,17 @@ function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {
   }
 
   return { starterId, proId };
+}
+
+function getMissingPaidTierKeys(
+  priceIds: PaidTierPriceIds | null,
+  stripeData: ReadonlyMap<TierKey, StripeTierData>
+): PaidTierKey[] {
+  if (priceIds === null || stripeData.size === 0) {
+    return [...PAID_TIER_KEYS];
+  }
+
+  return PAID_TIER_KEYS.filter((tierKey) => !stripeData.has(tierKey));
 }
 
 async function loadStripeTierData(
@@ -69,11 +83,37 @@ export default async function PricingPage(): Promise<ReactElement> {
     loadStripeTierData(monthlyPriceIds),
     loadStripeTierData(yearlyPriceIds),
   ]);
+  const monthlyMissingTierKeys = getMissingPaidTierKeys(
+    monthlyPriceIds,
+    monthlyStripeData
+  );
+  const yearlyMissingTierKeys = getMissingPaidTierKeys(
+    yearlyPriceIds,
+    yearlyStripeData
+  );
   const showMissingStripeNotice =
-    monthlyPriceIds === null ||
-    yearlyPriceIds === null ||
-    monthlyStripeData.size === 0 ||
-    yearlyStripeData.size === 0;
+    monthlyMissingTierKeys.length > 0 || yearlyMissingTierKeys.length > 0;
+
+  if (showMissingStripeNotice) {
+    logger.warn(
+      {
+        monthlyLoadedTierKeys: [...monthlyStripeData.keys()],
+        monthlyMissingTierKeys,
+        yearlyLoadedTierKeys: [...yearlyStripeData.keys()],
+        yearlyMissingTierKeys,
+      },
+      '[PricingPage] Incomplete Stripe pricing data detected; rendering static fallback pricing'
+    );
+  }
+
+  const monthlyGridStripeData =
+    monthlyMissingTierKeys.length === 0
+      ? monthlyStripeData
+      : EMPTY_STRIPE_TIER_DATA;
+  const yearlyGridStripeData =
+    yearlyMissingTierKeys.length === 0
+      ? yearlyStripeData
+      : EMPTY_STRIPE_TIER_DATA;
 
   return (
     <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-start gap-y-10 overflow-hidden px-6 py-16">
@@ -116,7 +156,7 @@ export default async function PricingPage(): Promise<ReactElement> {
             <PricingGrid
               configs={MONTHLY_TIER_CONFIGS}
               intervalLabel="/month"
-              stripeData={monthlyStripeData}
+              stripeData={monthlyGridStripeData}
               subscribeLabel="Subscribe monthly"
             />
           </TabsContent>
@@ -124,7 +164,7 @@ export default async function PricingPage(): Promise<ReactElement> {
             <PricingGrid
               configs={YEARLY_TIER_CONFIGS}
               intervalLabel="/year"
-              stripeData={yearlyStripeData}
+              stripeData={yearlyGridStripeData}
               subscribeLabel="Subscribe yearly"
             />
           </TabsContent>

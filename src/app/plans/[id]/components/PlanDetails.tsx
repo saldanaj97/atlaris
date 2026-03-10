@@ -22,6 +22,7 @@ import {
 import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
 import { Button } from '@/components/ui/button';
 import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
+import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -31,46 +32,6 @@ import type { ProgressStatus } from '@/lib/types/db';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
-}
-
-function getLoggableErrorDetails(error: unknown): {
-  errorMessage: string;
-  errorStack?: string;
-} {
-  if (error instanceof Error) {
-    return {
-      errorMessage: error.message,
-      errorStack: error.stack,
-    };
-  }
-
-  if (typeof error === 'object' && error !== null) {
-    const errorMessage =
-      'message' in error && typeof error.message === 'string'
-        ? error.message
-        : undefined;
-    const errorStack =
-      'stack' in error && typeof error.stack === 'string'
-        ? error.stack
-        : undefined;
-
-    if (errorMessage || errorStack) {
-      return {
-        errorMessage: errorMessage ?? 'Unknown error object',
-        ...(errorStack ? { errorStack } : {}),
-      };
-    }
-
-    try {
-      return {
-        errorMessage: JSON.stringify(error) ?? 'Unknown error object',
-      };
-    } catch {
-      return { errorMessage: 'Unserializable error object' };
-    }
-  }
-
-  return { errorMessage: String(error) };
 }
 
 /**

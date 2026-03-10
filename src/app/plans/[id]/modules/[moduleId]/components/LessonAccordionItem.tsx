@@ -23,7 +23,7 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
-import { useMemo, type ElementType } from 'react';
+import { useMemo, type ElementType, type JSX } from 'react';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
@@ -190,7 +190,7 @@ export function LessonAccordionItem({
   status,
   onStatusChange,
   isLocked = false,
-}: LessonAccordionItemProps) {
+}: LessonAccordionItemProps): JSX.Element {
   const isCompleted = status === 'completed';
   const resources = lesson.resources ?? [];
 

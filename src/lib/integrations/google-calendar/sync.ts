@@ -1,10 +1,10 @@
 import { getDb } from '@/lib/db/runtime';
 import {
+  googleCalendarSyncState,
   learningPlans,
   modules,
-  tasks,
   taskCalendarEvents,
-  googleCalendarSyncState,
+  tasks,
 } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
@@ -76,7 +76,7 @@ export async function syncPlanToGoogleCalendar(
   }
 
   // Stable sort tasks by: module order, then task.order, then createdAt, then id
-  const sortedTasks = [...allTasks].sort((a, b) => {
+  const sortedTasks = allTasks.toSorted((a, b) => {
     const aModuleIdx = moduleIndex.get(a.moduleId) ?? Number.POSITIVE_INFINITY;
     const bModuleIdx = moduleIndex.get(b.moduleId) ?? Number.POSITIVE_INFINITY;
     if (aModuleIdx !== bModuleIdx) return aModuleIdx - bModuleIdx;

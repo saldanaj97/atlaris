@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
-import { normalizeThrown } from '@/lib/errors';
+import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import type { ProgressStatus } from '@/lib/types/db';
 import { toast } from 'sonner';
@@ -96,10 +96,10 @@ export function useTaskStatusBatcher({
       for (const [, { resolvers }] of snapshot) {
         for (const r of resolvers) r.reject(error);
       }
-      const normalizedError = normalizeThrown(error);
+      const { errorMessage, errorStack } = getLoggableErrorDetails(error);
       clientLogger.error('Failed to batch update task statuses', {
-        errorMessage: normalizedError.message,
-        errorName: normalizedError.name ?? 'Error',
+        errorMessage,
+        errorStack,
         updateCount: updates.length,
       });
       toast.error('Failed to update task status. Please try again.');

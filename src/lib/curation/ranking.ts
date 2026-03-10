@@ -324,7 +324,7 @@ export function selectTop(
   }
 
   // Sort by score descending
-  const sorted = qualified.sort((a, b) => b.numericScore - a.numericScore);
+  const sorted = qualified.toSorted((a, b) => b.numericScore - a.numericScore);
 
   // Build bySource map once for use in both early-stop and diversity logic
   const bySource = new Map<string, Scored[]>();
@@ -344,7 +344,7 @@ export function selectTop(
     }
 
     const dominant =
-      [...bySource.values()].sort((a, b) => b.length - a.length)[0] ?? [];
+      [...bySource.values()].toSorted((a, b) => b.length - a.length)[0] ?? [];
     const topN = dominant.slice(0, maxItems);
     if (
       topN.length === maxItems &&
@@ -378,5 +378,5 @@ export function selectTop(
   }
 
   // Re-sort by score to maintain order
-  return selected.sort((a, b) => b.numericScore - a.numericScore);
+  return selected.toSorted((a, b) => b.numericScore - a.numericScore);
 }

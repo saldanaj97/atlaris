@@ -15,8 +15,7 @@ export function computeInputsHash(inputs: ScheduleInputs): string {
     planId: inputs.planId,
     // Sort tasks by declared order (then id) for deterministic hashing
     tasks: inputs.tasks
-      .slice()
-      .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+      .toSorted((a, b) => a.order - b.order || a.id.localeCompare(b.id))
       .map((t) => ({
         id: t.id,
         title: t.title,

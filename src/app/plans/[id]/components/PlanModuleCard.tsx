@@ -24,14 +24,14 @@ import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule } from '@/lib/types/client';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
-import type { ElementType } from 'react';
+import type { Dispatch, ElementType, SetStateAction } from 'react';
+
+const EMPTY_TASKS: ClientModule['tasks'] = [];
 
 interface PlanModuleCardProps {
   module: ClientModule;
   statuses: Record<string, ProgressStatus>;
-  setStatuses: React.Dispatch<
-    React.SetStateAction<Record<string, ProgressStatus>>
-  >;
+  setStatuses: Dispatch<SetStateAction<Record<string, ProgressStatus>>>;
 }
 
 const RESOURCE_CONFIG: Record<
@@ -70,7 +70,7 @@ export function PlanModuleCard({
   statuses,
   setStatuses,
 }: PlanModuleCardProps) {
-  const moduleTasks = useMemo(() => module.tasks ?? [], [module.tasks]);
+  const moduleTasks = module.tasks ?? EMPTY_TASKS;
 
   // Handle status changes - React Compiler auto-memoizes this callback
   const handleStatusChange = (taskId: string, nextStatus: ProgressStatus) => {

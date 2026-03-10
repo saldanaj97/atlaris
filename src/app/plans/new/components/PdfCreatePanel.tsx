@@ -29,7 +29,7 @@ import {
   type TruncationData,
 } from '@/lib/validation/pdf';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { toast } from 'sonner';
 
 const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
@@ -177,7 +177,7 @@ function PdfCreatePanelBody({
   onSwitchToManual,
   onRetry,
   onBack,
-}: PdfCreatePanelBodyProps): React.ReactElement {
+}: PdfCreatePanelBodyProps): ReactElement {
   if (state.status === 'idle') {
     return (
       <PdfUploadZone
@@ -229,7 +229,7 @@ function PdfCreatePanelBody({
 
 export function PdfCreatePanel({
   onSwitchToManual,
-}: PdfCreatePanelProps): React.ReactElement {
+}: PdfCreatePanelProps): ReactElement {
   const router = useRouter();
   const [state, setState] = useState<PageState>({ status: 'idle' });
   const isSubmittingRef = useRef(false);

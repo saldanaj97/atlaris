@@ -186,12 +186,13 @@ export async function handleFailedGeneration(
   const classification = result.classification ?? 'unknown';
   const retryable = isRetryableClassification(classification);
 
-  await markFailure(planId, dbClient);
-
   if (!retryable) {
+    await markFailure(planId, dbClient);
     await tryRecordUsage(userId, result, dbClient, {
       recordUsage: ctx.recordUsage,
     });
+  } else {
+    await markFailure(planId, dbClient);
   }
 
   emitSanitizedFailureEvent({

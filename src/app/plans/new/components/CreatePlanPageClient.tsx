@@ -114,10 +114,18 @@ export function CreatePlanPageClient({
       >
         <Suspense
           fallback={
-            <Skeleton
-              className="mx-auto h-88 w-full max-w-2xl rounded-3xl"
-              aria-label="Loading PDF options"
-            />
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="mx-auto w-full max-w-2xl"
+            >
+              <span className="sr-only">Loading PDF options</span>
+              <Skeleton
+                className="h-88 w-full rounded-3xl"
+                aria-hidden="true"
+              />
+            </div>
           }
         >
           {pdfOpened && (

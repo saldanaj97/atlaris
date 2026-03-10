@@ -4,6 +4,19 @@ import { headers } from 'next/headers';
 
 import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
 
+function getSupportedLocale(acceptLanguage: string | null): string | undefined {
+  if (!acceptLanguage) {
+    return undefined;
+  }
+
+  const localeCandidates = acceptLanguage
+    .split(',')
+    .map((part) => part.split(';')[0]?.trim())
+    .filter((part): part is string => Boolean(part) && part !== '*');
+
+  return Intl.DateTimeFormat.supportedLocalesOf(localeCandidates)[0];
+}
+
 /**
  * Profile Settings sub-page.
  *
@@ -12,10 +25,7 @@ import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
  * via useEffect, so it renders ProfileFormSkeleton internally while fetching.
  */
 export default async function ProfileSettingsPage(): Promise<ReactElement> {
-  const locale = (await headers())
-    .get('accept-language')
-    ?.split(',')[0]
-    ?.trim();
+  const locale = getSupportedLocale((await headers()).get('accept-language'));
 
   return (
     <>
