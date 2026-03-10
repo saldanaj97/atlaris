@@ -487,12 +487,6 @@ export const openRouterEnv = {
   },
 } as const;
 
-export const googleAiEnv = {
-  get apiKey() {
-    return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
-  },
-} as const;
-
 export const devAuthEnv = {
   get userId() {
     return getServerOptional('DEV_AUTH_USER_ID');
@@ -571,59 +565,5 @@ export const observabilityEnv = {
   },
   get sentryProfilesSampleRate() {
     return toNumber(getServerOptional('SENTRY_PROFILES_SAMPLE_RATE'), 0.1);
-  },
-} as const;
-
-export const curationWeightsEnv = {
-  get ytPopularity() {
-    return toNumber(getServerOptional('CURATION_YT_WEIGHT_POPULARITY'), 0.45);
-  },
-  get ytRecency() {
-    return toNumber(getServerOptional('CURATION_YT_WEIGHT_RECENCY'), 0.25);
-  },
-  get ytRelevance() {
-    return toNumber(getServerOptional('CURATION_YT_WEIGHT_RELEVANCE'), 0.25);
-  },
-  get ytSuitability() {
-    return toNumber(getServerOptional('CURATION_YT_WEIGHT_SUITABILITY'), 0.05);
-  },
-  get docAuthority() {
-    return toNumber(getServerOptional('CURATION_DOC_WEIGHT_AUTHORITY'), 0.6);
-  },
-  get docRelevance() {
-    return toNumber(getServerOptional('CURATION_DOC_WEIGHT_RELEVANCE'), 0.3);
-  },
-  get docRecency() {
-    return toNumber(getServerOptional('CURATION_DOC_WEIGHT_RECENCY'), 0.1);
-  },
-  get recencyDecayDays() {
-    return toNumber(getServerOptional('CURATION_RECENCY_DECAY_DAYS'), 365);
-  },
-} as const;
-
-export const curationEnvSource = {
-  get YOUTUBE_API_KEY() {
-    return getServerOptional('YOUTUBE_API_KEY');
-  },
-  get GOOGLE_CSE_ID() {
-    return getServerOptional('GOOGLE_CSE_ID');
-  },
-  get GOOGLE_CSE_KEY() {
-    return getServerOptional('GOOGLE_CSE_KEY');
-  },
-  get ENABLE_CURATION() {
-    return getServerOptional('ENABLE_CURATION');
-  },
-  get MIN_RESOURCE_SCORE() {
-    return getServerOptional('MIN_RESOURCE_SCORE');
-  },
-  get CURATION_CONCURRENCY() {
-    return getServerOptional('CURATION_CONCURRENCY');
-  },
-  get CURATION_TIME_BUDGET_MS() {
-    return getServerOptional('CURATION_TIME_BUDGET_MS');
-  },
-  get CURATION_MAX_RESULTS() {
-    return getServerOptional('CURATION_MAX_RESULTS');
   },
 } as const;

@@ -8,11 +8,9 @@
 export type NavItem = {
   label: string;
   href: string;
-  highlight?: boolean;
   dropdown?: Array<{
     label: string;
     href: string;
-    highlight?: boolean;
   }>;
 };
 
@@ -23,11 +21,6 @@ export const authenticatedNavItems: NavItem[] = [
   {
     label: 'Dashboard',
     href: '/dashboard',
-    // dropdown: [
-    //   { label: 'Create a Plan', href: '/plans/new' },
-    //   { label: 'My Plans', href: '/plans' },
-    //   { label: 'Calendar', href: '/calendar' },
-    // ],
   },
   {
     label: 'Plans',

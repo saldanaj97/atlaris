@@ -69,25 +69,6 @@ describe('Stripe Client', () => {
     });
   });
 
-  describe('stripe export', () => {
-    it('returns null when STRIPE_SECRET_KEY is undefined at module load', async () => {
-      delete process.env.STRIPE_SECRET_KEY;
-
-      const { stripe } = await import('@/lib/stripe/client');
-
-      expect(stripe).toBeNull();
-    });
-
-    it('remains null even when STRIPE_SECRET_KEY is set at module load', async () => {
-      process.env.STRIPE_SECRET_KEY = 'sk_test_export';
-
-      const module = await import('@/lib/stripe/client');
-
-      expect(module.stripe).toBeNull();
-      expect(() => module.getStripe()).not.toThrow();
-    });
-  });
-
   describe('lazy initialization', () => {
     it('does not create Stripe instance until getStripe is called', async () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_lazy';

@@ -2,7 +2,7 @@ import type {
   ModuleWithTasks,
   TaskResourceWithResource,
 } from '@/lib/db/queries/types/modules.types';
-import { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
 
 import {
   generationStatus,
@@ -16,7 +16,6 @@ import {
   learningPlans,
   modules,
   planGenerations,
-  resources,
   taskProgress,
   taskResources,
   tasks,
@@ -36,17 +35,6 @@ export type LearningStyle = (typeof LEARNING_STYLES)[number];
 export type ResourceType = (typeof RESOURCE_TYPES)[number];
 export type ProgressStatus = (typeof PROGRESS_STATUSES)[number];
 export type GenerationStatus = (typeof GENERATION_STATUSES)[number];
-
-// Insert types (for creating new records)
-export type NewUser = InferInsertModel<typeof users>;
-export type NewLearningPlan = InferInsertModel<typeof learningPlans>;
-export type NewModule = InferInsertModel<typeof modules>;
-export type NewTask = InferInsertModel<typeof tasks>;
-export type NewResource = InferInsertModel<typeof resources>;
-export type NewTaskResource = InferInsertModel<typeof taskResources>;
-export type NewTaskProgress = InferInsertModel<typeof taskProgress>;
-export type NewPlanGeneration = InferInsertModel<typeof planGenerations>;
-export type NewGenerationAttempt = InferInsertModel<typeof generationAttempts>;
 
 // Select types (for reading from database)
 export type User = InferSelectModel<typeof users>;
@@ -85,12 +73,3 @@ export interface LearningPlanDetail {
   latestAttempt: GenerationAttempt | null;
   attemptsCount: number;
 }
-
-// User progress aggregation across tasks/modules
-export type UserProgress = {
-  user: User;
-  completedTasks: number;
-  totalTasks: number;
-  completedModules: number;
-  totalModules: number;
-};

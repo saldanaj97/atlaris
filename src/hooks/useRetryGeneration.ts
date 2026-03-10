@@ -4,9 +4,30 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
+import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { parseEventLine } from '@/lib/streaming/parse-event';
+
+const parseEventLine = (line: string): StreamingEvent | null => {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  const payload = trimmed.startsWith('data:')
+    ? trimmed.slice('data:'.length).trim()
+    : trimmed;
+  if (!payload) return null;
+  try {
+    const parsed: unknown = JSON.parse(payload);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const obj = parsed as Record<string, unknown>;
+      if (typeof obj.type === 'string') {
+        return parsed as StreamingEvent;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
 
 /** Runtime shape for SSE error event data (message and/or error key). */
 const errorEventDataSchema = z.looseObject({

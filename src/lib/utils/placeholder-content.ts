@@ -352,26 +352,3 @@ export function generatePlaceholderContent(
 
   return blocks;
 }
-
-/**
- * Renders placeholder content blocks as HTML string.
- * Useful for direct insertion into components.
- */
-export function renderPlaceholderContentAsHTML(blocks: ContentBlock[]): string {
-  return blocks
-    .map((block) => {
-      switch (block.type) {
-        case 'heading1':
-          return `<h1>${block.content}</h1>`;
-        case 'heading2':
-          return `<h2>${block.content}</h2>`;
-        case 'heading3':
-          return `<h3>${block.content}</h3>`;
-        case 'paragraph':
-          return `<p>${block.content}</p>`;
-        default:
-          return '';
-      }
-    })
-    .join('\n');
-}
