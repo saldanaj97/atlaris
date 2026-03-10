@@ -23,9 +23,9 @@ export function PdfPlanSettingsEditor({
   onSettingChange,
 }: PdfPlanSettingsEditorProps): JSX.Element {
   return (
-    <div className="border-border dark:border-border mt-4 border-t pt-4">
+    <div className="border-border mt-4 border-t pt-4">
       <p className="text-foreground mb-3 text-sm font-medium">Plan Settings</p>
-      <div className="dark:text-foreground text-foreground mb-3 flex flex-wrap items-center gap-2">
+      <div className="text-foreground mb-3 flex flex-wrap items-center gap-2">
         <span className="text-sm">I&apos;m a</span>
         <InlineDropdown
           id={`${baseId}-skill-level`}
@@ -46,7 +46,7 @@ export function PdfPlanSettingsEditor({
         <span className="text-sm">per week.</span>
       </div>
 
-      <div className="dark:text-foreground text-foreground flex flex-wrap items-center gap-2">
+      <div className="text-foreground flex flex-wrap items-center gap-2">
         <span className="text-sm">I prefer</span>
         <InlineDropdown
           id={`${baseId}-learning-style`}

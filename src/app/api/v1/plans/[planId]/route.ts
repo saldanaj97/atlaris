@@ -70,8 +70,6 @@ export const DELETE = withErrorBoundary(
 
     logger.info({ planId, userId: user.id }, 'Learning plan deleted');
 
-    return json({ success: true }, { status: 200 });
+    return json({ success: true });
   })
 );
-
-// NOTE: PUT omitted by design (see comment above)

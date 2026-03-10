@@ -219,13 +219,21 @@ export function scoreYouTube(
   now: Date = new Date()
 ): Scored {
   const metadata = c.metadata;
-  const viewCount = (metadata.viewCount as number) || 0;
-  const publishedAt = metadata.publishedAt
-    ? new Date(metadata.publishedAt as string)
-    : now;
-  const durationMinutes = (metadata.durationMinutes as number) || 0;
+
+  const rawViewCount = Number(metadata.viewCount);
+  const viewCount = Number.isFinite(rawViewCount) ? rawViewCount : 0;
+
+  const rawDate =
+    typeof metadata.publishedAt === 'string'
+      ? new Date(metadata.publishedAt)
+      : new Date(NaN);
+  const publishedAt = Number.isNaN(rawDate.getTime()) ? now : rawDate;
+
+  const rawDuration = Number(metadata.durationMinutes);
+  const durationMinutes = Number.isFinite(rawDuration) ? rawDuration : 0;
+
   const title = c.title;
-  const query = (metadata.query as string) || '';
+  const query = typeof metadata.query === 'string' ? metadata.query : '';
 
   // Compute components
   const components: ScoreComponents = {
@@ -343,8 +351,12 @@ export function selectTop(
       return sorted.slice(0, maxItems);
     }
 
-    const dominant =
-      [...bySource.values()].toSorted((a, b) => b.length - a.length)[0] ?? [];
+    let dominant: Scored[] = [];
+    for (const group of bySource.values()) {
+      if (group.length > dominant.length) {
+        dominant = group;
+      }
+    }
     const topN = dominant.slice(0, maxItems);
     if (
       topN.length === maxItems &&

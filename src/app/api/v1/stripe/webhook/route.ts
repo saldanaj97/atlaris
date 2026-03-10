@@ -50,7 +50,10 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
       throw error;
     }
 
-    // Basic body size guard
+    // MAX_BYTES is an explicit webhook request payload limit enforced during
+    // content-length preflight and again after `req.text()` parsing below in
+    // this route. It is a deliberate DoS/rate-limiting boundary for Stripe
+    // webhook handling and should not be removed without a security review.
     const MAX_BYTES = 256 * 1024;
     const contentLengthHeader = req.headers.get('content-length');
     if (contentLengthHeader !== null) {

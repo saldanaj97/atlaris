@@ -1,6 +1,7 @@
 'use client';
 
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import type { JSX } from 'react';
 
 interface PdfMainTopicEditorProps {
@@ -18,12 +19,12 @@ export function PdfMainTopicEditor({
 }: PdfMainTopicEditorProps): JSX.Element {
   return (
     <div>
-      <label
+      <Label
         htmlFor={id}
         className="text-foreground mb-2 block text-sm font-medium"
       >
         Main Topic
-      </label>
+      </Label>
       <Input
         id={id}
         type="text"

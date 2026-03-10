@@ -1,6 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { CheckCircle2, FileText } from 'lucide-react';
 import type { JSX } from 'react';
 
@@ -38,7 +39,7 @@ export function PdfExtractionHeader({
         </div>
       </div>
 
-      <Badge className={`${CONFIDENCE_COLORS[confidence]} border`}>
+      <Badge className={cn(CONFIDENCE_COLORS[confidence], 'border')}>
         <CheckCircle2 className="mr-1 h-3 w-3" />
         {confidence} confidence
       </Badge>

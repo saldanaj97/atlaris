@@ -92,8 +92,7 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
     }
   });
 
-  // Return copy to avoid mutating caller's array
-  return [...activities];
+  return activities;
 }
 
 /**

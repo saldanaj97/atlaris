@@ -10,6 +10,7 @@ import type {
 } from '@/app/plans/[id]/components/TimelineModuleCard';
 import { getStatusesFromModules } from '@/app/plans/[id]/helpers';
 import { Accordion } from '@/components/ui/accordion';
+import { Card, CardContent } from '@/components/ui/card';
 import { formatMinutes } from '@/lib/formatters';
 
 import type { ClientModule } from '@/lib/types/client';
@@ -188,11 +189,13 @@ export function PlanTimeline({
 
   if (modules.length === 0) {
     return (
-      <div className="rounded-2xl border border-stone-100 bg-white p-6 text-center dark:border-stone-800 dark:bg-stone-900">
-        <p className="text-stone-500 dark:text-stone-400">
-          No modules available yet.
-        </p>
-      </div>
+      <Card className="rounded-2xl text-center">
+        <CardContent className="p-6">
+          <p className="text-stone-500 dark:text-stone-400">
+            No modules available yet.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 

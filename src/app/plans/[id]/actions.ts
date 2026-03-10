@@ -129,10 +129,10 @@ export async function batchUpdateTaskProgressAction({
   }
 
   for (const [index, update] of updates.entries()) {
-    const taskId = update.taskId.trim();
+    const taskId = update.taskId?.trim() ?? '';
     assertNonEmpty(
-      update.taskId,
-      `A task id is required to update progress for update at index ${index} (taskId="${taskId || '<empty>'}", status="${update.status}").`
+      taskId,
+      `A task id is required to update progress for update at index ${index} (taskId="${taskId || '<missing>'}", status="${update.status}").`
     );
     if (!PROGRESS_STATUSES.includes(update.status)) {
       throw new Error(

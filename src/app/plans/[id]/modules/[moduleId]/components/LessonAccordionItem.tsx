@@ -5,6 +5,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/formatters';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
@@ -259,9 +260,9 @@ export function LessonAccordionItem({
               {lesson.title}
             </h3>
             {isLocked && (
-              <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-500 dark:bg-stone-700 dark:text-stone-400">
+              <Badge className="border-transparent bg-stone-200 text-stone-500 dark:bg-stone-700 dark:text-stone-400">
                 Locked
-              </span>
+              </Badge>
             )}
           </div>
 
@@ -351,11 +352,11 @@ export function LessonAccordionItem({
                               <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
                             </div>
                             <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-                              <span
-                                className={`rounded px-1.5 py-0.5 ${config.badgeClass}`}
+                              <Badge
+                                className={`rounded border-transparent px-1.5 ${config.badgeClass}`}
                               >
                                 {config.label}
-                              </span>
+                              </Badge>
                               {resource.durationMinutes && (
                                 <span>
                                   {formatMinutes(resource.durationMinutes)}

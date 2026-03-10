@@ -10,6 +10,7 @@ import {
   usePdfExtractionDraft,
   type PdfPlanSettings,
 } from '@/app/plans/new/components/usePdfExtractionDraft';
+import { Card } from '@/components/ui/card';
 import type { ExtractedSection } from '@/lib/pdf/types';
 import React, { useId } from 'react';
 
@@ -65,7 +66,7 @@ export function PdfExtractionPreview({
 
   return (
     <div className="w-full max-w-3xl space-y-6">
-      <div className="dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-6 shadow-2xl backdrop-blur-xl">
+      <Card className="border-border bg-card/60 relative rounded-3xl px-6 py-6 shadow-2xl backdrop-blur-xl">
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
           aria-hidden="true"
@@ -110,7 +111,7 @@ export function PdfExtractionPreview({
             onSwitchToManual={onSwitchToManual}
           />
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

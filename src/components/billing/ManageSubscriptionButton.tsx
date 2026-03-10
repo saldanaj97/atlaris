@@ -16,7 +16,12 @@ type PortalRequestResult =
       kind: 'error';
       message: string;
       error: unknown;
-      reason: 'timeout' | 'api' | 'invalid-response' | 'network';
+      reason:
+        | 'timeout'
+        | 'api'
+        | 'invalid-response'
+        | 'invalid-url'
+        | 'network';
     };
 
 function isTimeoutError(error: unknown): error is DOMException {
@@ -27,16 +32,48 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return error instanceof Error ? error.message : fallbackMessage;
 }
 
+function normalizePortalUrl(portalUrl: string): string | null {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(portalUrl);
+  } catch {
+    return null;
+  }
+
+  if (parsedUrl.protocol !== 'https:') {
+    return null;
+  }
+
+  return parsedUrl.toString();
+}
+
 function createPortalTimeoutSignal(timeoutMs: number): {
   signal: AbortSignal;
   cleanup: () => void;
   didTimeout: () => boolean;
 } {
   if (typeof AbortSignal.timeout === 'function') {
+    const signal = AbortSignal.timeout(timeoutMs);
+    let timedOut = false;
+
+    const onAbort = (): void => {
+      if (
+        signal.reason instanceof DOMException &&
+        signal.reason.name === 'TimeoutError'
+      ) {
+        timedOut = true;
+      }
+    };
+
+    signal.addEventListener('abort', onAbort);
+
     return {
-      signal: AbortSignal.timeout(timeoutMs),
-      cleanup: () => {},
-      didTimeout: () => false,
+      signal,
+      cleanup: () => {
+        signal.removeEventListener('abort', onAbort);
+      },
+      didTimeout: () => timedOut,
     };
   }
 
@@ -133,9 +170,19 @@ async function requestBillingPortal(params: {
     };
   }
 
+  const portalUrl = normalizePortalUrl(parsed.data.portalUrl);
+  if (portalUrl === null) {
+    return {
+      kind: 'error',
+      message: 'Billing portal returned an invalid redirect URL',
+      error: new Error('Portal URL must use the https protocol'),
+      reason: 'invalid-url',
+    };
+  }
+
   return {
     kind: 'success',
-    portalUrl: parsed.data.portalUrl,
+    portalUrl,
   };
 }
 
@@ -186,6 +233,8 @@ export default function ManageSubscriptionButton({
         isRedirecting = true;
         window.location.href = result.portalUrl;
       })
+      // Safety net: requestBillingPortal handles its own errors internally,
+      // but .then() above (e.g. window.location assignment) could still throw.
       .catch((error: unknown) => {
         clientLogger.error('Unexpected billing portal failure', {
           error,

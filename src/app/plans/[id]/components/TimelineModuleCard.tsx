@@ -18,8 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
-
+import { UpdateTaskStatusButton } from '@/app/plans/[id]/components/UpdateTaskStatusButton';
 import type { ClientTask } from '@/lib/types/client';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 
@@ -40,7 +39,7 @@ interface TimelineModuleCardProps {
   planId: string;
   module: TimelineModule;
   isOpen: boolean;
-  statuses: Record<string, ProgressStatus>;
+  statuses: Partial<Record<string, ProgressStatus>>;
   onModuleToggle: (moduleId: string) => void;
   onTaskStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
 }

@@ -1,7 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useReducer, type ReactElement } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useReducer,
+  useRef,
+  type ReactElement,
+} from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -274,6 +280,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
     profileFormReducer,
     INITIAL_PROFILE_FORM_STATE
   );
+  const profileFetchControllerRef = useRef<AbortController | null>(null);
   const nameInputCallbackRef = useCallback((node: HTMLInputElement | null) => {
     if (node) {
       node.focus();
@@ -309,10 +316,10 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
   }, []);
 
   useEffect(() => {
-    const controller = fetchProfile();
+    profileFetchControllerRef.current = fetchProfile();
 
     return () => {
-      controller.abort();
+      profileFetchControllerRef.current?.abort();
     };
   }, [fetchProfile]);
 
@@ -352,7 +359,8 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
             type="button"
             variant="outline"
             onClick={() => {
-              void fetchProfile();
+              profileFetchControllerRef.current?.abort();
+              profileFetchControllerRef.current = fetchProfile();
             }}
           >
             Retry

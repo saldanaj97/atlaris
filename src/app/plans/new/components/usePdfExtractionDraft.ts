@@ -61,6 +61,11 @@ export function stripSectionIds(
   return sections.map(({ id: _id, ...section }) => section);
 }
 
+/**
+ * Intentionally compares only id, title, content, level, and suggestedTopic.
+ * Other ExtractedSection fields (e.g. order metadata) are not relevant for
+ * detecting user-facing changes that should trigger a draft reset.
+ */
 function areExtractedSectionsEqual(
   left: readonly ExtractedSection[],
   right: readonly ExtractedSection[]
@@ -135,6 +140,12 @@ function pdfExtractionPreviewReducer(
   }
 }
 
+interface PreviousInitialData {
+  mainTopic: string;
+  sections: readonly ExtractedSection[];
+  sectionSeed: string;
+}
+
 export interface UsePdfExtractionDraftParams {
   initialTopic: string;
   initialSections: ExtractedSection[];
@@ -159,12 +170,10 @@ export function usePdfExtractionDraft({
   sectionSeed,
 }: UsePdfExtractionDraftParams): UsePdfExtractionDraftResult {
   const didMountRef = useRef(false);
-  const previousInitialDataRef = useRef<{
-    mainTopic: string;
-    sections: readonly ExtractedSection[];
-  }>({
+  const previousInitialDataRef = useRef<PreviousInitialData>({
     mainTopic: initialTopic,
     sections: initialSections,
+    sectionSeed,
   });
 
   const [state, dispatch] = useReducer(
@@ -182,6 +191,7 @@ export function usePdfExtractionDraft({
       previousInitialDataRef.current = {
         mainTopic: initialTopic,
         sections: initialSections,
+        sectionSeed,
       };
       return;
     }
@@ -192,14 +202,16 @@ export function usePdfExtractionDraft({
       previousInitialData.sections,
       initialSections
     );
+    const seedChanged = previousInitialData.sectionSeed !== sectionSeed;
 
-    if (!mainTopicChanged && !sectionsChanged) {
+    if (!mainTopicChanged && !sectionsChanged && !seedChanged) {
       return;
     }
 
     previousInitialDataRef.current = {
       mainTopic: initialTopic,
       sections: initialSections,
+      sectionSeed,
     };
 
     dispatch({
@@ -232,6 +244,7 @@ export function usePdfExtractionDraft({
     []
   );
 
+  // Topic-level gate only — the generation endpoint validates sections independently.
   const canGenerate = state.mainTopic.trim().length > 0;
 
   return {

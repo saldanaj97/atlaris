@@ -28,7 +28,9 @@ interface PaidTierPriceIds {
 
 type PaidTierKey = Exclude<TierKey, 'free'>;
 
-const PAID_TIER_KEYS: readonly PaidTierKey[] = ['starter', 'pro'];
+const PAID_TIER_KEYS: readonly PaidTierKey[] = MONTHLY_TIER_CONFIGS.map(
+  (c) => c.key
+).filter((key): key is PaidTierKey => key !== 'free');
 const EMPTY_STRIPE_TIER_DATA = new Map<TierKey, StripeTierData>();
 
 function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {

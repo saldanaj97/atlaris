@@ -90,9 +90,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
               </Badge>
             </div>
             {isPolling && (
-              <div className="h-6 w-6 animate-spin">
-                <Loader2 className="text-primary h-full w-full" />
-              </div>
+              <Loader2 className="text-primary h-6 w-6 animate-spin" />
             )}
           </div>
           <CardTitle className="text-lg">Generation Status</CardTitle>
@@ -127,9 +125,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                 >
                   {isRetrying ? (
                     <>
-                      <div className="mr-2 h-4 w-4 animate-spin">
-                        <Loader2 className="h-full w-full" />
-                      </div>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Retrying…
                     </>
                   ) : (
@@ -180,9 +176,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
             </div>
           ) : isProcessing ? (
             <div className="bg-primary/5 flex items-start gap-3 rounded-lg p-4">
-              <div className="mt-0.5 h-5 w-5 shrink-0 animate-spin">
-                <Loader2 className="text-primary h-full w-full" />
-              </div>
+              <Loader2 className="text-primary mt-0.5 h-5 w-5 shrink-0 animate-spin" />
               <div className="space-y-1">
                 <p className="font-semibold">Generating Your Learning Plan</p>
                 <p className="text-muted-foreground text-sm">
@@ -198,9 +192,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
             </div>
           ) : isPending ? (
             <div className="bg-muted/50 flex items-start gap-3 rounded-lg p-4">
-              <div className="mt-0.5 h-5 w-5 shrink-0 animate-spin">
-                <Loader2 className="text-muted-foreground h-full w-full" />
-              </div>
+              <Loader2 className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0 animate-spin" />
               <div className="space-y-1">
                 <p className="font-semibold">Queued for Generation</p>
                 <p className="text-muted-foreground text-sm">

@@ -1,11 +1,11 @@
-import { addDaysToDate, getWeekBoundaries } from './dates';
+import { addDaysToDate, getWeekBoundaries } from '@/lib/scheduling/dates';
 import type {
   Day,
   ScheduleInputs,
   ScheduleJson,
   SessionAssignment,
   Week,
-} from './types';
+} from '@/lib/scheduling/types';
 
 const DEFAULT_SESSIONS_PER_WEEK = 3;
 const SESSION_DAYS_OFFSET = [0, 2, 4]; // Mon, Wed, Fri (0=Mon, 2=Wed, 4=Fri)

@@ -180,9 +180,10 @@ export function PdfUploadZone({
         <div className="relative flex flex-col items-center text-center">
           <div className="from-primary to-accent mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br shadow-lg">
             {isUploading ? (
-              <div className="h-10 w-10 animate-spin">
-                <Loader2 className="h-full w-full text-white" />
-              </div>
+              <Loader2
+                className="h-10 w-10 animate-spin text-white"
+                aria-hidden="true"
+              />
             ) : (
               <FileText className="h-10 w-10 text-white" />
             )}

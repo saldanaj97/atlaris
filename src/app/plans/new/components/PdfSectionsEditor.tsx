@@ -2,6 +2,7 @@
 
 import type { SectionWithId } from '@/app/plans/new/components/usePdfExtractionDraft';
 import { PdfSectionEditorRow } from '@/app/plans/new/components/PdfSectionEditorRow';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { JSX } from 'react';
 
 interface PdfSectionsEditorProps {
@@ -35,25 +36,24 @@ export function PdfSectionsEditor({
         </p>
       </div>
 
-      <fieldset
-        className="max-h-64 space-y-3 overflow-y-auto"
-        aria-labelledby={sectionsLabelId}
-      >
-        {sections.map((section, index) => (
-          <PdfSectionEditorRow
-            key={section.id}
-            section={section}
-            index={index}
-            disabled={disabled}
-            onTitleChange={(sectionId, value) =>
-              onSectionFieldChange(sectionId, 'title', value)
-            }
-            onContentChange={(sectionId, value) =>
-              onSectionFieldChange(sectionId, 'content', value)
-            }
-          />
-        ))}
-      </fieldset>
+      <ScrollArea className="max-h-64" aria-labelledby={sectionsLabelId}>
+        <div className="space-y-3">
+          {sections.map((section, index) => (
+            <PdfSectionEditorRow
+              key={section.id}
+              section={section}
+              index={index}
+              disabled={disabled}
+              onTitleChange={(sectionId, value) =>
+                onSectionFieldChange(sectionId, 'title', value)
+              }
+              onContentChange={(sectionId, value) =>
+                onSectionFieldChange(sectionId, 'content', value)
+              }
+            />
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
