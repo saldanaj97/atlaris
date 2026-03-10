@@ -1,8 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { useRef, useState } from 'react';
 
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
@@ -42,11 +42,22 @@ function getCheckoutResponseErrorMessage(rawIssue: {
   return rawIssue.message ?? 'Invalid checkout response';
 }
 
+const CHECKOUT_TIMEOUT_MS = 15_000;
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
 async function requestCheckoutSession(params: {
   priceId: string;
   successUrl?: string;
   cancelUrl?: string;
 }): Promise<CheckoutRequestResult> {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => {
+    controller.abort();
+  }, CHECKOUT_TIMEOUT_MS);
+
   const responseResult = await fetch('/api/v1/stripe/create-checkout', {
     method: 'POST',
     headers: {
@@ -57,14 +68,24 @@ async function requestCheckoutSession(params: {
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
     }),
+    signal: controller.signal,
   })
-    .then((response) => ({ kind: 'response' as const, response }))
-    .catch((error: unknown) => ({ kind: 'network-error' as const, error }));
+    .then((response) => {
+      globalThis.clearTimeout(timeoutId);
+      return { kind: 'response' as const, response };
+    })
+    .catch((error: unknown) => {
+      globalThis.clearTimeout(timeoutId);
+      return { kind: 'network-error' as const, error };
+    });
 
   if (responseResult.kind === 'network-error') {
+    const timedOut = isAbortError(responseResult.error);
     return {
       kind: 'error',
-      message: getErrorMessage(responseResult.error, 'Something went wrong'),
+      message: timedOut
+        ? 'Request timed out — please try again'
+        : getErrorMessage(responseResult.error, 'Something went wrong'),
       error: responseResult.error,
     };
   }
@@ -79,7 +100,7 @@ async function requestCheckoutSession(params: {
     return {
       kind: 'error',
       message: parsedError.error,
-      error: null,
+      error: new Error(parsedError.error),
     };
   }
 

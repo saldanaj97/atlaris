@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { logger } from '@/lib/logging/logger';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
@@ -123,37 +124,40 @@ export function PlanDetailContentSkeleton(): JSX.Element {
 
 function StatCardSkeleton() {
   return (
-    <div className="bg-card rounded-2xl border p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <Skeleton className="h-5 w-5" />
-        <Skeleton className="h-3 w-16" />
-      </div>
-      <Skeleton className="mb-1 h-8 w-20" />
-      <Skeleton className="h-3 w-24" />
-    </div>
+    <Card className="rounded-2xl shadow-sm">
+      <CardContent className="p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Skeleton className="h-5 w-5" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+        <Skeleton className="mb-1 h-8 w-20" />
+        <Skeleton className="h-3 w-24" />
+      </CardContent>
+    </Card>
   );
 }
 
 function ModuleAccordionSkeleton() {
   return (
-    <div className="bg-card rounded-2xl border p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10 rounded-full" />
-          <div className="space-y-1.5">
-            <Skeleton className="h-5 w-48" />
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-3.5 w-16" />
-              <Skeleton className="h-3.5 w-20" />
+    <Card className="rounded-2xl shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-5 w-48" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-3.5 w-16" />
+                <Skeleton className="h-3.5 w-20" />
+              </div>
             </div>
           </div>
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-5 w-5" />
+          </div>
         </div>
-        {/* Progress and expand icon */}
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-5 w-5" />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

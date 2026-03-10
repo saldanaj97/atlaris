@@ -4,6 +4,7 @@ import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ServiceUnavailableError } from '@/lib/api/errors';
 import { googleOAuthEnv } from '@/lib/config/env';
 import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state';
+import { logger } from '@/lib/logging/logger';
 import { google } from 'googleapis';
 
 function getGoogleOAuthConfig() {
@@ -19,7 +20,11 @@ export const GET = withErrorBoundary(
     let config: ReturnType<typeof getGoogleOAuthConfig>;
     try {
       config = getGoogleOAuthConfig();
-    } catch {
+    } catch (error) {
+      logger.error(
+        { error, userId, provider: 'google_calendar' },
+        'Google OAuth configuration unavailable'
+      );
       throw new ServiceUnavailableError('Google OAuth is not configured', {
         provider: 'google_calendar',
       });
@@ -47,6 +52,11 @@ export const GET = withErrorBoundary(
       state: stateToken,
       prompt: 'consent',
     });
+
+    logger.info(
+      { userId, provider: 'google_calendar' },
+      'OAuth initiation successful'
+    );
 
     return NextResponse.redirect(authUrl);
   })

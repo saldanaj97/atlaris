@@ -230,8 +230,8 @@ export default function ManageSubscriptionButton({
           return;
         }
 
-        isRedirecting = true;
         window.location.href = result.portalUrl;
+        isRedirecting = true;
       })
       // Safety net: requestBillingPortal handles its own errors internally,
       // but .then() above (e.g. window.location assignment) could still throw.

@@ -611,6 +611,7 @@ export async function executeGenerationStream({
         { planId, userId },
         'Client disconnected during generation; result saved to DB'
       );
+      return;
     }
 
     emitSanitizedFailureEvent({

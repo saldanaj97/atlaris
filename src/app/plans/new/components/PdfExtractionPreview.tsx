@@ -12,7 +12,8 @@ import {
 } from '@/app/plans/new/components/usePdfExtractionDraft';
 import { Card } from '@/components/ui/card';
 import type { ExtractedSection } from '@/lib/pdf/types';
-import React, { useId } from 'react';
+import type { JSX } from 'react';
+import { useId } from 'react';
 
 export type { PdfPlanSettings } from '@/app/plans/new/components/usePdfExtractionDraft';
 
@@ -38,7 +39,7 @@ export function PdfExtractionPreview({
   onGenerate,
   onSwitchToManual,
   isGenerating = false,
-}: PdfExtractionPreviewProps): React.JSX.Element {
+}: PdfExtractionPreviewProps): JSX.Element {
   const sectionSeed = useId();
   const mainTopicId = useId();
   const sectionsLabelId = useId();

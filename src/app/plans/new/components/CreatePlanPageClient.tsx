@@ -74,7 +74,7 @@ export function CreatePlanPageClient({
         <p className="text-muted-foreground mx-auto max-w-md text-base sm:max-w-xl sm:text-lg">
           {currentMethod === 'manual'
             ? "Describe your learning goal. We'll create a personalized, time-blocked schedule that syncs to your calendar."
-            : "Upload a PDF document and we'll extract the key topics to create a personalized learning plan."}
+            : "Upload a PDF and we'll extract key topics to build a personalized, time-blocked schedule with linked resources that syncs to your calendar."}
         </p>
       </div>
 
