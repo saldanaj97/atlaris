@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the dependency injection architecture implemented for third-party integrations (Google Calendar, Notion) to improve testability, maintainability, and separation of concerns.
+This document describes the dependency injection architecture implemented for third-party integrations (Notion) to improve testability, maintainability, and separation of concerns.
 
 ## Architecture Principles
 
@@ -29,17 +29,6 @@ The integration architecture is split into three distinct layers:
 Instead of depending directly on third-party SDKs, integration functions accept minimal interfaces:
 
 ```typescript
-// src/lib/integrations/google-calendar/types.ts
-export interface GoogleCalendarClient {
-  events: {
-    insert(params: {
-      calendarId: string;
-      requestBody: calendar_v3.Schema$Event;
-    }): Promise<{ data: calendar_v3.Schema$Event }>;
-    delete(params: { calendarId: string; eventId: string }): Promise<void>;
-  };
-}
-
 // src/lib/integrations/notion/types.ts
 export interface NotionIntegrationClient {
   createPage(params: CreatePageParameters): Promise<CreatePageResponse>;
@@ -57,43 +46,7 @@ export interface NotionIntegrationClient {
 
 ### 3. Factory Pattern at API Boundaries
 
-Client construction happens at API route boundaries using factory functions:
-
-```typescript
-// src/lib/integrations/google-calendar/factory.ts
-export function createGoogleCalendarClient(
-  tokens: GoogleTokens
-): GoogleCalendarClient {
-  const clientId = googleOAuthEnv.clientId;
-  const clientSecret = googleOAuthEnv.clientSecret;
-  const redirectUri = googleOAuthEnv.redirectUri;
-
-  if (!clientId || !clientSecret || !redirectUri) {
-    throw new Error(
-      'Google OAuth environment variables are not configured for this runtime.'
-    );
-  }
-
-  const oauth2Client = new google.auth.OAuth2(
-    clientId,
-    clientSecret,
-    redirectUri
-  );
-  oauth2Client.setCredentials({
-    access_token: tokens.accessToken,
-    refresh_token: tokens.refreshToken ?? undefined,
-  });
-
-  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-
-  return {
-    events: {
-      insert: (params) => calendar.events.insert(params as any),
-      delete: (params) => calendar.events.delete(params as any).then(() => {}),
-    },
-  };
-}
-```
+Client construction happens at API route boundaries using factory functions (see Notion factory for a concrete example in `src/lib/integrations/notion/factory.ts`).
 
 ### 4. Environment Variable Semantics
 
@@ -151,32 +104,7 @@ This eliminates scattered env defaults across test files.
 
 ### Unit Tests
 
-Unit tests use local mocks that implement the minimal interfaces:
-
-```typescript
-// tests/unit/integrations/google-calendar-sync.spec.ts
-let mockCalendar: any;
-const createMockCalendarClient = (): GoogleCalendarClient => {
-  return mockCalendar as GoogleCalendarClient;
-};
-
-beforeEach(() => {
-  mockCalendar = {
-    events: {
-      insert: vi.fn(),
-      delete: vi.fn(),
-    },
-  };
-});
-
-// In tests:
-const mockClient = createMockCalendarClient();
-await syncPlanToGoogleCalendar(planId, mockClient);
-```
-
-### Integration Tests
-
-Integration tests also use local mocks instead of global module mocking:
+Unit and integration tests use local mocks that implement the minimal interfaces:
 
 ```typescript
 // tests/integration/notion-delta-sync.spec.ts
@@ -195,39 +123,6 @@ const createMockNotionClient = (): NotionIntegrationClient => ({
 
 const mockClient = createMockNotionClient();
 const hasChanges = await deltaSyncPlanToNotion(planId, userId, mockClient);
-```
-
-### E2E Tests
-
-E2E tests create self-contained mock clients:
-
-```typescript
-// tests/e2e/google-calendar-sync-flow.spec.ts
-function createMockCalendarClient(): GoogleCalendarClient {
-  let eventCounter = 0;
-  const createdEvents = new Map<string, calendar_v3.Schema$Event>();
-
-  return {
-    events: {
-      async insert({ calendarId, requestBody }) {
-        eventCounter++;
-        const id = `event_${eventCounter}`;
-        const event = {
-          id,
-          summary: requestBody.summary,
-          description: requestBody.description,
-          start: requestBody.start,
-          end: requestBody.end,
-        };
-        createdEvents.set(id, event);
-        return { data: event };
-      },
-      async delete({ calendarId, eventId }) {
-        createdEvents.delete(eventId);
-      },
-    },
-  };
-}
 ```
 
 ## Benefits
@@ -267,11 +162,6 @@ When adding a new third-party integration:
 
 - Environment config: `src/lib/config/env.ts`
 - Test env defaults: `tests/setup/test-env.ts`
-- Google Calendar:
-  - Types: `src/lib/integrations/google-calendar/types.ts`
-  - Factory: `src/lib/integrations/google-calendar/factory.ts`
-  - Sync logic: `src/lib/integrations/google-calendar/sync.ts`
-  - API route: `src/app/api/v1/integrations/google-calendar/sync/route.ts`
 - Notion:
   - Types: `src/lib/integrations/notion/types.ts`
   - Factory: `src/lib/integrations/notion/factory.ts`

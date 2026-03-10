@@ -6,14 +6,14 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 
 ### User Rate Limits (Authenticated Endpoints)
 
-| Category       | Limit        | Window   | Use Case                                   |
-| -------------- | ------------ | -------- | ------------------------------------------ |
-| `aiGeneration` | 10 requests  | 1 hour   | AI generation, regeneration, enhancement   |
-| `integration`  | 30 requests  | 1 hour   | Third-party APIs (Notion, Google Calendar) |
-| `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes         |
-| `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences  |
-| `billing`      | 10 requests  | 1 minute | Stripe checkout, portal sessions           |
-| `oauth`        | 20 requests  | 1 hour   | OAuth flows (Google, Notion auth)          |
+| Category       | Limit        | Window   | Use Case                                  |
+| -------------- | ------------ | -------- | ----------------------------------------- |
+| `aiGeneration` | 10 requests  | 1 hour   | AI generation, regeneration, enhancement  |
+| `integration`  | 30 requests  | 1 hour   | Third-party APIs (Notion)                 |
+| `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes        |
+| `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences |
+| `billing`      | 10 requests  | 1 minute | Stripe checkout, portal sessions          |
+| `oauth`        | 20 requests  | 1 hour   | OAuth flows (Google, Notion auth)         |
 
 ### Plan Generation Rate Limit
 
@@ -73,7 +73,7 @@ export const POST = withErrorBoundary(
 | Endpoint Type                            | Category       |
 | ---------------------------------------- | -------------- |
 | AI generation, regeneration, enhancement | `aiGeneration` |
-| Notion export, Google Calendar sync      | `integration`  |
+| Notion export                            | `integration`  |
 | Create/update/delete plans, tasks, etc.  | `mutation`     |
 | GET endpoints for data retrieval         | `read`         |
 | Stripe checkout/portal creation          | `billing`      |
@@ -147,7 +147,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 ### Integration (`integration`)
 
 - `POST /api/v1/integrations/notion/export`
-- `POST /api/v1/integrations/google-calendar/sync`
 - `POST /api/v1/integrations/disconnect`
 
 ### Billing (`billing`)
