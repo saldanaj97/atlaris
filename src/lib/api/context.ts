@@ -33,25 +33,38 @@ export function getCorrelationId(): string | undefined {
   return storage.getStore()?.correlationId;
 }
 
-type HeaderSource =
+export type HeaderSource =
   | { headers?: Headers }
   | { get?: (key: string) => string | null };
 
-function readHeader(source?: HeaderSource, key?: string) {
+/**
+ * Reads a single header value from a Request-like object.
+ * Exported so other modules (e.g. logging/request-context) can reuse it.
+ */
+export function readHeader(
+  source: HeaderSource | undefined,
+  key: string
+): string | undefined {
   if (!source) return undefined;
-  const targetKey = key ?? 'x-correlation-id';
   if ('headers' in source && source.headers) {
-    return source.headers.get(targetKey) ?? undefined;
+    return source.headers.get(key) ?? undefined;
   }
   if ('get' in source && typeof source.get === 'function') {
-    const value = source.get(targetKey);
+    const value = source.get(key);
     return value ?? undefined;
   }
   return undefined;
 }
 
-export function ensureCorrelationId(source?: HeaderSource): string {
-  const existing = readHeader(source);
+/**
+ * Returns an existing request identifier from the given header, or generates a
+ * new UUID. The default header is `x-correlation-id`; callers can override.
+ */
+export function ensureCorrelationId(
+  source?: HeaderSource,
+  headerName = 'x-correlation-id'
+): string {
+  const existing = readHeader(source, headerName);
   return existing && existing.length > 0 ? existing : randomUUID();
 }
 

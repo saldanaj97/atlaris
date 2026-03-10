@@ -182,11 +182,6 @@ export function withErrorBoundary(fn: PlainHandler): PlainHandler {
   };
 }
 
-export function compose(...fns: ((h: PlainHandler) => PlainHandler)[]) {
-  return (final: PlainHandler): PlainHandler =>
-    fns.reduceRight((acc, fn) => fn(acc), final);
-}
-
 /**
  * Establishes an RLS-enforced DB context for Server Components.
  * This is the Server Component equivalent of `withAuth` for API routes.

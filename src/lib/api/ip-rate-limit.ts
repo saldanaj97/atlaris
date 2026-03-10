@@ -13,19 +13,12 @@
  *   deployments (each instance enforces its own limits).
  */
 
-import { LRUCache } from 'lru-cache';
-
-import { RateLimitError } from '@/lib/api/errors';
+import {
+  createSlidingWindowLimiter,
+  type SlidingWindowLimiter,
+} from '@/lib/api/rate-limit-core';
 import { logger } from '@/lib/logging/logger';
 import { assertNever } from '@/lib/utils';
-
-/**
- * Rate limit window entry tracking request counts
- */
-interface RateLimitEntry {
-  count: number;
-  windowStart: number;
-}
 
 /**
  * Configuration for IP rate limiting
@@ -258,118 +251,25 @@ function isValidIp(ip: string): boolean {
  * @param config - Rate limit configuration
  * @returns A function that checks and enforces rate limits
  */
-export function createIpRateLimiter(config: IpRateLimitConfig): {
-  check: (ip: string) => void;
-  getRemainingRequests: (ip: string) => number;
-  getResetTime: (ip: string) => number;
-  reset: (ip: string) => void;
-  clear: () => void;
-} {
-  const { maxRequests, windowMs, maxTrackedIps = 10000 } = config;
-
-  const cache = new LRUCache<string, RateLimitEntry>({
-    max: maxTrackedIps,
-    // TTL slightly longer than window to handle edge cases
-    ttl: windowMs + 1000,
+export function createIpRateLimiter(
+  config: IpRateLimitConfig
+): SlidingWindowLimiter {
+  return createSlidingWindowLimiter({
+    maxRequests: config.maxRequests,
+    windowMs: config.windowMs,
+    maxTrackedKeys: config.maxTrackedIps ?? 10_000,
   });
-
-  /**
-   * Checks if the IP has exceeded the rate limit.
-   * Increments the request count for the IP.
-   *
-   * @param ip - Client IP address
-   * @throws RateLimitError if rate limit exceeded
-   */
-  function check(ip: string): void {
-    const now = Date.now();
-    const entry = cache.get(ip);
-
-    if (!entry) {
-      // First request from this IP
-      cache.set(ip, { count: 1, windowStart: now });
-      return;
-    }
-
-    // Check if we're still in the same window
-    if (now - entry.windowStart < windowMs) {
-      // Same window - increment count
-      entry.count++;
-      cache.set(ip, entry);
-
-      if (entry.count > maxRequests) {
-        const retryAfter = Math.ceil(
-          (entry.windowStart + windowMs - now) / 1000
-        );
-        throw new RateLimitError(
-          `Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${Math.round(windowMs / 1000)} seconds.`,
-          { retryAfter }
-        );
-      }
-    } else {
-      // New window - reset count
-      cache.set(ip, { count: 1, windowStart: now });
-    }
-  }
-
-  /**
-   * Gets the number of remaining requests for an IP in the current window.
-   */
-  function getRemainingRequests(ip: string): number {
-    const now = Date.now();
-    const entry = cache.get(ip);
-
-    if (!entry) {
-      return maxRequests;
-    }
-
-    // Check if window has expired
-    if (now - entry.windowStart >= windowMs) {
-      return maxRequests;
-    }
-
-    return Math.max(0, maxRequests - entry.count);
-  }
-
-  /**
-   * Gets the Unix timestamp (seconds) when the current rate limit window resets.
-   */
-  function getResetTime(ip: string): number {
-    const now = Date.now();
-    const entry = cache.get(ip);
-
-    if (!entry || now - entry.windowStart >= windowMs) {
-      return Math.ceil((now + windowMs) / 1000);
-    }
-
-    return Math.ceil((entry.windowStart + windowMs) / 1000);
-  }
-
-  /**
-   * Resets the rate limit counter for an IP.
-   */
-  function reset(ip: string): void {
-    cache.delete(ip);
-  }
-
-  /**
-   * Clears all rate limit entries. Useful for testing.
-   */
-  function clear(): void {
-    cache.clear();
-  }
-
-  return { check, getRemainingRequests, getResetTime, reset, clear };
 }
 
 // Pre-configured rate limiters for common endpoint types
-const rateLimiters = new Map<string, ReturnType<typeof createIpRateLimiter>>();
+const rateLimiters = new Map<string, SlidingWindowLimiter>();
 
 /**
  * Gets or creates a rate limiter for a specific endpoint type.
  */
 function getRateLimiter(
   type: keyof typeof IP_RATE_LIMIT_CONFIGS
-): ReturnType<typeof createIpRateLimiter> {
+): SlidingWindowLimiter {
   const existing = rateLimiters.get(type);
   if (existing) {
     return existing;

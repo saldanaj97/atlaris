@@ -17,17 +17,10 @@
  * - All limits are per-user, not per-IP (authenticated context required).
  */
 
-import { LRUCache } from 'lru-cache';
-
-import { RateLimitError } from '@/lib/api/errors';
-
-/**
- * Rate limit window entry tracking request counts per user
- */
-interface UserRateLimitEntry {
-  count: number;
-  windowStart: number;
-}
+import {
+  createSlidingWindowLimiter,
+  type SlidingWindowLimiter,
+} from '@/lib/api/rate-limit-core';
 
 /**
  * Configuration for user-based rate limiting
@@ -119,108 +112,16 @@ export type UserRateLimitCategory = keyof typeof USER_RATE_LIMIT_CONFIGS;
  * @param config - Rate limit configuration
  * @returns A rate limiter object with check, remaining, reset, and clear methods
  */
-export function createUserRateLimiter(config: UserRateLimitConfig): {
-  check: (userId: string) => void;
-  getRemainingRequests: (userId: string) => number;
-  getResetTime: (userId: string) => number;
-  reset: (userId: string) => void;
-  clear: () => void;
-} {
-  const { maxRequests, windowMs, maxTrackedUsers = 50000 } = config;
-
-  const cache = new LRUCache<string, UserRateLimitEntry>({
-    max: maxTrackedUsers,
-    // TTL slightly longer than window to handle edge cases
-    ttl: windowMs + 1000,
+export function createUserRateLimiter(
+  config: UserRateLimitConfig
+): SlidingWindowLimiter {
+  return createSlidingWindowLimiter({
+    maxRequests: config.maxRequests,
+    windowMs: config.windowMs,
+    maxTrackedKeys: config.maxTrackedUsers ?? 50_000,
+    formatErrorMessage: (maxRequests, windowMs) =>
+      `Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${formatWindow(windowMs)}.`,
   });
-
-  /**
-   * Checks if the user has exceeded the rate limit.
-   * Increments the request count for the user.
-   *
-   * @param userId - Authenticated user ID
-   * @throws RateLimitError if rate limit exceeded
-   */
-  function check(userId: string): void {
-    const now = Date.now();
-    const entry = cache.get(userId);
-
-    if (!entry) {
-      // First request from this user in the window
-      cache.set(userId, { count: 1, windowStart: now });
-      return;
-    }
-
-    // Check if we're still in the same window
-    if (now - entry.windowStart < windowMs) {
-      // Same window - increment count
-      entry.count++;
-      cache.set(userId, entry);
-
-      if (entry.count > maxRequests) {
-        const retryAfter = Math.ceil(
-          (entry.windowStart + windowMs - now) / 1000
-        );
-        throw new RateLimitError(
-          `Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${formatWindow(windowMs)}.`,
-          { retryAfter }
-        );
-      }
-    } else {
-      // New window - reset count
-      cache.set(userId, { count: 1, windowStart: now });
-    }
-  }
-
-  /**
-   * Gets the number of remaining requests for a user in the current window.
-   */
-  function getRemainingRequests(userId: string): number {
-    const now = Date.now();
-    const entry = cache.get(userId);
-
-    if (!entry) {
-      return maxRequests;
-    }
-
-    // Check if window has expired
-    if (now - entry.windowStart >= windowMs) {
-      return maxRequests;
-    }
-
-    return Math.max(0, maxRequests - entry.count);
-  }
-
-  /**
-   * Gets the Unix timestamp (seconds) when the rate limit window resets.
-   */
-  function getResetTime(userId: string): number {
-    const now = Date.now();
-    const entry = cache.get(userId);
-
-    if (!entry || now - entry.windowStart >= windowMs) {
-      // No entry or window expired - reset would be now + windowMs
-      return Math.ceil((now + windowMs) / 1000);
-    }
-
-    return Math.ceil((entry.windowStart + windowMs) / 1000);
-  }
-
-  /**
-   * Resets the rate limit counter for a user.
-   */
-  function reset(userId: string): void {
-    cache.delete(userId);
-  }
-
-  /**
-   * Clears all rate limit entries. Useful for testing.
-   */
-  function clear(): void {
-    cache.clear();
-  }
-
-  return { check, getRemainingRequests, getResetTime, reset, clear };
 }
 
 /**
@@ -240,24 +141,19 @@ function formatWindow(windowMs: number): string {
 }
 
 // Pre-configured rate limiters for each category
-const rateLimiters = new Map<
-  UserRateLimitCategory,
-  ReturnType<typeof createUserRateLimiter>
->();
+const rateLimiters = new Map<UserRateLimitCategory, SlidingWindowLimiter>();
 
 /**
  * Gets or creates a rate limiter for a specific category.
  */
-function getRateLimiter(
-  category: UserRateLimitCategory
-): ReturnType<typeof createUserRateLimiter> {
-  if (!rateLimiters.has(category)) {
-    rateLimiters.set(
-      category,
-      createUserRateLimiter(USER_RATE_LIMIT_CONFIGS[category])
-    );
+function getRateLimiter(category: UserRateLimitCategory): SlidingWindowLimiter {
+  const existing = rateLimiters.get(category);
+  if (existing) {
+    return existing;
   }
-  return rateLimiters.get(category)!;
+  const limiter = createUserRateLimiter(USER_RATE_LIMIT_CONFIGS[category]);
+  rateLimiters.set(category, limiter);
+  return limiter;
 }
 
 /**
