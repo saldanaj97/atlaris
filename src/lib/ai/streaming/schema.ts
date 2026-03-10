@@ -61,5 +61,3 @@ export const StreamingEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('error'), data: errorDataSchema }),
   z.object({ type: z.literal('cancelled'), data: cancelledDataSchema }),
 ]);
-
-export type StreamingEventValidated = z.infer<typeof StreamingEventSchema>;

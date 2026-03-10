@@ -487,25 +487,6 @@ export const openRouterEnv = {
   },
 } as const;
 
-export const aiMicroExplanationEnv = {
-  get googleApiKey() {
-    return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');
-  },
-  /**
-   * OpenRouter configuration for micro-explanations.
-   * Reuses the shared openRouterEnv configuration.
-   */
-  get openRouter() {
-    return openRouterEnv;
-  },
-  get microExplanationMaxTokens() {
-    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_MAX_TOKENS'), 200);
-  },
-  get microExplanationTemperature() {
-    return toNumber(getServerOptional('AI_MICRO_EXPLANATION_TEMPERATURE'), 0.4);
-  },
-} as const;
-
 export const googleAiEnv = {
   get apiKey() {
     return getServerOptional('GOOGLE_GENERATIVE_AI_API_KEY');

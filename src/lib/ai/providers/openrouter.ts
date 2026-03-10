@@ -3,6 +3,10 @@ import * as Sentry from '@sentry/nextjs';
 
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
 import { ProviderError, ProviderInvalidResponseError } from '@/lib/ai/provider';
+import {
+  DEFAULT_GENERATION_EXTENSION_MS,
+  DEFAULT_GENERATION_TIMEOUT_MS,
+} from '@/lib/ai/timeout';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -33,8 +37,8 @@ export interface OpenRouterProviderConfig {
   temperature?: number;
 }
 
-const OPENROUTER_DEFAULT_TIMEOUT_MS = 30_000;
-const OPENROUTER_TIMEOUT_EXTENSION_MS = 15_000;
+const OPENROUTER_DEFAULT_TIMEOUT_MS = DEFAULT_GENERATION_TIMEOUT_MS;
+const OPENROUTER_TIMEOUT_EXTENSION_MS = DEFAULT_GENERATION_EXTENSION_MS;
 
 interface TextPart {
   type: string;

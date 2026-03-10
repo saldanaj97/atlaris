@@ -17,7 +17,6 @@ ai/
 ├── orchestrator.ts      # runGenerationAttempt() - main entry
 ├── parser.ts            # Stream parsing -> structured modules
 ├── pacing.ts            # Trim modules to fit user's time
-├── schema.ts            # Legacy schema helpers (base provider adapters/tests)
 ├── classification.ts    # Failure classification
 ├── timeout.ts           # Adaptive timeout + retry backoff config
 ├── streaming/
