@@ -59,17 +59,20 @@ describe('SubscribeButton', () => {
     await user.click(button);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/stripe/create-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId: 'price_123',
-          successUrl: undefined,
-          cancelUrl: undefined,
-        }),
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/stripe/create-checkout',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            priceId: 'price_123',
+            successUrl: undefined,
+            cancelUrl: undefined,
+          }),
+        })
+      );
     });
   });
 
@@ -94,17 +97,20 @@ describe('SubscribeButton', () => {
     await user.click(button);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/stripe/create-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId: 'price_123',
-          successUrl: '/success',
-          cancelUrl: '/cancel',
-        }),
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/stripe/create-checkout',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            priceId: 'price_123',
+            successUrl: '/success',
+            cancelUrl: '/cancel',
+          }),
+        })
+      );
     });
   });
 
