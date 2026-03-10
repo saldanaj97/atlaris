@@ -7,18 +7,11 @@ import {
 } from 'date-fns';
 import { z } from 'zod';
 
-import {
-  LEARNING_STYLES,
-  RESOURCE_TYPES,
-  SKILL_LEVELS,
-  type LearningStyle,
-  type ResourceType,
-  type SkillLevel,
-} from '@/lib/types/db';
-
 import { pdfPreviewEditSchema } from './pdf';
 import {
+  LEARNING_STYLE_ENUM,
   NOTES_MAX_LENGTH,
+  SKILL_LEVEL_ENUM,
   TOPIC_MAX_LENGTH,
   weeklyHoursSchema,
 } from './shared';
@@ -49,14 +42,6 @@ function enforceMaxLength(
     });
   }
 }
-
-const SKILL_LEVEL_ENUM = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
-const LEARNING_STYLE_ENUM = z.enum(
-  LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
-);
-const RESOURCE_TYPE_ENUM = z.enum(
-  RESOURCE_TYPES as [ResourceType, ...ResourceType[]]
-);
 
 const topicSchema = z
   .string()
@@ -277,14 +262,6 @@ export const createLearningPlanSchema = createLearningPlanObject
   });
 
 export type CreateLearningPlanInput = z.infer<typeof createLearningPlanSchema>;
-
-export const learningPlanResourceSchema = z.object({
-  id: z.string().uuid(),
-  type: RESOURCE_TYPE_ENUM,
-  title: z.string(),
-  url: z.string().url(),
-  durationMinutes: z.number().int().nonnegative().optional(),
-});
 
 function toDateOnly(value: string): Date {
   const parsedDate = parseISO(value);

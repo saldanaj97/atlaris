@@ -5,7 +5,7 @@ import {
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
-import { generateSchedule } from '@/lib/scheduling/generate';
+import { distributeTasksToSessions } from '@/lib/scheduling/distribute';
 import { computeInputsHash } from '@/lib/scheduling/hash';
 import type { ScheduleInputs, ScheduleJson } from '@/lib/scheduling/types';
 import { format } from 'date-fns';
@@ -169,7 +169,7 @@ export async function getPlanSchedule(
   }
 
   // Generate new schedule
-  const schedule = generateSchedule(inputs);
+  const schedule = distributeTasksToSessions(inputs);
 
   // Write through cache
   await upsertPlanScheduleCache(

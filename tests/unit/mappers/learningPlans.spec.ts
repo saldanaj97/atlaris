@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeOnboardingValues,
   mapOnboardingToCreateInput,
-  weeklyHoursRangeLabel,
 } from '@/lib/mappers/learningPlans';
 import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
 
@@ -313,47 +312,5 @@ describe('mapOnboardingToCreateInput', () => {
 
     const result = mapOnboardingToCreateInput(values);
     expect(result.notes).toBe('Focus on async patterns');
-  });
-});
-
-describe('weeklyHoursRangeLabel', () => {
-  it('should return correct label for hours <= 2', () => {
-    expect(weeklyHoursRangeLabel(1)).toBe('1-2');
-    expect(weeklyHoursRangeLabel(2)).toBe('1-2');
-  });
-
-  it('should return correct label for hours 3-5', () => {
-    expect(weeklyHoursRangeLabel(3)).toBe('3-5');
-    expect(weeklyHoursRangeLabel(4)).toBe('3-5');
-    expect(weeklyHoursRangeLabel(5)).toBe('3-5');
-  });
-
-  it('should return correct label for hours 6-10', () => {
-    expect(weeklyHoursRangeLabel(6)).toBe('6-10');
-    expect(weeklyHoursRangeLabel(8)).toBe('6-10');
-    expect(weeklyHoursRangeLabel(10)).toBe('6-10');
-  });
-
-  it('should return correct label for hours 11-15', () => {
-    expect(weeklyHoursRangeLabel(11)).toBe('11-15');
-    expect(weeklyHoursRangeLabel(13)).toBe('11-15');
-    expect(weeklyHoursRangeLabel(15)).toBe('11-15');
-  });
-
-  it('should return correct label for hours 16-20', () => {
-    expect(weeklyHoursRangeLabel(16)).toBe('16-20');
-    expect(weeklyHoursRangeLabel(18)).toBe('16-20');
-    expect(weeklyHoursRangeLabel(20)).toBe('16-20');
-  });
-
-  it('should return correct label for hours > 20', () => {
-    expect(weeklyHoursRangeLabel(21)).toBe('20+');
-    expect(weeklyHoursRangeLabel(25)).toBe('20+');
-    expect(weeklyHoursRangeLabel(100)).toBe('20+');
-  });
-
-  it('should handle edge cases', () => {
-    expect(weeklyHoursRangeLabel(0)).toBe('1-2');
-    expect(weeklyHoursRangeLabel(0.5)).toBe('1-2');
   });
 });
