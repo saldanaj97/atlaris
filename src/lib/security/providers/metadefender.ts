@@ -212,13 +212,16 @@ export class MetaDefenderScanProvider implements ScanProvider {
     signal: AbortSignal
   ): Promise<ScanVerdict> {
     for (let attempt = 1; attempt <= this.maxPollAttempts; attempt++) {
-      const response = await fetch(`${this.baseUrl}/file/${dataId}`, {
-        method: 'GET',
-        headers: {
-          apikey: this.apiKey,
-        },
-        signal,
-      });
+      const response = await fetch(
+        `${this.baseUrl}/file/${encodeURIComponent(dataId)}`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: this.apiKey,
+          },
+          signal,
+        }
+      );
 
       if (!response.ok) {
         throw new Error(

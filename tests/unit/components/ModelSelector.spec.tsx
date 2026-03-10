@@ -1,25 +1,76 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import '../../mocks/unit/client-logger.unit';
 import '../../mocks/unit/sonner.unit';
 
-import { ModelSelector } from '@/components/settings/model-selector';
-import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
+import type {
+  AvailableModel,
+  SubscriptionTier,
+} from '@/lib/ai/types/model.types';
+import { createTestModel } from '../../fixtures/model.factory';
 
-// Get test data
-const FREE_MODELS = AVAILABLE_MODELS.filter((m) => m.tier === 'free');
+const FREE_MODELS: AvailableModel[] = [
+  createTestModel({
+    id: 'test-free-model-1',
+    name: 'Test Free Model 1',
+  }),
+  createTestModel({
+    id: 'test-free-model-2',
+    name: 'Test Free Model 2',
+    provider: 'Backup Provider',
+  }),
+];
 const FIRST_FREE_MODEL = FREE_MODELS[0];
+const PRO_MODELS: AvailableModel[] = [
+  ...FREE_MODELS,
+  createTestModel({
+    id: 'test-pro-model-1',
+    name: 'Test Pro Model 1',
+    tier: 'pro',
+    inputCostPerMillion: 3,
+    outputCostPerMillion: 15,
+  }),
+];
+const MODELS_BY_TIER: Record<SubscriptionTier, AvailableModel[]> = {
+  free: FREE_MODELS,
+  starter: FREE_MODELS,
+  pro: PRO_MODELS,
+};
+
+vi.mock('@/lib/ai/ai-models', () => ({
+  getModelsForTier: (tier: SubscriptionTier): AvailableModel[] =>
+    MODELS_BY_TIER[tier],
+}));
+
+let ModelSelector: typeof import('@/components/settings/model-selector').ModelSelector;
 
 // Mock scrollIntoView which is not available in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 describe('ModelSelector', () => {
+  beforeAll(async () => {
+    ({ ModelSelector } = await import('@/components/settings/model-selector'));
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterAll(() => {
+    vi.resetModules();
   });
 
   describe('Rendering', () => {
@@ -34,10 +85,7 @@ describe('ModelSelector', () => {
 
     it('renders with a current model selected', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
@@ -45,10 +93,7 @@ describe('ModelSelector', () => {
 
     it('displays model details card when a model is selected', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // Should show model details - use getAllBy for elements that may appear multiple times
@@ -81,30 +126,21 @@ describe('ModelSelector', () => {
   describe('Model Selection', () => {
     it('shows model description when selected', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
-      const model = AVAILABLE_MODELS.find(
-        (m) => m.id === 'google/gemini-2.0-flash-exp:free'
-      );
-      if (model) {
-        expect(screen.getByText(model.description)).toBeInTheDocument();
-      }
+      expect(
+        screen.getByText(FIRST_FREE_MODEL.description)
+      ).toBeInTheDocument();
     });
 
     it('displays correct model name', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // The model name appears multiple times (trigger and card)
-      const modelNames = screen.getAllByText('Gemini 2.0 Flash');
+      const modelNames = screen.getAllByText(FIRST_FREE_MODEL.name);
       expect(modelNames.length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -112,10 +148,7 @@ describe('ModelSelector', () => {
   describe('Save Button', () => {
     it('save button is disabled when no changes made', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       const saveButton = screen.getByRole('button', {
@@ -280,10 +313,7 @@ describe('ModelSelector', () => {
   describe('Tier Badge Display', () => {
     it('displays tier badge on selected model card', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // The selected model card should show a FREE badge
@@ -295,10 +325,7 @@ describe('ModelSelector', () => {
   describe('Model Details Display', () => {
     it('displays context window for selected model', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // Check for context window display (should show as "XK tokens")
@@ -311,10 +338,7 @@ describe('ModelSelector', () => {
 
     it('displays cost information for selected model', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
       // Free models should show "Free" for costs
@@ -324,14 +348,16 @@ describe('ModelSelector', () => {
 
     it('displays provider name for selected model', () => {
       render(
-        <ModelSelector
-          currentModel="google/gemini-2.0-flash-exp:free"
-          userTier="free"
-        />
+        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
       );
 
-      // Should show "by Google" for Gemini model
-      expect(screen.getByText(/google/i)).toBeInTheDocument();
+      // Should show provider name (e.g. "by OpenRouter")
+      expect(
+        screen.getByText(
+          (_content, element) =>
+            element?.textContent?.trim() === `by ${FIRST_FREE_MODEL.provider}`
+        )
+      ).toBeInTheDocument();
     });
   });
 });

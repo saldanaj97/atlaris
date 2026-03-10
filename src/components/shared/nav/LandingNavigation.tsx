@@ -31,7 +31,7 @@ export default function LandingNavigation({
       aria-label="Main navigation"
     >
       <div className="mx-auto max-w-7xl px-6 py-4">
-        <div className="flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl">
+        <div className="dark:bg-card/50 hover:border-primary/30 dark:hover:border-primary/50 flex items-center justify-between rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl dark:border-white/10">
           {/* Logo + Brand */}
           <BrandLogo />
 
@@ -48,7 +48,7 @@ export default function LandingNavigation({
             </Link>
             <Button
               asChild
-              className="from-primary to-accent shadow-primary/25 hover:shadow-primary/30 focus-visible:ring-ring h-auto rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2"
+              className="bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 focus-visible:ring-ring h-auto rounded-xl px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2"
             >
               <Link href="/plans/new" onClick={onCtaClick}>
                 Get Started
@@ -78,7 +78,7 @@ export default function LandingNavigation({
         <div
           id={mobileMenuId}
           className={cn(
-            'mt-2 overflow-hidden rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl transition-all duration-200 ease-in-out md:hidden',
+            'dark:bg-card/50 mt-2 overflow-hidden rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl transition-all duration-200 ease-in-out md:hidden dark:border-white/10',
             isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
           )}
         >
@@ -106,7 +106,7 @@ export default function LandingNavigation({
             </Link>
             <Button
               asChild
-              className="from-primary to-accent shadow-primary/25 hover:shadow-primary/30 w-full rounded-xl bg-gradient-to-r px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl"
+              className="bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 focus-visible:ring-ring w-full rounded-xl px-5 py-2.5 text-sm font-medium text-white shadow-lg transition hover:shadow-xl focus-visible:ring-2 focus-visible:ring-offset-2"
             >
               <Link
                 href="/plans/new"

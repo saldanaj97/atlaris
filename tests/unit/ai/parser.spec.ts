@@ -4,6 +4,7 @@ import {
   type ParserCallbacks,
 } from '@/lib/ai/parser';
 import { describe, expect, it, vi } from 'vitest';
+import { createDeferredPromise } from '../../helpers/deferred-promise';
 
 // Helper to create async iterable from string chunks
 async function* createStream(chunks: string[]): AsyncIterable<string> {
@@ -12,32 +13,13 @@ async function* createStream(chunks: string[]): AsyncIterable<string> {
   }
 }
 
-interface Deferred<T> {
-  promise: Promise<T>;
-  resolve: (value?: T) => void;
-}
-
-function createDeferred<T>(): Deferred<T> {
-  let resolveFn: ((value: T) => void) | undefined;
-  const promise = new Promise<T>((resolve) => {
-    resolveFn = resolve;
-  });
-
-  return {
-    promise,
-    resolve(value?: T) {
-      resolveFn?.(value as T);
-    },
-  };
-}
-
 function createControlledStream(chunks: string[]): {
   stream: AsyncIterable<string>;
   releaseChunk: (index: number) => void;
   waitUntilChunkYielded: (index: number) => Promise<void>;
 } {
-  const releaseSignals = chunks.map(() => createDeferred<void>());
-  const yieldedSignals = chunks.map(() => createDeferred<void>());
+  const releaseSignals = chunks.map(() => createDeferredPromise<void>());
+  const yieldedSignals = chunks.map(() => createDeferredPromise<void>());
 
   const stream: AsyncIterable<string> = {
     async *[Symbol.asyncIterator]() {
@@ -52,7 +34,7 @@ function createControlledStream(chunks: string[]): {
   return {
     stream,
     releaseChunk(index: number) {
-      releaseSignals[index].resolve();
+      releaseSignals[index].resolve(undefined);
     },
     waitUntilChunkYielded(index: number) {
       return yieldedSignals[index].promise;

@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { formatMinutes } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 import {
   CheckCircle2,
   ExternalLink,
@@ -23,15 +24,14 @@ import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule } from '@/lib/types/client';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
-import type { ElementType } from 'react';
+import type { Dispatch, ElementType, SetStateAction } from 'react';
+
+const EMPTY_TASKS: ClientModule['tasks'] = [];
 
 interface PlanModuleCardProps {
-  planId: string;
   module: ClientModule;
   statuses: Record<string, ProgressStatus>;
-  setStatuses: React.Dispatch<
-    React.SetStateAction<Record<string, ProgressStatus>>
-  >;
+  setStatuses: Dispatch<SetStateAction<Record<string, ProgressStatus>>>;
 }
 
 const RESOURCE_CONFIG: Record<
@@ -66,12 +66,11 @@ const RESOURCE_CONFIG: Record<
 };
 
 export function PlanModuleCard({
-  planId,
   module,
   statuses,
   setStatuses,
 }: PlanModuleCardProps) {
-  const moduleTasks = useMemo(() => module.tasks ?? [], [module.tasks]);
+  const moduleTasks = module.tasks ?? EMPTY_TASKS;
 
   // Handle status changes - React Compiler auto-memoizes this callback
   const handleStatusChange = (taskId: string, nextStatus: ProgressStatus) => {
@@ -148,21 +147,28 @@ export function PlanModuleCard({
           return (
             <div
               key={task.id}
-              className={`hover:border-primary/30 rounded-lg border p-4 transition-colors ${isCompleted ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20' : 'bg-card-background'}`}
+              className={cn(
+                'hover:border-primary/30 rounded-md border p-4 transition-colors',
+                isCompleted
+                  ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+                  : 'bg-card'
+              )}
             >
               <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
                   <CardTitle
-                    className={`flex items-center text-left ${
+                    className={cn(
+                      'flex items-center text-left',
                       isCompleted ? 'text-green-600' : 'text-muted-foreground'
-                    }`}
+                    )}
                   >
                     <CheckCircle2
-                      className={`mr-2 h-5 w-5 ${
+                      className={cn(
+                        'mr-2 h-5 w-5',
                         isCompleted
                           ? 'fill-white text-green-600'
                           : 'text-muted-foreground'
-                      }`}
+                      )}
                     />
                     {task.title}
                   </CardTitle>
@@ -226,7 +232,6 @@ export function PlanModuleCard({
               <div className="mt-4 flex justify-end px-4">
                 <CardAction>
                   <UpdateTaskStatusButton
-                    planId={planId}
                     taskId={task.id}
                     status={status}
                     onStatusChange={handleStatusChange}

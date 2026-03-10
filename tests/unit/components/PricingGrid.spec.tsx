@@ -1,13 +1,13 @@
-import type { TierConfig } from '@/components/billing/pricing-config';
-import { PricingGrid } from '@/components/billing/PricingGrid';
-import type { TierKey } from '@/components/billing/PricingTiers';
-import type { StripeTierData } from '@/components/billing/stripe-pricing';
+import type { TierConfig } from '@/app/pricing/components/pricing-config';
+import { PricingGrid } from '@/app/pricing/components/PricingGrid';
+import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 // Mock SubscribeButton
-vi.mock('@/components/billing/SubscribeButton', () => ({
+vi.mock('@/app/pricing/components/SubscribeButton', () => ({
   default: ({ priceId, label }: { priceId: string; label: string }) => (
     <button data-testid={`subscribe-${priceId}`}>{label}</button>
   ),
@@ -27,19 +27,15 @@ vi.mock('next/link', () => ({
 describe('PricingGrid', () => {
   const mockConfigs: TierConfig[] = [
     {
-      key: 'free' as TierKey,
-      priceId: null,
-      badgeVariant: 'secondary',
+      key: 'free',
     },
     {
-      key: 'starter' as TierKey,
+      key: 'starter',
       priceId: 'price_starter_monthly',
-      badgeVariant: 'default',
     },
     {
-      key: 'pro' as TierKey,
+      key: 'pro',
       priceId: 'price_pro_monthly',
-      badgeVariant: 'default',
     },
   ];
 
@@ -59,7 +55,7 @@ describe('PricingGrid', () => {
       />
     );
 
-    expect(screen.getByText('Free')).toBeInTheDocument();
+    expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Starter')).toBeInTheDocument();
     expect(screen.getByText('Pro')).toBeInTheDocument();
   });
@@ -164,7 +160,7 @@ describe('PricingGrid', () => {
     const grid = container.querySelector('.grid');
     expect(grid).toBeInTheDocument();
     expect(grid).toHaveClass('gap-6');
-    expect(grid).toHaveClass('md:grid-cols-3');
+    expect(grid).toHaveClass('lg:grid-cols-3');
   });
 
   it('should render correct number of cards', () => {
@@ -195,7 +191,7 @@ describe('PricingGrid', () => {
     );
 
     // Should still render tier names from defaults
-    expect(screen.getByText('Free')).toBeInTheDocument();
+    expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Starter')).toBeInTheDocument();
     expect(screen.getByText('Pro')).toBeInTheDocument();
   });
@@ -203,9 +199,8 @@ describe('PricingGrid', () => {
   it('should render single tier when only one config provided', () => {
     const singleConfig: TierConfig[] = [
       {
-        key: 'starter' as TierKey,
+        key: 'starter',
         priceId: 'price_starter_monthly',
-        badgeVariant: 'default',
       },
     ];
 
@@ -221,6 +216,19 @@ describe('PricingGrid', () => {
     expect(screen.getByText('Starter')).toBeInTheDocument();
     expect(screen.queryByText('Free')).not.toBeInTheDocument();
     expect(screen.queryByText('Pro')).not.toBeInTheDocument();
+  });
+
+  it('should disable the CTA when a paid tier is missing its priceId', () => {
+    render(
+      <PricingGrid
+        configs={[{ key: 'starter' }]}
+        intervalLabel="/month"
+        stripeData={mockStripeData}
+        subscribeLabel="Subscribe"
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Unavailable' })).toBeDisabled();
   });
 
   it('should pass custom subscribe label to buttons', () => {
@@ -261,9 +269,9 @@ describe('PricingGrid', () => {
     );
 
     // Check for tier badges
-    expect(screen.getByText('Current')).toBeInTheDocument(); // Free tier
-    expect(screen.getByText('Popular')).toBeInTheDocument(); // Starter tier
-    expect(screen.getByText('Best')).toBeInTheDocument(); // Pro tier
+    expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Most Popular')).toBeInTheDocument();
+    expect(screen.getByText('Best Value')).toBeInTheDocument();
   });
 
   it('should handle missing priceId for free tier', () => {
@@ -280,6 +288,27 @@ describe('PricingGrid', () => {
     expect(screen.queryByTestId('subscribe-null')).not.toBeInTheDocument();
     // But should have the Continue Free link
     expect(screen.getByText('Continue Free')).toBeInTheDocument();
+  });
+
+  it('should not render SubscribeButton when a paid tier priceId is empty', () => {
+    const configsWithEmptyPriceId: TierConfig[] = [
+      {
+        key: 'starter',
+        priceId: '',
+      },
+    ];
+
+    render(
+      <PricingGrid
+        configs={configsWithEmptyPriceId}
+        intervalLabel="/month"
+        stripeData={mockStripeData}
+        subscribeLabel="Subscribe"
+      />
+    );
+
+    expect(screen.queryByTestId('subscribe-')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Unavailable' })).toBeDisabled();
   });
 
   it('should fall back to default price when Stripe data is missing', () => {

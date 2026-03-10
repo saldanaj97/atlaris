@@ -22,10 +22,6 @@ export const GET = withErrorBoundary(
       userId: user.id,
     });
 
-    logger.info('Fetching user preferences');
-
-    logger.debug('User preferences retrieved successfully');
-
     const userTier = user.subscriptionTier;
     const availableModels = getModelsForTier(userTier);
 

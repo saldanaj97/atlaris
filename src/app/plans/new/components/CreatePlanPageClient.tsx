@@ -5,6 +5,7 @@ import {
   type CreateMethod,
 } from '@/app/plans/new/components/CreateMethodToggle';
 import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import React, { Suspense, useCallback, useId, useState } from 'react';
 
@@ -17,13 +18,11 @@ const PdfCreatePanel = React.lazy(() =>
 interface CreatePlanPageClientProps {
   initialMethod: CreateMethod;
   initialTopic?: string | null;
-  initialTopicResetVersion?: number;
 }
 
 export function CreatePlanPageClient({
   initialMethod,
   initialTopic,
-  initialTopicResetVersion = 0,
 }: CreatePlanPageClientProps): React.ReactElement {
   const router = useRouter();
   const panelIdBase = useId();
@@ -37,9 +36,7 @@ export function CreatePlanPageClient({
   const [prefillTopic, setPrefillTopic] = useState<string | null>(
     initialTopic ?? null
   );
-  const [topicResetVersion, setTopicResetVersion] = useState(
-    initialTopicResetVersion
-  );
+  const [topicResetVersion, setTopicResetVersion] = useState(0);
 
   const handleMethodChange = useCallback(
     (method: CreateMethod) => {
@@ -68,29 +65,20 @@ export function CreatePlanPageClient({
 
   return (
     <>
-      <div className="mb-8 text-center">
-        <div className="dark:border-border dark:bg-card/50 border-primary/30 mb-4 inline-flex items-center rounded-full border bg-white/50 px-4 py-2 shadow-lg backdrop-blur-sm">
-          <span className="from-primary to-accent mr-2 h-2 w-2 rounded-full bg-gradient-to-r" />
-          <span className="text-primary text-sm font-medium">
-            AI-Powered Learning Plans
-          </span>
-        </div>
-
-        <h1 className="text-foreground mb-3 text-4xl font-bold tracking-tight md:text-5xl">
+      <div className="mb-5 text-center sm:mb-6">
+        <h1 className="text-foreground mb-2 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
           What do you want to{' '}
-          <span className="from-primary via-accent to-primary bg-gradient-to-r bg-clip-text text-transparent">
-            learn?
-          </span>
+          <span className="gradient-text-symmetric">learn?</span>
         </h1>
 
-        <p className="text-muted-foreground mx-auto max-w-xl text-lg">
+        <p className="text-muted-foreground mx-auto max-w-md text-base sm:max-w-xl sm:text-lg">
           {currentMethod === 'manual'
             ? "Describe your learning goal. We'll create a personalized, time-blocked schedule that syncs to your calendar."
-            : "Upload a PDF document and we'll extract the key topics to create a personalized learning plan."}
+            : "Upload a PDF and we'll extract key topics to build a personalized, time-blocked schedule with linked resources that syncs to your calendar."}
         </p>
       </div>
 
-      <div className="mb-8">
+      <div className="mb-5 sm:mb-6">
         <CreateMethodToggle
           value={currentMethod}
           onChange={handleMethodChange}
@@ -108,7 +96,7 @@ export function CreatePlanPageClient({
         role="tabpanel"
         aria-labelledby={manualTabId}
         hidden={currentMethod !== 'manual'}
-        inert={currentMethod !== 'manual' ? true : undefined}
+        inert={currentMethod !== 'manual' || undefined}
       >
         <ManualCreatePanel
           initialTopic={prefillTopic}
@@ -122,12 +110,21 @@ export function CreatePlanPageClient({
         role="tabpanel"
         aria-labelledby={pdfTabId}
         hidden={currentMethod !== 'pdf'}
-        inert={currentMethod !== 'pdf' ? true : undefined}
+        inert={currentMethod !== 'pdf' || undefined}
       >
         <Suspense
           fallback={
-            <div className="text-muted-foreground text-center text-sm">
-              Loading PDF options...
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="mx-auto w-full max-w-2xl"
+            >
+              <span className="sr-only">Loading PDF options</span>
+              <Skeleton
+                className="h-88 w-full rounded-3xl"
+                aria-hidden="true"
+              />
             </div>
           }
         >

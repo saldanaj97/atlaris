@@ -68,7 +68,6 @@ export function createSubscriptionGetHandler(
         cancelAtPeriodEndPromise,
       ]);
 
-      // Build response
       const response = {
         tier: user.subscriptionTier,
         status: user.subscriptionStatus,
@@ -86,5 +85,4 @@ export function createSubscriptionGetHandler(
   );
 }
 
-// GET /api/v1/user/subscription
 export const GET = createSubscriptionGetHandler();

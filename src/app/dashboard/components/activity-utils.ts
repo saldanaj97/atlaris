@@ -92,9 +92,7 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
     }
   });
 
-  // Sort by timestamp (most recent first)
-  // Note: In a real app, you'd parse timestamps properly for accurate sorting
-  return activities.sort((_a, _b) => 0);
+  return activities;
 }
 
 /**
@@ -105,7 +103,7 @@ export function findActivePlan(
 ): PlanSummary | undefined {
   return summaries
     .filter((s) => s.completion < 1 - 1e-6)
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const aTime = a.plan.updatedAt ? new Date(a.plan.updatedAt).getTime() : 0;
       const bTime = b.plan.updatedAt ? new Date(b.plan.updatedAt).getTime() : 0;
       return bTime - aTime;

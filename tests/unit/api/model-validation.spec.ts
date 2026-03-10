@@ -1,10 +1,21 @@
-import {
-  AI_DEFAULT_MODEL,
-  getModelsForTier,
-  isValidModelId,
-} from '@/lib/ai/ai-models';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
+import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const stubProviderGetter = vi.fn((_modelId: string) => ({
+  generate: vi.fn(async () => {
+    throw new Error(
+      'Provider generate should not be called in model resolution tests'
+    );
+  }),
+}));
+
+const stubLogger = {
+  warn: vi.fn(),
+  info: vi.fn(),
+  error: vi.fn(),
+};
 
 /**
  * Unit tests for model validation logic used in API routes.
@@ -19,10 +30,10 @@ describe('Model Validation (API Layer)', () => {
   describe('Model override query param parsing', () => {
     it('extracts model ID from query param', () => {
       const url = new URL(
-        'http://localhost/api/v1/plans/stream?model=google/gemini-2.0-flash-exp:free'
+        'http://localhost/api/v1/plans/stream?model=openai/gpt-oss-20b:free'
       );
       const modelOverride = url.searchParams.get('model');
-      expect(modelOverride).toBe('google/gemini-2.0-flash-exp:free');
+      expect(modelOverride).toBe('openai/gpt-oss-20b:free');
     });
 
     it('returns null when model param is not present', () => {
@@ -33,10 +44,10 @@ describe('Model Validation (API Layer)', () => {
 
     it('handles URL-encoded model IDs', () => {
       const url = new URL(
-        'http://localhost/api/v1/plans/stream?model=google%2Fgemini-2.0-flash-exp%3Afree'
+        'http://localhost/api/v1/plans/stream?model=openai%2Fgpt-oss-20b%3Afree'
       );
       const modelOverride = url.searchParams.get('model');
-      expect(modelOverride).toBe('google/gemini-2.0-flash-exp:free');
+      expect(modelOverride).toBe('openai/gpt-oss-20b:free');
     });
 
     it('handles model param with other query params', () => {
@@ -50,12 +61,12 @@ describe('Model Validation (API Layer)', () => {
 
   describe('Model override validation logic (without tier-gating)', () => {
     it('uses override when valid model ID is provided', () => {
-      const modelOverride = 'google/gemini-2.0-flash-exp:free';
+      const modelOverride = 'openai/gpt-oss-20b:free';
       const model =
         modelOverride && isValidModelId(modelOverride)
           ? modelOverride
           : AI_DEFAULT_MODEL;
-      expect(model).toBe('google/gemini-2.0-flash-exp:free');
+      expect(model).toBe('openai/gpt-oss-20b:free');
     });
 
     it('falls back to DEFAULT_MODEL when invalid model ID is provided', () => {
@@ -87,64 +98,92 @@ describe('Model Validation (API Layer)', () => {
   });
 
   describe('Tier-gated model override validation (production logic)', () => {
-    /**
-     * Helper that mirrors the production tier-gating logic from route.ts
-     */
-    function resolveModel(
-      modelOverride: string | null,
-      userTier: 'free' | 'starter' | 'pro'
-    ): string {
-      const allowedModels = getModelsForTier(userTier);
-      return modelOverride &&
-        isValidModelId(modelOverride) &&
-        allowedModels.some((m) => m.id === modelOverride)
-        ? modelOverride
-        : AI_DEFAULT_MODEL;
-    }
-
     it('allows free-tier model for free user', () => {
-      const model = resolveModel('google/gemini-2.0-flash-exp:free', 'free');
-      expect(model).toBe('google/gemini-2.0-flash-exp:free');
+      const resolution = resolveModelForTier(
+        'free',
+        'openai/gpt-oss-20b:free',
+        stubProviderGetter,
+        stubLogger
+      );
+      expect(resolution.modelId).toBe('openai/gpt-oss-20b:free');
     });
 
     it('allows free-tier model for pro user', () => {
-      const model = resolveModel('google/gemini-2.0-flash-exp:free', 'pro');
-      expect(model).toBe('google/gemini-2.0-flash-exp:free');
+      const resolution = resolveModelForTier(
+        'pro',
+        'openai/gpt-oss-20b:free',
+        stubProviderGetter,
+        stubLogger
+      );
+      expect(resolution.modelId).toBe('openai/gpt-oss-20b:free');
     });
 
     it('allows pro-tier model for pro user', () => {
-      const model = resolveModel('anthropic/claude-sonnet-4.5', 'pro');
-      expect(model).toBe('anthropic/claude-sonnet-4.5');
+      const resolution = resolveModelForTier(
+        'pro',
+        'anthropic/claude-sonnet-4.5',
+        stubProviderGetter,
+        stubLogger
+      );
+      expect(resolution.modelId).toBe('anthropic/claude-sonnet-4.5');
     });
 
     it('BLOCKS pro-tier model for free user - falls back to default', () => {
       // This is the critical security test: free users cannot use expensive models
-      const model = resolveModel('anthropic/claude-sonnet-4.5', 'free');
-      expect(model).toBe(AI_DEFAULT_MODEL);
+      const resolution = resolveModelForTier(
+        'free',
+        'anthropic/claude-sonnet-4.5',
+        stubProviderGetter,
+        stubLogger
+      );
+      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
 
     it('BLOCKS pro-tier model for starter user - falls back to default', () => {
-      const model = resolveModel('openai/gpt-5.2', 'starter');
-      expect(model).toBe(AI_DEFAULT_MODEL);
+      const resolution = resolveModelForTier(
+        'starter',
+        'openai/gpt-5.2',
+        stubProviderGetter,
+        stubLogger
+      );
+      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
 
     it('falls back to default when invalid model ID is provided', () => {
-      const model = resolveModel('invalid/model-id', 'pro');
-      expect(model).toBe(AI_DEFAULT_MODEL);
+      const resolution = resolveModelForTier(
+        'pro',
+        'invalid/model-id',
+        stubProviderGetter,
+        stubLogger
+      );
+      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
 
     it('falls back to default when null is provided', () => {
-      const model = resolveModel(null, 'free');
-      expect(model).toBe(AI_DEFAULT_MODEL);
+      const resolution = resolveModelForTier(
+        'free',
+        null,
+        stubProviderGetter,
+        stubLogger
+      );
+      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
 
     it('falls back to default when empty string is provided', () => {
-      const model = resolveModel('', 'pro');
-      expect(model).toBe(AI_DEFAULT_MODEL);
+      const resolution = resolveModelForTier(
+        'pro',
+        '',
+        stubProviderGetter,
+        stubLogger
+      );
+      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
   });
 
   describe('Preferences schema validation', () => {
+    // Keep this legacy Gemini ID here on purpose: persisted preference values still
+    // come from the DB enum, which currently includes it even though override tests
+    // use the current free-tier model ID.
     it('validates valid model ID', () => {
       const result = updatePreferencesSchema.safeParse({
         preferredAiModel: 'google/gemini-2.0-flash-exp:free',
@@ -214,7 +253,7 @@ describe('Model Validation (API Layer)', () => {
   describe('isValidModelId integration', () => {
     it('is imported and works correctly', () => {
       expect(typeof isValidModelId).toBe('function');
-      expect(isValidModelId('google/gemini-2.0-flash-exp:free')).toBe(true);
+      expect(isValidModelId('openai/gpt-oss-20b:free')).toBe(true);
       expect(isValidModelId('fake-model')).toBe(false);
     });
 

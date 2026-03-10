@@ -1,3 +1,8 @@
+import {
+  buildPlanStartEvent,
+  executeGenerationStream,
+  safeMarkPlanFailed,
+} from '@/app/api/v1/plans/stream/helpers';
 import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import type {
@@ -24,11 +29,6 @@ import { logger } from '@/lib/logging/logger';
 import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
 import { ZodError } from 'zod';
-import {
-  buildPlanStartEvent,
-  executeGenerationStream,
-  safeMarkPlanFailed,
-} from '@/app/api/v1/plans/stream/helpers';
 
 /** Classification used when an unstructured exception occurs in the generation catch block. */
 export const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
@@ -213,9 +213,9 @@ export function createStreamHandler(deps?: {
               }
             };
 
-            streamContext.onCancel(() => {
-              void closeStreamDb();
-            });
+            // DB cleanup is handled in the finally block below, NOT in
+            // onCancel, so the client stays alive while generation completes
+            // even after the browser navigates away or refreshes.
 
             try {
               const planStartEvent = buildPlanStartEvent({
@@ -231,14 +231,14 @@ export function createStreamHandler(deps?: {
                 userId: dbUser.id,
                 dbClient: streamDb,
                 emit,
-                runGeneration: async (signal) => {
+                runGeneration: async () => {
                   const result = await runGen(
                     {
                       planId: plan.id,
                       userId: dbUser.id,
                       input: generationInput,
                     },
-                    { provider, signal, dbClient: streamDb }
+                    { provider, dbClient: streamDb }
                   );
                   return result;
                 },

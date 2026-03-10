@@ -1,33 +1,12 @@
 // IMPORTANT: Mock imports must come first, before any component or module
 // imports that consume the mocked package (sonner in this case).
 import '../../mocks/unit/sonner.unit';
-import SubscribeButton from '@/components/billing/SubscribeButton';
+import SubscribeButton from '@/app/pricing/components/SubscribeButton';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-interface DeferredPromise<T> {
-  promise: Promise<T>;
-  resolve: (value: T) => void;
-  reject: (reason?: unknown) => void;
-}
-
-function createDeferredPromise<T>(): DeferredPromise<T> {
-  let resolve: ((value: T) => void) | undefined;
-  let reject: ((reason?: unknown) => void) | undefined;
-
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-
-  if (!resolve || !reject) {
-    throw new Error('Failed to create deferred promise');
-  }
-
-  return { promise, resolve, reject };
-}
+import { createDeferredPromise } from '../../helpers/deferred-promise';
 
 describe('SubscribeButton', () => {
   const mockLocation = { href: '' };
@@ -80,17 +59,20 @@ describe('SubscribeButton', () => {
     await user.click(button);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/stripe/create-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId: 'price_123',
-          successUrl: undefined,
-          cancelUrl: undefined,
-        }),
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/stripe/create-checkout',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            priceId: 'price_123',
+            successUrl: undefined,
+            cancelUrl: undefined,
+          }),
+        })
+      );
     });
   });
 
@@ -115,17 +97,20 @@ describe('SubscribeButton', () => {
     await user.click(button);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/stripe/create-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId: 'price_123',
-          successUrl: '/success',
-          cancelUrl: '/cancel',
-        }),
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/stripe/create-checkout',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            priceId: 'price_123',
+            successUrl: '/success',
+            cancelUrl: '/cancel',
+          }),
+        })
+      );
     });
   });
 

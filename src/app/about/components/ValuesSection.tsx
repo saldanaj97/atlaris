@@ -34,7 +34,7 @@ export function ValuesSection(): JSX.Element {
                 aria-hidden="true"
               />
 
-              <div className="gradient-brand-interactive mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg">
+              <div className="bg-primary mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg">
                 {value.icon}
               </div>
               <h3 className="text-foreground marketing-h3 mb-3">

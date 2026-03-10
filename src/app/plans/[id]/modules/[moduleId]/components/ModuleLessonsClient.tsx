@@ -13,7 +13,6 @@ import type { ProgressStatus } from '@/lib/types/db';
 
 interface ModuleLessonsClientProps {
   planId: string;
-  moduleId: string;
   lessons: TaskWithRelations[];
   nextModuleId: string | null;
   previousModulesComplete: boolean;
@@ -47,7 +46,6 @@ function isLessonLocked(
 
 export function ModuleLessonsClient({
   planId,
-  moduleId,
   lessons,
   nextModuleId,
   previousModulesComplete,
@@ -127,8 +125,6 @@ export function ModuleLessonsClient({
                 <LessonAccordionItem
                   key={lesson.id}
                   lesson={lesson}
-                  planId={planId}
-                  moduleId={moduleId}
                   status={statuses[lesson.id] ?? 'not_started'}
                   onStatusChange={onStatusChange}
                   isLocked={locked}

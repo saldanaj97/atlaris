@@ -20,6 +20,21 @@ import type {
 } from './types';
 
 /**
+ * Builds a task-status lookup from the modules attached to a plan.
+ * @param modules Array of `ClientModule` objects whose tasks should be flattened into the lookup.
+ * @returns A `Record` mapping each task id to its `ProgressStatus`, built from `mod.tasks ?? []`.
+ */
+export function getStatusesFromModules(
+  modules: ClientModule[]
+): Record<string, ProgressStatus> {
+  return Object.fromEntries(
+    modules.flatMap((mod) =>
+      (mod.tasks ?? []).map((task) => [task.id, task.status] as const)
+    )
+  );
+}
+
+/**
  * Computes stats for PlanOverviewHeader from plan and task statuses.
  * Pure function - can be called on server or client.
  */

@@ -24,6 +24,7 @@ export default [
       '.worktrees/**',
       'out/**',
       'build/**',
+      'coverage/**',
       'scripts/**',
       'next-env.d.ts',
       'eslint.config.*',

@@ -59,7 +59,7 @@ export function ScheduleWeekList({ schedule }: ScheduleWeekListProps) {
                   {day.sessions.map((session) => (
                     <div
                       key={session.taskId}
-                      className="border-border bg-card-background flex items-start justify-between rounded border p-3"
+                      className="border-border bg-card flex items-start justify-between rounded border p-3"
                     >
                       <div className="flex-1">
                         <p className="text-foreground font-medium">

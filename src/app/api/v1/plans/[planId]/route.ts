@@ -1,8 +1,8 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import { ConflictError, NotFoundError } from '@/lib/api/errors';
 import { requirePlanIdFromRequest } from '@/lib/api/plans/route-context';
 import { json } from '@/lib/api/response';
-import { getLearningPlanDetail } from '@/lib/db/queries/plans';
+import { deletePlan, getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { logger } from '@/lib/logging/logger';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
@@ -11,7 +11,9 @@ import { mapDetailToClient } from '@/lib/mappers/detailToClient';
  *  - Returns the plan with ordered modules/tasks and user-specific progress for the authenticated user.
  *
  * DELETE /api/v1/plans/:planId
- *  - Hard deletion deferred until product requirements are finalised.
+ *  - Permanently deletes the plan and all associated data (modules, tasks, progress, schedules, etc.).
+ *  - Ownership enforced via RLS + explicit WHERE clause.
+ *  - Blocks deletion of plans currently in 'generating' status.
  *
  * PUT intentionally deferred (no direct user edits in MVP; regeneration flow supersedes manual editing).
  */
@@ -22,20 +24,7 @@ export const GET = withErrorBoundary(
 
     logger.info({ planId, userId: user.id }, 'Fetching learning plan detail');
 
-    let detail: Awaited<ReturnType<typeof getLearningPlanDetail>>;
-    try {
-      detail = await getLearningPlanDetail(planId, user.id);
-    } catch (error) {
-      logger.error(
-        {
-          planId,
-          userId: user.id,
-          errorName: error instanceof Error ? error.name : 'UnknownError',
-        },
-        'Failed fetching learning plan detail'
-      );
-      throw error;
-    }
+    const detail = await getLearningPlanDetail(planId, user.id);
 
     if (!detail) {
       logger.error({ planId, userId: user.id }, 'Learning plan not found');
@@ -58,10 +47,29 @@ export const GET = withErrorBoundary(
 );
 
 export const DELETE = withErrorBoundary(
-  withAuthAndRateLimit('mutation', async () => {
-    logger.error('Plan deletion attempted before implementation is available');
-    throw new ValidationError('Plan deletion is not yet implemented.');
+  withAuthAndRateLimit('mutation', async ({ req, user }) => {
+    const planId = requirePlanIdFromRequest(req, 'last');
+
+    logger.info({ planId, userId: user.id }, 'Deleting learning plan');
+
+    const result = await deletePlan(planId, user.id);
+
+    if (!result.success) {
+      if (result.reason === 'not_found') {
+        throw new NotFoundError('Learning plan not found.');
+      }
+      if (result.reason === 'currently_generating') {
+        throw new ConflictError(
+          'Cannot delete a plan that is currently generating.'
+        );
+      }
+      throw new ConflictError(
+        'Cannot delete learning plan in its current state.'
+      );
+    }
+
+    logger.info({ planId, userId: user.id }, 'Learning plan deleted');
+
+    return json({ success: true });
   })
 );
-
-// NOTE: PUT omitted by design (see comment above)

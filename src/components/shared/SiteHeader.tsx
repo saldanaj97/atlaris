@@ -5,6 +5,7 @@ import {
   unauthenticatedNavItems,
 } from '@/lib/navigation';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+import { logger } from '@/lib/logging/logger';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
 
@@ -42,11 +43,15 @@ export default async function SiteHeader() {
   if (authUserId) {
     try {
       const result = await withServerComponentContext(
-        async (user) => user.subscriptionTier
+        (user) => user.subscriptionTier
       );
       tier = result ?? undefined;
-    } catch {
-      // Silently fail - tier badge is non-critical
+    } catch (err) {
+      // Non-critical: tier badge is hidden gracefully on failure
+      logger.warn(
+        { err },
+        'Failed to fetch subscription tier; tier badge will be hidden'
+      );
     }
   }
 

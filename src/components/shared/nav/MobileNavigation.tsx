@@ -56,21 +56,26 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
           aria-label="Mobile navigation"
         >
           {/* Create New Plan - Primary Action */}
-          <Link
-            href="/plans/new"
-            onClick={() => {
-              trackEvent({
-                event: 'cta_click',
-                label: 'Create New Plan',
-                location: 'nav',
-              });
-              setOpen(false);
-            }}
-            className="from-primary to-accent hover:from-primary/90 hover:to-accent/90 mb-2 flex items-center justify-center gap-2 rounded-xl bg-linear-to-r px-4 py-3 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
+          <Button
+            asChild
+            variant="default"
+            className="mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg"
           >
-            <Plus className="h-4 w-4" />
-            Create New Plan
-          </Link>
+            <Link
+              href="/plans/new"
+              onClick={() => {
+                trackEvent({
+                  event: 'cta_click',
+                  label: 'Create New Plan',
+                  location: 'nav',
+                });
+                setOpen(false);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Create New Plan
+            </Link>
+          </Button>
 
           {navItems.map((item) => {
             const isActive =
@@ -86,7 +91,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
                   aria-current={isActive ? 'page' : undefined}
                   className={`rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                     isActive
-                      ? 'from-primary to-accent bg-linear-to-r text-white shadow-md'
+                      ? 'bg-primary text-white shadow-md'
                       : 'text-muted-foreground hover:text-primary dark:hover:text-primary hover:bg-white/60 dark:hover:bg-white/10'
                   }`}
                 >

@@ -13,7 +13,6 @@ import { z } from 'zod';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Minimal shape required to safely log and handle dev-mode webhook events.
 const devWebhookEventSchema = z.object({ type: z.string() });
 
 // Startup validation: STRIPE_WEBHOOK_DEV_MODE must only be enabled in development/test
@@ -51,8 +50,11 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
       throw error;
     }
 
-    // Basic body size guard (avoid excessive payloads)
-    const MAX_BYTES = 256 * 1024; // 256KB
+    // MAX_BYTES is an explicit webhook request payload limit enforced during
+    // content-length preflight and again after `req.text()` parsing below in
+    // this route. It is a deliberate DoS/rate-limiting boundary for Stripe
+    // webhook handling and should not be removed without a security review.
+    const MAX_BYTES = 256 * 1024;
     const contentLengthHeader = req.headers.get('content-length');
     if (contentLengthHeader !== null) {
       const contentLength = Number(contentLengthHeader);
@@ -84,7 +86,6 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
       return respond('payload too large', { status: 413 });
     }
 
-    // If a webhook secret is configured, verify the signature using our Stripe client
     let event: Stripe.Event;
     if (webhookSecret) {
       if (!signature) {
@@ -177,7 +178,6 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
     try {
       switch (event.type) {
         case 'checkout.session.completed': {
-          // Subscription is automatically handled by subscription.created event
           logger.info('Stripe checkout.session.completed webhook processed');
           break;
         }
@@ -217,7 +217,6 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
               ? subscription.customer
               : subscription.customer.id;
 
-          // Downgrade user to free tier
           const updatedUsers = await db
             .update(users)
             .set({
@@ -253,7 +252,6 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
               : invoice.customer?.id;
 
           if (customerId) {
-            // Mark subscription as past_due
             const updatedUsers = await db
               .update(users)
               .set({

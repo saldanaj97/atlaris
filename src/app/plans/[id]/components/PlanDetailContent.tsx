@@ -1,3 +1,6 @@
+import type { JSX } from 'react';
+
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { logger } from '@/lib/logging/logger';
 import { mapDetailToClient } from '@/lib/mappers/detailToClient';
@@ -20,7 +23,6 @@ interface PlanDetailContentProps {
 export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
   const planResult = await getCachedPlanForPage(planId);
 
-  // Handle plan access errors with explicit error codes
   if (!isPlanSuccess(planResult)) {
     const error = getPlanError(planResult);
     const code = error.code;
@@ -30,33 +32,28 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
 
     switch (code) {
       case 'UNAUTHORIZED':
-        // User needs to authenticate - redirect to sign-in
         return redirect(
           `/sign-in?redirect_url=/plans/${encodeURIComponent(planId)}`
         );
 
       case 'NOT_FOUND':
-        // Plan doesn't exist or user doesn't have access
         return (
           <PlanDetailPageError message="This plan does not exist or you do not have access to it." />
         );
 
       case 'FORBIDDEN':
-        // User is authenticated but explicitly not allowed
         return (
           <PlanDetailPageError message="You do not have permission to view this plan." />
         );
 
       case 'INTERNAL_ERROR':
       default:
-        // Unexpected error - show generic message
         return (
           <PlanDetailPageError message="Something went wrong. Please try again later." />
         );
     }
   }
 
-  // TypeScript now knows planResult.success is true, so data exists
   const planData = planResult.data;
   const formattedPlanDetails = mapDetailToClient(planData);
   if (!formattedPlanDetails) {
@@ -78,53 +75,41 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
  * Skeleton for the plan detail content.
  * Shown while the async component is loading.
  */
-export function PlanDetailContentSkeleton() {
+export function PlanDetailContentSkeleton(): JSX.Element {
   return (
     <>
-      {/* PlanOverviewHeader skeleton */}
-      <article className="lg:col-span-2">
-        {/* Cover Image Area skeleton */}
-        <div className="from-primary/20 via-accent/20 relative mb-6 overflow-hidden rounded-3xl bg-linear-to-br to-rose-500/20 p-8 shadow-2xl">
-          <div className="relative z-10 flex min-h-[280px] flex-col justify-between">
-            {/* Top row: tags */}
-            <div className="flex items-start justify-between">
-              <div className="flex flex-wrap gap-2">
-                <Skeleton className="h-6 w-20 rounded-full bg-white/30" />
-                <Skeleton className="h-6 w-16 rounded-full bg-white/30" />
-                <Skeleton className="h-6 w-24 rounded-full bg-white/30" />
-              </div>
-            </div>
-
-            {/* Bottom: title and subtitle */}
-            <div>
-              <Skeleton className="mb-2 h-4 w-28 bg-white/30" />
-              <Skeleton className="mb-1 h-12 w-full max-w-lg bg-white/30 md:h-14" />
-              <Skeleton className="h-6 w-64 bg-white/30" />
-            </div>
-          </div>
-
-          {/* Progress bar overlay */}
-          <div className="absolute right-0 bottom-0 left-0 h-1 bg-black/20">
-            <Skeleton className="h-full w-1/3 bg-white/50" />
-          </div>
+      <header className="mb-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-8 w-28" />
         </div>
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-full max-w-2xl" />
+          <Skeleton className="h-4 w-full max-w-md" />
+        </div>
+      </header>
 
-        {/* Stats Grid skeleton */}
+      <section className="mb-10 space-y-4">
+        <Skeleton className="h-6 w-36" />
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-6 w-28 rounded-full" />
+        </div>
+        <Skeleton className="h-4 w-48" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((statSkeletonId) => (
             <StatCardSkeleton key={`plan-stat-skeleton-${statSkeletonId}`} />
           ))}
         </div>
-      </article>
+      </section>
 
-      {/* PlanTimeline skeleton */}
-      <section className="mt-8">
+      <section>
         <div className="mb-6 flex items-center justify-between">
           <Skeleton className="h-8 w-40" />
           <Skeleton className="h-5 w-24" />
         </div>
 
-        {/* Module accordion items skeleton */}
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((moduleSkeletonId) => (
             <ModuleAccordionSkeleton
@@ -139,38 +124,40 @@ export function PlanDetailContentSkeleton() {
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-stone-100 bg-white p-4 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-      <div className="mb-3 flex items-center gap-2">
-        <Skeleton className="h-5 w-5" />
-        <Skeleton className="h-3 w-16" />
-      </div>
-      <Skeleton className="mb-1 h-8 w-20" />
-      <Skeleton className="h-3 w-24" />
-    </div>
+    <Card className="rounded-2xl shadow-sm">
+      <CardContent className="p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <Skeleton className="h-5 w-5" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+        <Skeleton className="mb-1 h-8 w-20" />
+        <Skeleton className="h-3 w-24" />
+      </CardContent>
+    </Card>
   );
 }
 
 function ModuleAccordionSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/40 bg-white/30 p-5 shadow-lg backdrop-blur-xl dark:border-stone-800/50 dark:bg-stone-900/30">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Module number badge skeleton */}
-          <Skeleton className="h-10 w-10 rounded-full" />
-          <div className="space-y-1.5">
-            <Skeleton className="h-5 w-48" />
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-3.5 w-16" />
-              <Skeleton className="h-3.5 w-20" />
+    <Card className="rounded-2xl shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-5 w-48" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-3.5 w-16" />
+                <Skeleton className="h-3.5 w-20" />
+              </div>
             </div>
           </div>
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-5 w-5" />
+          </div>
         </div>
-        {/* Progress and expand icon */}
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-5 w-5" />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { format } from 'date-fns';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { onboardingFormSchema } from '@/lib/validation/learningPlans';
+
+const FIXED_NOW = new Date('2026-03-09T12:00:00.000Z');
 
 function baseInput() {
   return {
@@ -13,10 +16,36 @@ function baseInput() {
 }
 
 function yyyyMmDd(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return format(date, 'yyyy-MM-dd');
+}
+
+function expectFieldError(
+  result: ReturnType<typeof onboardingFormSchema.safeParse>,
+  field: 'deadlineDate' | 'startDate',
+  messageFragment: string
+) {
+  expect(result.success).toBe(false);
+
+  if (result.success) {
+    throw new Error('Expected onboardingFormSchema.safeParse to fail');
+  }
+
+  const errors = result.error.flatten().fieldErrors[field] ?? [];
+  expect(errors.some((message) => message?.includes(messageFragment))).toBe(
+    true
+  );
 }
 
 describe('onboardingFormSchema date validations', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(FIXED_NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('accepts deadline today', () => {
     const today = new Date();
     const input = {
@@ -29,17 +58,13 @@ describe('onboardingFormSchema date validations', () => {
 
   it('rejects past deadline', () => {
     const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    yesterday.setDate(yesterday.getDate() - 1);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(yesterday),
     };
     const result = onboardingFormSchema.safeParse(input);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors.deadlineDate || [];
-      expect(errors.some((m) => m?.includes('past'))).toBe(true);
-    }
+    expectFieldError(result, 'deadlineDate', 'past');
   });
 
   it('allows empty start date but enforces when provided', () => {
@@ -55,62 +80,55 @@ describe('onboardingFormSchema date validations', () => {
   it('rejects start date in the past when provided', () => {
     const today = new Date();
     const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    yesterday.setDate(yesterday.getDate() - 1);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(today),
       startDate: yyyyMmDd(yesterday),
     };
     const result = onboardingFormSchema.safeParse(input);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors.startDate || [];
-      expect(errors.some((m) => m?.includes('past'))).toBe(true);
-    }
+    expectFieldError(result, 'startDate', 'past');
   });
 
   it('enforces startDate <= deadlineDate', () => {
     const today = new Date();
     const tomorrow = new Date();
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(today),
       startDate: yyyyMmDd(tomorrow),
     };
     const result = onboardingFormSchema.safeParse(input);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors.startDate || [];
-      expect(errors.some((m) => m?.includes('on or before'))).toBe(true);
-    }
+    expectFieldError(result, 'startDate', 'on or before');
   });
 
   it('requires YYYY-MM-DD format', () => {
     const input = {
       ...baseInput(),
       deadlineDate: '2025-1-1', // invalid format
-    } as any;
+    };
     const result = onboardingFormSchema.safeParse(input);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors.deadlineDate || [];
-      expect(errors.some((m) => m?.includes('YYYY-MM-DD'))).toBe(true);
-    }
+    expectFieldError(result, 'deadlineDate', 'YYYY-MM-DD');
   });
 
   it('caps deadlines to within 1 year', () => {
     const farFuture = new Date();
-    farFuture.setUTCFullYear(farFuture.getUTCFullYear() + 2);
+    farFuture.setFullYear(farFuture.getFullYear() + 2);
     const input = {
       ...baseInput(),
       deadlineDate: yyyyMmDd(farFuture),
     };
     const result = onboardingFormSchema.safeParse(input);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const errors = result.error.flatten().fieldErrors.deadlineDate || [];
-      expect(errors.some((m) => m?.includes('1 year'))).toBe(true);
-    }
+    expectFieldError(result, 'deadlineDate', '1 year');
+  });
+
+  it('preserves legacy rollover behavior for impossible calendar dates', () => {
+    const input = {
+      ...baseInput(),
+      deadlineDate: '2026-02-30',
+    };
+    const result = onboardingFormSchema.safeParse(input);
+    expectFieldError(result, 'deadlineDate', 'past');
   });
 });

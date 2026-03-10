@@ -1,10 +1,10 @@
 import { getDb } from '@/lib/db/runtime';
 import {
+  googleCalendarSyncState,
   learningPlans,
   modules,
-  tasks,
   taskCalendarEvents,
-  googleCalendarSyncState,
+  tasks,
 } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
@@ -15,6 +15,12 @@ import {
   ValidationError,
 } from '@/lib/api/errors';
 
+import { logger } from '@/lib/logging/logger';
+
+import {
+  GOOGLE_CALENDAR_MAX_RETRIES,
+  GOOGLE_CALENDAR_RETRY_BASE_MS,
+} from './constants';
 import { generateSchedule, mapTaskToCalendarEvent } from './mapper';
 import type { GoogleCalendarClient } from './types';
 
@@ -33,8 +39,6 @@ export async function syncPlanToGoogleCalendar(
   planId: string,
   calendarClient: GoogleCalendarClient
 ): Promise<number> {
-  const calendar = calendarClient;
-
   // Fetch plan data (RLS-enforced via getDb)
   const db = getDb();
   const [plan] = await db
@@ -76,7 +80,7 @@ export async function syncPlanToGoogleCalendar(
   }
 
   // Stable sort tasks by: module order, then task.order, then createdAt, then id
-  const sortedTasks = [...allTasks].sort((a, b) => {
+  const sortedTasks = allTasks.toSorted((a, b) => {
     const aModuleIdx = moduleIndex.get(a.moduleId) ?? Number.POSITIVE_INFINITY;
     const bModuleIdx = moduleIndex.get(b.moduleId) ?? Number.POSITIVE_INFINITY;
     if (aModuleIdx !== bModuleIdx) return aModuleIdx - bModuleIdx;
@@ -157,10 +161,10 @@ export async function syncPlanToGoogleCalendar(
 
       // Create event in Google Calendar with retry logic
       let event;
-      let retries = 3;
+      let retries = GOOGLE_CALENDAR_MAX_RETRIES;
       while (retries > 0) {
         try {
-          const response = await calendar.events.insert({
+          const response = await calendarClient.events.insert({
             calendarId: 'primary',
             requestBody: eventData,
           });
@@ -171,7 +175,11 @@ export async function syncPlanToGoogleCalendar(
           if (retries === 0) throw apiError;
           // Wait before retry (exponential backoff)
           await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * (4 - retries))
+            setTimeout(
+              resolve,
+              GOOGLE_CALENDAR_RETRY_BASE_MS *
+                (GOOGLE_CALENDAR_MAX_RETRIES + 1 - retries)
+            )
           );
         }
       }
@@ -193,12 +201,19 @@ export async function syncPlanToGoogleCalendar(
       } catch (dbError) {
         // DB insert failed, delete the created event to avoid orphans
         try {
-          await calendar.events.delete({
+          await calendarClient.events.delete({
             calendarId: 'primary',
             eventId: event.id,
           });
-        } catch {
-          // Ignore deletion errors
+        } catch (cleanupError) {
+          logger.warn(
+            {
+              err: cleanupError,
+              calendarEventId: event.id,
+              taskId: task.id,
+            },
+            'Failed to delete orphaned calendar event after DB insert failure'
+          );
         }
         throw dbError;
       }

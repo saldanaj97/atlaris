@@ -16,16 +16,29 @@ import { useEffect } from 'react';
 // Maximum retry attempts (shared constant used by both client and server)
 const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;
 
+function getStatusBadgeVariant(
+  failed: boolean,
+  processing: boolean,
+  retrying: boolean
+): 'destructive' | 'default' | 'secondary' {
+  if (failed && !retrying) return 'destructive';
+  if (processing) return 'default';
+  return 'secondary';
+}
+
+function getStatusBadgeLabel(status: string, retrying: boolean): string {
+  if (retrying) return 'retrying';
+  return status;
+}
+
 interface PlanPendingStateProps {
   plan: ClientPlanDetail;
 }
 
 export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const router = useRouter();
-  const { status, attempts, error, pollingError, isPolling } = usePlanStatus(
-    plan.id,
-    plan.status ?? 'pending'
-  );
+  const { status, attempts, error, pollingError, isPolling, revalidate } =
+    usePlanStatus(plan.id, plan.status ?? 'pending');
 
   const {
     status: retryStatus,
@@ -56,18 +69,9 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   // Check if user has exhausted all retry attempts
   const hasExhaustedRetries = attempts >= MAX_RETRY_ATTEMPTS;
 
-  const getStatusBadgeVariant = (
-    failed: boolean,
-    processing: boolean
-  ): 'destructive' | 'default' | 'secondary' => {
-    if (failed) return 'destructive';
-    if (processing) return 'default';
-    return 'secondary';
-  };
-
   return (
     <div className="space-y-6">
-      <Card className="p-8">
+      <Card className="p-6">
         <CardHeader className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -75,24 +79,28 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                 {formatSkillLevel(plan.skillLevel)}
               </Badge>
               <Badge
-                variant={getStatusBadgeVariant(isFailed, isProcessing)}
+                variant={getStatusBadgeVariant(
+                  isFailed,
+                  isProcessing,
+                  isRetrying
+                )}
                 className="ml-2 uppercase"
               >
-                {status}
+                {getStatusBadgeLabel(status, isRetrying)}
               </Badge>
             </div>
             {isPolling && (
               <Loader2 className="text-primary h-6 w-6 animate-spin" />
             )}
           </div>
-          <CardTitle className="text-3xl font-bold">{plan.topic}</CardTitle>
+          <CardTitle className="text-lg">Generation Status</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-6" aria-live="polite">
           {isFailed && displayError ? (
             <div className="space-y-4">
               <div className="bg-destructive/10 border-destructive/20 flex items-start gap-3 rounded-lg border p-4">
-                <AlertCircle className="text-destructive mt-0.5 h-5 w-5 flex-shrink-0" />
+                <AlertCircle className="text-destructive mt-0.5 h-5 w-5 shrink-0" />
                 <div className="space-y-1">
                   <p className="text-destructive font-semibold">
                     Generation Failed
@@ -118,7 +126,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                   {isRetrying ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Retrying...
+                      Retrying…
                     </>
                   ) : (
                     <>
@@ -132,7 +140,10 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                 <div className="bg-muted rounded-lg p-4 text-center">
                   <p className="text-muted-foreground text-sm">
                     Maximum retry attempts reached. Please{' '}
-                    <Link href="/plans/new" className="text-primary underline">
+                    <Link
+                      href="/plans/new"
+                      className="text-primary focus-visible:ring-ring rounded-sm underline focus-visible:ring-2 focus-visible:outline-none"
+                    >
                       create a new plan
                     </Link>{' '}
                     to try again.
@@ -143,7 +154,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
           ) : hasPollingError && displayError ? (
             <div className="space-y-4">
               <div className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
-                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
                 <div className="space-y-1">
                   <p className="font-semibold text-amber-600 dark:text-amber-400">
                     Connection Issue
@@ -155,7 +166,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
               </div>
 
               <Button
-                onClick={() => window.location.reload()}
+                onClick={() => void revalidate()}
                 className="w-full"
                 variant="outline"
               >
@@ -165,7 +176,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
             </div>
           ) : isProcessing ? (
             <div className="bg-primary/5 flex items-start gap-3 rounded-lg p-4">
-              <Loader2 className="text-primary mt-0.5 h-5 w-5 flex-shrink-0 animate-spin" />
+              <Loader2 className="text-primary mt-0.5 h-5 w-5 shrink-0 animate-spin" />
               <div className="space-y-1">
                 <p className="font-semibold">Generating Your Learning Plan</p>
                 <p className="text-muted-foreground text-sm">
@@ -181,7 +192,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
             </div>
           ) : isPending ? (
             <div className="bg-muted/50 flex items-start gap-3 rounded-lg p-4">
-              <Loader2 className="text-muted-foreground mt-0.5 h-5 w-5 flex-shrink-0 animate-spin" />
+              <Loader2 className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0 animate-spin" />
               <div className="space-y-1">
                 <p className="font-semibold">Queued for Generation</p>
                 <p className="text-muted-foreground text-sm">
@@ -190,11 +201,21 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                 </p>
               </div>
             </div>
+          ) : status === 'ready' ? (
+            <div className="bg-primary/5 flex items-start gap-3 rounded-lg p-4">
+              <Loader2 className="text-primary mt-0.5 h-5 w-5 shrink-0 animate-spin" />
+              <div className="space-y-1">
+                <p className="font-semibold">Loading…</p>
+                <p className="text-muted-foreground text-sm">
+                  Your plan is ready. Preparing the view.
+                </p>
+              </div>
+            </div>
           ) : null}
 
           <div className="border-t pt-4">
             <h3 className="mb-2 font-semibold">Plan Details</h3>
-            <div className="text-muted-foreground grid grid-cols-2 gap-2 text-sm">
+            <div className="text-muted-foreground grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
               <div>
                 <span className="font-medium">Skill Level:</span>{' '}
                 {formatSkillLevel(plan.skillLevel)}

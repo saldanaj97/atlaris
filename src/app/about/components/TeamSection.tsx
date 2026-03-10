@@ -33,7 +33,7 @@ export function TeamSection(): JSX.Element {
                 aria-hidden="true"
               />
 
-              <Avatar className="gradient-brand-interactive mx-auto mb-4 h-16 w-16 shadow-lg">
+              <Avatar className="brand-fill-interactive mx-auto mb-4 h-16 w-16 shadow-lg">
                 <AvatarFallback className="bg-transparent">
                   <User className="h-7 w-7 text-white" aria-hidden="true" />
                 </AvatarFallback>

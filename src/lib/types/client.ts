@@ -17,7 +17,7 @@ export const PLAN_STATUSES = [
 ] as const;
 export type PlanStatus = (typeof PLAN_STATUSES)[number];
 
-export type AttemptStatus = 'success' | 'failure';
+export type AttemptStatus = 'success' | 'failure' | 'in_progress';
 
 export type FailureClassification =
   | 'validation'

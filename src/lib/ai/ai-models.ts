@@ -15,7 +15,7 @@ import type { AvailableModel, SubscriptionTier } from './types/model.types';
  * Note: this file is imported by client components (e.g. model selector UI),
  * so it must remain free of server-only env access.
  */
-export const AI_DEFAULT_MODEL = 'google/gemini-2.0-flash-exp:free';
+export const AI_DEFAULT_MODEL = 'openrouter/free';
 
 /**
  * Complete list of available OpenRouter models.
@@ -24,14 +24,24 @@ export const AI_DEFAULT_MODEL = 'google/gemini-2.0-flash-exp:free';
 export const AVAILABLE_MODELS = [
   // Free tier models - accessible to all users
   {
+    id: 'openrouter/free',
+    name: 'Free Models Router',
+    provider: 'OpenRouter',
+    description:
+      'Routes each request to a compatible free OpenRouter model. Zero cost, but the exact backend and output limits vary by request.',
+    tier: 'free',
+    contextWindow: 200_000,
+    inputCostPerMillion: 0,
+    outputCostPerMillion: 0,
+  },
+  {
     id: 'google/gemini-2.0-flash-exp:free',
     name: 'Gemini 2.0 Flash',
     provider: 'Google',
     description:
-      'Fast, high-quality model with massive context window. Best for complex learning plans.',
+      'Fast free Gemini option with a 1M-token context window for large prompts and reference material.',
     tier: 'free',
-    contextWindow: 1_050_000,
-    maxOutputTokens: 525_000,
+    contextWindow: 1_048_576,
     inputCostPerMillion: 0,
     outputCostPerMillion: 0,
   },

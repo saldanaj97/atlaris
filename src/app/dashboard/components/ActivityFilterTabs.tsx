@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Filter } from 'lucide-react';
 import type { ActivityFilter, ActivityFilterTab } from '../types';
 
@@ -22,26 +24,26 @@ export function ActivityFilterTabs({
 }: ActivityFilterTabsProps) {
   return (
     <div className="mb-6 flex items-center gap-2 border-b border-slate-200 pb-4">
-      {DEFAULT_FILTER_TABS.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          onClick={() => onFilterChange(tab.id)}
-          className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-            activeFilter === tab.id
-              ? 'bg-slate-900 text-white'
-              : 'text-slate-500 hover:bg-slate-100'
-          }`}
-        >
-          {tab.label}
-        </button>
-      ))}
-      <button
-        type="button"
-        className="ml-auto flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-slate-100"
+      <Tabs
+        value={activeFilter}
+        onValueChange={(v) => onFilterChange(v as ActivityFilter)}
+      >
+        <TabsList className="h-auto gap-1 bg-transparent p-0">
+          {DEFAULT_FILTER_TABS.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id} className="rounded-lg">
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="ml-auto rounded-lg text-slate-400"
+        aria-label="Filter options"
       >
         <Filter className="h-4 w-4" />
-      </button>
+      </Button>
     </div>
   );
 }

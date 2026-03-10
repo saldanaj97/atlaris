@@ -6,9 +6,9 @@ import type { DbClient } from '@/lib/db/types';
 import { describe, expect, it } from 'vitest';
 
 describe('resolveScheduleTimezone', () => {
-  it('returns DEFAULT_SCHEDULE_TIMEZONE when no user timezone is available (fallback)', async () => {
+  it('returns DEFAULT_SCHEDULE_TIMEZONE when no user timezone is available (fallback)', () => {
     const db = null as unknown as DbClient;
-    const result = await resolveScheduleTimezone('user-1', db);
+    const result = resolveScheduleTimezone('user-1', db);
     expect(result).toBe(DEFAULT_SCHEDULE_TIMEZONE);
   });
 

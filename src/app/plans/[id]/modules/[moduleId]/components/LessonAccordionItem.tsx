@@ -5,6 +5,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/formatters';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
@@ -23,13 +24,11 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
-import { useMemo, type ElementType } from 'react';
+import { useMemo, type ElementType, type JSX } from 'react';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
   lesson: TaskWithRelations;
-  planId: string;
-  moduleId: string;
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
   /** Whether this lesson is locked (previous lessons/modules not complete) */
@@ -71,6 +70,37 @@ const RESOURCE_CONFIG: Record<
       'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400',
   },
 };
+
+interface PlaceholderContentEntry {
+  key: string;
+  block: ContentBlock;
+}
+
+function createPlaceholderContentEntries(params: {
+  lessonId: string;
+  lessonTitle: string;
+}): readonly PlaceholderContentEntry[] {
+  const occurrenceCounts = new Map<string, number>();
+  const blocks = generatePlaceholderContent({
+    seed: hashString(params.lessonId),
+    topic: params.lessonTitle,
+    minSections: 2,
+    maxSections: 3,
+    minParagraphsPerSection: 1,
+    maxParagraphsPerSection: 2,
+  });
+
+  return blocks.map((block) => {
+    const signature = `${block.type}-${hashString(block.content)}`;
+    const occurrence = occurrenceCounts.get(signature) ?? 0;
+    occurrenceCounts.set(signature, occurrence + 1);
+
+    return {
+      key: `${signature}-${occurrence}`,
+      block,
+    };
+  });
+}
 
 /**
  * Renders a content block with appropriate styling.
@@ -158,26 +188,22 @@ function LockedContentOverlay() {
  */
 export function LessonAccordionItem({
   lesson,
-  planId,
-  moduleId,
   status,
   onStatusChange,
   isLocked = false,
-}: LessonAccordionItemProps) {
+}: LessonAccordionItemProps): JSX.Element {
   const isCompleted = status === 'completed';
   const resources = lesson.resources ?? [];
 
   // Generate deterministic placeholder content based on lesson ID
-  const placeholderContent = useMemo(() => {
-    return generatePlaceholderContent({
-      seed: hashString(lesson.id),
-      topic: lesson.title,
-      minSections: 2,
-      maxSections: 3,
-      minParagraphsPerSection: 1,
-      maxParagraphsPerSection: 2,
-    });
-  }, [lesson.id, lesson.title]);
+  const placeholderContent = useMemo(
+    () =>
+      createPlaceholderContentEntries({
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+      }),
+    [lesson.id, lesson.title]
+  );
 
   // Determine card styling based on state
   const getCardClassName = () => {
@@ -234,9 +260,9 @@ export function LessonAccordionItem({
               {lesson.title}
             </h3>
             {isLocked && (
-              <span className="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-500 dark:bg-stone-700 dark:text-stone-400">
+              <Badge className="border-transparent bg-stone-200 text-stone-500 dark:bg-stone-700 dark:text-stone-400">
                 Locked
-              </span>
+              </Badge>
             )}
           </div>
 
@@ -326,11 +352,11 @@ export function LessonAccordionItem({
                               <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
                             </div>
                             <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-                              <span
-                                className={`rounded px-1.5 py-0.5 ${config.badgeClass}`}
+                              <Badge
+                                className={`rounded border-transparent px-1.5 ${config.badgeClass}`}
                               >
                                 {config.label}
-                              </span>
+                              </Badge>
                               {resource.durationMinutes && (
                                 <span>
                                   {formatMinutes(resource.durationMinutes)}
@@ -353,11 +379,8 @@ export function LessonAccordionItem({
               {/* Placeholder Learning Content */}
               <div className="rounded-xl border border-stone-200/50 bg-white/50 p-6 dark:border-stone-700/50 dark:bg-stone-800/30">
                 <div className="prose prose-stone dark:prose-invert max-w-none">
-                  {placeholderContent.map((block, index) => (
-                    <ContentBlockRenderer
-                      key={`${block.type}-${hashString(block.content)}-${index}`}
-                      block={block}
-                    />
+                  {placeholderContent.map(({ key, block }) => (
+                    <ContentBlockRenderer key={key} block={block} />
                   ))}
                 </div>
 
@@ -371,8 +394,6 @@ export function LessonAccordionItem({
               {/* Status Button - At the bottom of the lesson */}
               <div className="mt-6 flex justify-end">
                 <TaskStatusButton
-                  planId={planId}
-                  moduleId={moduleId}
                   taskId={lesson.id}
                   status={status}
                   onStatusChange={onStatusChange}

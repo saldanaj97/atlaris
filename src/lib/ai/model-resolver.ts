@@ -146,7 +146,6 @@ export function resolveModelForTier(
     };
   }
 
-  // Check if model ID is valid
   const validation = validateModelForTier(userTier, requestedModel);
 
   if (!validation.valid) {
@@ -167,7 +166,6 @@ export function resolveModelForTier(
     };
   }
 
-  // Model is valid and allowed
   return {
     modelId: requestedModel,
     provider: getProviderSafe(

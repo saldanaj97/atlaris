@@ -46,6 +46,7 @@ interface UsePlanStatusReturn {
   error: string | null;
   pollingError: string | null;
   isPolling: boolean;
+  revalidate: () => Promise<void>;
 }
 
 export function usePlanStatus(
@@ -140,6 +141,13 @@ export function usePlanStatus(
     }
   }, [planId, fetcher]);
 
+  const revalidate = useCallback(async (): Promise<void> => {
+    consecutiveFailuresRef.current = 0;
+    setPollingError(null);
+    setIsPolling(true);
+    await fetchStatus();
+  }, [fetchStatus]);
+
   useEffect(() => {
     if (!shouldPoll) {
       setIsPolling(false);
@@ -170,5 +178,5 @@ export function usePlanStatus(
     consecutiveFailuresRef.current = 0;
   }, [planId]);
 
-  return { status, attempts, error, pollingError, isPolling };
+  return { status, attempts, error, pollingError, isPolling, revalidate };
 }

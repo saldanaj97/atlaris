@@ -22,7 +22,7 @@ export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
       aria-label="Atlaris - Go to homepage"
     >
       <span
-        className={`from-primary to-accent bg-gradient-to-r bg-clip-text font-semibold text-transparent ${
+        className={`gradient-text font-semibold ${
           isSmall ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'
         }`}
       >

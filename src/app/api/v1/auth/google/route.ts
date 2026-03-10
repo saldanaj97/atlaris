@@ -8,22 +8,23 @@ import { logger } from '@/lib/logging/logger';
 import { google } from 'googleapis';
 
 function getGoogleOAuthConfig() {
-  try {
-    return {
-      clientId: googleOAuthEnv.clientId,
-      clientSecret: googleOAuthEnv.clientSecret,
-      redirectUri: googleOAuthEnv.redirectUri,
-    };
-  } catch (error) {
-    logger.error({ error }, 'Google OAuth configuration error');
-    return null;
-  }
+  return {
+    clientId: googleOAuthEnv.clientId,
+    clientSecret: googleOAuthEnv.clientSecret,
+    redirectUri: googleOAuthEnv.redirectUri,
+  };
 }
 
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('oauth', async ({ userId }) => {
-    const config = getGoogleOAuthConfig();
-    if (!config) {
+    let config: ReturnType<typeof getGoogleOAuthConfig>;
+    try {
+      config = getGoogleOAuthConfig();
+    } catch (error) {
+      logger.error(
+        { error, userId, provider: 'google_calendar' },
+        'Google OAuth configuration unavailable'
+      );
       throw new ServiceUnavailableError('Google OAuth is not configured', {
         provider: 'google_calendar',
       });
@@ -51,6 +52,11 @@ export const GET = withErrorBoundary(
       state: stateToken,
       prompt: 'consent',
     });
+
+    logger.info(
+      { userId, provider: 'google_calendar' },
+      'OAuth initiation successful'
+    );
 
     return NextResponse.redirect(authUrl);
   })

@@ -198,7 +198,7 @@ export const POST = withErrorBoundary(
             userId: user.id,
             dbClient: db,
             emit,
-            runGeneration: (signal) =>
+            runGeneration: () =>
               runGenerationAttempt(
                 {
                   planId: plan.id,
@@ -207,7 +207,6 @@ export const POST = withErrorBoundary(
                 },
                 {
                   provider,
-                  signal,
                   dbClient: db,
                   reservation,
                 }

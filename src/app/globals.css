@@ -301,14 +301,24 @@
 }
 
 @layer utilities {
-  /* Brand gradient - used for buttons, badges, highlights */
+  /* Brand gradient - used for badges, highlights, and decorative fills */
   .gradient-brand {
-    @apply from-primary to-accent bg-gradient-to-r;
+    @apply from-primary to-accent bg-linear-to-r;
   }
 
-  /* Brand gradient with hover states */
+  /* Brand gradient with interactive states */
   .gradient-brand-interactive {
-    @apply from-primary to-accent hover:from-primary/90 hover:to-accent/90 bg-gradient-to-r;
+    @apply from-primary to-accent hover:from-primary/90 hover:to-accent/90 focus-visible:ring-ring focus-visible:ring-offset-background bg-linear-to-r focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none;
+  }
+
+  /* Brand solid fill - used for buttons, badges, highlights */
+  .brand-fill {
+    @apply bg-primary;
+  }
+
+  /* Brand solid fill with hover states */
+  .brand-fill-interactive {
+    @apply bg-primary hover:bg-primary/90 focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none;
   }
 
   /* Decorative background glow effect */
@@ -316,8 +326,19 @@
     @apply from-primary/30 to-accent/20 rounded-full bg-linear-to-br opacity-60 blur-3xl;
   }
 
-  /* Gradient text effect */
+  /* Gradient text effect - light mode uses primary-dark for visibility on light backgrounds */
   .gradient-text {
-    @apply from-primary to-accent bg-gradient-to-r bg-clip-text text-transparent;
+    @apply from-primary to-primary-dark bg-linear-to-r bg-clip-text text-transparent;
+  }
+  .dark .gradient-text {
+    @apply from-primary to-accent;
+  }
+
+  /* Symmetric gradient (primary -> middle -> primary) for headings */
+  .gradient-text-symmetric {
+    @apply from-primary via-primary-dark to-primary bg-linear-to-r bg-clip-text text-transparent;
+  }
+  .dark .gradient-text-symmetric {
+    @apply from-primary via-accent to-primary;
   }
 }

@@ -1,6 +1,6 @@
-import { MouseGlowContainer } from '@/components/effects/MouseGlow';
-import { CreatePlanPageClient } from '@/app/plans/new/components/CreatePlanPageClient';
 import type { CreateMethod } from '@/app/plans/new/components/CreateMethodToggle';
+import { CreatePlanPageClient } from '@/app/plans/new/components/CreatePlanPageClient';
+import { MouseGlowContainer } from '@/components/effects/MouseGlow';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
@@ -54,7 +54,7 @@ export default async function CreateNewPlanPage({
         aria-hidden="true"
       />
 
-      <div className="relative z-10 flex h-full flex-col items-center justify-center overflow-y-auto px-6 py-8">
+      <div className="relative z-10 flex h-full flex-col items-center justify-center overflow-y-auto px-4 pt-20 pb-6 sm:px-6 sm:pt-24 sm:pb-8">
         <CreatePlanPageClient
           initialMethod={initialMethod}
           initialTopic={initialTopic}

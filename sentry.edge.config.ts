@@ -8,8 +8,8 @@ import * as Sentry from '@sentry/nextjs';
 Sentry.init({
   dsn: 'https://443a1b04060b39f8cb7665becc8d21d6@o4510462002462720.ingest.us.sentry.io/4510462272667648',
 
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
+  // Sample 10% of traces — 100% is wasteful pre-launch. Increase when you have real traffic.
+  tracesSampleRate: 0.1,
 
   // Vercel AI integration (required for Edge - not enabled by default)
   integrations: (defaultIntegrations) => [

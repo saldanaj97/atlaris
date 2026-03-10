@@ -1,4 +1,5 @@
 'use client';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,21 +44,26 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           aria-haspopup="menu"
           aria-expanded={isOpen}
-          className={getNavItemClass(isActive)}
+          className={cn(
+            getNavItemClass(isActive),
+            'px-0 hover:bg-transparent dark:hover:bg-transparent'
+          )}
         >
           <span>{item.label}</span>
           <ChevronDown className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-40">
         {item.dropdown?.map((dropdownItem) => (
           <DropdownMenuItem key={dropdownItem.href} asChild>
             <Link
               href={dropdownItem.href}
+              onClick={() => setIsOpen(false)}
               className={cn(
                 pathname === dropdownItem.href
                   ? 'text-primary font-semibold'
@@ -102,9 +108,9 @@ export default function DesktopNavigation({
     // Regular nav item
     return (
       <Link
-        key={item.href}
         href={item.href}
         className={getNavItemClass(isActive)}
+        key={item.href}
       >
         {item.label}
       </Link>

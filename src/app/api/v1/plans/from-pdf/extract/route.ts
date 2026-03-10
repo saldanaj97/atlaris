@@ -180,7 +180,6 @@ async function postHandlerImpl(
     );
   }
 
-  // Per-user extraction throttle
   const throttle = acquirePdfExtractionSlot(user.id);
   if (!throttle.allowed) {
     return json(

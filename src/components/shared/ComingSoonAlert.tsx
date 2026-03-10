@@ -32,7 +32,7 @@ export function ComingSoonAlert({
     >
       <div className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30" />
 
-      <div className="gradient-brand-interactive flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-md">
+      <div className="gradient-brand flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-md">
         <Icon className="h-4 w-4 text-white" aria-hidden="true" />
       </div>
       <div className="min-w-0 space-y-0.5">

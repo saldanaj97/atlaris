@@ -1,6 +1,21 @@
 import type { ReactElement } from 'react';
 
+import { headers } from 'next/headers';
+
 import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
+
+function getSupportedLocale(acceptLanguage: string | null): string | undefined {
+  if (!acceptLanguage) {
+    return undefined;
+  }
+
+  const localeCandidates = acceptLanguage
+    .split(',')
+    .map((part) => part.split(';')[0]?.trim())
+    .filter((part): part is string => Boolean(part) && part !== '*');
+
+  return Intl.DateTimeFormat.supportedLocalesOf(localeCandidates)[0];
+}
 
 /**
  * Profile Settings sub-page.
@@ -9,7 +24,9 @@ import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
  * ProfileForm is a client component that manages its own loading state
  * via useEffect, so it renders ProfileFormSkeleton internally while fetching.
  */
-export default function ProfileSettingsPage(): ReactElement {
+export default async function ProfileSettingsPage(): Promise<ReactElement> {
+  const locale = getSupportedLocale((await headers()).get('accept-language'));
+
   return (
     <>
       <header className="mb-6">
@@ -20,7 +37,7 @@ export default function ProfileSettingsPage(): ReactElement {
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <ProfileForm />
+        <ProfileForm locale={locale} />
       </div>
     </>
   );

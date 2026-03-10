@@ -52,6 +52,8 @@ export type StreamingError = Error & {
   planId?: string;
   data?: { planId?: string };
   code?: string;
+  classification?: string;
+  retryable?: boolean;
 };
 
 export function isStreamingError(error: unknown): error is StreamingError {
@@ -97,7 +99,42 @@ const parseEventLine = (line: string): StreamingEvent | null => {
   }
 };
 
-export function useStreamingPlanGeneration() {
+export type StartGenerationOptions = {
+  onPlanIdReady?: (planId: string) => void;
+};
+
+type StartGeneration = (
+  input: CreateLearningPlanInput,
+  options?: StartGenerationOptions
+) => Promise<string>;
+
+export interface UseStreamingPlanGenerationResult {
+  state: StreamingPlanState;
+  startGeneration: StartGeneration;
+  cancel: () => void;
+}
+
+function createStreamingError(params: {
+  message: string;
+  status?: number;
+  planId?: string;
+  code?: string;
+  classification?: string;
+  retryable?: boolean;
+}): StreamingError {
+  const error = new Error(params.message) as StreamingError;
+  error.status = params.status;
+  error.planId = params.planId;
+  error.code = params.code;
+  error.classification = params.classification;
+  error.retryable = params.retryable;
+  if (params.planId) {
+    error.data = { planId: params.planId };
+  }
+  return error;
+}
+
+export function useStreamingPlanGeneration(): UseStreamingPlanGenerationResult {
   const [state, setState] = useState<StreamingPlanState>(INITIAL_STATE);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -106,7 +143,10 @@ export function useStreamingPlanGeneration() {
   }, []);
 
   const startGeneration = useCallback(
-    async (input: CreateLearningPlanInput): Promise<string> => {
+    async (
+      input: CreateLearningPlanInput,
+      options?: StartGenerationOptions
+    ): Promise<string> => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -126,6 +166,7 @@ export function useStreamingPlanGeneration() {
         },
         body: JSON.stringify(input),
         signal: controller.signal,
+        credentials: 'include',
       });
 
       if (!response.ok || !response.body) {
@@ -150,10 +191,57 @@ export function useStreamingPlanGeneration() {
           },
         }));
 
-        const error = new Error(parsedError.error) as StreamingError;
-        error.status = response.status;
-        error.code = parsedError.code;
+        const error = createStreamingError({
+          message: parsedError.error,
+          status: response.status,
+          code: parsedError.code,
+          classification,
+          retryable,
+        });
         throw error;
+      }
+
+      // Guard against non-SSE responses (e.g. auth redirect followed to HTML)
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!contentType.includes('text/event-stream')) {
+        const isAuthRedirect = response.redirected;
+
+        if (isAuthRedirect) {
+          const authError = createStreamingError({
+            message: 'Please sign in to create a learning plan.',
+            status: response.status,
+            code: 'AUTH_REQUIRED',
+            classification: 'auth_required',
+            retryable: false,
+          });
+          setState((prev) => ({
+            ...prev,
+            status: 'error',
+            error: {
+              message: authError.message,
+              classification: 'auth_required',
+              retryable: false,
+            },
+          }));
+          throw authError;
+        }
+
+        setState((prev) => ({
+          ...prev,
+          status: 'error',
+          error: {
+            message: 'Unexpected server response. Please try again.',
+            classification: 'provider_error',
+            retryable: false,
+          },
+        }));
+        throw createStreamingError({
+          message: 'Unexpected server response. Please try again.',
+          status: response.status,
+          code: 'INVALID_STREAM_RESPONSE',
+          classification: 'provider_error',
+          retryable: false,
+        });
       }
 
       const reader = response.body.getReader();
@@ -163,13 +251,22 @@ export function useStreamingPlanGeneration() {
       return await new Promise<string>((resolve, reject) => {
         let completed = false;
         let errored = false;
+        let planIdNotified = false;
         let latestPlanId: string | undefined;
         let terminal = false;
+        const notifyPlanId = (planId: string | undefined) => {
+          if (planIdNotified || !planId) {
+            return;
+          }
+          planIdNotified = true;
+          options?.onPlanIdReady?.(planId);
+        };
 
         const handleEvent = (event: StreamingEvent) => {
           switch (event.type) {
             case 'plan_start':
               latestPlanId = event.data.planId;
+              notifyPlanId(latestPlanId);
               setState((prev) => ({
                 ...prev,
                 status: 'generating',
@@ -178,6 +275,7 @@ export function useStreamingPlanGeneration() {
               break;
             case 'module_summary':
               latestPlanId = latestPlanId ?? event.data.planId;
+              notifyPlanId(latestPlanId);
               setState((prev) => ({
                 ...prev,
                 status: 'generating',
@@ -206,12 +304,21 @@ export function useStreamingPlanGeneration() {
             case 'complete':
               completed = true;
               latestPlanId = latestPlanId ?? event.data.planId;
+              notifyPlanId(latestPlanId);
               setState((prev) => ({
                 ...prev,
                 status: 'complete',
                 planId: prev.planId ?? latestPlanId,
               }));
-              resolve(event.data.planId);
+              if (latestPlanId) {
+                resolve(latestPlanId);
+              } else {
+                reject(
+                  new Error(
+                    'Plan generation completed but no plan ID was received.'
+                  )
+                );
+              }
               break;
             case 'error': {
               errored = true;
@@ -227,12 +334,15 @@ export function useStreamingPlanGeneration() {
                   retryable: event.data.retryable,
                 },
               }));
-              const streamErr = new Error(
-                event.data.message ||
-                  'Plan generation failed. Please try again.'
-              ) as StreamingError;
-              streamErr.planId = errorPlanId ?? undefined;
-              streamErr.data = { planId: errorPlanId ?? undefined };
+              const streamErr = createStreamingError({
+                message:
+                  event.data.message ||
+                  'Plan generation failed. Please try again.',
+                planId: errorPlanId ?? undefined,
+                code: event.data.code,
+                classification: event.data.classification,
+                retryable: event.data.retryable,
+              });
               reject(streamErr);
               break;
             }
@@ -250,11 +360,12 @@ export function useStreamingPlanGeneration() {
                   retryable: event.data.retryable,
                 },
               }));
-              const cancelledErr = new Error(
-                event.data.message || 'Plan generation was cancelled.'
-              ) as StreamingError;
-              cancelledErr.planId = latestPlanId ?? undefined;
-              cancelledErr.data = { planId: latestPlanId ?? undefined };
+              const cancelledErr = createStreamingError({
+                message: event.data.message || 'Plan generation was cancelled.',
+                planId: latestPlanId ?? undefined,
+                classification: event.data.classification,
+                retryable: event.data.retryable,
+              });
               reject(cancelledErr);
               break;
             }
@@ -266,6 +377,19 @@ export function useStreamingPlanGeneration() {
             while (true) {
               const { done, value } = await reader.read();
               if (done) {
+                // Flush any remaining bytes from the TextDecoder
+                const remaining = decoder.decode();
+                if (remaining) {
+                  buffer += remaining;
+                }
+                if (buffer.trim()) {
+                  const event = parseEventLine(buffer);
+                  if (event) {
+                    handleEvent(event);
+                  }
+                  buffer = '';
+                }
+
                 setState((prev) => ({
                   ...prev,
                   status:

@@ -1,6 +1,5 @@
 import { getRequestContext } from '@/lib/api/context';
 import { isValidModelId } from '@/lib/ai/ai-models';
-import { cleanupDbClient } from '@/lib/db/queries/helpers/db-client-lifecycle';
 import type {
   CreateUserData,
   DbUser,
@@ -20,6 +19,10 @@ const SUBSCRIPTION_STATUSES = new Set([
   'past_due',
   'trialing',
 ]);
+
+interface UsersQueryDeps {
+  getDb: typeof getDb;
+}
 
 function isOptionalString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
@@ -62,16 +65,18 @@ function isDbUser(user: unknown): user is DbUser {
   );
 }
 
-interface GetUserByAuthIdDeps {
+interface GetUserByAuthIdDeps extends UsersQueryDeps {
   getRequestContext: typeof getRequestContext;
-  getDb: typeof getDb;
-  cleanupDbClient: typeof cleanupDbClient;
+  cleanupDbClient?: () => Promise<void>;
 }
+
+const defaultUsersQueryDeps: UsersQueryDeps = {
+  getDb,
+};
 
 const defaultGetUserByAuthIdDeps: GetUserByAuthIdDeps = {
   getRequestContext,
-  getDb,
-  cleanupDbClient,
+  ...defaultUsersQueryDeps,
 };
 
 /**
@@ -100,17 +105,11 @@ export async function getUserByAuthId(
 
   const client = dbClient ?? deps.getDb();
 
-  try {
-    const result = await client
-      .select()
-      .from(users)
-      .where(eq(users.authUserId, authUserId));
-    return result[0];
-  } finally {
-    if (dbClient === undefined) {
-      await deps.cleanupDbClient(client);
-    }
-  }
+  const result = await client
+    .select()
+    .from(users)
+    .where(eq(users.authUserId, authUserId));
+  return result[0];
 }
 
 /**
@@ -122,24 +121,19 @@ export async function getUserByAuthId(
  */
 export async function createUser(
   userData: CreateUserData,
-  dbClient?: UsersDbClient
+  dbClient?: UsersDbClient,
+  deps: UsersQueryDeps = defaultUsersQueryDeps
 ): Promise<DbUser | undefined> {
-  const client = dbClient ?? getDb();
+  const client = dbClient ?? deps.getDb();
 
-  try {
-    const insertData = {
-      authUserId: userData.authUserId,
-      email: userData.email,
-      name: userData.name,
-    };
+  const insertData = {
+    authUserId: userData.authUserId,
+    email: userData.email,
+    name: userData.name,
+  };
 
-    const result = await client.insert(users).values(insertData).returning();
-    return result[0];
-  } finally {
-    if (dbClient === undefined) {
-      await cleanupDbClient(client);
-    }
-  }
+  const result = await client.insert(users).values(insertData).returning();
+  return result[0];
 }
 
 /**
@@ -153,26 +147,21 @@ export async function createUser(
 export async function updateUserPreferredAiModel(
   userId: string,
   preferredAiModel: PreferredAiModel | null,
-  dbClient?: UsersDbClient
+  dbClient?: UsersDbClient,
+  deps: UsersQueryDeps = defaultUsersQueryDeps
 ): Promise<DbUser | undefined> {
-  const client = dbClient ?? getDb();
+  const client = dbClient ?? deps.getDb();
 
-  try {
-    const result = await client
-      .update(users)
-      .set({
-        preferredAiModel,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, userId))
-      .returning();
+  const result = await client
+    .update(users)
+    .set({
+      preferredAiModel,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
 
-    return result[0];
-  } finally {
-    if (dbClient === undefined) {
-      await cleanupDbClient(client);
-    }
-  }
+  return result[0];
 }
 
 /**

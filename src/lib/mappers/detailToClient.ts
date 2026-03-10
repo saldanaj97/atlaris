@@ -12,6 +12,7 @@ import type { GenerationAttempt, LearningPlanDetail } from '@/lib/types/db';
 const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set([
   'success',
   'failure',
+  'in_progress',
 ]);
 
 const VALID_CLASSIFICATIONS: ReadonlySet<FailureClassification> = new Set([
@@ -96,7 +97,7 @@ function toClientAttempt(attempt: GenerationAttempt): ClientGenerationAttempt {
     id: attempt.id,
     status,
     classification:
-      status === 'success' ? null : toClassification(attempt.classification),
+      status === 'failure' ? toClassification(attempt.classification) : null,
     durationMs: attempt.durationMs,
     modulesCount: attempt.modulesCount,
     tasksCount: attempt.tasksCount,
@@ -118,11 +119,11 @@ export function mapDetailToClient(
   const { plan } = detail;
   if (!plan) return undefined;
 
-  const modules = [...(plan.modules ?? [])]
-    .sort((a, b) => a.order - b.order)
+  const modules = (plan.modules ?? [])
+    .toSorted((a, b) => a.order - b.order)
     .map((module) => {
-      const tasks = [...(module.tasks ?? [])]
-        .sort((a, b) => a.order - b.order)
+      const tasks = (module.tasks ?? [])
+        .toSorted((a, b) => a.order - b.order)
         .map((task) => ({
           id: task.id,
           order: task.order,
@@ -130,8 +131,8 @@ export function mapDetailToClient(
           description: task.description ?? null,
           estimatedMinutes: task.estimatedMinutes ?? 0,
           status: task.progress?.status ?? 'not_started',
-          resources: [...(task.resources ?? [])]
-            .sort((a, b) => a.order - b.order)
+          resources: (task.resources ?? [])
+            .toSorted((a, b) => a.order - b.order)
             .map((resource) => ({
               id: resource.id,
               order: resource.order,

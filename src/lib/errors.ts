@@ -45,3 +45,43 @@ export function normalizeThrown(
 
   return { message: String(value) };
 }
+
+export function getLoggableErrorDetails(error: unknown): {
+  errorMessage: string;
+  errorStack?: string;
+} {
+  if (error instanceof Error) {
+    return {
+      errorMessage: error.message,
+      ...(error.stack ? { errorStack: error.stack } : {}),
+    };
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const errorMessage =
+      'message' in error && typeof error.message === 'string'
+        ? error.message
+        : undefined;
+    const errorStack =
+      'stack' in error && typeof error.stack === 'string'
+        ? error.stack
+        : undefined;
+
+    if (errorMessage || errorStack) {
+      return {
+        errorMessage: errorMessage ?? 'Unknown error object',
+        ...(errorStack ? { errorStack } : {}),
+      };
+    }
+
+    try {
+      return {
+        errorMessage: JSON.stringify(error) ?? 'Unknown error object',
+      };
+    } catch {
+      return { errorMessage: 'Unserializable error object' };
+    }
+  }
+
+  return { errorMessage: String(error) };
+}

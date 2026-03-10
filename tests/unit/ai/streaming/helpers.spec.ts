@@ -1,9 +1,9 @@
-import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/helpers';
 import {
   handleFailedGeneration,
   handleSuccessfulGeneration,
   safeMarkPlanFailed,
 } from '@/app/api/v1/plans/stream/helpers';
+import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/helpers';
 import type {
   GenerationFailureResult,
   GenerationSuccessResult,
@@ -161,10 +161,11 @@ describe('stream helpers', () => {
     vi.clearAllMocks();
   });
 
-  it('emits sanitized retryable error payload and skips terminal side-effects', async () => {
+  it('marks plan failed for retryable errors but skips usage recording', async () => {
     const planId = createId('plan');
     const userId = createId('user');
     const emittedEvents: StreamingEvent[] = [];
+    const dbClient = {} as AttemptsDbClient;
     const failureResult = buildFailureResult({
       classification: 'provider_error',
       error: new Error('sensitive provider details: sk-live-secret'),
@@ -173,14 +174,17 @@ describe('stream helpers', () => {
     await handleFailedGeneration(failureResult, {
       planId,
       userId,
-      dbClient: {} as AttemptsDbClient,
+      dbClient,
       emit: (event) => emittedEvents.push(event),
       markPlanGenerationFailure: mockMarkPlanGenerationFailure,
       recordUsage: mockRecordUsage,
       getCorrelationId: mockGetCorrelationId,
     });
 
-    expect(mockMarkPlanGenerationFailure).not.toHaveBeenCalled();
+    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
+      planId,
+      dbClient
+    );
     expect(mockRecordUsage).not.toHaveBeenCalled();
 
     const errorEvent = emittedEvents.find((event) => event.type === 'error');

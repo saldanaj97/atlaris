@@ -90,17 +90,28 @@ describe('AI Models Configuration', () => {
     });
 
     it('has the expected value', () => {
-      expect(AI_DEFAULT_MODEL).toBe('google/gemini-2.0-flash-exp:free');
+      expect(AI_DEFAULT_MODEL).toBe('openrouter/free');
     });
   });
 
   describe('getModelById', () => {
     it('returns correct model for valid ID', () => {
-      const model = getModelById('google/gemini-2.0-flash-exp:free');
+      const model = getModelById('openrouter/free');
       expect(model).toBeDefined();
-      expect(model?.id).toBe('google/gemini-2.0-flash-exp:free');
-      expect(model?.name).toBe('Gemini 2.0 Flash');
-      expect(model?.provider).toBe('Google');
+      expect(model?.id).toBe('openrouter/free');
+      expect(model?.name).toBe('Free Models Router');
+      expect(model?.provider).toBe('OpenRouter');
+    });
+
+    it('includes Gemini 2.0 Flash because it is still a supported free model', () => {
+      const model = getModelById('google/gemini-2.0-flash-exp:free');
+      expect(model).toMatchObject({
+        id: 'google/gemini-2.0-flash-exp:free',
+        name: 'Gemini 2.0 Flash',
+        provider: 'Google',
+        tier: 'free',
+        contextWindow: 1_048_576,
+      });
     });
 
     it('returns correct model for each model in AVAILABLE_MODELS', () => {
@@ -245,11 +256,21 @@ describe('AI Models Configuration', () => {
     it('returns first available model for tier', () => {
       const freeModels = getModelsForTier('free');
       const defaultModel = getDefaultModelForTier('free');
-      expect(defaultModel).toBe(freeModels[0].id);
+      const freeModelIds = freeModels.map((model) => model.id);
+      expect(freeModelIds).toContain(defaultModel);
     });
   });
 
   describe('Model data integrity', () => {
+    it('keeps openrouter/free metadata router-aware instead of backend-specific', () => {
+      const model = getModelById('openrouter/free');
+      expect(model).toMatchObject({
+        contextWindow: 200_000,
+      });
+      expect(model?.maxOutputTokens).toBeUndefined();
+      expect(model?.description).toContain('output limits vary');
+    });
+
     it('known free models have zero input cost', () => {
       const freeModels = AVAILABLE_MODELS.filter(
         (m) => m.tier === 'free' && m.inputCostPerMillion === 0

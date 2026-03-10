@@ -170,6 +170,7 @@ Guardrails and guidelines for LLMs to follow:
 - **Testing**: `@docs/rules/testing/test-standards.md`
 - **Database**: `@docs/rules/database/schema-overview.md`
 - **Styling**: `@docs/rules/styles/styling.md`
+- **Style Guidelines**: `@docs/rules/styles/style-guidelines.md`
 - **DI Pattern**: `@docs/rules/architecture/dependency-injection-architecture.md`
 - **Rate Limiting**: `@docs/rules/api/rate-limiting.md`
 - **API Error Contract**: `@docs/rules/api/error-contract.md`

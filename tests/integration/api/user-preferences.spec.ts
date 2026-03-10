@@ -143,7 +143,9 @@ describe('PATCH /api/v1/user/preferences', () => {
 
   it('persists preferredAiModel and returns it on GET', async () => {
     setTestUser(testAuthUserId);
-    const defaultModel = getDefaultModelForTier('free');
+    // Use a concrete model from the DB enum — openrouter/free is a
+    // generation-time router fallback, not a persistable preference.
+    const resetModel = 'google/gemini-2.0-flash-exp:free';
 
     const patchRequest = new Request(
       'http://localhost/api/v1/user/preferences',
@@ -179,7 +181,7 @@ describe('PATCH /api/v1/user/preferences', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          preferredAiModel: defaultModel,
+          preferredAiModel: resetModel,
         }),
       }
     );

@@ -8,19 +8,22 @@
  * - Module ownership is validated through plan ownership
  */
 
+import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-import { withServerActionContext } from '@/lib/api/auth';
-import { getModuleDetail } from '@/lib/db/queries/modules';
-import { setTaskProgress } from '@/lib/db/queries/tasks';
-import { logger } from '@/lib/logging/logger';
-import type { ProgressStatus } from '@/lib/types/db';
-import { PROGRESS_STATUSES } from '@/lib/types/db';
 import {
   moduleError,
   moduleSuccess,
 } from '@/app/plans/[id]/modules/[moduleId]/helpers';
 import type { ModuleAccessResult } from '@/app/plans/[id]/modules/[moduleId]/types';
+import { withServerActionContext } from '@/lib/api/auth';
+import { getModuleDetail } from '@/lib/db/queries/modules';
+import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
+import { getDb } from '@/lib/db/runtime';
+import { learningPlans, modules, tasks } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
+import { PROGRESS_STATUSES } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db';
 
 interface UpdateTaskProgressInput {
   planId: string;
@@ -32,6 +35,35 @@ interface UpdateTaskProgressInput {
 interface UpdateTaskProgressResult {
   taskId: string;
   status: ProgressStatus;
+}
+
+async function ensureBatchModuleTaskOwnership(
+  db: ReturnType<typeof getDb>,
+  planId: string,
+  moduleId: string,
+  taskIds: string[],
+  userId: string
+): Promise<void> {
+  const uniqueTaskIds = Array.from(new Set(taskIds));
+  if (uniqueTaskIds.length === 0) return;
+
+  const ownedTasks = await db
+    .select({ taskId: tasks.id })
+    .from(tasks)
+    .innerJoin(modules, eq(tasks.moduleId, modules.id))
+    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+    .where(
+      and(
+        inArray(tasks.id, uniqueTaskIds),
+        eq(modules.id, moduleId),
+        eq(learningPlans.id, planId),
+        eq(learningPlans.userId, userId)
+      )
+    );
+
+  if (ownedTasks.length !== uniqueTaskIds.length) {
+    throw new Error('One or more tasks not found.');
+  }
 }
 
 function assertNonEmpty(value: string | undefined, message: string) {
@@ -125,4 +157,76 @@ export async function updateModuleTaskProgressAction({
 
   if (!result) throw new Error('You must be signed in to update progress.');
   return result;
+}
+
+interface BatchUpdateModuleTaskProgressInput {
+  planId: string;
+  moduleId: string;
+  updates: Array<{ taskId: string; status: ProgressStatus }>;
+}
+
+const MAX_BATCH_SIZE = 500;
+
+/**
+ * Server action to batch update multiple task progress records from the module detail page.
+ * Validates all updates, persists in a single transaction, and revalidates affected paths.
+ */
+export async function batchUpdateModuleTaskProgressAction({
+  planId,
+  moduleId,
+  updates,
+}: BatchUpdateModuleTaskProgressInput): Promise<void> {
+  assertNonEmpty(planId, 'A plan id is required to update progress.');
+  assertNonEmpty(moduleId, 'A module id is required to update progress.');
+  if (updates.length === 0) return;
+  if (updates.length > MAX_BATCH_SIZE) {
+    throw new Error(
+      `Batch update limit exceeded: received ${updates.length} updates, but the maximum allowed is ${MAX_BATCH_SIZE}.`
+    );
+  }
+
+  for (const [index, update] of updates.entries()) {
+    const taskId = update.taskId.trim();
+    assertNonEmpty(
+      update.taskId,
+      `A task id is required to update progress for update ${index} (taskId="${taskId || '<empty>'}", status="${update.status}").`
+    );
+    if (!PROGRESS_STATUSES.includes(update.status)) {
+      throw new Error(
+        `Invalid progress status for update ${index} (taskId="${taskId}", status="${update.status}").`
+      );
+    }
+  }
+
+  const result = await withServerActionContext(async (user, rlsDb) => {
+    try {
+      await ensureBatchModuleTaskOwnership(
+        rlsDb,
+        planId,
+        moduleId,
+        updates.map((u) => u.taskId),
+        user.id
+      );
+      await setTaskProgressBatch(user.id, updates, rlsDb);
+      revalidatePath(`/plans/${planId}/modules/${moduleId}`);
+      revalidatePath(`/plans/${planId}`);
+      revalidatePath('/plans');
+    } catch (error) {
+      logger.error(
+        {
+          planId,
+          moduleId,
+          userId: user.id,
+          updateCount: updates.length,
+          err: error,
+        },
+        'Failed to batch update module task progress'
+      );
+      throw new Error('Unable to update task progress right now.');
+    }
+  });
+
+  if (result === null) {
+    throw new Error('You must be signed in to update progress.');
+  }
 }

@@ -19,6 +19,11 @@ vi.mock('next/link', () => ({
   }) => <a href={href}>{children}</a>,
 }));
 
+// PlanRow renders DeletePlanDialog which calls useRouter; mock it here.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
 describe('PlansList', () => {
   const referenceTimestamp = '2024-06-01T00:00:00.000Z';
 
@@ -227,7 +232,7 @@ describe('PlansList', () => {
     expect(screen.getByText(/Inactive/)).toBeInTheDocument();
   });
 
-  it('should display view plan buttons', () => {
+  it('should display plan actions button', () => {
     render(
       <PlansList
         summaries={[mockActivePlan]}
@@ -235,9 +240,9 @@ describe('PlansList', () => {
       />
     );
 
-    // PlanRow has a "View plan" button
+    // PlanRow has a "Plan actions" dropdown trigger button
     expect(
-      screen.getByRole('button', { name: /view plan/i })
+      screen.getByRole('button', { name: /plan actions/i })
     ).toBeInTheDocument();
   });
 

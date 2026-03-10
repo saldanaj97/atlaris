@@ -3,14 +3,16 @@
 import {
   PdfExtractionPreview,
   type PdfPlanSettings,
-} from '@/components/pdf/PdfExtractionPreview';
+} from '@/app/plans/new/components/PdfExtractionPreview';
+import { PdfGeneratingState } from '@/app/plans/new/components/PdfGeneratingState';
 import {
   isKnownErrorCode,
   PdfUploadError,
   type ErrorCode,
-} from '@/components/pdf/PdfUploadError';
-import { PdfUploadZone } from '@/components/pdf/PdfUploadZone';
-import { Button } from '@/components/ui/button';
+} from '@/app/plans/new/components/PdfUploadError';
+import { PdfUploadingState } from '@/app/plans/new/components/PdfUploadingState';
+import { PdfUploadZone } from '@/app/plans/new/components/PdfUploadZone';
+import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
 import {
   isStreamingError,
   useStreamingPlanGeneration,
@@ -26,11 +28,9 @@ import {
   type ExtractionSection,
   type TruncationData,
 } from '@/lib/validation/pdf';
-import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { toast } from 'sonner';
-import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
 
 const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
 
@@ -155,9 +155,81 @@ function buildPdfCreatePayload(params: {
   }
 }
 
+interface PdfCreatePanelBodyProps {
+  state: PageState;
+  onFileSelect: (file: File) => void;
+  onCancelUpload: () => void;
+  onGenerate: (editedData: {
+    mainTopic: string;
+    sections: ExtractionData['sections'];
+    settings: PdfPlanSettings;
+  }) => void;
+  onSwitchToManual: (extractedTopic: string) => void;
+  onRetry: () => void;
+  onBack: () => void;
+}
+
+function PdfCreatePanelBody({
+  state,
+  onFileSelect,
+  onCancelUpload,
+  onGenerate,
+  onSwitchToManual,
+  onRetry,
+  onBack,
+}: PdfCreatePanelBodyProps): ReactElement {
+  if (state.status === 'idle') {
+    return (
+      <PdfUploadZone
+        onFileSelect={onFileSelect}
+        isUploading={false}
+        disabled={false}
+      />
+    );
+  }
+
+  if (state.status === 'uploading') {
+    return <PdfUploadingState onCancelUpload={onCancelUpload} />;
+  }
+
+  if (state.status === 'preview') {
+    return (
+      <PdfExtractionPreview
+        mainTopic={state.extraction.mainTopic}
+        sections={state.extraction.sections}
+        pageCount={state.extraction.pageCount}
+        confidence={state.extraction.confidence}
+        onGenerate={onGenerate}
+        onSwitchToManual={onSwitchToManual}
+        isGenerating={false}
+      />
+    );
+  }
+
+  if (state.status === 'generating') {
+    return <PdfGeneratingState />;
+  }
+
+  if (state.status === 'error') {
+    return (
+      <PdfUploadError
+        error={state.error}
+        code={state.code}
+        onRetry={onRetry}
+        onBack={onBack}
+      />
+    );
+  }
+
+  const _exhaustiveCheck: never = state;
+  throw new Error(
+    `PdfCreatePanel reached an unexpected state: ${JSON.stringify(_exhaustiveCheck)}`
+  );
+}
+
 export function PdfCreatePanel({
   onSwitchToManual,
-}: PdfCreatePanelProps): React.ReactElement {
+}: PdfCreatePanelProps): ReactElement {
   const router = useRouter();
   const [state, setState] = useState<PageState>({ status: 'idle' });
   const isSubmittingRef = useRef(false);
@@ -368,12 +440,13 @@ export function PdfCreatePanel({
       return;
     }
 
-    void startGeneration(payloadResult.payload)
-      .then((streamPlanId) => {
+    void startGeneration(payloadResult.payload, {
+      onPlanIdReady: (streamPlanId) => {
         planIdRef.current = streamPlanId;
-        toast.success('Your learning plan is ready!');
+        toast.success('Your learning plan generation has started.');
         router.push(`/plans/${streamPlanId}`);
-      })
+      },
+    })
       .catch((streamError: unknown) => {
         const { handled, message, normalizedError } = handleStreamingPlanError({
           streamError,
@@ -382,6 +455,7 @@ export function PdfCreatePanel({
           clientLogger,
           toast,
           router,
+          redirectPath: '/plans/new',
           logMessage: 'Plan generation failed',
           fallbackMessage: 'Failed to create learning plan. Please try again.',
           onAbort: () => {
@@ -420,85 +494,15 @@ export function PdfCreatePanel({
     setState({ status: 'idle' });
   };
 
-  if (state.status === 'idle') {
-    return (
-      <PdfUploadZone
-        onFileSelect={(file) => {
-          void handleFileSelect(file);
-        }}
-        isUploading={false}
-        disabled={false}
-      />
-    );
-  }
-
-  if (state.status === 'uploading') {
-    return (
-      <div className="w-full max-w-2xl space-y-4">
-        <PdfUploadZone
-          onFileSelect={(file) => {
-            void handleFileSelect(file);
-          }}
-          isUploading={true}
-          disabled={true}
-        />
-        <div className="flex justify-center">
-          <Button type="button" variant="outline" onClick={handleCancelUpload}>
-            Cancel upload
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (state.status === 'preview') {
-    return (
-      <PdfExtractionPreview
-        mainTopic={state.extraction.mainTopic}
-        sections={state.extraction.sections}
-        pageCount={state.extraction.pageCount}
-        confidence={state.extraction.confidence}
-        onGenerate={(editedData) => {
-          void handleGenerate(editedData);
-        }}
-        onSwitchToManual={onSwitchToManual}
-        isGenerating={false}
-      />
-    );
-  }
-
-  if (state.status === 'generating') {
-    return (
-      <div className="w-full max-w-3xl">
-        <div className="dark:border-border dark:bg-card/60 border-border bg-card/60 relative rounded-3xl border px-6 py-12 shadow-2xl backdrop-blur-xl">
-          <div className="flex flex-col items-center text-center">
-            <div className="from-primary to-accent mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br shadow-lg">
-              <Loader2 className="h-10 w-10 animate-spin text-white" />
-            </div>
-            <h3 className="text-foreground mb-2 text-xl font-semibold">
-              Creating your learning plan...
-            </h3>
-            <p className="text-muted-foreground text-sm">
-              This will only take a moment
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (state.status === 'error') {
-    return (
-      <PdfUploadError
-        error={state.error}
-        code={state.code}
-        onRetry={handleRetry}
-        onBack={handleBack}
-      />
-    );
-  }
-
-  // Unreachable: all PageState variants are handled above
-  const _exhaustiveCheck: never = state;
-  return _exhaustiveCheck;
+  return (
+    <PdfCreatePanelBody
+      state={state}
+      onFileSelect={handleFileSelect}
+      onCancelUpload={handleCancelUpload}
+      onGenerate={handleGenerate}
+      onSwitchToManual={onSwitchToManual}
+      onRetry={handleRetry}
+      onBack={handleBack}
+    />
+  );
 }

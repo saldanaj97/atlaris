@@ -1,7 +1,8 @@
 // IMPORTANT: Mock imports must come first, before any component imports
 // that use the mocked modules (sonner, client-logger)
-import '../../mocks/unit/sonner.unit';
+import { createDeferredPromise } from '../../helpers/deferred-promise';
 import '../../mocks/unit/client-logger.unit';
+import '../../mocks/unit/sonner.unit';
 
 import { RegenerateButton } from '@/app/plans/components/RegenerateButton';
 import {
@@ -55,14 +56,8 @@ describe('RegenerateButton', () => {
   });
 
   it('should show loading state during regeneration', async () => {
-    // Use a deferred promise to control when fetch resolves
-    let resolvePromise: (value: { ok: boolean }) => void;
-    const mockFetch = vi.fn().mockImplementation(
-      () =>
-        new Promise<{ ok: boolean }>((resolve) => {
-          resolvePromise = resolve;
-        })
-    );
+    const deferredFetch = createDeferredPromise<{ ok: boolean }>();
+    const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -78,21 +73,14 @@ describe('RegenerateButton', () => {
     // Verify button is disabled during loading
     expect(button).toBeDisabled();
 
-    // Resolve the promise to clean up
     await act(async () => {
-      resolvePromise!({ ok: true });
+      deferredFetch.resolve({ ok: true });
     });
   });
 
   it('should disable button during regeneration', async () => {
-    // Use a deferred promise to control when fetch resolves
-    let resolvePromise: (value: { ok: boolean }) => void;
-    const mockFetch = vi.fn().mockImplementation(
-      () =>
-        new Promise<{ ok: boolean }>((resolve) => {
-          resolvePromise = resolve;
-        })
-    );
+    const deferredFetch = createDeferredPromise<{ ok: boolean }>();
+    const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -109,9 +97,8 @@ describe('RegenerateButton', () => {
       expect(button).toBeDisabled();
     });
 
-    // Resolve the promise to clean up
     await act(async () => {
-      resolvePromise!({ ok: true });
+      deferredFetch.resolve({ ok: true });
     });
   });
 
@@ -213,14 +200,8 @@ describe('RegenerateButton', () => {
   });
 
   it('should not allow multiple simultaneous regenerations', async () => {
-    // Use a deferred promise to control when fetch resolves
-    let resolvePromise: (value: { ok: boolean }) => void;
-    const mockFetch = vi.fn().mockImplementation(
-      () =>
-        new Promise<{ ok: boolean }>((resolve) => {
-          resolvePromise = resolve;
-        })
-    );
+    const deferredFetch = createDeferredPromise<{ ok: boolean }>();
+    const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
     render(<RegenerateButton planId="test-plan-123" />);
@@ -235,9 +216,8 @@ describe('RegenerateButton', () => {
     // Should only have been called once because button is disabled during loading
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
-    // Resolve the promise to clean up
     await act(async () => {
-      resolvePromise!({ ok: true });
+      deferredFetch.resolve({ ok: true });
     });
   });
 });
