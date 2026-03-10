@@ -25,7 +25,7 @@ Defined in `src/lib/db/enums.ts`:
 | `job_type`             | plan_generation, plan_regeneration     |
 | `subscription_tier`    | free, starter, pro                     |
 | `subscription_status`  | active, canceled, past_due, trialing   |
-| `integration_provider` | notion, google_calendar                |
+| `integration_provider` | google_calendar                        |
 
 ## Key Constraints
 
@@ -79,6 +79,6 @@ RLS policies enforce tenant isolation using role switching + session variables:
 - Streaming plan generation via `/api/v1/plans/stream`
 - Row Level Security (RLS) with Neon for multi-tenant isolation
 - Usage tracking and quotas (monthly limits, AI API usage)
-- Third-party integrations: Notion exports, Google Calendar sync
+- Third-party integrations: Google Calendar OAuth tokens, disconnect, and sync state
 - Plan scheduling and regeneration tracking
-- OAuth token management for integrations
+- OAuth state token management for Google Calendar flows

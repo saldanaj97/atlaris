@@ -112,13 +112,13 @@ describe('POST /api/v1/integrations/disconnect', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('returns 400 for unsupported provider payload', async () => {
+  it('returns 400 for an unsupported provider payload', async () => {
     const { POST } = await import('@/app/api/v1/integrations/disconnect/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/integrations/disconnect',
       {
         method: 'POST',
-        body: JSON.stringify({ provider: 'notion' }),
+        body: JSON.stringify({ provider: 'invalid_provider' }),
       }
     );
 

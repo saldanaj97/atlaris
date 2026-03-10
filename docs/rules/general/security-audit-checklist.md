@@ -145,7 +145,7 @@
 
 ## SECTION F: Third-Party Integrations
 
-### 13) OAuth & integration security (Google Calendar, Notion)
+### 13) OAuth & integration security (Google Calendar)
 
 - [ ] OAuth tokens encrypted at rest in database.
 - [ ] Refresh tokens handled securely (not exposed to client).

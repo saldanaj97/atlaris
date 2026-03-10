@@ -9,11 +9,11 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 | Category       | Limit        | Window   | Use Case                                  |
 | -------------- | ------------ | -------- | ----------------------------------------- |
 | `aiGeneration` | 10 requests  | 1 hour   | AI generation, regeneration, enhancement  |
-| `integration`  | 30 requests  | 1 hour   | Third-party APIs (Notion)                 |
+| `integration`  | 30 requests  | 1 hour   | Third-party APIs (Google Calendar)        |
 | `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes        |
 | `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences |
 | `billing`      | 10 requests  | 1 minute | Stripe checkout, portal sessions          |
-| `oauth`        | 20 requests  | 1 hour   | OAuth flows (Google, Notion auth)         |
+| `oauth`        | 20 requests  | 1 hour   | OAuth initiation flows (Google auth)      |
 
 ### Plan Generation Rate Limit
 
@@ -73,7 +73,7 @@ export const POST = withErrorBoundary(
 | Endpoint Type                            | Category       |
 | ---------------------------------------- | -------------- |
 | AI generation, regeneration, enhancement | `aiGeneration` |
-| Notion export                            | `integration`  |
+| Google Calendar disconnect / sync writes | `integration`  |
 | Create/update/delete plans, tasks, etc.  | `mutation`     |
 | GET endpoints for data retrieval         | `read`         |
 | Stripe checkout/portal creation          | `billing`      |
@@ -146,7 +146,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 
 ### Integration (`integration`)
 
-- `POST /api/v1/integrations/notion/export`
 - `POST /api/v1/integrations/disconnect`
 
 ### Billing (`billing`)
@@ -177,6 +176,8 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 ### OAuth (`oauth`)
 
 OAuth routes use existing CSRF state token protection. Rate limiting is applied at the initiation level, not callbacks.
+
+- `GET /api/v1/auth/google`
 
 ## Future Considerations
 
