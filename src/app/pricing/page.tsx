@@ -11,6 +11,7 @@ import {
   fetchStripeTierData,
   type StripeTierData,
 } from '@/app/pricing/components/stripe-pricing';
+import { logger } from '@/lib/logging/logger';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Metadata } from 'next';
@@ -50,7 +51,15 @@ async function loadStripeTierData(
     return new Map<TierKey, StripeTierData>();
   }
 
-  return fetchStripeTierData(priceIds);
+  try {
+    return await fetchStripeTierData(priceIds);
+  } catch (error) {
+    logger.error(
+      { err: error },
+      '[loadStripeTierData] Failed to fetch Stripe tier data; rendering with static fallback pricing'
+    );
+    return new Map<TierKey, StripeTierData>();
+  }
 }
 
 export default async function PricingPage(): Promise<ReactElement> {

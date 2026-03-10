@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { Button } from '@/components/ui/button';
 
@@ -27,8 +27,11 @@ export default function SubscribeButton({
   cancelUrl,
 }: SubscribeButtonProps): ReactElement {
   const [loading, setLoading] = useState(false);
+  const pendingRef = useRef(false);
 
   async function handleClick() {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
     setLoading(true);
 
     try {
@@ -72,6 +75,7 @@ export default function SubscribeButton({
       });
       toast.error('Unable to start checkout', { description: message });
       setLoading(false);
+      pendingRef.current = false;
     }
   }
 

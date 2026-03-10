@@ -433,12 +433,7 @@ export function PdfCreatePanel({
   }
 
   if (state.status === 'uploading') {
-    return (
-      <PdfUploadingState
-        onFileSelect={handleFileSelect}
-        onCancelUpload={handleCancelUpload}
-      />
-    );
+    return <PdfUploadingState onCancelUpload={handleCancelUpload} />;
   }
 
   if (state.status === 'preview') {

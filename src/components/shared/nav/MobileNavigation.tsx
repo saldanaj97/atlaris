@@ -56,21 +56,26 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
           aria-label="Mobile navigation"
         >
           {/* Create New Plan - Primary Action */}
-          <Link
-            href="/plans/new"
-            onClick={() => {
-              trackEvent({
-                event: 'cta_click',
-                label: 'Create New Plan',
-                location: 'nav',
-              });
-              setOpen(false);
-            }}
-            className="bg-primary hover:bg-primary/90 mb-2 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
+          <Button
+            asChild
+            variant="default"
+            className="mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg"
           >
-            <Plus className="h-4 w-4" />
-            Create New Plan
-          </Link>
+            <Link
+              href="/plans/new"
+              onClick={() => {
+                trackEvent({
+                  event: 'cta_click',
+                  label: 'Create New Plan',
+                  location: 'nav',
+                });
+                setOpen(false);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Create New Plan
+            </Link>
+          </Button>
 
           {navItems.map((item) => {
             const isActive =

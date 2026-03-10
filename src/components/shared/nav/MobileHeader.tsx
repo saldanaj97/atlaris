@@ -7,6 +7,7 @@ import { ROUTES } from '@/lib/routes';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
+import type { JSX } from 'react';
 
 import BrandLogo from '../BrandLogo';
 import MobileNavigation from './MobileNavigation';
@@ -26,7 +27,7 @@ export default function MobileHeader({
   navItems,
   tier,
   isAuthenticated,
-}: MobileHeaderProps) {
+}: MobileHeaderProps): JSX.Element {
   return (
     <div className="dark:bg-card/50 relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 lg:hidden dark:border-white/10">
       {/* Left: hamburger */}

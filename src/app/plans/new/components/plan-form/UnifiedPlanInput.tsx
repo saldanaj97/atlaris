@@ -112,6 +112,9 @@ export function UnifiedPlanInput({
   });
 
   const prevResetVersionRef = useRef(topicResetVersion);
+  // Ref so the reset effect can read the current topic without it being a dep.
+  const topicRef = useRef(state.topic);
+  topicRef.current = state.topic;
 
   useEffect(() => {
     if (prevResetVersionRef.current === topicResetVersion) {
@@ -120,7 +123,7 @@ export function UnifiedPlanInput({
 
     prevResetVersionRef.current = topicResetVersion;
 
-    if (state.topic === initialTopic) {
+    if (topicRef.current === initialTopic) {
       return;
     }
 
@@ -128,7 +131,7 @@ export function UnifiedPlanInput({
       type: 'reset-topic',
       value: initialTopic,
     });
-  }, [initialTopic, state.topic, topicResetVersion]);
+  }, [initialTopic, topicResetVersion]);
 
   const topic = state.topic;
 
@@ -262,7 +265,7 @@ export function UnifiedPlanInput({
             type="button"
             onClick={handleSubmit}
             disabled={isDisabled}
-            className="group bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl px-5 py-2.5 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl sm:px-6 sm:py-3"
+            className="group bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl px-5 py-2.5 text-white shadow-xl transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-2xl disabled:opacity-50 sm:px-6 sm:py-3"
           >
             {isSubmitting ? (
               <>

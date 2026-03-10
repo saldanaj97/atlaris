@@ -185,7 +185,7 @@ export function PdfExtractionPreview({
                         onChange={(e) =>
                           handleSectionEdit(index, 'title', e.target.value)
                         }
-                        className="text-foreground h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-sm font-medium shadow-none focus-visible:ring-0 md:text-sm"
+                        className="text-foreground h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-sm font-medium shadow-none focus-visible:ring-1 md:text-sm"
                         disabled={isGenerating}
                       />
                       <Badge variant="outline" className="text-xs">
@@ -205,7 +205,7 @@ export function PdfExtractionPreview({
                         handleSectionEdit(index, 'content', e.target.value)
                       }
                       rows={3}
-                      className="text-muted-foreground min-h-0 w-full resize-none rounded-none border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0 md:text-xs"
+                      className="text-muted-foreground min-h-0 w-full resize-none rounded-none border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-1 md:text-xs"
                       disabled={isGenerating}
                     />
                   </div>

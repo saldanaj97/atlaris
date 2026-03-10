@@ -73,6 +73,9 @@ export default function ManageSubscriptionButton({
     } catch (err) {
       const isTimeout =
         err instanceof DOMException && err.name === 'TimeoutError';
+      if (isTimeout) {
+        clientLogger.warn('Billing portal request timed out', { returnUrl });
+      }
       const message = isTimeout
         ? 'Request timed out — please try again'
         : err instanceof Error

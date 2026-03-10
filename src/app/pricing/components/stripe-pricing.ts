@@ -11,8 +11,8 @@ import type {
   StripePriceFields,
   StripeProductFields,
 } from '@/lib/validation/stripe';
-import { PRICING_TIERS } from './PricingTiers';
-import type { TierKey } from './PricingTiers';
+import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
+import type { TierKey } from '@/app/pricing/components/PricingTiers';
 export interface StripeTierData {
   name: string;
   amount: string;
@@ -125,31 +125,57 @@ export async function fetchStripeTierData({
     rawProPrice
   );
 
-  const starterPrice = stripePriceFieldsSchema.parse(rawStarterPrice);
-  const proPrice = stripePriceFieldsSchema.parse(rawProPrice);
-  const starterProduct = stripeProductFieldsSchema.parse(rawStarterProduct);
-  const proProduct = stripeProductFieldsSchema.parse(rawProProduct);
-
-  const starterName = resolveStripeProductName({
-    fallbackName: PRICING_TIERS.starter.name,
-    product: starterProduct,
-    productLabel: 'starterProduct',
-  });
-  const proName = resolveStripeProductName({
-    fallbackName: PRICING_TIERS.pro.name,
-    product: proProduct,
-    productLabel: 'proProduct',
-  });
+  const starterPriceResult = stripePriceFieldsSchema.safeParse(rawStarterPrice);
+  const proPriceResult = stripePriceFieldsSchema.safeParse(rawProPrice);
+  const starterProductResult =
+    stripeProductFieldsSchema.safeParse(rawStarterProduct);
+  const proProductResult = stripeProductFieldsSchema.safeParse(rawProProduct);
 
   const stripeData = new Map<TierKey, StripeTierData>();
-  stripeData.set('starter', {
-    name: starterName,
-    amount: formatStripePriceAmount(starterPrice),
-  });
-  stripeData.set('pro', {
-    name: proName,
-    amount: formatStripePriceAmount(proPrice),
-  });
+
+  if (!starterPriceResult.success || !starterProductResult.success) {
+    logger.warn(
+      {
+        priceError: starterPriceResult.success
+          ? undefined
+          : starterPriceResult.error,
+        productError: starterProductResult.success
+          ? undefined
+          : starterProductResult.error,
+      },
+      '[fetchStripeTierData] Stripe starter data failed validation; omitting from pricing map'
+    );
+  } else {
+    stripeData.set('starter', {
+      name: resolveStripeProductName({
+        fallbackName: PRICING_TIERS.starter.name,
+        product: starterProductResult.data,
+        productLabel: 'starterProduct',
+      }),
+      amount: formatStripePriceAmount(starterPriceResult.data),
+    });
+  }
+
+  if (!proPriceResult.success || !proProductResult.success) {
+    logger.warn(
+      {
+        priceError: proPriceResult.success ? undefined : proPriceResult.error,
+        productError: proProductResult.success
+          ? undefined
+          : proProductResult.error,
+      },
+      '[fetchStripeTierData] Stripe pro data failed validation; omitting from pricing map'
+    );
+  } else {
+    stripeData.set('pro', {
+      name: resolveStripeProductName({
+        fallbackName: PRICING_TIERS.pro.name,
+        product: proProductResult.data,
+        productLabel: 'proProduct',
+      }),
+      amount: formatStripePriceAmount(proPriceResult.data),
+    });
+  }
 
   return stripeData;
 }

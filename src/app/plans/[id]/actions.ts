@@ -14,7 +14,7 @@
  * - src/lib/api/auth.ts — commentary on current non-RLS behavior in request handlers.
  */
 
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import { withServerActionContext } from '@/lib/api/auth';
@@ -78,33 +78,6 @@ async function ensureTaskOwnership(
   }
 }
 
-async function ensureBatchTaskOwnership(
-  db: ReturnType<typeof getDb>,
-  planId: string,
-  taskIds: string[],
-  userId: string
-): Promise<void> {
-  const uniqueTaskIds = Array.from(new Set(taskIds));
-  if (uniqueTaskIds.length === 0) return;
-
-  const ownedTasks = await db
-    .select({ taskId: tasks.id })
-    .from(tasks)
-    .innerJoin(modules, eq(tasks.moduleId, modules.id))
-    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(
-      and(
-        inArray(tasks.id, uniqueTaskIds),
-        eq(learningPlans.id, planId),
-        eq(learningPlans.userId, userId)
-      )
-    );
-
-  if (ownedTasks.length !== uniqueTaskIds.length) {
-    throw new Error('One or more tasks not found.');
-  }
-}
-
 export async function updateTaskProgressAction({
   planId,
   taskId,
@@ -161,12 +134,6 @@ export async function batchUpdateTaskProgressAction({
 
   const result = await withServerActionContext(async (user, rlsDb) => {
     try {
-      await ensureBatchTaskOwnership(
-        rlsDb,
-        planId,
-        updates.map((update) => update.taskId),
-        user.id
-      );
       await setTaskProgressBatch(user.id, updates, rlsDb);
       revalidatePath(`/plans/${planId}`);
       revalidatePath('/plans');

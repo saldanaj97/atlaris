@@ -43,7 +43,7 @@ function UpcomingScheduleCard({
           </span>
         </div>
         <span className="bg-sidebar-accent text-sidebar-accent-foreground rounded-full px-2 py-0.5 text-xs font-medium">
-          {events.length} events
+          {events.length} {events.length === 1 ? 'event' : 'events'}
         </span>
       </div>
 

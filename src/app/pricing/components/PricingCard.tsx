@@ -76,11 +76,8 @@ export function PricingCard({
         <Separator className="my-6" />
 
         <ul className="flex-1 space-y-3">
-          {features.map((feature, index) => (
-            <li
-              key={`${feature}-${index}`}
-              className="flex items-start gap-3 text-sm"
-            >
+          {features.map((feature) => (
+            <li key={feature} className="flex items-start gap-3 text-sm">
               <Check className="text-primary mt-0.5 h-4 w-4 shrink-0" />
               <span>{feature}</span>
             </li>

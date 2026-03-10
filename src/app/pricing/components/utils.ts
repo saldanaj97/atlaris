@@ -46,7 +46,7 @@ function normalizeFractionDigits(fractionDigits: number): number {
     return 2;
   }
 
-  return Math.max(0, Math.floor(fractionDigits));
+  return Math.min(20, Math.max(0, Math.floor(fractionDigits)));
 }
 
 export function formatAmount(
@@ -55,7 +55,7 @@ export function formatAmount(
   fractionDigits: number = 2,
   locale?: string
 ): string {
-  if (cents == null) return '—';
+  if (cents == null || Number.isNaN(cents)) return '—';
 
   const amount = cents / 100;
   const normalizedCurrency = normalizeCurrency(currency);

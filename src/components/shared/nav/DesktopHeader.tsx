@@ -53,13 +53,15 @@ export default function DesktopHeader({
         >
           <Link
             href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}
-            onClick={() =>
-              trackEvent({
-                event: 'cta_click',
-                label: 'New Plan',
-                location: 'nav',
-              })
-            }
+            onClick={() => {
+              if (isAuthenticated) {
+                trackEvent({
+                  event: 'cta_click',
+                  label: 'New Plan',
+                  location: 'nav',
+                });
+              }
+            }}
           >
             <Plus className="h-3.5 w-3.5" />
             <span>New Plan</span>

@@ -19,6 +19,11 @@ vi.mock('next/link', () => ({
   }) => <a href={href}>{children}</a>,
 }));
 
+// PlanRow renders DeletePlanDialog which calls useRouter; mock it here.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
 describe('PlansList', () => {
   const referenceTimestamp = '2024-06-01T00:00:00.000Z';
 

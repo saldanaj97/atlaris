@@ -25,24 +25,55 @@ import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 
-interface DeletePlanDialogProps {
+interface DeletePlanDialogBaseProps {
   planId: string;
   planTopic: string;
   isGenerating: boolean;
   /** Where to navigate after successful deletion. Defaults to '/plans'. */
   redirectTo?: string;
-  children: ReactElement;
 }
+
+/** Controlled mode: parent owns open state; no trigger child is rendered. */
+type DeletePlanDialogControlledProps = DeletePlanDialogBaseProps & {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children?: never;
+};
+
+/** Uncontrolled mode: component owns open state; a trigger child is required. */
+type DeletePlanDialogUncontrolledProps = DeletePlanDialogBaseProps & {
+  open?: never;
+  onOpenChange?: never;
+  children: ReactElement;
+};
+
+type DeletePlanDialogProps =
+  | DeletePlanDialogControlledProps
+  | DeletePlanDialogUncontrolledProps;
 
 export function DeletePlanDialog({
   planId,
   planTopic,
   isGenerating,
   redirectTo = '/plans',
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
   children,
 }: DeletePlanDialogProps): ReactElement {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = useCallback(
+    (value: boolean) => {
+      if (isControlled) {
+        controlledOnOpenChange?.(value);
+      } else {
+        setInternalOpen(value);
+      }
+    },
+    [isControlled, controlledOnOpenChange]
+  );
   const [deleting, setDeleting] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -81,6 +112,7 @@ export function DeletePlanDialog({
       }
       router.push(redirectTo);
       router.refresh();
+      return; // navigation initiated; skip post-navigation state cleanup below
     } catch (error: unknown) {
       if (isAbortError(error)) {
         if (abortControllerRef.current === controller) {
@@ -103,13 +135,15 @@ export function DeletePlanDialog({
         setDeleting(false);
       }
     }
-  }, [planId, redirectTo, router]);
+  }, [planId, redirectTo, router, setOpen]);
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild disabled={isGenerating}>
-        {children}
-      </AlertDialogTrigger>
+      {!isControlled && children && (
+        <AlertDialogTrigger asChild disabled={isGenerating}>
+          {children}
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete plan</AlertDialogTitle>

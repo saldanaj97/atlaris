@@ -89,7 +89,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps) {
   const isPendingOrProcessing =
     plan.status === 'pending' || plan.status === 'processing';
 
-  const isGenerating = plan.status === 'processing';
+  const isGenerating = isPendingOrProcessing;
 
   return (
     <div>

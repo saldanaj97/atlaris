@@ -92,15 +92,16 @@ export function PdfUploadZone({
 
       const run = async (): Promise<void> => {
         const files = Array.from(e.dataTransfer.files);
-        const candidate = files[0];
 
-        if (!candidate) {
-          return;
-        }
-
-        const isValid = await validatePdfFile(candidate);
-        if (isValid) {
-          onFileSelect(candidate);
+        // Find the first dropped file that passes PDF validation, regardless of
+        // position. This prevents non-PDF files earlier in the drop list from
+        // blocking a valid PDF file that was also dropped.
+        for (const candidate of files) {
+          const isValid = await validatePdfFile(candidate);
+          if (isValid) {
+            onFileSelect(candidate);
+            return;
+          }
         }
       };
 

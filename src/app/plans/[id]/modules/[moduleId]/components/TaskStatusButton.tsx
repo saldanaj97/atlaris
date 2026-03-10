@@ -10,6 +10,7 @@ interface TaskStatusButtonProps {
   taskId: string;
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
+  disabled?: boolean;
 }
 
 /**
@@ -20,6 +21,7 @@ export function TaskStatusButton({
   taskId,
   status,
   onStatusChange,
+  disabled = false,
 }: TaskStatusButtonProps): JSX.Element {
   const isCompleted = status === 'completed';
 
@@ -33,6 +35,7 @@ export function TaskStatusButton({
   return (
     <Button
       onClick={handleClick}
+      disabled={disabled}
       aria-pressed={isCompleted}
       aria-label={
         isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'

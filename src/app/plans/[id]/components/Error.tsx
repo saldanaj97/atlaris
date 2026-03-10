@@ -9,13 +9,13 @@ interface PlanDetailPageErrorProps {
 }
 
 /**
- * Renders a full-screen error UI for the plan detail page.
+ * Renders a centered card error UI for the plan detail page.
  *
  * Displays a prominent "Error Loading Plan" heading, a provided error message or a default
  * fallback message, and a button linking back to the plans list.
  *
  * @param message - Optional custom error message to display instead of the default text
- * @returns The React element representing the error page UI
+ * @returns The React element representing the error card UI
  */
 export function PlanDetailPageError({
   message,

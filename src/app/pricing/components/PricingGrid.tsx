@@ -39,7 +39,7 @@ export function PricingGrid({
             price={stripeInfo?.amount ?? tier.price ?? '$—'}
             intervalLabel={intervalLabel}
             description={tier.description}
-            features={[...tier.features]}
+            features={tier.features}
             badge={tier.badge}
             cta={
               config.key === 'free' ? (

@@ -151,7 +151,7 @@ export function PlanModuleCard({
                 'hover:border-primary/30 rounded-md border p-4 transition-colors',
                 isCompleted
                   ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
-                  : 'bg-card-background'
+                  : 'bg-card'
               )}
             >
               <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">

@@ -21,7 +21,7 @@ import {
   Target,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule, ClientTask } from '@/lib/types/client';
@@ -137,6 +137,19 @@ export function PlanTimeline({
     )?.id;
     return activeModuleId ? [activeModuleId] : [];
   });
+
+  // When the active module changes (e.g. after a task completes and a new module unlocks),
+  // ensure it is automatically expanded.
+  useEffect(() => {
+    const activeModuleId = timelineModules.find(
+      (mod) => mod.status === 'active'
+    )?.id;
+    if (activeModuleId) {
+      setExpandedModuleIds((prev) =>
+        prev.includes(activeModuleId) ? prev : [...prev, activeModuleId]
+      );
+    }
+  }, [timelineModules]);
 
   const handleModuleToggle = (moduleId: string) => {
     setExpandedModuleIds((prev) =>

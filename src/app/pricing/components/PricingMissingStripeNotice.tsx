@@ -10,7 +10,7 @@ interface PricingMissingStripeNoticeProps {
 
 export function PricingMissingStripeNotice({
   title = 'Stripe pricing unavailable',
-  message = 'Stripe price IDs are not configured. Set STRIPE_*_PRICE_ID env vars.',
+  message = 'Stripe pricing is not currently available. Please contact support if this persists.',
 }: PricingMissingStripeNoticeProps): ReactElement {
   return (
     <Alert

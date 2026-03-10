@@ -18,11 +18,17 @@ const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;
 
 function getStatusBadgeVariant(
   failed: boolean,
-  processing: boolean
+  processing: boolean,
+  retrying: boolean
 ): 'destructive' | 'default' | 'secondary' {
-  if (failed) return 'destructive';
+  if (failed && !retrying) return 'destructive';
   if (processing) return 'default';
   return 'secondary';
+}
+
+function getStatusBadgeLabel(status: string, retrying: boolean): string {
+  if (retrying) return 'retrying';
+  return status;
 }
 
 interface PlanPendingStateProps {
@@ -73,10 +79,14 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                 {formatSkillLevel(plan.skillLevel)}
               </Badge>
               <Badge
-                variant={getStatusBadgeVariant(isFailed, isProcessing)}
+                variant={getStatusBadgeVariant(
+                  isFailed,
+                  isProcessing,
+                  isRetrying
+                )}
                 className="ml-2 uppercase"
               >
-                {status}
+                {getStatusBadgeLabel(status, isRetrying)}
               </Badge>
             </div>
             {isPolling && (
