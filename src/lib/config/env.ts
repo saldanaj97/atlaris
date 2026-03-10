@@ -189,7 +189,6 @@ const getServerOptional = (key: string): string | undefined => {
   return serverOptionalCache.get(key);
 };
 
-// Check if running in production (not test or development)
 const isProdRuntime =
   typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
 

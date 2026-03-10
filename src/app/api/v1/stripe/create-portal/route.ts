@@ -62,12 +62,10 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
         'billing portal attempt'
       );
 
-      // User must have a Stripe customer ID
       if (!user.stripeCustomerId) {
         throw new ValidationError('No Stripe customer found for user');
       }
 
-      // Parse request body (optional)
       let body: unknown = {};
       try {
         body = await req.json();
@@ -85,7 +83,6 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
           );
           throw new ValidationError('Malformed JSON body');
         }
-        // No body sent — continue with defaults
       }
 
       const parseResult = createPortalBodySchema.safeParse(body);
@@ -179,5 +176,4 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
   );
 }
 
-// POST /api/v1/stripe/create-portal
 export const POST = createCreatePortalHandler();

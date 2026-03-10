@@ -160,5 +160,4 @@ export function createCreateCheckoutHandler(
   );
 }
 
-// POST /api/v1/stripe/create-checkout
 export const POST = createCreateCheckoutHandler();

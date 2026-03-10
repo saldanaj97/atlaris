@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Stream Result Handlers
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { getModelById } from '@/lib/ai/ai-models';
 import { isRetryableClassification } from '@/lib/ai/failures';
 import type { GenerationResult } from '@/lib/ai/orchestrator';

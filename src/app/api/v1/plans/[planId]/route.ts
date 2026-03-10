@@ -24,20 +24,7 @@ export const GET = withErrorBoundary(
 
     logger.info({ planId, userId: user.id }, 'Fetching learning plan detail');
 
-    let detail: Awaited<ReturnType<typeof getLearningPlanDetail>>;
-    try {
-      detail = await getLearningPlanDetail(planId, user.id);
-    } catch (error) {
-      logger.error(
-        {
-          planId,
-          userId: user.id,
-          errorName: error instanceof Error ? error.name : 'UnknownError',
-        },
-        'Failed fetching learning plan detail'
-      );
-      throw error;
-    }
+    const detail = await getLearningPlanDetail(planId, user.id);
 
     if (!detail) {
       logger.error({ planId, userId: user.id }, 'Learning plan not found');
@@ -65,20 +52,7 @@ export const DELETE = withErrorBoundary(
 
     logger.info({ planId, userId: user.id }, 'Deleting learning plan');
 
-    let result: Awaited<ReturnType<typeof deletePlan>>;
-    try {
-      result = await deletePlan(planId, user.id);
-    } catch (error) {
-      logger.error(
-        {
-          planId,
-          userId: user.id,
-          errorName: error instanceof Error ? error.name : 'UnknownError',
-        },
-        'Failed to delete learning plan'
-      );
-      throw error;
-    }
+    const result = await deletePlan(planId, user.id);
 
     if (!result.success) {
       if (result.reason === 'not_found') {

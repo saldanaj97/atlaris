@@ -116,10 +116,6 @@ export async function validatePdfUpload(
   return { allowed: true, limits };
 }
 
-// ---------------------------------------------------------------------------
-// Per-user PDF extraction throttle (sliding window)
-// ---------------------------------------------------------------------------
-
 /**
  * Simple sliding-window rate limiter for PDF extractions.
  * Limits: max 10 extractions per 10-minute window per user.
@@ -197,7 +193,6 @@ export function acquirePdfExtractionSlot(
   const windowStart = now - PDF_EXTRACTION_WINDOW_MS;
 
   const timestamps = store.get(userId) ?? [];
-  // Filter to only timestamps within the window
   const recent = pruneRecentTimestamps(timestamps, windowStart);
 
   if (recent.length >= PDF_EXTRACTION_MAX_PER_WINDOW) {
@@ -212,7 +207,6 @@ export function acquirePdfExtractionSlot(
     return { allowed: false, retryAfterMs: Math.max(0, retryAfterMs) };
   }
 
-  // Record this extraction
   recent.push(now);
   store.set(userId, recent);
 

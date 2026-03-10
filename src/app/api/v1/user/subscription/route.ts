@@ -85,5 +85,4 @@ export function createSubscriptionGetHandler(
   );
 }
 
-// GET /api/v1/user/subscription
 export const GET = createSubscriptionGetHandler();

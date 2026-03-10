@@ -108,7 +108,6 @@ export function checkFeatureLimit(
     return async (req: Request, routeContext?: RouteHandlerContext) => {
       const user = await resolveGateUser();
 
-      // Check limits based on feature type
       const db = getDbClient();
       let withinLimit = false;
       let limitMessage = '';

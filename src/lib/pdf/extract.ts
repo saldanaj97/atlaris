@@ -141,7 +141,6 @@ export const extractTextFromPdf = async (
   try {
     ensurePdfWorkerSet();
 
-    // Check for abort before starting parse
     if (options.signal?.aborted || controller.signal.aborted) {
       return {
         success: false,

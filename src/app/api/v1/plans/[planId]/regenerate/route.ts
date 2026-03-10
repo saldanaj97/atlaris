@@ -64,7 +64,6 @@ export const POST: PlainHandler = withErrorBoundary(
         dbClient: db,
       });
 
-      // Parse request body for overrides (before quota check to fail fast on validation)
       let body: unknown;
       try {
         body = await req.json();
@@ -108,7 +107,6 @@ export const POST: PlainHandler = withErrorBoundary(
 
       const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
 
-      // Atomically check and increment regeneration quota (prevents TOCTOU race)
       const usageResult = await atomicCheckAndIncrementUsage(
         user.id,
         'regeneration',
@@ -127,14 +125,12 @@ export const POST: PlainHandler = withErrorBoundary(
         );
       }
 
-      // Compute priority based on tier and topic
       const tier = await resolveUserTier(user.id, db);
       const priority = computeJobPriority({
         tier,
         isPriorityTopic: isPriorityTopic(overrides?.topic ?? plan.topic),
       });
 
-      // Enqueue regeneration job
       const payload: PlanRegenerationJobData = { planId, overrides };
       const enqueueResult = await enqueueJobWithResult(
         JOB_TYPES.PLAN_REGENERATION,

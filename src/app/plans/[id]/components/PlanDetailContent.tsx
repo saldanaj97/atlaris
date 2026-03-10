@@ -22,7 +22,6 @@ interface PlanDetailContentProps {
 export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
   const planResult = await getCachedPlanForPage(planId);
 
-  // Handle plan access errors with explicit error codes
   if (!isPlanSuccess(planResult)) {
     const error = getPlanError(planResult);
     const code = error.code;
@@ -32,33 +31,28 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
 
     switch (code) {
       case 'UNAUTHORIZED':
-        // User needs to authenticate - redirect to sign-in
         return redirect(
           `/sign-in?redirect_url=/plans/${encodeURIComponent(planId)}`
         );
 
       case 'NOT_FOUND':
-        // Plan doesn't exist or user doesn't have access
         return (
           <PlanDetailPageError message="This plan does not exist or you do not have access to it." />
         );
 
       case 'FORBIDDEN':
-        // User is authenticated but explicitly not allowed
         return (
           <PlanDetailPageError message="You do not have permission to view this plan." />
         );
 
       case 'INTERNAL_ERROR':
       default:
-        // Unexpected error - show generic message
         return (
           <PlanDetailPageError message="Something went wrong. Please try again later." />
         );
     }
   }
 
-  // TypeScript now knows planResult.success is true, so data exists
   const planData = planResult.data;
   const formattedPlanDetails = mapDetailToClient(planData);
   if (!formattedPlanDetails) {
