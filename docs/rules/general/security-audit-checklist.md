@@ -1,6 +1,6 @@
 # Pre-Launch Security & Abuse-Resistance Audit Checklist (24 Areas)
 
-> **Stack context**: Next.js 16 + React 19 + Clerk auth + Stripe billing + Neon (Postgres + RLS) + OpenRouter AI
+> **Stack context**: Next.js 16 + React 19 + Neon Auth + Stripe billing + Neon (Postgres + RLS) + OpenRouter AI
 
 ---
 
@@ -30,15 +30,15 @@
 
 ## SECTION B: Authentication & Authorization
 
-### 3) Authentication patterns (Clerk-specific)
+### 3) Authentication patterns (Neon Auth)
 
-- [ ] Verify `auth()` or `currentUser()` is called on every protected route/action.
-- [ ] Middleware correctly protects route groups (not just individual pages).
-- [ ] Clerk webhook signature verification is implemented and tested.
-- [ ] Session token validation happens server-side, not just client-side.
-- [ ] Handle Clerk session expiry gracefully (don't expose stale auth state).
-- [ ] Verify `publicRoutes` in Clerk middleware doesn't accidentally expose sensitive routes.
-- [ ] Test that signed-out users can't access protected API routes via direct fetch.
+- [ ] Verify protected routes/actions use the shared auth wrappers from `@/lib/api/auth`.
+- [ ] Confirm `getEffectiveAuthUserId()` and `requireUser()` are only used in appropriate contexts.
+- [ ] Ensure security-sensitive flows use `getAuthUserId()` when dev overrides must be ignored.
+- [ ] Verify Neon Auth session cookies are validated server-side, not only in the browser.
+- [ ] Confirm development auth overrides (`DEV_AUTH_USER_ID`) cannot affect production.
+- [ ] Test that signed-out users cannot access protected API routes directly.
+- [ ] Verify auth failures degrade gracefully in Server Components and fail closed in API routes.
 
 ### 4) Authorization & access control
 
@@ -181,7 +181,7 @@
 - [ ] Cookie/session flags: Secure, HttpOnly, SameSite=Lax or Strict.
 - [ ] Validate refresh token handling, invalidation on logout, and session fixation resistance.
 - [ ] Verify JWT validation assumptions (aud/iss/exp) if you handle tokens directly.
-- [ ] Clerk session tokens not stored in localStorage (use cookies).
+- [ ] Auth/session material is not stored in localStorage or other browser persistence without an explicit need.
 - [ ] Session invalidation on password change/security events.
 - [ ] Concurrent session limits if applicable.
 

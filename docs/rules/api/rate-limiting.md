@@ -30,7 +30,7 @@ Source of truth for durable generation limits is `src/lib/ai/generation-policy.t
 Located in `src/lib/api/user-rate-limit.ts`.
 
 - **Storage**: In-memory LRU cache per process
-- **Key**: Clerk user ID (not IP)
+- **Key**: Authenticated user ID (not IP)
 - **Scope**: Per category, per user
 - **Multi-instance note**: Each server instance enforces its own limits. For strict global limits, consider Redis-backed storage.
 
@@ -142,7 +142,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `POST /api/v1/plans/stream`
 - `POST /api/v1/plans/[planId]/retry`
 - `POST /api/v1/plans/[planId]/regenerate`
-- `POST /api/v1/ai/enhance-content`
 
 ### Integration (`integration`)
 
@@ -170,7 +169,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `GET /api/v1/user/preferences`
 - `GET /api/v1/user/subscription`
 - `GET /api/v1/user/profile`
-- `GET /api/v1/templates`
 - `GET /api/v1/resources`
 
 ### OAuth (`oauth`)

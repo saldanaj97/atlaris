@@ -1,5 +1,4 @@
 import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
-import { getPlanIdFromUrl, isUuid } from '@/lib/api/route-helpers';
 import {
   selectOwnedPlanById,
   type OwnedPlanRecord,
@@ -11,6 +10,24 @@ import { getDb } from '@/lib/db/runtime';
 export type PlansDbClient = ReturnType<typeof getDb>;
 
 export type LearningPlanRecord = OwnedPlanRecord;
+
+function getPlanIdFromUrl(
+  req: Request,
+  position: 'last' | 'second-to-last' = 'last'
+): string | undefined {
+  const url = new URL(req.url);
+  const segments = url.pathname.split('/').filter(Boolean);
+
+  return position === 'last'
+    ? segments[segments.length - 1]
+    : segments[segments.length - 2];
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    value
+  );
+}
 
 export function requirePlanIdFromRequest(
   req: Request,
