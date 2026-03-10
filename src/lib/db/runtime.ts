@@ -12,14 +12,6 @@ export class MissingRequestDbContextError extends Error {
 }
 
 /**
- * Explicit service-role accessor for workers/background jobs.
- * Avoid using this in request handlers.
- */
-export function getServiceDbForWorker(): typeof serviceDb {
-  return serviceDb;
-}
-
-/**
  * Returns the appropriate database client based on execution context:
  * - In test mode: Always returns service-role DB (bypasses RLS for integration tests)
  * - In request handlers: Returns the RLS-enforced DB from request context

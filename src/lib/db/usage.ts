@@ -5,10 +5,6 @@ import { eq, sql } from 'drizzle-orm';
 
 type DbClient = ReturnType<typeof getDb>;
 
-export interface EnsureBudgetParams {
-  type: 'plan' | 'regeneration';
-}
-
 export interface RecordUsageParams {
   userId: string;
   provider: string;
@@ -40,31 +36,6 @@ export async function recordUsage(
   }
 }
 
-const TIER_LIMITS: Record<'free' | 'starter' | 'pro', number> = {
-  free: 2,
-  starter: 10,
-  pro: Infinity,
-};
-
-export async function checkExportQuota(
-  userId: string,
-  tier: 'free' | 'starter' | 'pro',
-  dbClient: DbClient = getDb()
-): Promise<boolean> {
-  const limit = TIER_LIMITS[tier];
-
-  if (limit === Infinity) {
-    return true;
-  }
-
-  const [result] = await dbClient
-    .select({ exportCount: users.monthlyExportCount })
-    .from(users)
-    .where(eq(users.id, userId));
-
-  return (result?.exportCount ?? 0) < limit;
-}
-
 export async function incrementExportUsage(
   userId: string,
   dbClient: DbClient = getDb()
@@ -83,10 +54,4 @@ export async function incrementExportUsage(
       `Failed to increment export usage: user ${userId} not found`
     );
   }
-}
-
-export async function resetMonthlyExportCounts(
-  dbClient: DbClient = getDb()
-): Promise<void> {
-  await dbClient.update(users).set({ monthlyExportCount: 0 });
 }

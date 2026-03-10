@@ -127,7 +127,7 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 | Inside auth wrappers         | `getDb()` or the `rlsDb` callback  | Returns request-scoped RLS client                      |
 | Query function default param | `getDb()` (optional `dbClient` DI) | Works in all contexts via request context              |
 | Tests / integration tests    | `db` from `@/lib/db/service-role`  | Bypasses RLS for test data setup                       |
-| Workers / background jobs    | `getServiceDbForWorker()`          | No user session exists                                 |
+| Workers / background jobs    | `db` from `@/lib/db/service-role`  | No user session exists                                 |
 | Stripe webhooks              | `db` from `@/lib/db/service-role`  | System-originated, no user session, signature-verified |
 
 ### Fail-closed design
@@ -148,7 +148,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). `STRIPE_WEBHOOK_DEV_MODE` has a startup assertion that crashes the process if enabled outside dev/test.
 
-4. **Service-role usage is restricted.** ESLint blocks `@/lib/db/service-role` imports in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`. The `deleteUserByAuthId` function throws if called inside request context.
+4. **Service-role usage is restricted.** ESLint blocks `@/lib/db/service-role` imports in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`.
 
 5. **RLS connections are isolated.** Each request gets a dedicated non-pooled connection (`max: 1`). Session variables cannot leak between requests. Cleanup is guaranteed via `finally`.
 

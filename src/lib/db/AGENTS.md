@@ -47,7 +47,6 @@ db/
 ├── runtime.ts       # getDb() - context-aware client selector
 ├── service-role.ts  # Bypasses RLS (tests/workers only)
 ├── rls.ts           # RLS client factory (authenticated/anonymous)
-├── index.ts         # Main exports (RLS clients + schema)
 ├── schema/
 │   ├── tables/      # Table definitions (plans.ts, users.ts, etc.)
 │   ├── constants.ts # Shared numeric/string limits (single source of truth)
@@ -96,9 +95,9 @@ const MAX_TITLE = 500; // local magic number
 
 ### Current constants
 
-| Constant                    | Value | Used in                                                     | DB constraint status            |
-| --------------------------- | ----- | ----------------------------------------------------------- | ------------------------------- |
-| `MAX_RESOURCE_TITLE_LENGTH` | `500` | `queries/helpers/resources-helpers.ts` (sanitization guard) | TODO ([RESOURCE-HARDENING] tag) |
+| Constant                    | Value | Used in                                         | DB constraint status            |
+| --------------------------- | ----- | ----------------------------------------------- | ------------------------------- |
+| `MAX_RESOURCE_TITLE_LENGTH` | `500` | `schema/tables/tasks.ts` (constraint reference) | TODO ([RESOURCE-HARDENING] tag) |
 
 **Adding a new constant:** add it to `schema/constants.ts` with a JSDoc comment explaining what enforces it (app-layer, DB CHECK, or both), then import it wherever it is used.
 

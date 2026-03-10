@@ -7,19 +7,19 @@ type PlanQueryClient = Pick<ReturnType<typeof getDb>, 'select'>;
 
 export type OwnedPlanRecord = typeof learningPlans.$inferSelect;
 
-export interface LockedOwnedPlanRecord {
+interface LockedOwnedPlanRecord {
   id: string;
   userId: string;
   generationStatus: OwnedPlanRecord['generationStatus'];
 }
 
-export interface OwnedPlanQueryParams {
+interface OwnedPlanQueryParams {
   planId: string;
   ownerUserId: string;
   dbClient: PlanQueryClient;
 }
 
-export function ownedPlanWhere(
+function ownedPlanWhere(
   planId: string,
   ownerUserId: string
 ): ReturnType<typeof and> {

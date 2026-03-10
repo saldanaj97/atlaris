@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { cleanupOldJobs, getFailedJobs, getJobStats } from '@/lib/db/queries';
+import {
+  cleanupOldJobs,
+  getFailedJobs,
+  getJobStats,
+} from '@/lib/db/queries/jobs';
 import { jobQueue } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { JOB_TYPES } from '@/lib/jobs/types';
