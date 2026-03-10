@@ -205,9 +205,9 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
             <div className="bg-primary/5 flex items-start gap-3 rounded-lg p-4">
               <Loader2 className="text-primary mt-0.5 h-5 w-5 shrink-0 animate-spin" />
               <div className="space-y-1">
-                <p className="font-semibold">Redirecting…</p>
+                <p className="font-semibold">Loading…</p>
                 <p className="text-muted-foreground text-sm">
-                  Loading your plan.
+                  Your plan is ready. Preparing the view.
                 </p>
               </div>
             </div>
