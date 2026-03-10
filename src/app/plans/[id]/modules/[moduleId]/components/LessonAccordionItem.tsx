@@ -70,6 +70,37 @@ const RESOURCE_CONFIG: Record<
   },
 };
 
+interface PlaceholderContentEntry {
+  key: string;
+  block: ContentBlock;
+}
+
+function createPlaceholderContentEntries(params: {
+  lessonId: string;
+  lessonTitle: string;
+}): PlaceholderContentEntry[] {
+  const occurrenceCounts = new Map<string, number>();
+  const blocks = generatePlaceholderContent({
+    seed: hashString(params.lessonId),
+    topic: params.lessonTitle,
+    minSections: 2,
+    maxSections: 3,
+    minParagraphsPerSection: 1,
+    maxParagraphsPerSection: 2,
+  });
+
+  return blocks.map((block) => {
+    const signature = `${block.type}-${hashString(block.content)}`;
+    const occurrence = occurrenceCounts.get(signature) ?? 0;
+    occurrenceCounts.set(signature, occurrence + 1);
+
+    return {
+      key: `${signature}-${occurrence}`,
+      block,
+    };
+  });
+}
+
 /**
  * Renders a content block with appropriate styling.
  */
@@ -164,16 +195,14 @@ export function LessonAccordionItem({
   const resources = lesson.resources ?? [];
 
   // Generate deterministic placeholder content based on lesson ID
-  const placeholderContent = useMemo(() => {
-    return generatePlaceholderContent({
-      seed: hashString(lesson.id),
-      topic: lesson.title,
-      minSections: 2,
-      maxSections: 3,
-      minParagraphsPerSection: 1,
-      maxParagraphsPerSection: 2,
-    });
-  }, [lesson.id, lesson.title]);
+  const placeholderContent = useMemo(
+    () =>
+      createPlaceholderContentEntries({
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+      }),
+    [lesson.id, lesson.title]
+  );
 
   // Determine card styling based on state
   const getCardClassName = () => {
@@ -349,11 +378,8 @@ export function LessonAccordionItem({
               {/* Placeholder Learning Content */}
               <div className="rounded-xl border border-stone-200/50 bg-white/50 p-6 dark:border-stone-700/50 dark:bg-stone-800/30">
                 <div className="prose prose-stone dark:prose-invert max-w-none">
-                  {placeholderContent.map((block, index) => (
-                    <ContentBlockRenderer
-                      key={`${block.type}-${hashString(block.content)}-${index}`}
-                      block={block}
-                    />
+                  {placeholderContent.map(({ key, block }) => (
+                    <ContentBlockRenderer key={key} block={block} />
                   ))}
                 </div>
 

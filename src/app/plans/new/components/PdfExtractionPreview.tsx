@@ -21,7 +21,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { nanoid } from 'nanoid';
-import React, { useId, useState } from 'react';
+import React, { useEffect, useId, useReducer } from 'react';
 
 export interface PdfPlanSettings {
   skillLevel: string;
@@ -31,6 +31,27 @@ export interface PdfPlanSettings {
 }
 
 type SectionWithId = ExtractedSection & { id: string };
+
+interface PdfExtractionPreviewState {
+  mainTopic: string;
+  sections: SectionWithId[];
+  settings: PdfPlanSettings;
+}
+
+type PdfExtractionPreviewAction =
+  | { type: 'reset'; mainTopic: string; sections: SectionWithId[] }
+  | { type: 'main-topic-changed'; value: string }
+  | {
+      type: 'section-field-changed';
+      sectionId: string;
+      field: keyof ExtractedSection;
+      value: string;
+    }
+  | {
+      type: 'setting-changed';
+      field: keyof PdfPlanSettings;
+      value: string;
+    };
 
 interface PdfExtractionPreviewProps {
   mainTopic: string;
@@ -53,6 +74,75 @@ const CONFIDENCE_COLORS = {
   low: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
 };
 
+const DEFAULT_PDF_PLAN_SETTINGS: PdfPlanSettings = {
+  skillLevel: 'beginner',
+  weeklyHours: '3-5',
+  learningStyle: 'mixed',
+  deadlineWeeks: '4',
+};
+
+function withSectionIds(
+  sections: ExtractedSection[],
+  sectionSeed: string
+): SectionWithId[] {
+  return sections.map(
+    (section): SectionWithId => ({
+      ...section,
+      id: section.id ?? `${sectionSeed}-${nanoid()}`,
+    })
+  );
+}
+
+function createPdfExtractionPreviewState(params: {
+  mainTopic: string;
+  sections: SectionWithId[];
+}): PdfExtractionPreviewState {
+  return {
+    mainTopic: params.mainTopic,
+    sections: params.sections,
+    settings: DEFAULT_PDF_PLAN_SETTINGS,
+  };
+}
+
+function pdfExtractionPreviewReducer(
+  state: PdfExtractionPreviewState,
+  action: PdfExtractionPreviewAction
+): PdfExtractionPreviewState {
+  switch (action.type) {
+    case 'reset':
+      return createPdfExtractionPreviewState({
+        mainTopic: action.mainTopic,
+        sections: action.sections,
+      });
+    case 'main-topic-changed':
+      return {
+        ...state,
+        mainTopic: action.value,
+      };
+    case 'section-field-changed':
+      return {
+        ...state,
+        sections: state.sections.map((section) =>
+          section.id === action.sectionId
+            ? { ...section, [action.field]: action.value }
+            : section
+        ),
+      };
+    case 'setting-changed':
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          [action.field]: action.value,
+        },
+      };
+    default: {
+      const _exhaustiveCheck: never = action;
+      return _exhaustiveCheck;
+    }
+  }
+}
+
 export function PdfExtractionPreview({
   mainTopic: initialTopic,
   sections: initialSections,
@@ -63,39 +153,32 @@ export function PdfExtractionPreview({
   isGenerating = false,
 }: PdfExtractionPreviewProps): React.JSX.Element {
   const sectionSeed = useId();
-  const [mainTopic, setMainTopic] = useState(initialTopic);
-  const [sections, setSections] = useState<SectionWithId[]>(() =>
-    initialSections.map(
-      (section): SectionWithId => ({
-        ...section,
-        id: section.id ?? `${sectionSeed}-${nanoid()}`,
-      })
-    )
+  const [state, dispatch] = useReducer(
+    pdfExtractionPreviewReducer,
+    {
+      mainTopic: initialTopic,
+      sections: withSectionIds(initialSections, sectionSeed),
+    },
+    createPdfExtractionPreviewState
   );
-  const [skillLevel, setSkillLevel] = useState('beginner');
-  const [weeklyHours, setWeeklyHours] = useState('3-5');
-  const [learningStyle, setLearningStyle] = useState('mixed');
-  const [deadlineWeeks, setDeadlineWeeks] = useState('4');
 
   const mainTopicId = useId();
   const sectionsLabelId = useId();
   const baseId = useId();
 
-  const handleSectionEdit = (
-    index: number,
-    field: keyof ExtractedSection,
-    value: string
-  ) => {
-    const updated = [...sections];
-    updated[index] = { ...updated[index], [field]: value };
-    setSections(updated);
-  };
+  useEffect(() => {
+    dispatch({
+      type: 'reset',
+      mainTopic: initialTopic,
+      sections: withSectionIds(initialSections, sectionSeed),
+    });
+  }, [initialSections, initialTopic, sectionSeed]);
 
   const handleGenerate = () => {
     onGenerate({
-      mainTopic,
-      sections,
-      settings: { skillLevel, weeklyHours, learningStyle, deadlineWeeks },
+      mainTopic: state.mainTopic,
+      sections: state.sections,
+      settings: state.settings,
     });
   };
 
@@ -120,7 +203,7 @@ export function PdfExtractionPreview({
                   PDF Extracted Successfully
                 </h3>
                 <p className="text-muted-foreground text-sm">
-                  {pageCount} pages • {sections.length} sections found
+                  {pageCount} pages • {state.sections.length} sections found
                 </p>
               </div>
             </div>
@@ -142,8 +225,13 @@ export function PdfExtractionPreview({
               <Input
                 id={mainTopicId}
                 type="text"
-                value={mainTopic}
-                onChange={(e) => setMainTopic(e.target.value)}
+                value={state.mainTopic}
+                onChange={(event) =>
+                  dispatch({
+                    type: 'main-topic-changed',
+                    value: event.target.value,
+                  })
+                }
                 className="border-border bg-background text-foreground focus-visible:border-primary focus-visible:ring-primary/20 dark:border-input dark:bg-input/30 dark:text-foreground h-auto w-full rounded-xl px-4 py-3 text-base shadow-none focus-visible:ring-2 md:text-base"
                 disabled={isGenerating}
               />
@@ -155,7 +243,7 @@ export function PdfExtractionPreview({
                   id={sectionsLabelId}
                   className="text-foreground text-sm font-medium"
                 >
-                  Sections ({sections.length})
+                  Sections ({state.sections.length})
                 </span>
                 <p className="text-muted-foreground text-xs">
                   Edit titles and content as needed
@@ -166,7 +254,7 @@ export function PdfExtractionPreview({
                 className="max-h-64 space-y-3 overflow-y-auto"
                 aria-labelledby={sectionsLabelId}
               >
-                {sections.map((section, index) => (
+                {state.sections.map((section, index) => (
                   <div
                     key={section.id}
                     className="dark:bg-input/20 dark:border-input/50 bg-background/50 border-border hover:border-primary/30 rounded-xl border p-4 transition"
@@ -182,8 +270,13 @@ export function PdfExtractionPreview({
                         id={`section-title-${section.id}`}
                         type="text"
                         value={section.title}
-                        onChange={(e) =>
-                          handleSectionEdit(index, 'title', e.target.value)
+                        onChange={(event) =>
+                          dispatch({
+                            type: 'section-field-changed',
+                            sectionId: section.id,
+                            field: 'title',
+                            value: event.target.value,
+                          })
                         }
                         className="text-foreground h-auto flex-1 rounded-none border-0 bg-transparent p-0 text-sm font-medium shadow-none focus-visible:ring-1 md:text-sm"
                         disabled={isGenerating}
@@ -201,8 +294,13 @@ export function PdfExtractionPreview({
                     <Textarea
                       id={`section-content-${section.id}`}
                       value={section.content}
-                      onChange={(e) =>
-                        handleSectionEdit(index, 'content', e.target.value)
+                      onChange={(event) =>
+                        dispatch({
+                          type: 'section-field-changed',
+                          sectionId: section.id,
+                          field: 'content',
+                          value: event.target.value,
+                        })
                       }
                       rows={3}
                       className="text-muted-foreground min-h-0 w-full resize-none rounded-none border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-1 md:text-xs"
@@ -222,16 +320,28 @@ export function PdfExtractionPreview({
                 <InlineDropdown
                   id={`${baseId}-skill-level`}
                   options={SKILL_LEVEL_OPTIONS}
-                  value={skillLevel}
-                  onChange={setSkillLevel}
+                  value={state.settings.skillLevel}
+                  onChange={(value) =>
+                    dispatch({
+                      type: 'setting-changed',
+                      field: 'skillLevel',
+                      value,
+                    })
+                  }
                   variant="primary"
                 />
                 <span className="text-sm">with</span>
                 <InlineDropdown
                   id={`${baseId}-weekly-hours`}
                   options={WEEKLY_HOURS_OPTIONS}
-                  value={weeklyHours}
-                  onChange={setWeeklyHours}
+                  value={state.settings.weeklyHours}
+                  onChange={(value) =>
+                    dispatch({
+                      type: 'setting-changed',
+                      field: 'weeklyHours',
+                      value,
+                    })
+                  }
                   icon={<Clock className="h-3.5 w-3.5" />}
                   variant="accent"
                 />
@@ -243,16 +353,28 @@ export function PdfExtractionPreview({
                 <InlineDropdown
                   id={`${baseId}-learning-style`}
                   options={LEARNING_STYLE_OPTIONS}
-                  value={learningStyle}
-                  onChange={setLearningStyle}
+                  value={state.settings.learningStyle}
+                  onChange={(value) =>
+                    dispatch({
+                      type: 'setting-changed',
+                      field: 'learningStyle',
+                      value,
+                    })
+                  }
                   variant="accent"
                 />
                 <span className="text-sm">and want to finish in</span>
                 <InlineDropdown
                   id={`${baseId}-deadline`}
                   options={DEADLINE_OPTIONS}
-                  value={deadlineWeeks}
-                  onChange={setDeadlineWeeks}
+                  value={state.settings.deadlineWeeks}
+                  onChange={(value) =>
+                    dispatch({
+                      type: 'setting-changed',
+                      field: 'deadlineWeeks',
+                      value,
+                    })
+                  }
                   icon={<Calendar className="h-3.5 w-3.5" />}
                   variant="primary"
                 />
@@ -265,7 +387,7 @@ export function PdfExtractionPreview({
               <Button
                 type="button"
                 variant="link"
-                onClick={() => onSwitchToManual(mainTopic)}
+                onClick={() => onSwitchToManual(state.mainTopic)}
                 className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm underline-offset-4 transition hover:underline"
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -276,7 +398,7 @@ export function PdfExtractionPreview({
             <Button
               type="button"
               onClick={handleGenerate}
-              disabled={isGenerating || !mainTopic.trim()}
+              disabled={isGenerating || !state.mainTopic.trim()}
               className="group bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl px-6 py-3 text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-xl"
             >
               <span className="font-medium">

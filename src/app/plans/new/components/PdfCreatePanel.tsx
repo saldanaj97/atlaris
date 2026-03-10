@@ -155,6 +155,76 @@ function buildPdfCreatePayload(params: {
   }
 }
 
+interface PdfCreatePanelBodyProps {
+  state: PageState;
+  onFileSelect: (file: File) => void;
+  onCancelUpload: () => void;
+  onGenerate: (editedData: {
+    mainTopic: string;
+    sections: ExtractionData['sections'];
+    settings: PdfPlanSettings;
+  }) => void;
+  onSwitchToManual: (extractedTopic: string) => void;
+  onRetry: () => void;
+  onBack: () => void;
+}
+
+function PdfCreatePanelBody({
+  state,
+  onFileSelect,
+  onCancelUpload,
+  onGenerate,
+  onSwitchToManual,
+  onRetry,
+  onBack,
+}: PdfCreatePanelBodyProps): React.ReactElement {
+  if (state.status === 'idle') {
+    return (
+      <PdfUploadZone
+        onFileSelect={onFileSelect}
+        isUploading={false}
+        disabled={false}
+      />
+    );
+  }
+
+  if (state.status === 'uploading') {
+    return <PdfUploadingState onCancelUpload={onCancelUpload} />;
+  }
+
+  if (state.status === 'preview') {
+    return (
+      <PdfExtractionPreview
+        mainTopic={state.extraction.mainTopic}
+        sections={state.extraction.sections}
+        pageCount={state.extraction.pageCount}
+        confidence={state.extraction.confidence}
+        onGenerate={onGenerate}
+        onSwitchToManual={onSwitchToManual}
+        isGenerating={false}
+      />
+    );
+  }
+
+  if (state.status === 'generating') {
+    return <PdfGeneratingState />;
+  }
+
+  if (state.status === 'error') {
+    return (
+      <PdfUploadError
+        error={state.error}
+        code={state.code}
+        onRetry={onRetry}
+        onBack={onBack}
+      />
+    );
+  }
+
+  const _exhaustiveCheck: never = state;
+  return _exhaustiveCheck;
+}
+
 export function PdfCreatePanel({
   onSwitchToManual,
 }: PdfCreatePanelProps): React.ReactElement {
@@ -422,52 +492,15 @@ export function PdfCreatePanel({
     setState({ status: 'idle' });
   };
 
-  if (state.status === 'idle') {
-    return (
-      <PdfUploadZone
-        onFileSelect={handleFileSelect}
-        isUploading={false}
-        disabled={false}
-      />
-    );
-  }
-
-  if (state.status === 'uploading') {
-    return <PdfUploadingState onCancelUpload={handleCancelUpload} />;
-  }
-
-  if (state.status === 'preview') {
-    return (
-      <PdfExtractionPreview
-        mainTopic={state.extraction.mainTopic}
-        sections={state.extraction.sections}
-        pageCount={state.extraction.pageCount}
-        confidence={state.extraction.confidence}
-        onGenerate={(editedData) => {
-          void handleGenerate(editedData);
-        }}
-        onSwitchToManual={onSwitchToManual}
-        isGenerating={false}
-      />
-    );
-  }
-
-  if (state.status === 'generating') {
-    return <PdfGeneratingState />;
-  }
-
-  if (state.status === 'error') {
-    return (
-      <PdfUploadError
-        error={state.error}
-        code={state.code}
-        onRetry={handleRetry}
-        onBack={handleBack}
-      />
-    );
-  }
-
-  // Unreachable: all PageState variants are handled above
-  const _exhaustiveCheck: never = state;
-  return _exhaustiveCheck;
+  return (
+    <PdfCreatePanelBody
+      state={state}
+      onFileSelect={handleFileSelect}
+      onCancelUpload={handleCancelUpload}
+      onGenerate={handleGenerate}
+      onSwitchToManual={onSwitchToManual}
+      onRetry={handleRetry}
+      onBack={handleBack}
+    />
+  );
 }

@@ -242,6 +242,7 @@ const apiKey = env.OPENROUTER_API_KEY;
 - ❌ Relative imports (`../../../components/...`)
 - ❌ Importing server logger in client components
 - ❌ Using `any` or `unknown` types (use proper TypeScript types)
+- ❌ No inline type or interface declarations (use proper TypeScript types). Always place them in a separate file if exported, or at the top of the file.
 
 ## Related Documentation
 

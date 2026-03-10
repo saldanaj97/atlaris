@@ -51,6 +51,93 @@ type DeletePlanDialogProps =
   | DeletePlanDialogControlledProps
   | DeletePlanDialogUncontrolledProps;
 
+type DeletePlanRequestResult =
+  | { kind: 'success' }
+  | { kind: 'aborted' }
+  | { kind: 'error'; message: string; error: unknown };
+
+function startDeleteRequest(abortControllerRef: {
+  current: AbortController | null;
+}): AbortController {
+  abortControllerRef.current?.abort();
+  const controller = new AbortController();
+  abortControllerRef.current = controller;
+  return controller;
+}
+
+async function requestPlanDeletion(
+  planId: string,
+  signal: AbortSignal
+): Promise<DeletePlanRequestResult> {
+  try {
+    const res = await fetch(`/api/v1/plans/${planId}`, {
+      method: 'DELETE',
+      signal,
+    });
+
+    if (!res.ok) {
+      const parsed = await parseApiErrorResponse(res, 'Failed to delete plan');
+      return {
+        kind: 'error',
+        message: parsed.error,
+        error: new Error(parsed.error),
+      };
+    }
+
+    return { kind: 'success' };
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      return { kind: 'aborted' };
+    }
+
+    return {
+      kind: 'error',
+      message: error instanceof Error ? error.message : 'Failed to delete plan',
+      error,
+    };
+  }
+}
+
+function finalizeDeleteRequest({
+  controller,
+  abortControllerRef,
+  isMountedRef,
+  setDeleting,
+}: {
+  controller: AbortController;
+  abortControllerRef: { current: AbortController | null };
+  isMountedRef: { current: boolean };
+  setDeleting: (value: boolean) => void;
+}): void {
+  if (abortControllerRef.current !== controller) {
+    return;
+  }
+
+  abortControllerRef.current = null;
+  if (isMountedRef.current) {
+    setDeleting(false);
+  }
+}
+
+function completeDeleteSuccess({
+  isMountedRef,
+  setOpen,
+  router,
+  redirectTo,
+}: {
+  isMountedRef: { current: boolean };
+  setOpen: (value: boolean) => void;
+  router: ReturnType<typeof useRouter>;
+  redirectTo: string;
+}): void {
+  toast.success('Plan deleted successfully');
+  if (isMountedRef.current) {
+    setOpen(false);
+  }
+  router.push(redirectTo);
+  router.refresh();
+}
+
 export function DeletePlanDialog({
   planId,
   planTopic,
@@ -86,60 +173,47 @@ export function DeletePlanDialog({
     };
   }, []);
 
-  const handleDelete = useCallback(async (): Promise<void> => {
+  const handleDelete = async (): Promise<void> => {
     if (isGenerating || deleting) {
       return;
     }
 
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
+    const controller = startDeleteRequest(abortControllerRef);
     setDeleting(true);
-    try {
-      const res = await fetch(`/api/v1/plans/${planId}`, {
-        method: 'DELETE',
-        signal: controller.signal,
-      });
+    const result = await requestPlanDeletion(planId, controller.signal);
 
-      if (!res.ok) {
-        const parsed = await parseApiErrorResponse(
-          res,
-          'Failed to delete plan'
-        );
-        throw new Error(parsed.error);
-      }
-
-      toast.success('Plan deleted successfully');
-      if (isMountedRef.current) {
-        setOpen(false);
-      }
-      router.push(redirectTo);
-      router.refresh();
-      return; // navigation initiated; skip post-navigation state cleanup below
-    } catch (error: unknown) {
-      if (isAbortError(error)) {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-          if (isMountedRef.current) {
-            setDeleting(false);
-          }
-        }
+    switch (result.kind) {
+      case 'success':
+        completeDeleteSuccess({
+          isMountedRef,
+          setOpen,
+          router,
+          redirectTo,
+        });
+        return; // navigation initiated; skip post-navigation state cleanup below
+      case 'aborted':
+        finalizeDeleteRequest({
+          controller,
+          abortControllerRef,
+          isMountedRef,
+          setDeleting,
+        });
         return;
-      }
-      const message =
-        error instanceof Error ? error.message : 'Failed to delete plan';
-      clientLogger.error('Plan deletion failed', { planId, error });
-      toast.error(message);
+      case 'error':
+        clientLogger.error('Plan deletion failed', {
+          planId,
+          error: result.error,
+        });
+        toast.error(result.message);
+        finalizeDeleteRequest({
+          controller,
+          abortControllerRef,
+          isMountedRef,
+          setDeleting,
+        });
+        return;
     }
-
-    if (abortControllerRef.current === controller) {
-      abortControllerRef.current = null;
-      if (isMountedRef.current) {
-        setDeleting(false);
-      }
-    }
-  }, [deleting, isGenerating, planId, redirectTo, router, setOpen]);
+  };
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>

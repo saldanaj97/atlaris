@@ -18,13 +18,11 @@ const PdfCreatePanel = React.lazy(() =>
 interface CreatePlanPageClientProps {
   initialMethod: CreateMethod;
   initialTopic?: string | null;
-  initialTopicResetVersion?: number;
 }
 
 export function CreatePlanPageClient({
   initialMethod,
   initialTopic,
-  initialTopicResetVersion = 0,
 }: CreatePlanPageClientProps): React.ReactElement {
   const router = useRouter();
   const panelIdBase = useId();
@@ -38,9 +36,7 @@ export function CreatePlanPageClient({
   const [prefillTopic, setPrefillTopic] = useState<string | null>(
     initialTopic ?? null
   );
-  const [topicResetVersion, setTopicResetVersion] = useState(
-    initialTopicResetVersion
-  );
+  const [topicResetVersion, setTopicResetVersion] = useState(0);
 
   const handleMethodChange = useCallback(
     (method: CreateMethod) => {
