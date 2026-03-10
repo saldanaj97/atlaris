@@ -1,8 +1,9 @@
 import { createHash, randomBytes } from 'crypto';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, lt } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db/runtime';
 import { oauthStateTokens } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 
 const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -25,7 +26,19 @@ function createOAuthStateStore(): OAuthStateStore {
       const db = getDb();
       const plainToken = generateToken();
       const tokenHash = hashToken(plainToken);
+      const now = new Date();
       const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);
+
+      // Opportunistic cleanup: remove expired tokens to prevent unbounded growth.
+      // Fire-and-forget — failures must not block token issuance.
+      db.delete(oauthStateTokens)
+        .where(lt(oauthStateTokens.expiresAt, now))
+        .then(
+          () => {},
+          (err: unknown) => {
+            logger.warn({ err }, 'Failed to purge expired OAuth state tokens');
+          }
+        );
 
       await db.insert(oauthStateTokens).values({
         stateTokenHash: tokenHash,
