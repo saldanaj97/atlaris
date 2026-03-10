@@ -53,7 +53,7 @@ export function getLoggableErrorDetails(error: unknown): {
   if (error instanceof Error) {
     return {
       errorMessage: error.message,
-      errorStack: error.stack,
+      ...(error.stack ? { errorStack: error.stack } : {}),
     };
   }
 

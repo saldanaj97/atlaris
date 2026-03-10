@@ -3,6 +3,7 @@ import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/lib/api/plans/route-context';
+import { json } from '@/lib/api/response';
 import { getAllTasksInPlan } from '@/lib/db/queries/tasks';
 import { getDb } from '@/lib/db/runtime';
 
@@ -13,6 +14,6 @@ export const GET = withErrorBoundary(
     await requireOwnedPlanById({ planId, ownerUserId: user.id, dbClient: db });
 
     const tasks = await getAllTasksInPlan(user.id, planId, db);
-    return Response.json(tasks, { status: 200 });
+    return json(tasks);
   })
 );
