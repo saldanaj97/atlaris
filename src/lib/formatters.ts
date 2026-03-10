@@ -1,4 +1,4 @@
-export function formatMinutes(minutes: number) {
+export function formatMinutes(minutes: number): string {
   if (!minutes) return '—';
   if (minutes < 60) {
     return `${minutes} min`;
@@ -10,7 +10,7 @@ export function formatMinutes(minutes: number) {
   return `${hours.toFixed(1)} hrs`;
 }
 
-export function formatWeeklyHours(hours: number) {
+export function formatWeeklyHours(hours: number): string {
   if (!Number.isFinite(hours) || hours <= 0) {
     return 'a couple of hours';
   }
@@ -30,7 +30,7 @@ export function formatSkillLevel(value: string): string {
   }
 }
 
-export function formatLearningStyle(value: string) {
+export function formatLearningStyle(value: string): string {
   switch (value) {
     case 'reading':
       return 'Reading';

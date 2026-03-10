@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
+import { StreamingEventSchema } from '@/lib/ai/streaming/schema';
 import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
@@ -17,12 +18,14 @@ const parseEventLine = (line: string): StreamingEvent | null => {
   if (!payload) return null;
   try {
     const parsed: unknown = JSON.parse(payload);
-    if (typeof parsed === 'object' && parsed !== null) {
-      const obj = parsed as Record<string, unknown>;
-      if (typeof obj.type === 'string') {
-        return parsed as StreamingEvent;
-      }
+    const result = StreamingEventSchema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
     }
+    clientLogger.warn('Retry generation event validation failed', {
+      issues: result.error.issues,
+      raw: payload,
+    });
     return null;
   } catch {
     return null;
@@ -165,7 +168,7 @@ export function useRetryGeneration(
 
           if (event.type === 'error') {
             setStatus('error');
-            setError(getErrorMessage(event.data as unknown));
+            setError(getErrorMessage(event.data));
             return;
           }
 

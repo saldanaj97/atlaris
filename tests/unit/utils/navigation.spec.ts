@@ -53,11 +53,14 @@ describe('Navigation', () => {
       expect(authenticatedNavItems.length).toBe(4);
     });
 
-    it('should not have any unexpected properties on items', () => {
-      for (const item of authenticatedNavItems) {
-        expect(item).toHaveProperty('label');
-        expect(item).toHaveProperty('href');
-      }
+    it('should only contain expected properties on items', () => {
+      authenticatedNavItems.forEach((item) => {
+        const expectedKeys =
+          item.label === 'Analytics'
+            ? ['dropdown', 'href', 'label']
+            : ['href', 'label'];
+        expect(Object.keys(item).sort()).toEqual(expectedKeys);
+      });
     });
 
     it('should have dropdown only on Analytics item', () => {
@@ -130,11 +133,10 @@ describe('Navigation', () => {
       expect(settingsItem).toBeUndefined();
     });
 
-    it('should not have any unexpected properties on items', () => {
-      for (const item of unauthenticatedNavItems) {
-        expect(item).toHaveProperty('label');
-        expect(item).toHaveProperty('href');
-      }
+    it('should only contain expected properties on items', () => {
+      unauthenticatedNavItems.forEach((item) => {
+        expect(Object.keys(item).sort()).toEqual(['href', 'label']);
+      });
     });
 
     it('should not have dropdown on any items', () => {
