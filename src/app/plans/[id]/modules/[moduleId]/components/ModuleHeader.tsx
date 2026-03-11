@@ -22,7 +22,7 @@ import type {
   ModuleNavItem,
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
-import { formatMinutes } from '@/lib/formatters';
+import { formatMinutes } from '@/lib/plans/formatters';
 import type { ProgressStatus } from '@/lib/types/db';
 
 interface ModuleHeaderProps {

@@ -4,7 +4,7 @@ import type { ElementType, JSX } from 'react';
 
 import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
-import { formatMinutes } from '@/lib/formatters';
+import { formatMinutes } from '@/lib/plans/formatters';
 import {
   ArrowRight,
   CheckCircle2,

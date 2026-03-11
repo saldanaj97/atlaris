@@ -11,7 +11,7 @@ import type {
 import { getStatusesFromModules } from '@/app/plans/[id]/helpers';
 import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatMinutes } from '@/lib/formatters';
+import { formatMinutes } from '@/lib/plans/formatters';
 
 import type { ClientModule } from '@/lib/types/client';
 import type { ProgressStatus } from '@/lib/types/db';

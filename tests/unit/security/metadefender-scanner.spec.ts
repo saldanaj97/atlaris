@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { MetaDefenderScanProvider } from '@/lib/security/providers/metadefender';
+import { MetaDefenderScanProvider } from '@/lib/security/metadefender';
 
 const BASE_URL = 'https://api.metadefender.com/v4';
 

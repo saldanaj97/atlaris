@@ -46,19 +46,30 @@ src/app/
 ```text
 src/lib/
 ├── ai/             # Providers, orchestration, parsing, streaming, pacing
-├── api/            # Auth wrappers, errors, responses, rate limiting
+├── api/            # Auth wrappers, errors, responses, rate limiting, OpenAPI spec
 ├── auth/           # Neon Auth server/client wiring
 ├── config/         # Typed environment access and validation
 ├── db/             # Schema, queries, RLS client, service-role client, migrations
 ├── integrations/   # OAuth token/state utilities
-├── jobs/           # Queue and regeneration worker logic
+├── jobs/           # Queue helpers, priority logic, regeneration worker
 ├── logging/        # Server/client/request logging helpers
+├── mappers/        # Mapping helpers for app and API data shapes
 ├── metrics/        # Runtime metrics for attempts and billing reconciliation
+├── navigation/     # Shared nav items and route constants
 ├── pdf/            # PDF extraction and structure helpers
+├── plans/          # Plan status derivation and formatter helpers
 ├── scheduling/     # Schedule distribution and hashing
-├── security/       # AV scanning and PDF extraction proofing
-└── stripe/         # Billing client, usage, limits, subscriptions
+├── security/       # AV scanning, MetaDefender client, PDF extraction proofing
+├── stripe/         # Billing client, usage, limits, subscriptions
+├── types/          # Shared domain, client, and DB types
+├── utils/          # Public utility surface exposed as `@/lib/utils`
+└── validation/     # Zod schemas and validation helpers
 ```
+
+- `src/lib/navigation/` owns shared nav items and route constants.
+- `src/lib/utils/index.ts` is the public `@/lib/utils` entry point.
+- `src/lib/api/openapi.ts` and `src/lib/security/metadefender.ts` are
+  flattened top-level modules in their respective folders.
 
 ### Database Code (`src/lib/db/`)
 

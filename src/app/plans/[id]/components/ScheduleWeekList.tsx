@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { formatMinutes } from '@/lib/formatters';
+import { formatMinutes } from '@/lib/plans/formatters';
 import type { ScheduleJson } from '@/lib/scheduling/types';
 
 interface ScheduleWeekListProps {

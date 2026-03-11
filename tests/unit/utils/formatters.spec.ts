@@ -4,7 +4,7 @@ import {
   formatWeeklyHours,
   formatSkillLevel,
   formatLearningStyle,
-} from '@/lib/formatters';
+} from '@/lib/plans/formatters';
 
 describe('formatMinutes', () => {
   it('should return "0 min" for 0 minutes', () => {

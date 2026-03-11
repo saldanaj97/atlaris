@@ -5,7 +5,7 @@
  * to create results, check success status, and safely extract error information.
  */
 
-import { formatSkillLevel } from '@/lib/formatters';
+import { formatSkillLevel } from '@/lib/plans/formatters';
 
 import type { ScheduleJson } from '@/lib/scheduling/types';
 import type { ClientModule, ClientPlanDetail } from '@/lib/types/client';

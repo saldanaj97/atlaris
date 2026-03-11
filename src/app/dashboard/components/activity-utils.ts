@@ -1,4 +1,4 @@
-import { formatMinutes } from '@/lib/formatters';
+import { formatMinutes } from '@/lib/plans/formatters';
 import type { PlanSummary } from '@/lib/types/db';
 
 import { CheckCircle2, Clock, FileText, Video, Zap } from 'lucide-react';

@@ -3,7 +3,7 @@ import {
   computeJobPriority,
   PRIORITY_TOPICS,
   isPriorityTopic,
-} from '@/lib/queue/priority';
+} from '@/lib/jobs/priority';
 
 describe('computeJobPriority', () => {
   it('gives higher base priority to paid tiers', () => {

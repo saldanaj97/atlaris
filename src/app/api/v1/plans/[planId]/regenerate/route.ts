@@ -27,7 +27,7 @@ import {
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/lib/jobs/types';
 import { logger } from '@/lib/logging/logger';
 import { recordBillingReconciliationRequired } from '@/lib/metrics/ops';
-import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
+import { computeJobPriority, isPriorityTopic } from '@/lib/jobs/priority';
 import {
   atomicCheckAndIncrementUsage,
   decrementRegenerationUsage,

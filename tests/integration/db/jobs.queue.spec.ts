@@ -15,7 +15,7 @@ import {
   type JobType,
   type PlanGenerationJobData,
 } from '@/lib/jobs/types';
-import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
+import { computeJobPriority, isPriorityTopic } from '@/lib/jobs/priority';
 
 import { ensureUser } from '@tests/helpers/db';
 

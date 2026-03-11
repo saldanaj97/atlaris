@@ -22,7 +22,7 @@ import {
 import { getModelsForTier } from '@/lib/ai/ai-models';
 import type { AvailableModel, SubscriptionTier } from '@/lib/ai/types';
 import { clientLogger } from '@/lib/logging/client';
-import { ROUTES } from '@/lib/routes';
+import { ROUTES } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';

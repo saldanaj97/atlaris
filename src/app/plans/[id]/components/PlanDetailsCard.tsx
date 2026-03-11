@@ -3,7 +3,7 @@ import {
   formatMinutes,
   formatSkillLevel,
   formatWeeklyHours,
-} from '@/lib/formatters';
+} from '@/lib/plans/formatters';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';

@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
-import { formatMinutes } from '@/lib/formatters';
+import { formatMinutes } from '@/lib/plans/formatters';
 import type { ProgressStatus, ResourceType } from '@/lib/types/db';
 import {
   generatePlaceholderContent,

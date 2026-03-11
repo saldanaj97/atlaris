@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePlanStatus } from '@/hooks/usePlanStatus';
 import { useRetryGeneration } from '@/hooks/useRetryGeneration';
 import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
-import { formatSkillLevel } from '@/lib/formatters';
+import { formatSkillLevel } from '@/lib/plans/formatters';
 import type { ClientPlanDetail } from '@/lib/types/client';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';

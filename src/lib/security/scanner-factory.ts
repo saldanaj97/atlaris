@@ -1,5 +1,5 @@
 import { appEnv, avScannerEnv, EnvValidationError } from '@/lib/config/env';
-import { MetaDefenderScanProvider } from '@/lib/security/providers/metadefender';
+import { MetaDefenderScanProvider } from '@/lib/security/metadefender';
 import type { ScanProvider } from '@/lib/security/scanner.types';
 
 let cachedScanProvider: ScanProvider | null | undefined = undefined;
