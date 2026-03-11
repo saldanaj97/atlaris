@@ -1,22 +1,12 @@
 import { z } from 'zod';
 
 import {
-  LEARNING_STYLES,
-  SKILL_LEVELS,
-  type LearningStyle,
-  type SkillLevel,
-} from '@/lib/types/db';
-
-import {
+  LEARNING_STYLE_ENUM,
   NOTES_MAX_LENGTH,
+  SKILL_LEVEL_ENUM,
   TOPIC_MAX_LENGTH,
   weeklyHoursSchema,
 } from '@/lib/validation/shared';
-
-const SKILL_LEVEL_ENUM = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
-const LEARNING_STYLE_ENUM = z.enum(
-  LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
-);
 
 export const pdfExtractionRequestSchema = z
   .object({

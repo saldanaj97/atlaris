@@ -2,98 +2,57 @@
 
 ## Overview
 
-This document describes the dependency injection architecture implemented for third-party integrations (Google Calendar, Notion) to improve testability, maintainability, and separation of concerns.
+This document describes the current architecture for third-party integrations. The remaining integration surface is Google Calendar OAuth plus shared token storage, revocation, and sync-state persistence.
 
 ## Architecture Principles
 
 ### 1. Separation of Concerns
 
-The integration architecture is split into three distinct layers:
+The integration architecture is split into four focused layers:
 
 1. **Environment Configuration** (`src/lib/config/env.ts`)
    - Handles environment variable access with prod-required, test-optional semantics
-   - Centralized configuration for OAuth credentials
+   - Centralizes Google OAuth credentials and the shared OAuth encryption key
 
-2. **Client Factories** (`src/lib/integrations/*/factory.ts`)
-   - Construct SDK clients at API boundaries
-   - Only layer that depends on third-party SDK packages
-   - Handles OAuth client configuration
+2. **Route Boundaries** (`src/app/api/v1/auth/google/*`, `src/app/api/v1/integrations/disconnect/route.ts`)
+   - Own redirects, request validation, logging, and rate limiting
+   - Keep provider-specific HTTP concerns at the edge of the system
 
-3. **Integration Logic** (`src/lib/integrations/*/sync.ts`)
-   - Core business logic for synchronization
-   - Depends only on minimal interfaces, not concrete SDK types
-   - Fully testable with local mocks
+3. **Shared OAuth Utilities** (`src/lib/integrations/oauth.ts`, `src/lib/integrations/oauth-state.ts`)
+   - Encrypt, persist, retrieve, and revoke OAuth tokens
+   - Manage CSRF-safe OAuth state tokens for initiation and callback flows
 
-### 2. Minimal Interfaces
+4. **Persistence Layer** (`src/lib/db/schema/tables/integrations.ts`)
+   - Stores OAuth state tokens, integration tokens, Google Calendar sync state, and task calendar events
+   - Enforces ownership with RLS policies on every user-facing table
 
-Instead of depending directly on third-party SDKs, integration functions accept minimal interfaces:
+### 2. Narrow Dependency Injection
+
+The current integration surface does not need per-provider SDK abstractions. Instead, dependencies are injected at small seams where they improve testability.
 
 ```typescript
-// src/lib/integrations/google-calendar/types.ts
-export interface GoogleCalendarClient {
-  events: {
-    insert(params: {
-      calendarId: string;
-      requestBody: calendar_v3.Schema$Event;
-    }): Promise<{ data: calendar_v3.Schema$Event }>;
-    delete(params: { calendarId: string; eventId: string }): Promise<void>;
-  };
-}
+// src/lib/integrations/oauth.ts
+export type IntegrationProvider = 'google_calendar';
 
-// src/lib/integrations/notion/types.ts
-export interface NotionIntegrationClient {
-  createPage(params: CreatePageParameters): Promise<CreatePageResponse>;
-  updatePage(params: UpdatePageParameters): Promise<UpdatePageResponse>;
-  appendBlocks(
-    pageId: string,
-    blocks: BlockObjectRequest[]
-  ): Promise<AppendBlockChildrenResponse>;
-  replaceBlocks(
-    pageId: string,
-    blocks: BlockObjectRequest[]
-  ): Promise<AppendBlockChildrenResponse>;
+export async function revokeGoogleTokens(
+  accessToken: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<void> {
+  // Calls Google's revoke endpoint using the provided fetch implementation
 }
 ```
 
-### 3. Factory Pattern at API Boundaries
+This keeps the production path simple while still allowing unit tests to stub outbound requests without global mocks.
 
-Client construction happens at API route boundaries using factory functions:
+### 3. Factory Logic Lives at the Route Boundary
 
-```typescript
-// src/lib/integrations/google-calendar/factory.ts
-export function createGoogleCalendarClient(
-  tokens: GoogleTokens
-): GoogleCalendarClient {
-  const clientId = googleOAuthEnv.clientId;
-  const clientSecret = googleOAuthEnv.clientSecret;
-  const redirectUri = googleOAuthEnv.redirectUri;
+Client construction happens where it is actually needed today: the Google OAuth routes.
 
-  if (!clientId || !clientSecret || !redirectUri) {
-    throw new Error(
-      'Google OAuth environment variables are not configured for this runtime.'
-    );
-  }
+- `src/app/api/v1/auth/google/route.ts` reads `googleOAuthEnv`, creates the Google OAuth client, generates a state token, and redirects the user to Google.
+- `src/app/api/v1/auth/google/callback/route.ts` validates the stored state token, exchanges the authorization code, and persists encrypted tokens through `storeOAuthTokens(...)`.
+- `src/app/api/v1/integrations/disconnect/route.ts` validates the provider, revokes Google tokens, and deletes persisted credentials.
 
-  const oauth2Client = new google.auth.OAuth2(
-    clientId,
-    clientSecret,
-    redirectUri
-  );
-  oauth2Client.setCredentials({
-    access_token: tokens.accessToken,
-    refresh_token: tokens.refreshToken ?? undefined,
-  });
-
-  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-
-  return {
-    events: {
-      insert: (params) => calendar.events.insert(params as any),
-      delete: (params) => calendar.events.delete(params as any).then(() => {}),
-    },
-  };
-}
-```
+If a future integration introduces a heavy SDK surface, keep that SDK confined to the route or a dedicated factory module and pass only the smallest possible interface into shared logic.
 
 ### 4. Environment Variable Semantics
 
@@ -101,17 +60,6 @@ Environment variables use prod-required, test-optional semantics:
 
 ```typescript
 // src/lib/config/env.ts
-const getServerRequiredProdOnly = (key: string): string | undefined => {
-  ensureServerRuntime();
-  if (!isProdRuntime) {
-    return getServerOptional(key); // Allow undefined in dev/test
-  }
-  if (!serverRequiredCache.has(key)) {
-    serverRequiredCache.set(key, requireEnv(key)); // Strict in production
-  }
-  return serverRequiredCache.get(key)!;
-};
-
 export const googleOAuthEnv = {
   get clientId() {
     return getServerRequiredProdOnly('GOOGLE_CLIENT_ID');
@@ -127,153 +75,84 @@ export const googleOAuthEnv = {
 
 This allows:
 
-- Production: Strict validation, errors on missing credentials
-- Development/Test: Optional credentials, uses defaults or mocks
+- Production: strict validation for OAuth credentials
+- Development/Test: optional credentials, mocks, or test defaults
 
 ### 5. Centralized Test Environment
 
 Test environment variables are centralized in `tests/setup/test-env.ts`:
 
 ```typescript
-// tests/setup/test-env.ts
 if (!process.env.GOOGLE_CLIENT_ID) {
   process.env.GOOGLE_CLIENT_ID = 'test_google_client_id';
 }
 if (!process.env.GOOGLE_CLIENT_SECRET) {
   process.env.GOOGLE_CLIENT_SECRET = 'test_google_client_secret';
 }
-// ... other defaults
+if (!process.env.GOOGLE_REDIRECT_URI) {
+  process.env.GOOGLE_REDIRECT_URI = 'http://localhost:3000/api/oauth/callback';
+}
 ```
 
-This eliminates scattered env defaults across test files.
+This eliminates scattered env defaults across tests and keeps the integration setup aligned with the production entry points.
 
 ## Testing Strategy
 
 ### Unit Tests
 
-Unit tests use local mocks that implement the minimal interfaces:
+Use narrow seams instead of global SDK mocking:
 
-```typescript
-// tests/unit/integrations/google-calendar-sync.spec.ts
-let mockCalendar: any;
-const createMockCalendarClient = (): GoogleCalendarClient => {
-  return mockCalendar as GoogleCalendarClient;
-};
-
-beforeEach(() => {
-  mockCalendar = {
-    events: {
-      insert: vi.fn(),
-      delete: vi.fn(),
-    },
-  };
-});
-
-// In tests:
-const mockClient = createMockCalendarClient();
-await syncPlanToGoogleCalendar(planId, mockClient);
-```
+- `tests/unit/integrations/oauth.spec.ts` covers token encryption/decryption and persistence helpers.
+- `tests/unit/integrations/oauth-revoke.spec.ts` injects a mock `fetch` into `revokeGoogleTokens(...)`.
 
 ### Integration Tests
 
-Integration tests also use local mocks instead of global module mocking:
+Exercise the full request flow where it matters:
 
-```typescript
-// tests/integration/notion-delta-sync.spec.ts
-const mockUpdatePage = vi.fn().mockResolvedValue({ id: 'notion_page_123' });
-const mockAppendBlocks = vi.fn().mockResolvedValue({});
-
-const createMockNotionClient = (): NotionIntegrationClient => ({
-  createPage: vi.fn().mockResolvedValue({ id: 'notion_page_123' }),
-  updatePage: mockUpdatePage as any,
-  appendBlocks: mockAppendBlocks as any,
-  replaceBlocks: vi.fn().mockImplementation(async (pageId, blocks) => {
-    await mockAppendBlocks(pageId, blocks);
-    return { results: [] };
-  }),
-});
-
-const mockClient = createMockNotionClient();
-const hasChanges = await deltaSyncPlanToNotion(planId, userId, mockClient);
-```
-
-### E2E Tests
-
-E2E tests create self-contained mock clients:
-
-```typescript
-// tests/e2e/google-calendar-sync-flow.spec.ts
-function createMockCalendarClient(): GoogleCalendarClient {
-  let eventCounter = 0;
-  const createdEvents = new Map<string, calendar_v3.Schema$Event>();
-
-  return {
-    events: {
-      async insert({ calendarId, requestBody }) {
-        eventCounter++;
-        const id = `event_${eventCounter}`;
-        const event = {
-          id,
-          summary: requestBody.summary,
-          description: requestBody.description,
-          start: requestBody.start,
-          end: requestBody.end,
-        };
-        createdEvents.set(id, event);
-        return { data: event };
-      },
-      async delete({ calendarId, eventId }) {
-        createdEvents.delete(eventId);
-      },
-    },
-  };
-}
-```
+- `tests/integration/google-oauth.spec.ts` validates the Google OAuth initiation/callback flow.
+- `tests/integration/oauth-storage.spec.ts` covers encrypted token persistence.
+- `tests/integration/api/integrations-disconnect.spec.ts` verifies provider validation, revocation, and cleanup.
 
 ## Benefits
 
 1. **Improved Testability**
-   - Tests don't require real API credentials
-   - Fast, isolated tests using local mocks
-   - No global module mocking side effects
+   - External calls are stubbed at explicit function boundaries
+   - OAuth flows can be tested without real Google credentials
+   - Storage logic remains verifiable through integration tests
 
 2. **Better Separation of Concerns**
-   - Environment config isolated in one place
-   - SDK dependencies confined to factories
-   - Business logic free from SDK coupling
+   - Route handlers own HTTP behavior
+   - Shared OAuth modules own token/state logic
+   - Database tables own persistence and RLS guarantees
 
-3. **Easier Maintenance**
-   - SDK version upgrades only affect factory files
-   - Tests remain stable across SDK changes
-   - Clear boundaries between layers
+3. **Lower Maintenance Cost**
+   - There is no dead provider-specific integration surface to maintain
+   - Provider-specific changes stay localized to the Google OAuth routes/utilities
+   - Future providers have a clear pattern to follow without reviving deleted paths
 
 4. **Production Safety**
    - Strict env validation in production
-   - Flexible defaults in development
-   - Factory pattern ensures proper client construction
+   - Encrypted token storage by default
+   - Stateful OAuth flows protected by database-backed CSRF tokens
 
 ## Migration Guide
 
 When adding a new third-party integration:
 
-1. **Define minimal interface** in `src/lib/integrations/[service]/types.ts`
-2. **Create factory function** in `src/lib/integrations/[service]/factory.ts`
-3. **Implement integration logic** that accepts the interface in `src/lib/integrations/[service]/sync.ts`
-4. **Use factory at API boundary** in route handlers
-5. **Write tests with local mocks** that implement the interface
-6. **Add test env defaults** to `tests/setup/test-env.ts` (if needed)
+1. Add the provider to `integrationProviderEnum` in `src/lib/db/enums.ts`.
+2. Add any provider-specific credentials to `src/lib/config/env.ts`.
+3. Create route handlers under `src/app/api/v1/auth/[provider]/` for initiation and callback if OAuth is required.
+4. Reuse `src/lib/integrations/oauth.ts` and `src/lib/integrations/oauth-state.ts` when the provider fits the existing token model.
+5. Add provider-specific sync state tables only when the integration needs durable sync bookkeeping.
+6. Add unit tests for narrow dependency seams and integration tests for the full request flow.
 
 ## Related Files
 
 - Environment config: `src/lib/config/env.ts`
+- OAuth state helpers: `src/lib/integrations/oauth-state.ts`
+- OAuth storage and revocation: `src/lib/integrations/oauth.ts`
+- Google OAuth initiation: `src/app/api/v1/auth/google/route.ts`
+- Google OAuth callback: `src/app/api/v1/auth/google/callback/route.ts`
+- Integration disconnect route: `src/app/api/v1/integrations/disconnect/route.ts`
+- Integration schema: `src/lib/db/schema/tables/integrations.ts`
 - Test env defaults: `tests/setup/test-env.ts`
-- Google Calendar:
-  - Types: `src/lib/integrations/google-calendar/types.ts`
-  - Factory: `src/lib/integrations/google-calendar/factory.ts`
-  - Sync logic: `src/lib/integrations/google-calendar/sync.ts`
-  - API route: `src/app/api/v1/integrations/google-calendar/sync/route.ts`
-- Notion:
-  - Types: `src/lib/integrations/notion/types.ts`
-  - Factory: `src/lib/integrations/notion/factory.ts`
-  - Sync logic: `src/lib/integrations/notion/sync.ts`
-  - API route: `src/app/api/v1/integrations/notion/export/route.ts`

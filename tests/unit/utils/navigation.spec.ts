@@ -53,11 +53,14 @@ describe('Navigation', () => {
       expect(authenticatedNavItems.length).toBe(4);
     });
 
-    it('should not have highlight flag on any items', () => {
-      const highlightedItems = authenticatedNavItems.filter(
-        (item) => item.highlight
-      );
-      expect(highlightedItems.length).toBe(0);
+    it('should only contain expected properties on items', () => {
+      authenticatedNavItems.forEach((item) => {
+        const expectedKeys =
+          item.label === 'Analytics'
+            ? ['dropdown', 'href', 'label']
+            : ['href', 'label'];
+        expect(Object.keys(item).sort()).toEqual(expectedKeys);
+      });
     });
 
     it('should have dropdown only on Analytics item', () => {
@@ -130,11 +133,10 @@ describe('Navigation', () => {
       expect(settingsItem).toBeUndefined();
     });
 
-    it('should not have highlight flag on any items', () => {
-      const highlightedItems = unauthenticatedNavItems.filter(
-        (item) => item.highlight
-      );
-      expect(highlightedItems.length).toBe(0);
+    it('should only contain expected properties on items', () => {
+      unauthenticatedNavItems.forEach((item) => {
+        expect(Object.keys(item).sort()).toEqual(['href', 'label']);
+      });
     });
 
     it('should not have dropdown on any items', () => {

@@ -2,6 +2,8 @@
 
 How authentication, authorization, and database access work together to enforce tenant isolation.
 
+**Last Updated:** March 2026
+
 ## Overview
 
 Every database query in a user-facing context runs through a **three-layer security chain**:
@@ -35,7 +37,7 @@ All three are exported from `@/lib/api/auth` and share a single private helper (
 // API Route (app/api/v1/plans/route.ts)
 export const GET = withAuth(async ({ user }) => {
   const plans = await getPlanSummariesForUser(user.id);
-  return Response.json(plans);
+  return json(plans);
 });
 
 // Server Action (app/plans/[id]/actions.ts)
@@ -43,7 +45,8 @@ export async function getPlanForPage(planId: string) {
   const result = await withServerActionContext(async (user) => {
     return getLearningPlanDetail(planId, user.id);
   });
-  if (!result) return unauthorized();
+
+  if (result === null) return unauthorized();
   return result;
 }
 
@@ -59,6 +62,8 @@ const tier = await withServerComponentContext(
 - `withServerActionContext`: Returns `null` if unauthenticated (caller decides how to handle)
 - `withServerComponentContext`: Returns `null` if unauthenticated (caller decides how to handle)
 
+When `withServerActionContext` wraps an action whose successful return type can be `void` / `undefined`, use an explicit `result === null` check for auth failure rather than a generic falsy check.
+
 ## User ID Resolution
 
 There are two user IDs in the system:
@@ -68,7 +73,7 @@ There are two user IDs in the system:
 | `authUserId` | External | Neon Auth     | `9f3a7b2e-...` (auth provider UUID) | RLS claims, session identity |
 | `user.id`    | Internal | `users` table | `a1b2c3d4-...` (app DB UUID)        | Foreign keys, ownership      |
 
-**Critical**: Ownership queries must use `user.id` (internal), not `authUserId` (external). The wrappers resolve both — `ctx.userId` / callback's first arg gives you the full `DbUser` object with both IDs.
+**Critical**: Ownership queries must use `user.id` (internal), not `authUserId` (external). In API routes, `ctx.userId` is the external auth user id while `ctx.user` is the full `DbUser`. In server actions/components, the callback receives the full `DbUser`.
 
 ### How auth user ID is obtained
 
@@ -127,7 +132,7 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 | Inside auth wrappers         | `getDb()` or the `rlsDb` callback  | Returns request-scoped RLS client                      |
 | Query function default param | `getDb()` (optional `dbClient` DI) | Works in all contexts via request context              |
 | Tests / integration tests    | `db` from `@/lib/db/service-role`  | Bypasses RLS for test data setup                       |
-| Workers / background jobs    | `getServiceDbForWorker()`          | No user session exists                                 |
+| Workers / background jobs    | `db` from `@/lib/db/service-role`  | No user session exists                                 |
 | Stripe webhooks              | `db` from `@/lib/db/service-role`  | System-originated, no user session, signature-verified |
 
 ### Fail-closed design
@@ -148,7 +153,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). `STRIPE_WEBHOOK_DEV_MODE` has a startup assertion that crashes the process if enabled outside dev/test.
 
-4. **Service-role usage is restricted.** ESLint blocks `@/lib/db/service-role` imports in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`. The `deleteUserByAuthId` function throws if called inside request context.
+4. **Service-role usage is restricted.** ESLint blocks `@/lib/db/service-role` imports in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`.
 
 5. **RLS connections are isolated.** Each request gets a dedicated non-pooled connection (`max: 1`). Session variables cannot leak between requests. Cleanup is guaranteed via `finally`.
 
@@ -173,6 +178,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | DB client resolver    | `src/lib/db/runtime.ts`         |
 | Service-role client   | `src/lib/db/service-role.ts`    |
 | Neon Auth config      | `src/lib/auth/server.ts`        |
-| Subscription gates    | `src/lib/api/gates.ts`          |
+| Quota / usage logic   | `src/lib/stripe/usage.ts`       |
+| PDF upload limits     | `src/lib/api/pdf-rate-limit.ts` |
 | RLS policies (schema) | `src/lib/db/schema/tables/*.ts` |
 | Query modules         | `src/lib/db/queries/*.ts`       |

@@ -9,7 +9,7 @@ import type {
   GenerationOptions,
   ProviderGenerateResult,
 } from '@/lib/ai/types/provider.types';
-import { aiEnv, appEnv, openRouterEnv } from '@/lib/config/env';
+import { aiEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 
 /**
@@ -93,13 +93,6 @@ export interface RouterConfig {
   model?: string;
 }
 
-export type MicroExplanationConfig = {
-  apiKey: string;
-  baseUrl: string;
-  siteUrl?: string;
-  appName?: string;
-};
-
 export class RouterGenerationProvider implements AiPlanGenerationProvider {
   private readonly providers: (() => AiPlanGenerationProvider)[];
 
@@ -130,19 +123,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 
     // TODO: Add Google AI as emergency fallback only if OpenRouter is completely down.
     // For now, we rely on OpenRouter's internal model routing and fallbacks.
-  }
-
-  getMicroExplanationConfig(): MicroExplanationConfig | null {
-    const apiKey = openRouterEnv.apiKey;
-    if (!apiKey) {
-      return null;
-    }
-    return {
-      apiKey,
-      baseUrl: openRouterEnv.baseUrl,
-      siteUrl: openRouterEnv.siteUrl,
-      appName: openRouterEnv.appName,
-    };
   }
 
   async generate(

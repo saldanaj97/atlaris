@@ -48,7 +48,7 @@ pnpm test                # Run unit tests
 pnpm test:changed        # Run unit tests for changed files only
 pnpm test:watch          # Run unit tests in watch mode
 pnpm test:integration    # Run integration tests for changed files
-pnpm test:all            # Run full test suite (unit + integration)
+pnpm test:all            # Run full suite (rare; avoid unless explicitly needed)
 ```
 
 ### Direct Script Usage
@@ -59,35 +59,12 @@ The test scripts can also be invoked directly with additional options:
 ./scripts/test-unit.sh              # Run all unit tests
 ./scripts/test-unit.sh --changed    # Run tests for changed files
 ./scripts/test-unit.sh --watch      # Watch mode
-./scripts/test-integration.sh       # Run integration tests
+./scripts/test-integration.sh tests/integration/path/to/file.spec.ts  # Targeted integration file
 ./scripts/full-test-suite.sh        # Full test suite
 ```
 
-## Manual API Testing
+## Local API Testing Guidance
 
-For rapid iteration on plan generation without the UI:
-
-```bash
-pnpm test-plan-generation                                    # Stream generate with defaults
-./scripts/test-plan-generation.sh stream --topic "Topic"     # Custom topic
-./scripts/test-plan-generation.sh list                       # List all plans
-./scripts/test-plan-generation.sh status --plan-id UUID      # Check generation status
-./scripts/test-plan-generation.sh --help                     # All options
-```
-
-### Setup Requirements
-
-1. Create a JWT template in Clerk Dashboard (name: `testing`, lifetime: 3600s)
-2. Get token from browser console: `await window.Clerk.session.getToken({ template: 'testing' });`
-3. Add to `.env.local`: `CLERK_SESSION_TOKEN=eyJhbGciOi...`
-
-### Available Options
-
-| Option      | Values                                  | Default                         |
-| ----------- | --------------------------------------- | ------------------------------- |
-| `--topic`   | Any string (3-200 chars)                | "Learn TypeScript fundamentals" |
-| `--skill`   | `beginner`, `intermediate`, `advanced`  | `beginner`                      |
-| `--hours`   | 0-80                                    | 10                              |
-| `--style`   | `reading`, `video`, `practice`, `mixed` | `mixed`                         |
-| `--notes`   | Any string (max 2000 chars)             | none                            |
-| `--plan-id` | UUID (required for `status` command)    | none                            |
+- Prefer testing authenticated flows through the application UI so Neon Auth session cookies are established naturally.
+- For targeted backend verification, prefer unit or integration tests over ad-hoc curl scripts.
+- If you use local auth overrides such as `DEV_AUTH_USER_ID`, make sure the referenced user already exists in the database before invoking authenticated routes.

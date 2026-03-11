@@ -1,4 +1,5 @@
-import crypto from 'crypto';
+import { hashSha256 } from '@/lib/utils/hash';
+
 import type { ScheduleInputs } from './types';
 
 /**
@@ -31,5 +32,5 @@ export function computeInputsHash(inputs: ScheduleInputs): string {
 
   // Compute SHA-256 hash of JSON representation
   const jsonString = JSON.stringify(canonical);
-  return crypto.createHash('sha256').update(jsonString).digest('hex');
+  return hashSha256(jsonString);
 }

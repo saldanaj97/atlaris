@@ -33,25 +33,48 @@ export function getCorrelationId(): string | undefined {
   return storage.getStore()?.correlationId;
 }
 
-type HeaderSource =
+export type HeaderSource =
   | { headers?: Headers }
   | { get?: (key: string) => string | null };
 
-function readHeader(source?: HeaderSource, key?: string) {
+/**
+ * Reads a single header value from a Request-like or Headers-like source.
+ *
+ * Normalizes different {@link HeaderSource} shapes: prefers the `.headers`
+ * Map-like accessor (e.g. `Request.headers.get(key)`) over a bare `.get`
+ * function when both exist. Returns `undefined` when `source` is falsy,
+ * when the header is not present, or when the value is `null`.
+ *
+ * @param source - A Request-like object with `.headers`, or a bare object
+ *   with a `.get(key)` method, or `undefined`.
+ * @param key - Case-insensitive header name (lowered by the underlying
+ *   Headers implementation).
+ * @returns The header value as a string, or `undefined` if missing/falsy.
+ */
+export function readHeader(
+  source: HeaderSource | undefined,
+  key: string
+): string | undefined {
   if (!source) return undefined;
-  const targetKey = key ?? 'x-correlation-id';
   if ('headers' in source && source.headers) {
-    return source.headers.get(targetKey) ?? undefined;
+    return source.headers.get(key) ?? undefined;
   }
   if ('get' in source && typeof source.get === 'function') {
-    const value = source.get(targetKey);
+    const value = source.get(key);
     return value ?? undefined;
   }
   return undefined;
 }
 
-export function ensureCorrelationId(source?: HeaderSource): string {
-  const existing = readHeader(source);
+/**
+ * Returns an existing request identifier from the given header, or generates a
+ * new UUID. The default header is `x-correlation-id`; callers can override.
+ */
+export function ensureCorrelationId(
+  source?: HeaderSource,
+  headerName = 'x-correlation-id'
+): string {
+  const existing = readHeader(source, headerName);
   return existing && existing.length > 0 ? existing : randomUUID();
 }
 

@@ -17,8 +17,3 @@ export type CreateUserData = Pick<
 
 /** RLS-enforced database client for user queries. */
 export type UsersDbClient = ReturnType<typeof getDb>;
-
-/** Result of a user deletion operation. */
-export type DeleteUserResult =
-  | { deleted: true; userId: string }
-  | { deleted: false; userId?: string };

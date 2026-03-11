@@ -1,6 +1,5 @@
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
-import './mocks/shared/google-api.shared';
 
 import { client, isClientInitialized } from '@/lib/db/service-role';
 import { Mutex } from 'async-mutex';

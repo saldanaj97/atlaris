@@ -18,11 +18,7 @@ import * as Sentry from '@sentry/nextjs';
 import { attachAbortListener } from './abort';
 import { classifyFailure } from './classification';
 import { pacePlan } from './pacing';
-import {
-  parseGenerationStream,
-  type ParsedGeneration,
-  type ParsedModule,
-} from './parser';
+import { parseGenerationStream, type ParsedModule } from './parser';
 import {
   ProviderMetadata,
   ProviderTimeoutError,
@@ -500,5 +496,3 @@ export async function runGenerationAttempt(
     return failure;
   }
 }
-
-export type { ParsedGeneration, ParsedModule };

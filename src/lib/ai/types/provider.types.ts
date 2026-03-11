@@ -53,26 +53,6 @@ export interface AiPlanGenerationProvider {
   ): Promise<ProviderGenerateResult>;
 }
 
-/**
- * Configuration for micro-explanation generation (OpenRouter auth).
- * Providers that support micro-explanations may expose this via getMicroExplanationConfig.
- */
-export interface MicroExplanationAuthConfig {
-  apiKey: string;
-  baseUrl: string;
-  siteUrl?: string;
-  appName?: string;
-}
-
-/**
- * Provider with optional micro-explanation config.
- * When present and returns a config with apiKey, generateMicroExplanation uses it for auth.
- * When absent or returns null/config without apiKey, generateMicroExplanation rejects before making API calls.
- */
-export interface MicroExplanationConfigSupplier {
-  getMicroExplanationConfig(): MicroExplanationAuthConfig | null;
-}
-
 export type ProviderErrorKind =
   | 'rate_limit'
   | 'timeout'

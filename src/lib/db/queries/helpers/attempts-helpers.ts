@@ -35,7 +35,7 @@ import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
 } from '@/lib/validation/learningPlans';
-import { and, count, eq, gte, min, sql } from 'drizzle-orm';
+import { and, count, eq, gte, min, sql, type SQL } from 'drizzle-orm';
 
 import type { ParsedModule } from '@/lib/ai/parser';
 import type { GenerationInput } from '@/lib/ai/types/provider.types';
@@ -63,7 +63,7 @@ export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
   );
 }
 
-export function getProviderErrorStatus(
+function getProviderErrorStatus(
   attemptErr: AttemptError | null | undefined
 ): number | undefined {
   if (!attemptErr) return undefined;
@@ -147,7 +147,7 @@ export function stableSerialize(value: unknown): string {
   return `{${keys.map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`).join(',')}}`;
 }
 
-export function getPdfContextDigest(input: GenerationInput): string | null {
+function getPdfContextDigest(input: GenerationInput): string | null {
   if (!input.pdfContext) {
     return null;
   }
@@ -155,7 +155,7 @@ export function getPdfContextDigest(input: GenerationInput): string | null {
   return hashSha256(stableSerialize(input.pdfContext));
 }
 
-export function hasPdfProvenanceInput(
+function hasPdfProvenanceInput(
   input: GenerationInput
 ): input is GenerationInput & {
   pdfContext: NonNullable<GenerationInput['pdfContext']>;
@@ -330,25 +330,14 @@ export function normalizeParsedModules(
   return { normalizedModules, normalizationFlags };
 }
 
-export function userAttemptsSincePredicate(userId: string, since: Date) {
+function userAttemptsSincePredicate(
+  userId: string,
+  since: Date
+): SQL | undefined {
   return and(
     eq(learningPlans.userId, userId),
     gte(generationAttempts.createdAt, since)
   );
-}
-
-export async function selectUserGenerationAttemptsSince({
-  userId,
-  dbClient,
-  since,
-}: UserGenerationAttemptsSinceParams): Promise<number> {
-  const stats = await selectUserGenerationAttemptWindowStats({
-    userId,
-    dbClient,
-    since,
-  });
-
-  return stats.count;
 }
 
 export async function selectUserGenerationAttemptWindowStats({
@@ -369,20 +358,6 @@ export async function selectUserGenerationAttemptWindowStats({
     count: row?.value ?? 0,
     oldestAttemptCreatedAt: row?.oldestCreatedAt ?? null,
   };
-}
-
-export async function selectOldestUserGenerationAttemptSince({
-  userId,
-  dbClient,
-  since,
-}: UserGenerationAttemptsSinceParams): Promise<Date | null> {
-  const stats = await selectUserGenerationAttemptWindowStats({
-    userId,
-    dbClient,
-    since,
-  });
-
-  return stats.oldestAttemptCreatedAt;
 }
 
 export function computeRetryAfterSeconds(

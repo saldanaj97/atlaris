@@ -258,12 +258,6 @@ export async function incrementPdfPlanUsage(
  * This is intentionally a no-op as we use monthly partitions
  * New months automatically start with zero counts via getOrCreateUsageMetrics
  */
-export function resetMonthlyUsage(): void {
-  // No-op: usage is reset automatically by month partitioning
-  // Each month gets its own row, so old months remain for history
-  // New months start at 0 automatically via getOrCreateUsageMetrics
-}
-
 /**
  * Get usage summary for a user
  */

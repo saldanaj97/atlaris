@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "node ./scripts/log-prompt.cjs",
+        "cwd": ".github/hooks",
+        "timeoutSec": 10
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "node ./scripts/pre-tool-policy.cjs",
+        "cwd": ".github/hooks",
+        "timeoutSec": 15
+      }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "node ./scripts/log-tool-result.cjs",
+        "cwd": ".github/hooks",
+        "timeoutSec": 10
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "bash": "bash ./scripts/run-validation-on-session-end.sh",
+        "cwd": ".github/hooks",
+        "timeoutSec": 300
+      }
+    ]
+  }
+}

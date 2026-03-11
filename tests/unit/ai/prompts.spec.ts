@@ -1,15 +1,7 @@
-import {
-  buildMicroExplanationSystemPrompt,
-  buildMicroExplanationUserPrompt,
-  buildSystemPrompt,
-  buildUserPrompt,
-  PDF_SECTION_CONTENT_LIMIT,
-} from '@/lib/ai/prompts';
+import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
+import { PDF_SECTION_CONTENT_LIMIT } from '@/lib/pdf/context';
 import { describe, expect, it } from 'vitest';
-import {
-  createMicroExplanationParams,
-  createPromptParams,
-} from '../../fixtures/prompts';
+import { createPromptParams } from '../../fixtures/prompts';
 
 describe('AI Prompt Builder', () => {
   describe('buildSystemPrompt', () => {
@@ -336,98 +328,6 @@ describe('AI Prompt Builder', () => {
       const prompt = buildUserPrompt(params);
 
       expect(prompt).not.toContain('Deadline:');
-    });
-  });
-
-  describe('buildMicroExplanationSystemPrompt', () => {
-    it('should return a non-empty string', () => {
-      const prompt = buildMicroExplanationSystemPrompt();
-
-      expect(prompt).toBeDefined();
-      expect(typeof prompt).toBe('string');
-      expect(prompt.length).toBeGreaterThan(0);
-    });
-
-    it('should include JSON structure instructions', () => {
-      const prompt = buildMicroExplanationSystemPrompt();
-
-      expect(prompt).toContain('JSON');
-      expect(prompt).toContain('explanation');
-      expect(prompt).toContain('practice');
-    });
-
-    it('should include conciseness guidelines', () => {
-      const prompt = buildMicroExplanationSystemPrompt();
-
-      expect(prompt).toContain('concise');
-      expect(prompt).toContain('2-3 sentences');
-    });
-
-    it('should emphasize clear language', () => {
-      const prompt = buildMicroExplanationSystemPrompt();
-
-      expect(prompt).toContain('clear');
-      expect(prompt).toContain('accessible');
-    });
-
-    it('should mention skill level adaptation', () => {
-      const prompt = buildMicroExplanationSystemPrompt();
-
-      expect(prompt).toContain('skill level');
-    });
-  });
-
-  describe('buildMicroExplanationUserPrompt', () => {
-    const basicParams = createMicroExplanationParams();
-
-    it('should include topic and task title', () => {
-      const prompt = buildMicroExplanationUserPrompt(basicParams);
-
-      expect(prompt).toContain('React Hooks');
-      expect(prompt).toContain('Understanding useState');
-    });
-
-    it('should include skill level', () => {
-      const prompt = buildMicroExplanationUserPrompt(basicParams);
-
-      expect(prompt).toContain('beginner');
-    });
-
-    it('should include module title when provided', () => {
-      const params = createMicroExplanationParams({
-        moduleTitle: 'Fundamentals of React',
-      });
-
-      const prompt = buildMicroExplanationUserPrompt(params);
-
-      expect(prompt).toContain('Fundamentals of React');
-    });
-
-    it('should work without module title', () => {
-      const prompt = buildMicroExplanationUserPrompt(basicParams);
-
-      expect(prompt).toBeDefined();
-      expect(prompt.length).toBeGreaterThan(0);
-    });
-
-    it('should handle different skill levels', () => {
-      const base = createMicroExplanationParams();
-      const beginner = buildMicroExplanationUserPrompt({
-        ...base,
-        skillLevel: 'beginner',
-      });
-      const intermediate = buildMicroExplanationUserPrompt({
-        ...base,
-        skillLevel: 'intermediate',
-      });
-      const advanced = buildMicroExplanationUserPrompt({
-        ...base,
-        skillLevel: 'advanced',
-      });
-
-      expect(beginner).toContain('beginner');
-      expect(intermediate).toContain('intermediate');
-      expect(advanced).toContain('advanced');
     });
   });
 

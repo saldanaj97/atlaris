@@ -375,7 +375,7 @@ describe('IP Rate Limiting', () => {
         String(docsConfig.maxRequests)
       );
       expect(headers['X-RateLimit-Reset']).toBeDefined();
-      expect(parseInt(headers['Retry-After'], 10)).toBeGreaterThanOrEqual(0);
+      expect(headers['Retry-After']).toBeUndefined();
     });
 
     it('updates remaining count after requests', () => {

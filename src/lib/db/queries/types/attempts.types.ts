@@ -62,7 +62,7 @@ export type AttemptsReadClient = Pick<AttemptsDbClient, 'select'>;
 
 // ----- Input / sanitization -----
 
-export interface SanitizedField {
+interface SanitizedField {
   value: string | undefined;
   truncated: boolean;
   originalLength?: number;
@@ -75,7 +75,7 @@ export interface SanitizedInput {
 
 // ----- Normalized modules (effort clamping) -----
 
-export interface NormalizedTaskData {
+interface NormalizedTaskData {
   title: string;
   description: string | null;
   estimatedMinutes: number;
@@ -103,7 +103,7 @@ export interface PdfProvenanceData {
 
 // ----- Attempt metadata (stored in DB) -----
 
-export interface AttemptMetadataFailure {
+interface AttemptMetadataFailure {
   classification: FailureClassification;
   timedOut: boolean;
 }
@@ -222,19 +222,19 @@ export interface UserGenerationAttemptWindowStats {
 // ----- Provider error retryability -----
 
 /** Determines if a provider_error is retryable based on error metadata. */
-export interface ProviderErrorStatusShape {
+interface ProviderErrorStatusShape {
   status?: number;
   statusCode?: number;
   httpStatus?: number;
   response?: { status?: number } | null;
 }
 
-export interface AttemptErrorFallbackShape {
+interface AttemptErrorFallbackShape {
   message: string;
   code?: string;
 }
 
-export type AttemptErrorWithStatus =
+type AttemptErrorWithStatus =
   | (ProviderErrorStatusShape &
       Partial<AttemptErrorFallbackShape> & { status: number })
   | (ProviderErrorStatusShape &

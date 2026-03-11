@@ -1,11 +1,11 @@
-import { randomUUID } from 'node:crypto';
-
 import * as Sentry from '@sentry/nextjs';
+
+import { ensureCorrelationId } from '@/lib/api/context';
 
 import type { Logger } from './logger';
 import { createLogger } from './logger';
 
-export const REQUEST_ID_HEADER = 'x-request-id';
+export const REQUEST_ID_HEADER = 'x-correlation-id';
 
 export interface RequestContext {
   requestId: string;
@@ -16,9 +16,7 @@ export function createRequestContext(
   request: Pick<Request, 'headers'>,
   context: Record<string, unknown> = {}
 ): RequestContext {
-  const incomingId = request.headers.get(REQUEST_ID_HEADER);
-  const trimmedId = incomingId?.trim();
-  const requestId = trimmedId ? trimmedId : randomUUID();
+  const requestId = ensureCorrelationId(request, REQUEST_ID_HEADER);
 
   // Set isolation scope so Sentry logs include request_id (snake_case per Sentry docs)
   Sentry.getIsolationScope().setAttributes({ request_id: requestId });

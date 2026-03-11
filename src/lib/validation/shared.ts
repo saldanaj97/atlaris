@@ -1,7 +1,21 @@
 import { z } from 'zod';
 
+import {
+  LEARNING_STYLES,
+  SKILL_LEVELS,
+  type LearningStyle,
+  type SkillLevel,
+} from '@/lib/types/db';
+
 export const TOPIC_MAX_LENGTH = 200;
 export const NOTES_MAX_LENGTH = 2000;
+
+export const SKILL_LEVEL_ENUM = z.enum(
+  SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]
+);
+export const LEARNING_STYLE_ENUM = z.enum(
+  LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
+);
 
 export const weeklyHoursSchema = z
   .number()

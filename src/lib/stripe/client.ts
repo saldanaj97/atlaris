@@ -30,10 +30,3 @@ export function getStripe(): Stripe {
 
   return stripeInstance;
 }
-
-/**
- * Export a pre-initialized instance for convenience
- * Note: This will throw if called during build time without the env var
- */
-// Do not eagerly initialize at module load to keep tests isolated
-export const stripe: Stripe | null = null;

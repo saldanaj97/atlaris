@@ -6,14 +6,14 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 
 ### User Rate Limits (Authenticated Endpoints)
 
-| Category       | Limit        | Window   | Use Case                                   |
-| -------------- | ------------ | -------- | ------------------------------------------ |
-| `aiGeneration` | 10 requests  | 1 hour   | AI generation, regeneration, enhancement   |
-| `integration`  | 30 requests  | 1 hour   | Third-party APIs (Notion, Google Calendar) |
-| `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes         |
-| `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences  |
-| `billing`      | 10 requests  | 1 minute | Stripe checkout, portal sessions           |
-| `oauth`        | 20 requests  | 1 hour   | OAuth flows (Google, Notion auth)          |
+| Category       | Limit        | Window   | Use Case                                  |
+| -------------- | ------------ | -------- | ----------------------------------------- |
+| `aiGeneration` | 10 requests  | 1 hour   | AI generation, regeneration, enhancement  |
+| `integration`  | 30 requests  | 1 hour   | Third-party APIs (Google Calendar)        |
+| `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes        |
+| `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences |
+| `billing`      | 10 requests  | 1 minute | Stripe checkout, portal sessions          |
+| `oauth`        | 20 requests  | 1 hour   | OAuth initiation flows (Google auth)      |
 
 ### Plan Generation Rate Limit
 
@@ -30,7 +30,7 @@ Source of truth for durable generation limits is `src/lib/ai/generation-policy.t
 Located in `src/lib/api/user-rate-limit.ts`.
 
 - **Storage**: In-memory LRU cache per process
-- **Key**: Clerk user ID (not IP)
+- **Key**: Authenticated user ID (not IP)
 - **Scope**: Per category, per user
 - **Multi-instance note**: Each server instance enforces its own limits. For strict global limits, consider Redis-backed storage.
 
@@ -73,7 +73,7 @@ export const POST = withErrorBoundary(
 | Endpoint Type                            | Category       |
 | ---------------------------------------- | -------------- |
 | AI generation, regeneration, enhancement | `aiGeneration` |
-| Notion export, Google Calendar sync      | `integration`  |
+| Google Calendar disconnect / sync writes | `integration`  |
 | Create/update/delete plans, tasks, etc.  | `mutation`     |
 | GET endpoints for data retrieval         | `read`         |
 | Stripe checkout/portal creation          | `billing`      |
@@ -142,12 +142,9 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `POST /api/v1/plans/stream`
 - `POST /api/v1/plans/[planId]/retry`
 - `POST /api/v1/plans/[planId]/regenerate`
-- `POST /api/v1/ai/enhance-content`
 
 ### Integration (`integration`)
 
-- `POST /api/v1/integrations/notion/export`
-- `POST /api/v1/integrations/google-calendar/sync`
 - `POST /api/v1/integrations/disconnect`
 
 ### Billing (`billing`)
@@ -161,8 +158,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `DELETE /api/v1/plans/[planId]`
 - `PATCH /api/v1/user/preferences`
 - `PUT /api/v1/user/profile`
-- `PUT /api/v1/notifications/preferences`
-- `POST /api/v1/notifications/weekly-summary`
 
 ### Read (`read`)
 
@@ -174,13 +169,13 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `GET /api/v1/user/preferences`
 - `GET /api/v1/user/subscription`
 - `GET /api/v1/user/profile`
-- `GET /api/v1/notifications/preferences`
-- `GET /api/v1/templates`
 - `GET /api/v1/resources`
 
 ### OAuth (`oauth`)
 
 OAuth routes use existing CSRF state token protection. Rate limiting is applied at the initiation level, not callbacks.
+
+- `GET /api/v1/auth/google`
 
 ## Future Considerations
 

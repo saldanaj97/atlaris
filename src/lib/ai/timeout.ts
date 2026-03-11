@@ -11,7 +11,13 @@ const DEFAULT_CONFIG: AdaptiveTimeoutConfig = {
   extensionThresholdMs: 25_000,
 };
 
-/** Backoff limits for p-retry (light retries). Used by micro-explanations and router. */
+/** Default generation timeout in ms. Shared with provider implementations. */
+export const DEFAULT_GENERATION_TIMEOUT_MS = DEFAULT_CONFIG.baseMs;
+
+/** Default timeout extension in ms. Shared with provider implementations. */
+export const DEFAULT_GENERATION_EXTENSION_MS = DEFAULT_CONFIG.extensionMs;
+
+/** Backoff limits for p-retry (light retries). Used by router. */
 const RETRY_BACKOFF_MS = { min: 300, max: 700 } as const;
 
 /**

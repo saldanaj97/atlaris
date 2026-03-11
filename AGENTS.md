@@ -21,9 +21,8 @@ src/
 │   ├── ai/        # Provider abstraction, streaming, orchestration → see AGENTS.md
 │   ├── api/       # Request context, rate limiting
 │   ├── config/    # Centralized env access (NEVER use process.env directly)
-│   ├── curation/  # Resource ranking (YouTube, docs)
 │   ├── db/        # Schema, queries, RLS clients → see AGENTS.md
-│   ├── integrations/ # Notion/Google Calendar sync → see AGENTS.md
+│   ├── integrations/ # Shared OAuth token/state utilities → see AGENTS.md
 │   └── logging/   # Structured logger (NEVER use console.*)
 tests/             # 5 test types → see AGENTS.md
 docs/
@@ -179,5 +178,5 @@ Guardrails and guidelines for LLMs to follow:
 
 - `src/lib/db/AGENTS.md` - Database clients, RLS, queries
 - `src/lib/ai/AGENTS.md` - AI providers, generation, streaming
-- `src/lib/integrations/AGENTS.md` - Third-party sync (Notion, GCal)
+- `src/lib/integrations/AGENTS.md` - Shared OAuth token/state utilities
 - `tests/AGENTS.md` - Test architecture and patterns

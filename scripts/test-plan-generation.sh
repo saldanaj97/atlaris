@@ -6,9 +6,8 @@
 # without using the UI.
 #
 # Setup:
-#   1. Add CLERK_SESSION_TOKEN to your .env.local file
-#   2. Get the token from browser console while logged in:
-#      await window.Clerk.session.getToken({ template: 'testing' })
+#   1. Start the app locally with DEV_AUTH_USER_ID set in .env.local
+#   2. Make sure that auth user has a corresponding users row in the database
 #   3. Run: ./scripts/test-plan-generation.sh
 #
 # Usage:
@@ -48,15 +47,9 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Load environment variables from .env.local
-if [[ -f "$PROJECT_ROOT/.env.local" ]]; then
-  # Export only CLERK_SESSION_TOKEN to avoid polluting environment
-  export CLERK_SESSION_TOKEN=$(grep -E '^CLERK_SESSION_TOKEN=' "$PROJECT_ROOT/.env.local" | cut -d '=' -f2- | tr -d '"' | tr -d "'")
-fi
-
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:3000}"
-TOKEN="${CLERK_SESSION_TOKEN:-}"
+COOKIE_HEADER="${COOKIE_HEADER:-}"
 
 # Default values
 COMMAND="stream"
@@ -66,6 +59,19 @@ WEEKLY_HOURS=10
 LEARNING_STYLE="mixed"
 NOTES=""
 PLAN_ID=""
+
+read_env_value() {
+  local key="$1"
+  local file="$2"
+
+  [[ -f "$file" ]] || return 0
+
+  grep -E "^${key}=" "$file" | tail -n 1 | cut -d '=' -f2- | tr -d '"' | tr -d "'"
+}
+
+# Surface whether the local dev server is expected to authenticate requests.
+ENV_FILE="$PROJECT_ROOT/.env.local"
+DEV_AUTH_USER_ID_VALUE="$(read_env_value "DEV_AUTH_USER_ID" "$ENV_FILE")"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -109,15 +115,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Validate token
-if [[ -z "$TOKEN" ]]; then
-  echo -e "${RED}Error: CLERK_SESSION_TOKEN not found${NC}"
+# Validate auth setup
+if [[ -z "$DEV_AUTH_USER_ID_VALUE" && -z "$COOKIE_HEADER" ]]; then
+  echo -e "${RED}Error: no local auth mechanism configured${NC}"
   echo ""
-  echo "Please add your session token to .env.local:"
-  echo "  CLERK_SESSION_TOKEN=your_token_here"
+  echo "Use one of these options before running this script:"
+  echo "  1. Set DEV_AUTH_USER_ID in .env.local and restart the dev server"
+  echo "  2. Export COOKIE_HEADER with your local session cookie if you need a real session"
   echo ""
-  echo "Get the token from browser console while logged in:"
-  echo "  await window.Clerk.session.getToken({ template: 'testing' })"
+  echo "Example .env.local entry:"
+  echo "  DEV_AUTH_USER_ID=auth-user-id-from-your-local-database"
   exit 1
 fi
 
@@ -145,6 +152,11 @@ print_request_info() {
   local endpoint="$1"
   echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${GREEN}Endpoint:${NC} $endpoint"
+  if [[ -n "$DEV_AUTH_USER_ID_VALUE" ]]; then
+    echo -e "${GREEN}Auth:${NC} DEV_AUTH_USER_ID from .env.local"
+  elif [[ -n "$COOKIE_HEADER" ]]; then
+    echo -e "${GREEN}Auth:${NC} COOKIE_HEADER override"
+  fi
   echo -e "${GREEN}Topic:${NC} $TOPIC"
   echo -e "${GREEN}Skill Level:${NC} $SKILL_LEVEL"
   echo -e "${GREEN}Weekly Hours:${NC} $WEEKLY_HOURS"
@@ -162,10 +174,15 @@ case $COMMAND in
     print_request_info "POST /api/v1/plans/stream"
     echo -e "${YELLOW}Streaming plan generation...${NC}"
     echo ""
-    curl -X POST "${BASE_URL}/api/v1/plans/stream" \
-      -H "Content-Type: application/json" \
-      -H "Authorization: Bearer ${TOKEN}" \
+    curl_args=(
+      -X POST "${BASE_URL}/api/v1/plans/stream"
+      -H "Content-Type: application/json"
       -d "$(build_payload)"
+    )
+    if [[ -n "$COOKIE_HEADER" ]]; then
+      curl_args+=( -H "Cookie: ${COOKIE_HEADER}" )
+    fi
+    curl "${curl_args[@]}"
     echo ""
     ;;
 
@@ -173,10 +190,15 @@ case $COMMAND in
     print_request_info "POST /api/v1/plans"
     echo -e "${YELLOW}Creating plan record...${NC}"
     echo ""
-    curl -X POST "${BASE_URL}/api/v1/plans" \
-      -H "Content-Type: application/json" \
-      -H "Authorization: Bearer ${TOKEN}" \
-      -d "$(build_payload)" | jq .
+    curl_args=(
+      -X POST "${BASE_URL}/api/v1/plans"
+      -H "Content-Type: application/json"
+      -d "$(build_payload)"
+    )
+    if [[ -n "$COOKIE_HEADER" ]]; then
+      curl_args+=( -H "Cookie: ${COOKIE_HEADER}" )
+    fi
+    curl "${curl_args[@]}" | jq .
     echo ""
     ;;
 
@@ -191,8 +213,11 @@ case $COMMAND in
     echo ""
     echo -e "${YELLOW}Checking plan status...${NC}"
     echo ""
-    curl -X GET "${BASE_URL}/api/v1/plans/${PLAN_ID}/status" \
-      -H "Authorization: Bearer ${TOKEN}" | jq .
+    curl_args=( -X GET "${BASE_URL}/api/v1/plans/${PLAN_ID}/status" )
+    if [[ -n "$COOKIE_HEADER" ]]; then
+      curl_args+=( -H "Cookie: ${COOKIE_HEADER}" )
+    fi
+    curl "${curl_args[@]}" | jq .
     echo ""
     ;;
 
@@ -203,8 +228,11 @@ case $COMMAND in
     echo ""
     echo -e "${YELLOW}Listing all plans...${NC}"
     echo ""
-    curl -X GET "${BASE_URL}/api/v1/plans" \
-      -H "Authorization: Bearer ${TOKEN}" | jq .
+    curl_args=( -X GET "${BASE_URL}/api/v1/plans" )
+    if [[ -n "$COOKIE_HEADER" ]]; then
+      curl_args+=( -H "Cookie: ${COOKIE_HEADER}" )
+    fi
+    curl "${curl_args[@]}" | jq .
     echo ""
     ;;
 esac

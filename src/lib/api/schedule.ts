@@ -5,7 +5,7 @@ import {
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
-import { generateSchedule } from '@/lib/scheduling/generate';
+import { distributeTasksToSessions } from '@/lib/scheduling/distribute';
 import { computeInputsHash } from '@/lib/scheduling/hash';
 import type { ScheduleInputs, ScheduleJson } from '@/lib/scheduling/types';
 import { format } from 'date-fns';
@@ -37,6 +37,7 @@ export function resolveScheduleTimezone(
 export const SCHEDULE_FETCH_ERROR_CODE = {
   PLAN_NOT_FOUND_OR_ACCESS_DENIED: 'PLAN_NOT_FOUND_OR_ACCESS_DENIED',
   INVALID_WEEKLY_HOURS: 'INVALID_WEEKLY_HOURS',
+  SCHEDULE_GENERATION_FAILED: 'SCHEDULE_GENERATION_FAILED',
 } as const;
 
 export type ScheduleFetchErrorCode =
@@ -45,8 +46,12 @@ export type ScheduleFetchErrorCode =
 export class ScheduleFetchError extends Error {
   readonly code: ScheduleFetchErrorCode;
 
-  constructor(code: ScheduleFetchErrorCode, message: string) {
-    super(message);
+  constructor(
+    code: ScheduleFetchErrorCode,
+    message: string,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options);
     this.name = 'ScheduleFetchError';
     this.code = code;
   }
@@ -169,7 +174,16 @@ export async function getPlanSchedule(
   }
 
   // Generate new schedule
-  const schedule = generateSchedule(inputs);
+  let schedule: ScheduleJson;
+  try {
+    schedule = distributeTasksToSessions(inputs);
+  } catch (err) {
+    throw new ScheduleFetchError(
+      SCHEDULE_FETCH_ERROR_CODE.SCHEDULE_GENERATION_FAILED,
+      err instanceof Error ? err.message : 'Failed to generate schedule',
+      { cause: err }
+    );
+  }
 
   // Write through cache
   await upsertPlanScheduleCache(

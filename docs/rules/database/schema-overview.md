@@ -1,84 +1,88 @@
 # Database Schema Overview
 
-## Core Entities & Relationships
+## Core entities and relationships
 
-```
+```text
 users 1—* learning_plans, integration_tokens, usage_metrics, ai_usage_events, job_queue, task_progress
-learning_plans 1—* modules, plan_schedules, plan_generations, generation_attempts
+learning_plans 1—* modules, generation_attempts, google_calendar_sync_state
 modules 1—* tasks
 tasks 1—* task_resources, task_progress, task_calendar_events
-task_resources —* resources (many-to-many with ordering and notes)
+task_resources —* resources
+users 1—* oauth_state_tokens, integration_tokens
 ```
 
-## Database Enums
+## Enums
 
 Defined in `src/lib/db/enums.ts`:
 
-| Enum                   | Values                                 |
-| ---------------------- | -------------------------------------- |
-| `skill_level`          | beginner, intermediate, advanced       |
-| `learning_style`       | reading, video, practice, mixed        |
-| `resource_type`        | youtube, article, course, doc, other   |
-| `progress_status`      | not_started, in_progress, completed    |
-| `generation_status`    | generating, ready, failed              |
-| `job_status`           | pending, processing, completed, failed |
-| `job_type`             | plan_generation, plan_regeneration     |
-| `subscription_tier`    | free, starter, pro                     |
-| `subscription_status`  | active, canceled, past_due, trialing   |
-| `integration_provider` | notion, google_calendar                |
+| Enum                   | Values                                           |
+| ---------------------- | ------------------------------------------------ |
+| `skill_level`          | `beginner`, `intermediate`, `advanced`           |
+| `learning_style`       | `reading`, `video`, `practice`, `mixed`          |
+| `resource_type`        | `youtube`, `article`, `course`, `doc`, `other`   |
+| `progress_status`      | `not_started`, `in_progress`, `completed`        |
+| `generation_status`    | `generating`, `pending_retry`, `ready`, `failed` |
+| `job_status`           | `pending`, `processing`, `completed`, `failed`   |
+| `job_type`             | values sourced from `src/lib/jobs/constants.ts`  |
+| `subscription_tier`    | `free`, `starter`, `pro`                         |
+| `subscription_status`  | `active`, `canceled`, `past_due`, `trialing`     |
+| `integration_provider` | `google_calendar`                                |
+| `plan_origin`          | `ai`, `template`, `manual`, `pdf`                |
 
-## Key Constraints
+## Key constraints
 
-- **Primary Keys**: UUID on all tables; `users.id` is internal PK
-- **Unique Constraints**: `users.clerk_user_id`, `users.email`
-- **Foreign Keys**: Generally `ON DELETE CASCADE`
-- **JSONB `extracted_context` (learning_plans)**: Enforces PdfContext shape when non-null via CHECK `extracted_context_pdf_shape`. All writes must go through the typed Drizzle client using `sanitizePdfContextForPersistence` from `@/lib/pdf/context`—raw SQL, migrations, or background jobs that insert invalid shapes will fail.
-- **Ordering**: `unique(plan_id, order)` on modules; `unique(module_id, order)` on tasks (order starts at 1)
-- **CHECK Constraints**: Non-negative integers for `weekly_hours`, `estimated_minutes`, `duration_minutes`, `cost_cents`, `attempts`, `max_attempts`
-- **Timestamps**: `created_at` defaults to `now()`; maintain `updated_at` in app logic
+- **Primary keys:** UUID on all user-facing tables
+- **User identity:** `users.auth_user_id` is unique and maps the Neon auth identity to the internal `users.id`
+- **Email uniqueness:** `users.email` is unique
+- **Ownership integrity:** foreign keys generally cascade on delete
+- **Ordering integrity:** `unique(plan_id, order)` on modules and `unique(module_id, order)` on tasks
+- **Context integrity:** `learning_plans.extracted_context` is validated against the persisted `PdfContext` shape
+- **OAuth integrity:** `integration_tokens` is unique on `(user_id, provider)` and `google_calendar_sync_state` is unique on `plan_id`
 
 ## Row Level Security (RLS)
 
-RLS policies enforce tenant isolation using role switching + session variables:
+RLS is enforced through request-scoped Postgres session state:
 
-- Request-scoped DB sessions run as `authenticated` or `anonymous` roles (via `src/lib/db/rls.ts`)
-- `request.jwt.claims` carries Neon Auth `sub` for ownership checks
-- User-facing policies are explicitly scoped with `to` (no implicit `PUBLIC` policies)
-- User-facing app data is authenticated-only; anonymous role does not have app-data read policies
+- request handlers create authenticated or anonymous RLS clients in `src/lib/db/rls.ts`
+- `request.jwt.claims` carries the Neon auth `sub`
+- user-facing policies are explicitly scoped to `authenticated`
+- service-role access is reserved for tests, workers, migrations, and other system flows
 
-## Common Indexes
+## Frequently referenced indexes
 
-| Table             | Index                                             |
-| ----------------- | ------------------------------------------------- |
-| `learning_plans`  | `(user_id, is_quota_eligible, generation_status)` |
-| `modules`         | `(plan_id, order)`                                |
-| `tasks`           | `(module_id, order)`                              |
-| `task_progress`   | `(user_id, task_id)`                              |
-| `resources`       | `(type)`                                          |
-| `task_resources`  | `(task_id, resource_id)`                          |
-| `job_queue`       | `(status, scheduled_for, priority)`               |
-| `usage_metrics`   | `(user_id, month)`                                |
-| `ai_usage_events` | `(user_id, created_at)`                           |
+| Table                        | Index / uniqueness                                     |
+| ---------------------------- | ------------------------------------------------------ |
+| `learning_plans`             | `(user_id, is_quota_eligible, generation_status)`      |
+| `modules`                    | `(plan_id, order)`                                     |
+| `tasks`                      | `(module_id, order)`                                   |
+| `task_progress`              | `(user_id, task_id)`                                   |
+| `task_resources`             | `(task_id, resource_id)`                               |
+| `job_queue`                  | `(status, scheduled_for, priority)`                    |
+| `usage_metrics`              | `(user_id, month)`                                     |
+| `ai_usage_events`            | `(user_id, created_at)`                                |
+| `integration_tokens`         | `(user_id)`, `(provider)`, unique `(user_id,provider)` |
+| `google_calendar_sync_state` | `(plan_id)`, `(user_id)`, unique `(plan_id)`           |
+| `oauth_state_tokens`         | `(state_token_hash)`, `(expires_at)`                   |
 
-## Code Locations
+## Code locations
 
-| Component      | Location                                                                   |
-| -------------- | -------------------------------------------------------------------------- |
-| Schema         | `src/lib/db/schema/tables/`                                                |
-| Enums          | `src/lib/db/enums.ts`                                                      |
-| Relations      | `src/lib/db/schema/relations.ts`                                           |
-| Queries        | `src/lib/db/queries/`                                                      |
-| Usage tracking | `src/lib/db/usage.ts`                                                      |
-| Seeding        | `src/lib/db/seed.ts`, `src/lib/db/seed-cli.ts`                             |
-| Migrations     | `src/lib/db/migrations/`                                                   |
-| Clients        | `src/lib/db/runtime.ts`, `src/lib/db/rls.ts`, `src/lib/db/service-role.ts` |
+| Concern          | Location                         |
+| ---------------- | -------------------------------- |
+| Schema tables    | `src/lib/db/schema/tables/`      |
+| Enum definitions | `src/lib/db/enums.ts`            |
+| Relations        | `src/lib/db/schema/relations.ts` |
+| Query modules    | `src/lib/db/queries/`            |
+| Usage tracking   | `src/lib/db/usage.ts`            |
+| Migrations       | `src/lib/db/migrations/`         |
+| Request DB       | `src/lib/db/runtime.ts`          |
+| RLS client       | `src/lib/db/rls.ts`              |
+| Service-role DB  | `src/lib/db/service-role.ts`     |
 
-## Implemented Features
+## Implemented feature coverage
 
-- Stripe subscription billing with webhook handling
-- Streaming plan generation via `/api/v1/plans/stream`
-- Row Level Security (RLS) with Neon for multi-tenant isolation
-- Usage tracking and quotas (monthly limits, AI API usage)
-- Third-party integrations: Notion exports, Google Calendar sync
-- Plan scheduling and regeneration tracking
-- OAuth token management for integrations
+- Streaming plan generation and retry tracking
+- Attempt auditing with success / failure persistence
+- Plan scheduling and task progress tracking
+- Monthly usage and billing-related usage accounting
+- Google Calendar OAuth token storage, disconnect flow, and sync-state persistence
+- OAuth CSRF state-token persistence

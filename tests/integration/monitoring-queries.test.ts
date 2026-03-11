@@ -1,12 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { cleanupOldJobs, getFailedJobs, getJobStats } from '@/lib/db/queries';
+import {
+  cleanupOldJobs,
+  getFailedJobs,
+  getJobStats,
+} from '@/lib/db/queries/jobs';
 import { jobQueue } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { JOB_TYPES } from '@/lib/jobs/types';
-import { ensureUser } from '../helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '../helpers/db';
 
 describe('Monitoring Queries', () => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+  });
   describe('getJobStats', () => {
     it('should return correct counts and statistics for jobs', async () => {
       // T060: Monitoring queries test

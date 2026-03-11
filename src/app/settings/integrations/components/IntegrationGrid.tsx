@@ -20,20 +20,6 @@ const INTEGRATIONS: IntegrationCardProps[] = [
     // TODO: Wire to Google Calendar OAuth flow in src/lib/integrations/
   },
   {
-    name: 'Notion',
-    icon: '📝',
-    status: 'available',
-    description:
-      'Export your learning plans and progress to Notion. Keep all your notes and study materials organized in one place.',
-    features: [
-      'One-click plan export',
-      'Progress tracking pages',
-      'Resource link sync',
-      'Template customization',
-    ],
-    // TODO: Wire to Notion OAuth flow in src/lib/integrations/
-  },
-  {
     name: 'CSV Export',
     icon: '📊',
     status: 'available',

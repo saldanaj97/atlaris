@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import { runGenerationAttempt, type ParsedModule } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import type { ParsedModule } from '@/lib/ai/parser';
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';

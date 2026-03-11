@@ -7,19 +7,30 @@ type PlanQueryClient = Pick<ReturnType<typeof getDb>, 'select'>;
 
 export type OwnedPlanRecord = typeof learningPlans.$inferSelect;
 
-export interface LockedOwnedPlanRecord {
+interface LockedOwnedPlanRecord {
   id: string;
   userId: string;
   generationStatus: OwnedPlanRecord['generationStatus'];
 }
 
-export interface OwnedPlanQueryParams {
+interface OwnedPlanQueryParams {
+  planId: string;
+  ownerUserId: string;
+  dbClient?: PlanQueryClient;
+}
+
+/**
+ * Parameters for {@link lockOwnedPlanById}. Unlike {@link OwnedPlanQueryParams},
+ * `dbClient` is required because the query uses `.for('update')` which must
+ * run on the transaction connection to hold the row lock.
+ */
+interface LockedOwnedPlanQueryParams {
   planId: string;
   ownerUserId: string;
   dbClient: PlanQueryClient;
 }
 
-export function ownedPlanWhere(
+function ownedPlanWhere(
   planId: string,
   ownerUserId: string
 ): ReturnType<typeof and> {
@@ -37,7 +48,8 @@ export async function selectOwnedPlanById({
   ownerUserId,
   dbClient,
 }: OwnedPlanQueryParams): Promise<OwnedPlanRecord | null> {
-  const [plan] = await dbClient
+  const db = dbClient ?? getDb();
+  const [plan] = await db
     .select()
     .from(learningPlans)
     .where(ownedPlanWhere(planId, ownerUserId))
@@ -53,7 +65,7 @@ export async function lockOwnedPlanById({
   planId,
   ownerUserId,
   dbClient,
-}: OwnedPlanQueryParams): Promise<LockedOwnedPlanRecord | null> {
+}: LockedOwnedPlanQueryParams): Promise<LockedOwnedPlanRecord | null> {
   const [plan] = await dbClient
     .select({
       id: learningPlans.id,

@@ -3,13 +3,11 @@ import { isValidModelId } from '@/lib/ai/ai-models';
 import type {
   CreateUserData,
   DbUser,
-  DeleteUserResult,
   UsersDbClient,
 } from '@/lib/db/queries/types/users.types';
 import type { PreferredAiModel } from '@/lib/db/enums';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
-import { db as serviceDb } from '@/lib/db/service-role';
 import { eq } from 'drizzle-orm';
 
 const SUBSCRIPTION_TIERS = new Set(['free', 'starter', 'pro']);
@@ -162,39 +160,4 @@ export async function updateUserPreferredAiModel(
     .returning();
 
   return result[0];
-}
-
-/**
- * Deletes a user by their auth provider ID.
- *
- * Uses service-role client (bypasses RLS) because this is called from
- * auth provider webhooks / background workers where no user session exists.
- * Do NOT call this from request handlers — use an RLS-scoped client instead.
- *
- * @param authUserId - The external auth provider user ID
- * @returns Whether the deletion succeeded + the deleted user's ID
- */
-export async function deleteUserByAuthId(
-  authUserId: string
-): Promise<DeleteUserResult> {
-  // Guard: this function uses the service-role client and must never be
-  // called from within a request handler where RLS-scoped clients should
-  // be used instead. Detect request context via AsyncLocalStorage.
-  const ctx = getRequestContext();
-  if (ctx) {
-    throw new Error(
-      'deleteUserByAuthId must not be called from a request handler. Use an RLS-scoped client instead.'
-    );
-  }
-
-  const result = await serviceDb
-    .delete(users)
-    .where(eq(users.authUserId, authUserId))
-    .returning({ id: users.id });
-
-  if (result.length === 0) {
-    return { deleted: false };
-  }
-
-  return { deleted: true, userId: result[0].id };
 }

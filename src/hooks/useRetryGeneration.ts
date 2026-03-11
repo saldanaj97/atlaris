@@ -4,9 +4,52 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
+import { StreamingEventSchema } from '@/lib/ai/streaming/schema';
+import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { parseEventLine } from '@/lib/streaming/parse-event';
+
+const MAX_PREVIEW_LENGTH = 100;
+
+function redactPayload(payload: string): {
+  preview: string;
+  rawLength: number;
+} {
+  return {
+    preview:
+      payload.length > MAX_PREVIEW_LENGTH
+        ? `${payload.slice(0, MAX_PREVIEW_LENGTH)}… [REDACTED]`
+        : payload,
+    rawLength: payload.length,
+  };
+}
+
+const parseEventLine = (line: string): StreamingEvent | null => {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  const payload = trimmed.startsWith('data:')
+    ? trimmed.slice('data:'.length).trim()
+    : trimmed;
+  if (!payload) return null;
+  try {
+    const parsed: unknown = JSON.parse(payload);
+    const result = StreamingEventSchema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
+    }
+    clientLogger.warn('Retry generation event validation failed', {
+      issues: result.error.issues,
+      ...redactPayload(payload),
+    });
+    return null;
+  } catch (err) {
+    clientLogger.warn('Failed to parse SSE event data', {
+      error: err instanceof Error ? err.message : String(err),
+      ...redactPayload(payload),
+    });
+    return null;
+  }
+};
 
 /** Runtime shape for SSE error event data (message and/or error key). */
 const errorEventDataSchema = z.looseObject({
@@ -60,6 +103,7 @@ export function useRetryGeneration(
   const [cooldownActive, setCooldownActive] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryInFlightRef = useRef(false);
 
   // Cleanup cooldown timer and abort in-flight requests on unmount
   useEffect(() => {
@@ -70,6 +114,7 @@ export function useRetryGeneration(
       }
       abortRef.current?.abort();
       abortRef.current = null;
+      retryInFlightRef.current = false;
     };
   }, []);
 
@@ -78,9 +123,10 @@ export function useRetryGeneration(
     status === 'retrying' || currentAttempts >= maxAttempts || cooldownActive;
 
   const retryGeneration = useCallback(async () => {
-    if (cooldownActive) {
+    if (retryInFlightRef.current || cooldownActive) {
       return;
     }
+    retryInFlightRef.current = true;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -123,42 +169,60 @@ export function useRetryGeneration(
       const decoder = new TextDecoder();
       let buffer = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
+      /** Returns true when the caller should exit (terminal event encountered). */
+      const processEventLines = (rawLines: string[]): boolean => {
+        for (const line of rawLines) {
           const event = parseEventLine(line);
           if (!event) continue;
 
           if (event.type === 'complete') {
             setStatus('success');
-            // Refresh the page to show the new content
             router.refresh();
-            return;
+            return true;
           }
 
           if (event.type === 'error') {
             setStatus('error');
-            setError(getErrorMessage(event.data as unknown));
-            return;
+            setError(getErrorMessage(event.data));
+            return true;
           }
 
           if (event.type === 'cancelled') {
             setStatus('idle');
             setError(null);
-            return;
+            return true;
           }
         }
-      }
+        return false;
+      };
 
-      // If we get here without a complete/error event, something went wrong
-      setStatus('error');
-      setError('Generation completed unexpectedly.');
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          if (processEventLines(lines)) return;
+        }
+
+        // Flush any remaining bytes from the decoder
+        buffer += decoder.decode(undefined, { stream: false });
+
+        if (buffer.trim()) {
+          const remainingLines = buffer.split('\n');
+          if (processEventLines(remainingLines)) return;
+        }
+
+        // If we get here without a complete/error event, something went wrong
+        setStatus('error');
+        setError('Generation completed unexpectedly.');
+      } finally {
+        reader.cancel().catch(() => {});
+        controller.abort();
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         setStatus('idle');
@@ -172,6 +236,8 @@ export function useRetryGeneration(
           ? err.message
           : 'An unexpected error occurred. Please try again.'
       );
+    } finally {
+      retryInFlightRef.current = false;
     }
   }, [planId, router, cooldownActive]);
 

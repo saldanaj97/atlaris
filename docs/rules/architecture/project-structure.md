@@ -2,102 +2,128 @@
 
 ## Overview
 
-- **Framework**: Next.js 15 (TypeScript, React 19) with Turbopack
-- **Package Manager**: pnpm
-- **Styling**: Tailwind CSS v4 (config-less)
-- **Linting**: ESLint flat config with type-aware rules
-- **Formatting**: Prettier with Tailwind plugin
+- **Framework:** Next.js 16.1.6 + React 19
+- **Language:** TypeScript (strict mode)
+- **Package Manager:** pnpm
+- **Styling:** Tailwind CSS v4
+- **Auth:** `@neondatabase/auth` + `better-auth`
+- **Database:** Drizzle ORM + Neon PostgreSQL + Postgres.js
+- **AI:** `@openrouter/sdk`, `@ai-sdk/openai`, `ai`
+- **Observability:** `@sentry/nextjs`
 
 ## Key Dependencies
 
-| Category  | Libraries                                              |
-| --------- | ------------------------------------------------------ |
-| Auth      | @clerk/nextjs                                          |
-| Database  | drizzle-orm, drizzle-kit, postgres, @neon/neon-js      |
-| AI/LLM    | @ai-sdk/openai, @openrouter/sdk, ai (Vercel AI SDK)    |
-| Payments  | stripe                                                 |
-| UI        | @radix-ui/\*, lucide-react, next-themes, sonner        |
-| Utilities | zod, nanoid, p-retry, date-fns, lru-cache, async-mutex |
+| Category  | Libraries                                                            |
+| --------- | -------------------------------------------------------------------- |
+| Auth      | `@neondatabase/auth`, `better-auth`                                  |
+| Database  | `drizzle-orm`, `drizzle-kit`, `postgres`, `@neondatabase/serverless` |
+| AI/LLM    | `@openrouter/sdk`, `@ai-sdk/openai`, `ai`                            |
+| Payments  | `stripe`                                                             |
+| UI        | Radix UI primitives, `lucide-react`, `next-themes`, `sonner`         |
+| Utilities | `zod`, `nanoid`, `p-retry`, `date-fns`, `lru-cache`, `async-mutex`   |
 
 ## Source Layout
 
-TypeScript path alias: `@/*` → `src/*` (defined in tsconfig.json)
+TypeScript path alias: `@/*` → `src/*`.
 
-### Application Structure (`src/app/`)
+### App Router (`src/app/`)
 
-```
+```text
 src/app/
-├── api/           # API routes
-├── dashboard/     # Dashboard pages
-├── landing/       # Landing page
-├── plans/         # Learning plans pages
-├── pricing/       # Pricing page
-└── settings/      # User settings
+├── api/            # Route handlers, docs, health, internal jobs
+├── about/          # Marketing/about page
+├── analytics/      # Placeholder analytics pages
+├── auth/           # Auth route segments
+├── dashboard/      # Authenticated dashboard
+├── landing/        # Public landing page
+├── plans/          # Plan creation, listing, detail pages
+├── pricing/        # Pricing page
+└── settings/       # Profile, billing, integrations, notifications
+```
+
+### Core Libraries (`src/lib/`)
+
+```text
+src/lib/
+├── ai/             # Providers, orchestration, parsing, streaming, pacing
+├── api/            # Auth wrappers, errors, responses, rate limiting
+├── auth/           # Neon Auth server/client wiring
+├── config/         # Typed environment access and validation
+├── db/             # Schema, queries, RLS client, service-role client, migrations
+├── integrations/   # OAuth token/state utilities
+├── jobs/           # Queue and regeneration worker logic
+├── logging/        # Server/client/request logging helpers
+├── metrics/        # Runtime metrics for attempts and billing reconciliation
+├── pdf/            # PDF extraction and structure helpers
+├── scheduling/     # Schedule distribution and hashing
+├── security/       # AV scanning and PDF extraction proofing
+└── stripe/         # Billing client, usage, limits, subscriptions
 ```
 
 ### Database Code (`src/lib/db/`)
 
-```
+```text
 src/lib/db/
-├── index.ts          # Main entry (RLS-enforced clients)
-├── service-role.ts   # Service-role client (RLS bypassed)
-├── rls.ts            # RLS-enforced client factory
-├── runtime.ts        # Runtime DB selector (getDb())
-├── enums.ts          # PostgreSQL enum definitions
-├── usage.ts          # Usage tracking queries
-├── seed.ts           # Database seeding
-├── schema/           # Table definitions + RLS policies
-├── queries/          # Modular query files by entity
-└── migrations/       # Drizzle migrations output
+├── runtime.ts        # Request-scoped `getDb()` selector
+├── service-role.ts   # Service-role client (tests/workers only)
+├── rls.ts            # Authenticated / anonymous RLS client factory
+├── enums.ts          # Postgres enums
+├── usage.ts          # Usage tracking helpers
+├── schema/
+│   ├── tables/       # Table definitions and RLS policies
+│   ├── relations.ts  # Drizzle relations
+│   ├── constants.ts  # Shared DB-layer constants
+│   └── index.ts      # Schema barrel
+├── queries/          # Query modules by entity / concern
+└── migrations/       # Drizzle migration output
 ```
 
-### AI/Streaming (`src/lib/ai/`)
+### AI Code (`src/lib/ai/`)
 
-```
+```text
 src/lib/ai/
-├── provider-factory.ts   # AI provider configuration
-├── orchestrator.ts       # Generation orchestration
-└── streaming/            # Streaming utilities
+├── provider.ts          # Provider errors + compatibility shim
+├── provider-factory.ts  # Provider/model selection
+├── orchestrator.ts      # Main generation pipeline
+├── parser.ts            # Stream parsing + validation
+├── classification.ts    # Failure classification
+├── pacing.ts            # Fit generated output to available hours
+├── generation-policy.ts # Durable generation window policy
+├── providers/           # OpenRouter, router wrapper, mock provider
+├── streaming/           # SSE event utilities and sanitization
+└── types/               # Canonical provider + model types
 ```
 
 ### Tests (`tests/`)
 
-```
+```text
 tests/
-├── unit/          # Isolated component tests
-├── integration/   # Multi-component tests
-├── e2e/           # End-to-end user flows
-├── security/      # RLS policy tests
-├── fixtures/      # Test data fixtures
-├── helpers/       # Test utilities
-├── mocks/         # Mock implementations
-└── setup.ts       # Global test setup
+├── unit/          # Pure logic and UI tests
+├── integration/   # DB + service tests
+├── e2e/           # User-journey tests
+├── security/      # RLS and policy tests
+├── fixtures/      # Test data builders
+├── helpers/       # Shared testing utilities
+├── mocks/         # Shared and unit mocks
+└── setup.ts       # Integration/e2e/security global setup
 ```
 
 ## Configuration Files
 
-| File                | Purpose                                    |
-| ------------------- | ------------------------------------------ |
-| `next.config.ts`    | Next.js configuration (minimal, Turbopack) |
-| `eslint.config.mjs` | ESLint flat config (type-aware)            |
-| `.prettierrc`       | Prettier configuration                     |
-| `tsconfig.json`     | TypeScript configuration                   |
-| `drizzle.config.ts` | Drizzle ORM config (main)                  |
-| `vitest.config.ts`  | Vitest multi-project config                |
+| File                 | Purpose                            |
+| -------------------- | ---------------------------------- |
+| `next.config.ts`     | Next.js configuration              |
+| `eslint.config.mjs`  | ESLint flat config                 |
+| `.prettierrc`        | Prettier configuration             |
+| `tsconfig.json`      | TypeScript configuration           |
+| `drizzle.config.ts`  | Drizzle migration / schema config  |
+| `vitest.config.ts`   | Vitest multi-project configuration |
+| `postcss.config.mjs` | Tailwind/PostCSS configuration     |
 
-## ESLint Configuration
+## Conventions
 
-Key features of our ESLint setup:
-
-- **Type-aware linting**: Uses `typescript-eslint` with `recommendedTypeChecked`
-- **Import ordering**: `import-x` plugin with TypeScript resolver
-- **No enums**: Disallowed via `no-restricted-syntax`; use const objects instead
-- **React Hooks**: Strict enforcement (rules-of-hooks, exhaustive-deps)
-- **Next.js**: Core Web Vitals rules included
-- **Prettier**: Compatibility layer to disable formatting rules
-
-## Styling Notes
-
-- Tailwind CSS v4 is config-less
-- Prettier Tailwind plugin sorts class names
-- `.prettierignore` excludes `src/components/ui/*.tsx`
+- Use `@/*` path aliases, not deep relative imports
+- Access env only through `src/lib/config/env.ts`
+- Use `getDb()` in request handlers and `db` from `service-role.ts` only in tests/workers/migrations
+- Keep RLS policies explicitly scoped with `to: 'authenticated'`
+- Use shadcn/ui components from `src/components/ui/` when available

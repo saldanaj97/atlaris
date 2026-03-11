@@ -12,12 +12,21 @@ Guidelines for environment variables and logging in this project.
 
 Prefer the exported grouped configs instead of raw keys:
 
+- `appEnv` - Runtime mode, app URL, maintenance mode
 - `databaseEnv` - Database connection settings
-- `neonEnv` - Neon-specific configuration
+- `googleOAuthEnv` - Google OAuth credentials
+- `oauthEncryptionEnv` - OAuth token encryption key
+- `neonAuthEnv` - Neon Auth base URL and cookie secret
 - `stripeEnv` - Stripe API keys and settings
 - `aiEnv` - AI/LLM provider configuration
 - `avScannerEnv` - PDF upload malware scanning configuration
+- `aiTimeoutEnv` - AI generation timeout settings
+- `openRouterEnv` - OpenRouter transport configuration
+- `devAuthEnv` - Development auth overrides
+- `attemptsEnv` - Attempt cap overrides
+- `regenerationQueueEnv` - Worker queue toggles and shared token
 - `loggingEnv` - Logging configuration
+- `observabilityEnv` - Sentry and telemetry configuration
 
 ### Adding New Variables
 
@@ -27,13 +36,19 @@ If you need a new variable:
 2. Include proper validation (using Zod)
 3. Export it through the appropriate grouped config
 
-### Special Variables
+### Auth Variables
 
-| Variable              | Purpose                           | Required |
-| --------------------- | --------------------------------- | -------- |
-| `CLERK_SESSION_TOKEN` | Manual API testing authentication | No       |
+The application uses Neon Auth and Better Auth integration rather than Clerk-era token templates.
 
-> **Note**: `CLERK_SESSION_TOKEN` is only for `scripts/test-plan-generation.sh`. Not required for normal development.
+Key auth-related server variables include:
+
+| Variable                  | Purpose                            | Required |
+| ------------------------- | ---------------------------------- | -------- |
+| `NEON_AUTH_BASE_URL`      | Server auth endpoint base URL      | Yes      |
+| `NEON_AUTH_COOKIE_SECRET` | Cookie signing / encryption secret | Yes      |
+| `DEV_AUTH_USER_ID`        | Optional dev/test auth override    | No       |
+| `DEV_AUTH_USER_EMAIL`     | Optional dev/test display email    | No       |
+| `DEV_AUTH_USER_NAME`      | Optional dev/test display name     | No       |
 
 ### AV Scanner Variables
 

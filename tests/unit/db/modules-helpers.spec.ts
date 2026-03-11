@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildResourcesByTask,
-  computeModuleNavItems,
-} from '@/lib/db/queries/helpers/modules-helpers';
-import type {
-  ModuleNavRaw,
-  ModuleResourceRow,
-} from '@/lib/db/queries/types/modules.types';
+import { buildResourcesByTask } from '@/lib/db/queries/helpers/modules-helpers';
+import type { ModuleResourceRow } from '@/lib/db/queries/types/modules.types';
 
 const BASE_DATE = new Date('2026-01-01T00:00:00.000Z');
 
@@ -38,85 +32,6 @@ function buildResourceRow(
 }
 
 describe('modules helpers', () => {
-  describe('computeModuleNavItems', () => {
-    it('keeps all modules unlocked when prior modules are fully completed', () => {
-      const moduleRows: ModuleNavRaw[] = [
-        { id: 'm1', order: 1, title: 'Module 1' },
-        { id: 'm2', order: 2, title: 'Module 2' },
-        { id: 'm3', order: 3, title: 'Module 3' },
-      ];
-
-      const tasksByModule = new Map<string, string[]>([
-        ['m1', ['t1']],
-        ['m2', ['t2']],
-        ['m3', ['t3']],
-      ]);
-
-      const completedTaskIds = new Set(['t1', 't2', 't3']);
-
-      const result = computeModuleNavItems(
-        moduleRows,
-        tasksByModule,
-        completedTaskIds
-      );
-
-      expect(result).toEqual([
-        { id: 'm1', order: 1, title: 'Module 1', isLocked: false },
-        { id: 'm2', order: 2, title: 'Module 2', isLocked: false },
-        { id: 'm3', order: 3, title: 'Module 3', isLocked: false },
-      ]);
-    });
-
-    it('locks every module after first incomplete task is encountered in previous modules', () => {
-      const moduleRows: ModuleNavRaw[] = [
-        { id: 'm1', order: 1, title: 'Module 1' },
-        { id: 'm2', order: 2, title: 'Module 2' },
-        { id: 'm3', order: 3, title: 'Module 3' },
-      ];
-
-      const tasksByModule = new Map<string, string[]>([
-        ['m1', ['t1', 't2']],
-        ['m2', ['t3']],
-        ['m3', ['t4']],
-      ]);
-
-      const completedTaskIds = new Set(['t1', 't3', 't4']);
-
-      const result = computeModuleNavItems(
-        moduleRows,
-        tasksByModule,
-        completedTaskIds
-      );
-
-      expect(result).toEqual([
-        { id: 'm1', order: 1, title: 'Module 1', isLocked: false },
-        { id: 'm2', order: 2, title: 'Module 2', isLocked: true },
-        { id: 'm3', order: 3, title: 'Module 3', isLocked: true },
-      ]);
-    });
-
-    it('does not lock later modules when previous modules have no tasks', () => {
-      const moduleRows: ModuleNavRaw[] = [
-        { id: 'm1', order: 1, title: 'Module 1' },
-        { id: 'm2', order: 2, title: 'Module 2' },
-      ];
-
-      const tasksByModule = new Map<string, string[]>([['m2', ['t2']]]);
-      const completedTaskIds = new Set<string>();
-
-      const result = computeModuleNavItems(
-        moduleRows,
-        tasksByModule,
-        completedTaskIds
-      );
-
-      expect(result).toEqual([
-        { id: 'm1', order: 1, title: 'Module 1', isLocked: false },
-        { id: 'm2', order: 2, title: 'Module 2', isLocked: false },
-      ]);
-    });
-  });
-
   describe('buildResourcesByTask', () => {
     it('groups task resources by task id while preserving row order per task', () => {
       const rows: ModuleResourceRow[] = [

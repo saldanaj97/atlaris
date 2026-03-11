@@ -144,12 +144,3 @@ export function mapPdfSettingsToCreateInput(
     visibility: 'private',
   });
 }
-
-export function weeklyHoursRangeLabel(hours: number) {
-  if (hours <= 2) return '1-2';
-  if (hours <= 5) return '3-5';
-  if (hours <= 10) return '6-10';
-  if (hours <= 15) return '11-15';
-  if (hours <= 20) return '16-20';
-  return '20+';
-}
