@@ -19,6 +19,11 @@ interface OwnedPlanQueryParams {
   dbClient?: PlanQueryClient;
 }
 
+/**
+ * Parameters for {@link lockOwnedPlanById}. Unlike {@link OwnedPlanQueryParams},
+ * `dbClient` is required because the query uses `.for('update')` which must
+ * run on the transaction connection to hold the row lock.
+ */
 interface LockedOwnedPlanQueryParams {
   planId: string;
   ownerUserId: string;

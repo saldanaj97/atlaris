@@ -46,8 +46,12 @@ export type ScheduleFetchErrorCode =
 export class ScheduleFetchError extends Error {
   readonly code: ScheduleFetchErrorCode;
 
-  constructor(code: ScheduleFetchErrorCode, message: string) {
-    super(message);
+  constructor(
+    code: ScheduleFetchErrorCode,
+    message: string,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options);
     this.name = 'ScheduleFetchError';
     this.code = code;
   }
@@ -176,7 +180,8 @@ export async function getPlanSchedule(
   } catch (err) {
     throw new ScheduleFetchError(
       SCHEDULE_FETCH_ERROR_CODE.SCHEDULE_GENERATION_FAILED,
-      err instanceof Error ? err.message : 'Failed to generate schedule'
+      err instanceof Error ? err.message : 'Failed to generate schedule',
+      { cause: err }
     );
   }
 
