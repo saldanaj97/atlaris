@@ -36,12 +36,9 @@ function createOAuthStateStore(): OAuthStateStore {
       // Fire-and-forget — failures must not block token issuance.
       db.delete(oauthStateTokens)
         .where(lt(oauthStateTokens.expiresAt, now))
-        .then(
-          () => {},
-          (err: unknown) => {
-            logger.warn({ err }, 'Failed to purge expired OAuth state tokens');
-          }
-        );
+        .catch((err: unknown) => {
+          logger.warn({ err }, 'Failed to purge expired OAuth state tokens');
+        });
 
       await db.insert(oauthStateTokens).values({
         stateTokenHash: tokenHash,
