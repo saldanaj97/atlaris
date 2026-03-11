@@ -27,7 +27,11 @@ const parseEventLine = (line: string): StreamingEvent | null => {
       raw: payload,
     });
     return null;
-  } catch {
+  } catch (err) {
+    clientLogger.warn('Failed to parse SSE event data', {
+      error: err instanceof Error ? err.message : String(err),
+      raw: payload,
+    });
     return null;
   }
 };
@@ -150,6 +154,33 @@ export function useRetryGeneration(
       const decoder = new TextDecoder();
       let buffer = '';
 
+      /** Returns true when the caller should exit (terminal event encountered). */
+      const processEventLines = (rawLines: string[]): boolean => {
+        for (const line of rawLines) {
+          const event = parseEventLine(line);
+          if (!event) continue;
+
+          if (event.type === 'complete') {
+            setStatus('success');
+            router.refresh();
+            return true;
+          }
+
+          if (event.type === 'error') {
+            setStatus('error');
+            setError(getErrorMessage(event.data));
+            return true;
+          }
+
+          if (event.type === 'cancelled') {
+            setStatus('idle');
+            setError(null);
+            return true;
+          }
+        }
+        return false;
+      };
+
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -159,29 +190,7 @@ export function useRetryGeneration(
           const lines = buffer.split('\n');
           buffer = lines.pop() ?? '';
 
-          for (const line of lines) {
-            const event = parseEventLine(line);
-            if (!event) continue;
-
-            if (event.type === 'complete') {
-              setStatus('success');
-              // Refresh the page to show the new content
-              router.refresh();
-              return;
-            }
-
-            if (event.type === 'error') {
-              setStatus('error');
-              setError(getErrorMessage(event.data));
-              return;
-            }
-
-            if (event.type === 'cancelled') {
-              setStatus('idle');
-              setError(null);
-              return;
-            }
-          }
+          if (processEventLines(lines)) return;
         }
 
         // Flush any remaining bytes from the decoder
@@ -189,28 +198,7 @@ export function useRetryGeneration(
 
         if (buffer.trim()) {
           const remainingLines = buffer.split('\n');
-          for (const line of remainingLines) {
-            const event = parseEventLine(line);
-            if (!event) continue;
-
-            if (event.type === 'complete') {
-              setStatus('success');
-              router.refresh();
-              return;
-            }
-
-            if (event.type === 'error') {
-              setStatus('error');
-              setError(getErrorMessage(event.data));
-              return;
-            }
-
-            if (event.type === 'cancelled') {
-              setStatus('idle');
-              setError(null);
-              return;
-            }
-          }
+          if (processEventLines(remainingLines)) return;
         }
 
         // If we get here without a complete/error event, something went wrong
