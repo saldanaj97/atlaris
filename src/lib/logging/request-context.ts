@@ -5,7 +5,7 @@ import { ensureCorrelationId } from '@/lib/api/context';
 import type { Logger } from './logger';
 import { createLogger } from './logger';
 
-export const REQUEST_ID_HEADER = 'x-request-id';
+export const REQUEST_ID_HEADER = 'x-correlation-id';
 
 export interface RequestContext {
   requestId: string;
