@@ -49,5 +49,8 @@ next-env.d.ts
 .claude/*
 .opencode/*
 
+# local Copilot hook logs
+.github/hooks/logs/
+
 # plan files
 plans/*
