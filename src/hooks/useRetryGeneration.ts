@@ -150,71 +150,76 @@ export function useRetryGeneration(
       const decoder = new TextDecoder();
       let buffer = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
 
-        for (const line of lines) {
-          const event = parseEventLine(line);
-          if (!event) continue;
+          for (const line of lines) {
+            const event = parseEventLine(line);
+            if (!event) continue;
 
-          if (event.type === 'complete') {
-            setStatus('success');
-            // Refresh the page to show the new content
-            router.refresh();
-            return;
-          }
+            if (event.type === 'complete') {
+              setStatus('success');
+              // Refresh the page to show the new content
+              router.refresh();
+              return;
+            }
 
-          if (event.type === 'error') {
-            setStatus('error');
-            setError(getErrorMessage(event.data));
-            return;
-          }
+            if (event.type === 'error') {
+              setStatus('error');
+              setError(getErrorMessage(event.data));
+              return;
+            }
 
-          if (event.type === 'cancelled') {
-            setStatus('idle');
-            setError(null);
-            return;
-          }
-        }
-      }
-
-      // Flush any remaining bytes from the decoder
-      buffer += decoder.decode(undefined, { stream: false });
-
-      if (buffer.trim()) {
-        const remainingLines = buffer.split('\n');
-        for (const line of remainingLines) {
-          const event = parseEventLine(line);
-          if (!event) continue;
-
-          if (event.type === 'complete') {
-            setStatus('success');
-            router.refresh();
-            return;
-          }
-
-          if (event.type === 'error') {
-            setStatus('error');
-            setError(getErrorMessage(event.data));
-            return;
-          }
-
-          if (event.type === 'cancelled') {
-            setStatus('idle');
-            setError(null);
-            return;
+            if (event.type === 'cancelled') {
+              setStatus('idle');
+              setError(null);
+              return;
+            }
           }
         }
-      }
 
-      // If we get here without a complete/error event, something went wrong
-      setStatus('error');
-      setError('Generation completed unexpectedly.');
+        // Flush any remaining bytes from the decoder
+        buffer += decoder.decode(undefined, { stream: false });
+
+        if (buffer.trim()) {
+          const remainingLines = buffer.split('\n');
+          for (const line of remainingLines) {
+            const event = parseEventLine(line);
+            if (!event) continue;
+
+            if (event.type === 'complete') {
+              setStatus('success');
+              router.refresh();
+              return;
+            }
+
+            if (event.type === 'error') {
+              setStatus('error');
+              setError(getErrorMessage(event.data));
+              return;
+            }
+
+            if (event.type === 'cancelled') {
+              setStatus('idle');
+              setError(null);
+              return;
+            }
+          }
+        }
+
+        // If we get here without a complete/error event, something went wrong
+        setStatus('error');
+        setError('Generation completed unexpectedly.');
+      } finally {
+        reader.cancel().catch(() => {});
+        controller.abort();
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         setStatus('idle');
