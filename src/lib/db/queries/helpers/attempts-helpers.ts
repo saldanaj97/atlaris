@@ -35,7 +35,7 @@ import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
 } from '@/lib/validation/learningPlans';
-import { and, count, eq, gte, min, sql } from 'drizzle-orm';
+import { and, count, eq, gte, min, sql, type SQL } from 'drizzle-orm';
 
 import type { ParsedModule } from '@/lib/ai/parser';
 import type { GenerationInput } from '@/lib/ai/types/provider.types';
@@ -330,7 +330,10 @@ export function normalizeParsedModules(
   return { normalizedModules, normalizationFlags };
 }
 
-function userAttemptsSincePredicate(userId: string, since: Date) {
+function userAttemptsSincePredicate(
+  userId: string,
+  since: Date
+): SQL | undefined {
   return and(
     eq(learningPlans.userId, userId),
     gte(generationAttempts.createdAt, since)

@@ -38,8 +38,18 @@ export type HeaderSource =
   | { get?: (key: string) => string | null };
 
 /**
- * Reads a single header value from a Request-like object.
- * Exported so other modules (e.g. logging/request-context) can reuse it.
+ * Reads a single header value from a Request-like or Headers-like source.
+ *
+ * Normalizes different {@link HeaderSource} shapes: prefers the `.headers`
+ * Map-like accessor (e.g. `Request.headers.get(key)`) over a bare `.get`
+ * function when both exist. Returns `undefined` when `source` is falsy,
+ * when the header is not present, or when the value is `null`.
+ *
+ * @param source - A Request-like object with `.headers`, or a bare object
+ *   with a `.get(key)` method, or `undefined`.
+ * @param key - Case-insensitive header name (lowered by the underlying
+ *   Headers implementation).
+ * @returns The header value as a string, or `undefined` if missing/falsy.
  */
 export function readHeader(
   source: HeaderSource | undefined,

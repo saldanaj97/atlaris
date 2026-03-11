@@ -7,7 +7,7 @@ import { logger } from '@/lib/logging/logger';
 
 const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-interface OAuthStateStore {
+export interface OAuthStateStore {
   issue(params: { authUserId: string; provider?: string }): Promise<string>;
   consume(params: { stateToken: string }): Promise<string | null>;
 }
