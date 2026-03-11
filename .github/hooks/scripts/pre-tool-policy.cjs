@@ -2,9 +2,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const EDIT_TOOL_NAMES = new Set(['create', 'edit', 'multiedit', 'write']);
-const SUBAGENT_TOOL_NAMES = new Set(['runsubagent', 'subagent']);
+const SUBAGENT_TOOL_NAMES = new Set(['runsubagent', 'subagent', 'task']);
 const SUBAGENT_MODEL_GUIDANCE =
-  'Use Claude Opus 4.6 for difficult complex tasks or GPT 5.4 for long tasks that require large context windows for the subagent model.';
+  'Use Claude Opus 4.6 for difficult complex tasks or GPT 5.4 for general/long tasks that require large context windows for the subagent model.';
 
 const DANGEROUS_COMMAND_PATTERNS = [
   {
