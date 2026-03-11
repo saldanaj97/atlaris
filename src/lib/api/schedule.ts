@@ -37,6 +37,7 @@ export function resolveScheduleTimezone(
 export const SCHEDULE_FETCH_ERROR_CODE = {
   PLAN_NOT_FOUND_OR_ACCESS_DENIED: 'PLAN_NOT_FOUND_OR_ACCESS_DENIED',
   INVALID_WEEKLY_HOURS: 'INVALID_WEEKLY_HOURS',
+  SCHEDULE_GENERATION_FAILED: 'SCHEDULE_GENERATION_FAILED',
 } as const;
 
 export type ScheduleFetchErrorCode =
@@ -169,7 +170,15 @@ export async function getPlanSchedule(
   }
 
   // Generate new schedule
-  const schedule = distributeTasksToSessions(inputs);
+  let schedule: ScheduleJson;
+  try {
+    schedule = distributeTasksToSessions(inputs);
+  } catch (err) {
+    throw new ScheduleFetchError(
+      SCHEDULE_FETCH_ERROR_CODE.SCHEDULE_GENERATION_FAILED,
+      err instanceof Error ? err.message : 'Failed to generate schedule'
+    );
+  }
 
   // Write through cache
   await upsertPlanScheduleCache(
