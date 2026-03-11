@@ -8,7 +8,7 @@ import { logger } from '@/lib/logging/logger';
 const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 export interface OAuthStateStore {
-  issue(params: { authUserId: string; provider?: string }): Promise<string>;
+  issue(params: { authUserId: string; provider: string }): Promise<string>;
   consume(params: {
     stateToken: string;
     provider: string;
@@ -46,7 +46,7 @@ function createOAuthStateStore(): OAuthStateStore {
       await db.insert(oauthStateTokens).values({
         stateTokenHash: tokenHash,
         authUserId,
-        provider: provider ?? null,
+        provider,
         expiresAt,
       });
 
@@ -86,7 +86,7 @@ function getDefaultStore(): OAuthStateStore {
 
 export async function generateAndStoreOAuthStateToken(
   authUserId: string,
-  provider?: string,
+  provider: string,
   store: OAuthStateStore = getDefaultStore()
 ): Promise<string> {
   return store.issue({ authUserId, provider });
