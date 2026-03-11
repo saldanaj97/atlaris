@@ -84,6 +84,7 @@ export function useRetryGeneration(
   const [cooldownActive, setCooldownActive] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryInFlightRef = useRef(false);
 
   // Cleanup cooldown timer and abort in-flight requests on unmount
   useEffect(() => {
@@ -94,6 +95,7 @@ export function useRetryGeneration(
       }
       abortRef.current?.abort();
       abortRef.current = null;
+      retryInFlightRef.current = false;
     };
   }, []);
 
@@ -102,9 +104,10 @@ export function useRetryGeneration(
     status === 'retrying' || currentAttempts >= maxAttempts || cooldownActive;
 
   const retryGeneration = useCallback(async () => {
-    if (cooldownActive) {
+    if (retryInFlightRef.current || cooldownActive) {
       return;
     }
+    retryInFlightRef.current = true;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -180,6 +183,35 @@ export function useRetryGeneration(
         }
       }
 
+      // Flush any remaining bytes from the decoder
+      buffer += decoder.decode(undefined, { stream: false });
+
+      if (buffer.trim()) {
+        const remainingLines = buffer.split('\n');
+        for (const line of remainingLines) {
+          const event = parseEventLine(line);
+          if (!event) continue;
+
+          if (event.type === 'complete') {
+            setStatus('success');
+            router.refresh();
+            return;
+          }
+
+          if (event.type === 'error') {
+            setStatus('error');
+            setError(getErrorMessage(event.data));
+            return;
+          }
+
+          if (event.type === 'cancelled') {
+            setStatus('idle');
+            setError(null);
+            return;
+          }
+        }
+      }
+
       // If we get here without a complete/error event, something went wrong
       setStatus('error');
       setError('Generation completed unexpectedly.');
@@ -196,6 +228,8 @@ export function useRetryGeneration(
           ? err.message
           : 'An unexpected error occurred. Please try again.'
       );
+    } finally {
+      retryInFlightRef.current = false;
     }
   }, [planId, router, cooldownActive]);
 
