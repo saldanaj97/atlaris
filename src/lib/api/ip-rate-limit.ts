@@ -13,6 +13,8 @@
  *   deployments (each instance enforces its own limits).
  */
 
+import { isIP } from 'node:net';
+
 import {
   createSlidingWindowLimiter,
   type SlidingWindowLimiter,
@@ -44,9 +46,6 @@ export interface IpExtractionConfig {
 
 const UNKNOWN_IP_WARN_INTERVAL_MS = 60_000;
 let lastUnknownIpWarnTimestamp = 0;
-const IPV4_PATTERN = /^(\d{1,3}\.){3}\d{1,3}$/;
-const IPV6_PATTERN = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
-const IPV6_V4_PATTERN = /^::ffff:(\d{1,3}\.){3}\d{1,3}$/i;
 
 /**
  * Default rate limit configurations for different endpoint types
@@ -214,35 +213,15 @@ function logUnknownIpFallback(): void {
 }
 
 /**
- * Basic IP address validation.
- * Checks if a string looks like a valid IPv4 or IPv6 address.
+ * Validates an IP address using Node's built-in net.isIP.
+ * Correctly handles IPv4 (with octet range checks), IPv6, and IPv4-mapped IPv6.
  */
 function isValidIp(ip: string): boolean {
   if (!ip || ip.length === 0 || ip.length > 45) {
     return false;
   }
 
-  // IPv4 pattern: four octets separated by dots
-  if (IPV4_PATTERN.test(ip)) {
-    // Validate each octet is 0-255
-    const octets = ip.split('.');
-    return octets.every((octet) => {
-      const num = parseInt(octet, 10);
-      return num >= 0 && num <= 255;
-    });
-  }
-
-  // IPv6 pattern: allows full form and compressed form with ::
-  if (IPV6_PATTERN.test(ip)) {
-    return true;
-  }
-
-  // IPv6 with IPv4 suffix (e.g., ::ffff:192.168.1.1)
-  if (IPV6_V4_PATTERN.test(ip)) {
-    return true;
-  }
-
-  return false;
+  return isIP(ip) !== 0;
 }
 
 /**

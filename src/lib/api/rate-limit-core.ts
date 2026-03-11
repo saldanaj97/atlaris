@@ -11,8 +11,7 @@ import { LRUCache } from 'lru-cache';
 import { RateLimitError } from '@/lib/api/errors';
 
 interface WindowEntry {
-  count: number;
-  windowStart: number;
+  timestamps: number[];
 }
 
 export interface SlidingWindowConfig {
@@ -61,49 +60,43 @@ export function createSlidingWindowLimiter(
   function check(key: string): void {
     const now = Date.now();
     const entry = cache.get(key);
+    const cutoff = now - windowMs;
 
-    if (!entry) {
-      cache.set(key, { count: 1, windowStart: now });
-      return;
+    const timestamps = entry ? entry.timestamps.filter((t) => t > cutoff) : [];
+
+    if (timestamps.length >= maxRequests) {
+      // Don't add this request — it's rejected
+      cache.set(key, { timestamps }); // still prune expired entries
+      const retryAfter = Math.ceil((timestamps[0] + windowMs - now) / 1000);
+      throw new RateLimitError(formatErrorMessage(maxRequests, windowMs), {
+        retryAfter,
+      });
     }
 
-    if (now - entry.windowStart < windowMs) {
-      entry.count++;
-      cache.set(key, entry);
-
-      if (entry.count > maxRequests) {
-        const retryAfter = Math.ceil(
-          (entry.windowStart + windowMs - now) / 1000
-        );
-        throw new RateLimitError(formatErrorMessage(maxRequests, windowMs), {
-          retryAfter,
-        });
-      }
-    } else {
-      cache.set(key, { count: 1, windowStart: now });
-    }
+    timestamps.push(now);
+    cache.set(key, { timestamps });
   }
 
   function getRemainingRequests(key: string): number {
     const now = Date.now();
     const entry = cache.get(key);
 
-    if (!entry || now - entry.windowStart >= windowMs) {
-      return maxRequests;
-    }
+    if (!entry) return maxRequests;
 
-    return Math.max(0, maxRequests - entry.count);
+    const active = entry.timestamps.filter((t) => t > now - windowMs);
+    return Math.max(0, maxRequests - active.length);
   }
 
   function getResetTime(key: string): number {
     const now = Date.now();
     const entry = cache.get(key);
 
-    if (!entry || now - entry.windowStart >= windowMs) {
-      return Math.ceil((now + windowMs) / 1000);
-    }
+    if (!entry) return Math.ceil((now + windowMs) / 1000);
 
-    return Math.ceil((entry.windowStart + windowMs) / 1000);
+    const active = entry.timestamps.filter((t) => t > now - windowMs);
+    if (active.length === 0) return Math.ceil((now + windowMs) / 1000);
+
+    return Math.ceil((active[0] + windowMs) / 1000);
   }
 
   function reset(key: string): void {
