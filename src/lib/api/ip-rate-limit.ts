@@ -292,13 +292,11 @@ export function getRateLimitHeaders(
   const rateLimitConfig = IP_RATE_LIMIT_CONFIGS[type];
   const remaining = limiter.getRemainingRequests(ip);
   const reset = limiter.getResetTime(ip);
-  const retryAfter = Math.max(0, Math.ceil((reset * 1000 - Date.now()) / 1000));
 
   return {
     'X-RateLimit-Limit': String(rateLimitConfig.maxRequests),
     'X-RateLimit-Remaining': String(remaining),
     'X-RateLimit-Reset': String(reset),
-    'Retry-After': String(retryAfter),
   };
 }
 

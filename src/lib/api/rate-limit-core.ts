@@ -70,6 +70,9 @@ export function createSlidingWindowLimiter(
       const retryAfter = Math.ceil((timestamps[0] + windowMs - now) / 1000);
       throw new RateLimitError(formatErrorMessage(maxRequests, windowMs), {
         retryAfter,
+        limit: maxRequests,
+        remaining: 0,
+        reset: Math.ceil((timestamps[0] + windowMs) / 1000),
       });
     }
 
