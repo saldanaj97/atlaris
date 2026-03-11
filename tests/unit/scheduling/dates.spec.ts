@@ -31,5 +31,17 @@ describe('Date Utilities', () => {
       expect(startDate).toBe('2025-02-10');
       expect(endDate).toBe('2025-02-16');
     });
+
+    it('should throw RangeError for weekNumber = 0', () => {
+      expect(() => getWeekBoundaries('2025-02-03', 0)).toThrow(RangeError);
+    });
+
+    it('should throw RangeError for negative weekNumber', () => {
+      expect(() => getWeekBoundaries('2025-02-03', -1)).toThrow(RangeError);
+    });
+
+    it('should throw RangeError for non-integer weekNumber', () => {
+      expect(() => getWeekBoundaries('2025-02-03', 1.5)).toThrow(RangeError);
+    });
   });
 });

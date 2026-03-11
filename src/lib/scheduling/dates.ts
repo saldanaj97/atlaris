@@ -24,6 +24,12 @@ export function getWeekBoundaries(
   anchorDate: string,
   weekNumber: number
 ): { startDate: string; endDate: string } {
+  if (!Number.isInteger(weekNumber) || weekNumber < 1) {
+    throw new RangeError(
+      `weekNumber must be an integer >= 1, received ${weekNumber}`
+    );
+  }
+
   const anchor = parseISO(anchorDate);
   const weeksToAdd = weekNumber - 1; // Week 1 starts at anchor
   const weekStart = addWeeks(anchor, weeksToAdd);
