@@ -91,7 +91,10 @@ export const GET = withErrorBoundary(async (req) => {
     );
   }
 
-  const stateAuthUserId = await validateOAuthStateToken(stateToken);
+  const stateAuthUserId = await validateOAuthStateToken(
+    stateToken,
+    'google_calendar'
+  );
   if (!stateAuthUserId) {
     return redirectWithRequestId(
       new URL('/settings/integrations?error=invalid_state', baseUrl)

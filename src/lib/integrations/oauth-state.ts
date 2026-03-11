@@ -9,7 +9,10 @@ const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 export interface OAuthStateStore {
   issue(params: { authUserId: string; provider?: string }): Promise<string>;
-  consume(params: { stateToken: string }): Promise<string | null>;
+  consume(params: {
+    stateToken: string;
+    provider: string;
+  }): Promise<string | null>;
 }
 
 function hashToken(token: string): string {
@@ -50,7 +53,7 @@ function createOAuthStateStore(): OAuthStateStore {
       return plainToken;
     },
 
-    async consume({ stateToken }): Promise<string | null> {
+    async consume({ stateToken, provider }): Promise<string | null> {
       const db = getDb();
       const tokenHash = hashToken(stateToken);
       const now = new Date();
@@ -61,6 +64,7 @@ function createOAuthStateStore(): OAuthStateStore {
         .where(
           and(
             eq(oauthStateTokens.stateTokenHash, tokenHash),
+            eq(oauthStateTokens.provider, provider),
             gt(oauthStateTokens.expiresAt, now)
           )
         )
@@ -90,7 +94,8 @@ export async function generateAndStoreOAuthStateToken(
 
 export async function validateOAuthStateToken(
   stateToken: string,
+  provider: string,
   store: OAuthStateStore = getDefaultStore()
 ): Promise<string | null> {
-  return store.consume({ stateToken });
+  return store.consume({ stateToken, provider });
 }
