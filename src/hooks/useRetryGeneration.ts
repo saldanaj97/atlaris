@@ -9,6 +9,21 @@ import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 
+const MAX_PREVIEW_LENGTH = 100;
+
+function redactPayload(payload: string): {
+  preview: string;
+  rawLength: number;
+} {
+  return {
+    preview:
+      payload.length > MAX_PREVIEW_LENGTH
+        ? `${payload.slice(0, MAX_PREVIEW_LENGTH)}… [REDACTED]`
+        : payload,
+    rawLength: payload.length,
+  };
+}
+
 const parseEventLine = (line: string): StreamingEvent | null => {
   const trimmed = line.trim();
   if (!trimmed) return null;
@@ -24,13 +39,13 @@ const parseEventLine = (line: string): StreamingEvent | null => {
     }
     clientLogger.warn('Retry generation event validation failed', {
       issues: result.error.issues,
-      raw: payload,
+      ...redactPayload(payload),
     });
     return null;
   } catch (err) {
     clientLogger.warn('Failed to parse SSE event data', {
       error: err instanceof Error ? err.message : String(err),
-      raw: payload,
+      ...redactPayload(payload),
     });
     return null;
   }
