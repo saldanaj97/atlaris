@@ -1,5 +1,5 @@
 export function formatMinutes(minutes: number): string {
-  if (!minutes) return '—';
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—';
   if (minutes < 60) {
     return `${minutes} min`;
   }
@@ -14,33 +14,27 @@ export function formatWeeklyHours(hours: number): string {
   if (!Number.isFinite(hours) || hours <= 0) {
     return 'a couple of hours';
   }
-  return `${hours} hour${hours === 1 ? '' : 's'}`;
+  const rounded = parseFloat(hours.toFixed(2));
+  return `${rounded} hour${rounded === 1 ? '' : 's'}`;
 }
 
+const SKILL_LEVEL_LABELS: Record<string, string> = {
+  beginner: 'Beginner',
+  intermediate: 'Intermediate',
+  advanced: 'Advanced',
+};
+
+const LEARNING_STYLE_LABELS: Record<string, string> = {
+  reading: 'Reading',
+  video: 'Video',
+  practice: 'Practice',
+  mixed: 'Mixed',
+};
+
 export function formatSkillLevel(value: string): string {
-  switch (value) {
-    case 'beginner':
-      return 'Beginner';
-    case 'intermediate':
-      return 'Intermediate';
-    case 'advanced':
-      return 'Advanced';
-    default:
-      return value;
-  }
+  return SKILL_LEVEL_LABELS[value] ?? value;
 }
 
 export function formatLearningStyle(value: string): string {
-  switch (value) {
-    case 'reading':
-      return 'Reading';
-    case 'video':
-      return 'Video';
-    case 'practice':
-      return 'Practice';
-    case 'mixed':
-      return 'Mixed';
-    default:
-      return value;
-  }
+  return LEARNING_STYLE_LABELS[value] ?? value;
 }

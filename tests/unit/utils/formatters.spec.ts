@@ -7,8 +7,18 @@ import {
 } from '@/lib/formatters';
 
 describe('formatMinutes', () => {
-  it('should return "—" for 0 minutes', () => {
-    expect(formatMinutes(0)).toBe('—');
+  it('should return "0 min" for 0 minutes', () => {
+    expect(formatMinutes(0)).toBe('0 min');
+  });
+
+  it('should return "—" for NaN and Infinity', () => {
+    expect(formatMinutes(NaN)).toBe('—');
+    expect(formatMinutes(Infinity)).toBe('—');
+  });
+
+  it('should return "—" for negative minutes', () => {
+    expect(formatMinutes(-1)).toBe('—');
+    expect(formatMinutes(-60)).toBe('—');
   });
 
   it('should format minutes less than 60', () => {
@@ -69,6 +79,10 @@ describe('formatWeeklyHours', () => {
   it('should handle decimal hours', () => {
     expect(formatWeeklyHours(1.5)).toBe('1.5 hours');
     expect(formatWeeklyHours(2.5)).toBe('2.5 hours');
+  });
+
+  it('should handle floating-point noise', () => {
+    expect(formatWeeklyHours(0.1 + 0.2)).toBe('0.3 hours');
   });
 });
 
