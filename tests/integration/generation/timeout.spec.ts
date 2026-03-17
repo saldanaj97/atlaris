@@ -61,8 +61,12 @@ describe('generation integration - timeout classification', () => {
       .where(eq(modules.planId, plan.id));
     expect(modulesCount.length).toBe(0);
 
-    const tasksCount = await db.select({ value: tasks.id }).from(tasks);
-    expect(tasksCount.length).toBe(0);
+    const taskRows = await db
+      .select({ value: tasks.id })
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .where(eq(modules.planId, plan.id));
+    expect(taskRows.length).toBe(0);
 
     const [attempt] = await db
       .select()

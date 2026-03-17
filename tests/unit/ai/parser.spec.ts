@@ -1,8 +1,5 @@
-import {
-  parseGenerationStream,
-  ParserError,
-  type ParserCallbacks,
-} from '@/lib/ai/parser';
+import { parseGenerationStream, ParserError } from '@/lib/ai/parser';
+import type { ParserCallbacks } from '@/lib/ai/types/parser.types';
 import { describe, expect, it, vi } from 'vitest';
 import { createDeferredPromise } from '../../helpers/deferred-promise';
 

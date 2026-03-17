@@ -1,4 +1,4 @@
-import type { PlanStatus } from '@/lib/types/client';
+import type { PlanStatus } from '@/lib/types/client.types';
 
 interface PlanStatusResponseData {
   planId: string;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createEventStream, formatEvent } from '@/lib/ai/streaming/events';
-import type { PlanStartEvent } from '@/lib/ai/streaming/types';
+import type { PlanStartEvent } from '@/lib/ai/types/streaming.types';
 
 const decoder = new TextDecoder();
 

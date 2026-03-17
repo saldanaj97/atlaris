@@ -1,15 +1,16 @@
 import {
   ProviderError,
-  ProviderMetadata,
-  ProviderNotImplementedError,
   ProviderRateLimitError,
   ProviderTimeoutError,
-  type AiPlanGenerationProvider,
-  type GenerationInput,
-  type GenerationOptions,
-  type ProviderGenerateResult,
-} from '../../src/lib/ai/provider';
-import { asyncIterableToReadableStream } from '../../src/lib/ai/utils';
+} from '../../src/lib/ai/providers/errors';
+import { asyncIterableToReadableStream } from '../../src/lib/ai/streaming/utils';
+import type {
+  AiPlanGenerationProvider,
+  GenerationInput,
+  GenerationOptions,
+  ProviderGenerateResult,
+  ProviderMetadata,
+} from '../../src/lib/ai/types/provider.types';
 
 type MockProviderScenario =
   | 'success'
@@ -18,16 +19,16 @@ type MockProviderScenario =
   | 'rate_limit'
   | 'error';
 
-interface MockProviderConfig {
+type MockProviderConfig = {
   scenario: MockProviderScenario;
   chunkSize?: number;
   delayBetweenChunksMs?: number;
-}
+};
 
-interface MockProvider {
+type MockProvider = {
   provider: AiPlanGenerationProvider;
   readonly invocationCount: number;
-}
+};
 
 const SUCCESS_PAYLOAD = {
   modules: [
@@ -102,7 +103,7 @@ export function createMockProvider(config: MockProviderConfig): MockProvider {
   let invocationCount = 0;
 
   const provider: AiPlanGenerationProvider = {
-    generate(
+    async generate(
       _input: GenerationInput,
       _options?: GenerationOptions
     ): Promise<ProviderGenerateResult> {
@@ -110,30 +111,24 @@ export function createMockProvider(config: MockProviderConfig): MockProvider {
 
       switch (config.scenario) {
         case 'success':
-          return Promise.resolve(
-            buildResult(SUCCESS_PAYLOAD, undefined, config)
-          );
+          return buildResult(SUCCESS_PAYLOAD, undefined, config);
         case 'validation':
-          return Promise.resolve(
-            buildResult(VALIDATION_PAYLOAD, undefined, config)
-          );
+          return buildResult(VALIDATION_PAYLOAD, undefined, config);
         case 'rate_limit':
-          return Promise.reject(
-            new ProviderRateLimitError('Mock provider simulated rate limit.')
+          throw new ProviderRateLimitError(
+            'Mock provider simulated rate limit.'
           );
         case 'timeout':
-          return Promise.reject(
-            new ProviderTimeoutError('Mock provider simulated timeout.')
-          );
+          throw new ProviderTimeoutError('Mock provider simulated timeout.');
         case 'error':
-          return Promise.reject(
-            new ProviderError('unknown', 'Mock provider simulated failure.')
+          throw new ProviderError(
+            'provider_error',
+            'Mock provider simulated failure.'
           );
         default:
-          return Promise.reject(
-            new ProviderNotImplementedError(
-              `Mock provider scenario "${String(config.scenario)}" not implemented.`
-            )
+          throw new ProviderError(
+            'provider_error',
+            `Mock provider scenario "${String(config.scenario)}" not implemented.`
           );
       }
     },

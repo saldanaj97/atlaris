@@ -11,7 +11,7 @@ import type {
   GenerationStatus,
   LearningPlanDetail,
   TaskProgress,
-} from '@/lib/types/db';
+} from '@/lib/types/db.types';
 import { describe, expect, it } from 'vitest';
 import {
   buildGenerationAttempt,

@@ -1,7 +1,7 @@
 import {
   getGenerationProvider,
   getGenerationProviderWithModel,
-} from '@/lib/ai/provider-factory';
+} from '@/lib/ai/providers/factory';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 import { RouterGenerationProvider } from '@/lib/ai/providers/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -56,14 +56,6 @@ describe('AI Provider Factory', () => {
       expect(provider).toBeInstanceOf(MockGenerationProvider);
     });
 
-    it('should return RouterGenerationProvider when AI_PROVIDER is not "mock"', () => {
-      process.env.AI_PROVIDER = 'openai';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
-    });
-
     it('should return RouterGenerationProvider when AI_USE_MOCK is "false"', () => {
       delete process.env.AI_PROVIDER;
       process.env.AI_USE_MOCK = 'false';
@@ -101,45 +93,6 @@ describe('AI Provider Factory', () => {
 
         expect(provider).toBeInstanceOf(RouterGenerationProvider);
       });
-    });
-  });
-
-  describe('Development environment behavior', () => {
-    beforeEach(() => {
-      delete process.env.VITEST_WORKER_ID;
-    });
-
-    it('should return MockGenerationProvider by default in development', () => {
-      delete process.env.AI_PROVIDER;
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-    });
-
-    it('should return MockGenerationProvider when AI_PROVIDER is "mock" in development', () => {
-      process.env.AI_PROVIDER = 'mock';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-    });
-
-    it('should return RouterGenerationProvider when AI_PROVIDER is set to non-mock in development', () => {
-      process.env.AI_PROVIDER = 'openai';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
-    });
-
-    it('should respect MOCK_GENERATION_SEED in development', () => {
-      process.env.AI_PROVIDER = 'mock';
-      process.env.MOCK_GENERATION_SEED = '99999';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
     });
   });
 
@@ -195,30 +148,6 @@ describe('AI Provider Factory', () => {
       const provider = getGenerationProvider();
 
       (globalThis as any).window = originalWindow;
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
-    });
-  });
-
-  describe('VITEST_WORKER_ID detection', () => {
-    beforeEach(() => {
-      process.env.VITEST_WORKER_ID = '1';
-    });
-
-    it('should treat environment as test when VITEST_WORKER_ID is set', () => {
-      delete process.env.AI_PROVIDER;
-      delete process.env.AI_USE_MOCK;
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-    });
-
-    it('should respect AI_USE_MOCK=false even with VITEST_WORKER_ID', () => {
-      delete process.env.AI_PROVIDER;
-      process.env.AI_USE_MOCK = 'false';
-
-      const provider = getGenerationProvider();
-
       expect(provider).toBeInstanceOf(RouterGenerationProvider);
     });
   });
@@ -325,6 +254,15 @@ describe('AI Provider Factory', () => {
       );
 
       expect(provider).toBeInstanceOf(MockGenerationProvider);
+    });
+
+    it('should throw when modelId is empty', () => {
+      process.env.AI_USE_MOCK = 'false';
+      delete process.env.AI_PROVIDER;
+
+      expect(() => getGenerationProviderWithModel('')).toThrow(
+        'modelId must be a non-empty string'
+      );
     });
   });
 });

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { ProviderError } from '@/lib/ai/provider';
+import { ProviderError } from '@/lib/ai/providers/errors';
 import { AttemptCapExceededError, toErrorResponse } from '@/lib/api/errors';
 
 describe('API error redaction', () => {
   it('redacts unexpected provider errors to a generic payload', async () => {
     const providerError = new ProviderError(
-      'unknown',
+      'provider_error',
       'Sensitive provider failure – do not leak'
     );
 

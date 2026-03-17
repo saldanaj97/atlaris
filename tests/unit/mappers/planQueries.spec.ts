@@ -13,7 +13,7 @@ import type {
   Module,
   Task,
   TaskProgress,
-} from '@/lib/types/db';
+} from '@/lib/types/db.types';
 import { describe, expect, it } from 'vitest';
 
 import { createId } from '../../fixtures/ids';

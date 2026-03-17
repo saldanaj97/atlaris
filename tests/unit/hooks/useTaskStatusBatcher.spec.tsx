@@ -5,7 +5,7 @@ import {
   useTaskStatusBatcher,
   type TaskStatusUpdate,
 } from '@/hooks/useTaskStatusBatcher';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db.types';
 
 const NOT_STARTED: ProgressStatus = 'not_started';
 const IN_PROGRESS: ProgressStatus = 'in_progress';

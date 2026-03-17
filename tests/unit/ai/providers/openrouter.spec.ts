@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ProviderInvalidResponseError } from '@/lib/ai/provider';
+import { ProviderInvalidResponseError } from '@/lib/ai/providers/errors';
 import {
   OpenRouterProvider,
   type OpenRouterClient,

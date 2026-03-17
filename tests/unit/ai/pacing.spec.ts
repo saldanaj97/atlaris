@@ -4,7 +4,7 @@ import {
   trimModulesToCapacity,
   type PacingParams,
 } from '@/lib/ai/pacing';
-import type { ParsedModule, ParsedTask } from '@/lib/ai/parser';
+import type { ParsedModule, ParsedTask } from '@/lib/ai/types/parser.types';
 import type { GenerationInput } from '@/lib/ai/types/provider.types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -49,7 +49,7 @@ describe('pacing module', () => {
     });
 
     it('applies skill level adjustments', () => {
-      const paramsBeginner = {
+      const paramsBeginner: PacingParams = {
         ...baseParams,
         skillLevel: 'beginner',
         startDate: '2024-01-01',
@@ -57,7 +57,7 @@ describe('pacing module', () => {
       // 5*4*60 / 55 ≈ 21.8 → 21
       expect(computeCapacity(paramsBeginner)).toBe(21);
 
-      const paramsAdvanced = {
+      const paramsAdvanced: PacingParams = {
         ...baseParams,
         skillLevel: 'advanced',
         startDate: '2024-01-01',

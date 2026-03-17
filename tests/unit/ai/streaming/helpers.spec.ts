@@ -7,8 +7,8 @@ import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/help
 import type {
   GenerationFailureResult,
   GenerationSuccessResult,
-} from '@/lib/ai/orchestrator';
-import type { StreamingEvent } from '@/lib/ai/streaming/types';
+} from '@/lib/ai/types/orchestrator.types';
+import type { StreamingEvent } from '@/lib/ai/types/streaming.types';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

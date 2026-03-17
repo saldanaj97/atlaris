@@ -11,19 +11,18 @@ import {
 } from 'vitest';
 
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
-import {
-  runGenerationAttempt,
-  type GenerationAttemptContext,
-  type GenerationFailureResult,
-  type RunGenerationOptions,
-} from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import type {
+  GenerationAttemptContext,
+  GenerationFailureResult,
+  RunGenerationOptions,
+} from '@/lib/ai/types/orchestrator.types';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import {
   computePdfExtractionHash,
   issuePdfExtractionProof,
 } from '@/lib/security/pdf-extraction-proof';
-
 import {
   createPdfProof,
   DEFAULT_PDF_PROOF_VERSION,

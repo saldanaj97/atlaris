@@ -1,8 +1,5 @@
-import {
-  decryptToken,
-  encryptToken,
-  OAuthTokenData,
-} from '@/lib/integrations/oauth';
+import { decryptToken, encryptToken } from '@/lib/integrations/oauth';
+import type { OAuthTokenData } from '@/lib/integrations/oauth';
 import { describe, expect, it } from 'vitest';
 
 describe('OAuth Token Encryption', () => {

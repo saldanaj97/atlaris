@@ -5,7 +5,7 @@ import {
   normalizeOnboardingValues,
   mapOnboardingToCreateInput,
 } from '@/lib/mappers/learningPlans';
-import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
+import type { OnboardingFormValues } from '@/lib/validation/learningPlans.types';
 
 // Helper to generate date strings relative to today (avoids hardcoded dates that become "in the past")
 function getDateString(daysFromToday: number): string {

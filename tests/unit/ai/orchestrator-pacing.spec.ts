@@ -1,17 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  runGenerationAttempt,
-  type GenerationAttemptContext,
-  type RunGenerationOptions,
-} from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { pacePlan } from '@/lib/ai/pacing';
-import {
-  ProviderTimeoutError,
-  type AiPlanGenerationProvider,
-  type GenerationInput,
-} from '@/lib/ai/provider';
+import { ProviderTimeoutError } from '@/lib/ai/providers/errors';
+import type {
+  GenerationAttemptContext,
+  RunGenerationOptions,
+} from '@/lib/ai/types/orchestrator.types';
+import type {
+  AiPlanGenerationProvider,
+  GenerationInput,
+} from '@/lib/ai/types/provider.types';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -42,11 +42,7 @@ type RequiredAttemptsDbMethods = Pick<
  * AttemptsDbClient gains new required methods used by the orchestrator or attempts module,
  * add them to RequiredAttemptsDbMethods and provide implementations here.
  */
-function createAttemptsDbClientMock(overrides: {
-  reserveAttemptSlot: AttemptOpsOverrides['reserveAttemptSlot'];
-  finalizeAttemptSuccess: AttemptOpsOverrides['finalizeAttemptSuccess'];
-  finalizeAttemptFailure: AttemptOpsOverrides['finalizeAttemptFailure'];
-}): AttemptsDbClient & AttemptOpsOverrides {
+function createAttemptsDbClientMock(): AttemptsDbClient {
   const requiredDbMethods: RequiredAttemptsDbMethods = {
     select: () => {
       throw new Error('select should not be called in this test');
@@ -65,12 +61,7 @@ function createAttemptsDbClientMock(overrides: {
     },
   };
 
-  return {
-    ...requiredDbMethods,
-    reserveAttemptSlot: overrides.reserveAttemptSlot,
-    finalizeAttemptSuccess: overrides.finalizeAttemptSuccess,
-    finalizeAttemptFailure: overrides.finalizeAttemptFailure,
-  } as AttemptsDbClient & AttemptOpsOverrides;
+  return requiredDbMethods as AttemptsDbClient;
 }
 
 function buildId(prefix: string): string {
@@ -185,7 +176,8 @@ function createDbHarness(params?: {
   successAttempt?: GenerationAttemptRecord;
   failureAttempt?: GenerationAttemptRecord;
 }): {
-  dbClient: AttemptsDbClient & AttemptOpsOverrides;
+  attemptOperations: AttemptOpsOverrides;
+  dbClient: AttemptsDbClient;
   reserveAttemptSlotMock: ReturnType<typeof vi.fn<typeof reserveAttemptSlot>>;
   finalizeAttemptSuccessMock: ReturnType<
     typeof vi.fn<typeof finalizeAttemptSuccess>
@@ -216,14 +208,13 @@ function createDbHarness(params?: {
     .fn<typeof finalizeAttemptFailure>()
     .mockResolvedValue(failureAttempt);
 
-  const dbClient = createAttemptsDbClientMock({
-    reserveAttemptSlot: reserveAttemptSlotMock,
-    finalizeAttemptSuccess: finalizeAttemptSuccessMock,
-    finalizeAttemptFailure: finalizeAttemptFailureMock,
-  });
-
   return {
-    dbClient,
+    attemptOperations: {
+      reserveAttemptSlot: reserveAttemptSlotMock,
+      finalizeAttemptSuccess: finalizeAttemptSuccessMock,
+      finalizeAttemptFailure: finalizeAttemptFailureMock,
+    },
+    dbClient: createAttemptsDbClientMock(),
     reserveAttemptSlotMock,
     finalizeAttemptSuccessMock,
     finalizeAttemptFailureMock,
@@ -258,10 +249,12 @@ describe('runGenerationAttempt pacing', () => {
   it('applies pacing after parsing and before recording success', async () => {
     const context = buildContext();
     const provider = createProvider(parsedModules);
-    const { dbClient, finalizeAttemptSuccessMock } = createDbHarness({
-      successAttempt: buildAttemptRecord(context.planId),
-    });
+    const { attemptOperations, dbClient, finalizeAttemptSuccessMock } =
+      createDbHarness({
+        successAttempt: buildAttemptRecord(context.planId),
+      });
     const options: RunGenerationOptions = {
+      attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
@@ -308,12 +301,13 @@ describe('runGenerationAttempt pacing', () => {
       }),
     });
     const provider = createProvider(denseModules);
-    const { dbClient } = createDbHarness({
+    const { attemptOperations, dbClient } = createDbHarness({
       planId: context.planId,
       successAttempt: buildAttemptRecord(context.planId),
     });
 
     const result = await runGenerationAttempt(context, {
+      attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
@@ -329,19 +323,54 @@ describe('runGenerationAttempt pacing', () => {
     expect(totalTasks).toBeLessThan(4);
   });
 
+  it('maps in_progress reservation rejection to rate_limit classification', async () => {
+    const context = buildContext();
+    const provider = createProvider(parsedModules);
+    const {
+      attemptOperations,
+      dbClient,
+      finalizeAttemptFailureMock,
+      finalizeAttemptSuccessMock,
+    } = createDbHarness({
+      planId: context.planId,
+      reservation: {
+        reserved: false,
+        reason: 'in_progress',
+      },
+    });
+
+    const result = await runGenerationAttempt(context, {
+      attemptOperations,
+      provider,
+      dbClient,
+      timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
+    });
+
+    expect(result.status).toBe('failure');
+    expect(result.classification).toBe('rate_limit');
+    expect(result.attempt.classification).toBe('rate_limit');
+    expect(finalizeAttemptSuccessMock).not.toHaveBeenCalled();
+    expect(finalizeAttemptFailureMock).not.toHaveBeenCalled();
+  });
+
   it('returns capped failure without parsing or pacing', async () => {
     const context = buildContext();
     const provider = createProvider(parsedModules);
-    const { dbClient, finalizeAttemptFailureMock, finalizeAttemptSuccessMock } =
-      createDbHarness({
-        planId: context.planId,
-        reservation: {
-          reserved: false,
-          reason: 'capped',
-        },
-      });
+    const {
+      attemptOperations,
+      dbClient,
+      finalizeAttemptFailureMock,
+      finalizeAttemptSuccessMock,
+    } = createDbHarness({
+      planId: context.planId,
+      reservation: {
+        reserved: false,
+        reason: 'capped',
+      },
+    });
 
     const result = await runGenerationAttempt(context, {
+      attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
@@ -358,15 +387,17 @@ describe('runGenerationAttempt pacing', () => {
     const provider: AiPlanGenerationProvider = {
       generate: vi.fn().mockRejectedValue(new ProviderTimeoutError('timeout')),
     };
-    const { dbClient, finalizeAttemptFailureMock } = createDbHarness({
-      planId: context.planId,
-      failureAttempt: buildAttemptRecord(context.planId, {
-        status: 'failure',
-        classification: 'timeout',
-      }),
-    });
+    const { attemptOperations, dbClient, finalizeAttemptFailureMock } =
+      createDbHarness({
+        planId: context.planId,
+        failureAttempt: buildAttemptRecord(context.planId, {
+          status: 'failure',
+          classification: 'timeout',
+        }),
+      });
 
     const result = await runGenerationAttempt(context, {
+      attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
@@ -389,12 +420,13 @@ describe('runGenerationAttempt pacing', () => {
       }),
     });
     const provider = createProvider(parsedModules);
-    const { dbClient } = createDbHarness({
+    const { attemptOperations, dbClient } = createDbHarness({
       planId: context.planId,
       successAttempt: buildAttemptRecord(context.planId),
     });
 
     const result = await runGenerationAttempt(context, {
+      attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },

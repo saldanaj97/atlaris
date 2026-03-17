@@ -6,7 +6,7 @@ import {
   ProviderError,
   ProviderRateLimitError,
   ProviderTimeoutError,
-} from '@/lib/ai/provider';
+} from '@/lib/ai/providers/errors';
 
 describe('Failure classification', () => {
   it('returns timeout classification when timedOut flag is set', () => {
@@ -57,7 +57,7 @@ describe('Failure classification', () => {
       'provider_error'
     );
     expect(
-      classifyFailure({ error: new ProviderError('unknown', 'err') })
+      classifyFailure({ error: new ProviderError('provider_error', 'err') })
     ).toBe('provider_error');
   });
 });

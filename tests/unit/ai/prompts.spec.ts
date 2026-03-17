@@ -1,8 +1,7 @@
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
-import { PDF_SECTION_CONTENT_LIMIT } from '@/lib/pdf/context';
+import { PDF_SECTION_CONTENT_LIMIT } from '@/lib/pdf/constants';
 import { describe, expect, it } from 'vitest';
 import { createPromptParams } from '../../fixtures/prompts';
-
 describe('AI Prompt Builder', () => {
   describe('buildSystemPrompt', () => {
     it('should return a non-empty string', () => {

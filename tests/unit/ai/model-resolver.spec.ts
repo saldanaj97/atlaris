@@ -3,12 +3,12 @@ import {
   resolveModelForTier,
   validateModelForTier,
   type ModelResolution,
-  type ProviderGetter,
 } from '@/lib/ai/model-resolver';
-import type { SubscriptionTier } from '@/lib/ai/types/model.types';
-import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 import { AppError } from '@/lib/api/errors';
 import { describe, expect, it } from 'vitest';
+
+import type { SubscriptionTier } from '@/lib/ai/types/model.types';
+import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 
 describe('Model resolver (Task 2 - Phase 2)', () => {
   const getModelIdBy = (
@@ -41,7 +41,7 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     requestedModel?: string | null
   ): { result: ModelResolution } => {
     const provider = createMockProvider();
-    const providerGetter: ProviderGetter = () => provider;
+    const providerGetter = () => provider;
     const result = resolveModelForTier(
       userTier,
       requestedModel,
@@ -211,7 +211,7 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
 
   describe('Provider factory errors', () => {
     it('throws AppError with PROVIDER_INIT_FAILED when provider creation fails for default path', () => {
-      const throwingProviderGetter: ProviderGetter = () => {
+      const throwingProviderGetter = () => {
         throw new Error('Missing API key');
       };
       let thrown: unknown;
@@ -229,7 +229,7 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     });
 
     it('throws AppError with PROVIDER_INIT_FAILED when provider creation fails for explicit model path', () => {
-      const throwingProviderGetter: ProviderGetter = () => {
+      const throwingProviderGetter = () => {
         throw new Error('Invalid model config');
       };
       let thrown: unknown;

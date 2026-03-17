@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  countPdfContextChars,
-  parsePersistedPdfContext,
   PERSISTED_PDF_CONTEXT_CAPS,
   PROMPT_PDF_CONTEXT_CAPS,
+} from '@/lib/pdf/constants';
+import {
+  countPdfContextChars,
+  parsePersistedPdfContext,
   sanitizePdfContextForPersistence,
   sanitizePdfContextForPrompt,
 } from '@/lib/pdf/context';
