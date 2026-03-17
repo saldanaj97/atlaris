@@ -22,8 +22,8 @@ import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { PROGRESS_STATUSES } from '@/types/db';
-import type { ProgressStatus } from '@/types/db.types';
+import { PROGRESS_STATUSES } from '@/shared/types/db';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface UpdateTaskProgressInput {
   planId: string;

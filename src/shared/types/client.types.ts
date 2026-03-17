@@ -6,7 +6,7 @@ import type {
 import type {
   LearningPlanWithModules,
   ProgressStatus,
-} from '@/types/db.types';
+} from '@/shared/types/db.types';
 
 export type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
 

@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/features/ai/ai-models';
-import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/constants';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/shared/constants/ai-models';
+import {
+  DEFAULT_ATTEMPT_CAP,
+  resolveAttemptCap,
+} from '@/shared/constants/generation';
 
 /**
  * Custom error type for environment variable validation failures.
@@ -504,6 +507,9 @@ export const attemptsEnv = {
     return toNumber(getServerOptional('ATTEMPT_CAP'), DEFAULT_ATTEMPT_CAP);
   },
 } as const;
+
+/** Per-plan generation attempt cap (env-overridable, validated >= 1). */
+export const ATTEMPT_CAP = resolveAttemptCap(attemptsEnv.cap);
 
 export const regenerationQueueEnv = {
   /**

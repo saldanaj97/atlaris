@@ -16,6 +16,7 @@ import { getGenerationProvider } from './providers/factory';
 import { createAdaptiveTimeout } from './timeout';
 
 import type {
+  AttemptOperations,
   AttemptOperationsOverrides,
   GenerationAttemptContext,
   GenerationAttemptRecordForResponse,
@@ -34,15 +35,9 @@ import type {
   AttemptsDbClient,
   FinalizeFailureParams,
 } from '@/lib/db/queries/types/attempts.types';
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 const DEFAULT_CLOCK = () => Date.now();
-
-type AttemptOps = {
-  reserveAttemptSlot: typeof reserveAttemptSlot;
-  finalizeAttemptSuccess: typeof finalizeAttemptSuccess;
-  finalizeAttemptFailure: typeof finalizeAttemptFailure;
-};
 
 type TimeoutLifecycle = {
   timeout: ReturnType<typeof createAdaptiveTimeout>;
@@ -90,7 +85,7 @@ const SYNTHETIC_FAILURE_ATTEMPT_DEFAULTS = {
 
 function resolveAttemptOperations(
   overrides?: AttemptOperationsOverrides
-): AttemptOps {
+): AttemptOperations {
   return {
     reserveAttemptSlot: overrides?.reserveAttemptSlot ?? reserveAttemptSlot,
     finalizeAttemptSuccess:
@@ -168,7 +163,7 @@ function resolveTimeoutConfig(
 }
 
 async function safelyFinalizeFailure(
-  attemptOps: AttemptOps,
+  attemptOps: AttemptOperations,
   finalizeParams: FinalizeFailureParams,
   fallbackPromptHash: string
 ): Promise<GenerationAttemptRecordForResponse> {
@@ -317,7 +312,7 @@ async function generateWithInstrumentation(
 async function finalizeGenerationFailure(params: {
   error: unknown;
   reservation: AttemptReservation;
-  attemptOps: AttemptOps;
+  attemptOps: AttemptOperations;
   context: GenerationAttemptContext;
   attemptClockStart: number;
   clock: () => number;

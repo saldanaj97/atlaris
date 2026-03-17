@@ -10,7 +10,7 @@ import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
 import type { PlanDetailsCardStats } from '@/app/plans/[id]/types';
-import type { ClientPlanDetail } from '@/types/client.types';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 interface PlanDetailsCardProps {
   plan: ClientPlanDetail;

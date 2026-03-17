@@ -8,18 +8,19 @@ import {
 import type { GenerationResult } from '@/features/ai/types/orchestrator.types';
 import type { ParsedModule } from '@/features/ai/types/parser.types';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
-import { assertNever } from '@/lib/errors';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
+import { incrementUsage } from '@/features/billing/usage';
 import { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
+import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/features/plans/lifecycle';
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
 type EmitFn = (event: StreamingEvent) => void;
@@ -28,6 +29,7 @@ export interface StreamingHelperDependencies {
   markPlanGenerationFailure?: typeof markPlanGenerationFailure;
   markPlanGenerationSuccess?: typeof markPlanGenerationSuccess;
   recordUsage?: typeof recordUsage;
+  incrementUsage?: typeof incrementUsage;
   getCorrelationId?: typeof getCorrelationId;
 }
 
@@ -156,6 +158,7 @@ export async function handleSuccessfulGeneration(
   await markSuccess(planId, dbClient);
   await tryRecordUsage(userId, result, dbClient, {
     recordUsage: ctx.recordUsage,
+    incrementUsage: ctx.incrementUsage,
   });
 
   emit({
@@ -193,6 +196,7 @@ export async function handleFailedGeneration(
   if (!retryable) {
     await tryRecordUsage(userId, result, dbClient, {
       recordUsage: ctx.recordUsage,
+      incrementUsage: ctx.incrementUsage,
     });
   }
 
@@ -308,10 +312,11 @@ export async function tryRecordUsage(
   userId: string,
   result: GenerationResult,
   dbClient?: AttemptsDbClient,
-  deps?: Pick<StreamingHelperDependencies, 'recordUsage'>
+  deps?: Pick<StreamingHelperDependencies, 'recordUsage' | 'incrementUsage'>
 ): Promise<void> {
   try {
     const usageRecorder = deps?.recordUsage ?? recordUsage;
+    const usageIncrementer = deps?.incrementUsage ?? incrementUsage;
     const usage = result.metadata?.usage;
     const modelId = result.metadata?.model ?? 'unknown';
     const inputTokens = usage?.promptTokens;
@@ -335,6 +340,8 @@ export async function tryRecordUsage(
       },
       dbClient
     );
+
+    await usageIncrementer(userId, 'plan', dbClient ?? getDb());
   } catch (usageError) {
     logger.error(
       {

@@ -11,7 +11,7 @@
 import { getFailurePresentation } from '@/features/ai/failure-presentation';
 import { logger } from '@/lib/logging/logger';
 
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 export type ErrorLike = {
   name?: string;

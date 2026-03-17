@@ -12,7 +12,7 @@ import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, modules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import { derivePlanStatus } from '@/features/plans/status';
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 /**
  * GET /api/v1/plans/:planId/status

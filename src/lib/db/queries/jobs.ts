@@ -21,7 +21,7 @@ import {
   type JobPayload,
   type JobResult,
   type JobType,
-} from '@/features/jobs/types';
+} from '@/shared/types/jobs.types';
 import {
   and,
   desc,

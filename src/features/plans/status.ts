@@ -1,5 +1,5 @@
-import type { PlanStatus } from '@/types/client.types';
-import type { GenerationStatus } from '@/types/db.types';
+import type { PlanStatus } from '@/shared/types/client.types';
+import type { GenerationStatus } from '@/shared/types/db.types';
 
 export function derivePlanStatus(params: {
   generationStatus: GenerationStatus;

@@ -7,15 +7,10 @@
  *
  * @module lib/ai/ai-models
  */
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/shared/constants/ai-models';
 import type { AvailableModel, SubscriptionTier } from './types/model.types';
 
-/**
- * Fallback default model used when no user preference is specified.
- *
- * Note: this file is imported by client components (e.g. model selector UI),
- * so it must remain free of server-only env access.
- */
-export const AI_DEFAULT_MODEL = 'openrouter/free';
+export { AI_DEFAULT_MODEL, isValidModelId };
 
 /**
  * Complete list of available OpenRouter models.
@@ -212,16 +207,6 @@ export function getModelsForTier(tier: SubscriptionTier): AvailableModel[] {
   }
   // Free and starter tiers only get free models
   return AVAILABLE_MODELS.filter((model) => model.tier === 'free');
-}
-
-/**
- * Check if a model ID is valid (exists in AVAILABLE_MODELS).
- *
- * @param id - The model ID to validate
- * @returns True if the model ID is valid
- */
-export function isValidModelId(id: string): boolean {
-  return AVAILABLE_MODELS.some((model) => model.id === id);
 }
 
 /**

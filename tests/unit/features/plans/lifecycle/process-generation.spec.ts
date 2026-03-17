@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
+import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import { isRetryableClassification } from '@/features/plans/lifecycle/types';
 
@@ -99,6 +99,10 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
 
   it('marks plan as ready and records usage on successful generation', async () => {
     const result = await service.processGenerationAttempt(validGenerationInput);
+    const markGenerationSuccess = vi.mocked(
+      ports.planPersistence.markGenerationSuccess
+    );
+    const recordUsage = vi.mocked(ports.usageRecording.recordUsage);
 
     expect(result.status).toBe('generation_success');
     if (result.status === 'generation_success') {
@@ -112,10 +116,8 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
       expect(result.data.durationMs).toBe(1500);
     }
 
-    expect(ports.planPersistence.markGenerationSuccess).toHaveBeenCalledWith(
-      'plan-gen-001'
-    );
-    expect(ports.usageRecording.recordUsage).toHaveBeenCalledWith(
+    expect(markGenerationSuccess).toHaveBeenCalledWith('plan-gen-001');
+    expect(recordUsage).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-abc',
         provider: 'openai',
@@ -127,8 +129,11 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
 
   it('does not mark plan as failed on success', async () => {
     await service.processGenerationAttempt(validGenerationInput);
+    const markGenerationFailure = vi.mocked(
+      ports.planPersistence.markGenerationFailure
+    );
 
-    expect(ports.planPersistence.markGenerationFailure).not.toHaveBeenCalled();
+    expect(markGenerationFailure).not.toHaveBeenCalled();
   });
 
   // ─── Retryable failure path ──────────────────────────────────
@@ -173,10 +178,11 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     service = new PlanLifecycleService(ports);
 
     await service.processGenerationAttempt(validGenerationInput);
-
-    expect(ports.planPersistence.markGenerationFailure).toHaveBeenCalledWith(
-      'plan-gen-001'
+    const markGenerationFailure = vi.mocked(
+      ports.planPersistence.markGenerationFailure
     );
+
+    expect(markGenerationFailure).toHaveBeenCalledWith('plan-gen-001');
   });
 
   it('does NOT record usage on retryable failure', async () => {
@@ -193,8 +199,9 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     service = new PlanLifecycleService(ports);
 
     await service.processGenerationAttempt(validGenerationInput);
+    const recordUsage = vi.mocked(ports.usageRecording.recordUsage);
 
-    expect(ports.usageRecording.recordUsage).not.toHaveBeenCalled();
+    expect(recordUsage).not.toHaveBeenCalled();
   });
 
   // ─── Permanent failure path ──────────────────────────────────
@@ -244,10 +251,11 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     service = new PlanLifecycleService(ports);
 
     await service.processGenerationAttempt(validGenerationInput);
-
-    expect(ports.planPersistence.markGenerationFailure).toHaveBeenCalledWith(
-      'plan-gen-001'
+    const markGenerationFailure = vi.mocked(
+      ports.planPersistence.markGenerationFailure
     );
+
+    expect(markGenerationFailure).toHaveBeenCalledWith('plan-gen-001');
   });
 
   it('records usage on permanent failure', async () => {
@@ -269,8 +277,9 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     service = new PlanLifecycleService(ports);
 
     await service.processGenerationAttempt(validGenerationInput);
+    const recordUsage = vi.mocked(ports.usageRecording.recordUsage);
 
-    expect(ports.usageRecording.recordUsage).toHaveBeenCalledWith(
+    expect(recordUsage).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-abc',
         provider: 'anthropic',
@@ -291,8 +300,9 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     };
 
     await service.processGenerationAttempt(input);
+    const runGeneration = vi.mocked(ports.generation.runGeneration);
 
-    expect(ports.generation.runGeneration).toHaveBeenCalledWith({
+    expect(runGeneration).toHaveBeenCalledWith({
       planId: 'plan-gen-001',
       userId: 'user-abc',
       tier: 'pro',
@@ -317,8 +327,9 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     service = new PlanLifecycleService(ports);
 
     await service.processGenerationAttempt(validGenerationInput);
+    const recordUsage = vi.mocked(ports.usageRecording.recordUsage);
 
-    expect(ports.usageRecording.recordUsage).toHaveBeenCalledWith(
+    expect(recordUsage).toHaveBeenCalledWith(
       expect.objectContaining({
         provider: 'unknown',
         model: 'unknown',

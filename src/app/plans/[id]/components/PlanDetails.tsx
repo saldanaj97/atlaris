@@ -27,8 +27,8 @@ import { clientLogger } from '@/lib/logging/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
-import type { ClientPlanDetail } from '@/types/client.types';
-import type { ProgressStatus } from '@/types/db.types';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;

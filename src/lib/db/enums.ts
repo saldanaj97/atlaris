@@ -1,6 +1,6 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
-import { JOB_TYPE_VALUES } from '@/features/jobs/constants';
+import { JOB_TYPE_VALUES } from '@/shared/constants/jobs';
 
 export const skillLevel = pgEnum('skill_level', [
   'beginner',
@@ -20,6 +20,8 @@ export const generationStatus = pgEnum('generation_status', [
   'ready',
   'failed',
 ]);
+
+export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
 
 // TODO: Change back to video instead of youtube
 export const resourceType = pgEnum('resource_type', [

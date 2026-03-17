@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 
 import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/types/modules.types';
-import type { ProgressStatus } from '@/types/db.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { ModuleDetailClient } from './ModuleDetailClient';
 

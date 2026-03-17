@@ -1,3 +1,20 @@
+import { resolveUserTier } from '@/features/billing/usage';
+import {
+  extractTextFromPdf as defaultExtractTextFromPdf,
+  getPdfPageCountFromBuffer as defaultGetPdfPageCountFromBuffer,
+} from '@/features/pdf/extract';
+import { scanBufferForMalware as defaultScanBufferForMalware } from '@/features/pdf/security/malware-scanner';
+import {
+  computePdfExtractionHash,
+  issuePdfExtractionProof,
+  toPdfExtractionProofPayload,
+} from '@/features/pdf/security/pdf-extraction-proof';
+import {
+  capExtractionResponsePayload,
+  type CapExtractionResponse,
+} from '@/features/pdf/structure';
+import type { ExtractedSection } from '@/features/pdf/types';
+import { pdfExtractionFormDataSchema } from '@/features/pdf/validation/pdf';
 import {
   withAuthAndRateLimit,
   withErrorBoundary,
@@ -12,26 +29,7 @@ import {
 import { json } from '@/lib/api/response';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { logger } from '@/lib/logging/logger';
-import {
-  extractTextFromPdf as defaultExtractTextFromPdf,
-  getPdfPageCountFromBuffer as defaultGetPdfPageCountFromBuffer,
-} from '@/features/pdf/extract';
-import {
-  capExtractionResponsePayload,
-  type CapExtractionResponse,
-} from '@/features/pdf/structure';
-import type { ExtractedSection } from '@/features/pdf/types';
-import { scanBufferForMalware as defaultScanBufferForMalware } from '@/features/pdf/security/malware-scanner';
-import {
-  computePdfExtractionHash,
-  issuePdfExtractionProof,
-  toPdfExtractionProofPayload,
-} from '@/features/pdf/security/pdf-extraction-proof';
-import {
-  resolveUserTier,
-  type SubscriptionTier,
-} from '@/features/billing/usage';
-import { pdfExtractionFormDataSchema } from '@/features/pdf/validation/pdf';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /** Dependencies for PDF extract POST handler; inject for testing. */
 export type PdfExtractRouteDeps = {

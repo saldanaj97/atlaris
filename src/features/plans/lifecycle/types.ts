@@ -7,12 +7,12 @@
 
 import type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 import type { PdfContext } from '@/features/pdf/context.types';
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 // Re-export commonly used types so the service can import from one place
 export type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 export type { PdfContext } from '@/features/pdf/context.types';
-export type { FailureClassification } from '@/types/client.types';
+export type { FailureClassification } from '@/shared/types/client.types';
 
 // ─── Input types ─────────────────────────────────────────────────
 

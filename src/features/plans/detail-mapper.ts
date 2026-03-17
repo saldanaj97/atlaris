@@ -6,11 +6,11 @@ import type {
   ClientGenerationAttempt,
   ClientPlanDetail,
   FailureClassification,
-} from '@/types/client.types';
+} from '@/shared/types/client.types';
 import type {
   GenerationAttempt,
   LearningPlanDetail,
-} from '@/types/db.types';
+} from '@/shared/types/db.types';
 
 const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set([
   'success',

@@ -1,8 +1,3 @@
-import {
-  getPlanGenerationWindowStart,
-  PLAN_GENERATION_LIMIT,
-  PLAN_GENERATION_WINDOW_MINUTES,
-} from '@/features/ai/generation-policy';
 import { RateLimitError } from '@/lib/api/errors';
 import { selectUserGenerationAttemptWindowStats } from '@/lib/db/queries/helpers/attempts-helpers';
 import type {
@@ -10,6 +5,11 @@ import type {
   UserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
+import {
+  getPlanGenerationWindowStart,
+  PLAN_GENERATION_LIMIT,
+  PLAN_GENERATION_WINDOW_MINUTES,
+} from '@/shared/constants/generation';
 
 type PlanGenerationRateLimitResult = {
   remaining: number;

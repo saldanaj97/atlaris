@@ -23,7 +23,7 @@ import type {
   GenerationAttempt,
   LearningPlanDetail,
   PlanSummary,
-} from '@/types/db.types';
+} from '@/shared/types/db.types';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */

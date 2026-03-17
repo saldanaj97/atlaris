@@ -8,7 +8,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/features/plans/formatters';
-import type { ProgressStatus, ResourceType } from '@/types/db.types';
+import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 import {
   generatePlaceholderContent,
   hashString,
