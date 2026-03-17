@@ -2,8 +2,8 @@
 
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { PLAN_STATUSES } from '@/types/client';
-import type { PlanStatus } from '@/types/client.types';
+import { PLAN_STATUSES } from '@/shared/types/client';
+import type { PlanStatus } from '@/shared/types/client.types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 

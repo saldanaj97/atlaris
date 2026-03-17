@@ -1,6 +1,5 @@
-import { aiUsageEvents, users } from '@/lib/db/schema';
 import { getDb } from '@/lib/db/runtime';
-import { incrementUsage } from '@/features/billing/usage';
+import { aiUsageEvents, users } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
 type DbClient = ReturnType<typeof getDb>;
@@ -29,11 +28,6 @@ export async function recordUsage(
     costCents: params.costCents ?? 0,
     requestId: params.requestId ?? null,
   });
-
-  if (params.kind) {
-    // Update monthly aggregate counters
-    await incrementUsage(params.userId, params.kind, dbClient);
-  }
 }
 
 export async function incrementExportUsage(

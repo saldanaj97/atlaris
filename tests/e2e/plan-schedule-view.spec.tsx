@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ClientPlanDetail } from '@/types/client.types';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 // Mock next/navigation useRouter
 const pushMock = vi.fn();

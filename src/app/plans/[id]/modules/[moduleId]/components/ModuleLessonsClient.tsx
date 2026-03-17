@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 
 import { LessonAccordionItem } from '@/app/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
-import type { ProgressStatus } from '@/types/db.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleLessonsClientProps {
   planId: string;

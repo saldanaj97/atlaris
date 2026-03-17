@@ -5,14 +5,7 @@
  * These are hardcoded defaults that can be overridden by environment variables on the server.
  */
 
-/**
- * Default maximum retry attempts for plan generation.
- *
- * Note: The server-side ATTEMPT_CAP in lib/db/queries/attempts.ts reads from
- * the ATTEMPT_CAP environment variable with this as the fallback default.
- * Keep these values in sync.
- */
-export const DEFAULT_ATTEMPT_CAP = 3;
+export { DEFAULT_ATTEMPT_CAP } from '@/shared/constants/generation';
 
 /** Maximum raw response size (chars) from AI provider before parser rejects. */
 export const MAX_RAW_RESPONSE_CHARS = 200_000;

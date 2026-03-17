@@ -7,7 +7,7 @@ import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/sche
 import type { getDb } from '@/lib/db/runtime';
 import { planSchedules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import type { ScheduleCacheRow } from '@/features/scheduling/types';
+import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
 import { eq } from 'drizzle-orm';
 
 /** RLS-enforced database client for schedule queries. */

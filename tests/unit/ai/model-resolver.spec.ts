@@ -1,10 +1,10 @@
 import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import {
   resolveModelForTier,
   validateModelForTier,
   type ModelResolution,
 } from '@/features/ai/model-resolver';
-import { AppError } from '@/lib/api/errors';
 import { describe, expect, it } from 'vitest';
 
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
@@ -210,7 +210,7 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
   });
 
   describe('Provider factory errors', () => {
-    it('throws AppError with PROVIDER_INIT_FAILED when provider creation fails for default path', () => {
+    it('throws ModelResolutionError with PROVIDER_INIT_FAILED when provider creation fails for default path', () => {
       const throwingProviderGetter = () => {
         throw new Error('Missing API key');
       };
@@ -220,15 +220,16 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       } catch (error) {
         thrown = error;
       }
-      expect(thrown).toBeInstanceOf(AppError);
-      expect((thrown as AppError).code()).toBe('PROVIDER_INIT_FAILED');
-      expect((thrown as AppError).status()).toBe(500);
-      expect((thrown as AppError).message).toBe(
+      expect(thrown).toBeInstanceOf(ModelResolutionError);
+      expect((thrown as ModelResolutionError).code).toBe(
+        'PROVIDER_INIT_FAILED'
+      );
+      expect((thrown as ModelResolutionError).message).toBe(
         'Provider initialization failed.'
       );
     });
 
-    it('throws AppError with PROVIDER_INIT_FAILED when provider creation fails for explicit model path', () => {
+    it('throws ModelResolutionError with PROVIDER_INIT_FAILED when provider creation fails for explicit model path', () => {
       const throwingProviderGetter = () => {
         throw new Error('Invalid model config');
       };
@@ -238,10 +239,11 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       } catch (error) {
         thrown = error;
       }
-      expect(thrown).toBeInstanceOf(AppError);
-      expect((thrown as AppError).code()).toBe('PROVIDER_INIT_FAILED');
-      expect((thrown as AppError).status()).toBe(500);
-      expect((thrown as AppError).message).toBe(
+      expect(thrown).toBeInstanceOf(ModelResolutionError);
+      expect((thrown as ModelResolutionError).code).toBe(
+        'PROVIDER_INIT_FAILED'
+      );
+      expect((thrown as ModelResolutionError).message).toBe(
         'Provider initialization failed.'
       );
     });

@@ -1,4 +1,4 @@
-import type { LearningStyle, SkillLevel } from '@/types/db.types';
+import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
 export function formatMinutes(minutes: number): string {
   if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—';

@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
-import { LEARNING_STYLES, SKILL_LEVELS } from '@/types/db';
-import type { LearningStyle, SkillLevel } from '@/types/db.types';
+import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
+import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
-export const TOPIC_MAX_LENGTH = 200;
-export const NOTES_MAX_LENGTH = 2000;
+export {
+  NOTES_MAX_LENGTH,
+  TOPIC_MAX_LENGTH,
+} from '@/shared/constants/learning-plans';
 
 export const SKILL_LEVEL_ENUM = z.enum(
   SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]

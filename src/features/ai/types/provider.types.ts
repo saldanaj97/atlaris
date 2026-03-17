@@ -1,40 +1,17 @@
-import type { PdfContext } from '@/features/pdf/context.types';
+import type {
+  GenerationInput,
+  ProviderMetadata,
+} from '@/shared/types/ai-provider.types';
+import type { PdfContext } from '@/shared/types/pdf-context.types';
 
-/**
- * Branded type for ISO 8601 date strings (YYYY-MM-DD).
- * Consumers must supply dates in this format.
- *
- * @example "2026-02-10"
- * @remarks Validate at input boundaries (e.g., with Zod) to enforce ISO format before passing to GenerationInput.
- */
-export type IsoDateString = string & { readonly __brand: 'IsoDateString' };
+export type {
+  GenerationInput,
+  IsoDateString,
+  ProviderMetadata,
+  ProviderUsage,
+} from '@/shared/types/ai-provider.types';
 
-export type GenerationInput = {
-  topic: string;
-  notes?: string | null;
-  pdfContext?: PdfContext | null;
-  pdfExtractionHash?: string;
-  pdfProofVersion?: 1;
-  skillLevel: 'beginner' | 'intermediate' | 'advanced';
-  weeklyHours: number;
-  learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-  /** ISO 8601 date (YYYY-MM-DD). Consumers must supply valid ISO dates. @example "2026-02-10" */
-  startDate?: string | null;
-  /** ISO 8601 date (YYYY-MM-DD). Consumers must supply valid ISO dates. @example "2026-02-10" */
-  deadlineDate?: string | null;
-};
-
-export type ProviderUsage = {
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
-};
-
-export type ProviderMetadata = {
-  model?: string;
-  provider?: string;
-  usage?: ProviderUsage;
-};
+export type { PdfContext };
 
 export type ProviderGenerateResult = {
   stream: ReadableStream<string>;

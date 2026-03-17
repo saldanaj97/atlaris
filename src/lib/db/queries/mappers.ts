@@ -10,7 +10,7 @@ import type {
   PlanSummary,
   Task,
   TaskProgress,
-} from '@/types/db.types';
+} from '@/shared/types/db.types';
 
 export type SummaryTaskRow = {
   id: string;

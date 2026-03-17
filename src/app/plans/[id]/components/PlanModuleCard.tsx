@@ -22,8 +22,8 @@ import {
 import { useMemo } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
-import type { ClientModule } from '@/types/client.types';
-import type { ProgressStatus, ResourceType } from '@/types/db.types';
+import type { ClientModule } from '@/shared/types/client.types';
+import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 import type { Dispatch, ElementType, SetStateAction } from 'react';
 
 const EMPTY_TASKS: ClientModule['tasks'] = [];

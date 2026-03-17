@@ -11,8 +11,8 @@ import {
   getModelsForTier,
   isValidModelId,
 } from '@/features/ai/ai-models';
+import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
-import { AppError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
@@ -86,10 +86,10 @@ function getProviderSafe(
       },
       'Provider factory failed'
     );
-    throw new AppError('Provider initialization failed.', {
-      status: 500,
+    throw new ModelResolutionError('Provider initialization failed.', {
       code: 'PROVIDER_INIT_FAILED',
-      details: err instanceof Error ? { cause: err } : { message: String(err) },
+      ...(err instanceof Error ? {} : { details: { message: String(err) } }),
+      ...(err instanceof Error ? { cause: err } : {}),
     });
   }
 }

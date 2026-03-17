@@ -19,8 +19,8 @@ import {
 import Link from 'next/link';
 
 import { UpdateTaskStatusButton } from '@/app/plans/[id]/components/UpdateTaskStatusButton';
-import type { ClientTask } from '@/types/client.types';
-import type { ProgressStatus, ResourceType } from '@/types/db.types';
+import type { ClientTask } from '@/shared/types/client.types';
+import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 
 export type ModuleStatus = 'completed' | 'active' | 'locked';
 

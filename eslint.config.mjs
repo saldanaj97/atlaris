@@ -51,6 +51,29 @@ const requestLayerRestrictedImports = [
   },
 ];
 
+// ── Layer enforcement patterns ──
+// Architecture: shared (leaf) ← lib (infrastructure) ← features (domain)
+const sharedLayerRestrictedPatterns = [
+  {
+    group: ['@/lib/*', '@/lib/**'],
+    message:
+      'shared/ must not import from lib/. Move the dependency to shared/ or use dependency injection.',
+  },
+  {
+    group: ['@/features/*', '@/features/**'],
+    message:
+      'shared/ must not import from features/. Move the dependency to shared/ or use dependency injection.',
+  },
+];
+
+const libLayerRestrictedPatterns = [
+  {
+    group: ['@/features/*', '@/features/**'],
+    message:
+      'lib/ must not import from features/. Extract shared types to shared/ or use dependency injection.',
+  },
+];
+
 const restrictedTypeReexportSyntax = [
   {
     selector:
@@ -236,6 +259,98 @@ export default [
       'src/lib/api/**',
       'src/lib/integrations/**',
     ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...restrictedTypeDirectoryImports,
+            ...requestLayerRestrictedImports,
+          ],
+        },
+      ],
+    },
+  },
+  // ── Layer enforcement: shared/ must not import from lib/ or features/ ──
+  {
+    files: ['src/shared/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: restrictedTypeDirectoryImports,
+          patterns: sharedLayerRestrictedPatterns,
+        },
+      ],
+    },
+  },
+  // Exception: DB-derived type files in shared/ that must import from lib/db
+  // (inherent to Drizzle type derivation pattern)
+  {
+    files: [
+      'src/shared/types/db.types.ts',
+      'src/shared/types/client.types.ts',
+      'src/shared/types/db.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: restrictedTypeDirectoryImports,
+          patterns: [
+            {
+              group: ['@/features/*', '@/features/**'],
+              message:
+                'shared/ must not import from features/. Move the dependency to shared/ or use dependency injection.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // ── Layer enforcement: lib/ must not import from features/ ──
+  {
+    files: ['src/lib/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: restrictedTypeDirectoryImports,
+          patterns: libLayerRestrictedPatterns,
+        },
+      ],
+    },
+  },
+  // Re-apply request-layer restrictions for lib/api and lib/integrations
+  // (must come after the general lib/ block to preserve both sets of rules)
+  {
+    files: ['src/lib/api/**/*.{ts,tsx}', 'src/lib/integrations/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...restrictedTypeDirectoryImports,
+            ...requestLayerRestrictedImports,
+          ],
+          patterns: libLayerRestrictedPatterns,
+        },
+      ],
+    },
+  },
+  // Exception: attempts.ts depends on features/plans/metrics (tracked by issue #245)
+  {
+    files: ['src/lib/db/queries/attempts.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: restrictedTypeDirectoryImports },
+      ],
+    },
+  },
+  // Exception: openapi.ts depends on features/plans/validation (Zod schema coupling)
+  {
+    files: ['src/lib/api/openapi.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

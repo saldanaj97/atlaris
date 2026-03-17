@@ -13,8 +13,8 @@ import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatMinutes } from '@/features/plans/formatters';
 
-import type { ClientModule } from '@/types/client.types';
-import type { ProgressStatus } from '@/types/db.types';
+import type { ClientModule } from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleTimelineProps {
   planId: string;

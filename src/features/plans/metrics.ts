@@ -1,5 +1,5 @@
 import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.types';
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 import { z } from 'zod';
 
 const TimingMetadataSchema = z
