@@ -9,7 +9,7 @@ import {
   atomicCheckAndInsertPlan,
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
-} from '../plan-operations';
+} from '@/features/plans/lifecycle/plan-operations';
 import { findCappedPlanWithoutModules } from '@/features/plans/api/shared';
 import type { DbClient } from '@/lib/db/types';
 

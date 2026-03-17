@@ -20,7 +20,12 @@ import { UserNotFoundError } from '@/features/billing/errors';
 // Type for DB client (compatible with both runtime and service-role clients)
 type DbClient = ReturnType<typeof getDb>;
 
-const TIER_RECOMMENDATION_THRESHOLD_WEEKS = 8;
+// Explicit upgrade path mapping: current tier -> recommended next tier
+const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {
+  free: 'starter',
+  starter: 'pro',
+  pro: 'pro', // Already at highest tier
+};
 
 type PlanDurationCapResult = {
   allowed: boolean;
@@ -217,10 +222,7 @@ export function checkPlanDurationCap(params: {
 }): PlanDurationCapResult {
   const caps = TIER_LIMITS[params.tier];
   if (caps.maxWeeks !== null && params.totalWeeks > caps.maxWeeks) {
-    const recommended =
-      params.totalWeeks > TIER_RECOMMENDATION_THRESHOLD_WEEKS
-        ? 'pro'
-        : 'starter';
+    const recommended = UPGRADE_PATH[params.tier];
     return {
       allowed: false,
       reason: `${params.tier} tier limited to ${caps.maxWeeks}-week plans. Upgrade to ${recommended} for longer plans.`,
