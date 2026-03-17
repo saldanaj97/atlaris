@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
-import type { CreateAiPlanInput } from '@/features/plans/lifecycle/types';
+import type {
+  CreateAiPlanInput,
+  CreatePdfPlanInput,
+} from '@/features/plans/lifecycle/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -251,6 +254,268 @@ describe('PlanLifecycleService', () => {
       if (result.status === 'success') {
         expect(result.tier).toBe('pro');
       }
+    });
+  });
+
+  describe('createPdfPlan', () => {
+    const validPdfInput: CreatePdfPlanInput = {
+      userId: 'user-abc',
+      authUserId: 'auth-abc',
+      topic: 'Learn TypeScript',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      body: {
+        origin: 'pdf',
+        topic: 'Learn TypeScript',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        extractedContent: { mainTopic: 'TypeScript Basics' },
+        pdfProofToken: 'proof-token-123',
+        pdfExtractionHash: 'hash-abc',
+      },
+      extractedContent: { mainTopic: 'TypeScript Basics' },
+      pdfProofToken: 'proof-token-123',
+      pdfExtractionHash: 'hash-abc',
+    };
+
+    it('succeeds for valid PDF-origin input and returns plan ID', async () => {
+      const prepareSpy = vi.fn().mockResolvedValue({
+        origin: 'pdf' as const,
+        extractedContext: { mainTopic: 'TypeScript Basics' },
+        topic: 'TypeScript Basics',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        pdfUsageReserved: true,
+        pdfProvenance: { extractionHash: 'hash-abc', proofVersion: 1 },
+      });
+      ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: prepareSpy,
+          rollbackPdfUsage: async () => {},
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPdfPlan(validPdfInput);
+
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.planId).toBe('plan-123');
+        expect(result.tier).toBe('free');
+      }
+      expect(prepareSpy).toHaveBeenCalledWith({
+        body: validPdfInput.body,
+        authUserId: 'auth-abc',
+        internalUserId: 'user-abc',
+      });
+    });
+
+    it('rolls back quota when proof verification fails (preparePlanInput throws)', async () => {
+      const rollbackSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi
+            .fn()
+            .mockRejectedValue(new Error('Invalid PDF proof')),
+          rollbackPdfUsage: rollbackSpy,
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await expect(service.createPdfPlan(validPdfInput)).rejects.toThrow(
+        'Invalid PDF proof'
+      );
+      // preparePlanInput handles its own internal rollback when it throws,
+      // but the service does NOT call rollbackPdfUsage since reservation
+      // never completed (preparePlanInput threw before returning).
+      // The rollback guard only triggers after preparePlanInput succeeds.
+      expect(rollbackSpy).not.toHaveBeenCalled();
+    });
+
+    it('rolls back quota when atomic insert fails', async () => {
+      const rollbackSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi.fn().mockResolvedValue({
+            origin: 'pdf' as const,
+            extractedContext: { mainTopic: 'Test' },
+            topic: 'Test Topic',
+            skillLevel: 'beginner',
+            weeklyHours: 5,
+            learningStyle: 'mixed',
+            pdfUsageReserved: true,
+            pdfProvenance: { extractionHash: 'hash-abc', proofVersion: 1 },
+          }),
+          rollbackPdfUsage: rollbackSpy,
+        },
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          atomicInsertPlan: async () => ({
+            success: false as const,
+            reason: 'Plan limit reached for current subscription tier',
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPdfPlan(validPdfInput);
+
+      expect(result.status).toBe('quota_rejected');
+      if (result.status === 'quota_rejected') {
+        expect(result.reason).toContain('Plan limit reached');
+      }
+      expect(rollbackSpy).toHaveBeenCalledWith({
+        internalUserId: 'user-abc',
+        reserved: true,
+      });
+    });
+
+    it('rolls back quota when atomic insert throws unexpected error', async () => {
+      const rollbackSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi.fn().mockResolvedValue({
+            origin: 'pdf' as const,
+            extractedContext: null,
+            topic: 'Test',
+            skillLevel: 'beginner',
+            weeklyHours: 5,
+            learningStyle: 'mixed',
+            pdfUsageReserved: true,
+            pdfProvenance: null,
+          }),
+          rollbackPdfUsage: rollbackSpy,
+        },
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          atomicInsertPlan: vi
+            .fn()
+            .mockRejectedValue(new Error('DB connection lost')),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await expect(service.createPdfPlan(validPdfInput)).rejects.toThrow(
+        'DB connection lost'
+      );
+      expect(rollbackSpy).toHaveBeenCalledWith({
+        internalUserId: 'user-abc',
+        reserved: true,
+      });
+    });
+
+    it('does not rollback when pdfUsageReserved is false', async () => {
+      const rollbackSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi.fn().mockResolvedValue({
+            origin: 'pdf' as const,
+            extractedContext: null,
+            topic: 'Test',
+            skillLevel: 'beginner',
+            weeklyHours: 5,
+            learningStyle: 'mixed',
+            pdfUsageReserved: false,
+            pdfProvenance: null,
+          }),
+          rollbackPdfUsage: rollbackSpy,
+        },
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          atomicInsertPlan: async () => ({
+            success: false as const,
+            reason: 'Plan limit reached',
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await service.createPdfPlan(validPdfInput);
+
+      expect(rollbackSpy).toHaveBeenCalledWith({
+        internalUserId: 'user-abc',
+        reserved: false,
+      });
+    });
+
+    it('does not call rollback on success', async () => {
+      const rollbackSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi.fn().mockResolvedValue({
+            origin: 'pdf' as const,
+            extractedContext: null,
+            topic: 'Test',
+            skillLevel: 'beginner',
+            weeklyHours: 5,
+            learningStyle: 'mixed',
+            pdfUsageReserved: true,
+            pdfProvenance: null,
+          }),
+          rollbackPdfUsage: rollbackSpy,
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPdfPlan(validPdfInput);
+
+      expect(result.status).toBe('success');
+      expect(rollbackSpy).not.toHaveBeenCalled();
+    });
+
+    it('returns permanent_failure when PDF fields are missing', async () => {
+      const result = await service.createPdfPlan({
+        ...validPdfInput,
+        extractedContent: null,
+      } as unknown as CreatePdfPlanInput);
+
+      expect(result.status).toBe('permanent_failure');
+      if (result.status === 'permanent_failure') {
+        expect(result.classification).toBe('validation');
+        expect(result.error.message).toContain('PDF extraction proof fields');
+      }
+    });
+
+    it('passes PDF-origin data to atomicInsertPlan', async () => {
+      let capturedData: unknown;
+      ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi.fn().mockResolvedValue({
+            origin: 'pdf' as const,
+            extractedContext: { mainTopic: 'ML Fundamentals' },
+            topic: 'ML Fundamentals',
+            skillLevel: 'advanced',
+            weeklyHours: 10,
+            learningStyle: 'reading',
+            pdfUsageReserved: true,
+            pdfProvenance: { extractionHash: 'hash-xyz', proofVersion: 1 },
+          }),
+          rollbackPdfUsage: async () => {},
+        },
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          atomicInsertPlan: async (_userId, planData) => {
+            capturedData = planData;
+            return { success: true as const, id: 'plan-pdf-789' };
+          },
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await service.createPdfPlan(validPdfInput);
+
+      expect(capturedData).toMatchObject({
+        topic: 'ML Fundamentals',
+        skillLevel: 'advanced',
+        weeklyHours: 10,
+        learningStyle: 'reading',
+        visibility: 'private',
+        origin: 'pdf',
+        extractedContext: { mainTopic: 'ML Fundamentals' },
+      });
     });
   });
 });

@@ -10,7 +10,9 @@ import type {
   AtomicInsertResult,
   DurationCapResult,
   FailureClassification,
+  GeneratedModule,
   NormalizedDuration,
+  PdfContext,
   PdfQuotaReservationResult,
   PlanInsertData,
   SubscriptionTier,
@@ -108,7 +110,7 @@ export interface GenerationPort {
       startDate?: string | null;
       deadlineDate?: string | null;
       notes?: string | null;
-      pdfContext?: unknown;
+      pdfContext?: PdfContext | null;
       pdfExtractionHash?: string;
       pdfProofVersion?: 1;
     };
@@ -117,7 +119,7 @@ export interface GenerationPort {
   }): Promise<
     | {
         status: 'success';
-        modules: unknown[];
+        modules: GeneratedModule[];
         metadata: Record<string, unknown>;
         durationMs: number;
       }

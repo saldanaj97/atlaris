@@ -8,6 +8,8 @@
  * Only unexpected errors (bugs) propagate as thrown exceptions.
  */
 
+import { logger } from '@/lib/logging/logger';
+
 import type {
   GenerationPort,
   JobQueuePort,
@@ -53,6 +55,10 @@ export class PlanLifecycleService {
   async createPlan(input: CreateAiPlanInput): Promise<CreatePlanResult> {
     // 1. Validate input
     if (!input.topic || input.topic.trim().length < 3) {
+      logger.warn(
+        { userId: input.userId },
+        'plan.lifecycle.create: validation failed'
+      );
       return {
         status: 'permanent_failure',
         classification: 'validation',
@@ -64,6 +70,10 @@ export class PlanLifecycleService {
 
     // 2. Resolve tier
     const tier = await this.ports.quota.resolveUserTier(input.userId);
+    logger.info(
+      { userId: input.userId, tier },
+      'plan.lifecycle.create: tier resolved'
+    );
 
     // 3. Normalize plan duration for the tier
     const duration = this.ports.quota.normalizePlanDuration({
@@ -81,6 +91,10 @@ export class PlanLifecycleService {
     });
 
     if (!durationCap.allowed) {
+      logger.info(
+        { userId: input.userId, tier },
+        'plan.lifecycle.create: quota rejected (duration cap)'
+      );
       return {
         status: 'quota_rejected',
         reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
@@ -94,6 +108,10 @@ export class PlanLifecycleService {
         input.userId
       );
     if (cappedPlanId) {
+      logger.info(
+        { userId: input.userId, cappedPlanId },
+        'plan.lifecycle.create: quota rejected (capped plan)'
+      );
       return {
         status: 'quota_rejected',
         reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
@@ -118,12 +136,20 @@ export class PlanLifecycleService {
     );
 
     if (!insertResult.success) {
+      logger.info(
+        { userId: input.userId },
+        'plan.lifecycle.create: quota rejected (plan limit)'
+      );
       return {
         status: 'quota_rejected',
         reason: insertResult.reason,
       };
     }
 
+    logger.info(
+      { userId: input.userId, planId: insertResult.id, tier, origin: 'ai' },
+      'plan.lifecycle.create: plan created'
+    );
     return {
       status: 'success',
       planId: insertResult.id,
@@ -154,6 +180,10 @@ export class PlanLifecycleService {
       !input.pdfProofToken ||
       !input.pdfExtractionHash
     ) {
+      logger.warn(
+        { userId: input.userId },
+        'plan.lifecycle.create_pdf: validation failed'
+      );
       return {
         status: 'permanent_failure',
         classification: 'validation',
@@ -182,6 +212,10 @@ export class PlanLifecycleService {
     });
 
     if (!durationCap.allowed) {
+      logger.info(
+        { userId: input.userId, tier },
+        'plan.lifecycle.create_pdf: quota rejected (duration cap)'
+      );
       return {
         status: 'quota_rejected',
         reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
@@ -195,6 +229,10 @@ export class PlanLifecycleService {
         input.userId
       );
     if (cappedPlanId) {
+      logger.info(
+        { userId: input.userId, cappedPlanId },
+        'plan.lifecycle.create_pdf: quota rejected (capped plan)'
+      );
       return {
         status: 'quota_rejected',
         reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
@@ -207,6 +245,10 @@ export class PlanLifecycleService {
       authUserId: input.authUserId,
       internalUserId: input.userId,
     });
+    logger.info(
+      { userId: input.userId },
+      'plan.lifecycle.create_pdf: pdf quota reserved'
+    );
 
     // 7. Atomic insert — rollback PDF quota on any failure after reservation
     let succeeded = false;
@@ -228,6 +270,10 @@ export class PlanLifecycleService {
       );
 
       if (!insertResult.success) {
+        logger.info(
+          { userId: input.userId },
+          'plan.lifecycle.create_pdf: quota rejected (plan limit), rolling back pdf quota'
+        );
         return {
           status: 'quota_rejected',
           reason: insertResult.reason,
@@ -235,6 +281,10 @@ export class PlanLifecycleService {
       }
 
       succeeded = true;
+      logger.info(
+        { userId: input.userId, planId: insertResult.id, tier, origin: 'pdf' },
+        'plan.lifecycle.create_pdf: plan created'
+      );
       return {
         status: 'success',
         planId: insertResult.id,
@@ -243,13 +293,17 @@ export class PlanLifecycleService {
           topic: prepared.topic,
           startDate: duration.startDate,
           deadlineDate: duration.deadlineDate,
-          pdfContext: prepared.extractedContext,
+          pdfContext: prepared.extractedContext as PdfContext | null,
           pdfExtractionHash: prepared.pdfProvenance?.extractionHash,
           pdfProofVersion: prepared.pdfProvenance?.proofVersion,
         },
       };
     } finally {
       if (!succeeded) {
+        logger.warn(
+          { userId: input.userId },
+          'plan.lifecycle.create_pdf: rolling back pdf quota after failure'
+        );
         await this.ports.pdfOrigin.rollbackPdfUsage({
           internalUserId: input.userId,
           reserved: prepared.pdfUsageReserved,
@@ -270,6 +324,11 @@ export class PlanLifecycleService {
   async processGenerationAttempt(
     input: ProcessGenerationInput
   ): Promise<GenerationAttemptResult> {
+    logger.info(
+      { planId: input.planId, userId: input.userId, tier: input.tier },
+      'plan.lifecycle.generation: attempt started'
+    );
+
     // 1. Run generation via port
     const generationResult = await this.ports.generation.runGeneration({
       planId: input.planId,
@@ -300,6 +359,10 @@ export class PlanLifecycleService {
         kind: 'plan',
       });
 
+      logger.info(
+        { planId: input.planId, durationMs: generationResult.durationMs },
+        'plan.lifecycle.generation: success'
+      );
       return {
         status: 'generation_success',
         data: {
@@ -319,6 +382,10 @@ export class PlanLifecycleService {
 
     if (retryable) {
       // Retryable failure — do NOT record usage (user will retry)
+      logger.warn(
+        { planId: input.planId, classification },
+        'plan.lifecycle.generation: retryable failure'
+      );
       return {
         status: 'retryable_failure',
         classification,
@@ -345,6 +412,10 @@ export class PlanLifecycleService {
       kind: 'plan',
     });
 
+    logger.warn(
+      { planId: input.planId, classification },
+      'plan.lifecycle.generation: permanent failure'
+    );
     return {
       status: 'permanent_failure',
       classification,

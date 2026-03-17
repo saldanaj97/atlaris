@@ -35,6 +35,8 @@ export type {
   GenerationAttemptResult,
   GenerationSuccess,
   GenerationSuccessData,
+  GeneratedModule,
+  GeneratedTask,
   AlreadyFinalized,
   PlanInsertData,
   AtomicInsertResult,

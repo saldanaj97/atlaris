@@ -95,7 +95,7 @@ export type CreatePlanSuccess = {
     readonly topic: string;
     readonly startDate: string | null;
     readonly deadlineDate: string | null;
-    readonly pdfContext?: unknown;
+    readonly pdfContext?: PdfContext | null;
     readonly pdfExtractionHash?: string;
     readonly pdfProofVersion?: 1;
   };
@@ -132,6 +132,23 @@ export type CreatePlanResult =
   | PermanentFailure
   | QuotaRejection;
 
+// ─── Generated module types ──────────────────────────────────────
+
+/** A single task within a generated module. */
+export type GeneratedTask = {
+  readonly title: string;
+  readonly description?: string;
+  readonly estimatedMinutes: number;
+};
+
+/** A module produced by AI plan generation. */
+export type GeneratedModule = {
+  readonly title: string;
+  readonly description?: string;
+  readonly estimatedMinutes: number;
+  readonly tasks: GeneratedTask[];
+};
+
 // ─── Generation attempt types ────────────────────────────────────
 
 /** Input for processing a generation attempt on an existing plan. */
@@ -147,7 +164,7 @@ export type ProcessGenerationInput = {
     readonly startDate?: string | null;
     readonly deadlineDate?: string | null;
     readonly notes?: string | null;
-    readonly pdfContext?: unknown;
+    readonly pdfContext?: PdfContext | null;
     readonly pdfExtractionHash?: string;
     readonly pdfProofVersion?: 1;
   };
@@ -157,7 +174,7 @@ export type ProcessGenerationInput = {
 
 /** Data returned on a successful generation. */
 export type GenerationSuccessData = {
-  readonly modules: unknown[];
+  readonly modules: GeneratedModule[];
   readonly metadata: Record<string, unknown>;
   readonly durationMs: number;
 };
