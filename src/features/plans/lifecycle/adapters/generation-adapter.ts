@@ -1,0 +1,93 @@
+/**
+ * GenerationAdapter — production implementation of GenerationPort.
+ *
+ * Wraps the AI orchestrator's `runGenerationAttempt()` function,
+ * mapping between the port interface and the orchestrator's types.
+ * Handles model/provider resolution internally via `resolveModelForTier()`.
+ */
+
+import { resolveModelForTier } from '@/features/ai/model-resolver';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import type { GenerationInput } from '@/features/ai/types/provider.types';
+import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+
+import type { GenerationPort } from '../ports';
+import type { FailureClassification, SubscriptionTier } from '../types';
+
+export class GenerationAdapter implements GenerationPort {
+  constructor(private readonly dbClient: AttemptsDbClient) {}
+
+  async runGeneration(params: {
+    planId: string;
+    userId: string;
+    tier: SubscriptionTier;
+    input: {
+      topic: string;
+      skillLevel: 'beginner' | 'intermediate' | 'advanced';
+      weeklyHours: number;
+      learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+      startDate?: string | null;
+      deadlineDate?: string | null;
+      notes?: string | null;
+    };
+    signal?: AbortSignal;
+  }): Promise<
+    | {
+        status: 'success';
+        modules: unknown[];
+        metadata: Record<string, unknown>;
+        durationMs: number;
+      }
+    | {
+        status: 'failure';
+        classification: FailureClassification;
+        error: Error;
+        metadata?: Record<string, unknown>;
+        durationMs: number;
+      }
+  > {
+    // Resolve model/provider from the user's tier
+    const { provider } = resolveModelForTier(params.tier);
+
+    // Map port input to orchestrator's GenerationInput
+    const generationInput: GenerationInput = {
+      topic: params.input.topic,
+      skillLevel: params.input.skillLevel,
+      weeklyHours: params.input.weeklyHours,
+      learningStyle: params.input.learningStyle,
+      startDate: params.input.startDate,
+      deadlineDate: params.input.deadlineDate,
+      notes: params.input.notes,
+    };
+
+    const result = await runGenerationAttempt(
+      {
+        planId: params.planId,
+        userId: params.userId,
+        input: generationInput,
+      },
+      {
+        provider,
+        dbClient: this.dbClient,
+        signal: params.signal,
+      }
+    );
+
+    if (result.status === 'success') {
+      return {
+        status: 'success',
+        modules: result.modules,
+        metadata: result.metadata as Record<string, unknown>,
+        durationMs: result.durationMs,
+      };
+    }
+
+    return {
+      status: 'failure',
+      classification: result.classification,
+      error: result.error,
+      metadata: result.metadata as Record<string, unknown> | undefined,
+      durationMs: result.durationMs,
+    };
+  }
+}

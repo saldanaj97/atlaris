@@ -27,6 +27,15 @@ export type CreateAiPlanInput = {
   readonly deadlineDate?: string | null;
 };
 
+/** Input for creating a PDF-origin learning plan. */
+export type CreatePdfPlanInput = CreateAiPlanInput & {
+  readonly authUserId: string;
+  readonly body: Record<string, unknown>;
+  readonly extractedContent: unknown;
+  readonly pdfProofToken: string;
+  readonly pdfExtractionHash: string;
+};
+
 /** Data passed to the persistence port for atomic plan insertion. */
 export type PlanInsertData = {
   readonly topic: string;
@@ -113,3 +122,71 @@ export type CreatePlanResult =
   | RetryableFailure
   | PermanentFailure
   | QuotaRejection;
+
+// ─── Generation attempt types ────────────────────────────────────
+
+/** Input for processing a generation attempt on an existing plan. */
+export type ProcessGenerationInput = {
+  readonly planId: string;
+  readonly userId: string;
+  readonly tier: SubscriptionTier;
+  readonly input: {
+    readonly topic: string;
+    readonly skillLevel: 'beginner' | 'intermediate' | 'advanced';
+    readonly weeklyHours: number;
+    readonly learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+    readonly startDate?: string | null;
+    readonly deadlineDate?: string | null;
+    readonly notes?: string | null;
+  };
+  readonly signal?: AbortSignal;
+};
+
+/** Data returned on a successful generation. */
+export type GenerationSuccessData = {
+  readonly modules: unknown[];
+  readonly metadata: Record<string, unknown>;
+  readonly durationMs: number;
+};
+
+/** Generation succeeded — plan marked ready, usage recorded. */
+export type GenerationSuccess = {
+  readonly status: 'generation_success';
+  readonly data: GenerationSuccessData;
+};
+
+/** The plan was already finalized — idempotent no-op. */
+export type AlreadyFinalized = {
+  readonly status: 'already_finalized';
+  readonly planId: string;
+};
+
+/**
+ * Discriminated union of all possible outcomes from a generation attempt.
+ * The service never throws for these expected lifecycle outcomes.
+ */
+export type GenerationAttemptResult =
+  | GenerationSuccess
+  | RetryableFailure
+  | PermanentFailure
+  | AlreadyFinalized;
+
+// ─── Retryability classification ─────────────────────────────────
+
+/**
+ * Classifications that are NOT retryable — the attempt consumed resources
+ * and should not be retried.
+ */
+const NON_RETRYABLE_CLASSIFICATIONS: ReadonlyArray<
+  FailureClassification | 'unknown'
+> = ['validation', 'capped'];
+
+/**
+ * Determine whether a failure classification indicates a retryable error.
+ * Non-retryable: 'validation', 'capped'. Everything else is retryable.
+ *
+ * This logic is owned by the lifecycle module — not imported from AI internals.
+ */
+export const isRetryableClassification = (
+  classification: FailureClassification | 'unknown'
+): boolean => !NON_RETRYABLE_CLASSIFICATIONS.includes(classification);

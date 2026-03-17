@@ -16,6 +16,8 @@ import type {
   SubscriptionTier,
 } from './types';
 
+export type { FailureClassification } from './types';
+
 // ─── PlanPersistencePort ─────────────────────────────────────────
 
 export interface PlanPersistencePort {
@@ -97,6 +99,7 @@ export interface GenerationPort {
   runGeneration(params: {
     planId: string;
     userId: string;
+    tier: SubscriptionTier;
     input: {
       topic: string;
       skillLevel: 'beginner' | 'intermediate' | 'advanced';
@@ -118,6 +121,7 @@ export interface GenerationPort {
         status: 'failure';
         classification: FailureClassification;
         error: Error;
+        metadata?: Record<string, unknown>;
         durationMs: number;
       }
   >;

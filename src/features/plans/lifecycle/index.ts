@@ -8,6 +8,9 @@ export { createPlanLifecycleService } from './factory';
 // ─── Adapters ────────────────────────────────────────────────────
 export { QuotaAdapter } from './adapters/quota-adapter';
 export { PlanPersistenceAdapter } from './adapters/plan-persistence-adapter';
+export { PdfOriginAdapter } from './adapters/pdf-origin-adapter';
+export { GenerationAdapter } from './adapters/generation-adapter';
+export { UsageRecordingAdapter } from './adapters/usage-recording-adapter';
 
 // ─── Ports ───────────────────────────────────────────────────────
 export type {
@@ -22,11 +25,17 @@ export type {
 // ─── Types ───────────────────────────────────────────────────────
 export type {
   CreateAiPlanInput,
+  CreatePdfPlanInput,
   CreatePlanResult,
   CreatePlanSuccess,
   RetryableFailure,
   PermanentFailure,
   QuotaRejection,
+  ProcessGenerationInput,
+  GenerationAttemptResult,
+  GenerationSuccess,
+  GenerationSuccessData,
+  AlreadyFinalized,
   PlanInsertData,
   AtomicInsertResult,
   DurationCapResult,
@@ -35,3 +44,4 @@ export type {
   SubscriptionTier,
   FailureClassification,
 } from './types';
+export { isRetryableClassification } from './types';

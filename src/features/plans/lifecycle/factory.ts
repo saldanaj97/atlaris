@@ -1,37 +1,33 @@
 /**
  * Factory for creating a fully-wired PlanLifecycleService instance.
  *
- * Wires the QuotaAdapter and PlanPersistenceAdapter automatically.
- * Remaining ports (PdfOrigin, Generation, UsageRecording, JobQueue)
- * must be provided by the caller — their adapters will be added in
- * subsequent issues (#238, #239).
+ * Wires the QuotaAdapter, PlanPersistenceAdapter, PdfOriginAdapter,
+ * GenerationAdapter, and UsageRecordingAdapter automatically.
+ * The JobQueue port must be provided by the caller.
  */
 
+import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import type { DbClient } from '@/lib/db/types';
 
+import { GenerationAdapter } from './adapters/generation-adapter';
+import { PdfOriginAdapter } from './adapters/pdf-origin-adapter';
 import { PlanPersistenceAdapter } from './adapters/plan-persistence-adapter';
 import { QuotaAdapter } from './adapters/quota-adapter';
-import type {
-  GenerationPort,
-  JobQueuePort,
-  PdfOriginPort,
-  UsageRecordingPort,
-} from './ports';
+import { UsageRecordingAdapter } from './adapters/usage-recording-adapter';
+import type { JobQueuePort } from './ports';
 import { PlanLifecycleService } from './service';
 
 export function createPlanLifecycleService(params: {
   dbClient: DbClient;
-  pdfOrigin: PdfOriginPort;
-  generation: GenerationPort;
-  usageRecording: UsageRecordingPort;
+  attemptsDbClient: AttemptsDbClient;
   jobQueue: JobQueuePort;
 }): PlanLifecycleService {
   return new PlanLifecycleService({
     planPersistence: new PlanPersistenceAdapter(params.dbClient),
     quota: new QuotaAdapter(params.dbClient),
-    pdfOrigin: params.pdfOrigin,
-    generation: params.generation,
-    usageRecording: params.usageRecording,
+    pdfOrigin: new PdfOriginAdapter(params.dbClient),
+    generation: new GenerationAdapter(params.attemptsDbClient),
+    usageRecording: new UsageRecordingAdapter(),
     jobQueue: params.jobQueue,
   });
 }
