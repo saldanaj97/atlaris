@@ -186,7 +186,7 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
         case 'customer.subscription.updated': {
           const subscription = event.data.object;
           const { syncSubscriptionToDb } = await import(
-            '@/lib/stripe/subscriptions'
+            '@/features/billing/subscriptions'
           );
           const syncTimeoutMs = 10_000;
           const abortController = new AbortController();

@@ -1,7 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
-import { getDefaultModelForTier, getModelsForTier } from '@/lib/ai/ai-models';
+import {
+  getDefaultModelForTier,
+  getModelsForTier,
+} from '@/features/ai/ai-models';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';

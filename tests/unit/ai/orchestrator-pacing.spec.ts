@@ -1,17 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { pacePlan } from '@/lib/ai/pacing';
-import { ProviderTimeoutError } from '@/lib/ai/providers/errors';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { pacePlan } from '@/features/ai/pacing';
+import { ProviderTimeoutError } from '@/features/ai/providers/errors';
 import type {
   GenerationAttemptContext,
   RunGenerationOptions,
-} from '@/lib/ai/types/orchestrator.types';
+} from '@/features/ai/types/orchestrator.types';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
-} from '@/lib/ai/types/provider.types';
+} from '@/features/ai/types/provider.types';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,

@@ -2,13 +2,13 @@ import { eq } from 'drizzle-orm';
 
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
-import { requireInternalUserByAuthId } from '@/lib/api/plans/route-context';
+import { requireInternalUserByAuthId } from '@/features/plans/api/route-context';
 import { json } from '@/lib/api/response';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { updateUserProfileSchema } from '@/lib/validation/user-profile';
+import { updateUserProfileSchema } from '@/app/api/v1/user/profile/validation';
 
 type UserProfileResponse = Pick<
   DbUser,

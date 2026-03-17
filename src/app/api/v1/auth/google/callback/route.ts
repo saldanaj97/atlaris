@@ -9,8 +9,8 @@ import { googleOAuthEnv } from '@/lib/config/env';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
-import { storeOAuthTokens } from '@/lib/integrations/oauth';
-import { validateOAuthStateToken } from '@/lib/integrations/oauth-state';
+import { storeOAuthTokens } from '@/features/integrations/oauth';
+import { validateOAuthStateToken } from '@/features/integrations/oauth-state';
 import {
   attachRequestIdHeader,
   createRequestContext as createLoggingRequestContext,

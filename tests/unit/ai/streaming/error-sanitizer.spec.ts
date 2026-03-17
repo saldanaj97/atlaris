@@ -1,4 +1,4 @@
-import { sanitizeSseError } from '@/lib/ai/streaming/error-sanitizer';
+import { sanitizeSseError } from '@/features/ai/streaming/error-sanitizer';
 import { describe, expect, it } from 'vitest';
 
 describe('SSE error sanitizer (Task 3 - Phase 2)', () => {

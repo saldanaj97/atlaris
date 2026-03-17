@@ -1,4 +1,4 @@
-import type { AvailableModel } from '@/lib/ai/types/model.types';
+import type { AvailableModel } from '@/features/ai/types/model.types';
 
 export function createTestModel(
   overrides: Partial<AvailableModel> = {}

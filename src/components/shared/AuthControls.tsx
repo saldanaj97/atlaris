@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import { UserButton } from '@neondatabase/auth/react';
 import Link from 'next/link';
 import type { ReactElement } from 'react';

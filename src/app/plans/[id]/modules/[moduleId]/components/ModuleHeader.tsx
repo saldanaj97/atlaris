@@ -22,8 +22,8 @@ import type {
   ModuleNavItem,
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
-import { formatMinutes } from '@/lib/plans/formatters';
-import type { ProgressStatus } from '@/lib/types/db.types';
+import { formatMinutes } from '@/features/plans/formatters';
+import type { ProgressStatus } from '@/types/db.types';
 
 interface ModuleHeaderProps {
   module: ModuleWithTasks;

@@ -5,7 +5,7 @@ import {
   deleteOAuthTokens,
   getOAuthTokens,
   revokeGoogleTokens,
-} from '@/lib/integrations/oauth';
+} from '@/features/integrations/oauth';
 import { z } from 'zod';
 
 const disconnectSchema = z

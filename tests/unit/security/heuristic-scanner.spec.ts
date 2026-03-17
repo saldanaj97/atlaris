@@ -5,7 +5,7 @@ import {
   getDefaultHeuristicScanProvider,
   HeuristicScanProvider,
   scanBufferWithHeuristics,
-} from '@/lib/security/heuristic-scanner';
+} from '@/features/pdf/security/heuristic-scanner';
 
 const makeMockLogger = () => ({
   debug: vi.fn(),

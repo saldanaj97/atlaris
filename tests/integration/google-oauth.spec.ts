@@ -3,8 +3,8 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db/service-role';
 import { users, integrationTokens, oauthStateTokens } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
-import { getOAuthTokens } from '@/lib/integrations/oauth';
-import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state';
+import { getOAuthTokens } from '@/features/integrations/oauth';
+import { generateAndStoreOAuthStateToken } from '@/features/integrations/oauth-state';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 

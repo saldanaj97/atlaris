@@ -17,7 +17,7 @@ import {
   syncSubscriptionToDb,
   cancelSubscription,
   getCustomerPortalUrl,
-} from '@/lib/stripe/subscriptions';
+} from '@/features/billing/subscriptions';
 
 async function createUniqueUser() {
   const authUserId = buildTestAuthUserId('stripe-subscriptions');

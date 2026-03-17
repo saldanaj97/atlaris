@@ -1,14 +1,14 @@
-import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/lib/ai/ai-models';
+import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import {
   resolveModelForTier,
   validateModelForTier,
   type ModelResolution,
-} from '@/lib/ai/model-resolver';
+} from '@/features/ai/model-resolver';
 import { AppError } from '@/lib/api/errors';
 import { describe, expect, it } from 'vitest';
 
-import type { SubscriptionTier } from '@/lib/ai/types/model.types';
-import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
+import type { SubscriptionTier } from '@/features/ai/types/model.types';
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 
 describe('Model resolver (Task 2 - Phase 2)', () => {
   const getModelIdBy = (

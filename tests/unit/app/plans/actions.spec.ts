@@ -32,7 +32,7 @@ vi.mock('@/lib/api/auth', () => ({
   withServerActionContext: withServerActionContextMock,
 }));
 
-vi.mock('@/lib/api/schedule', () => ({
+vi.mock('@/features/scheduling/schedule-api', () => ({
   getPlanSchedule: getPlanScheduleMock,
   ScheduleFetchError: class ScheduleFetchError extends Error {
     code?: string;

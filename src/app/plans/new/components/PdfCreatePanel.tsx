@@ -20,14 +20,14 @@ import {
 import { normalizeApiErrorResponse } from '@/lib/api/error-response';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import { mapPdfSettingsToCreateInput } from '@/lib/mappers/learningPlans';
-import { extractionApiResponseSchema } from '@/lib/validation/pdf';
+import { mapPdfSettingsToCreateInput } from '@/features/plans/create-mapper';
+import { extractionApiResponseSchema } from '@/features/pdf/validation/pdf';
 import type {
   ExtractionApiResponseData,
   ExtractionProofData,
   ExtractionSection,
   TruncationData,
-} from '@/lib/validation/pdf.types';
+} from '@/features/pdf/validation/pdf.types';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { toast } from 'sonner';

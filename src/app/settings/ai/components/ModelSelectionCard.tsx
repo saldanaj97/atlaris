@@ -1,4 +1,4 @@
-import { ModelSelector } from '@/components/settings/model-selector';
+import { ModelSelector } from '@/app/settings/ai/components/model-selector';
 import {
   Card,
   CardContent,
@@ -6,10 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { SubscriptionTier } from '@/lib/ai/types/model.types';
+import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { getDb } from '@/lib/db/runtime';
-import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
+import { getSubscriptionTier } from '@/features/billing/subscriptions';
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
 

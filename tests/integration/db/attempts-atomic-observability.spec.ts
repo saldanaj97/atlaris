@@ -8,7 +8,7 @@ import { db } from '@/lib/db/service-role';
 import {
   getAttemptMetricsSnapshot,
   resetAttemptMetrics,
-} from '@/lib/metrics/attempts';
+} from '@/features/plans/metrics';
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import type { MockInstance } from 'vitest';

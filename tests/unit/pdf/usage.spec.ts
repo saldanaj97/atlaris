@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
-import { checkPdfPlanQuota } from '@/lib/stripe/usage';
+import { checkPdfPlanQuota } from '@/features/billing/usage';
 
 const KB = 1024;
 const MB = KB * 1024;

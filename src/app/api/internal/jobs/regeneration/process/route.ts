@@ -6,7 +6,7 @@ import { AppError, AuthError, ServiceUnavailableError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
-import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
+import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import getRequestContext from '@/lib/logging/request-context';
 
 function readWorkerToken(request: Request): string | null {

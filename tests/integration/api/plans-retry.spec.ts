@@ -47,7 +47,7 @@ async function createTestPlanWithAttempt({
 async function withRunGenerationAttemptSpy<T>(
   fn: (runSpy: ReturnType<typeof vi.spyOn>) => Promise<T>
 ): Promise<T> {
-  const orchestrator = await import('@/lib/ai/orchestrator');
+  const orchestrator = await import('@/features/ai/orchestrator');
   const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
   try {
     return await fn(runSpy);

@@ -3,8 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { isDevelopment } from '@/lib/config/client-env';
+import { assertNever } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import { assertNever } from '@/lib/utils';
 import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
 import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
 import type { JSX } from 'react';

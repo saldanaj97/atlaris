@@ -1,18 +1,18 @@
 import { desc, eq } from 'drizzle-orm';
 
-import { classificationToUserMessage } from '@/lib/ai/failure-presentation';
-import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
+import { classificationToUserMessage } from '@/features/ai/failure-presentation';
+import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
-} from '@/lib/api/plans/route-context';
+} from '@/features/plans/api/route-context';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, modules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { derivePlanStatus } from '@/lib/plans/status';
-import type { FailureClassification } from '@/lib/types/client.types';
+import { derivePlanStatus } from '@/features/plans/status';
+import type { FailureClassification } from '@/types/client.types';
 
 /**
  * GET /api/v1/plans/:planId/status

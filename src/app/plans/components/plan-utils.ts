@@ -1,5 +1,5 @@
 import type { PlanStatus } from '@/app/plans/types';
-import type { PlanSummary } from '@/lib/types/db.types';
+import type { PlanSummary } from '@/types/db.types';
 import {
   differenceInDays,
   differenceInHours,

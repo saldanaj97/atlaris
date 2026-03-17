@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';

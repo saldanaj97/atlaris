@@ -1,4 +1,4 @@
-import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
+import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,

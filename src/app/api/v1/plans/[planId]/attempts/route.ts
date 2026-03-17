@@ -1,9 +1,9 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';
-import { requirePlanIdFromRequest } from '@/lib/api/plans/route-context';
+import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { json } from '@/lib/api/response';
 import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
-import { mapAttemptsToClient } from '@/lib/mappers/detailToClient';
+import { mapAttemptsToClient } from '@/features/plans/detail-mapper';
 
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req, user }) => {

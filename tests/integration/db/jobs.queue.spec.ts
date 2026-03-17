@@ -9,13 +9,13 @@ import {
   failJob,
   getNextJob,
   getUserJobCount,
-} from '@/lib/jobs/queue';
+} from '@/features/jobs/queue';
 import {
   JOB_TYPES,
   type JobType,
   type PlanGenerationJobData,
-} from '@/lib/jobs/types';
-import { computeJobPriority, isPriorityTopic } from '@/lib/jobs/priority';
+} from '@/features/jobs/types';
+import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 
 import { ensureUser } from '@tests/helpers/db';
 

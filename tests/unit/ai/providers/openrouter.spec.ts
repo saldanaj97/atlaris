@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ProviderInvalidResponseError } from '@/lib/ai/providers/errors';
+import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import {
   OpenRouterProvider,
   type OpenRouterClient,
   type OpenRouterProviderConfig,
-} from '@/lib/ai/providers/openrouter';
-import type { GenerationInput } from '@/lib/ai/types/provider.types';
+} from '@/features/ai/providers/openrouter';
+import type { GenerationInput } from '@/features/ai/types/provider.types';
 
 function createMockClient(): {
   client: OpenRouterClient;

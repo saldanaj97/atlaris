@@ -5,7 +5,7 @@ import {
   storeOAuthTokens,
   getOAuthTokens,
   deleteOAuthTokens,
-} from '@/lib/integrations/oauth';
+} from '@/features/integrations/oauth';
 import { eq, and, sql } from 'drizzle-orm';
 
 async function ensureIntegrationTokensTable() {

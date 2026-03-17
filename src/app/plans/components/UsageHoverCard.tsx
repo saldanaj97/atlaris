@@ -6,7 +6,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import { BookOpen, RefreshCw, Share2, Trophy } from 'lucide-react';
 import Link from 'next/link';
 

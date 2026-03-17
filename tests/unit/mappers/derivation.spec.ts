@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
-import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
+import { mapDetailToClient } from '@/features/plans/detail-mapper';
 import {
   buildGenerationAttempt,
   buildModule,

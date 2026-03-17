@@ -7,7 +7,7 @@ import type {
 } from '@/lib/db/queries/types/tasks.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
-import type { ProgressStatus } from '@/lib/types/db.types';
+import type { ProgressStatus } from '@/types/db.types';
 
 /**
  * Retrieves all tasks in a specific learning plan for a user.

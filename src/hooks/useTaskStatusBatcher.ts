@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import type { ProgressStatus } from '@/lib/types/db.types';
+import type { ProgressStatus } from '@/types/db.types';
 import { toast } from 'sonner';
 
 interface Resolver {

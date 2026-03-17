@@ -1,4 +1,4 @@
-import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/lib/ai/ai-models';
+import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import {
   EnvValidationError,
   aiEnv,

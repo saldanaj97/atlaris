@@ -5,9 +5,9 @@ import {
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
-import { LEARNING_STYLES, SKILL_LEVELS } from '@/lib/types/db';
-import type { LearningStyle, SkillLevel } from '@/lib/types/db.types';
-import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
+import { LEARNING_STYLES, SKILL_LEVELS } from '@/types/db';
+import type { LearningStyle, SkillLevel } from '@/types/db.types';
+import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
 
 // Initialize OpenAPI extension for Zod (must be called once)
 extendZodWithOpenApi(z);

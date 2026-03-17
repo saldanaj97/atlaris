@@ -6,7 +6,7 @@ import {
   resolveUserTier,
   TIER_LIMITS,
   type SubscriptionTier,
-} from '@/lib/stripe/usage';
+} from '@/features/billing/usage';
 import { LRUCache } from 'lru-cache';
 
 export type GlobalExtractionState = {

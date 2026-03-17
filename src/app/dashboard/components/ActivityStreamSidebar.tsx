@@ -4,7 +4,7 @@ import { Activity } from 'react';
 import type { JSX } from 'react';
 import { getEventTypeConfig, getRelativeTime } from './activity-utils';
 
-import type { PlanSummary } from '@/lib/types/db.types';
+import type { PlanSummary } from '@/types/db.types';
 import type { ScheduledEvent } from '../types';
 
 interface ActivityStreamSidebarProps {

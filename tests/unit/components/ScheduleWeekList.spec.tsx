@@ -1,5 +1,5 @@
 import { ScheduleWeekList } from '@/app/plans/[id]/components/ScheduleWeekList';
-import type { ScheduleJson } from '@/lib/scheduling/types';
+import type { ScheduleJson } from '@/features/scheduling/types';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 

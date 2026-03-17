@@ -1,11 +1,11 @@
 'use client';
 
+import type { NavItem } from '@/features/navigation';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import type { JSX } from 'react';
 
-import type { NavItem } from '@/lib/navigation';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+import type { SubscriptionTier } from '@/features/billing/tier-limits';
 
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';

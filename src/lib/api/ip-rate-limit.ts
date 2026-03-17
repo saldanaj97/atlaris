@@ -17,8 +17,8 @@ import { isIP } from 'node:net';
 
 import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
 import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
+import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import { assertNever } from '@/lib/utils';
 
 /**
  * Configuration for IP rate limiting

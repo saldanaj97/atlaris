@@ -1,5 +1,8 @@
-import { getDefaultModelForTier, getModelsForTier } from '@/lib/ai/ai-models';
-import { validateModelForTier } from '@/lib/ai/model-resolver';
+import {
+  getDefaultModelForTier,
+  getModelsForTier,
+} from '@/features/ai/ai-models';
+import { validateModelForTier } from '@/features/ai/model-resolver';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
@@ -8,7 +11,7 @@ import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
-import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
+import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 
 /**
  * GET /api/v1/user/preferences
@@ -94,7 +97,7 @@ export const PATCH = withErrorBoundary(
     );
 
     // Enumerate every known reason from validateModelForTier (see ModelValidationResult in
-    // @/lib/ai/model-resolver). When adding a new reason there, add a case here and keep
+    // @/features/ai/model-resolver). When adding a new reason there, add a case here and keep
     // the default branch for unexpected values. AppError: @/lib/api/errors.
     if (!modelValidation.valid) {
       const reason = modelValidation.reason;

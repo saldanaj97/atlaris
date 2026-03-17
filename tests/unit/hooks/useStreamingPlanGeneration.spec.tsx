@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
 const encoder = new TextEncoder();
 

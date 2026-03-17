@@ -4,9 +4,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { extractTextFromPdf } from '@/lib/pdf/extract';
-import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
-import { checkPdfPlanQuota, incrementPdfPlanUsage } from '@/lib/stripe/usage';
+import { extractTextFromPdf } from '@/features/pdf/extract';
+import { TIER_LIMITS } from '@/features/billing/tier-limits';
+import {
+  checkPdfPlanQuota,
+  incrementPdfPlanUsage,
+} from '@/features/billing/usage';
 import {
   ensureUser,
   ensureStripeWebhookEvents,

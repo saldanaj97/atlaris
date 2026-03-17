@@ -7,7 +7,7 @@ import {
 } from '@/lib/db/queries/jobs';
 import { jobQueue } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { JOB_TYPES } from '@/lib/jobs/types';
+import { JOB_TYPES } from '@/features/jobs/types';
 import { ensureUser, resetDbForIntegrationTestFile } from '../helpers/db';
 
 describe('Monitoring Queries', () => {

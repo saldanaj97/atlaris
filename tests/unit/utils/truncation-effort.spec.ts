@@ -8,8 +8,8 @@ import {
   aggregateNormalizationFlags,
   normalizeModuleMinutes,
   normalizeTaskMinutes,
-} from '@/lib/utils/effort';
-import { truncateToLength } from '@/lib/utils/truncation';
+} from '@/features/plans/effort';
+import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
 
 describe('truncateToLength', () => {
   it('returns original value when within bounds', () => {

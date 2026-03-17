@@ -4,7 +4,7 @@ import { appEnv, EnvValidationError } from '@/lib/config/env';
 import {
   createScanProvider,
   resetScanProviderCache,
-} from '@/lib/security/scanner-factory';
+} from '@/features/pdf/security/scanner-factory';
 
 describe('scanner-factory', () => {
   const originalEnv = { ...process.env };

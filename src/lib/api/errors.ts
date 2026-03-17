@@ -3,7 +3,7 @@
 import { getCorrelationId } from '@/lib/api/context';
 import { jsonError } from '@/lib/api/response';
 import { createLogger, logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/lib/types/client.types';
+import type { FailureClassification } from '@/types/client.types';
 
 function hasStringCode(value: unknown): value is { code: string } {
   if (typeof value !== 'object' || value === null) {

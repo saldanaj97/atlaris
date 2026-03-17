@@ -9,7 +9,7 @@ import type {
   UseStreamingPlanGenerationResult,
 } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';

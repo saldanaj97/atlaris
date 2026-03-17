@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ServiceUnavailableError } from '@/lib/api/errors';
 import { googleOAuthEnv } from '@/lib/config/env';
-import { generateAndStoreOAuthStateToken } from '@/lib/integrations/oauth-state';
+import { generateAndStoreOAuthStateToken } from '@/features/integrations/oauth-state';
 import { logger } from '@/lib/logging/logger';
 import { google } from 'googleapis';
 

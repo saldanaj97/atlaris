@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getOAuthTokens, storeOAuthTokens } from '@/lib/integrations/oauth';
+import {
+  getOAuthTokens,
+  storeOAuthTokens,
+} from '@/features/integrations/oauth';
 
 import { createTestUser } from '../../fixtures/users';
 import { clearTestUser, setTestUser } from '../../helpers/auth';

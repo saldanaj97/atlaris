@@ -9,7 +9,7 @@ import { AppError, RateLimitError, ValidationError } from '@/lib/api/errors';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
-} from '@/lib/api/plans/route-context';
+} from '@/features/plans/api/route-context';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -18,23 +18,23 @@ import { json } from '@/lib/api/response';
 import { regenerationQueueEnv } from '@/lib/config/env';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
 import { getDb } from '@/lib/db/runtime';
-import { enqueueJobWithResult } from '@/lib/jobs/queue';
+import { enqueueJobWithResult } from '@/features/jobs/queue';
 import {
   drainRegenerationQueue,
   releaseInlineDrainLock,
   tryAcquireInlineDrainLock,
-} from '@/lib/jobs/regeneration-worker';
-import { JOB_TYPES, type PlanRegenerationJobData } from '@/lib/jobs/types';
+} from '@/features/jobs/regeneration-worker';
+import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { logger } from '@/lib/logging/logger';
-import { recordBillingReconciliationRequired } from '@/lib/metrics/ops';
-import { computeJobPriority, isPriorityTopic } from '@/lib/jobs/priority';
+import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
+import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import {
   atomicCheckAndIncrementUsage,
   decrementRegenerationUsage,
   resolveUserTier,
-} from '@/lib/stripe/usage';
-import { planRegenerationRequestSchema } from '@/lib/validation/learningPlans';
-import type { PlanRegenerationOverridesInput } from '@/lib/validation/learningPlans.types';
+} from '@/features/billing/usage';
+import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
+import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 
 /**
  * POST /api/v1/plans/:planId/regenerate

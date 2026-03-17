@@ -15,7 +15,7 @@ import '../../mocks/unit/sonner.unit';
 import type {
   AvailableModel,
   SubscriptionTier,
-} from '@/lib/ai/types/model.types';
+} from '@/features/ai/types/model.types';
 import { createTestModel } from '../../fixtures/model.factory';
 
 const FREE_MODELS: AvailableModel[] = [
@@ -46,19 +46,21 @@ const MODELS_BY_TIER: Record<SubscriptionTier, AvailableModel[]> = {
   pro: PRO_MODELS,
 };
 
-vi.mock('@/lib/ai/ai-models', () => ({
+vi.mock('@/features/ai/ai-models', () => ({
   getModelsForTier: (tier: SubscriptionTier): AvailableModel[] =>
     MODELS_BY_TIER[tier],
 }));
 
-let ModelSelector: typeof import('@/components/settings/model-selector').ModelSelector;
+let ModelSelector: typeof import('@/app/settings/ai/components/model-selector').ModelSelector;
 
 // Mock scrollIntoView which is not available in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 describe('ModelSelector', () => {
   beforeAll(async () => {
-    ({ ModelSelector } = await import('@/components/settings/model-selector'));
+    ({ ModelSelector } = await import(
+      '@/app/settings/ai/components/model-selector'
+    ));
   });
 
   beforeEach(() => {

@@ -5,7 +5,10 @@
 
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
-import { ATTEMPT_CAP, PLAN_GENERATION_LIMIT } from '@/lib/ai/generation-policy';
+import {
+  ATTEMPT_CAP,
+  PLAN_GENERATION_LIMIT,
+} from '@/features/ai/generation-policy';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 

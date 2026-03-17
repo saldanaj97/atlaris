@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createAdaptiveTimeout } from '@/lib/ai/timeout';
+import { createAdaptiveTimeout } from '@/features/ai/timeout';
 
 const clock = () => Date.now();
 

@@ -1,4 +1,4 @@
-import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
+import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('drainRegenerationQueue', () => {

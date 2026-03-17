@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { distributeTasksToSessions } from '@/lib/scheduling/distribute';
-import type { ScheduleInputs } from '@/lib/scheduling/types';
+import { distributeTasksToSessions } from '@/features/scheduling/distribute';
+import type { ScheduleInputs } from '@/features/scheduling/types';
 
 describe('distributeTasksToSessions', () => {
   it('should distribute tasks evenly across default 3 sessions per week', () => {

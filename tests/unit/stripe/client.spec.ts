@@ -17,7 +17,9 @@ describe('Stripe Client', () => {
     it('initializes Stripe client with secret key', async () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_12345';
 
-      const { getStripe: freshGetStripe } = await import('@/lib/stripe/client');
+      const { getStripe: freshGetStripe } = await import(
+        '@/features/billing/client'
+      );
       const stripe = freshGetStripe();
 
       expect(stripe).toBeDefined();
@@ -30,7 +32,9 @@ describe('Stripe Client', () => {
     it('throws error when STRIPE_SECRET_KEY is not set', async () => {
       delete process.env.STRIPE_SECRET_KEY;
 
-      const { getStripe: freshGetStripe } = await import('@/lib/stripe/client');
+      const { getStripe: freshGetStripe } = await import(
+        '@/features/billing/client'
+      );
 
       expect(() => freshGetStripe()).toThrow(
         'STRIPE_SECRET_KEY is not set in environment variables'
@@ -40,7 +44,9 @@ describe('Stripe Client', () => {
     it('returns same instance on multiple calls (singleton)', async () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_singleton';
 
-      const { getStripe: freshGetStripe } = await import('@/lib/stripe/client');
+      const { getStripe: freshGetStripe } = await import(
+        '@/features/billing/client'
+      );
       const stripe1 = freshGetStripe();
       const stripe2 = freshGetStripe();
 
@@ -50,7 +56,9 @@ describe('Stripe Client', () => {
     it('uses correct API version', async () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_version';
 
-      const { getStripe: freshGetStripe } = await import('@/lib/stripe/client');
+      const { getStripe: freshGetStripe } = await import(
+        '@/features/billing/client'
+      );
       const stripe = freshGetStripe();
 
       // Check that the client was configured with the correct API version
@@ -61,7 +69,9 @@ describe('Stripe Client', () => {
     it('disables telemetry', async () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_telemetry';
 
-      const { getStripe: freshGetStripe } = await import('@/lib/stripe/client');
+      const { getStripe: freshGetStripe } = await import(
+        '@/features/billing/client'
+      );
       const stripe = freshGetStripe();
 
       // Telemetry is disabled in client configuration
@@ -74,7 +84,7 @@ describe('Stripe Client', () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_lazy';
 
       // Import the module (but don't call getStripe)
-      const module = await import('@/lib/stripe/client');
+      const module = await import('@/features/billing/client');
 
       // Instance should not be created yet
       // This is verified by the fact that no errors occur even if
@@ -95,7 +105,7 @@ describe('Stripe Client', () => {
       delete process.env.STRIPE_SECRET_KEY;
 
       // Should not throw during import
-      await expect(import('@/lib/stripe/client')).resolves.toBeDefined();
+      await expect(import('@/features/billing/client')).resolves.toBeDefined();
     });
   });
 });

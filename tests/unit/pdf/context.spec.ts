@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   PERSISTED_PDF_CONTEXT_CAPS,
   PROMPT_PDF_CONTEXT_CAPS,
-} from '@/lib/pdf/constants';
+} from '@/features/pdf/constants';
 import {
   countPdfContextChars,
   parsePersistedPdfContext,
   sanitizePdfContextForPersistence,
   sanitizePdfContextForPrompt,
-} from '@/lib/pdf/context';
+} from '@/features/pdf/context';
 
 /** Input size to exceed persistence caps (maxSections=25, maxTotalChars=20k) */
 const PERSISTENCE_OVERFLOW_SECTIONS = 40;

@@ -11,7 +11,7 @@ import {
   type PdfPlanSettings,
 } from '@/app/plans/new/components/usePdfExtractionDraft';
 import { Card } from '@/components/ui/card';
-import type { ExtractedSection } from '@/lib/pdf/types';
+import type { ExtractedSection } from '@/features/pdf/types';
 import type { JSX } from 'react';
 import { useId } from 'react';
 

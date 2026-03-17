@@ -4,7 +4,7 @@ import { GET } from '@/app/api/health/worker/route';
 import { clearAllRateLimiters } from '@/lib/api/ip-rate-limit';
 import { jobQueue } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { JOB_TYPES } from '@/lib/jobs/types';
+import { JOB_TYPES } from '@/features/jobs/types';
 import { ensureUser } from '../../../helpers/db';
 
 /**

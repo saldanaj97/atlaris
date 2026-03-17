@@ -2,15 +2,15 @@ import type Stripe from 'stripe';
 
 import { formatAmount } from '@/app/pricing/components/utils';
 import { logger } from '@/lib/logging/logger';
-import { getStripe } from '@/lib/stripe/client';
+import { getStripe } from '@/features/billing/client';
 import {
   stripePriceFieldsSchema,
   stripeProductFieldsSchema,
-} from '@/lib/validation/stripe';
+} from '@/features/billing/validation/stripe';
 import type {
   StripePriceFields,
   StripeProductFields,
-} from '@/lib/validation/stripe';
+} from '@/features/billing/validation/stripe';
 import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
 import type { TierKey } from '@/app/pricing/components/PricingTiers';
 export interface StripeTierData {

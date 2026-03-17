@@ -1,7 +1,7 @@
 import {
   DEFAULT_SCHEDULE_TIMEZONE,
   resolveScheduleTimezone,
-} from '@/lib/api/schedule';
+} from '@/features/scheduling/schedule-api';
 import type { DbClient } from '@/lib/db/types';
 import { describe, expect, it } from 'vitest';
 

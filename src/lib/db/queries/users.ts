@@ -1,4 +1,4 @@
-import { isValidModelId } from '@/lib/ai/ai-models';
+import { isValidModelId } from '@/features/ai/ai-models';
 import { getRequestContext } from '@/lib/api/context';
 import type { PreferredAiModel } from '@/lib/db/enums';
 import type {

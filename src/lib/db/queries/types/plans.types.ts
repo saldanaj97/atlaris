@@ -1,4 +1,4 @@
-import type { GenerationStatus } from '@/lib/types/db.types';
+import type { GenerationStatus } from '@/types/db.types';
 
 /**
  * Valid status values for a generation attempt record.

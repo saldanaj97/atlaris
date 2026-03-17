@@ -1,7 +1,7 @@
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
-} from '@/lib/navigation';
+} from '@/features/navigation';
 import { describe, expect, it } from 'vitest';
 
 describe('Navigation', () => {

@@ -1,6 +1,6 @@
 import { aiUsageEvents, users } from '@/lib/db/schema';
 import { getDb } from '@/lib/db/runtime';
-import { incrementUsage } from '@/lib/stripe/usage';
+import { incrementUsage } from '@/features/billing/usage';
 import { eq, sql } from 'drizzle-orm';
 
 type DbClient = ReturnType<typeof getDb>;

@@ -14,7 +14,7 @@ import type {
   LearningPlanWithModules,
   Module,
   PlanSummary,
-} from '@/lib/types/db.types';
+} from '@/types/db.types';
 
 import { createId } from './ids';
 

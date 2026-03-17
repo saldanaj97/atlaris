@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { parseGenerationStream } from '@/lib/ai/parser';
-import { getGenerationProvider } from '@/lib/ai/providers/factory';
-import { MockGenerationProvider } from '@/lib/ai/providers/mock';
-import { readableStreamToAsyncIterable } from '@/lib/ai/streaming/utils';
+import { parseGenerationStream } from '@/features/ai/parser';
+import { getGenerationProvider } from '@/features/ai/providers/factory';
+import { MockGenerationProvider } from '@/features/ai/providers/mock';
+import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
 import { createGenerationInput } from '../../../fixtures/generation-input';
 
 const SAMPLE_INPUT = createGenerationInput({

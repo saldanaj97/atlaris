@@ -8,7 +8,7 @@ import {
   resources,
   taskResources,
 } from '@/lib/db/schema';
-import { getPlanSchedule } from '@/lib/api/schedule';
+import { getPlanSchedule } from '@/features/scheduling/schedule-api';
 import { eq } from 'drizzle-orm';
 
 describe('End-to-End Schedule Flow', () => {

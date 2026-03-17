@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
 
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { createCheckoutResponseSchema } from '@/lib/validation/stripe';
+import { createCheckoutResponseSchema } from '@/features/billing/validation/stripe';
 import { toast } from 'sonner';
 
 type CheckoutRequestResult =

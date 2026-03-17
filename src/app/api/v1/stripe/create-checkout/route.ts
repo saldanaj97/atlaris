@@ -6,8 +6,8 @@ import type { PlainHandler } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { appEnv } from '@/lib/config/env';
-import { getStripe } from '@/lib/stripe/client';
-import { createCustomer } from '@/lib/stripe/subscriptions';
+import { getStripe } from '@/features/billing/client';
+import { createCustomer } from '@/features/billing/subscriptions';
 
 const createCheckoutBodySchema = z
   .object({

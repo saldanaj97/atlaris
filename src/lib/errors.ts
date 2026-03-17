@@ -85,3 +85,11 @@ export function getLoggableErrorDetails(error: unknown): {
 
   return { errorMessage: String(error) };
 }
+
+/**
+ * Exhaustive check helper for discriminated unions.
+ * Passing a value of type `never` ensures all cases are handled at compile time.
+ */
+export function assertNever(value: never): never {
+  throw new Error(`Unhandled value: ${String(value)}`);
+}

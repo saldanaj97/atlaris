@@ -1,4 +1,4 @@
-import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { ThemeProvider } from '@/app/ThemeProvider';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { authClient } from '@/lib/auth/client';

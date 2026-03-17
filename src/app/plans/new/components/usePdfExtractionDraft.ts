@@ -1,6 +1,6 @@
 'use client';
 
-import type { ExtractedSection } from '@/lib/pdf/types';
+import type { ExtractedSection } from '@/features/pdf/types';
 import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 

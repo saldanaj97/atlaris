@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
-import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/features/ai/ai-models';
+import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/constants';
 
 /**
  * Custom error type for environment variable validation failures.

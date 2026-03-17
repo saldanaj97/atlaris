@@ -1,5 +1,5 @@
-import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
-import { PDF_SECTION_CONTENT_LIMIT } from '@/lib/pdf/constants';
+import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
+import { PDF_SECTION_CONTENT_LIMIT } from '@/features/pdf/constants';
 import { describe, expect, it } from 'vitest';
 import { createPromptParams } from '../../fixtures/prompts';
 describe('AI Prompt Builder', () => {

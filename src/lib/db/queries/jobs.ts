@@ -21,7 +21,7 @@ import {
   type JobPayload,
   type JobResult,
   type JobType,
-} from '@/lib/jobs/types';
+} from '@/features/jobs/types';
 import {
   and,
   desc,

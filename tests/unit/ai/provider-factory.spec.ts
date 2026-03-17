@@ -1,9 +1,9 @@
 import {
   getGenerationProvider,
   getGenerationProviderWithModel,
-} from '@/lib/ai/providers/factory';
-import { MockGenerationProvider } from '@/lib/ai/providers/mock';
-import { RouterGenerationProvider } from '@/lib/ai/providers/router';
+} from '@/features/ai/providers/factory';
+import { MockGenerationProvider } from '@/features/ai/providers/mock';
+import { RouterGenerationProvider } from '@/features/ai/providers/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('AI Provider Factory', () => {

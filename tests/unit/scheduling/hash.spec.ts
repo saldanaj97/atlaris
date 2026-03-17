@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { computeInputsHash } from '@/lib/scheduling/hash';
-import type { ScheduleInputs } from '@/lib/scheduling/types';
+import { computeInputsHash } from '@/features/scheduling/hash';
+import type { ScheduleInputs } from '@/features/scheduling/types';
 
 describe('computeInputsHash', () => {
   it('should produce same hash for identical inputs', () => {

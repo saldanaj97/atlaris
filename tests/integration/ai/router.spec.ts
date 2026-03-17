@@ -1,4 +1,4 @@
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';

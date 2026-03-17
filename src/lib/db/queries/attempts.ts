@@ -1,9 +1,9 @@
-import { isRetryableClassification } from '@/lib/ai/failures';
+import { isRetryableClassification } from '@/features/ai/failures';
 import {
   ATTEMPT_CAP,
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
-} from '@/lib/ai/generation-policy';
+} from '@/features/ai/generation-policy';
 import {
   assertAttemptIdMatchesReservation,
   buildMetadata,
@@ -31,8 +31,8 @@ import { logger } from '@/lib/logging/logger';
 import {
   recordAttemptFailure,
   recordAttemptSuccess,
-} from '@/lib/metrics/attempts';
-import { hashSha256 } from '@/lib/utils/hash';
+} from '@/features/plans/metrics';
+import { hashSha256 } from '@/lib/crypto/hash';
 import { and, count, eq, sql } from 'drizzle-orm';
 
 /**

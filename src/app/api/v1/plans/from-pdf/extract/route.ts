@@ -15,20 +15,23 @@ import { logger } from '@/lib/logging/logger';
 import {
   extractTextFromPdf as defaultExtractTextFromPdf,
   getPdfPageCountFromBuffer as defaultGetPdfPageCountFromBuffer,
-} from '@/lib/pdf/extract';
+} from '@/features/pdf/extract';
 import {
   capExtractionResponsePayload,
   type CapExtractionResponse,
-} from '@/lib/pdf/structure';
-import type { ExtractedSection } from '@/lib/pdf/types';
-import { scanBufferForMalware as defaultScanBufferForMalware } from '@/lib/security/malware-scanner';
+} from '@/features/pdf/structure';
+import type { ExtractedSection } from '@/features/pdf/types';
+import { scanBufferForMalware as defaultScanBufferForMalware } from '@/features/pdf/security/malware-scanner';
 import {
   computePdfExtractionHash,
   issuePdfExtractionProof,
   toPdfExtractionProofPayload,
-} from '@/lib/security/pdf-extraction-proof';
-import { resolveUserTier, type SubscriptionTier } from '@/lib/stripe/usage';
-import { pdfExtractionFormDataSchema } from '@/lib/validation/pdf';
+} from '@/features/pdf/security/pdf-extraction-proof';
+import {
+  resolveUserTier,
+  type SubscriptionTier,
+} from '@/features/billing/usage';
+import { pdfExtractionFormDataSchema } from '@/features/pdf/validation/pdf';
 
 /** Dependencies for PDF extract POST handler; inject for testing. */
 export type PdfExtractRouteDeps = {

@@ -2,18 +2,18 @@ import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.ty
 import type {
   ProgressStatusRow,
   SummaryTaskRow,
-} from '@/lib/mappers/planQueries';
+} from '@/lib/db/queries/mappers';
 import {
   mapLearningPlanDetail,
   mapPlanSummaries,
-} from '@/lib/mappers/planQueries';
+} from '@/lib/db/queries/mappers';
 import type {
   GenerationAttempt,
   LearningPlan,
   Module,
   Task,
   TaskProgress,
-} from '@/lib/types/db.types';
+} from '@/types/db.types';
 import { describe, expect, it } from 'vitest';
 
 import { createId } from '../../fixtures/ids';

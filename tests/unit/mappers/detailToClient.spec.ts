@@ -5,13 +5,13 @@ import type {
 import {
   mapAttemptsToClient,
   mapDetailToClient,
-} from '@/lib/mappers/detailToClient';
+} from '@/features/plans/detail-mapper';
 import type {
   GenerationAttempt,
   GenerationStatus,
   LearningPlanDetail,
   TaskProgress,
-} from '@/lib/types/db.types';
+} from '@/types/db.types';
 import { describe, expect, it } from 'vitest';
 import {
   buildGenerationAttempt,

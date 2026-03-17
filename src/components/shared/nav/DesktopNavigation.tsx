@@ -1,4 +1,5 @@
 'use client';
+import type { NavItem } from '@/features/navigation';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -6,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { NavItem } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';

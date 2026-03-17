@@ -7,7 +7,7 @@ import { randomBytes } from 'node:crypto';
 
 import { nanoid } from 'nanoid';
 
-import type { PdfPreviewEditInput } from '@/lib/validation/pdf.types';
+import type { PdfPreviewEditInput } from '@/features/pdf/validation/pdf.types';
 
 type BaseLearningPlanInputOverrides = Partial<{
   topic: string;

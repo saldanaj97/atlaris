@@ -1,5 +1,5 @@
-import { formatMinutes } from '@/lib/plans/formatters';
-import type { PlanSummary } from '@/lib/types/db.types';
+import { formatMinutes } from '@/features/plans/formatters';
+import type { PlanSummary } from '@/types/db.types';
 
 import { CheckCircle2, Clock, FileText, Video, Zap } from 'lucide-react';
 import type { ActivityItem, ScheduledEvent } from '../types';

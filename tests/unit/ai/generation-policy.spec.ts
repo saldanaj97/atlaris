@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
+import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/constants';
 
 describe('generation policy ATTEMPT_CAP', () => {
   afterEach(() => {
@@ -13,7 +13,7 @@ describe('generation policy ATTEMPT_CAP', () => {
       attemptsEnv: { cap: 0.5 },
     }));
 
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
+    const { ATTEMPT_CAP } = await import('@/features/ai/generation-policy');
     expect(ATTEMPT_CAP).toBe(DEFAULT_ATTEMPT_CAP);
   });
 
@@ -22,7 +22,7 @@ describe('generation policy ATTEMPT_CAP', () => {
       attemptsEnv: { cap: 2.9 },
     }));
 
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
+    const { ATTEMPT_CAP } = await import('@/features/ai/generation-policy');
     expect(ATTEMPT_CAP).toBe(2);
   });
 
@@ -31,7 +31,7 @@ describe('generation policy ATTEMPT_CAP', () => {
       attemptsEnv: { cap: Number.NaN },
     }));
 
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
+    const { ATTEMPT_CAP } = await import('@/features/ai/generation-policy');
     expect(ATTEMPT_CAP).toBe(DEFAULT_ATTEMPT_CAP);
   });
 
@@ -40,7 +40,7 @@ describe('generation policy ATTEMPT_CAP', () => {
       attemptsEnv: { cap: -1 },
     }));
 
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
+    const { ATTEMPT_CAP } = await import('@/features/ai/generation-policy');
     expect(ATTEMPT_CAP).toBe(DEFAULT_ATTEMPT_CAP);
   });
 
@@ -49,7 +49,7 @@ describe('generation policy ATTEMPT_CAP', () => {
       attemptsEnv: { cap: 0 },
     }));
 
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
+    const { ATTEMPT_CAP } = await import('@/features/ai/generation-policy');
     expect(ATTEMPT_CAP).toBe(DEFAULT_ATTEMPT_CAP);
   });
 
@@ -58,7 +58,7 @@ describe('generation policy ATTEMPT_CAP', () => {
       attemptsEnv: { cap: 1 },
     }));
 
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
+    const { ATTEMPT_CAP } = await import('@/features/ai/generation-policy');
     expect(ATTEMPT_CAP).toBe(1);
   });
 
@@ -67,7 +67,7 @@ describe('generation policy ATTEMPT_CAP', () => {
       attemptsEnv: { cap: 3 },
     }));
 
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
+    const { ATTEMPT_CAP } = await import('@/features/ai/generation-policy');
     expect(ATTEMPT_CAP).toBe(3);
   });
 });

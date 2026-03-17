@@ -3,22 +3,25 @@ import {
   executeGenerationStream,
   safeMarkPlanFailed,
 } from '@/app/api/v1/plans/stream/helpers';
-import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
-import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
+import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { resolveModelForTier } from '@/features/ai/model-resolver';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import {
+  createEventStream,
+  streamHeaders,
+} from '@/features/ai/streaming/events';
 import type {
   GenerationAttemptContext,
   GenerationResult,
   RunGenerationOptions,
-} from '@/lib/ai/types/orchestrator.types';
+} from '@/features/ai/types/orchestrator.types';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import type { PlainHandler } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import {
   insertPlanWithRollback,
   preparePlanCreationPreflight,
-} from '@/lib/api/plans/preflight';
+} from '@/features/plans/api/preflight';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -26,8 +29,8 @@ import {
 import { appEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
+import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { ZodError } from 'zod';
 
 /** Classification used when an unstructured exception occurs in the generation catch block. */

@@ -1,14 +1,17 @@
 import {
   PLAN_GENERATION_LIMIT,
   PLAN_GENERATION_WINDOW_MINUTES,
-} from '@/lib/ai/generation-policy';
-import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
+} from '@/features/ai/generation-policy';
+import { resolveModelForTier } from '@/features/ai/model-resolver';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import {
+  createEventStream,
+  streamHeaders,
+} from '@/features/ai/streaming/events';
 import type {
   GenerationInput,
   IsoDateString,
-} from '@/lib/ai/types/provider.types';
+} from '@/features/ai/types/provider.types';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import {
   normalizeThrownError,
@@ -19,7 +22,7 @@ import { AppError, RateLimitError } from '@/lib/api/errors';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
-} from '@/lib/api/plans/route-context';
+} from '@/features/plans/api/route-context';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -30,9 +33,9 @@ import {
 } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import { parsePersistedPdfContext } from '@/lib/pdf/context';
-import { resolveUserTier } from '@/lib/stripe/usage';
-import type { FailureClassification } from '@/lib/types/client.types';
+import { parsePersistedPdfContext } from '@/features/pdf/context';
+import { resolveUserTier } from '@/features/billing/usage';
+import type { FailureClassification } from '@/types/client.types';
 import {
   buildPlanStartEvent,
   executeGenerationStream,

@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { logger } from '@/lib/logging/logger';
-import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import { mapDetailToClient } from '@/features/plans/detail-mapper';
 import { redirect } from 'next/navigation';
 
 import { getCachedPlanForPage } from '@/app/plans/[id]/data';

@@ -14,7 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import type { GenerationAttemptStatus } from '@/lib/db/queries/types/plans.types';
-import type { PdfContext } from '@/lib/pdf/context.types';
+import type { PdfContext } from '@/features/pdf/context.types';
 
 import {
   generationStatus,

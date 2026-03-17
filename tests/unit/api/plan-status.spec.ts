@@ -1,4 +1,4 @@
-import { derivePlanStatus } from '@/lib/plans/status';
+import { derivePlanStatus } from '@/features/plans/status';
 import { describe, expect, it } from 'vitest';
 
 describe('derivePlanStatus', () => {

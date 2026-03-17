@@ -7,8 +7,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import type { NavItem } from '@/features/navigation';
 import { trackEvent } from '@/lib/analytics';
-import type { NavItem } from '@/lib/navigation';
 import { Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';

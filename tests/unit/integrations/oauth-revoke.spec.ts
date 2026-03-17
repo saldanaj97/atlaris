@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { revokeGoogleTokens } from '@/lib/integrations/oauth';
+import { revokeGoogleTokens } from '@/features/integrations/oauth';
 
 describe('revokeGoogleTokens', () => {
   afterEach(() => {

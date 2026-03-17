@@ -4,8 +4,8 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { getDb } from '@/lib/db/runtime';
-import { getSubscriptionTier } from '@/lib/stripe/subscriptions';
-import { getUsageSummary } from '@/lib/stripe/usage';
+import { getSubscriptionTier } from '@/features/billing/subscriptions';
+import { getUsageSummary } from '@/features/billing/usage';
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
 

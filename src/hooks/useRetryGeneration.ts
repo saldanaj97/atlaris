@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
-import { StreamingEventSchema } from '@/lib/ai/streaming/schema';
-import type { StreamingEvent } from '@/lib/ai/types/streaming.types';
+import { StreamingEventSchema } from '@/features/ai/streaming/schema';
+import type { StreamingEvent } from '@/features/ai/types/streaming.types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 

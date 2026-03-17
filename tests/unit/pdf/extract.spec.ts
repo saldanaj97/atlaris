@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   extractTextFromPdf,
   getPdfPageCountFromBuffer,
-} from '@/lib/pdf/extract';
+} from '@/features/pdf/extract';
 import {
   capExtractionResponsePayload,
   detectStructure,
   type CapExtractionResponse,
-} from '@/lib/pdf/structure';
+} from '@/features/pdf/structure';
 
 const buildPdfBuffer = (text: string) => {
   const header = '%PDF-1.4\n';

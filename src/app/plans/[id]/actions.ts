@@ -26,14 +26,14 @@ import {
   getPlanSchedule,
   SCHEDULE_FETCH_ERROR_CODE,
   ScheduleFetchError,
-} from '@/lib/api/schedule';
+} from '@/features/scheduling/schedule-api';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { PROGRESS_STATUSES } from '@/lib/types/db';
-import type { ProgressStatus } from '@/lib/types/db.types';
+import { PROGRESS_STATUSES } from '@/types/db';
+import type { ProgressStatus } from '@/types/db.types';
 import {
   planError,
   planSuccess,

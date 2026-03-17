@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
+import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
 import {
   createBaseLearningPlanInput,
   createExtractedContent,

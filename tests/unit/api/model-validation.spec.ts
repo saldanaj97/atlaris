@@ -1,6 +1,6 @@
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
-import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/features/ai/ai-models';
+import { resolveModelForTier } from '@/features/ai/model-resolver';
+import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 import { describe, expect, it, vi } from 'vitest';
 
 const stubProviderGetter = vi.fn((_modelId: string) => ({

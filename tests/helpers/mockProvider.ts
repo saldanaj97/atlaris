@@ -2,15 +2,15 @@ import {
   ProviderError,
   ProviderRateLimitError,
   ProviderTimeoutError,
-} from '../../src/lib/ai/providers/errors';
-import { asyncIterableToReadableStream } from '../../src/lib/ai/streaming/utils';
+} from '@/features/ai/providers/errors';
+import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
   ProviderMetadata,
-} from '../../src/lib/ai/types/provider.types';
+} from '@/features/ai/types/provider.types';
 
 type MockProviderScenario =
   | 'success'

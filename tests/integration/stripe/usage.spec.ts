@@ -9,7 +9,7 @@ import {
   checkExportLimit,
   incrementUsage,
   getUsageSummary,
-} from '@/lib/stripe/usage';
+} from '@/features/billing/usage';
 
 describe('Usage Tracking', () => {
   beforeEach(async () => {

@@ -7,8 +7,8 @@ import {
   getModelById,
   getModelsForTier,
   isValidModelId,
-} from '@/lib/ai/ai-models';
-import type { SubscriptionTier } from '@/lib/ai/types/model.types';
+} from '@/features/ai/ai-models';
+import type { SubscriptionTier } from '@/features/ai/types/model.types';
 
 describe('AI Models Configuration', () => {
   describe('AVAILABLE_MODELS', () => {

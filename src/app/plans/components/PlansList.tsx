@@ -10,7 +10,7 @@ import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { FilterStatus, PlanStatus } from '@/app/plans/types';
-import type { PlanSummary } from '@/lib/types/db.types';
+import type { PlanSummary } from '@/types/db.types';
 
 interface UsageData {
   tier: string;

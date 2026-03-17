@@ -6,7 +6,7 @@ import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-import { getCustomerPortalUrl } from '@/lib/stripe/subscriptions';
+import { getCustomerPortalUrl } from '@/features/billing/subscriptions';
 
 const DEFAULT_BILLING_SETTINGS_PATH = '/settings/billing';
 

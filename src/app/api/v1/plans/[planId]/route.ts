@@ -1,10 +1,10 @@
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ConflictError, NotFoundError } from '@/lib/api/errors';
-import { requirePlanIdFromRequest } from '@/lib/api/plans/route-context';
+import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { json } from '@/lib/api/response';
 import { deletePlan, getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { logger } from '@/lib/logging/logger';
-import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import { mapDetailToClient } from '@/features/plans/detail-mapper';
 
 /**
  * GET /api/v1/plans/:planId

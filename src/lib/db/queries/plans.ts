@@ -18,12 +18,12 @@ import {
 import {
   mapLearningPlanDetail,
   mapPlanSummaries,
-} from '@/lib/mappers/planQueries';
+} from '@/lib/db/queries/mappers';
 import type {
   GenerationAttempt,
   LearningPlanDetail,
   PlanSummary,
-} from '@/lib/types/db.types';
+} from '@/types/db.types';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */

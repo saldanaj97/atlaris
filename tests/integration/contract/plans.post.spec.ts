@@ -6,7 +6,7 @@ import { db } from '@/lib/db/service-role';
 import {
   computePdfExtractionHash,
   issuePdfExtractionProof,
-} from '@/lib/security/pdf-extraction-proof';
+} from '@/features/pdf/security/pdf-extraction-proof';
 import { createPdfProof } from '../../fixtures/validation';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';

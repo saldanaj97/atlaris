@@ -18,7 +18,7 @@ import type {
   PlanAccessResult,
   ScheduleAccessResult,
 } from '@/app/plans/[id]/types';
-import type { ScheduleJson } from '@/lib/scheduling/types';
+import type { ScheduleJson } from '@/features/scheduling/types';
 import { buildPlanDetail } from '../../fixtures/plan-detail';
 
 // Builder function for creating mock schedule data

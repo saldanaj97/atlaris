@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { formatMinutes } from '@/lib/plans/formatters';
+import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
 import {
   CheckCircle2,
@@ -22,8 +22,8 @@ import {
 import { useMemo } from 'react';
 import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
-import type { ClientModule } from '@/lib/types/client.types';
-import type { ProgressStatus, ResourceType } from '@/lib/types/db.types';
+import type { ClientModule } from '@/types/client.types';
+import type { ProgressStatus, ResourceType } from '@/types/db.types';
 import type { Dispatch, ElementType, SetStateAction } from 'react';
 
 const EMPTY_TASKS: ClientModule['tasks'] = [];

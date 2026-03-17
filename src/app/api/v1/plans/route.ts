@@ -9,7 +9,7 @@ import { ValidationError } from '@/lib/api/errors';
 import {
   insertPlanWithRollback,
   preparePlanCreationPreflight,
-} from '@/lib/api/plans/preflight';
+} from '@/features/plans/api/preflight';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -17,8 +17,8 @@ import {
 import { json } from '@/lib/api/response';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
-import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
 
 export const GET: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ user }) => {

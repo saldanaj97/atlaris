@@ -7,7 +7,7 @@ import {
 } from '@/lib/db/queries/schedules';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
 import { db } from '@/lib/db/service-role';
-import type { ScheduleJson } from '@/lib/scheduling/types';
+import type { ScheduleJson } from '@/features/scheduling/types';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
 import { resetDbForIntegrationTestFile } from '@tests/helpers/db';

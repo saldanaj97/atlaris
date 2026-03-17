@@ -6,8 +6,8 @@
  * and not-found cases.
  */
 
-import type { ScheduleJson } from '@/lib/scheduling/types';
-import type { LearningPlanDetail } from '@/lib/types/db.types';
+import type { ScheduleJson } from '@/features/scheduling/types';
+import type { LearningPlanDetail } from '@/types/db.types';
 
 /**
  * Error codes for plan access failures.

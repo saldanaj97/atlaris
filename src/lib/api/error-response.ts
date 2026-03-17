@@ -1,4 +1,4 @@
-import type { FailureClassification } from '@/lib/types/client.types';
+import type { FailureClassification } from '@/types/client.types';
 
 export type ApiErrorResponse = {
   error: string;

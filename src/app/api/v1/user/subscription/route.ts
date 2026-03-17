@@ -8,8 +8,8 @@ import {
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import { getStripe } from '@/lib/stripe/client';
-import { getUsageSummary } from '@/lib/stripe/usage';
+import { getStripe } from '@/features/billing/client';
+import { getUsageSummary } from '@/features/billing/usage';
 
 const CANCEL_AT_PERIOD_END_SAFE_DEFAULT = false;
 

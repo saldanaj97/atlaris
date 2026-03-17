@@ -5,11 +5,11 @@
  * to create results, check success status, and safely extract error information.
  */
 
-import { formatSkillLevel } from '@/lib/plans/formatters';
+import { formatSkillLevel } from '@/features/plans/formatters';
 
-import type { ScheduleJson } from '@/lib/scheduling/types';
-import type { ClientModule, ClientPlanDetail } from '@/lib/types/client.types';
-import type { LearningPlanDetail, ProgressStatus } from '@/lib/types/db.types';
+import type { ScheduleJson } from '@/features/scheduling/types';
+import type { ClientModule, ClientPlanDetail } from '@/types/client.types';
+import type { LearningPlanDetail, ProgressStatus } from '@/types/db.types';
 import type {
   PlanAccessError,
   PlanAccessErrorCode,

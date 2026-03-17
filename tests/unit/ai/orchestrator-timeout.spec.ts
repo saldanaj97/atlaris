@@ -4,7 +4,7 @@ import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
-} from '@/lib/ai/types/provider.types';
+} from '@/features/ai/types/provider.types';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -30,7 +30,7 @@ type AttemptOperationsOverrides = {
   finalizeAttemptFailure: typeof finalizeAttemptFailure;
 };
 
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 
 const ORIGINAL_TIMEOUT_ENV = {
   baseMs: process.env.AI_TIMEOUT_BASE_MS,

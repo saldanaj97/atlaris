@@ -3,14 +3,14 @@ import {
   formatMinutes,
   formatSkillLevel,
   formatWeeklyHours,
-} from '@/lib/plans/formatters';
+} from '@/features/plans/formatters';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
 import type { PlanDetailsCardStats } from '@/app/plans/[id]/types';
-import type { ClientPlanDetail } from '@/lib/types/client.types';
+import type { ClientPlanDetail } from '@/types/client.types';
 
 interface PlanDetailsCardProps {
   plan: ClientPlanDetail;

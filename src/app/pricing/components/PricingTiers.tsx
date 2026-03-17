@@ -1,4 +1,4 @@
-import { TIER_LIMITS } from '@/lib/stripe/tier-limits';
+import { TIER_LIMITS } from '@/features/billing/tier-limits';
 
 export interface TierConfig {
   name: string;

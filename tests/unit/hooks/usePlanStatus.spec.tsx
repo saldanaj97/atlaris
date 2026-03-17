@@ -1,6 +1,6 @@
 import { usePlanStatus } from '@/hooks/usePlanStatus';
 import { clientLogger } from '@/lib/logging/client';
-import { PLAN_STATUSES } from '@/lib/types/client';
+import { PLAN_STATUSES } from '@/types/client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';

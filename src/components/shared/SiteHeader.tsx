@@ -3,8 +3,8 @@ import { getSessionSafe } from '@/lib/auth/server';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
-} from '@/lib/navigation';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+} from '@/features/navigation';
+import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import { logger } from '@/lib/logging/logger';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
