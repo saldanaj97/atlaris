@@ -1,12 +1,12 @@
 import type { InferSelectModel } from 'drizzle-orm';
 
+import type { EffortNormalizationFlags } from '@/shared/constants/effort';
 import type { ParsedModule } from '@/shared/types/ai-parser.types';
 import type {
   GenerationInput,
   ProviderMetadata,
 } from '@/shared/types/ai-provider.types';
 import type { FailureClassification } from '@/shared/types/client.types';
-import type { EffortNormalizationFlags } from '@/shared/constants/effort';
 
 type DbSchemaModule = typeof import('@/lib/db/schema');
 

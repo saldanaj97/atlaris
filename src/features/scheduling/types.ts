@@ -8,8 +8,8 @@ export type {
 } from '@/shared/types/scheduling.types';
 
 export {
-  sessionAssignmentSchema,
   daySchema,
-  weekSchema,
   scheduleJsonSchema,
+  sessionAssignmentSchema,
+  weekSchema,
 } from '@/shared/schemas/scheduling.schemas';

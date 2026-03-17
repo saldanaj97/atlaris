@@ -1,6 +1,7 @@
-import { PLAN_GENERATION_WINDOW_MS } from '@/shared/constants/generation';
 import { getCorrelationId } from '@/lib/api/context';
 import { appEnv } from '@/lib/config/env';
+import { hashSha256 } from '@/lib/crypto/hash';
+import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
 import type {
   AttemptError,
   AttemptMetadata,
@@ -29,8 +30,7 @@ import {
   normalizeModuleMinutes,
   normalizeTaskMinutes,
 } from '@/shared/constants/effort';
-import { hashSha256 } from '@/lib/crypto/hash';
-import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
+import { PLAN_GENERATION_WINDOW_MS } from '@/shared/constants/generation';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,

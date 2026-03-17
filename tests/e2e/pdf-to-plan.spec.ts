@@ -1,19 +1,19 @@
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
-import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
-import { extractTextFromPdf } from '@/features/pdf/extract';
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import {
   checkPdfPlanQuota,
   incrementPdfPlanUsage,
   resolveUserTier,
 } from '@/features/billing/usage';
+import { extractTextFromPdf } from '@/features/pdf/extract';
+import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
+import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import {
-  ensureUser,
   ensureStripeWebhookEvents,
+  ensureUser,
   resetDbForIntegrationTestFile,
 } from '../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../helpers/testIds';

@@ -1,9 +1,9 @@
-import { isRetryableClassification } from '@/shared/types/failure-classification';
-import { ATTEMPT_CAP } from '@/lib/config/env';
 import {
-  getPlanGenerationWindowStart,
-  PLAN_GENERATION_LIMIT,
-} from '@/shared/constants/generation';
+  recordAttemptFailure,
+  recordAttemptSuccess,
+} from '@/features/plans/metrics';
+import { ATTEMPT_CAP } from '@/lib/config/env';
+import { hashSha256 } from '@/lib/crypto/hash';
 import {
   assertAttemptIdMatchesReservation,
   buildMetadata,
@@ -29,10 +29,10 @@ import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { db as serviceDb } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import {
-  recordAttemptFailure,
-  recordAttemptSuccess,
-} from '@/features/plans/metrics';
-import { hashSha256 } from '@/lib/crypto/hash';
+  getPlanGenerationWindowStart,
+  PLAN_GENERATION_LIMIT,
+} from '@/shared/constants/generation';
+import { isRetryableClassification } from '@/shared/types/failure-classification';
 import { and, count, eq, sql } from 'drizzle-orm';
 
 /**
