@@ -8,6 +8,7 @@
 
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import type { PdfContext } from '@/features/pdf/context.types';
 import type { GenerationInput } from '@/features/ai/types/provider.types';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
@@ -29,7 +30,11 @@ export class GenerationAdapter implements GenerationPort {
       startDate?: string | null;
       deadlineDate?: string | null;
       notes?: string | null;
+      pdfContext?: unknown;
+      pdfExtractionHash?: string;
+      pdfProofVersion?: 1;
     };
+    modelOverride?: string | null;
     signal?: AbortSignal;
   }): Promise<
     | {
@@ -46,10 +51,11 @@ export class GenerationAdapter implements GenerationPort {
         durationMs: number;
       }
   > {
-    // Resolve model/provider from the user's tier
-    const { provider } = resolveModelForTier(params.tier);
+    const { provider } = resolveModelForTier(
+      params.tier,
+      params.modelOverride ?? undefined
+    );
 
-    // Map port input to orchestrator's GenerationInput
     const generationInput: GenerationInput = {
       topic: params.input.topic,
       skillLevel: params.input.skillLevel,
@@ -58,6 +64,9 @@ export class GenerationAdapter implements GenerationPort {
       startDate: params.input.startDate,
       deadlineDate: params.input.deadlineDate,
       notes: params.input.notes,
+      pdfContext: params.input.pdfContext as PdfContext | null | undefined,
+      pdfExtractionHash: params.input.pdfExtractionHash,
+      pdfProofVersion: params.input.pdfProofVersion,
     };
 
     const result = await runGenerationAttempt(

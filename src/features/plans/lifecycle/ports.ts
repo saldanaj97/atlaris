@@ -108,7 +108,11 @@ export interface GenerationPort {
       startDate?: string | null;
       deadlineDate?: string | null;
       notes?: string | null;
+      pdfContext?: unknown;
+      pdfExtractionHash?: string;
+      pdfProofVersion?: 1;
     };
+    modelOverride?: string | null;
     signal?: AbortSignal;
   }): Promise<
     | {

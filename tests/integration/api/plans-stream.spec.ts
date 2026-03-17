@@ -1,5 +1,4 @@
 import { eq } from 'drizzle-orm';
-import { randomUUID } from 'node:crypto';
 import {
   afterAll,
   beforeAll,
@@ -11,12 +10,10 @@ import {
 } from 'vitest';
 
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import type {
-  GenerationAttemptContext,
-  GenerationFailureResult,
-  RunGenerationOptions,
-} from '@/features/ai/types/orchestrator.types';
+  GenerationAttemptResult,
+  ProcessGenerationInput,
+} from '@/features/plans/lifecycle';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import {
@@ -132,9 +129,9 @@ describe('POST /api/v1/plans/stream', () => {
     });
     setTestUser(authUserId);
 
-    const postWithFailingOrchestrator = createStreamHandler({
-      orchestrator: {
-        runGenerationAttempt: async () => {
+    const postWithFailingGeneration = createStreamHandler({
+      overrides: {
+        processGenerationAttempt: async () => {
           throw new Error('boom');
         },
       },
@@ -158,7 +155,7 @@ describe('POST /api/v1/plans/stream', () => {
       body: JSON.stringify(payload),
     });
 
-    const response = await postWithFailingOrchestrator(request);
+    const response = await postWithFailingGeneration(request);
     expect(response.status).toBe(200);
 
     const events: StreamingEvent[] = await readStreamingResponse(response);
@@ -190,38 +187,17 @@ describe('POST /api/v1/plans/stream', () => {
       subscriptionTier: 'pro',
     });
     setTestUser(authUserId);
-    const mockedAttemptId = randomUUID();
-    const mockedPlanId = randomUUID();
-
-    const mockedFailure: GenerationFailureResult = {
-      status: 'failure',
+    const mockedFailure: GenerationAttemptResult = {
+      status: 'retryable_failure',
       classification: 'provider_error',
       error: new Error(
         'OpenRouter upstream failure: api_key=sk-live-secret-value'
       ),
-      durationMs: 250,
-      extendedTimeout: false,
-      timedOut: false,
-      attempt: {
-        id: mockedAttemptId,
-        planId: mockedPlanId,
-        status: 'failure',
-        classification: 'provider_error',
-        durationMs: 250,
-        modulesCount: 0,
-        tasksCount: 0,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: false,
-        promptHash: null,
-        metadata: null,
-        createdAt: new Date(),
-      },
     };
 
     const postWithMockedFailure = createStreamHandler({
-      orchestrator: {
-        runGenerationAttempt: async () => mockedFailure,
+      overrides: {
+        processGenerationAttempt: async () => mockedFailure,
       },
     });
 
@@ -650,18 +626,29 @@ describe('POST /api/v1/plans/stream', () => {
       extractionHash,
     });
 
-    const capturedCalls: Array<{
-      context: GenerationAttemptContext;
-      options: RunGenerationOptions;
-    }> = [];
-    const postWithCapturingOrchestrator = createStreamHandler({
-      orchestrator: {
-        runGenerationAttempt: async (
-          context: GenerationAttemptContext,
-          options: RunGenerationOptions
-        ) => {
-          capturedCalls.push({ context, options });
-          return runGenerationAttempt(context, options);
+    const capturedInputs: ProcessGenerationInput[] = [];
+    const postWithCapturing = createStreamHandler({
+      overrides: {
+        processGenerationAttempt: async (input: ProcessGenerationInput) => {
+          capturedInputs.push(input);
+          // Delegate to the default lifecycle service behavior.
+          // We import createPlanLifecycleService + getDb inline for the real path.
+          const { createPlanLifecycleService: createSvc } = await import(
+            '@/features/plans/lifecycle'
+          );
+          const { getDb: getDbFn } = await import('@/lib/db/runtime');
+          const svc = createSvc({
+            dbClient: getDbFn(),
+            attemptsDbClient: getDbFn(),
+            jobQueue: {
+              async enqueueJob() {
+                return '';
+              },
+              async completeJob() {},
+              async failJob() {},
+            },
+          });
+          return svc.processGenerationAttempt(input);
         },
       },
     });
@@ -687,7 +674,7 @@ describe('POST /api/v1/plans/stream', () => {
       body: JSON.stringify(payload),
     });
 
-    const response = await postWithCapturingOrchestrator(request);
+    const response = await postWithCapturing(request);
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
@@ -695,25 +682,25 @@ describe('POST /api/v1/plans/stream', () => {
     expect(completeEvent?.data?.planId).toBeTruthy();
     const planId = completeEvent?.data?.planId as string;
 
-    expect(capturedCalls).toHaveLength(1);
-    expect(capturedCalls[0]?.context).toMatchObject({
-      input: expect.objectContaining({
-        pdfContext: expect.objectContaining({
-          mainTopic: 'TypeScript from PDF context',
-          sections: expect.arrayContaining([
-            expect.objectContaining({
-              title: 'Core concepts',
-              content: expect.any(String),
-            }),
-          ]),
-        }),
-        pdfExtractionHash: extractionHash,
-        pdfProofVersion: DEFAULT_PDF_PROOF_VERSION,
+    expect(capturedInputs).toHaveLength(1);
+    const capturedInput = capturedInputs[0]!;
+    expect(capturedInput.input).toMatchObject({
+      pdfContext: expect.objectContaining({
+        mainTopic: 'TypeScript from PDF context',
+        sections: expect.arrayContaining([
+          expect.objectContaining({
+            title: 'Core concepts',
+            content: expect.any(String),
+          }),
+        ]),
       }),
+      pdfExtractionHash: extractionHash,
+      pdfProofVersion: DEFAULT_PDF_PROOF_VERSION,
     });
 
-    const capturedInput = capturedCalls[0]?.context?.input;
-    const capturedSection = capturedInput?.pdfContext?.sections?.[0];
+    const capturedSection = (
+      capturedInput.input.pdfContext as { sections: Array<{ content: string }> }
+    )?.sections?.[0];
     const extractedSection = extractedContent.sections?.[0];
     expect(capturedSection).toBeDefined();
     expect(extractedSection).toBeDefined();

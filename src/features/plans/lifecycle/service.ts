@@ -100,11 +100,13 @@ export class PlanLifecycleService {
       };
     }
 
+    const normalizedTopic = input.topic.trim();
+
     // 6. Atomic insert (checks plan limit + inserts within a single transaction)
     const insertResult = await this.ports.planPersistence.atomicInsertPlan(
       input.userId,
       {
-        topic: input.topic.trim(),
+        topic: normalizedTopic,
         skillLevel: input.skillLevel,
         weeklyHours: input.weeklyHours,
         learningStyle: input.learningStyle,
@@ -126,6 +128,11 @@ export class PlanLifecycleService {
       status: 'success',
       planId: insertResult.id,
       tier,
+      normalizedInput: {
+        topic: normalizedTopic,
+        startDate: duration.startDate,
+        deadlineDate: duration.deadlineDate,
+      },
     };
   }
 
@@ -232,6 +239,14 @@ export class PlanLifecycleService {
         status: 'success',
         planId: insertResult.id,
         tier,
+        normalizedInput: {
+          topic: prepared.topic,
+          startDate: duration.startDate,
+          deadlineDate: duration.deadlineDate,
+          pdfContext: prepared.extractedContext,
+          pdfExtractionHash: prepared.pdfProvenance?.extractionHash,
+          pdfProofVersion: prepared.pdfProvenance?.proofVersion,
+        },
       };
     } finally {
       if (!succeeded) {
@@ -261,6 +276,7 @@ export class PlanLifecycleService {
       userId: input.userId,
       tier: input.tier,
       input: input.input,
+      modelOverride: input.modelOverride,
       signal: input.signal,
     });
 

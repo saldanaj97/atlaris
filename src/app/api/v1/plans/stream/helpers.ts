@@ -8,6 +8,10 @@ import {
 import type { GenerationResult } from '@/features/ai/types/orchestrator.types';
 import type { ParsedModule } from '@/features/ai/types/parser.types';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
+import type {
+  GenerationAttemptResult,
+  GenerationSuccess,
+} from '@/features/plans/lifecycle/types';
 import { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { getDb } from '@/lib/db/runtime';
@@ -620,6 +624,122 @@ export async function executeGenerationStream({
       classification: fallbackClassification,
       planId,
       userId,
+    });
+  }
+}
+
+// ─── Lifecycle-based generation stream ───────────────────────────
+
+export interface LifecycleGenerationStreamParams {
+  reqSignal: AbortSignal;
+  streamSignal: AbortSignal;
+  planId: string;
+  userId: string;
+  emit: EmitFn;
+  processGeneration: () => Promise<GenerationAttemptResult>;
+  onUnhandledError: (error: unknown, startedAt: number) => Promise<void>;
+  fallbackClassification?: FailureClassification | 'unknown';
+  getCorrelationId?: typeof getCorrelationId;
+}
+
+/**
+ * Execute a generation stream backed by PlanLifecycleService.
+ *
+ * The lifecycle service handles plan marking and usage recording.
+ * This function only handles SSE emission based on the result.
+ */
+export async function executeLifecycleGenerationStream({
+  reqSignal,
+  streamSignal,
+  planId,
+  userId,
+  emit,
+  processGeneration,
+  onUnhandledError,
+  fallbackClassification = 'provider_error',
+  getCorrelationId: getCorrelationIdOverride,
+}: LifecycleGenerationStreamParams): Promise<void> {
+  const startedAt = Date.now();
+
+  try {
+    const result = await processGeneration();
+
+    switch (result.status) {
+      case 'generation_success': {
+        const modules = result.data.modules as ParsedModule[];
+        const modulesCount = modules.length;
+        const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
+
+        emitModuleSummaries(modules, planId, emit);
+
+        emit({
+          type: 'complete',
+          data: {
+            planId,
+            modulesCount,
+            tasksCount,
+            durationMs: Math.max(0, Date.now() - startedAt),
+          },
+        });
+        return;
+      }
+
+      case 'retryable_failure':
+      case 'permanent_failure': {
+        emitSanitizedFailureEvent({
+          emit,
+          error: result.error,
+          classification: result.classification,
+          planId,
+          userId,
+          getCorrelationId: getCorrelationIdOverride,
+        });
+        return;
+      }
+
+      case 'already_finalized': {
+        logger.info(
+          { planId, userId },
+          'Generation attempt skipped: plan already finalized'
+        );
+        return;
+      }
+    }
+  } catch (error: unknown) {
+    const clientDisconnected = reqSignal.aborted || streamSignal.aborted;
+
+    const clientError = toFallbackErrorLike(error);
+
+    try {
+      await onUnhandledError(error, startedAt);
+    } catch (cleanupError) {
+      logger.error(
+        {
+          cleanupError,
+          planId,
+          userId,
+          sourceError: error,
+          clientDisconnected,
+        },
+        'Failed cleanup after lifecycle generation stream error'
+      );
+    }
+
+    if (clientDisconnected) {
+      logger.info(
+        { planId, userId },
+        'Client disconnected during generation; result saved to DB'
+      );
+      return;
+    }
+
+    emitSanitizedFailureEvent({
+      emit,
+      error: clientError,
+      classification: fallbackClassification,
+      planId,
+      userId,
+      getCorrelationId: getCorrelationIdOverride,
     });
   }
 }

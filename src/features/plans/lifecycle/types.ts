@@ -90,6 +90,15 @@ export type CreatePlanSuccess = {
   readonly status: 'success';
   readonly planId: string;
   readonly tier: SubscriptionTier;
+  /** Normalized values produced during creation — used by the route for generation input. */
+  readonly normalizedInput: {
+    readonly topic: string;
+    readonly startDate: string | null;
+    readonly deadlineDate: string | null;
+    readonly pdfContext?: unknown;
+    readonly pdfExtractionHash?: string;
+    readonly pdfProofVersion?: 1;
+  };
 };
 
 /** A retryable failure occurred (e.g. provider error, timeout). */
@@ -138,7 +147,11 @@ export type ProcessGenerationInput = {
     readonly startDate?: string | null;
     readonly deadlineDate?: string | null;
     readonly notes?: string | null;
+    readonly pdfContext?: unknown;
+    readonly pdfExtractionHash?: string;
+    readonly pdfProofVersion?: 1;
   };
+  readonly modelOverride?: string | null;
   readonly signal?: AbortSignal;
 };
 
