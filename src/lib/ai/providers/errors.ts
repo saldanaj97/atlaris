@@ -1,21 +1,8 @@
 import type { ProviderErrorKind } from '@/lib/ai/types/provider.types';
 
-// Backward-compatibility shim.
-// New imports should use '@/lib/ai/types/provider.types' for types.
-export type {
-  AiPlanGenerationProvider,
-  GenerationInput,
-  GenerationOptions,
-  IsoDateString,
-  ProviderErrorKind,
-  ProviderGenerateResult,
-  ProviderMetadata,
-  ProviderUsage,
-} from '@/lib/ai/types/provider.types';
-
-export interface ProviderErrorOptions extends ErrorOptions {
+type ProviderErrorOptions = ErrorOptions & {
   statusCode?: number;
-}
+};
 
 export class ProviderError extends Error {
   public readonly statusCode?: number;
@@ -28,16 +15,6 @@ export class ProviderError extends Error {
     super(message, options);
     this.name = 'ProviderError';
     this.statusCode = options?.statusCode;
-  }
-}
-
-export class ProviderNotImplementedError extends ProviderError {
-  constructor(
-    message = 'AI provider not implemented',
-    options?: ProviderErrorOptions
-  ) {
-    super('unknown', message, options);
-    this.name = 'ProviderNotImplementedError';
   }
 }
 

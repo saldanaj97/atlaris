@@ -4,7 +4,6 @@
  * Every route that kicks off plan generation (stream, retry, etc.) MUST use
  * `resolveModelForTier` so tier-gating logic lives in exactly one place.
  *
- * @module lib/ai/model-resolver
  */
 
 import {
@@ -12,30 +11,31 @@ import {
   getModelsForTier,
   isValidModelId,
 } from '@/lib/ai/ai-models';
-import * as providerFactory from '@/lib/ai/provider-factory';
+import { getGenerationProviderWithModel } from '@/lib/ai/providers/factory';
+import { AppError } from '@/lib/api/errors';
+import { logger } from '@/lib/logging/logger';
+
 import type { SubscriptionTier } from '@/lib/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
-import { AppError } from '@/lib/api/errors';
-import { logger, type Logger } from '@/lib/logging/logger';
 
-export interface ModelResolution {
-  /** The model ID that was resolved (always valid and tier-allowed) */
+export type ModelResolution = {
   modelId: string;
-  /** The provider instance configured for this model */
   provider: AiPlanGenerationProvider;
-  /** Whether the requested model was denied and fell back to default */
   fallback: boolean;
-  /** If fallback occurred, the reason */
   fallbackReason?: 'invalid_model' | 'tier_denied' | 'not_specified';
-}
+};
 
-export type ModelValidationResult =
+type ModelValidationResult =
   | { valid: true }
   | { valid: false; reason: 'invalid_model' | 'tier_denied' };
 
-export type ModelResolverLogger = Pick<Logger, 'warn' | 'info' | 'error'>;
-export type ProviderGetter =
-  typeof providerFactory.getGenerationProviderWithModel;
+type ProviderGetter = typeof getGenerationProviderWithModel;
+
+type ModelResolverLogger = {
+  error(obj: object, msg?: string): void;
+  warn(obj: object, msg?: string): void;
+  info(obj: object, msg?: string): void;
+};
 
 /**
  * Validates whether a requested model is both known and allowed for a tier.
@@ -74,9 +74,13 @@ function getProviderSafe(
     return providerGetter(modelIdToUse);
   } catch (err) {
     const factoryName = providerGetter.name || 'unknownFactory';
+    const errPayload =
+      err instanceof Error
+        ? { name: err.name, message: err.message, stack: err.stack }
+        : { message: String(err) };
     requestLogger.error(
       {
-        err,
+        err: errPayload,
         requestedModel: requestedModel ?? 'default',
         factory: factoryName,
       },
@@ -98,14 +102,14 @@ function getProviderSafe(
  * @param requestedModel - Optional model ID from request. Pass undefined when param absent
  *   (not_specified fallback). Null/empty string means invalid_model fallback.
  * @param providerGetter - Optional provider getter for dependency injection in tests.
- *   Defaults to providerFactory.getGenerationProviderWithModel.
+ *   Defaults to getGenerationProviderWithModel.
  * @param requestLogger - Optional logger injection for tests/callers that need log isolation.
  * @returns ModelResolution with the resolved provider and metadata
  */
 export function resolveModelForTier(
   userTier: SubscriptionTier,
   requestedModel?: string | null,
-  providerGetter: ProviderGetter = providerFactory.getGenerationProviderWithModel,
+  providerGetter: ProviderGetter = getGenerationProviderWithModel,
   requestLogger: ModelResolverLogger = logger
 ): ModelResolution {
   const defaultModelForTier = getDefaultModelForTier(userTier);

@@ -1,14 +1,12 @@
-import type { FailureClassification } from '@/lib/types/client';
+import type { FailureClassification } from '@/lib/types/client.types';
 
-export type FailurePresentationClassification =
-  | FailureClassification
-  | 'unknown';
+type FailurePresentationClassification = FailureClassification | 'unknown';
 
-export interface FailurePresentation {
+type FailurePresentation = {
   code: string;
   message: string;
   retryable: boolean;
-}
+};
 
 const DEFAULT_FAILURE_PRESENTATION: FailurePresentation = {
   code: 'GENERATION_FAILED',

@@ -1,12 +1,26 @@
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 import { RouterGenerationProvider } from '@/lib/ai/providers/router';
-import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
+
+import type { AiPlanGenerationProvider } from '@/lib/ai/types/provider.types';
 
 function parseMockSeed(): number | undefined {
   return typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
     ? aiEnv.mockSeed
     : undefined;
+}
+
+/** Returns true when mock providers should be used (test/dev default, explicit opt-in). */
+function shouldUseMock(): boolean {
+  const provider = aiEnv.provider;
+  if (provider === 'mock') return true;
+  // Explicit non-mock provider always overrides mock defaults
+  if (provider) return false;
+  // No explicit provider — fall back to environment defaults
+  if (appEnv.isTest) return aiEnv.useMock !== 'false';
+  if (appEnv.isDevelopment) return true;
+  return false;
 }
 
 /**
@@ -19,19 +33,20 @@ function parseMockSeed(): number | undefined {
 export function getGenerationProviderWithModel(
   modelId: string
 ): AiPlanGenerationProvider {
-  // In test environment, still respect mock settings.
-  // Note: useMock check here is "!== 'false'" (opt-out); getGenerationProvider uses "=== 'false'" below — same outcome, different phrasing.
-  if (appEnv.isTest) {
-    const providerType = aiEnv.provider;
-    if (providerType === 'mock' || aiEnv.useMock !== 'false') {
-      return new MockGenerationProvider({
-        deterministicSeed: parseMockSeed(),
-      });
-    }
+  if (!modelId) {
+    throw new Error('modelId must be a non-empty string');
   }
 
-  // Model/tier validation is enforced by resolveModelForTier before calling
-  // this factory. This factory only constructs providers.
+  if (shouldUseMock()) {
+    logger.debug(
+      { source: 'provider-factory', requestedModel: modelId },
+      'Mock provider active — requested modelId will not be used'
+    );
+    return new MockGenerationProvider({
+      deterministicSeed: parseMockSeed(),
+    });
+  }
+
   return new RouterGenerationProvider({ model: modelId });
 }
 
@@ -46,36 +61,13 @@ export function getGenerationProviderWithModel(
  * @returns An instance implementing `AiPlanGenerationProvider` — either a `MockGenerationProvider` (possibly configured with a deterministic seed) or a `RouterGenerationProvider`
  */
 export function getGenerationProvider(): AiPlanGenerationProvider {
-  const providerType = aiEnv.provider;
-  const isTest = appEnv.isTest;
-
-  // In tests, honor explicit AI_PROVIDER when set; otherwise default to mock unless disabled
-  if (isTest) {
-    const deterministicSeed = parseMockSeed();
-    if (providerType === 'mock') {
-      return new MockGenerationProvider({
-        deterministicSeed,
-      });
-    }
-    if (providerType && providerType !== 'mock') {
-      // For any explicit non-mock provider in tests, route through the Router
-      return new RouterGenerationProvider();
-    }
-    // Fallback in tests: prefer mock unless explicitly disabled
-    if (aiEnv.useMock === 'false') {
-      return new RouterGenerationProvider();
-    }
-    return new MockGenerationProvider({
-      deterministicSeed,
-    });
-  }
-
-  if (providerType === 'mock' || (!providerType && appEnv.isDevelopment)) {
+  if (shouldUseMock()) {
     return new MockGenerationProvider({
       deterministicSeed: parseMockSeed(),
     });
   }
-  // Default to router with default model for real usage
+
+  // Explicit non-mock provider or production — always pass model explicitly
   return new RouterGenerationProvider({
     model: aiEnv.defaultModel,
   });

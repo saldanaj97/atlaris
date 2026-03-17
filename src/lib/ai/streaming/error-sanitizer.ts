@@ -8,31 +8,28 @@
  * @module lib/ai/streaming/error-sanitizer
  */
 
-import {
-  getFailurePresentation,
-  type FailurePresentation,
-} from '@/lib/ai/failure-presentation';
+import { getFailurePresentation } from '@/lib/ai/failure-presentation';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/lib/types/client';
 
-export interface ErrorLike {
+import type { FailureClassification } from '@/lib/types/client.types';
+
+export type ErrorLike = {
   name?: string;
   message?: string;
   stack?: string;
-  // Native Error.cause can carry arbitrary values; keep this broad but bounded.
   cause?: Error | string | object | null;
   status?: number;
   statusCode?: number;
   response?: { status?: number } | null;
-}
+};
 
 export type GenerationError = Error | DOMException | string | ErrorLike;
 
-export interface SanitizedSseError {
+type SanitizedSseError = {
   code: string;
   message: string;
   retryable: boolean;
-}
+};
 
 type PrimitiveErrorValue = string | number | boolean | null | undefined;
 
@@ -118,12 +115,5 @@ export function sanitizeSseError(
     'Generation error (sanitized for client)'
   );
 
-  const presentation: FailurePresentation =
-    getFailurePresentation(classification);
-
-  return {
-    code: presentation.code,
-    message: presentation.message,
-    retryable: presentation.retryable,
-  };
+  return getFailurePresentation(classification) as SanitizedSseError;
 }

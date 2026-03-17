@@ -1,9 +1,6 @@
-export interface AdaptiveTimeoutConfig {
-  baseMs: number;
-  extensionMs: number;
-  extensionThresholdMs: number;
-  now?: () => number;
-}
+import { RETRY_BACKOFF_MS } from '@/lib/ai/constants';
+
+import type { AdaptiveTimeoutConfig } from '@/lib/ai/types/timeout.types';
 
 const DEFAULT_CONFIG: AdaptiveTimeoutConfig = {
   baseMs: 30_000,
@@ -17,9 +14,16 @@ export const DEFAULT_GENERATION_TIMEOUT_MS = DEFAULT_CONFIG.baseMs;
 /** Default timeout extension in ms. Shared with provider implementations. */
 export const DEFAULT_GENERATION_EXTENSION_MS = DEFAULT_CONFIG.extensionMs;
 
-/** Backoff limits for p-retry (light retries). Used by router. */
-const RETRY_BACKOFF_MS = { min: 300, max: 700 } as const;
-
+type AdaptiveTimeoutController = {
+  readonly signal: AbortSignal;
+  readonly startedAt: number;
+  readonly deadline: number;
+  readonly didExtend: boolean;
+  readonly timedOut: boolean;
+  notifyFirstModule(): void;
+  cancel(): void;
+  elapsed(): number;
+};
 /**
  * Returns p-retry backoff options (minTimeout, maxTimeout).
  * Use with pRetry options alongside retries and randomize.
@@ -32,17 +36,6 @@ export function getRetryBackoffConfig(): {
     minTimeout: RETRY_BACKOFF_MS.min,
     maxTimeout: RETRY_BACKOFF_MS.max,
   };
-}
-
-export interface AdaptiveTimeoutController {
-  readonly signal: AbortSignal;
-  readonly startedAt: number;
-  readonly deadline: number;
-  readonly didExtend: boolean;
-  readonly timedOut: boolean;
-  notifyFirstModule(): void;
-  cancel(): void;
-  elapsed(): number;
 }
 
 export function createAdaptiveTimeout(

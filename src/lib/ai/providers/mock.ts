@@ -1,26 +1,28 @@
 import { createAbortError } from '@/lib/ai/abort';
-import { asyncIterableToReadableStream } from '@/lib/ai/utils';
+import { ProviderError } from '@/lib/ai/providers/errors';
+import { asyncIterableToReadableStream } from '@/lib/ai/streaming/utils';
 import { aiEnv } from '@/lib/config/env';
+
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
-} from '../provider';
-import { ProviderError } from '../provider';
+} from '@/lib/ai/types/provider.types';
 
 // Timing thresholds for test mode behavior
 const FAST_TEST_THRESHOLD_MS = 100;
 const CHUNK_DELAY_MS = 50;
+
 // Variance is only applied when delay >= 1000ms to ensure fast test runs
 // are deterministic. Below this threshold, exact delay is used with no random variance.
 const VARIANCE_THRESHOLD_MS = 1000;
 
-export interface MockGenerationConfig {
+type MockGenerationConfig = {
   delayMs?: number;
   failureRate?: number;
   deterministicSeed?: number; // If set, makes generation deterministic
-}
+};
 
 const TOPICS_TEMPLATES = {
   beginner: [
@@ -267,7 +269,7 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     if (failureCheck < this.config.failureRate) {
       return Promise.reject(
         new ProviderError(
-          'unknown',
+          'provider_error',
           'Mock provider simulated failure for testing'
         )
       );

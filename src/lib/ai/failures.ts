@@ -1,4 +1,4 @@
-import type { FailureClassification } from '@/lib/types/client';
+import type { FailureClassification } from '@/lib/types/client.types';
 
 const NON_RETRYABLE: Array<FailureClassification | 'unknown'> = [
   'validation',

@@ -1,139 +1,104 @@
-import { aiTimeoutEnv, appEnv } from '@/lib/config/env';
+import { aiTimeoutEnv } from '@/lib/config/env';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
 import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-helpers';
+import { logger } from '@/lib/logging/logger';
+import * as Sentry from '@sentry/nextjs';
+import { attachAbortListener } from './abort';
+import { classifyFailure } from './classification';
+import { pacePlan } from './pacing';
+import { parseGenerationStream } from './parser';
+import { ProviderTimeoutError } from './providers/errors';
+import { getGenerationProvider } from './providers/factory';
+import { createAdaptiveTimeout } from './timeout';
+
+import type {
+  AttemptOperationsOverrides,
+  GenerationAttemptContext,
+  GenerationAttemptRecordForResponse,
+  GenerationFailureResult,
+  GenerationResult,
+  RunGenerationOptions,
+} from '@/lib/ai/types/orchestrator.types';
+import type {
+  AiPlanGenerationProvider,
+  ProviderMetadata,
+} from '@/lib/ai/types/provider.types';
+import type { AdaptiveTimeoutConfig } from '@/lib/ai/types/timeout.types';
 import type {
   AttemptRejection,
   AttemptReservation,
   AttemptsDbClient,
-  GenerationAttemptRecord,
+  FinalizeFailureParams,
 } from '@/lib/db/queries/types/attempts.types';
-import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/lib/types/client';
-import * as Sentry from '@sentry/nextjs';
-
-import { attachAbortListener } from './abort';
-import { classifyFailure } from './classification';
-import { pacePlan } from './pacing';
-import { parseGenerationStream, type ParsedModule } from './parser';
-import {
-  ProviderMetadata,
-  ProviderTimeoutError,
-  type AiPlanGenerationProvider,
-  type GenerationInput,
-} from './provider';
-import { getGenerationProvider } from './provider-factory';
-import { createAdaptiveTimeout, type AdaptiveTimeoutConfig } from './timeout';
-
-export interface GenerationAttemptContext {
-  planId: string;
-  userId: string;
-  input: GenerationInput;
-}
-
-export interface RunGenerationOptions {
-  provider?: AiPlanGenerationProvider;
-  timeoutConfig?: Partial<AdaptiveTimeoutConfig>;
-  clock?: () => number;
-  /**
-   * Required. Database client for attempt operations.
-   * Use request-scoped getDb() from @/lib/db/runtime in API routes to enforce RLS;
-   * use service-role db from @/lib/db/service-role for tests/workers/jobs.
-   * @see AttemptsDbClient
-   */
-  dbClient: AttemptsDbClient;
-  now?: () => Date;
-  signal?: AbortSignal;
-  /**
-   * Pre-reserved attempt slot from {@link reserveAttemptSlot}.
-   * When provided, the orchestrator skips its internal reservation call and uses
-   * this reservation directly. This allows callers (e.g. retry route) to perform
-   * the reservation before starting a stream so they can return proper HTTP error
-   * codes for rejected attempts.
-   */
-  reservation?: AttemptReservation;
-}
-
-export interface GenerationSuccessResult {
-  status: 'success';
-  classification: null;
-  modules: ParsedModule[];
-  rawText: string;
-  metadata: ProviderMetadata;
-  durationMs: number;
-  extendedTimeout: boolean;
-  timedOut: false;
-  attempt: GenerationAttemptRecord;
-}
-
-export interface GenerationFailureResult {
-  status: 'failure';
-  classification: FailureClassification;
-  error: Error;
-  metadata?: ProviderMetadata;
-  rawText?: string;
-  durationMs: number;
-  extendedTimeout: boolean;
-  timedOut: boolean;
-  attempt: GenerationAttemptRecordForResponse;
-}
-
-export type GenerationResult =
-  | GenerationSuccessResult
-  | GenerationFailureResult;
-
-/**
- * Failure responses can be synthetic when reservation is rejected before any
- * attempt row exists in the database.
- */
-export type GenerationAttemptRecordForResponse =
-  | GenerationAttemptRecord
-  | (Omit<GenerationAttemptRecord, 'id'> & { id: null });
+import type { FailureClassification } from '@/lib/types/client.types';
 
 const DEFAULT_CLOCK = () => Date.now();
 
-type ReserveAttemptSlotFn = typeof reserveAttemptSlot;
-type FinalizeAttemptSuccessFn = typeof finalizeAttemptSuccess;
-type FinalizeAttemptFailureFn = typeof finalizeAttemptFailure;
+type AttemptOps = {
+  reserveAttemptSlot: typeof reserveAttemptSlot;
+  finalizeAttemptSuccess: typeof finalizeAttemptSuccess;
+  finalizeAttemptFailure: typeof finalizeAttemptFailure;
+};
 
-interface AttemptOperationOverrides {
-  reserveAttemptSlot: ReserveAttemptSlotFn;
-  finalizeAttemptSuccess: FinalizeAttemptSuccessFn;
-  finalizeAttemptFailure: FinalizeAttemptFailureFn;
-}
+type TimeoutLifecycle = {
+  timeout: ReturnType<typeof createAdaptiveTimeout>;
+  cleanupTimeoutAbort: () => void;
+  cleanupExternalAbort: (() => void) | undefined;
+};
+
+const RESERVATION_REJECTION_DETAILS: Record<
+  AttemptRejection['reason'],
+  {
+    classification: FailureClassification;
+    message: (reservation: AttemptRejection) => string;
+  }
+> = {
+  capped: {
+    classification: 'capped',
+    message: () => 'Generation attempt cap reached',
+  },
+  rate_limited: {
+    classification: 'rate_limit',
+    message: () => 'Generation rate limit exceeded for this user',
+  },
+  in_progress: {
+    classification: 'rate_limit',
+    message: () =>
+      'A generation is already in progress for this plan (concurrent conflict)',
+  },
+  invalid_status: {
+    classification: 'validation',
+    message: (reservation) =>
+      `Generation attempt is not allowed for plan status: ${reservation.currentStatus ?? 'unknown'}`,
+  },
+};
+
+const SYNTHETIC_FAILURE_ATTEMPT_DEFAULTS = {
+  id: null,
+  status: 'failure',
+  modulesCount: 0,
+  tasksCount: 0,
+  truncatedTopic: false,
+  truncatedNotes: false,
+  normalizedEffort: false,
+  metadata: null,
+} as const;
 
 function resolveAttemptOperations(
-  dbClient: AttemptsDbClient
-): AttemptOperationOverrides {
-  const typedDbClient = dbClient as AttemptsDbClient &
-    Partial<AttemptOperationOverrides>;
-
+  overrides?: AttemptOperationsOverrides
+): AttemptOps {
   return {
-    reserveAttemptSlot:
-      typeof typedDbClient.reserveAttemptSlot === 'function'
-        ? typedDbClient.reserveAttemptSlot
-        : reserveAttemptSlot,
+    reserveAttemptSlot: overrides?.reserveAttemptSlot ?? reserveAttemptSlot,
     finalizeAttemptSuccess:
-      typeof typedDbClient.finalizeAttemptSuccess === 'function'
-        ? typedDbClient.finalizeAttemptSuccess
-        : finalizeAttemptSuccess,
+      overrides?.finalizeAttemptSuccess ?? finalizeAttemptSuccess,
     finalizeAttemptFailure:
-      typeof typedDbClient.finalizeAttemptFailure === 'function'
-        ? typedDbClient.finalizeAttemptFailure
-        : finalizeAttemptFailure,
+      overrides?.finalizeAttemptFailure ?? finalizeAttemptFailure,
   };
 }
-
-/** User-facing messages for reservation rejection reasons; fallback used for invalid_status and future reasons. */
-const ERROR_MESSAGES: Partial<Record<AttemptRejection['reason'], string>> = {
-  capped: 'Generation attempt cap reached',
-  rate_limited: 'Generation rate limit exceeded for this user',
-  in_progress:
-    'A generation is already in progress for this plan (concurrent conflict)',
-};
 
 function toGenerationError(error: unknown): Error {
   if (error instanceof Error) {
@@ -144,19 +109,22 @@ function toGenerationError(error: unknown): Error {
     return new Error(error);
   }
 
-  let detail = 'no additional detail';
-  if (typeof error === 'number' || typeof error === 'boolean') {
-    detail = String(error);
-  } else if (typeof error === 'bigint') {
-    detail = `${error.toString()}n`;
-  } else if (typeof error === 'symbol') {
-    detail = error.description ?? 'symbol';
-  } else if (error && typeof error === 'object') {
+  let detail: string;
+  if (error && typeof error === 'object') {
     try {
       detail = JSON.stringify(error);
     } catch {
       detail = Object.prototype.toString.call(error);
     }
+  } else if (
+    typeof error === 'number' ||
+    typeof error === 'boolean' ||
+    typeof error === 'bigint' ||
+    typeof error === 'symbol'
+  ) {
+    detail = String(error);
+  } else {
+    detail = 'no additional detail';
   }
 
   return new Error(`Unknown generation error: ${detail}`);
@@ -169,40 +137,253 @@ function createSyntheticFailureAttempt(params: {
   promptHash: string | null;
   now: () => Date;
 }): GenerationAttemptRecordForResponse {
-  return {
-    id: null,
-    planId: params.planId,
-    status: 'failure',
-    classification: params.classification,
-    durationMs: params.durationMs,
-    modulesCount: 0,
-    tasksCount: 0,
-    truncatedTopic: false,
-    truncatedNotes: false,
-    normalizedEffort: false,
-    promptHash: params.promptHash,
-    metadata: null,
-    createdAt: params.now(),
-  };
-}
+  const { planId, classification, durationMs, promptHash, now } = params;
 
-function getProvider(
-  provider?: AiPlanGenerationProvider
-): AiPlanGenerationProvider {
-  return provider ?? getGenerationProvider();
+  return {
+    ...SYNTHETIC_FAILURE_ATTEMPT_DEFAULTS,
+    planId,
+    classification,
+    durationMs,
+    promptHash,
+    createdAt: now(),
+  };
 }
 
 function resolveTimeoutConfig(
   timeoutConfig?: Partial<AdaptiveTimeoutConfig>,
-  now?: () => number
+  clock?: () => number
 ): AdaptiveTimeoutConfig {
+  const {
+    baseMs = aiTimeoutEnv.baseMs,
+    extensionMs = aiTimeoutEnv.extensionMs,
+    extensionThresholdMs = aiTimeoutEnv.extensionThresholdMs,
+  } = timeoutConfig ?? {};
+
   return {
-    baseMs: timeoutConfig?.baseMs ?? aiTimeoutEnv.baseMs,
-    extensionMs: timeoutConfig?.extensionMs ?? aiTimeoutEnv.extensionMs,
-    extensionThresholdMs:
-      timeoutConfig?.extensionThresholdMs ?? aiTimeoutEnv.extensionThresholdMs,
-    now,
+    baseMs,
+    extensionMs,
+    extensionThresholdMs,
+    now: clock,
   };
+}
+
+async function safelyFinalizeFailure(
+  attemptOps: AttemptOps,
+  finalizeParams: FinalizeFailureParams,
+  fallbackPromptHash: string
+): Promise<GenerationAttemptRecordForResponse> {
+  try {
+    return await attemptOps.finalizeAttemptFailure(finalizeParams);
+  } catch (finalizeError) {
+    logger.error(
+      {
+        planId: finalizeParams.planId,
+        attemptId: finalizeParams.attemptId,
+        finalizeError,
+        originalError: finalizeParams.error,
+      },
+      'Failed to finalize generation attempt failure'
+    );
+
+    return createSyntheticFailureAttempt({
+      planId: finalizeParams.planId,
+      classification: finalizeParams.classification,
+      durationMs: finalizeParams.durationMs,
+      promptHash: fallbackPromptHash,
+      now: finalizeParams.now ?? (() => new Date()),
+    });
+  }
+}
+
+function createFailureResult(params: {
+  classification: FailureClassification;
+  error: Error;
+  durationMs: number;
+  extendedTimeout: boolean;
+  timedOut: boolean;
+  attempt: GenerationAttemptRecordForResponse;
+  metadata?: ProviderMetadata;
+  rawText?: string;
+}): GenerationFailureResult {
+  const { metadata, rawText, ...rest } = params;
+
+  return {
+    ...rest,
+    status: 'failure',
+    ...(metadata !== undefined && { metadata }),
+    ...(rawText !== undefined && { rawText }),
+  };
+}
+
+function createReservationRejectionResult(
+  context: GenerationAttemptContext,
+  reservation: AttemptRejection,
+  attemptClockStart: number,
+  clock: () => number,
+  nowFn: () => Date
+): GenerationFailureResult {
+  const durationMs = Math.max(0, clock() - attemptClockStart);
+  const rejection = RESERVATION_REJECTION_DETAILS[reservation.reason];
+  const classification = rejection.classification;
+  const errorMessage = rejection.message(reservation);
+
+  const attempt = createSyntheticFailureAttempt({
+    planId: context.planId,
+    classification,
+    durationMs,
+    promptHash: null,
+    now: nowFn,
+  });
+
+  logger.warn(
+    {
+      planId: context.planId,
+      userId: context.userId,
+      classification,
+      errorMessage,
+      reservationReason: reservation.reason,
+      reservationCurrentStatus: reservation.currentStatus,
+      attemptId: 'synthetic:no-db-row',
+    },
+    'Generation reservation rejected before attempt row creation'
+  );
+
+  return createFailureResult({
+    classification,
+    error: new Error(errorMessage),
+    durationMs,
+    extendedTimeout: false,
+    timedOut: false,
+    attempt,
+  });
+}
+
+function setupAbortAndTimeout(
+  timeoutConfig: AdaptiveTimeoutConfig,
+  externalSignal?: AbortSignal
+): TimeoutLifecycle & { controller: AbortController } {
+  const timeout = createAdaptiveTimeout(timeoutConfig);
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  const cleanupTimeoutAbort = attachAbortListener(timeout.signal, onAbort);
+  const cleanupExternalAbort = externalSignal
+    ? attachAbortListener(externalSignal, onAbort)
+    : undefined;
+
+  return { timeout, controller, cleanupTimeoutAbort, cleanupExternalAbort };
+}
+
+async function generateWithInstrumentation(
+  provider: AiPlanGenerationProvider,
+  input: GenerationAttemptContext['input'],
+  options: {
+    signal: AbortSignal;
+    timeoutMs: number;
+  }
+): Promise<Awaited<ReturnType<AiPlanGenerationProvider['generate']>>> {
+  return Sentry.startSpan(
+    {
+      op: 'gen_ai.invoke_agent',
+      name: 'invoke_agent Plan Generation',
+      attributes: {
+        'gen_ai.agent.name': 'Plan Generation',
+      },
+    },
+    async (span) => {
+      const result = await provider.generate(input, options);
+      const metadata = result.metadata;
+
+      if (metadata.model) {
+        span.setAttribute('gen_ai.request.model', metadata.model);
+      }
+      if (metadata.usage?.promptTokens != null) {
+        span.setAttribute(
+          'gen_ai.usage.input_tokens',
+          metadata.usage.promptTokens
+        );
+      }
+      if (metadata.usage?.completionTokens != null) {
+        span.setAttribute(
+          'gen_ai.usage.output_tokens',
+          metadata.usage.completionTokens
+        );
+      }
+
+      return result;
+    }
+  );
+}
+
+async function finalizeGenerationFailure(params: {
+  error: unknown;
+  reservation: AttemptReservation;
+  attemptOps: AttemptOps;
+  context: GenerationAttemptContext;
+  attemptClockStart: number;
+  clock: () => number;
+  nowFn: () => Date;
+  dbClient: AttemptsDbClient;
+  timeoutLifecycle?: TimeoutLifecycle;
+  providerMetadata?: ProviderMetadata;
+  rawText?: string;
+}): Promise<GenerationFailureResult> {
+  const {
+    error,
+    reservation,
+    attemptOps,
+    context,
+    attemptClockStart,
+    clock,
+    nowFn,
+    dbClient,
+    timeoutLifecycle,
+    providerMetadata,
+    rawText,
+  } = params;
+
+  timeoutLifecycle?.timeout.cancel();
+  timeoutLifecycle?.cleanupTimeoutAbort();
+  timeoutLifecycle?.cleanupExternalAbort?.();
+
+  const durationMs = Math.max(0, clock() - attemptClockStart);
+  const normalizedError = toGenerationError(error);
+  const timedOut =
+    (timeoutLifecycle?.timeout.timedOut ?? false) ||
+    normalizedError instanceof ProviderTimeoutError;
+  const extendedTimeout = timeoutLifecycle?.timeout.didExtend ?? false;
+  const classification = classifyFailure({
+    error: normalizedError,
+    timedOut,
+  });
+
+  const attempt = await safelyFinalizeFailure(
+    attemptOps,
+    {
+      attemptId: reservation.attemptId,
+      planId: context.planId,
+      preparation: reservation,
+      classification,
+      durationMs,
+      timedOut,
+      extendedTimeout,
+      providerMetadata,
+      error: normalizedError,
+      dbClient,
+      now: nowFn,
+    },
+    reservation.promptHash
+  );
+
+  return createFailureResult({
+    classification,
+    error: normalizedError,
+    durationMs,
+    extendedTimeout,
+    timedOut,
+    attempt,
+    metadata: providerMetadata,
+    rawText,
+  });
 }
 
 export async function runGenerationAttempt(
@@ -219,10 +400,10 @@ export async function runGenerationAttempt(
     );
   }
 
-  const attemptOps = resolveAttemptOperations(dbClient);
+  const attemptOps = resolveAttemptOperations(options.attemptOperations);
   const timeoutConfig = resolveTimeoutConfig(options.timeoutConfig, clock);
+  const attemptClockStart = clock();
 
-  // Use pre-reserved slot if provided; otherwise reserve atomically now
   const reservation =
     options.reservation ??
     (await attemptOps.reserveAttemptSlot({
@@ -233,189 +414,69 @@ export async function runGenerationAttempt(
       now: nowFn,
     }));
 
-  const attemptClockStart = clock();
-
   if (!reservation.reserved) {
-    const durationMs = Math.max(0, clock() - attemptClockStart);
-
-    // For rejected reservations we cannot finalize a row (none was created).
-    // Synthesize a minimal record for response shaping.
-    const classification: FailureClassification =
-      reservation.reason === 'capped'
-        ? 'capped'
-        : reservation.reason === 'rate_limited'
-          ? 'rate_limit'
-          : reservation.reason === 'in_progress'
-            ? 'rate_limit' // concurrent-conflict: same retry/backoff as rate_limit; semantically different, intentionally same classification
-            : 'validation';
-    const errorMessage =
-      ERROR_MESSAGES[reservation.reason] ??
-      `Generation attempt is not allowed for plan status: ${reservation.currentStatus ?? 'unknown'}`;
-
-    const syntheticAttempt = createSyntheticFailureAttempt({
-      planId: context.planId,
-      classification,
-      durationMs,
-      promptHash: null,
-      now: nowFn,
-    });
-
-    logger.warn(
-      {
-        planId: context.planId,
-        userId: context.userId,
-        classification,
-        errorMessage,
-        reservationReason: reservation.reason,
-        reservationCurrentStatus: reservation.currentStatus,
-        attemptId: 'synthetic:no-db-row',
-      },
-      'Generation reservation rejected before attempt row creation'
+    return createReservationRejectionResult(
+      context,
+      reservation,
+      attemptClockStart,
+      clock,
+      nowFn
     );
-
-    return {
-      status: 'failure',
-      classification,
-      error: new Error(errorMessage),
-      durationMs,
-      extendedTimeout: false,
-      timedOut: false,
-      attempt: syntheticAttempt,
-    };
   }
 
-  let provider: AiPlanGenerationProvider;
-  let timeout: ReturnType<typeof createAdaptiveTimeout>;
-  let controller: AbortController;
-  let cleanupTimeoutAbort: () => void;
-  let cleanupExternalAbort: (() => void) | undefined;
-  const startedAt = attemptClockStart;
+  const provider = options.provider ?? getGenerationProvider();
 
+  let setup: ReturnType<typeof setupAbortAndTimeout>;
   try {
-    provider = getProvider(options.provider);
-    timeout = createAdaptiveTimeout(timeoutConfig);
-
-    if (appEnv.isTest) {
-      const { captureForTesting } = await import('./capture-for-testing');
-      captureForTesting(provider, context.input);
-    }
-
-    const externalSignal = options.signal;
-    controller = new AbortController();
-    const onAbort = () => controller.abort();
-    cleanupTimeoutAbort = attachAbortListener(timeout.signal, onAbort);
-    cleanupExternalAbort = externalSignal
-      ? attachAbortListener(externalSignal, onAbort)
-      : undefined;
-  } catch (initError) {
-    const normalizedError = toGenerationError(initError);
-    const classification = classifyFailure({
-      error: normalizedError,
-      timedOut: false,
+    setup = setupAbortAndTimeout(timeoutConfig, options.signal);
+  } catch (error) {
+    return finalizeGenerationFailure({
+      error,
+      reservation,
+      attemptOps,
+      context,
+      attemptClockStart,
+      clock,
+      nowFn,
+      dbClient,
     });
-    const durationMs = Math.max(0, clock() - startedAt);
-    let attempt: GenerationAttemptRecordForResponse;
-    try {
-      attempt = await attemptOps.finalizeAttemptFailure({
-        attemptId: reservation.attemptId,
-        planId: context.planId,
-        preparation: reservation,
-        classification,
-        durationMs,
-        error: normalizedError,
-        dbClient,
-        now: nowFn,
-      });
-    } catch (finalizeError) {
-      logger.error(
-        {
-          planId: context.planId,
-          attemptId: reservation.attemptId,
-          finalizeError,
-          originalError: normalizedError,
-        },
-        'Failed to finalize generation attempt during initialization failure'
-      );
-      attempt = createSyntheticFailureAttempt({
-        planId: context.planId,
-        classification,
-        durationMs,
-        promptHash: reservation.promptHash,
-        now: nowFn,
-      });
-    }
-    const result: GenerationFailureResult = {
-      status: 'failure',
-      classification,
-      error: normalizedError,
-      durationMs,
-      extendedTimeout: false,
-      timedOut: false,
-      attempt,
-    };
-    return result;
   }
 
+  const { timeout, controller, cleanupTimeoutAbort, cleanupExternalAbort } =
+    setup;
   let providerMetadata: ProviderMetadata | undefined;
   let rawText: string | undefined;
 
   try {
-    const providerResult = await Sentry.startSpan(
+    const providerResult = await generateWithInstrumentation(
+      provider,
+      context.input,
       {
-        op: 'gen_ai.invoke_agent',
-        name: 'invoke_agent Plan Generation',
-        attributes: {
-          'gen_ai.agent.name': 'Plan Generation',
-        },
-      },
-      async (span) => {
-        const result = await provider.generate(context.input, {
-          signal: controller.signal,
-          timeoutMs: timeoutConfig.baseMs,
-        });
-        const meta = result.metadata;
-        if (meta.model) {
-          span.setAttribute('gen_ai.request.model', meta.model);
-        }
-        if (meta.usage?.promptTokens != null) {
-          span.setAttribute(
-            'gen_ai.usage.input_tokens',
-            meta.usage.promptTokens
-          );
-        }
-        if (meta.usage?.completionTokens != null) {
-          span.setAttribute(
-            'gen_ai.usage.output_tokens',
-            meta.usage.completionTokens
-          );
-        }
-        return result;
+        signal: controller.signal,
+        timeoutMs: timeoutConfig.baseMs,
       }
     );
-
     providerMetadata = providerResult.metadata;
 
     const parsed = await parseGenerationStream(providerResult.stream, {
       onFirstModuleDetected: () => timeout.notifyFirstModule(),
       signal: controller.signal,
     });
-
     rawText = parsed.rawText;
 
-    // Apply pacing to trim modules to fit user's time capacity
-    const pacedModules = pacePlan(parsed.modules, context.input);
-
-    const durationMs = Math.max(0, clock() - startedAt);
+    const modules = pacePlan(parsed.modules, context.input);
+    const durationMs = Math.max(0, clock() - attemptClockStart);
     timeout.cancel();
     cleanupTimeoutAbort();
     cleanupExternalAbort?.();
 
+    const metadata = providerMetadata ?? {};
     const attempt = await attemptOps.finalizeAttemptSuccess({
       attemptId: reservation.attemptId,
       planId: context.planId,
       preparation: reservation,
-      modules: pacedModules,
-      providerMetadata: providerMetadata ?? {},
+      modules,
+      providerMetadata: metadata,
       durationMs,
       extendedTimeout: timeout.didExtend,
       dbClient,
@@ -425,74 +486,31 @@ export async function runGenerationAttempt(
     return {
       status: 'success',
       classification: null,
-      modules: pacedModules,
-      rawText,
-      metadata: providerMetadata ?? {},
+      modules,
+      rawText: parsed.rawText,
+      metadata,
       durationMs,
       extendedTimeout: timeout.didExtend,
       timedOut: false,
       attempt,
     };
   } catch (error) {
-    timeout.cancel();
-    cleanupTimeoutAbort();
-    cleanupExternalAbort?.();
-    const durationMs = Math.max(0, clock() - startedAt);
-    const normalizedError = toGenerationError(error);
-    const timedOut =
-      timeout.timedOut || normalizedError instanceof ProviderTimeoutError;
-
-    const classification = classifyFailure({
-      error: normalizedError,
-      timedOut,
-    });
-
-    let attempt: GenerationAttemptRecordForResponse;
-    try {
-      attempt = await attemptOps.finalizeAttemptFailure({
-        attemptId: reservation.attemptId,
-        planId: context.planId,
-        preparation: reservation,
-        classification,
-        durationMs,
-        timedOut,
-        extendedTimeout: timeout.didExtend,
-        providerMetadata,
-        error: normalizedError,
-        dbClient,
-        now: nowFn,
-      });
-    } catch (finalizeError) {
-      logger.error(
-        {
-          planId: context.planId,
-          attemptId: reservation.attemptId,
-          finalizeError,
-          originalError: normalizedError,
-        },
-        'Failed to finalize generation attempt failure'
-      );
-      attempt = createSyntheticFailureAttempt({
-        planId: context.planId,
-        classification,
-        durationMs,
-        promptHash: reservation.promptHash,
-        now: nowFn,
-      });
-    }
-
-    const failure: GenerationFailureResult = {
-      status: 'failure',
-      classification,
-      error: normalizedError,
-      metadata: providerMetadata,
+    return finalizeGenerationFailure({
+      error,
+      reservation,
+      attemptOps,
+      context,
+      attemptClockStart,
+      clock,
+      nowFn,
+      dbClient,
+      timeoutLifecycle: {
+        timeout,
+        cleanupTimeoutAbort,
+        cleanupExternalAbort,
+      },
+      providerMetadata,
       rawText,
-      durationMs,
-      extendedTimeout: timeout.didExtend,
-      timedOut,
-      attempt,
-    };
-
-    return failure;
+    });
   }
 }

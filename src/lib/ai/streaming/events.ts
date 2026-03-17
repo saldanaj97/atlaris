@@ -1,5 +1,6 @@
-import type { StreamingEvent } from '@/lib/ai/streaming/types';
 import { logger } from '@/lib/logging/logger';
+
+import type { StreamingEvent } from '@/lib/ai/types/streaming.types';
 
 const encoder = new TextEncoder();
 
@@ -12,12 +13,12 @@ export const streamHeaders = {
 export const formatEvent = (event: StreamingEvent): Uint8Array =>
   encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
 
-export type EmitEvent = (event: StreamingEvent) => void;
+type EmitEvent = (event: StreamingEvent) => void;
 
-export interface EventStreamContext {
+type EventStreamContext = {
   signal: AbortSignal;
   onCancel: (handler: () => void) => void;
-}
+};
 
 export function createEventStream(
   handler: (

@@ -1,10 +1,15 @@
-import {
-  PDF_SECTION_CONTENT_LIMIT,
-  sanitizePdfContextForPrompt,
-  type PdfContext,
-} from '@/lib/pdf/context';
+import { sanitizePdfContextForPrompt } from '@/lib/pdf/context';
 
-export interface PromptParams {
+import type { PdfContext } from '@/lib/pdf/context.types';
+
+import {
+  NOTES_PROMPT_MAX_CHARS,
+  PDF_SECTION_TITLE_MAX_CHARS,
+  TOPIC_PROMPT_MAX_CHARS,
+} from '@/lib/ai/constants';
+import { PDF_SECTION_CONTENT_LIMIT } from '@/lib/pdf/constants';
+
+export type PromptParams = {
   topic: string;
   notes?: string | null;
   pdfContext?: PdfContext | null;
@@ -13,18 +18,18 @@ export interface PromptParams {
   weeklyHours: number;
   startDate?: string | null;
   deadlineDate?: string | null;
-}
+};
 
-interface PromptSchemaField {
+type PromptSchemaField = {
   readonly name: string;
   readonly type: 'string' | 'int>=0' | 'Task[]';
   readonly required: boolean;
-}
+};
 
-interface LearningPlanPromptSchema {
+type LearningPlanPromptSchema = {
   readonly module: readonly PromptSchemaField[];
   readonly task: readonly PromptSchemaField[];
-}
+};
 
 export const LEARNING_PLAN_PROMPT_SCHEMA: LearningPlanPromptSchema = {
   module: [
@@ -39,10 +44,6 @@ export const LEARNING_PLAN_PROMPT_SCHEMA: LearningPlanPromptSchema = {
     { name: 'estimated_minutes', type: 'int>=0', required: true },
   ],
 };
-
-const NOTES_PROMPT_MAX_CHARS = 1_500;
-const TOPIC_PROMPT_MAX_CHARS = 500;
-const PDF_SECTION_TITLE_MAX_CHARS = 200;
 
 function formatSchemaFields(fields: readonly PromptSchemaField[]): string {
   return fields

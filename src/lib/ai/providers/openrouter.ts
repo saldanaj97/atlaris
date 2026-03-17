@@ -2,7 +2,14 @@ import { OpenRouter } from '@openrouter/sdk';
 import * as Sentry from '@sentry/nextjs';
 
 import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
-import { ProviderError, ProviderInvalidResponseError } from '@/lib/ai/provider';
+import {
+  ProviderError,
+  ProviderInvalidResponseError,
+} from '@/lib/ai/providers/errors';
+import {
+  asyncIterableToReadableStream,
+  toStream,
+} from '@/lib/ai/streaming/utils';
 import {
   DEFAULT_GENERATION_EXTENSION_MS,
   DEFAULT_GENERATION_TIMEOUT_MS,
@@ -14,47 +21,41 @@ import type {
   ProviderGenerateResult,
   ProviderUsage,
 } from '@/lib/ai/types/provider.types';
-import { asyncIterableToReadableStream, toStream } from '@/lib/ai/utils';
 import { openRouterEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 
-export type OpenRouterChatResponse = Awaited<
-  ReturnType<OpenRouter['chat']['send']>
->;
-
-/** Minimal interface for the OpenRouter chat client (supports DI for testing). */
-export interface OpenRouterClient {
+export type OpenRouterClient = {
   chat: {
-    send: OpenRouter['chat']['send'];
+    send: import('@openrouter/sdk').OpenRouter['chat']['send'];
   };
-}
+};
 
-export interface OpenRouterProviderConfig {
+export type OpenRouterProviderConfig = {
   apiKey?: string;
   model: string;
   siteUrl?: string;
   appName?: string;
   temperature?: number;
-}
+};
 
 const OPENROUTER_DEFAULT_TIMEOUT_MS = DEFAULT_GENERATION_TIMEOUT_MS;
 const OPENROUTER_TIMEOUT_EXTENSION_MS = DEFAULT_GENERATION_EXTENSION_MS;
 
-interface TextPart {
+type TextPart = {
   type: string;
   text?: string;
-}
+};
 
-interface StreamDeltaLike {
+type StreamDeltaLike = {
   content?: string | TextPart[] | null;
-}
+};
 
-interface StreamChoiceLike {
+type StreamChoiceLike = {
   delta?: StreamDeltaLike | null;
   message?: StreamDeltaLike | null;
-}
+};
 
-interface StreamEventLike {
+type StreamEventLike = {
   choices?: StreamChoiceLike[];
   usage?: {
     promptTokens?: number;
@@ -65,7 +66,7 @@ interface StreamEventLike {
     total_tokens?: number;
   };
   delta?: string;
-}
+};
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -428,7 +429,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
               ? 'rate_limit'
               : status === 408 || message.toLowerCase().includes('timeout')
                 ? 'timeout'
-                : 'unknown';
+                : 'provider_error';
 
           throw new ProviderError(kind, message, {
             cause: err instanceof Error ? err : undefined,

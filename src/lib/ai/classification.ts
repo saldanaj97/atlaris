@@ -1,19 +1,18 @@
-import type { FailureClassification } from '@/lib/types/client';
-
-import { ParserError } from './parser';
+import { DEFAULT_CLASSIFICATION } from '@/lib/ai/constants';
+import { ParserError } from '@/lib/ai/parser';
 import {
   ProviderError,
   ProviderRateLimitError,
   ProviderTimeoutError,
-} from './provider';
+} from '@/lib/ai/providers/errors';
 
-export interface ClassificationContext {
+import type { FailureClassification } from '@/lib/types/client.types';
+
+type ClassificationContext = {
   error: unknown;
   timedOut?: boolean;
   forcedClassification?: FailureClassification;
-}
-
-const DEFAULT_CLASSIFICATION: FailureClassification = 'provider_error';
+};
 
 export function classifyFailure({
   error,

@@ -1,16 +1,25 @@
-import pRetry from 'p-retry';
-
-import { ProviderError, ProviderInvalidResponseError } from '@/lib/ai/provider';
+import { RETRY_BACKOFF_MS } from '@/lib/ai/constants';
+import {
+  ProviderError,
+  ProviderInvalidResponseError,
+} from '@/lib/ai/providers/errors';
 import { MockGenerationProvider } from '@/lib/ai/providers/mock';
 import { OpenRouterProvider } from '@/lib/ai/providers/openrouter';
+import { aiEnv, appEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
+import pRetry from 'p-retry';
+
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
 } from '@/lib/ai/types/provider.types';
-import { aiEnv, appEnv } from '@/lib/config/env';
-import { logger } from '@/lib/logging/logger';
+
+export type RouterConfig = {
+  useMock?: boolean;
+  model?: string;
+};
 
 /**
  * Extracts HTTP status from arbitrary SDK/fetch errors via safe property narrowing.
@@ -88,11 +97,6 @@ function shouldRetry(error: unknown): boolean {
   return typeof status === 'number' ? status >= 500 : false;
 }
 
-export interface RouterConfig {
-  useMock?: boolean;
-  model?: string;
-}
-
 export class RouterGenerationProvider implements AiPlanGenerationProvider {
   private readonly providers: (() => AiPlanGenerationProvider)[];
 
@@ -149,8 +153,8 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
         // Retry only transient provider failures.
         const result = await pRetry(() => provider.generate(input, options), {
           retries: 1,
-          minTimeout: 300,
-          maxTimeout: 700,
+          minTimeout: RETRY_BACKOFF_MS.min,
+          maxTimeout: RETRY_BACKOFF_MS.max,
           randomize: true,
           signal: options?.signal,
           onFailedAttempt: ({ error }) => {

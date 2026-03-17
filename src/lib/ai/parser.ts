@@ -1,6 +1,17 @@
-import { readableStreamToAsyncIterable } from '@/lib/ai/utils';
+import {
+  MAX_MODULE_COUNT,
+  MAX_RAW_RESPONSE_CHARS,
+  MAX_TASKS_PER_MODULE,
+} from '@/lib/ai/constants';
+import { readableStreamToAsyncIterable } from '@/lib/ai/streaming/utils';
 
-export type ParserErrorKind = 'invalid_json' | 'validation';
+import type {
+  ParsedGeneration,
+  ParsedModule,
+  ParsedTask,
+  ParserCallbacks,
+  ParserErrorKind,
+} from '@/lib/ai/types/parser.types';
 
 export class ParserError extends Error {
   constructor(
@@ -13,37 +24,8 @@ export class ParserError extends Error {
   }
 }
 
-export interface ParsedTask {
-  title: string;
-  description?: string;
-  estimatedMinutes: number;
-}
-
-export interface ParsedModule {
-  title: string;
-  description?: string;
-  estimatedMinutes: number;
-  tasks: ParsedTask[];
-}
-
-export interface ParsedGeneration {
-  modules: ParsedModule[];
-  rawText: string;
-}
-
-export interface ParserCallbacks {
-  onFirstModuleDetected?: () => void;
-  signal?: AbortSignal;
-}
-
-export const MAX_RAW_RESPONSE_CHARS = 200_000;
-export const MAX_MODULE_COUNT = 12;
-export const MAX_TASKS_PER_MODULE = 20;
-
 function hasDetectedModule(buffer: string): boolean {
-  // Efficiently check for "modules" as a key in the buffer using regex
-  // This matches "modules": { or "modules": [
-  return /"modules"\s*:\s*[\{\[]/.test(buffer);
+  return /"modules"\s*:\s*[{[]/.test(buffer);
 }
 
 function ensureString(value: unknown, path: string): string {
@@ -53,12 +35,15 @@ function ensureString(value: unknown, path: string): string {
   throw new ParserError('validation', `${path} must be a non-empty string.`);
 }
 
-function ensureOptionalString(value: unknown): string | undefined {
+function ensureOptionalString(
+  value: unknown,
+  path: string
+): string | undefined {
   if (value == null) return undefined;
   if (typeof value === 'string') return value.trim() || undefined;
   throw new ParserError(
     'validation',
-    'Descriptions must be strings when provided.'
+    `${path} must be a string when provided.`
   );
 }
 
@@ -88,7 +73,8 @@ function toParsedTask(
     `Task ${taskIndex + 1} title`
   );
   const description = ensureOptionalString(
-    record.description ?? record.summary
+    record.description ?? record.summary,
+    `Task ${taskIndex + 1} in module ${moduleIndex + 1} description`
   );
   const estimatedMinutes = ensureNumber(
     record.estimatedMinutes ?? record.estimated_minutes,
@@ -109,7 +95,8 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
   const record = module as Record<string, unknown>;
   const title = ensureString(record.title, `Module ${moduleIndex + 1} title`);
   const description = ensureOptionalString(
-    record.description ?? record.summary
+    record.description ?? record.summary,
+    `Module ${moduleIndex + 1} description`
   );
   const estimatedMinutes = ensureNumber(
     record.estimatedMinutes ?? record.estimated_minutes,
@@ -147,8 +134,6 @@ export async function parseGenerationStream(
     stream instanceof ReadableStream
       ? readableStreamToAsyncIterable(stream)
       : stream;
-
-  callbacks.signal?.throwIfAborted();
 
   for await (const chunk of source) {
     callbacks.signal?.throwIfAborted();
