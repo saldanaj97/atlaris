@@ -1,7 +1,3 @@
-import {
-  recordAttemptFailure,
-  recordAttemptSuccess,
-} from '@/features/plans/metrics';
 import { ATTEMPT_CAP } from '@/lib/config/env';
 import { hashSha256 } from '@/lib/crypto/hash';
 import {
@@ -222,8 +218,7 @@ export async function reserveAttemptSlot(
 
 /**
  * Finalizes a previously reserved attempt as successful.
- * Updates the in-progress attempt row, replaces plan modules/tasks,
- * and records metrics — all within a single transaction.
+ * Updates the in-progress attempt row and replaces plan modules/tasks.
  */
 export async function finalizeAttemptSuccess({
   attemptId,
@@ -276,8 +271,6 @@ export async function finalizeAttemptSuccess({
     dbClient,
   });
 
-  recordAttemptSuccess(updatedAttempt);
-
   logAttemptEvent('success', {
     planId,
     attemptId: updatedAttempt.id,
@@ -291,7 +284,7 @@ export async function finalizeAttemptSuccess({
 
 /**
  * Finalizes a previously reserved attempt as failed.
- * Updates the in-progress attempt row and plan status in one transaction, then records metrics.
+ * Updates the in-progress attempt row and plan status in one transaction.
  */
 export async function finalizeAttemptFailure({
   attemptId,
@@ -395,8 +388,6 @@ export async function finalizeAttemptFailure({
 
     return updatedAttempt;
   });
-
-  recordAttemptFailure(attempt);
 
   logAttemptEvent('failure', {
     planId,

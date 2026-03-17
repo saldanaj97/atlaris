@@ -14,7 +14,6 @@ import type {
 } from '@/lib/db/queries/types/jobs.types';
 import { getDb } from '@/lib/db/runtime';
 import { jobQueue } from '@/lib/db/schema';
-import { db as serviceRoleDb } from '@/lib/db/service-role';
 import {
   JOB_TYPES,
   type Job,
@@ -45,68 +44,6 @@ const MAX_MONITORING_ROWS = 200;
 const ABSOLUTE_MAX_ATTEMPTS = 100;
 /** Cap for exponential retry delay in seconds (5 minutes). */
 const MAX_RETRY_DELAY_SECONDS = 300;
-
-type SystemWideJobMetrics = {
-  stuckJobsCount: number;
-  backlogCount: number;
-  pendingRegenerationCount: number;
-  stuckRegenerationCount: number;
-};
-
-export async function getSystemWideJobMetrics(
-  stuckThreshold: Date
-): Promise<SystemWideJobMetrics> {
-  const [stuckJobsResult] = await serviceRoleDb
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(jobQueue)
-    .where(
-      and(
-        eq(jobQueue.status, 'processing'),
-        lt(jobQueue.startedAt, stuckThreshold)
-      )
-    );
-
-  const [backlogResult] = await serviceRoleDb
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(jobQueue)
-    .where(eq(jobQueue.status, 'pending'));
-
-  const [pendingRegenerationResult] = await serviceRoleDb
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(jobQueue)
-    .where(
-      and(
-        eq(jobQueue.status, 'pending'),
-        eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION)
-      )
-    );
-
-  const [stuckRegenerationResult] = await serviceRoleDb
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(jobQueue)
-    .where(
-      and(
-        eq(jobQueue.status, 'processing'),
-        eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-        lt(jobQueue.startedAt, stuckThreshold)
-      )
-    );
-
-  return {
-    stuckJobsCount: stuckJobsResult?.count ?? 0,
-    backlogCount: backlogResult?.count ?? 0,
-    pendingRegenerationCount: pendingRegenerationResult?.count ?? 0,
-    stuckRegenerationCount: stuckRegenerationResult?.count ?? 0,
-  };
-}
 
 const jobQueueSelect = {
   id: jobQueue.id,

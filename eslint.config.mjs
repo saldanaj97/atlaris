@@ -338,16 +338,6 @@ export default [
       ],
     },
   },
-  // Exception: attempts.ts depends on features/plans/metrics (tracked by issue #245)
-  {
-    files: ['src/lib/db/queries/attempts.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        { paths: restrictedTypeDirectoryImports },
-      ],
-    },
-  },
   // Exception: openapi.ts depends on features/plans/validation (Zod schema coupling)
   {
     files: ['src/lib/api/openapi.ts'],
