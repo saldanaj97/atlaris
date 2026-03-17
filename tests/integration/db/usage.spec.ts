@@ -1,7 +1,7 @@
 import { db } from '@/lib/db/service-role';
 import { aiUsageEvents, learningPlans } from '@/lib/db/schema';
 import { recordUsage } from '@/lib/db/usage';
-import { atomicCheckAndInsertPlan } from '@/features/billing/usage';
+import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 

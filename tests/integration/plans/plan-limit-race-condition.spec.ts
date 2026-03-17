@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, users } from '@/lib/db/schema';
-import { atomicCheckAndInsertPlan } from '@/features/billing/usage';
+import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle';
 import { eq } from 'drizzle-orm';
 
 describe('Plan Limit Race Condition Prevention (T200)', () => {

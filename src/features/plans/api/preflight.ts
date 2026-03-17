@@ -1,11 +1,11 @@
 import { AttemptCapExceededError, ForbiddenError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/features/billing/tier-limits';
+import { resolveUserTier } from '@/features/billing/usage';
 import {
   atomicCheckAndInsertPlan,
   checkPlanDurationCap,
-  resolveUserTier,
-} from '@/features/billing/usage';
+} from '@/features/plans/lifecycle';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
 import {

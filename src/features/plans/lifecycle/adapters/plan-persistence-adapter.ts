@@ -4,12 +4,12 @@
  * Thin wrapper around existing Drizzle queries and billing usage functions.
  */
 
-import { PlanLimitReachedError } from '@/features/billing/errors';
+import { PlanLimitReachedError } from '@/features/plans/errors';
 import {
   atomicCheckAndInsertPlan,
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
-} from '@/features/billing/usage';
+} from '../plan-operations';
 import { findCappedPlanWithoutModules } from '@/features/plans/api/shared';
 import type { DbClient } from '@/lib/db/types';
 

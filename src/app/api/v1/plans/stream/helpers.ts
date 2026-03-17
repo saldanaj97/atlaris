@@ -9,10 +9,7 @@ import type { GenerationResult } from '@/features/ai/types/orchestrator.types';
 import type { ParsedModule } from '@/features/ai/types/parser.types';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
 import { assertNever } from '@/lib/errors';
-import type {
-  GenerationAttemptResult,
-  GenerationSuccess,
-} from '@/features/plans/lifecycle/types';
+import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { getDb } from '@/lib/db/runtime';
@@ -21,7 +18,7 @@ import { logger } from '@/lib/logging/logger';
 import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
-} from '@/features/billing/usage';
+} from '@/features/plans/lifecycle';
 import type { FailureClassification } from '@/types/client.types';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
