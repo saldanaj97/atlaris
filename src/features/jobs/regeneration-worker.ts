@@ -9,6 +9,7 @@ import {
 import { planRegenerationOverridesSchema } from '@/features/plans/validation/learningPlans';
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 import { eq } from 'drizzle-orm';
 
@@ -134,7 +135,7 @@ export async function processNextRegenerationJob(): Promise<ProcessRegenerationJ
 
     switch (result.status) {
       case 'generation_success': {
-        const modules = result.data.modules as Array<{ tasks: unknown[] }>;
+        const modules = result.data.modules;
         const modulesCount = modules.length;
         const tasksCount = modules.reduce(
           (total, m) => total + (m.tasks?.length ?? 0),
@@ -192,6 +193,9 @@ export async function processNextRegenerationJob(): Promise<ProcessRegenerationJ
           status: 'completed',
         };
       }
+
+      default:
+        assertNever(result);
     }
   } catch (error) {
     const message =

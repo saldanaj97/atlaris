@@ -165,9 +165,12 @@ export function createStreamHandler(deps?: {
             'error' in createResult
               ? createResult.error
               : new Error('Plan creation failed');
+          const isRetryable = createResult.status === 'retryable_failure';
           throw new AppError(err.message, {
-            status: 400,
-            code: 'PLAN_CREATION_FAILED',
+            status: isRetryable ? 503 : 400,
+            code: isRetryable
+              ? 'PLAN_CREATION_TEMPORARY_FAILURE'
+              : 'PLAN_CREATION_FAILED',
           });
         }
 

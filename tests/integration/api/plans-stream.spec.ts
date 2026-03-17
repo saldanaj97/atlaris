@@ -683,8 +683,9 @@ describe('POST /api/v1/plans/stream', () => {
     const planId = completeEvent?.data?.planId as string;
 
     expect(capturedInputs).toHaveLength(1);
-    const capturedInput = capturedInputs[0]!;
-    expect(capturedInput.input).toMatchObject({
+    const capturedInput = capturedInputs[0];
+    expect(capturedInput).toBeDefined();
+    expect(capturedInput!.input).toMatchObject({
       pdfContext: expect.objectContaining({
         mainTopic: 'TypeScript from PDF context',
         sections: expect.arrayContaining([

@@ -8,6 +8,7 @@ import {
 import type { GenerationResult } from '@/features/ai/types/orchestrator.types';
 import type { ParsedModule } from '@/features/ai/types/parser.types';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
+import { assertNever } from '@/lib/errors';
 import type {
   GenerationAttemptResult,
   GenerationSuccess,
@@ -666,7 +667,7 @@ export async function executeLifecycleGenerationStream({
 
     switch (result.status) {
       case 'generation_success': {
-        const modules = result.data.modules as ParsedModule[];
+        const modules = result.data.modules;
         const modulesCount = modules.length;
         const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
 
@@ -704,6 +705,9 @@ export async function executeLifecycleGenerationStream({
         );
         return;
       }
+
+      default:
+        assertNever(result);
     }
   } catch (error: unknown) {
     const clientDisconnected = reqSignal.aborted || streamSignal.aborted;

@@ -51,7 +51,7 @@ function createMockPorts(
     generation: {
       runGeneration: vi.fn().mockResolvedValue({
         status: 'success' as const,
-        modules: [{ title: 'Module 1' }],
+        modules: [{ title: 'Module 1', estimatedMinutes: 60, tasks: [] }],
         metadata: {
           provider: 'openai',
           model: 'gpt-4o',
@@ -102,7 +102,9 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
 
     expect(result.status).toBe('generation_success');
     if (result.status === 'generation_success') {
-      expect(result.data.modules).toEqual([{ title: 'Module 1' }]);
+      expect(result.data.modules).toEqual([
+        { title: 'Module 1', estimatedMinutes: 60, tasks: [] },
+      ]);
       expect(result.data.metadata).toMatchObject({
         provider: 'openai',
         model: 'gpt-4o',

@@ -13,7 +13,11 @@ import type { GenerationInput } from '@/features/ai/types/provider.types';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
 import type { GenerationPort } from '../ports';
-import type { FailureClassification, SubscriptionTier } from '../types';
+import type {
+  FailureClassification,
+  GeneratedModule,
+  SubscriptionTier,
+} from '../types';
 
 export class GenerationAdapter implements GenerationPort {
   constructor(private readonly dbClient: AttemptsDbClient) {}
@@ -30,7 +34,7 @@ export class GenerationAdapter implements GenerationPort {
       startDate?: string | null;
       deadlineDate?: string | null;
       notes?: string | null;
-      pdfContext?: unknown;
+      pdfContext?: PdfContext | null;
       pdfExtractionHash?: string;
       pdfProofVersion?: 1;
     };
@@ -39,7 +43,7 @@ export class GenerationAdapter implements GenerationPort {
   }): Promise<
     | {
         status: 'success';
-        modules: unknown[];
+        modules: GeneratedModule[];
         metadata: Record<string, unknown>;
         durationMs: number;
       }
@@ -64,7 +68,7 @@ export class GenerationAdapter implements GenerationPort {
       startDate: params.input.startDate,
       deadlineDate: params.input.deadlineDate,
       notes: params.input.notes,
-      pdfContext: params.input.pdfContext as PdfContext | null | undefined,
+      pdfContext: params.input.pdfContext ?? undefined,
       pdfExtractionHash: params.input.pdfExtractionHash,
       pdfProofVersion: params.input.pdfProofVersion,
     };
@@ -85,7 +89,7 @@ export class GenerationAdapter implements GenerationPort {
     if (result.status === 'success') {
       return {
         status: 'success',
-        modules: result.modules,
+        modules: result.modules as GeneratedModule[],
         metadata: result.metadata as Record<string, unknown>,
         durationMs: result.durationMs,
       };
