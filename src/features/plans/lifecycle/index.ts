@@ -22,6 +22,15 @@ export type {
   JobQueuePort,
 } from './ports';
 
+// ─── Plan Operations ─────────────────────────────────────────────
+export {
+  atomicCheckAndInsertPlan,
+  checkPlanDurationCap,
+  checkPlanLimit,
+  markPlanGenerationFailure,
+  markPlanGenerationSuccess,
+} from './plan-operations';
+
 // ─── Types ───────────────────────────────────────────────────────
 export type {
   CreateAiPlanInput,

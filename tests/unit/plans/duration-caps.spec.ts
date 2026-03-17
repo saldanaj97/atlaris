@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkPlanDurationCap } from '@/features/billing/usage';
+import { checkPlanDurationCap } from '@/features/plans/lifecycle';
 
 describe('checkPlanDurationCap', () => {
   it('blocks free > 2 weeks', () => {
@@ -78,7 +78,7 @@ describe('checkPlanDurationCap', () => {
       totalWeeks: 10,
     });
     expect(res.allowed).toBe(false);
-    expect(res.reason).toMatch(/pro/);
+    expect(res.reason).toMatch(/starter/);
   });
 
   it('returns correct recommendation for plans <= 8 weeks', () => {

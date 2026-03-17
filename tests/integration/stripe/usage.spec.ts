@@ -4,12 +4,12 @@ import { ensureUser, truncateAll } from '@/../tests/helpers/db';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import {
-  checkPlanLimit,
   checkRegenerationLimit,
   checkExportLimit,
   incrementUsage,
   getUsageSummary,
 } from '@/features/billing/usage';
+import { checkPlanLimit } from '@/features/plans/lifecycle';
 
 describe('Usage Tracking', () => {
   beforeEach(async () => {

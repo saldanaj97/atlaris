@@ -6,10 +6,10 @@
 
 import {
   atomicCheckAndIncrementPdfUsage,
-  checkPlanDurationCap,
   decrementPdfPlanUsage,
   resolveUserTier,
 } from '@/features/billing/usage';
+import { checkPlanDurationCap } from '@/features/plans/lifecycle/plan-operations';
 import { normalizePlanDurationForTier } from '@/features/plans/api/shared';
 import type { DbClient } from '@/lib/db/types';
 

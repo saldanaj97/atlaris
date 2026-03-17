@@ -8,20 +8,20 @@ import {
 import type { GenerationResult } from '@/features/ai/types/orchestrator.types';
 import type { ParsedModule } from '@/features/ai/types/parser.types';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
-import {
-  incrementUsage,
-  markPlanGenerationFailure,
-  markPlanGenerationSuccess,
-} from '@/features/billing/usage';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import { incrementUsage } from '@/features/billing/usage';
 import { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
 import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
+import {
+  markPlanGenerationFailure,
+  markPlanGenerationSuccess,
+} from '@/features/plans/lifecycle';
 import type { FailureClassification } from '@/shared/types/client.types';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
 type EmitFn = (event: StreamingEvent) => void;
 
