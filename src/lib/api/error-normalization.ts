@@ -3,14 +3,14 @@
  * into a consistent shape (message + optional status fields) for logging and persistence.
  */
 
-export interface AttemptErrorLike {
+type AttemptErrorLike = {
   message?: string;
   status?: number;
   statusCode?: number;
   httpStatus?: number;
-}
+};
 
-export type AttemptErrorResult = {
+type AttemptErrorResult = {
   message: string;
   status?: number;
   statusCode?: number;

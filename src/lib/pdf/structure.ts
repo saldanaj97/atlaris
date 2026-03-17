@@ -2,21 +2,19 @@ import { nanoid } from 'nanoid';
 
 import { logger } from '@/lib/logging/logger';
 import type { ExtractedSection, ExtractedStructure } from '@/lib/pdf/types';
+import type {
+  CapExtractionResponse,
+  ExtractionResponseCapConfig,
+  ExtractionResponsePayload,
+  ExtractionTruncationMetadata,
+} from './structure.types';
+export type { CapExtractionResponse } from './structure.types';
 
 const HEADER_MAX_LENGTH = 120;
 const UTF8_ENCODER = new TextEncoder();
 
 /** Max iterations for the byte-cap trim loop to avoid runaway trimming. */
 const MAX_TRIM_ITERATIONS = 20;
-
-export interface ExtractionResponseCapConfig {
-  maxBytes: number;
-  maxTextChars: number;
-  maxSections: number;
-  maxSectionChars: number;
-  maxSectionTitleChars: number;
-  maxSuggestedTopicChars: number;
-}
 
 export const DEFAULT_EXTRACTION_RESPONSE_CAPS: ExtractionResponseCapConfig = {
   maxBytes: 120_000,
@@ -26,36 +24,6 @@ export const DEFAULT_EXTRACTION_RESPONSE_CAPS: ExtractionResponseCapConfig = {
   maxSectionTitleChars: 200,
   maxSuggestedTopicChars: 200,
 };
-
-export interface ExtractionResponsePayload {
-  text: string;
-  pageCount: number;
-  metadata: {
-    title?: string;
-    author?: string;
-    subject?: string;
-  };
-  structure: ExtractedStructure;
-}
-
-export interface ExtractionTruncationMetadata {
-  truncated: boolean;
-  maxBytes: number;
-  returnedBytes: number;
-  hardResetApplied: boolean;
-  hardResetBytesBeforeReset?: number;
-  reasons: string[];
-  limits: {
-    maxTextChars: number;
-    maxSections: number;
-    maxSectionChars: number;
-  };
-}
-
-export interface CapExtractionResponse {
-  payload: ExtractionResponsePayload;
-  truncation: ExtractionTruncationMetadata;
-}
 
 const truncateToMaxChars = (value: string, maxChars: number): string => {
   if (value.length <= maxChars) {

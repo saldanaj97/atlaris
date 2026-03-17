@@ -16,5 +16,3 @@ export const updatePreferencesSchema = z.object({
     error: 'Invalid model ID',
   }),
 });
-
-export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;

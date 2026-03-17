@@ -1,8 +1,8 @@
-export interface TruncationResult {
+type TruncationResult = {
   value: string | undefined;
   truncated: boolean;
   originalLength: number | undefined;
-}
+};
 
 export function truncateToLength(
   input: string | null | undefined,

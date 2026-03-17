@@ -5,19 +5,19 @@ import { logger } from '@/lib/logging/logger';
 import { and, eq } from 'drizzle-orm';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
+export type OAuthTokenData = {
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: Date;
+  scope: string;
+};
+
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const GOOGLE_OAUTH_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const GOOGLE_OAUTH_REVOKE_TIMEOUT_MS = 10_000;
 
 type FetchLike = typeof fetch;
-
-export interface OAuthTokenData {
-  accessToken: string;
-  refreshToken?: string;
-  expiresAt?: Date;
-  scope: string;
-}
 
 function getEncryptionKey(): Buffer {
   const key = oauthEncryptionEnv.encryptionKey;
@@ -77,7 +77,7 @@ export function decryptToken(encryptedData: string): OAuthTokenData {
   };
 }
 
-export type IntegrationProvider = 'google_calendar';
+type IntegrationProvider = 'google_calendar';
 
 export async function revokeGoogleTokens(
   accessToken: string,

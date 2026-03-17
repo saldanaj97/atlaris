@@ -7,5 +7,3 @@ export const updateUserProfileSchema = z
     name: z.string().trim().min(1).max(USER_PROFILE_NAME_MAX_LENGTH).nullable(),
   })
   .strict();
-
-export type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;

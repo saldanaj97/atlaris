@@ -40,7 +40,7 @@ export const SCHEDULE_FETCH_ERROR_CODE = {
   SCHEDULE_GENERATION_FAILED: 'SCHEDULE_GENERATION_FAILED',
 } as const;
 
-export type ScheduleFetchErrorCode =
+type ScheduleFetchErrorCode =
   (typeof SCHEDULE_FETCH_ERROR_CODE)[keyof typeof SCHEDULE_FETCH_ERROR_CODE];
 
 export class ScheduleFetchError extends Error {

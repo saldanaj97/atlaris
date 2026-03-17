@@ -1,20 +1,5 @@
+import type { NavItem } from './navigation.types';
 import { ROUTES } from './routes';
-
-/**
- * Navigation configuration for authenticated and unauthenticated users.
- *
- * Authenticated users see: Dashboard, Plans, Analytics, Settings
- * Unauthenticated users see: Home, Pricing, About
- */
-
-export type NavItem = {
-  label: string;
-  href: string;
-  dropdown?: Array<{
-    label: string;
-    href: string;
-  }>;
-};
 
 /**
  * Navigation items for authenticated users.

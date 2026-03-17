@@ -1,5 +1,5 @@
 import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.types';
-import type { FailureClassification } from '@/lib/types/client';
+import type { FailureClassification } from '@/lib/types/client.types';
 import { z } from 'zod';
 
 const TimingMetadataSchema = z
@@ -12,16 +12,16 @@ const TimingMetadataSchema = z
   })
   .passthrough();
 
-export interface MetricStatsSnapshot {
+type MetricStatsSnapshot = {
   count: number;
   sum: number;
   min: number | null;
   max: number | null;
   last: number | null;
   average: number | null;
-}
+};
 
-export interface AttemptMetricsSnapshot {
+type AttemptMetricsSnapshot = {
   totalAttempts: number;
   success: {
     count: number;
@@ -34,7 +34,7 @@ export interface AttemptMetricsSnapshot {
     duration: MetricStatsSnapshot;
     classifications: Record<FailureClassification, number>;
   };
-}
+};
 
 interface MetricStatsState {
   count: number;

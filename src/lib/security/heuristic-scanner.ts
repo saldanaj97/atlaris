@@ -2,12 +2,12 @@ import { logger as defaultLogger } from '@/lib/logging/logger';
 import type { ScanProvider, ScanVerdict } from '@/lib/security/scanner.types';
 
 /** Minimal logger interface for DI; callers may pass a full Logger or a mock. */
-export interface HeuristicScanLogger {
+type HeuristicScanLogger = {
   // Variadic logger APIs (Pino-style: msg, ...args or obj, msg) require a rest type; unknown[] is
   // the deliberate exception to strict argument typing so the interface stays assignable.
   debug(...args: unknown[]): void;
   warn(...args: unknown[]): void;
-}
+};
 
 const MAX_SCAN_STRING_BYTES = 5 * 1024 * 1024;
 const PDF_MAGIC_BYTES = Buffer.from('%PDF-', 'utf8');

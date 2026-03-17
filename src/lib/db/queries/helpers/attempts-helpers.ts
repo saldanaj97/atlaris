@@ -37,7 +37,7 @@ import {
 } from '@/lib/validation/learningPlans';
 import { and, count, eq, gte, min, sql, type SQL } from 'drizzle-orm';
 
-import type { ParsedModule } from '@/lib/ai/parser';
+import type { ParsedModule } from '@/lib/ai/types/parser.types';
 import type { GenerationInput } from '@/lib/ai/types/provider.types';
 
 /** Drizzle-like methods required by attempt operations (reserve, finalize). */

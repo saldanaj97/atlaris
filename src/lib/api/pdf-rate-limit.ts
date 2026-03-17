@@ -9,6 +9,10 @@ import {
 } from '@/lib/stripe/usage';
 import { LRUCache } from 'lru-cache';
 
+export type GlobalExtractionState = {
+  inFlight: number;
+};
+
 type PdfUploadValidationDeps = {
   resolveTier?: (
     userId: string,
@@ -22,7 +26,7 @@ type PdfUploadLimitDetails = {
   monthlyPdfPlans: number;
 };
 
-export type PdfSizeLimitResult =
+type PdfSizeLimitResult =
   | { allowed: true; limits: PdfUploadLimitDetails }
   | {
       allowed: false;
@@ -31,7 +35,7 @@ export type PdfSizeLimitResult =
       limits: PdfUploadLimitDetails;
     };
 
-export type PdfUploadValidationResult =
+type PdfUploadValidationResult =
   | { allowed: true; limits: PdfUploadLimitDetails }
   | {
       allowed: false;
@@ -135,36 +139,32 @@ const extractionTimestamps = new LRUCache<string, number[]>({
   ttl: PDF_EXTRACTION_WINDOW_MS + 1000,
 });
 
-export interface GlobalExtractionState {
-  inFlight: number;
-}
-
 const globalExtractionState: GlobalExtractionState = {
   inFlight: 0,
 };
 
-export interface PdfThrottleResult {
+type PdfThrottleResult = {
   allowed: boolean;
   retryAfterMs?: number;
-}
+};
 
 type ThrottleStore = Map<string, number[]> | LRUCache<string, number[]>;
 
-export interface PdfThrottleDeps {
+type PdfThrottleDeps = {
   store?: ThrottleStore;
   now?: () => number;
   headers?: Record<string, string | undefined>;
-}
+};
 
-export interface PdfGlobalExtractionDeps {
+type PdfGlobalExtractionDeps = {
   /** Canonical key for global extraction state (injection for tests). */
   state?: GlobalExtractionState;
   leaseMs?: number;
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
-}
+};
 
-export type PdfGlobalExtractionResult =
+type PdfGlobalExtractionResult =
   | {
       allowed: true;
       release: () => void;

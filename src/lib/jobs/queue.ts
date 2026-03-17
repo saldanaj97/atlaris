@@ -9,9 +9,9 @@ import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
 import { db } from '@/lib/db/service-role';
 import type { Job, JobPayload, JobResult, JobType } from '@/lib/jobs/types';
 
-export interface FailJobOptions {
+type FailJobOptions = {
   retryable?: boolean;
-}
+};
 
 export async function enqueueJob(
   type: JobType,

@@ -23,7 +23,7 @@ import type {
   GenerationAttempt,
   LearningPlanDetail,
   PlanSummary,
-} from '@/lib/types/db';
+} from '@/lib/types/db.types';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */
@@ -36,9 +36,9 @@ const DELETABLE_PLAN_STATUSES = ['ready', 'failed', 'pending_retry'] as const;
 type PlanGenerationStatus =
   (typeof learningPlans.$inferSelect)['generationStatus'];
 
-interface DeletePlanDeps {
+type DeletePlanDeps = {
   selectOwnedPlanById: typeof selectOwnedPlanById;
-}
+};
 
 const defaultDeletePlanDeps: DeletePlanDeps = {
   selectOwnedPlanById,
@@ -211,10 +211,10 @@ export async function getLearningPlanDetail(
 }
 
 /** Return type for getPlanAttemptsForUser. */
-export interface PlanAttemptsResult {
+type PlanAttemptsResult = {
   plan: PlanAttemptsPlanMeta;
   attempts: GenerationAttempt[];
-}
+};
 
 /**
  * Fetches all generation attempts for a plan, ordered by creation (newest first).
@@ -259,10 +259,10 @@ export async function getPlanAttemptsForUser(
 }
 
 /** Explicit failure reasons returned by deletePlan. */
-export type DeletePlanFailureReason = 'not_found' | 'currently_generating';
+type DeletePlanFailureReason = 'not_found' | 'currently_generating';
 
 /** Result of a plan deletion attempt. */
-export type DeletePlanResult =
+type DeletePlanResult =
   | { success: true }
   | { success: false; reason: DeletePlanFailureReason };
 

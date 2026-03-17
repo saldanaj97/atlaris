@@ -1,13 +1,14 @@
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import type { InferSelectModel } from 'drizzle-orm';
 
-import type { ParsedModule } from '@/lib/ai/parser';
+import type { ParsedModule } from '@/lib/ai/types/parser.types';
 import type {
   GenerationInput,
   ProviderMetadata,
 } from '@/lib/ai/types/provider.types';
-import type { FailureClassification } from '@/lib/types/client';
+import type { FailureClassification } from '@/lib/types/client.types';
 import type { EffortNormalizationFlags } from '@/lib/utils/effort';
+
+type DbSchemaModule = typeof import('@/lib/db/schema');
 
 /**
  * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
@@ -20,7 +21,7 @@ export type AttemptsDbClient = ReturnType<
 >;
 
 export type GenerationAttemptRecord = InferSelectModel<
-  typeof generationAttempts
+  DbSchemaModule['generationAttempts']
 >;
 
 export interface AttemptReservation {
@@ -51,7 +52,9 @@ export interface AttemptReservation {
 export interface AttemptRejection {
   reserved: false;
   reason: 'capped' | 'in_progress' | 'invalid_status' | 'rate_limited';
-  currentStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
+  currentStatus?: InferSelectModel<
+    DbSchemaModule['learningPlans']
+  >['generationStatus'];
   retryAfter?: number;
 }
 
@@ -159,10 +162,12 @@ export interface ReserveAttemptSlotParams {
   dbClient: AttemptsDbClient;
   /** If set, plan must have one of these statuses (takes precedence over requiredGenerationStatus). */
   allowedGenerationStatuses?: ReadonlyArray<
-    (typeof learningPlans.$inferSelect)['generationStatus']
+    InferSelectModel<DbSchemaModule['learningPlans']>['generationStatus']
   >;
   /** If set (and allowedGenerationStatuses not set), plan must have this exact status. */
-  requiredGenerationStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
+  requiredGenerationStatus?: InferSelectModel<
+    DbSchemaModule['learningPlans']
+  >['generationStatus'];
   now?: () => Date;
 }
 

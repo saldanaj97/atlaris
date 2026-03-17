@@ -3,9 +3,9 @@ import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans } from '@/lib/db/schema';
 
-type PlanQueryClient = Pick<ReturnType<typeof getDb>, 'select'>;
-
 export type OwnedPlanRecord = typeof learningPlans.$inferSelect;
+
+type PlanQueryClient = Pick<ReturnType<typeof getDb>, 'select'>;
 
 interface LockedOwnedPlanRecord {
   id: string;

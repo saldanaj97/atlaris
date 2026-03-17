@@ -17,22 +17,20 @@
  * - All limits are per-user, not per-IP (authenticated context required).
  */
 
-import {
-  createSlidingWindowLimiter,
-  type SlidingWindowLimiter,
-} from '@/lib/api/rate-limit-core';
+import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
+import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 /**
  * Configuration for user-based rate limiting
  */
-export interface UserRateLimitConfig {
+type UserRateLimitConfig = {
   /** Maximum requests allowed within the window */
   maxRequests: number;
   /** Time window in milliseconds */
   windowMs: number;
   /** Maximum unique users to track (LRU eviction) */
   maxTrackedUsers?: number;
-}
+};
 
 /**
  * Endpoint cost categories for rate limiting.
@@ -101,9 +99,6 @@ export const USER_RATE_LIMIT_CONFIGS = {
   },
 } as const;
 
-/**
- * Type for rate limit category keys
- */
 export type UserRateLimitCategory = keyof typeof USER_RATE_LIMIT_CONFIGS;
 
 /**

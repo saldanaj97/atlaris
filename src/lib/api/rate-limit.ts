@@ -11,11 +11,11 @@ import type {
 } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
 
-export interface PlanGenerationRateLimitResult {
+type PlanGenerationRateLimitResult = {
   remaining: number;
   limit: number;
   reset: number;
-}
+};
 
 /** Serializes rate-limit numeric values to HTTP response headers. */
 export function getPlanGenerationRateLimitHeaders(

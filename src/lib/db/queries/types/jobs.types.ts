@@ -1,13 +1,14 @@
 import type { getDb } from '@/lib/db/runtime';
-import { jobQueue } from '@/lib/db/schema';
 import type { JobErrorHistoryEntry } from '@/lib/jobs/types';
 import type { InferSelectModel } from 'drizzle-orm';
+
+type DbSchemaModule = typeof import('@/lib/db/schema');
 
 /**
  * Database row type inferred from Drizzle schema.
  * Using InferSelectModel ensures type safety without manual interface maintenance.
  */
-export type JobQueueRow = InferSelectModel<typeof jobQueue>;
+export type JobQueueRow = InferSelectModel<DbSchemaModule['jobQueue']>;
 
 export type JobsDbClient = ReturnType<typeof getDb>;
 

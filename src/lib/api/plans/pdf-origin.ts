@@ -1,26 +1,21 @@
 import { AppError, ForbiddenError } from '@/lib/api/errors';
+import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import {
-  sanitizePdfContextForPersistence,
-  type PdfContext,
-} from '@/lib/pdf/context';
+import { sanitizePdfContextForPersistence } from '@/lib/pdf/context';
+import type { PdfContext } from '@/lib/pdf/context.types';
 import { verifyAndConsumePdfExtractionProof } from '@/lib/security/pdf-extraction-proof';
 import {
   atomicCheckAndIncrementPdfUsage,
   decrementPdfPlanUsage,
 } from '@/lib/stripe/usage';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
 
-import { getDb } from '@/lib/db/runtime';
-
-type DbClient = ReturnType<typeof getDb>;
-
-export interface PdfProvenance {
+export type PdfProvenance = {
   extractionHash: string;
   proofVersion: 1;
-}
+};
 
-export interface PreparedPlanInput {
+export type PreparedPlanInput = {
   origin: CreateLearningPlanInput['origin'];
   extractedContext: PdfContext | null;
   topic: string;
@@ -29,7 +24,9 @@ export interface PreparedPlanInput {
   learningStyle: CreateLearningPlanInput['learningStyle'];
   pdfUsageReserved: boolean;
   pdfProvenance: PdfProvenance | null;
-}
+};
+
+type DbClient = ReturnType<typeof getDb>;
 
 type PreparePdfOriginParams = {
   body: CreateLearningPlanInput;

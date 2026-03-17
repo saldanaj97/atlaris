@@ -1,5 +1,4 @@
 import { AttemptCapExceededError, ForbiddenError } from '@/lib/api/errors';
-import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
 import {
@@ -7,7 +6,7 @@ import {
   checkPlanDurationCap,
   resolveUserTier,
 } from '@/lib/stripe/usage';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
 
 import {
   preparePlanInputWithPdfOrigin,
@@ -18,21 +17,21 @@ import {
   requireInternalUserByAuthId,
   type PlansDbClient,
 } from '@/lib/api/plans/route-context';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
 import {
   calculateTotalWeeks,
   findCappedPlanWithoutModules,
   normalizePlanDurationForTier,
 } from '@/lib/api/plans/shared';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
 
-export interface PlanCreationPreflightData {
+type PlanCreationPreflightData = {
   user: DbUser;
   userTier: SubscriptionTier;
   startDate: string | null;
   deadlineDate: string | null;
   totalWeeks: number;
   preparedInput: PreparedPlanInput;
-}
+};
 
 type PreparePlanCreationPreflightParams = {
   body: CreateLearningPlanInput;
@@ -172,5 +171,3 @@ export async function insertPlanWithRollback(params: {
     throw error;
   }
 }
-
-export type PlanCreationDbClient = ReturnType<typeof getDb>;

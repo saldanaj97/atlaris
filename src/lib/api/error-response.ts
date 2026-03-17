@@ -1,24 +1,24 @@
-import type { FailureClassification } from '@/lib/types/client';
+import type { FailureClassification } from '@/lib/types/client.types';
 
-export interface ApiErrorResponse {
+export type ApiErrorResponse = {
   error: string;
   code: string;
   classification?: FailureClassification;
   details?: unknown;
   retryAfter?: number;
-}
+};
 
-export interface ApiErrorResponseOptions {
+type ApiErrorResponseOptions = {
   status?: number;
   code?: string;
   classification?: FailureClassification;
   details?: unknown;
   retryAfter?: number;
-}
+};
 
-export interface ApiErrorJsonResponseOptions extends ApiErrorResponseOptions {
+type ApiErrorJsonResponseOptions = ApiErrorResponseOptions & {
   headers?: Record<string, string>;
-}
+};
 
 const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
   400: 'BAD_REQUEST',

@@ -31,20 +31,23 @@
  */
 
 import { databaseEnv } from '@/lib/config/env';
+import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import type { Sql } from 'postgres';
 import postgres from 'postgres';
+import type { Sql } from 'postgres';
 import * as schema from './schema';
+
+export type RlsClient = DbClient;
 
 /**
  * Result type for RLS client creation functions.
  * Includes the Drizzle client and a cleanup function to close the connection.
  */
-export interface RlsClientResult {
+type RlsClientResult = {
   db: Awaited<ReturnType<typeof drizzle<typeof schema>>>;
   cleanup: () => Promise<void>;
-}
+};
 
 /**
  * Creates an RLS-enforced database client for authenticated users.
@@ -202,11 +205,3 @@ export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
     cleanup,
   };
 }
-
-/**
- * Type alias for the RLS-enforced database client.
- * This matches the type of the service-role client for compatibility.
- */
-export type RlsClient = Awaited<
-  ReturnType<typeof createAuthenticatedRlsClient>
->['db'];

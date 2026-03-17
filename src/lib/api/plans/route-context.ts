@@ -1,15 +1,13 @@
 import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
-import {
-  selectOwnedPlanById,
-  type OwnedPlanRecord,
-} from '@/lib/db/queries/helpers/plans-helpers';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import type { OwnedPlanRecord } from '@/lib/db/queries/helpers/plans-helpers';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 
 export type PlansDbClient = ReturnType<typeof getDb>;
 
-export type LearningPlanRecord = OwnedPlanRecord;
+type LearningPlanRecord = OwnedPlanRecord;
 
 function getPlanIdFromUrl(
   req: Request,

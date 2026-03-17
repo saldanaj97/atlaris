@@ -7,13 +7,13 @@ import { logger } from '@/lib/logging/logger';
 
 const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-export interface OAuthStateStore {
+type OAuthStateStore = {
   issue(params: { authUserId: string; provider: string }): Promise<string>;
   consume(params: {
     stateToken: string;
     provider: string;
   }): Promise<string | null>;
-}
+};
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');

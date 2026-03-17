@@ -5,11 +5,11 @@
 
 import * as Sentry from '@sentry/nextjs';
 
-export interface BillingReconciliationContext {
+type BillingReconciliationContext = {
   planId: string;
   userId: string;
   jobId: string;
-}
+};
 
 /**
  * Records a billing reconciliation failure (e.g. rollback of usage after dedupe failed).

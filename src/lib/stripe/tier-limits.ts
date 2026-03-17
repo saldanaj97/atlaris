@@ -1,8 +1,11 @@
+import type { TierLimits } from './tier-limits.types';
+export type { SubscriptionTier } from './tier-limits.types';
+
 /**
  * Subscription tier limits
  * This file contains only constants and types - no server-only imports
  */
-export const TIER_LIMITS = {
+export const TIER_LIMITS: TierLimits = {
   free: {
     maxActivePlans: 3,
     monthlyRegenerations: 5,
@@ -34,5 +37,3 @@ export const TIER_LIMITS = {
     maxHours: null,
   },
 } as const;
-
-export type SubscriptionTier = keyof typeof TIER_LIMITS;

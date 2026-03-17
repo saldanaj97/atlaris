@@ -1,15 +1,22 @@
+import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv } from '@/lib/config/env';
+import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
+import { AuthError } from './errors';
+import { checkUserRateLimit, getUserRateLimitHeaders } from './user-rate-limit';
+
+import type {
+  PlainHandler,
+  RouteHandlerContext,
+} from '@/lib/api/types/auth.types';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import type { RlsClient } from '@/lib/db/rls';
-import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
-import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { AuthError } from './errors';
-import {
-  checkUserRateLimit,
-  getUserRateLimitHeaders,
-  type UserRateLimitCategory,
-} from './user-rate-limit';
+import type { UserRateLimitCategory } from './user-rate-limit';
+
+export type {
+  PlainHandler,
+  RouteHandlerContext,
+} from '@/lib/api/types/auth.types';
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -134,16 +141,6 @@ type HandlerCtx = {
 };
 
 type Handler = (ctx: HandlerCtx) => Promise<Response>;
-
-export type RouteHandlerContext = {
-  params?: Promise<Record<string, string>>;
-  [key: string]: unknown;
-};
-
-export type PlainHandler = (
-  req: Request,
-  context?: RouteHandlerContext
-) => Promise<Response>;
 
 export function withAuth(handler: Handler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {

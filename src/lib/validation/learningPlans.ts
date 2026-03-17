@@ -6,6 +6,11 @@ import {
   startOfToday,
 } from 'date-fns';
 import { z } from 'zod';
+export type {
+  CreateLearningPlanInput,
+  OnboardingFormValues,
+  PlanRegenerationOverridesInput,
+} from './learningPlans.types';
 
 import { pdfPreviewEditSchema } from './pdf';
 import {
@@ -123,19 +128,11 @@ export const planRegenerationOverridesSchema = z
   })
   .strict();
 
-export type PlanRegenerationOverridesInput = z.infer<
-  typeof planRegenerationOverridesSchema
->;
-
 export const planRegenerationRequestSchema = z
   .object({
     overrides: planRegenerationOverridesSchema.optional(),
   })
   .strict();
-
-export type PlanRegenerationRequestInput = z.infer<
-  typeof planRegenerationRequestSchema
->;
 
 const createLearningPlanObject = z
   .object({
@@ -260,8 +257,6 @@ export const createLearningPlanSchema = createLearningPlanObject
         : undefined);
     return { ...data, topic: topic ?? '' };
   });
-
-export type CreateLearningPlanInput = z.infer<typeof createLearningPlanSchema>;
 
 function toDateOnly(value: string): Date {
   const parsedDate = parseISO(value);
@@ -388,5 +383,3 @@ export const onboardingFormSchema = onboardingFormObject.superRefine(
     validateOnboardingDateFields(data, ctx);
   }
 );
-
-export type OnboardingFormValues = z.infer<typeof onboardingFormSchema>;

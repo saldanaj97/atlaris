@@ -1,8 +1,9 @@
 // Centralized error types and helpers for API layer
 
+import { getCorrelationId } from '@/lib/api/context';
 import { jsonError } from '@/lib/api/response';
-import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/lib/types/client';
+import { createLogger, logger } from '@/lib/logging/logger';
+import type { FailureClassification } from '@/lib/types/client.types';
 
 function hasStringCode(value: unknown): value is { code: string } {
   if (typeof value !== 'object' || value === null) {
@@ -22,9 +23,14 @@ export class AppError extends Error {
       details?: unknown;
       classification?: FailureClassification;
       headers?: Record<string, string>;
+      logMeta?: Record<string, unknown>;
+      cause?: unknown;
     } = {}
   ) {
-    super(message);
+    super(
+      message,
+      options.cause != null ? { cause: options.cause } : undefined
+    );
     this.name = this.constructor.name;
   }
 
@@ -47,6 +53,10 @@ export class AppError extends Error {
   headers(): Record<string, string> {
     return this.options.headers ?? {};
   }
+
+  logMeta(): Record<string, unknown> | undefined {
+    return this.options.logMeta;
+  }
 }
 
 export class AuthError extends AppError {
@@ -62,18 +72,27 @@ export class ForbiddenError extends AppError {
 }
 
 export class NotFoundError extends AppError {
-  constructor(message = 'Not Found', details?: unknown) {
-    super(message, { status: 404, code: 'NOT_FOUND', details });
+  constructor(
+    message = 'Not Found',
+    details?: unknown,
+    logMeta?: Record<string, unknown>
+  ) {
+    super(message, { status: 404, code: 'NOT_FOUND', details, logMeta });
   }
 }
 
 export class ValidationError extends AppError {
-  constructor(message = 'Validation Failed', details?: unknown) {
+  constructor(
+    message = 'Validation Failed',
+    details?: unknown,
+    logMeta?: Record<string, unknown>
+  ) {
     super(message, {
       status: 400,
       code: 'VALIDATION_ERROR',
       details,
       classification: 'validation',
+      logMeta,
     });
   }
 }
@@ -85,21 +104,30 @@ export class ConflictError extends AppError {
 }
 
 export class ServiceUnavailableError extends AppError {
-  constructor(message = 'Service unavailable', details?: unknown) {
-    super(message, { status: 503, code: 'SERVICE_UNAVAILABLE', details });
+  constructor(
+    message = 'Service unavailable',
+    details?: unknown,
+    logMeta?: Record<string, unknown>
+  ) {
+    super(message, {
+      status: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      details,
+      logMeta,
+    });
   }
 }
 
-export interface RateLimitErrorDetails {
+type RateLimitErrorDetails = {
   retryAfter?: number;
   remaining?: number;
   limit?: number;
   reset?: number;
-}
+};
 
-interface RateLimitErrorOptions {
+type RateLimitErrorOptions = {
   headers?: Record<string, string>;
-}
+};
 
 export class RateLimitError extends AppError {
   public retryAfter?: number;
@@ -227,8 +255,28 @@ function toSafeError(err: unknown): Record<string, unknown> {
   };
 }
 
+function logAppError(err: AppError): void {
+  const status = err.status();
+  const logMeta = err.logMeta();
+  const payload = {
+    status,
+    code: err.code(),
+    message: err.message,
+    details: err.details(),
+    ...(logMeta != null ? logMeta : {}),
+  };
+  const requestId = getCorrelationId();
+  const log = requestId ? createLogger({ requestId }) : logger;
+  if (status >= 500) {
+    log.error(payload, 'API error');
+  } else {
+    log.warn(payload, 'API error');
+  }
+}
+
 export function toErrorResponse(err: unknown): Response {
   if (err instanceof AppError) {
+    logAppError(err);
     const headers: Record<string, string> = { ...err.headers() };
     let retryAfter: number | undefined;
 
@@ -257,7 +305,9 @@ export function toErrorResponse(err: unknown): Response {
       headers,
     });
   }
-  logger.error({ error: toSafeError(err) }, 'Unexpected API error');
+  const requestId = getCorrelationId();
+  const log = requestId ? createLogger({ requestId }) : logger;
+  log.error({ error: toSafeError(err) }, 'Unexpected API error');
   return jsonError('Internal Server Error', {
     status: 500,
     code: 'INTERNAL_ERROR',

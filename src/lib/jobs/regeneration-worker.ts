@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import type { ParsedModule } from '@/lib/ai/parser';
+import type { ParsedModule } from '@/lib/ai/types/parser.types';
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
@@ -27,12 +27,12 @@ type PlanRegenerationJobPayload = z.infer<
   typeof planRegenerationJobPayloadSchema
 >;
 
-export interface ProcessRegenerationJobResult {
+type ProcessRegenerationJobResult = {
   processed: boolean;
   jobId?: string;
   status?: 'completed' | 'failed';
   reason?: string;
-}
+};
 
 const toIsoDateString = (value: string | null): string | undefined => {
   if (!value) {
@@ -196,16 +196,16 @@ export async function processNextRegenerationJob(): Promise<ProcessRegenerationJ
   }
 }
 
-export interface DrainRegenerationQueueResult {
+type DrainRegenerationQueueResult = {
   processedCount: number;
   completedCount: number;
   failedCount: number;
-}
+};
 
-export interface DrainRegenerationQueueOptions {
+type DrainRegenerationQueueOptions = {
   maxJobs?: number;
   processNextJob?: () => Promise<ProcessRegenerationJobResult>;
-}
+};
 
 /** In-memory guard to prevent concurrent inline drains (thundering herd). */
 let inlineDrainLockHeld = false;

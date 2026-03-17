@@ -21,7 +21,7 @@ const STATUS_RESPONSE_SCHEMA = z.object({
 type SubmitResponse = z.infer<typeof SUBMIT_RESPONSE_SCHEMA>;
 type StatusResponse = z.infer<typeof STATUS_RESPONSE_SCHEMA>;
 
-export interface MetaDefenderScanProviderOptions {
+type MetaDefenderScanProviderOptions = {
   apiKey?: string;
   baseUrl: string;
   timeoutMs: number;
@@ -29,7 +29,7 @@ export interface MetaDefenderScanProviderOptions {
   maxPollAttempts?: number;
   /** Logger for scan events. Injected in tests; defaults to module logger in production. */
   logger?: Pick<Logger, 'info' | 'error'>;
-}
+};
 
 const sleep = async (ms: number): Promise<void> => {
   await new Promise<void>((resolve) => {

@@ -7,10 +7,10 @@ import { createLogger } from './logger';
 
 export const REQUEST_ID_HEADER = 'x-correlation-id';
 
-export interface RequestContext {
+type RequestContext = {
   requestId: string;
   logger: Logger;
-}
+};
 
 export function createRequestContext(
   request: Pick<Request, 'headers'>,

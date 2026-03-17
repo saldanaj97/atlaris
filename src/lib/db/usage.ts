@@ -5,7 +5,7 @@ import { eq, sql } from 'drizzle-orm';
 
 type DbClient = ReturnType<typeof getDb>;
 
-export interface RecordUsageParams {
+type RecordUsageParams = {
   userId: string;
   provider: string;
   model: string;
@@ -14,7 +14,7 @@ export interface RecordUsageParams {
   costCents?: number | null;
   requestId?: string | null;
   kind?: 'plan' | 'regeneration';
-}
+};
 
 export async function recordUsage(
   params: RecordUsageParams,

@@ -46,12 +46,12 @@ const ABSOLUTE_MAX_ATTEMPTS = 100;
 /** Cap for exponential retry delay in seconds (5 minutes). */
 const MAX_RETRY_DELAY_SECONDS = 300;
 
-export interface SystemWideJobMetrics {
+type SystemWideJobMetrics = {
   stuckJobsCount: number;
   backlogCount: number;
   pendingRegenerationCount: number;
   stuckRegenerationCount: number;
-}
+};
 
 export async function getSystemWideJobMetrics(
   stuckThreshold: Date

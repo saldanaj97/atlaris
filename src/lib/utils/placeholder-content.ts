@@ -1,3 +1,23 @@
+export type ContentBlockType =
+  | 'heading1'
+  | 'heading2'
+  | 'heading3'
+  | 'paragraph';
+
+export type ContentBlock = {
+  type: ContentBlockType;
+  content: string;
+};
+
+export type PlaceholderContentOptions = {
+  seed?: number;
+  topic?: string;
+  minSections?: number;
+  maxSections?: number;
+  minParagraphsPerSection?: number;
+  maxParagraphsPerSection?: number;
+};
+
 /**
  * Placeholder content generator for lesson content.
  * Generates formatted lorem ipsum text with headings and paragraphs
@@ -228,35 +248,6 @@ function generateParagraph(
   }
 
   return sentences.join(' ');
-}
-
-/**
- * Content block types for structured content.
- */
-export type ContentBlockType =
-  | 'heading1'
-  | 'heading2'
-  | 'heading3'
-  | 'paragraph';
-
-export interface ContentBlock {
-  type: ContentBlockType;
-  content: string;
-}
-
-export interface PlaceholderContentOptions {
-  /** Seed for deterministic random generation (e.g., task ID hash) */
-  seed?: number;
-  /** Topic name to include in headings */
-  topic?: string;
-  /** Minimum number of sections (heading + paragraphs) */
-  minSections?: number;
-  /** Maximum number of sections */
-  maxSections?: number;
-  /** Minimum paragraphs per section */
-  minParagraphsPerSection?: number;
-  /** Maximum paragraphs per section */
-  maxParagraphsPerSection?: number;
 }
 
 /**

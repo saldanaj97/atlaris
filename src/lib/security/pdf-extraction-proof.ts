@@ -5,10 +5,8 @@ import { and, eq, gt } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { oauthStateTokens } from '@/lib/db/schema';
 import { hashSha256 } from '@/lib/utils/hash';
-import {
-  pdfPreviewEditSchema,
-  type PdfPreviewEditInput,
-} from '@/lib/validation/pdf';
+import { pdfPreviewEditSchema } from '@/lib/validation/pdf';
+import type { PdfPreviewEditInput } from '@/lib/validation/pdf.types';
 
 const PDF_PROOF_PROVIDER = 'pdf_extraction_proof_v1';
 const PDF_PROOF_VERSION = 1 as const;
@@ -26,7 +24,7 @@ type CanonicalPdfExtractedContent = {
   }>;
 };
 
-export type PdfExtractionProof = {
+type PdfExtractionProof = {
   token: string;
   extractionHash: string;
   expiresAt: string;

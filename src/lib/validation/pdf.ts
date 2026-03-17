@@ -1,4 +1,11 @@
 import { z } from 'zod';
+export type {
+  ExtractionApiResponseData,
+  ExtractionProofData,
+  ExtractionSection,
+  PdfPreviewEditInput,
+  TruncationData,
+} from './pdf.types';
 
 import {
   LEARNING_STYLE_ENUM,
@@ -15,10 +22,6 @@ export const pdfExtractionRequestSchema = z
     sizeBytes: z.number().int().positive(),
   })
   .strict();
-
-export type PdfExtractionRequestInput = z.infer<
-  typeof pdfExtractionRequestSchema
->;
 
 export const pdfExtractedSectionSchema = z
   .object({
@@ -37,10 +40,6 @@ export const pdfExtractedContentSchema = z
   })
   .strict();
 
-export type PdfExtractedContentInput = z.infer<
-  typeof pdfExtractedContentSchema
->;
-
 export const pdfPreviewEditSchema = z
   .object({
     mainTopic: z.string().trim().min(3).max(TOPIC_MAX_LENGTH),
@@ -52,9 +51,7 @@ export const pdfPreviewEditSchema = z
   })
   .strict();
 
-export type PdfPreviewEditInput = z.infer<typeof pdfPreviewEditSchema>;
-
-export type PdfUploadFile = {
+type PdfUploadFile = {
   size: number;
   type: string;
   arrayBuffer: () => Promise<ArrayBuffer>;
@@ -101,14 +98,14 @@ export const pdfExtractionFormDataSchema = z
 /* ─── Extraction API response schemas (client-side parsing) ─── */
 
 /** Permissive section schema for API response parsing (no length constraints). */
-const extractionApiSectionSchema = z.object({
+export const extractionApiSectionSchema = z.object({
   title: z.string(),
   content: z.string(),
   level: z.number(),
   suggestedTopic: z.string().optional(),
 });
 
-const truncationDataSchema = z.object({
+export const truncationDataSchema = z.object({
   truncated: z.boolean(),
   maxBytes: z.number(),
   returnedBytes: z.number(),
@@ -120,7 +117,7 @@ const truncationDataSchema = z.object({
   }),
 });
 
-const extractionProofSchema = z.object({
+export const extractionProofSchema = z.object({
   token: z.string(),
   extractionHash: z.string(),
   expiresAt: z.string(),
@@ -144,10 +141,3 @@ export const extractionApiResponseSchema = z.object({
   error: z.string().optional(),
   code: z.string().optional(),
 });
-
-export type ExtractionApiResponseData = z.infer<
-  typeof extractionApiResponseSchema
->;
-export type ExtractionSection = z.infer<typeof extractionApiSectionSchema>;
-export type TruncationData = z.infer<typeof truncationDataSchema>;
-export type ExtractionProofData = z.infer<typeof extractionProofSchema>;

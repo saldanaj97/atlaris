@@ -1,7 +1,7 @@
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import type { PdfContext } from '@/lib/pdf/context';
+import type { PdfContext } from '@/lib/pdf/context.types';
 import { and, eq, sql } from 'drizzle-orm';
 
 import {
@@ -11,17 +11,19 @@ import {
   UsageMetricsLockError,
   UserNotFoundError,
 } from './errors';
-import { TIER_LIMITS, type SubscriptionTier } from './tier-limits';
+import { TIER_LIMITS } from './tier-limits';
+import type { SubscriptionTier } from './tier-limits.types';
 
 // Type for DB client (compatible with both runtime and service-role clients)
 type DbClient = ReturnType<typeof getDb>;
 
-export { TIER_LIMITS, type SubscriptionTier };
+export { TIER_LIMITS };
+export type { SubscriptionTier } from './tier-limits.types';
 
 // Usage type for incrementing counters
-export type UsageType = 'plan' | 'regeneration' | 'export';
+type UsageType = 'plan' | 'regeneration' | 'export';
 
-export type PdfUsageMetrics = { pdfPlansGenerated: number };
+type PdfUsageMetrics = { pdfPlansGenerated: number };
 
 /**
  * Get current month in YYYY-MM format
@@ -228,7 +230,7 @@ export async function incrementUsage(
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }
 
-export type IncrementPdfPlanUsageOptions = {
+type IncrementPdfPlanUsageOptions = {
   now?: () => Date;
 };
 
@@ -428,7 +430,7 @@ export async function markPlanGenerationSuccess(
     .where(eq(learningPlans.id, planId));
 }
 
-export type MarkPlanFailureOptions = {
+type MarkPlanFailureOptions = {
   now?: () => Date;
 };
 
@@ -449,13 +451,13 @@ export async function markPlanGenerationFailure(
     .where(eq(learningPlans.id, planId));
 }
 
-export type AtomicUsageType = 'regeneration' | 'export';
+type AtomicUsageType = 'regeneration' | 'export';
 
-export type AtomicUsageResult =
+type AtomicUsageResult =
   | { allowed: true; newCount: number; limit: number }
   | { allowed: false; currentCount: number; limit: number };
 
-export type AtomicPdfUsageResult =
+type AtomicPdfUsageResult =
   | { allowed: true; newCount: number; limit: number }
   | { allowed: false; currentCount: number; limit: number };
 
@@ -809,7 +811,7 @@ async function incrementPdfUsageInTx(
 
 const TIER_RECOMMENDATION_THRESHOLD_WEEKS = 8;
 
-export type PlanDurationCapResult = {
+type PlanDurationCapResult = {
   allowed: boolean;
   reason?: string;
   upgradeUrl?: string;

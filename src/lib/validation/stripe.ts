@@ -1,4 +1,10 @@
 import { z } from 'zod';
+export type {
+  CreateCheckoutResponse,
+  CreatePortalResponse,
+  StripePriceFields,
+  StripeProductFields,
+} from './stripe.types';
 
 /**
  * Response shape from POST /api/v1/stripe/create-checkout (success).
@@ -22,12 +28,6 @@ export const createPortalResponseSchema = z.object({
     }, 'portalUrl must use http or https'),
 });
 
-export type CreateCheckoutResponse = z.infer<
-  typeof createCheckoutResponseSchema
->;
-
-export type CreatePortalResponse = z.infer<typeof createPortalResponseSchema>;
-
 /**
  * Subset of Stripe Price fields consumed by the pricing page.
  * Guards against Stripe API changes or unexpected field types at runtime.
@@ -36,8 +36,6 @@ export const stripePriceFieldsSchema = z.object({
   unit_amount: z.number().int().nullable(),
   currency: z.string().min(1),
 });
-
-export type StripePriceFields = z.infer<typeof stripePriceFieldsSchema>;
 
 /**
  * Subset of Stripe Product fields consumed by the pricing page.
@@ -50,5 +48,3 @@ export const stripeProductFieldsSchema = z.union([
     name: z.string().optional(),
   }),
 ]);
-
-export type StripeProductFields = z.infer<typeof stripeProductFieldsSchema>;

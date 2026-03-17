@@ -1,11 +1,7 @@
 import { z } from 'zod';
 
-import {
-  LEARNING_STYLES,
-  SKILL_LEVELS,
-  type LearningStyle,
-  type SkillLevel,
-} from '@/lib/types/db';
+import { LEARNING_STYLES, SKILL_LEVELS } from '@/lib/types/db';
+import type { LearningStyle, SkillLevel } from '@/lib/types/db.types';
 
 export const TOPIC_MAX_LENGTH = 200;
 export const NOTES_MAX_LENGTH = 2000;

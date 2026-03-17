@@ -10,20 +10,19 @@ import type {
   PlanSummary,
   Task,
   TaskProgress,
-} from '@/lib/types/db';
+} from '@/lib/types/db.types';
 
-// Narrow task row for summaries query (joined with modules to include planId)
-export interface SummaryTaskRow {
+export type SummaryTaskRow = {
   id: string;
   moduleId: string;
   planId: string;
   estimatedMinutes: number | null;
-}
+};
 
-export interface ProgressStatusRow {
+export type ProgressStatusRow = {
   taskId: string;
   status: TaskProgress['status'];
-}
+};
 
 export function mapPlanSummaries(params: {
   planRows: LearningPlan[];

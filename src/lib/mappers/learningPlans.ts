@@ -1,15 +1,13 @@
+import { LEARNING_STYLES, SKILL_LEVELS } from '@/lib/types/db';
+import type { LearningStyle, SkillLevel } from '@/lib/types/db.types';
 import {
-  LEARNING_STYLES,
-  SKILL_LEVELS,
-  type LearningStyle,
-  type SkillLevel,
-} from '@/lib/types/db';
-import {
-  CreateLearningPlanInput,
   createLearningPlanSchema,
   onboardingFormSchema,
-  type OnboardingFormValues,
 } from '@/lib/validation/learningPlans';
+import type {
+  CreateLearningPlanInput,
+  OnboardingFormValues,
+} from '@/lib/validation/learningPlans.types';
 
 const WEEKLY_HOURS_RANGE_TO_INT: Record<string, number> = {
   '1-2': 2,
@@ -103,7 +101,7 @@ export function mapOnboardingToCreateInput(
   });
 }
 
-export interface PdfSettingsToCreateInputParams {
+type PdfSettingsToCreateInputParams = {
   mainTopic: string;
   sections: Array<{
     title: string;
@@ -118,7 +116,7 @@ export interface PdfSettingsToCreateInputParams {
   pdfProofToken: string;
   pdfExtractionHash: string;
   pdfProofVersion?: 1;
-}
+};
 
 /**
  * Maps PDF extraction preview settings to CreateLearningPlanInput for the stream endpoint.

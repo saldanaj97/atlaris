@@ -1,12 +1,17 @@
+export type EffortNormalizationFlags = {
+  modulesClamped: boolean;
+  tasksClamped: boolean;
+};
+
 export const MODULE_MIN_MINUTES = 15;
 export const MODULE_MAX_MINUTES = 480;
 export const TASK_MIN_MINUTES = 5;
 export const TASK_MAX_MINUTES = 120;
 
-export interface NormalizedEffortResult {
+type NormalizedEffortResult = {
   value: number;
   clamped: boolean;
-}
+};
 
 export function normalizeEffort(
   minutes: number,
@@ -34,11 +39,6 @@ export function normalizeModuleMinutes(
 
 export function normalizeTaskMinutes(minutes: number): NormalizedEffortResult {
   return normalizeEffort(minutes, TASK_MIN_MINUTES, TASK_MAX_MINUTES);
-}
-
-export interface EffortNormalizationFlags {
-  modulesClamped: boolean;
-  tasksClamped: boolean;
 }
 
 export function aggregateNormalizationFlags(
