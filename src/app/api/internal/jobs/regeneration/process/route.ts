@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { type PlainHandler, withErrorBoundary } from '@/lib/api/auth';
+import { withErrorBoundary } from '@/lib/api/auth';
+import type { PlainHandler } from '@/lib/api/auth';
 import { AppError, AuthError, ServiceUnavailableError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { json } from '@/lib/api/response';

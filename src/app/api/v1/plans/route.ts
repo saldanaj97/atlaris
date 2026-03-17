@@ -17,7 +17,7 @@ import {
 import { json } from '@/lib/api/response';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
 import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
 
 export const GET: PlainHandler = withErrorBoundary(

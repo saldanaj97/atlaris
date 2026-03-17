@@ -27,17 +27,18 @@ export const GET = withErrorBoundary(
     const detail = await getLearningPlanDetail(planId, user.id);
 
     if (!detail) {
-      logger.error({ planId, userId: user.id }, 'Learning plan not found');
-      throw new NotFoundError('Learning plan not found.');
+      throw new NotFoundError('Learning plan not found.', undefined, {
+        planId,
+        userId: user.id,
+      });
     }
 
     const clientDetail = mapDetailToClient(detail);
     if (!clientDetail) {
-      logger.error(
-        { planId, userId: user.id },
-        'Learning plan detail mapping returned null'
-      );
-      throw new NotFoundError('Learning plan not found.');
+      throw new NotFoundError('Learning plan not found.', undefined, {
+        planId,
+        userId: user.id,
+      });
     }
 
     logger.debug({ planId, userId: user.id }, 'Fetched learning plan detail');

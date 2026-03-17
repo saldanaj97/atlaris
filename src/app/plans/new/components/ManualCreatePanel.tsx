@@ -9,7 +9,7 @@ import type { PlanFormData } from '@/app/plans/new/components/plan-form/types';
 import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 import { mapOnboardingToCreateInput } from '@/lib/mappers/learningPlans';
-import type { OnboardingFormValues } from '@/lib/validation/learningPlans';
+import type { OnboardingFormValues } from '@/lib/validation/learningPlans.types';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';

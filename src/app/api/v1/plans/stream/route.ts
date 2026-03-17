@@ -5,15 +5,15 @@ import {
 } from '@/app/api/v1/plans/stream/helpers';
 import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
+import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
 import type {
   GenerationAttemptContext,
   GenerationResult,
   RunGenerationOptions,
-} from '@/lib/ai/orchestrator';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import type { PlainHandler } from '@/lib/api/auth';
+} from '@/lib/ai/types/orchestrator.types';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import type { PlainHandler } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import {
   insertPlanWithRollback,
@@ -26,8 +26,8 @@ import {
 import { appEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
 import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
 import { ZodError } from 'zod';
 
 /** Classification used when an unstructured exception occurs in the generation catch block. */
@@ -75,25 +75,17 @@ export function createStreamHandler(deps?: {
           body = createLearningPlanSchema.parse(parsedBody);
         } catch (error) {
           if (error instanceof ZodError) {
-            logger.warn(
-              {
-                authUserId: userId,
-                validation: error.flatten(),
-              },
-              'Plan stream request failed schema validation'
+            throw new ValidationError(
+              'Invalid request body.',
+              error.flatten(),
+              { authUserId: userId, validation: error.flatten() }
             );
-            throw new ValidationError('Invalid request body.', error.flatten());
           }
-          logger.error(
-            {
-              authUserId: userId,
-              error: serializeError(error),
-            },
-            'Plan stream request body parsing failed'
+          throw new ValidationError(
+            'Invalid request body.',
+            { reason: 'Malformed or invalid JSON payload.' },
+            { authUserId: userId, error: serializeError(error) }
           );
-          throw new ValidationError('Invalid request body.', {
-            reason: 'Malformed or invalid JSON payload.',
-          });
         }
 
         const db = getDb();

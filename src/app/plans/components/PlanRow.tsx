@@ -27,7 +27,7 @@ import {
 import Link from 'next/link';
 
 import type { PlanStatus } from '@/app/plans/types';
-import type { PlanSummary } from '@/lib/types/db';
+import type { PlanSummary } from '@/lib/types/db.types';
 
 const STATUS_COLORS: Record<PlanStatus, string> = {
   active: 'bg-emerald-500',

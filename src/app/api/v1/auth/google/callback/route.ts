@@ -3,7 +3,7 @@ import {
   createRequestContext as createApiRequestContext,
   withRequestContext,
 } from '@/lib/api/context';
-import { ValidationError } from '@/lib/api/errors';
+import { AppError, ValidationError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { googleOAuthEnv } from '@/lib/config/env';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
@@ -140,15 +140,10 @@ export const GET = withErrorBoundary(async (req) => {
     const { tokens: tokensRaw } = await oauth2Client.getToken(code);
     const parsedTokens = GoogleTokensSchema.safeParse(tokensRaw);
     if (!parsedTokens.success) {
-      logger.error(
-        {
-          error: parsedTokens.error.flatten(),
-        },
-        'Invalid Google OAuth token response payload'
-      );
       throw new ValidationError(
         'Google OAuth token response validation failed',
-        parsedTokens.error.flatten()
+        parsedTokens.error.flatten(),
+        { error: parsedTokens.error.flatten() }
       );
     }
 
@@ -176,13 +171,14 @@ export const GET = withErrorBoundary(async (req) => {
       new URL('/settings/integrations?google=connected', baseUrl)
     );
   } catch (err) {
-    logger.error(
-      {
-        requestId,
-        errorMessage: err instanceof Error ? err.message : 'Unknown error',
-      },
-      'Google token exchange failed'
-    );
+    const payload: Record<string, unknown> = {
+      requestId,
+      errorMessage: err instanceof Error ? err.message : 'Unknown error',
+    };
+    if (err instanceof AppError && err.logMeta()) {
+      Object.assign(payload, err.logMeta());
+    }
+    logger.error(payload, 'Google token exchange failed');
     return redirectWithRequestId(
       new URL('/settings/integrations?error=token_exchange_failed', baseUrl)
     );

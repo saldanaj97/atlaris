@@ -2,7 +2,8 @@
 
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { PLAN_STATUSES, type PlanStatus } from '@/lib/types/client';
+import { PLAN_STATUSES } from '@/lib/types/client';
+import type { PlanStatus } from '@/lib/types/client.types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
@@ -60,6 +61,7 @@ export function usePlanStatus(
   const [pollingError, setPollingError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const consecutiveFailuresRef = useRef(0);
+  const previousPlanIdRef = useRef(planId);
   // Track latest initialStatus without making planId-reset effect depend on it.
   // This prevents a spurious full reset when initialStatus changes on the same plan.
   const initialStatusRef = useRef(initialStatus);
@@ -171,6 +173,11 @@ export function usePlanStatus(
   // When the planId changes, reset all per-plan state so the new plan starts fresh
   // and stale state from the previous plan never leaks into the UI.
   useEffect(() => {
+    if (previousPlanIdRef.current === planId) {
+      return;
+    }
+
+    previousPlanIdRef.current = planId;
     setStatus(initialStatusRef.current);
     setAttempts(0);
     setError(null);

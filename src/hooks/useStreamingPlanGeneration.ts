@@ -3,10 +3,10 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { StreamingEventSchema } from '@/lib/ai/streaming/schema';
-import type { StreamingEvent } from '@/lib/ai/streaming/types';
+import type { StreamingEvent } from '@/lib/ai/types/streaming.types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
 
 type GenerationStatus =
   | 'idle'

@@ -15,7 +15,7 @@ import { ModuleLessonsClient } from '@/app/plans/[id]/modules/[moduleId]/compone
 import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
 import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/types/modules.types';
 import { clientLogger } from '@/lib/logging/client';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db.types';
 
 interface ModuleDetailClientProps {
   moduleData: ModuleDetailData;
@@ -89,7 +89,7 @@ export function ModuleDetailClient({
         }
       });
     },
-    [addOptimisticStatus, batcher, module.id, planId, startTransition]
+    [addOptimisticStatus, batcher, module.id, planId]
   );
 
   return (

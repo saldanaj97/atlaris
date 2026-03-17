@@ -13,7 +13,7 @@ import type { ElementType, ReactElement } from 'react';
 
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/plans/formatters';
-import type { ProgressStatus, ResourceType } from '@/lib/types/db';
+import type { ProgressStatus, ResourceType } from '@/lib/types/db.types';
 import { cn } from '@/lib/utils';
 import { TaskStatusButton } from './TaskStatusButton';
 

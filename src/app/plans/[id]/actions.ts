@@ -33,7 +33,7 @@ import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import { PROGRESS_STATUSES } from '@/lib/types/db';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db.types';
 import {
   planError,
   planSuccess,

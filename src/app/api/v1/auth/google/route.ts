@@ -21,13 +21,11 @@ export const GET = withErrorBoundary(
     try {
       config = getGoogleOAuthConfig();
     } catch (error) {
-      logger.error(
-        { error, userId, provider: 'google_calendar' },
-        'Google OAuth configuration unavailable'
+      throw new ServiceUnavailableError(
+        'Google OAuth is not configured',
+        { provider: 'google_calendar' },
+        { error, userId }
       );
-      throw new ServiceUnavailableError('Google OAuth is not configured', {
-        provider: 'google_calendar',
-      });
     }
 
     const stateToken = await generateAndStoreOAuthStateToken(

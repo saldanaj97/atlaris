@@ -23,7 +23,7 @@ import type {
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/lib/plans/formatters';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db.types';
 
 interface ModuleHeaderProps {
   module: ModuleWithTasks;

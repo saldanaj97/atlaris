@@ -3,7 +3,7 @@
 import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/lib/types/db.types';
 import { CheckCircle2, Circle } from 'lucide-react';
 
 interface TaskStatusButtonProps {

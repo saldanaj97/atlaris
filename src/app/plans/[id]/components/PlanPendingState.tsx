@@ -7,7 +7,7 @@ import { usePlanStatus } from '@/hooks/usePlanStatus';
 import { useRetryGeneration } from '@/hooks/useRetryGeneration';
 import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
 import { formatSkillLevel } from '@/lib/plans/formatters';
-import type { ClientPlanDetail } from '@/lib/types/client';
+import type { ClientPlanDetail } from '@/lib/types/client.types';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

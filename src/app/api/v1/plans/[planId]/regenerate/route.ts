@@ -33,10 +33,8 @@ import {
   decrementRegenerationUsage,
   resolveUserTier,
 } from '@/lib/stripe/usage';
-import {
-  planRegenerationRequestSchema,
-  type PlanRegenerationOverridesInput,
-} from '@/lib/validation/learningPlans';
+import { planRegenerationRequestSchema } from '@/lib/validation/learningPlans';
+import type { PlanRegenerationOverridesInput } from '@/lib/validation/learningPlans.types';
 
 /**
  * POST /api/v1/plans/:planId/regenerate

@@ -1,5 +1,5 @@
-import type { PlainHandler } from '@/lib/api/auth';
 import { withErrorBoundary } from '@/lib/api/auth';
+import type { PlainHandler } from '@/lib/api/auth';
 import { RateLimitError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { appEnv, stripeEnv } from '@/lib/config/env';

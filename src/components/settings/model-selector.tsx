@@ -20,7 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getModelsForTier } from '@/lib/ai/ai-models';
-import type { AvailableModel, SubscriptionTier } from '@/lib/ai/types';
+import type {
+  AvailableModel,
+  SubscriptionTier,
+} from '@/lib/ai/types/model.types';
 import { clientLogger } from '@/lib/logging/client';
 import { ROUTES } from '@/lib/navigation';
 import { cn } from '@/lib/utils';

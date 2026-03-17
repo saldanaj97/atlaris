@@ -9,7 +9,7 @@ import { ActivityStreamSidebar } from './ActivityStreamSidebar';
 import { EmptyActivityState } from './EmptyActivityState';
 import { ResumeLearningHero } from './ResumeLearningHero';
 
-import type { PlanSummary } from '@/lib/types/db';
+import type { PlanSummary } from '@/lib/types/db.types';
 import type { ActivityFilter } from '../types';
 
 interface ActivityStreamProps {

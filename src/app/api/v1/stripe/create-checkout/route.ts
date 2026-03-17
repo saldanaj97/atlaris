@@ -1,12 +1,11 @@
 import Stripe from 'stripe';
 import { z } from 'zod';
 
-import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import type { PlainHandler } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
 import { appEnv } from '@/lib/config/env';
-import { logger } from '@/lib/logging/logger';
 import { getStripe } from '@/lib/stripe/client';
 import { createCustomer } from '@/lib/stripe/subscriptions';
 
@@ -121,18 +120,6 @@ export function createCreateCheckoutHandler(
         const stripeCode =
           error instanceof Stripe.errors.StripeError ? error.code : undefined;
 
-        logger.error(
-          {
-            userId: user.id,
-            priceId,
-            stripeErrorMessage: message,
-            stripeType,
-            stripeCode,
-            error,
-          },
-          'Stripe checkout session creation failed'
-        );
-
         const isClientError =
           stripeType === 'StripeInvalidRequestError' ||
           stripeCode === 'resource_missing';
@@ -144,6 +131,14 @@ export function createCreateCheckoutHandler(
           {
             status: isClientError ? 400 : 500,
             code: 'STRIPE_CHECKOUT_SESSION_CREATION_FAILED',
+            cause: error,
+            logMeta: {
+              userId: user.id,
+              priceId,
+              stripeErrorMessage: message,
+              stripeType,
+              stripeCode,
+            },
           }
         );
       }
@@ -152,6 +147,7 @@ export function createCreateCheckoutHandler(
         throw new AppError('Failed to create checkout session', {
           status: 500,
           code: 'STRIPE_CHECKOUT_SESSION_CREATION_FAILED',
+          logMeta: { userId: user.id },
         });
       }
 

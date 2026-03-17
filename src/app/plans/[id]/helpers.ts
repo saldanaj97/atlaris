@@ -8,8 +8,8 @@
 import { formatSkillLevel } from '@/lib/plans/formatters';
 
 import type { ScheduleJson } from '@/lib/scheduling/types';
-import type { ClientModule, ClientPlanDetail } from '@/lib/types/client';
-import type { LearningPlanDetail, ProgressStatus } from '@/lib/types/db';
+import type { ClientModule, ClientPlanDetail } from '@/lib/types/client.types';
+import type { LearningPlanDetail, ProgressStatus } from '@/lib/types/db.types';
 import type {
   PlanAccessError,
   PlanAccessErrorCode,

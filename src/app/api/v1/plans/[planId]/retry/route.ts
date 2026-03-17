@@ -5,7 +5,10 @@ import {
 import { resolveModelForTier } from '@/lib/ai/model-resolver';
 import { runGenerationAttempt } from '@/lib/ai/orchestrator';
 import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import type { GenerationInput, IsoDateString } from '@/lib/ai/types';
+import type {
+  GenerationInput,
+  IsoDateString,
+} from '@/lib/ai/types/provider.types';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import {
   normalizeThrownError,
@@ -29,7 +32,7 @@ import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import { parsePersistedPdfContext } from '@/lib/pdf/context';
 import { resolveUserTier } from '@/lib/stripe/usage';
-import type { FailureClassification } from '@/lib/types/client';
+import type { FailureClassification } from '@/lib/types/client.types';
 import {
   buildPlanStartEvent,
   executeGenerationStream,

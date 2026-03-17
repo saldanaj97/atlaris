@@ -21,13 +21,13 @@ import { normalizeApiErrorResponse } from '@/lib/api/error-response';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { mapPdfSettingsToCreateInput } from '@/lib/mappers/learningPlans';
-import {
-  extractionApiResponseSchema,
-  type ExtractionApiResponseData,
-  type ExtractionProofData,
-  type ExtractionSection,
-  type TruncationData,
-} from '@/lib/validation/pdf';
+import { extractionApiResponseSchema } from '@/lib/validation/pdf';
+import type {
+  ExtractionApiResponseData,
+  ExtractionProofData,
+  ExtractionSection,
+  TruncationData,
+} from '@/lib/validation/pdf.types';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { toast } from 'sonner';

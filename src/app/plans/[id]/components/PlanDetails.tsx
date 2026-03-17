@@ -27,8 +27,8 @@ import { clientLogger } from '@/lib/logging/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
-import type { ClientPlanDetail } from '@/lib/types/client';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ClientPlanDetail } from '@/lib/types/client.types';
+import type { ProgressStatus } from '@/lib/types/db.types';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
@@ -96,7 +96,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
         }
       });
     },
-    [addOptimisticStatus, batcher, startTransition]
+    [addOptimisticStatus, batcher]
   );
 
   const isPendingOrProcessing =

@@ -7,7 +7,7 @@
  */
 
 import type { ScheduleJson } from '@/lib/scheduling/types';
-import type { LearningPlanDetail } from '@/lib/types/db';
+import type { LearningPlanDetail } from '@/lib/types/db.types';
 
 /**
  * Error codes for plan access failures.

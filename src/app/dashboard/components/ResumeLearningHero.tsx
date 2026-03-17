@@ -1,7 +1,7 @@
 import { Play } from 'lucide-react';
 import Link from 'next/link';
 
-import type { PlanSummary } from '@/lib/types/db';
+import type { PlanSummary } from '@/lib/types/db.types';
 
 interface ResumeLearningHeroProps {
   plan: PlanSummary;

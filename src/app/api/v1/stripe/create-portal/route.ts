@@ -77,11 +77,10 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
           (contentLength !== null && contentLength !== '0');
 
         if (err instanceof SyntaxError && hasBody) {
-          logger.debug(
-            { userId: user.id, parseError: err.message },
-            'billing portal received malformed JSON body'
-          );
-          throw new ValidationError('Malformed JSON body');
+          throw new ValidationError('Malformed JSON body', undefined, {
+            userId: user.id,
+            parseError: err.message,
+          });
         }
       }
 
@@ -95,31 +94,24 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
             ? (body as { returnUrl: string }).returnUrl
             : undefined;
         const firstError = parseResult.error.issues[0];
-        logger.warn(
+        throw new ValidationError(
+          firstError?.message ?? 'Invalid request body',
+          undefined,
           {
             userId: user.id,
             returnUrl: rawReturnUrl,
             validationMessage: firstError?.message,
-          },
-          'billing portal validation failed'
-        );
-        throw new ValidationError(
-          firstError?.message ?? 'Invalid request body'
+          }
         );
       }
 
       const { returnUrl } = parseResult.data;
 
       if (!isValidRedirectUrl(returnUrl)) {
-        logger.warn(
-          {
-            userId: user.id,
-            returnUrl,
-          },
-          'billing portal rejected returnUrl'
-        );
         throw new ValidationError(
-          'returnUrl must be a relative path or same-origin URL'
+          'returnUrl must be a relative path or same-origin URL',
+          undefined,
+          { userId: user.id, returnUrl }
         );
       }
 
@@ -137,37 +129,30 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
         );
       } catch (error) {
         const stripeErrorCode = extractErrorCode(error);
-
-        logger.error(
-          {
+        throw new AppError('Failed to create customer portal session', {
+          status: 500,
+          code: 'STRIPE_PORTAL_SESSION_CREATION_FAILED',
+          cause: error,
+          logMeta: {
             userId: user.id,
             stripeCustomerId: user.stripeCustomerId,
             resolvedReturnUrl,
             stripeErrorCode,
             stripeErrorMessage:
               error instanceof Error ? error.message : String(error),
-            error,
           },
-          'billing portal session creation failed'
-        );
-        throw new AppError('Failed to create customer portal session', {
-          status: 500,
-          code: 'STRIPE_PORTAL_SESSION_CREATION_FAILED',
         });
       }
 
       if (!portalUrl) {
-        logger.error(
-          {
+        throw new AppError('Failed to create customer portal session', {
+          status: 500,
+          code: 'STRIPE_PORTAL_SESSION_CREATION_FAILED',
+          logMeta: {
             userId: user.id,
             stripeCustomerId: user.stripeCustomerId,
             resolvedReturnUrl,
           },
-          'billing portal session creation returned empty URL'
-        );
-        throw new AppError('Failed to create customer portal session', {
-          status: 500,
-          code: 'STRIPE_PORTAL_SESSION_CREATION_FAILED',
         });
       }
 

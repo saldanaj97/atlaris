@@ -82,11 +82,9 @@ export const PATCH = withErrorBoundary(
     const parsed = updatePreferencesSchema.safeParse(body);
 
     if (!parsed.success) {
-      logger.warn(
-        { errors: parsed.error.flatten() },
-        'Invalid preferences payload'
-      );
-      throw new ValidationError('Invalid preferences', parsed.error.flatten());
+      throw new ValidationError('Invalid preferences', parsed.error.flatten(), {
+        errors: parsed.error.flatten(),
+      });
     }
 
     const userTier = user.subscriptionTier;
@@ -123,19 +121,16 @@ export const PATCH = withErrorBoundary(
           );
         default: {
           const _exhaustiveCheck: never = reason;
-          logger.warn(
-            {
-              reason: String(_exhaustiveCheck),
-              preferredAiModel: parsed.data.preferredAiModel,
-            },
-            'Unexpected model validation reason from validateModelForTier'
-          );
           throw new AppError(
             'Model validation failed for an unexpected reason.',
             {
               status: 500,
               code: 'UNKNOWN_MODEL_VALIDATION_REASON',
               details: {
+                reason: String(_exhaustiveCheck),
+                preferredAiModel: parsed.data.preferredAiModel,
+              },
+              logMeta: {
                 reason: String(_exhaustiveCheck),
                 preferredAiModel: parsed.data.preferredAiModel,
               },
@@ -158,13 +153,10 @@ export const PATCH = withErrorBoundary(
     }
 
     if (updatedUser.preferredAiModel === null) {
-      logger.error(
-        { userId: user.id },
-        'preferredAiModel unexpectedly null after update'
-      );
       throw new AppError('Failed to persist preference value.', {
         status: 500,
         code: 'PREFERENCES_PERSISTED_NULL',
+        logMeta: { userId: user.id },
       });
     }
 

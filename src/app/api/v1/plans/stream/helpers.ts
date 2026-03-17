@@ -1,13 +1,13 @@
 import { getModelById } from '@/lib/ai/ai-models';
 import { isRetryableClassification } from '@/lib/ai/failures';
-import type { GenerationResult } from '@/lib/ai/orchestrator';
-import type { ParsedModule } from '@/lib/ai/parser';
 import {
   sanitizeSseError,
   type ErrorLike,
   type GenerationError,
 } from '@/lib/ai/streaming/error-sanitizer';
-import type { StreamingEvent } from '@/lib/ai/streaming/types';
+import type { GenerationResult } from '@/lib/ai/types/orchestrator.types';
+import type { ParsedModule } from '@/lib/ai/types/parser.types';
+import type { StreamingEvent } from '@/lib/ai/types/streaming.types';
 import { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { getDb } from '@/lib/db/runtime';
@@ -17,8 +17,8 @@ import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/lib/stripe/usage';
-import type { FailureClassification } from '@/lib/types/client';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
+import type { FailureClassification } from '@/lib/types/client.types';
+import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans.types';
 
 type EmitFn = (event: StreamingEvent) => void;
 
