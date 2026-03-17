@@ -20,8 +20,6 @@ export type { SubscriptionTier } from './tier-limits.types';
 // Usage type for incrementing counters
 type UsageType = 'plan' | 'regeneration' | 'export';
 
-type PdfUsageMetrics = { pdfPlansGenerated: number };
-
 /**
  * Get current month in YYYY-MM format
  */
@@ -91,91 +89,6 @@ export async function resolveUserTier(
 
 // Internal alias for backward compatibility
 const getUserTier = resolveUserTier;
-
-/**
- * Check if user can use regenerations this month
- * @returns true if user has regenerations left, false otherwise
- * @deprecated Use atomicCheckAndIncrementUsage for concurrent-safe quota enforcement
- */
-export async function checkRegenerationLimit(
-  userId: string,
-  dbClient: DbClient = getDb()
-): Promise<boolean> {
-  const tier = await getUserTier(userId, dbClient);
-  const limit = TIER_LIMITS[tier].monthlyRegenerations;
-
-  if (limit === Infinity) {
-    return true;
-  }
-
-  const month = getCurrentMonth();
-  const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
-
-  return metrics.regenerationsUsed < limit;
-}
-
-/**
- * Check if user can export this month
- * @returns true if user has exports left, false otherwise
- * @deprecated Use atomicCheckAndIncrementUsage for concurrent-safe quota enforcement
- */
-export async function checkExportLimit(
-  userId: string,
-  dbClient: DbClient = getDb()
-): Promise<boolean> {
-  const tier = await getUserTier(userId, dbClient);
-  const limit = TIER_LIMITS[tier].monthlyExports;
-
-  if (limit === Infinity) {
-    return true;
-  }
-
-  const month = getCurrentMonth();
-  const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
-
-  return metrics.exportsUsed < limit;
-}
-
-type PdfQuotaDependencies = {
-  resolveTier?: (
-    userId: string,
-    dbClient?: DbClient
-  ) => Promise<SubscriptionTier>;
-  getMetrics?: (
-    userId: string,
-    month: string,
-    dbClient?: DbClient
-  ) => Promise<PdfUsageMetrics>;
-  now?: () => Date;
-  dbClient?: DbClient;
-};
-
-/**
- * Check if user can create more PDF-based plans this month
- * @returns true if user has PDF plan quota left, false otherwise
- * @deprecated Use atomicCheckAndIncrementPdfUsage for concurrent-safe quota enforcement
- */
-export async function checkPdfPlanQuota(
-  userId: string,
-  deps: PdfQuotaDependencies = {}
-): Promise<boolean> {
-  const dbClient = deps.dbClient ?? getDb();
-  const tier = await (deps.resolveTier ?? getUserTier)(userId, dbClient);
-  const limit = TIER_LIMITS[tier].monthlyPdfPlans;
-
-  if (limit === Infinity) {
-    return true;
-  }
-
-  const month = getCurrentMonth(deps.now?.());
-  const metrics = await (deps.getMetrics ?? getOrCreateUsageMetrics)(
-    userId,
-    month,
-    dbClient
-  );
-
-  return metrics.pdfPlansGenerated < limit;
-}
 
 /**
  * Increment usage counter for the current month

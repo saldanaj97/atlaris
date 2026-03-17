@@ -1,30 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
-import { checkPdfPlanQuota } from '@/features/billing/usage';
 
 const KB = 1024;
 const MB = KB * 1024;
-
-describe('checkPdfPlanQuota', () => {
-  it('returns true when under the tier limit', async () => {
-    const allowed = await checkPdfPlanQuota('user_1', {
-      resolveTier: async () => 'free',
-      getMetrics: async () => ({ pdfPlansGenerated: 1 }),
-    });
-
-    expect(allowed).toBe(true);
-  });
-
-  it('returns false when at the tier limit', async () => {
-    const allowed = await checkPdfPlanQuota('user_1', {
-      resolveTier: async () => 'free',
-      getMetrics: async () => ({ pdfPlansGenerated: 3 }),
-    });
-
-    expect(allowed).toBe(false);
-  });
-});
 
 describe('validatePdfUpload', () => {
   const TIER_FREE_MAX_SIZE_MB = 5;

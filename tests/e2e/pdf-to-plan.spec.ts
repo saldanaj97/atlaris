@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import {
-  checkPdfPlanQuota,
   incrementPdfPlanUsage,
   resolveUserTier,
 } from '@/features/billing/usage';
@@ -93,6 +92,23 @@ const getCurrentMonth = (now: Date = new Date()): string => {
 
 const e2eNow = (): Date => new Date(E2E_FIXED_DATE.getTime());
 
+/** Read-only PDF quota check for test assertions (replaces deprecated checkPdfPlanQuota). */
+async function hasPdfQuota(
+  userId: string,
+  now: () => Date = e2eNow
+): Promise<boolean> {
+  const tier = await resolveUserTier(userId);
+  const limit = TIER_LIMITS[tier].monthlyPdfPlans;
+  if (limit === Infinity) return true;
+
+  const month = getCurrentMonth(now());
+  const [metrics] = await db
+    .select({ pdfPlansGenerated: usageMetrics.pdfPlansGenerated })
+    .from(usageMetrics)
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+  return (metrics?.pdfPlansGenerated ?? 0) < limit;
+}
+
 describe('PDF to Plan E2E Flow', () => {
   let userId: string;
   const authUserId = buildTestAuthUserId('e2e-pdf-to-plan-user');
@@ -128,7 +144,7 @@ describe('PDF to Plan E2E Flow', () => {
     });
 
     it('should allow PDF plan creation when user has quota', async () => {
-      const hasQuota = await checkPdfPlanQuota(userId, { now: e2eNow });
+      const hasQuota = await hasPdfQuota(userId);
       expect(hasQuota).toBe(true);
 
       const pdfBuffer = buildPdfBuffer('Learning TypeScript');
@@ -246,12 +262,12 @@ describe('PDF to Plan E2E Flow', () => {
 
   describe('Quota Enforcement', () => {
     it('should allow PDF plan creation when quota available after incrementing usage', async () => {
-      const hasQuotaBefore = await checkPdfPlanQuota(userId, { now: e2eNow });
+      const hasQuotaBefore = await hasPdfQuota(userId);
       expect(hasQuotaBefore).toBe(true);
 
       await incrementPdfPlanUsage(userId, undefined, { now: e2eNow });
 
-      const hasQuotaAfter = await checkPdfPlanQuota(userId, { now: e2eNow });
+      const hasQuotaAfter = await hasPdfQuota(userId);
       expect(hasQuotaAfter).toBe(true);
     });
 
@@ -268,7 +284,7 @@ describe('PDF to Plan E2E Flow', () => {
         pdfPlansGenerated: freeLimit,
       });
 
-      const hasQuota = await checkPdfPlanQuota(userId, { now: e2eNow });
+      const hasQuota = await hasPdfQuota(userId);
       expect(hasQuota).toBe(false);
     });
 
@@ -321,7 +337,7 @@ describe('PDF to Plan E2E Flow', () => {
 
       expect(metrics.pdfPlansGenerated).toBe(3);
 
-      const hasQuota = await checkPdfPlanQuota(userId, { now: e2eNow });
+      const hasQuota = await hasPdfQuota(userId);
       expect(hasQuota).toBe(false);
     });
   });
