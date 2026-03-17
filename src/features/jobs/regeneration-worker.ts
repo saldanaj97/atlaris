@@ -1,20 +1,35 @@
 import { z } from 'zod';
 
-import { resolveModelForTier } from '@/features/ai/model-resolver';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import type { ParsedModule } from '@/features/ai/types/parser.types';
+import { resolveUserTier } from '@/features/billing/usage';
+import {
+  createPlanLifecycleService,
+  type GenerationAttemptResult,
+  type JobQueuePort,
+} from '@/features/plans/lifecycle';
+import { planRegenerationOverridesSchema } from '@/features/plans/validation/learningPlans';
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
-import { parsePersistedPdfContext } from '@/features/pdf/context';
-import { resolveUserTier } from '@/features/billing/usage';
-import { planRegenerationOverridesSchema } from '@/features/plans/validation/learningPlans';
 import { eq } from 'drizzle-orm';
 
 import { completeJob, failJob, getNextJob } from '@/features/jobs/queue';
 import { JOB_TYPES } from '@/features/jobs/types';
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// No-op JobQueuePort — the worker manages job state directly via completeJob/failJob,
+// and only uses processGenerationAttempt which does not touch the job queue port.
+const noOpJobQueue: JobQueuePort = {
+  enqueueJob: () => Promise.resolve(''),
+  completeJob: () => Promise.resolve(),
+  failJob: () => Promise.resolve(),
+};
+
+const lifecycleService = createPlanLifecycleService({
+  dbClient: db,
+  attemptsDbClient: db,
+  jobQueue: noOpJobQueue,
+});
 
 const planRegenerationJobPayloadSchema = z
   .object({
@@ -40,14 +55,6 @@ const toIsoDateString = (value: string | null): string | undefined => {
   }
 
   return ISO_DATE_PATTERN.test(value) ? value : undefined;
-};
-
-const isRetryableClassification = (classification: string): boolean => {
-  return (
-    classification === 'timeout' ||
-    classification === 'rate_limit' ||
-    classification === 'provider_error'
-  );
 };
 
 const resolveRegenerationNotes = (
@@ -77,10 +84,6 @@ function buildGenerationInput(
   return {
     topic: overrides?.topic ?? plan.topic,
     notes: resolveRegenerationNotes(overrides),
-    pdfContext:
-      plan.origin === 'pdf'
-        ? parsePersistedPdfContext(plan.extractedContext)
-        : null,
     skillLevel: overrides?.skillLevel ?? plan.skillLevel,
     weeklyHours: overrides?.weeklyHours ?? plan.weeklyHours,
     learningStyle: overrides?.learningStyle ?? plan.learningStyle,
@@ -119,54 +122,77 @@ export async function processNextRegenerationJob(): Promise<ProcessRegenerationJ
     }
 
     const userTier = await resolveUserTier(plan.userId, db);
-    const { provider } = resolveModelForTier(userTier);
     const generationInput = buildGenerationInput(payload, plan);
 
-    const result = await runGenerationAttempt(
-      {
+    const result: GenerationAttemptResult =
+      await lifecycleService.processGenerationAttempt({
         planId: plan.id,
         userId: plan.userId,
+        tier: userTier,
         input: generationInput,
-      },
-      { provider, dbClient: db }
-    );
-
-    if (result.status === 'success') {
-      const modules: ParsedModule[] = result.modules;
-      const modulesCount = modules.length;
-      const tasksCount = modules.reduce(
-        (total, module) => total + module.tasks.length,
-        0
-      );
-      const durationMs =
-        Number.isFinite(result.durationMs) && result.durationMs >= 0
-          ? result.durationMs
-          : 0;
-
-      await completeJob(job.id, {
-        planId: plan.id,
-        modulesCount,
-        tasksCount,
-        durationMs,
       });
 
-      return {
-        processed: true,
-        jobId: job.id,
-        status: 'completed',
-      };
+    switch (result.status) {
+      case 'generation_success': {
+        const modules = result.data.modules as Array<{ tasks: unknown[] }>;
+        const modulesCount = modules.length;
+        const tasksCount = modules.reduce(
+          (total, m) => total + (m.tasks?.length ?? 0),
+          0
+        );
+        const durationMs =
+          Number.isFinite(result.data.durationMs) && result.data.durationMs >= 0
+            ? result.data.durationMs
+            : 0;
+
+        await completeJob(job.id, {
+          planId: plan.id,
+          modulesCount,
+          tasksCount,
+          durationMs,
+        });
+
+        return {
+          processed: true,
+          jobId: job.id,
+          status: 'completed',
+        };
+      }
+
+      case 'retryable_failure': {
+        await failJob(job.id, result.error.message, { retryable: true });
+        return {
+          processed: true,
+          jobId: job.id,
+          status: 'failed',
+          reason: result.classification,
+        };
+      }
+
+      case 'permanent_failure': {
+        await failJob(job.id, result.error.message, { retryable: false });
+        return {
+          processed: true,
+          jobId: job.id,
+          status: 'failed',
+          reason: result.classification,
+        };
+      }
+
+      case 'already_finalized': {
+        await completeJob(job.id, {
+          planId: plan.id,
+          modulesCount: 0,
+          tasksCount: 0,
+          durationMs: 0,
+        });
+        return {
+          processed: true,
+          jobId: job.id,
+          status: 'completed',
+        };
+      }
     }
-
-    await failJob(job.id, result.error.message, {
-      retryable: isRetryableClassification(result.classification),
-    });
-
-    return {
-      processed: true,
-      jobId: job.id,
-      status: 'failed',
-      reason: result.classification,
-    };
   } catch (error) {
     const message =
       error instanceof Error
