@@ -78,7 +78,7 @@ describe('checkPlanDurationCap', () => {
       totalWeeks: 10,
     });
     expect(res.allowed).toBe(false);
-    expect(res.reason).toMatch(/pro/);
+    expect(res.reason).toMatch(/starter/);
   });
 
   it('returns correct recommendation for plans <= 8 weeks', () => {

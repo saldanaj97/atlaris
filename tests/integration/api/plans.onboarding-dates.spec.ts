@@ -90,7 +90,7 @@ describe('POST /api/v1/plans with dates in job payload', () => {
     expect(payload).toMatchObject({
       code: 'FORBIDDEN',
       error:
-        'free tier limited to 2-week plans. Upgrade to pro for longer plans.',
+        'free tier limited to 2-week plans. Upgrade to starter for longer plans.',
     });
   });
 
