@@ -27,10 +27,8 @@ import {
   issuePdfExtractionProof,
   toPdfExtractionProofPayload,
 } from '@/features/pdf/security/pdf-extraction-proof';
-import {
-  resolveUserTier,
-  type SubscriptionTier,
-} from '@/features/billing/usage';
+import { resolveUserTier } from '@/features/billing/usage';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { pdfExtractionFormDataSchema } from '@/features/pdf/validation/pdf';
 
 /** Dependencies for PDF extract POST handler; inject for testing. */

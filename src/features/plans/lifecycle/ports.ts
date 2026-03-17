@@ -33,10 +33,10 @@ export interface PlanPersistencePort {
   findCappedPlanWithoutModules(userId: string): Promise<string | null>;
 
   /** Mark a plan's generation as successful. */
-  markGenerationSuccess(planId: string): Promise<void>;
+  markGenerationSuccess(this: void, planId: string): Promise<void>;
 
   /** Mark a plan's generation as failed. */
-  markGenerationFailure(planId: string): Promise<void>;
+  markGenerationFailure(this: void, planId: string): Promise<void>;
 }
 
 // ─── QuotaPort ───────────────────────────────────────────────────
@@ -98,25 +98,28 @@ export interface PdfOriginPort {
 
 export interface GenerationPort {
   /** Execute an AI plan generation attempt. */
-  runGeneration(params: {
-    planId: string;
-    userId: string;
-    tier: SubscriptionTier;
-    input: {
-      topic: string;
-      skillLevel: 'beginner' | 'intermediate' | 'advanced';
-      weeklyHours: number;
-      learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-      startDate?: string | null;
-      deadlineDate?: string | null;
-      notes?: string | null;
-      pdfContext?: PdfContext | null;
-      pdfExtractionHash?: string;
-      pdfProofVersion?: 1;
-    };
-    modelOverride?: string | null;
-    signal?: AbortSignal;
-  }): Promise<
+  runGeneration(
+    this: void,
+    params: {
+      planId: string;
+      userId: string;
+      tier: SubscriptionTier;
+      input: {
+        topic: string;
+        skillLevel: 'beginner' | 'intermediate' | 'advanced';
+        weeklyHours: number;
+        learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+        startDate?: string | null;
+        deadlineDate?: string | null;
+        notes?: string | null;
+        pdfContext?: PdfContext | null;
+        pdfExtractionHash?: string;
+        pdfProofVersion?: 1;
+      };
+      modelOverride?: string | null;
+      signal?: AbortSignal;
+    }
+  ): Promise<
     | {
         status: 'success';
         modules: GeneratedModule[];
@@ -137,16 +140,19 @@ export interface GenerationPort {
 
 export interface UsageRecordingPort {
   /** Record AI token usage for billing and analytics. */
-  recordUsage(params: {
-    userId: string;
-    provider: string;
-    model: string;
-    inputTokens?: number | null;
-    outputTokens?: number | null;
-    costCents?: number | null;
-    requestId?: string | null;
-    kind?: 'plan' | 'regeneration';
-  }): Promise<void>;
+  recordUsage(
+    this: void,
+    params: {
+      userId: string;
+      provider: string;
+      model: string;
+      inputTokens?: number | null;
+      outputTokens?: number | null;
+      costCents?: number | null;
+      requestId?: string | null;
+      kind?: 'plan' | 'regeneration';
+    }
+  ): Promise<void>;
 }
 
 // ─── JobQueuePort ────────────────────────────────────────────────

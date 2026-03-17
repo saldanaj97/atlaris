@@ -4,7 +4,9 @@
  * Thin wrapper around `recordUsage()` from the DB usage module.
  */
 
+import { incrementUsage } from '@/features/billing/usage';
 import { recordUsage } from '@/lib/db/usage';
+import { logger } from '@/lib/logging/logger';
 
 import type { UsageRecordingPort } from '../ports';
 
@@ -20,5 +22,21 @@ export class UsageRecordingAdapter implements UsageRecordingPort {
     kind?: 'plan' | 'regeneration';
   }): Promise<void> {
     await recordUsage(params);
+
+    if (params.kind) {
+      try {
+        await incrementUsage(params.userId, params.kind);
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            userId: params.userId,
+            kind: params.kind,
+          },
+          'Failed to increment usage aggregate after recording usage event'
+        );
+        throw error;
+      }
+    }
   }
 }

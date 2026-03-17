@@ -1,4 +1,4 @@
-import type { ScheduleCacheRow } from '@/features/scheduling/types';
+import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
 
 export interface UpsertPlanScheduleCachePayload {
   scheduleJson: ScheduleCacheRow['scheduleJson'];

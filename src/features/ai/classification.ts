@@ -6,7 +6,7 @@ import {
   ProviderTimeoutError,
 } from '@/features/ai/providers/errors';
 
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 type ClassificationContext = {
   error: unknown;

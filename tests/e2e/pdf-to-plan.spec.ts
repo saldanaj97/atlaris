@@ -9,6 +9,7 @@ import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import {
   checkPdfPlanQuota,
   incrementPdfPlanUsage,
+  resolveUserTier,
 } from '@/features/billing/usage';
 import {
   ensureUser,
@@ -131,7 +132,9 @@ describe('PDF to Plan E2E Flow', () => {
       expect(hasQuota).toBe(true);
 
       const pdfBuffer = buildPdfBuffer('Learning TypeScript');
-      const validation = await validatePdfUpload(userId, pdfBuffer.length, 1);
+      const validation = await validatePdfUpload(userId, pdfBuffer.length, 1, {
+        resolveTier: resolveUserTier,
+      });
 
       expect(validation.allowed).toBe(true);
       if (validation.allowed) {
@@ -214,7 +217,9 @@ describe('PDF to Plan E2E Flow', () => {
       const freeTierLimit = TIER_LIMITS.free.maxPdfSizeMb;
       const oversizedBytes = (freeTierLimit + 1) * 1024 * 1024;
 
-      const validation = await validatePdfUpload(userId, oversizedBytes, 1);
+      const validation = await validatePdfUpload(userId, oversizedBytes, 1, {
+        resolveTier: resolveUserTier,
+      });
 
       expect(validation.allowed).toBe(false);
       if (!validation.allowed) {
@@ -227,7 +232,9 @@ describe('PDF to Plan E2E Flow', () => {
       const freeTierPageLimit = TIER_LIMITS.free.maxPdfPages;
       const tooManyPages = freeTierPageLimit + 10;
 
-      const validation = await validatePdfUpload(userId, 1024, tooManyPages);
+      const validation = await validatePdfUpload(userId, 1024, tooManyPages, {
+        resolveTier: resolveUserTier,
+      });
 
       expect(validation.allowed).toBe(false);
       if (!validation.allowed) {
@@ -275,7 +282,9 @@ describe('PDF to Plan E2E Flow', () => {
       const proPagesLimit = TIER_LIMITS.pro.maxPdfPages;
 
       const largeSizeBytes = (TIER_LIMITS.free.maxPdfSizeMb + 5) * 1024 * 1024;
-      const validation = await validatePdfUpload(userId, largeSizeBytes, 100);
+      const validation = await validatePdfUpload(userId, largeSizeBytes, 100, {
+        resolveTier: resolveUserTier,
+      });
 
       expect(validation.allowed).toBe(true);
       if (validation.allowed) {

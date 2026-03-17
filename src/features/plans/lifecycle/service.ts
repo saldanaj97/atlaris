@@ -394,9 +394,7 @@ export class PlanLifecycleService {
     }
 
     // Permanent failure — record usage (attempt consumed)
-    const metadata = generationResult.metadata as
-      | Record<string, unknown>
-      | undefined;
+    const metadata = generationResult.metadata;
     await this.ports.usageRecording.recordUsage({
       userId: input.userId,
       provider: (metadata?.provider as string) ?? 'unknown',

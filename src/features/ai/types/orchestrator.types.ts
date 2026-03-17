@@ -1,9 +1,13 @@
 import type {
   AttemptReservation,
   AttemptsDbClient,
+  FinalizeFailureParams,
+  FinalizeSuccessParams,
   GenerationAttemptRecord,
+  ReserveAttemptResult,
+  ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 import type { ParsedModule } from './parser.types';
 import type {
   AiPlanGenerationProvider,
@@ -18,11 +22,25 @@ export type GenerationAttemptContext = {
   input: GenerationInput;
 };
 
-export type AttemptOperationsOverrides = Partial<{
-  reserveAttemptSlot: typeof import('@/lib/db/queries/attempts').reserveAttemptSlot;
-  finalizeAttemptSuccess: typeof import('@/lib/db/queries/attempts').finalizeAttemptSuccess;
-  finalizeAttemptFailure: typeof import('@/lib/db/queries/attempts').finalizeAttemptFailure;
-}>;
+export type ReserveAttemptSlotOperation = (
+  params: ReserveAttemptSlotParams
+) => Promise<ReserveAttemptResult>;
+
+export type FinalizeAttemptSuccessOperation = (
+  params: FinalizeSuccessParams
+) => Promise<GenerationAttemptRecord>;
+
+export type FinalizeAttemptFailureOperation = (
+  params: FinalizeFailureParams
+) => Promise<GenerationAttemptRecord>;
+
+export interface AttemptOperations {
+  reserveAttemptSlot: ReserveAttemptSlotOperation;
+  finalizeAttemptSuccess: FinalizeAttemptSuccessOperation;
+  finalizeAttemptFailure: FinalizeAttemptFailureOperation;
+}
+
+export type AttemptOperationsOverrides = Partial<AttemptOperations>;
 
 export type RunGenerationOptions = {
   provider?: AiPlanGenerationProvider;

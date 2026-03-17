@@ -1,4 +1,4 @@
-import type { FailureClassification } from '@/types/client.types';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 import { toApiErrorJsonResponse } from '@/lib/api/error-response';
 

@@ -1,6 +1,9 @@
-import type { ParsedModule, ParsedTask } from '@/features/ai/types/parser.types';
+import type {
+  ParsedModule,
+  ParsedTask,
+} from '@/features/ai/types/parser.types';
 import type { GenerationInput } from '@/features/ai/types/provider.types';
-import type { SkillLevel } from '@/types/db.types';
+import type { SkillLevel } from '@/shared/types/db.types';
 
 /**
  * Pacing module for trimming AI-generated plans to fit user time capacity

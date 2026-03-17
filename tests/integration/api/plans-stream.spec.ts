@@ -10,16 +10,17 @@ import {
 } from 'vitest';
 
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
+import { parsePersistedPdfContext } from '@/features/pdf/context';
+import {
+  computePdfExtractionHash,
+  issuePdfExtractionProof,
+} from '@/features/pdf/security/pdf-extraction-proof';
 import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import {
-  computePdfExtractionHash,
-  issuePdfExtractionProof,
-} from '@/features/pdf/security/pdf-extraction-proof';
 import {
   createPdfProof,
   DEFAULT_PDF_PROOF_VERSION,
@@ -685,7 +686,10 @@ describe('POST /api/v1/plans/stream', () => {
     expect(capturedInputs).toHaveLength(1);
     const capturedInput = capturedInputs[0];
     expect(capturedInput).toBeDefined();
-    expect(capturedInput!.input).toMatchObject({
+    if (!capturedInput) {
+      throw new Error('Expected captured generation input');
+    }
+    expect(capturedInput.input).toMatchObject({
       pdfContext: expect.objectContaining({
         mainTopic: 'TypeScript from PDF context',
         sections: expect.arrayContaining([
@@ -699,9 +703,7 @@ describe('POST /api/v1/plans/stream', () => {
       pdfProofVersion: DEFAULT_PDF_PROOF_VERSION,
     });
 
-    const capturedSection = (
-      capturedInput.input.pdfContext as { sections: Array<{ content: string }> }
-    )?.sections?.[0];
+    const capturedSection = capturedInput.input.pdfContext?.sections?.[0];
     const extractedSection = extractedContent.sections?.[0];
     expect(capturedSection).toBeDefined();
     expect(extractedSection).toBeDefined();
@@ -717,13 +719,17 @@ describe('POST /api/v1/plans/stream', () => {
       .where(eq(learningPlans.id, planId))
       .limit(1);
 
-    expect(plan?.extractedContext).toMatchObject({
+    const persistedPdfContext = parsePersistedPdfContext(
+      plan?.extractedContext
+    );
+
+    expect(persistedPdfContext).toMatchObject({
       mainTopic: 'TypeScript from PDF context',
       sections: expect.arrayContaining([
         expect.objectContaining({ title: 'Core concepts' }),
       ]),
     });
-    expect(plan?.extractedContext?.sections?.[0]?.content.length).toBeLessThan(
+    expect(persistedPdfContext?.sections?.[0]?.content.length).toBeLessThan(
       extractedContent.sections[0].content.length
     );
 

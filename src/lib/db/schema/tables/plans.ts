@@ -13,14 +13,12 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import type { GenerationAttemptStatus } from '@/lib/db/queries/types/plans.types';
-import type { PdfContext } from '@/features/pdf/context.types';
-
 import {
   generationStatus,
   learningStyle,
   planOrigin,
   skillLevel,
+  type GenerationAttemptStatus,
 } from '../../enums';
 import { timestampFields } from '../helpers';
 import {
@@ -46,9 +44,9 @@ export const learningPlans = pgTable(
     deadlineDate: date('deadline_date'),
     visibility: text('visibility').notNull().default('private'),
     origin: planOrigin('origin').notNull().default('ai'),
-    // extracted_context: PdfContext | null. DB CHECK enforces shape when non-null;
-    // all writes must go through typed Drizzle client using sanitizePdfContextForPersistence.
-    extractedContext: jsonb('extracted_context').$type<PdfContext | null>(),
+    // extracted_context persists JSON only. Application-level validation/casting
+    // happens outside the schema layer before reads/writes.
+    extractedContext: jsonb('extracted_context').$type<unknown>(),
     generationStatus: generationStatus('generation_status')
       .notNull()
       .default('generating'),

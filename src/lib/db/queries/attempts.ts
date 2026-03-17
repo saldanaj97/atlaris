@@ -1,9 +1,9 @@
-import { isRetryableClassification } from '@/features/ai/failures';
+import { isRetryableClassification } from '@/shared/types/failure-classification';
+import { ATTEMPT_CAP } from '@/lib/config/env';
 import {
-  ATTEMPT_CAP,
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
-} from '@/features/ai/generation-policy';
+} from '@/shared/constants/generation';
 import {
   assertAttemptIdMatchesReservation,
   buildMetadata,

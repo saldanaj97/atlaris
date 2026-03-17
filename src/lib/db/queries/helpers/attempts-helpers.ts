@@ -1,4 +1,4 @@
-import { PLAN_GENERATION_WINDOW_MS } from '@/features/ai/generation-policy';
+import { PLAN_GENERATION_WINDOW_MS } from '@/shared/constants/generation';
 import { getCorrelationId } from '@/lib/api/context';
 import { appEnv } from '@/lib/config/env';
 import type {
@@ -28,17 +28,17 @@ import {
   aggregateNormalizationFlags,
   normalizeModuleMinutes,
   normalizeTaskMinutes,
-} from '@/features/plans/effort';
+} from '@/shared/constants/effort';
 import { hashSha256 } from '@/lib/crypto/hash';
 import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
-} from '@/features/plans/validation/learningPlans';
+} from '@/shared/constants/learning-plans';
 import { and, count, eq, gte, min, sql, type SQL } from 'drizzle-orm';
 
-import type { ParsedModule } from '@/features/ai/types/parser.types';
-import type { GenerationInput } from '@/features/ai/types/provider.types';
+import type { ParsedModule } from '@/shared/types/ai-parser.types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 /** Drizzle-like methods required by attempt operations (reserve, finalize). */
 const ATTEMPTS_DB_METHODS = [

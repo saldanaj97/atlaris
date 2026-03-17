@@ -2,7 +2,7 @@ import {
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
   PLAN_GENERATION_WINDOW_MINUTES,
-} from '@/features/ai/generation-policy';
+} from '@/shared/constants/generation';
 import { RateLimitError } from '@/lib/api/errors';
 import { selectUserGenerationAttemptWindowStats } from '@/lib/db/queries/helpers/attempts-helpers';
 import type {

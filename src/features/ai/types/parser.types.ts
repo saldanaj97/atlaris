@@ -1,15 +1,6 @@
-export type ParsedTask = {
-  title: string;
-  description?: string;
-  estimatedMinutes: number;
-};
+import type { ParsedModule } from '@/shared/types/ai-parser.types';
 
-export type ParsedModule = {
-  title: string;
-  description?: string;
-  estimatedMinutes: number;
-  tasks: ParsedTask[];
-};
+export type { ParsedModule, ParsedTask } from '@/shared/types/ai-parser.types';
 
 export type ParserCallbacks = {
   onFirstModuleDetected?: () => void;

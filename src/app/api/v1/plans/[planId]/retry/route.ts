@@ -1,7 +1,14 @@
 import {
+  buildPlanStartEvent,
+  executeGenerationStream,
+  safeMarkPlanFailed,
+  withFallbackCleanup,
+} from '@/app/api/v1/plans/stream/helpers';
+import {
   PLAN_GENERATION_LIMIT,
   PLAN_GENERATION_WINDOW_MINUTES,
 } from '@/features/ai/generation-policy';
+import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
@@ -12,6 +19,12 @@ import type {
   GenerationInput,
   IsoDateString,
 } from '@/features/ai/types/provider.types';
+import { resolveUserTier } from '@/features/billing/usage';
+import { parsePersistedPdfContext } from '@/features/pdf/context';
+import {
+  requireOwnedPlanById,
+  requirePlanIdFromRequest,
+} from '@/features/plans/api/route-context';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import {
   normalizeThrownError,
@@ -19,10 +32,6 @@ import {
 } from '@/lib/api/error-normalization';
 import { isFailureClassification } from '@/lib/api/error-response';
 import { AppError, RateLimitError } from '@/lib/api/errors';
-import {
-  requireOwnedPlanById,
-  requirePlanIdFromRequest,
-} from '@/features/plans/api/route-context';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -33,15 +42,7 @@ import {
 } from '@/lib/db/queries/attempts';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import { parsePersistedPdfContext } from '@/features/pdf/context';
-import { resolveUserTier } from '@/features/billing/usage';
-import type { FailureClassification } from '@/types/client.types';
-import {
-  buildPlanStartEvent,
-  executeGenerationStream,
-  safeMarkPlanFailed,
-  withFallbackCleanup,
-} from '@/app/api/v1/plans/stream/helpers';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 export const maxDuration = 60;
 
@@ -99,7 +100,22 @@ export const POST = withErrorBoundary(
 
       // Tier-gated provider resolution (retries use default model for the tier)
       const userTier = await resolveUserTier(user.id, db);
-      const { provider } = resolveModelForTier(userTier);
+      const { provider } = (() => {
+        try {
+          return resolveModelForTier(userTier);
+        } catch (error) {
+          if (error instanceof ModelResolutionError) {
+            throw new AppError(error.message, {
+              status: 500,
+              code: error.code,
+              details: error.details,
+              headers: generationRateLimitHeaders,
+            });
+          }
+
+          throw error;
+        }
+      })();
 
       // Build generation input from existing plan data
       const generationInput = {
