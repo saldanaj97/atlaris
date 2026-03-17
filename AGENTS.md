@@ -174,6 +174,15 @@ Guardrails and guidelines for LLMs to follow:
 - **Rate Limiting**: `@docs/rules/api/rate-limiting.md`
 - **API Error Contract**: `@docs/rules/api/error-contract.md`
 
+## Learned User Preferences
+
+- In `*.types.ts` files: no inline comments; use JSDoc only when needed; keep comments concise and useful, not AI slop
+- Verify each finding against current code before fixing; only patch what is still real
+- Run individual test files unless specified otherwise; avoid full test suite
+- No type re-exports from implementation modules; import types from types modules (e.g. `*.types.ts` or `@/lib/ai/types`) directly
+- Prefer readability over minimal code; don't optimize for least amount of code
+- Do not overengineer; skip extra error handling or abstraction when the current setup is sufficient
+
 ## Subdirectory Agents
 
 - `src/lib/db/AGENTS.md` - Database clients, RLS, queries

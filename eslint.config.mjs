@@ -5,6 +5,79 @@ import tseslint from 'typescript-eslint';
 
 const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
 
+const RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE =
+  'Do not import from a types directory/barrel. Import the concrete `*.types.ts` module directly.';
+
+const restrictedTypeDirectoryImports = [
+  {
+    name: '@/lib/ai/types',
+    message: RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE,
+  },
+  {
+    name: '@/lib/ai/types/index',
+    message: RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE,
+  },
+  {
+    name: '@/lib/api/types',
+    message: RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE,
+  },
+  {
+    name: '@/lib/api/types/index',
+    message: RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE,
+  },
+  {
+    name: '@/lib/db/queries/types',
+    message: RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE,
+  },
+  {
+    name: '@/lib/db/queries/types/index',
+    message: RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE,
+  },
+  {
+    name: '@/lib/types',
+    message: RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE,
+  },
+  {
+    name: '@/lib/types/index',
+    message: RESTRICTED_TYPE_DIRECTORY_IMPORT_MESSAGE,
+  },
+];
+
+const requestLayerRestrictedImports = [
+  {
+    name: '@/lib/db/drizzle',
+    message:
+      'Use getDb() from @/lib/db/runtime in request handlers for RLS enforcement. Service-role DB should only be used in workers.',
+  },
+];
+
+const restrictedTypeReexportSyntax = [
+  {
+    selector:
+      "ImportDeclaration[source.value='@/lib/types/client'][importKind='type']",
+    message:
+      'Import types from @/lib/types/client.types. Keep @/lib/types/client for runtime exports like PLAN_STATUSES only.',
+  },
+  {
+    selector:
+      "ImportDeclaration[source.value='@/lib/types/client'] > ImportSpecifier[importKind='type']",
+    message:
+      'Import types from @/lib/types/client.types. Keep @/lib/types/client for runtime exports like PLAN_STATUSES only.',
+  },
+  {
+    selector:
+      "ImportDeclaration[source.value='@/lib/types/db'][importKind='type']",
+    message:
+      'Import types from @/lib/types/db.types. Keep @/lib/types/db for runtime exports like SKILL_LEVELS and PROGRESS_STATUSES only.',
+  },
+  {
+    selector:
+      "ImportDeclaration[source.value='@/lib/types/db'] > ImportSpecifier[importKind='type']",
+    message:
+      'Import types from @/lib/types/db.types. Keep @/lib/types/db for runtime exports like SKILL_LEVELS and PROGRESS_STATUSES only.',
+  },
+];
+
 // Use the recommended type-checked configs, but strip out the noisy
 // @typescript-eslint/await-thenable rule entirely so it never gets applied.
 const typeCheckedConfigs = tseslint.configs.recommendedTypeChecked.map((c) => {
@@ -50,9 +123,6 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    settings: {
-      react: { version: 'detect' },
-    },
     plugins: {
       'react-hooks': reactHooks,
     },
@@ -91,6 +161,7 @@ export default [
           selector: 'TSEnumDeclaration',
           message: 'Use const object or as const array instead of enum.',
         },
+        ...restrictedTypeReexportSyntax,
       ],
 
       // Dont await in async functions for TS files since we are using Next.js
@@ -145,6 +216,17 @@ export default [
       'no-console': 'off',
     },
   },
+  {
+    files: ['src/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: restrictedTypeDirectoryImports,
+        },
+      ],
+    },
+  },
   // Block service-role DB imports in request layers (use getDb() / RLS DB instead)
   // Note: System endpoints like health checks are excluded
   {
@@ -159,11 +241,8 @@ export default [
         'error',
         {
           paths: [
-            {
-              name: '@/lib/db/drizzle',
-              message:
-                'Use getDb() from @/lib/db/runtime in request handlers for RLS enforcement. Service-role DB should only be used in workers.',
-            },
+            ...restrictedTypeDirectoryImports,
+            ...requestLayerRestrictedImports,
           ],
         },
       ],
@@ -183,6 +262,7 @@ export default [
       },
     },
     rules: {
+      'no-restricted-syntax': ['error', ...restrictedTypeReexportSyntax],
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',

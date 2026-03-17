@@ -179,7 +179,7 @@ const mockProvider = { generate: vi.fn() };
 await runGenerationAttempt(ctx, { provider: mockProvider });
 
 // Avoid: Module mock
-vi.mock('@/lib/ai/provider-factory');
+vi.mock('@/lib/ai/providers/factory');
 ```
 
 Shared mocks in `tests/mocks/shared/` (e.g., Google API rate limiter).
