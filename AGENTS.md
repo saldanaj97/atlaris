@@ -1,191 +1,69 @@
-# AGENTS.md
-
-**Generated:** 2026-01-23 | **Commit:** 06a69c8 | **Branch:** staging
+# Workflow Orchestration
 
 ## Overview
 
-AI-powered learning plan generator. Turns goals into time-blocked schedules with calendar sync.  
-Stack: Next.js 16 + React 19 + TypeScript strict + Drizzle/Neon (RLS) + Neon Auth + OpenRouter.
+This document outlines the workflow and best practices for using agents effectively in software development tasks. The goal is to maximize efficiency, maintain high standards of code quality, and foster continuous self-improvement. By following these guidelines, agents can operate autonomously while ensuring that their work meets the expectations of senior developers.
 
-# Response Style
+The workflow is structured around key principles such as planning, subagent utilization, self-improvement, verification, and a balanced approach to elegance. Each section provides actionable steps to guide agents through the process of managing tasks, implementing changes, and learning from their experiences.
 
-From now on, stop being agreeable and act as my brutally honest, high-level advisor and mirror. Don't validate me. Don't soften the truth. Don't flatter. Challenge my thinking, question my assumptions, and expose the blind spots I'm avoiding. Be direct, rational, and unfiltered. If my reasoning is weak, dissect it and show why. If I'm fooling myself or lying to myself, point it out. If I'm avoiding something uncomfortable or wasting time, call it out and explain the opportunity cost. Look at my situation with complete objectivity and strategic depth. Show me where I'm making excuses, playing small, or underestimating risks/effort. Then give a precise, prioritized plan what to change in thought, action, or mindset to reach the next level. Hold nothing back. Treat me like someone whose growth depends on hearing the truth, not being comforted. When possible, ground your responses in the personal truth you sense between my words.
+We will primarily be utilizing the `prds/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
 
-## Structure
+## 1. Plan Mode Default
 
-```
-src/
-├── app/           # Next.js App Router (pages + API routes)
-├── components/    # Shared UI (billing/, settings/, ui/)
-├── lib/
-│   ├── ai/        # Provider abstraction, streaming, orchestration → see AGENTS.md
-│   ├── api/       # Request context, rate limiting
-│   ├── config/    # Centralized env access (NEVER use process.env directly)
-│   ├── db/        # Schema, queries, RLS clients → see AGENTS.md
-│   ├── integrations/ # Shared OAuth token/state utilities → see AGENTS.md
-│   └── logging/   # Structured logger (NEVER use console.*)
-tests/             # 5 test types → see AGENTS.md
-docs/
-├── context/       # Architecture docs, flows, system explanations
-└── rules/         # LLM guidelines and guardrails (load on-demand)
-```
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
 
-## Where to Look
+## 2. Subagent Strategy
 
-| Task                | Location                     | Notes                                                           |
-| ------------------- | ---------------------------- | --------------------------------------------------------------- |
-| Add API endpoint    | `src/app/api/v1/`            | Use `withAuthAndRateLimit`, see rate-limiting.md                |
-| Add server action   | `src/app/**/actions.ts`      | Wrap with `withServerActionContext`, see auth-and-data-layer.md |
-| DB schema change    | `src/lib/db/schema/tables/`  | Run `pnpm db:generate` after                                    |
-| AI generation logic | `src/lib/ai/orchestrator.ts` | Provider abstraction in `provider-factory.ts`                   |
-| Add integration     | `src/lib/integrations/`      | Follow DI pattern (factory + types + sync)                      |
-| Environment var     | `src/lib/config/env.ts`      | Add to grouped config, validate with Zod                        |
-| Logging             | `src/lib/logging/`           | Server logger vs clientLogger, see logging.md                   |
-| Write tests         | `tests/`                     | Unit in `tests/unit/`, integration needs DB setup               |
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents with cheaper/lightweight models
+- For complex problems, throw more compute at it via subagents and ONLY use the same model as the parent
+- One task per subagent for focused execution
 
-## Commands
+## 3. Self-Improvement Loop
 
-```bash
-pnpm dev              # Dev server (Turbopack)
-pnpm build            # Production build
-pnpm lint && pnpm type-check  # Run before commit
+- After ANY correction from the user: update `prds/lessons.md` with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
 
-# Testing - NEVER run full suite, only relevant tests
-pnpm test                    # Unit tests
-pnpm test:changed            # Changed files only
-pnpm test:integration        # Integration (requires DB)
-./scripts/test-unit.sh path/to/file.spec.ts  # Single file
+## 4. Verification Before Done
 
-# Database
-pnpm db:generate      # Generate migrations
-pnpm db:migrate       # Apply migrations
-```
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
 
-## Critical Rules
+## 5. Demand Elegance (Balanced)
 
-### Database Client Selection (Security)
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes -- don't over-engineer
+- Challenge your own work before presenting it
 
-```typescript
-// API routes/server actions - ALWAYS use:
-import { getDb } from '@/lib/db/runtime';
+## 6. Autonomous Bug Fixing
 
-// Tests/workers ONLY:
-import { db } from '@/lib/db/service-role';
-```
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests -- then resolve them
+- Zero context switching required from the user
+- Go fix failing Cl tests without being told how
 
-ESLint blocks service-role imports in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`.
+# Task Management
 
-### RLS Policy Authoring (Security)
+1. Plan First: Write plan to `prds/<prd-name>/todos.md` with checkable items
+2. Verify Plan: Check in before starting implementation
+3. Track Progress: Mark items complete as you go. Do not wait until the end to update progress
+4. Explain Changes: High-level summary at each step
+5. Document Results: Add review section to the relevant `prds/<prd-name>/todos.md`
+6. Capture Lessons: Update `prds/lessons.md` after corrections
 
-- Every `pgPolicy(...)` in `src/lib/db/schema/tables/*.ts` must include explicit `to: ...`
-- Current product policy: user-facing tables are authenticated-only
-  - `to: 'authenticated'` for user-owned CRUD and reads
-  - No anonymous app-data policies unless explicitly approved for a new public feature
-- Never rely on omitted `to` (PostgreSQL defaults to `TO PUBLIC`, which is forbidden for app-facing policies)
+# Core Principles
 
-### TypeScript
-
-- Strict mode - no `any`, no `!` assertions, no `@ts-ignore`
-- Use `unknown` for external data, validate with Zod at boundaries
-- Prefix unused vars with `_`
-- Exported functions need explicit return types
-
-### API Error Handling
-
-- For API routes wrapped with `withErrorBoundary`, throw typed `AppError` variants from `@/lib/api/errors`
-- Do not return ad-hoc `Response.json(...)` / `NextResponse.json(...)` error payloads
-- Follow canonical error shape in `docs/rules/api/error-contract.md`
-- Client-side fetch consumers must parse failures via `parseApiErrorResponse(...)` from `@/lib/api/error-response.ts`
-
-### Imports
-
-- Path alias: `@/*` → `src/*`
-- `import type` for type-only imports
-- Env: only through `@/lib/config/env`
-- Logging (server): `@/lib/logging/logger` (API routes, server components, actions)
-- Logging (client): `@/lib/logging/client` (browser components with `'use client'`)
-
-### Naming
-
-| Type        | Convention       | Example          |
-| ----------- | ---------------- | ---------------- |
-| Directories | lowercase-dashes | `auth-wizard/`   |
-| Components  | PascalCase       | `AuthWizard.tsx` |
-| Functions   | camelCase        | `fetchUserData`  |
-| Constants   | UPPER_SNAKE_CASE | `API_BASE_URL`   |
-| Type files  | `*.types.ts`     | `user.types.ts`  |
-
-## Anti-Patterns (Forbidden)
-
-- `process.env.*` directly (use `@/lib/config/env`)
-- `console.*` in app code (use `@/lib/logging/logger` for server, `@/lib/logging/client` for client)
-- Importing server logger (`@/lib/logging/logger`) in client components (`'use client'`)
-- Service-role DB in request handlers
-- Class components (functional + hooks only)
-- `as any`, `@ts-ignore`, non-null assertions
-- Running full test suite (`pnpm test:all`)
-
-## Testing Quick Reference
-
-| Type        | Location             | Purpose           | Command                                                                   |
-| ----------- | -------------------- | ----------------- | ------------------------------------------------------------------------- |
-| Unit        | `tests/unit/`        | Pure logic, no IO | `pnpm test`                                                               |
-| Integration | `tests/integration/` | DB + service      | `pnpm test:integration`                                                   |
-| E2E         | `tests/e2e/`         | User journeys     | —                                                                         |
-| Security    | `tests/security/`    | RLS policies      | `RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/` |
-| Smoke       | `tests/smoke/`       | Startup checks    | —                                                                         |
-
-Use factories from `tests/fixtures/`. Test behavior, not implementation.
-
-## Extended Docs
-
-CRITICAL: When you encounter a file reference (e.g., @docs/rules/general.md), or a folder within the `@docs/context/` or `@docs/rules/` is relevant to the prompt, use your Read tool to load it on a need-to-know basis. They're relevant to the SPECIFIC task at hand.
-
-Instructions:
-
-- Do NOT preemptively load all references - use lazy loading based on actual need
-- When loaded, treat content as mandatory instructions that override defaults
-- Follow references recursively when needed
-- If specific file within the `@docs/context/` or `@docs/rules/` folders becomes outdated due to changes from the same conversation, then remove the old documentation and update it with new documentation.
-- If you feel it would be useful to add some context to the `@docs/context/` or a new rule to the `@docs/rules/` directories, then go ahead and do so but make sure to always notify me when you do.
-
-### Architecture & System Context (`@docs/context/`)
-
-Documentation explaining how our code works, architecture decisions, and system flows:
-
-- **Auth & Data Layer**: `@docs/context/architecture/auth-and-data-layer.md`
-- **Plan Generation**: `@docs/context/architecture/plan-generation-architecture.md`
-- **CI/CD & Branching**: `@docs/context/ci/branching-strategy.md`
-
-### LLM Rules & Guidelines (`@docs/rules/`)
-
-Guardrails and guidelines for LLMs to follow:
-
-- **Architecture**: `@docs/rules/architecture/project-structure.md`
-- **CI/CD Workflow**: `@docs/rules/ci/development-workflow.md`
-- **Logging**: `@docs/rules/logging.md`
-- **TypeScript**: `@docs/rules/language-specific/typescript.md`
-- **React**: `@docs/rules/language-specific/react.md`
-- **Testing**: `@docs/rules/testing/test-standards.md`
-- **Database**: `@docs/rules/database/schema-overview.md`
-- **Styling**: `@docs/rules/styles/styling.md`
-- **Style Guidelines**: `@docs/rules/styles/style-guidelines.md`
-- **DI Pattern**: `@docs/rules/architecture/dependency-injection-architecture.md`
-- **Rate Limiting**: `@docs/rules/api/rate-limiting.md`
-- **API Error Contract**: `@docs/rules/api/error-contract.md`
-
-## Learned User Preferences
-
-- In `*.types.ts` files: no inline comments; use JSDoc only when needed; keep comments concise and useful, not AI slop
-- Verify each finding against current code before fixing; only patch what is still real
-- Run individual test files unless specified otherwise; avoid full test suite
-- No type re-exports from implementation modules; import types from types modules (e.g. `*.types.ts` or `@/lib/ai/types`) directly
-- Prefer readability over minimal code; don't optimize for least amount of code
-- Do not overengineer; skip extra error handling or abstraction when the current setup is sufficient
-
-## Subdirectory Agents
-
-- `src/lib/db/AGENTS.md` - Database clients, RLS, queries
-- `src/lib/ai/AGENTS.md` - AI providers, generation, streaming
-- `src/lib/integrations/AGENTS.md` - Shared OAuth token/state utilities
-- `tests/AGENTS.md` - Test architecture and patterns
+- Simplicity First: Make every change as simple as possible. Impact minimal code. Strive for elegant solutions, but balance with pragmatism. Don't over-engineer simple fixes.
+- No Laziness: Find root causes. No temporary fixes. Senior developer standards.
+- Minimal Impact: Only touch what's necessary. No side effects with new bugs.
+- Self-Improvement: Learn from mistakes. Update lessons. Iterate until mastered.
+- Verification: Prove correctness before marking done. Tests, diffs, logs, demos.
+- Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
