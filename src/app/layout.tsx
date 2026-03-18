@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     site: '@atlarisapp',
     creator: '@atlarisapp',
   },
-  metadataBase: new URL('https://atlaris.com'), // Replace with production URL
+  metadataBase: new URL('https://atlaris.app'),
 };
 
 export default function RootLayout({
