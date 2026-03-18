@@ -1,5 +1,5 @@
 import { RateLimitError } from '@/lib/api/errors';
-import { selectUserGenerationAttemptWindowStats } from '@/lib/db/queries/helpers/attempts-helpers';
+import { selectUserGenerationAttemptWindowStats } from '@/lib/db/queries/helpers/attempts-rate-limit';
 import type {
   AttemptsReadClient,
   UserGenerationAttemptWindowStats,
