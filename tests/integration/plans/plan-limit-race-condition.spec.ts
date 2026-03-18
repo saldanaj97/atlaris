@@ -33,14 +33,18 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     const concurrentRequests = 5;
 
     const promises = Array.from({ length: concurrentRequests }, (_, i) =>
-      atomicCheckAndInsertPlan(testUserId, {
-        topic: `Concurrent Topic ${i}`,
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      }).catch((error) => ({ error: error.message }))
+      atomicCheckAndInsertPlan(
+        testUserId,
+        {
+          topic: `Concurrent Topic ${i}`,
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+          origin: 'ai',
+        },
+        db
+      ).catch((error) => ({ error: error.message }))
     );
 
     const results = await Promise.all(promises);
@@ -73,14 +77,18 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
 
     for (let i = 0; i < 4; i++) {
       try {
-        const plan = await atomicCheckAndInsertPlan(testUserId, {
-          topic: `Sequential Topic ${i}`,
-          skillLevel: 'intermediate',
-          weeklyHours: 10,
-          learningStyle: 'reading',
-          visibility: 'private',
-          origin: 'ai',
-        });
+        const plan = await atomicCheckAndInsertPlan(
+          testUserId,
+          {
+            topic: `Sequential Topic ${i}`,
+            skillLevel: 'intermediate',
+            weeklyHours: 10,
+            learningStyle: 'reading',
+            visibility: 'private',
+            origin: 'ai',
+          },
+          db
+        );
         results.push({ success: true, planId: plan.id });
       } catch (error) {
         results.push({
@@ -107,14 +115,18 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
 
     // Attempt 10 concurrent plan creations
     const promises = Array.from({ length: 10 }, (_, i) =>
-      atomicCheckAndInsertPlan(testUserId, {
-        topic: `Pro Tier Topic ${i}`,
-        skillLevel: 'advanced',
-        weeklyHours: 15,
-        learningStyle: 'practice',
-        visibility: 'private',
-        origin: 'ai',
-      })
+      atomicCheckAndInsertPlan(
+        testUserId,
+        {
+          topic: `Pro Tier Topic ${i}`,
+          skillLevel: 'advanced',
+          weeklyHours: 15,
+          learningStyle: 'practice',
+          visibility: 'private',
+          origin: 'ai',
+        },
+        db
+      )
     );
 
     const results = await Promise.all(promises);
@@ -143,14 +155,18 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
 
     // Attempt 12 concurrent plan creations
     const promises = Array.from({ length: 12 }, (_, i) =>
-      atomicCheckAndInsertPlan(testUserId, {
-        topic: `Starter Topic ${i}`,
-        skillLevel: 'beginner',
-        weeklyHours: 8,
-        learningStyle: 'video',
-        visibility: 'private',
-        origin: 'ai',
-      }).catch((error) => ({ error: error.message }))
+      atomicCheckAndInsertPlan(
+        testUserId,
+        {
+          topic: `Starter Topic ${i}`,
+          skillLevel: 'beginner',
+          weeklyHours: 8,
+          learningStyle: 'video',
+          visibility: 'private',
+          origin: 'ai',
+        },
+        db
+      ).catch((error) => ({ error: error.message }))
     );
 
     const results = await Promise.all(promises);
@@ -177,23 +193,31 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     // the quota check is also rolled back
 
     // Create 2 plans successfully
-    await atomicCheckAndInsertPlan(testUserId, {
-      topic: 'Topic 1',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-    });
+    await atomicCheckAndInsertPlan(
+      testUserId,
+      {
+        topic: 'Topic 1',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+      },
+      db
+    );
 
-    await atomicCheckAndInsertPlan(testUserId, {
-      topic: 'Topic 2',
-      skillLevel: 'intermediate',
-      weeklyHours: 10,
-      learningStyle: 'reading',
-      visibility: 'private',
-      origin: 'ai',
-    });
+    await atomicCheckAndInsertPlan(
+      testUserId,
+      {
+        topic: 'Topic 2',
+        skillLevel: 'intermediate',
+        weeklyHours: 10,
+        learningStyle: 'reading',
+        visibility: 'private',
+        origin: 'ai',
+      },
+      db
+    );
 
     // Verify we have 2 plans
     let plans = await db
@@ -203,14 +227,18 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     expect(plans.length).toBe(2);
 
     // Should be able to create one more (limit is 3)
-    const plan3 = await atomicCheckAndInsertPlan(testUserId, {
-      topic: 'Topic 3',
-      skillLevel: 'advanced',
-      weeklyHours: 15,
-      learningStyle: 'practice',
-      visibility: 'private',
-      origin: 'ai',
-    });
+    const plan3 = await atomicCheckAndInsertPlan(
+      testUserId,
+      {
+        topic: 'Topic 3',
+        skillLevel: 'advanced',
+        weeklyHours: 15,
+        learningStyle: 'practice',
+        visibility: 'private',
+        origin: 'ai',
+      },
+      db
+    );
 
     expect(plan3).toHaveProperty('id');
 
@@ -223,14 +251,18 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
 
     // Next attempt should fail with limit reached
     await expect(
-      atomicCheckAndInsertPlan(testUserId, {
-        topic: 'Topic 4',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      })
+      atomicCheckAndInsertPlan(
+        testUserId,
+        {
+          topic: 'Topic 4',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+          origin: 'ai',
+        },
+        db
+      )
     ).rejects.toThrow('Plan limit reached');
 
     // Verify we still have exactly 3 plans (not 4)

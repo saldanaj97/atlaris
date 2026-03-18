@@ -4,10 +4,10 @@
 // lifecycle state machine (create → generating → ready/failed) and plan
 // quota enforcement. They belong in the plans domain, not in billing.
 
-import { getDb } from '@/lib/db/runtime';
 import { learningPlans, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { PdfContext } from '@/features/pdf/context.types';
+import type { DbClient } from '@/lib/db/types';
 import { eq, sql } from 'drizzle-orm';
 
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
@@ -16,9 +16,6 @@ import { resolveUserTier } from '@/features/billing/tier';
 
 import { PlanCreationError, PlanLimitReachedError } from '../errors';
 import { UserNotFoundError } from '@/features/billing/errors';
-
-// Type for DB client (compatible with both runtime and service-role clients)
-type DbClient = ReturnType<typeof getDb>;
 
 // Explicit upgrade path mapping: current tier -> recommended next tier
 const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {
@@ -39,10 +36,14 @@ type PlanDurationCapResult = {
  */
 export async function checkPlanLimit(
   userId: string,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient
 ): Promise<boolean> {
   const tier = await resolveUserTier(userId, dbClient);
-  const limit = TIER_LIMITS[tier].maxActivePlans;
+  const tierConfig = TIER_LIMITS[tier];
+  if (!tierConfig) {
+    throw new Error(`Unknown subscription tier: ${tier}`);
+  }
+  const limit = tierConfig.maxActivePlans;
 
   if (limit === Infinity) {
     return true;
@@ -118,7 +119,7 @@ export async function atomicCheckAndInsertPlan(
     startDate?: string | null;
     deadlineDate?: string | null;
   },
-  dbClient: DbClient = getDb()
+  dbClient: DbClient
 ): Promise<{ id: string }> {
   return dbClient.transaction(async (tx) => {
     // Lock the user row for update to prevent concurrent limit checks
@@ -136,7 +137,11 @@ export async function atomicCheckAndInsertPlan(
     // to stay within the FOR UPDATE transaction. resolveUserTier() opens its own
     // query, which would bypass the lock and re-introduce the race condition.
     const tier = user.subscriptionTier;
-    const limit = TIER_LIMITS[tier].maxActivePlans;
+    const tierConfig = TIER_LIMITS[tier];
+    if (!tierConfig) {
+      throw new Error(`Unknown subscription tier: ${tier}`);
+    }
+    const limit = tierConfig.maxActivePlans;
 
     if (limit !== Infinity) {
       const currentCount = await countPlansContributingToCap(tx, userId);
@@ -166,7 +171,7 @@ export async function atomicCheckAndInsertPlan(
 
 export async function markPlanGenerationSuccess(
   planId: string,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient,
   now: () => Date = () => new Date()
 ): Promise<void> {
   const timestamp = now();
@@ -192,7 +197,7 @@ export async function markPlanGenerationSuccess(
 
 export async function markPlanGenerationFailure(
   planId: string,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient,
   now: () => Date = () => new Date()
 ): Promise<void> {
   const timestamp = now();

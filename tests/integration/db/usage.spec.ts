@@ -17,14 +17,18 @@ describe('AI usage logging', () => {
     });
 
     // Check the limit and create the plan in a single atomic transaction
-    const plan = await atomicCheckAndInsertPlan(userId, {
-      topic: 'Test Topic',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-    });
+    const plan = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        topic: 'Test Topic',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+      },
+      db
+    );
 
     expect(plan.id).toBeDefined();
 

@@ -22,7 +22,7 @@ describe('Usage Tracking', () => {
       });
 
       // No plans yet
-      expect(await checkPlanLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(true);
 
       // Create 3 plans
       const finalizedAt = new Date();
@@ -60,7 +60,7 @@ describe('Usage Tracking', () => {
       ]);
 
       // At limit
-      expect(await checkPlanLimit(userId)).toBe(false);
+      expect(await checkPlanLimit(userId, db)).toBe(false);
     });
 
     it('allows starter tier user up to 10 plans', async () => {
@@ -90,7 +90,7 @@ describe('Usage Tracking', () => {
       await db.insert(learningPlans).values(plans);
 
       // At limit
-      expect(await checkPlanLimit(userId)).toBe(false);
+      expect(await checkPlanLimit(userId, db)).toBe(false);
 
       // Below limit - delete one plan
       const planToDelete = await db
@@ -101,7 +101,7 @@ describe('Usage Tracking', () => {
       if (planToDelete[0]) {
         await db.delete(learningPlans).where(sql`id = ${planToDelete[0].id}`);
       }
-      expect(await checkPlanLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(true);
     });
 
     it('allows pro tier user unlimited plans', async () => {
@@ -131,7 +131,7 @@ describe('Usage Tracking', () => {
       await db.insert(learningPlans).values(plans);
 
       // Still allowed
-      expect(await checkPlanLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(true);
     });
 
     it('ignores non-eligible plans when enforcing limits', async () => {
@@ -174,7 +174,7 @@ describe('Usage Tracking', () => {
         },
       ]);
 
-      expect(await checkPlanLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(true);
 
       await db.insert(learningPlans).values({
         userId,
@@ -187,7 +187,7 @@ describe('Usage Tracking', () => {
         finalizedAt,
       });
 
-      expect(await checkPlanLimit(userId)).toBe(false);
+      expect(await checkPlanLimit(userId, db)).toBe(false);
     });
   });
 

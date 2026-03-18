@@ -413,12 +413,12 @@ export async function withFallbackCleanup(
  *
  * @param planId - ID of the plan to mark failed
  * @param userId - ID of the user owning the plan (for logging)
- * @param dbClient - Optional RLS client; defaults to getDb() for module-style usage
+ * @param dbClient - RLS client for database operations
  */
 export async function safeMarkPlanFailed(
   planId: string,
   userId: string,
-  dbClient: AttemptsDbClient = getDb(),
+  dbClient: AttemptsDbClient,
   deps?: Pick<StreamingHelperDependencies, 'markPlanGenerationFailure'>
 ): Promise<void> {
   try {
