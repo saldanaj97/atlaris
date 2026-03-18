@@ -5,12 +5,52 @@ import {
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
+import { createLearningPlanObject } from '@/shared/schemas/learning-plans.schemas';
 import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
-import { createLearningPlanSchema } from '@/shared/schemas/learning-plans.schemas';
 
 // Initialize OpenAPI extension for Zod (must be called once)
 extendZodWithOpenApi(z);
+
+// Build a documentation-only schema that surfaces the conditional PDF vs non-PDF
+// rules via .openapi() metadata. The runtime validation still uses
+// createLearningPlanSchema (with its .superRefine + .transform), but
+// zod-to-openapi strips effects, so we annotate the base shape here instead.
+const createLearningPlanShape = createLearningPlanObject.shape;
+
+const createPlanRequestSchema = z
+  .object({
+    ...createLearningPlanShape,
+    topic: createLearningPlanShape.topic.openapi({
+      description:
+        'Plan topic. Required for non-PDF plans (min 3 characters). Optional for PDF plans — derived from extractedContent.mainTopic if omitted.',
+    }),
+    origin: createLearningPlanShape.origin.openapi({
+      description:
+        'Plan origin. Determines conditional field requirements: "pdf" requires PDF proof fields; "ai", "manual", or "template" require topic.',
+    }),
+    extractedContent: createLearningPlanShape.extractedContent.openapi({
+      description:
+        'Parsed PDF content. Required when origin is "pdf"; must not be present otherwise.',
+    }),
+    pdfProofToken: createLearningPlanShape.pdfProofToken.openapi({
+      description:
+        'Upload proof token. Required when origin is "pdf"; must not be present otherwise.',
+    }),
+    pdfExtractionHash: createLearningPlanShape.pdfExtractionHash.openapi({
+      description:
+        'SHA-256 hex digest of the PDF extraction. Required when origin is "pdf"; must not be present otherwise.',
+    }),
+    pdfProofVersion: createLearningPlanShape.pdfProofVersion.openapi({
+      description:
+        'Proof version (must be 1). Required when origin is "pdf"; must not be present otherwise.',
+    }),
+  })
+  .strict()
+  .openapi('CreateLearningPlanRequest', {
+    description:
+      'Plan creation payload. Field requirements are conditional on origin — see individual field descriptions for PDF vs non-PDF rules.',
+  });
 
 const registry = new OpenAPIRegistry();
 
@@ -123,11 +163,12 @@ registry.registerPath({
     'Creates a new learning plan and enqueues an AI generation job for the authenticated user.',
   request: {
     body: {
-      description: 'Plan creation payload.',
+      description:
+        'Plan creation payload. Field requirements are conditional on the origin field — see the CreateLearningPlanRequest schema for details.',
       required: true,
       content: {
         'application/json': {
-          schema: createLearningPlanSchema,
+          schema: createPlanRequestSchema,
         },
       },
     },
