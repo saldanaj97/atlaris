@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
-import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
+import { createLearningPlanSchema } from '@/shared/schemas/learning-plans.schemas';
 
 // Initialize OpenAPI extension for Zod (must be called once)
 extendZodWithOpenApi(z);

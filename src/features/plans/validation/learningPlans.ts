@@ -12,7 +12,6 @@ export type {
   PlanRegenerationOverridesInput,
 } from './learningPlans.types';
 
-import { pdfPreviewEditSchema } from '@/features/pdf/validation/pdf';
 import {
   LEARNING_STYLE_ENUM,
   NOTES_MAX_LENGTH,
@@ -27,41 +26,20 @@ export {
   weeklyHoursSchema,
 } from './shared';
 
+export {
+  createLearningPlanObject,
+  createLearningPlanSchema,
+} from '@/shared/schemas/learning-plans.schemas';
+import {
+  createLearningPlanObject,
+  topicSchema,
+} from '@/shared/schemas/learning-plans.schemas';
+
 // Time constants in milliseconds
 export const MILLISECONDS_PER_WEEK = 7 * 24 * 3600 * 1000;
 export const DEFAULT_PLAN_DURATION_WEEKS = 2;
 export const DEFAULT_PLAN_DURATION_MS =
   DEFAULT_PLAN_DURATION_WEEKS * MILLISECONDS_PER_WEEK;
-
-function enforceMaxLength(
-  value: string,
-  maxLength: number,
-  ctx: z.RefinementCtx,
-  field: 'topic' | 'notes'
-) {
-  if (value.length > maxLength) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `${field} must be ${maxLength} characters or fewer.`,
-      params: { maxLength, actualLength: value.length },
-    });
-  }
-}
-
-const topicSchema = z
-  .string()
-  .trim()
-  .min(3, 'Topic must be at least 3 characters.')
-  .superRefine((value, ctx) =>
-    enforceMaxLength(value, TOPIC_MAX_LENGTH, ctx, 'topic')
-  );
-
-const notesSchema = z
-  .string()
-  .trim()
-  .superRefine((value, ctx) =>
-    enforceMaxLength(value, NOTES_MAX_LENGTH, ctx, 'notes')
-  );
 
 const planNotesOverrideSchema = z
   .string()
@@ -99,23 +77,6 @@ const planDeadlineDateOverrideSchema = z
   )
   .transform((value) => (value ? value : null));
 
-const pdfProofTokenSchema = z
-  .string()
-  .trim()
-  .min(16, 'pdfProofToken is invalid.')
-  .max(512, 'pdfProofToken is invalid.');
-
-const pdfExtractionHashSchema = z
-  .string()
-  .trim()
-  .regex(
-    /^[a-f0-9]{64}$/i,
-    'pdfExtractionHash must be a 64-character SHA-256 hex digest.'
-  )
-  .transform((value) => value.toLowerCase());
-
-const pdfProofVersionSchema = z.literal(1);
-
 export const planRegenerationOverridesSchema = z
   .object({
     topic: planTopicOverrideSchema.optional(),
@@ -133,130 +94,6 @@ export const planRegenerationRequestSchema = z
     overrides: planRegenerationOverridesSchema.optional(),
   })
   .strict();
-
-const createLearningPlanObject = z
-  .object({
-    topic: topicSchema.optional(),
-    skillLevel: SKILL_LEVEL_ENUM,
-    weeklyHours: weeklyHoursSchema,
-    learningStyle: LEARNING_STYLE_ENUM,
-    notes: notesSchema
-      .optional()
-      .nullable()
-      .transform((value) => (value ? value : undefined)),
-    startDate: z
-      .string()
-      .trim()
-      .optional()
-      .nullable()
-      .refine(
-        (value) => !value || !Number.isNaN(Date.parse(value)),
-        'Start date must be a valid ISO date string.'
-      )
-      .transform((value) => (value ? value : undefined)),
-    deadlineDate: z
-      .string()
-      .trim()
-      .optional()
-      .nullable()
-      .refine(
-        (value) => !value || !Number.isNaN(Date.parse(value)),
-        'Deadline date must be a valid ISO date string.'
-      )
-      .transform((value) => (value ? value : undefined)),
-    visibility: z.literal('private').optional().default('private'),
-    origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const).default('ai'),
-    extractedContent: pdfPreviewEditSchema.optional(),
-    pdfProofToken: pdfProofTokenSchema.optional(),
-    pdfExtractionHash: pdfExtractionHashSchema.optional(),
-    pdfProofVersion: pdfProofVersionSchema.optional(),
-  })
-  .strict();
-
-export const createLearningPlanSchema = createLearningPlanObject
-  .superRefine((data, ctx) => {
-    if (data.origin === 'pdf' && !data.extractedContent) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['extractedContent'],
-        message: 'extractedContent is required for PDF-based plans.',
-      });
-    }
-
-    if (data.origin === 'pdf' && !data.pdfProofToken) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['pdfProofToken'],
-        message: 'pdfProofToken is required for PDF-based plans.',
-      });
-    }
-
-    if (data.origin === 'pdf' && !data.pdfExtractionHash) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['pdfExtractionHash'],
-        message: 'pdfExtractionHash is required for PDF-based plans.',
-      });
-    }
-
-    if (data.origin === 'pdf' && data.pdfProofVersion !== undefined) {
-      if (data.pdfProofVersion !== 1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['pdfProofVersion'],
-          message: 'pdfProofVersion is invalid.',
-        });
-      }
-    }
-
-    if (data.origin !== 'pdf' && (!data.topic || data.topic.length < 3)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['topic'],
-        message: 'Topic is required for non-PDF plans (at least 3 characters).',
-      });
-    }
-
-    if (data.origin !== 'pdf' && data.extractedContent) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['extractedContent'],
-        message: 'extractedContent is only allowed for PDF-based plans.',
-      });
-    }
-
-    if (data.origin !== 'pdf' && data.pdfProofToken) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['pdfProofToken'],
-        message: 'pdfProofToken is only allowed for PDF-based plans.',
-      });
-    }
-
-    if (data.origin !== 'pdf' && data.pdfExtractionHash) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['pdfExtractionHash'],
-        message: 'pdfExtractionHash is only allowed for PDF-based plans.',
-      });
-    }
-
-    if (data.origin !== 'pdf' && data.pdfProofVersion !== undefined) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['pdfProofVersion'],
-        message: 'pdfProofVersion is only allowed for PDF-based plans.',
-      });
-    }
-  })
-  .transform((data) => {
-    const topic =
-      data.topic ??
-      (data.origin === 'pdf' && data.extractedContent
-        ? data.extractedContent.mainTopic
-        : undefined);
-    return { ...data, topic: topic ?? '' };
-  });
 
 function toDateOnly(value: string): Date {
   const parsedDate = parseISO(value);
