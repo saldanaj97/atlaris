@@ -4,8 +4,8 @@ import { logger } from '@/lib/logging/logger';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { UsageMetricsLoadError } from './errors';
-import { TIER_LIMITS } from './tier-limits';
 import { getUserTier, type DbClient } from './tier';
+import { TIER_LIMITS } from './tier-limits';
 
 // Usage type for incrementing counters
 type UsageType = 'plan' | 'regeneration' | 'export';

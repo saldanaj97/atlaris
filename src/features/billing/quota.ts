@@ -4,11 +4,11 @@ import { logger } from '@/lib/logging/logger';
 import { and, eq } from 'drizzle-orm';
 
 import { UsageMetricsLockError, UserNotFoundError } from './errors';
-import { TIER_LIMITS } from './tier-limits';
 import type { DbClient } from './tier';
+import { TIER_LIMITS } from './tier-limits';
 import {
-  getCurrentMonth,
   ensureUsageMetricsExist,
+  getCurrentMonth,
   incrementPdfUsageInTx,
   incrementUsageInTx,
 } from './usage-metrics';
