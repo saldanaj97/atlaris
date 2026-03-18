@@ -13,6 +13,7 @@ import type { FailureClassification } from '@/shared/types/client.types';
 export type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 export type { PdfContext } from '@/features/pdf/context.types';
 export type { FailureClassification } from '@/shared/types/client.types';
+export { isRetryableClassification } from '@/shared/types/failure-classification';
 
 // ─── Input types ─────────────────────────────────────────────────
 
@@ -200,23 +201,3 @@ export type GenerationAttemptResult =
   | RetryableFailure
   | PermanentFailure
   | AlreadyFinalized;
-
-// ─── Retryability classification ─────────────────────────────────
-
-/**
- * Classifications that are NOT retryable — the attempt consumed resources
- * and should not be retried.
- */
-const NON_RETRYABLE_CLASSIFICATIONS: ReadonlyArray<
-  FailureClassification | 'unknown'
-> = ['validation', 'capped'];
-
-/**
- * Determine whether a failure classification indicates a retryable error.
- * Non-retryable: 'validation', 'capped'. Everything else is retryable.
- *
- * This logic is owned by the lifecycle module — not imported from AI internals.
- */
-export const isRetryableClassification = (
-  classification: FailureClassification | 'unknown'
-): boolean => !NON_RETRYABLE_CLASSIFICATIONS.includes(classification);
