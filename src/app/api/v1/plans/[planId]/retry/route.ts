@@ -19,7 +19,7 @@ import type {
   GenerationInput,
   IsoDateString,
 } from '@/features/ai/types/provider.types';
-import { resolveUserTier } from '@/features/billing/usage';
+import { resolveUserTier } from '@/features/billing/tier';
 import { parsePersistedPdfContext } from '@/features/pdf/context';
 import {
   requireOwnedPlanById,

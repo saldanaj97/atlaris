@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
-import { getUsageSummary } from '@/features/billing/usage';
+import { getUsageSummary } from '@/features/billing/usage-metrics';
 import { Plus, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { resolveUserTier } from '@/features/billing/usage';
+import { resolveUserTier } from '@/features/billing/tier';
 import {
   createPlanLifecycleService,
   type GenerationAttemptResult,

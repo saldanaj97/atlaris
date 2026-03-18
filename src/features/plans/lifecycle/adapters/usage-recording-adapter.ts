@@ -4,7 +4,7 @@
  * Thin wrapper around `recordUsage()` from the DB usage module.
  */
 
-import { incrementUsage } from '@/features/billing/usage';
+import { incrementUsage } from '@/features/billing/usage-metrics';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
 

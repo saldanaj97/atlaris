@@ -8,7 +8,7 @@ Three files in the codebase have grown far beyond manageable size, mixing multip
 
 2. **`src/features/ai/providers/openrouter.ts` (611 lines)** — Mixes SDK client construction, request/response type definitions, response shape validation (~130 lines), stream chunk parsing, Sentry span lifecycle management (~110 lines), and error classification. A developer fixing a response validation bug must navigate the entire provider class and its inline type system. The validation logic alone (`validateNonStreamingResponse` and its helpers) is self-contained and testable in isolation but cannot be tested without importing the entire 611-line provider module.
 
-3. **`src/features/billing/usage.ts` (~500 lines after PRD 2)** — Even after PRD 2 extracts plan lifecycle functions, the remaining file still mixes tier resolution, monthly usage metrics CRUD, atomic transactional quota enforcement, and decrement/rollback operations. The atomic quota functions (`atomicCheckAndIncrementUsage`, `atomicCheckAndIncrementPdfUsage`) each contain ~80-100 lines of transactional locking and error handling that is structurally identical but not shared.
+3. **`src/features/billing/usage.ts` (~500 lines after PRD 2)** — Even after PRD 2 extracts plan lifecycle functions, the remaining file still mixes tier resolution, monthly usage metrics CRUD, atomic transactional quota enforcement, and decrement/rollback operations. The atomic quota functions (`atomicCheckAndIncrementUsage`, `atomicCheckAndIncrementPdfUsage`) each contain ~80-100 lines of transactional locking and error handling that is structurally identical but not shared. This refactor has now been completed and the transitional barrel file has since been removed.
 
 These god modules cause:
 
@@ -29,7 +29,7 @@ Split each god module into cohesive, single-responsibility files. Each new file 
 - Fewer external dependencies than the original
 - Independent testability (you can test one file without pulling in the entire module)
 
-No behavioral changes. All public exports maintain identical signatures and semantics. Consumers update import paths only.
+No behavioral changes. During migration, public exports may be preserved temporarily via re-exports, but the intended end state is direct imports from focused modules.
 
 ## User Stories
 
@@ -294,14 +294,15 @@ Atomic transactional quota enforcement. Functions that perform check-then-increm
 - `src/app/api/v1/plans/from-pdf/extract/route.ts` — `atomicCheckAndIncrementPdfUsage`
 - `src/features/plans/api/pdf-origin.ts` — `atomicCheckAndIncrementPdfUsage`
 
-#### `billing/usage.ts` — DELETED or barrel re-export
+#### `billing/usage.ts` — transitional barrel, then delete
 
-After all functions are extracted, `billing/usage.ts` either:
+After all functions are extracted, `billing/usage.ts` can temporarily:
 
-- **Option A (preferred):** Becomes a barrel re-export file (~20 lines) that re-exports from `tier.ts`, `usage-metrics.ts`, and `quota.ts`. This preserves backward compatibility — existing consumers do not need to update import paths immediately.
-- **Option B:** Is deleted entirely. All consumers update to import from the specific sub-modules.
+- Become a barrel re-export file (~20 lines) that re-exports from `tier.ts`, `usage-metrics.ts`, and `quota.ts`. This preserves backward compatibility while the split lands.
 
-**Recommendation:** Use Option A initially. Add a deprecation comment on the barrel re-exports. Clean up in a follow-up PR or as part of PRD 4.
+Then, as a follow-up, delete `billing/usage.ts` entirely and update all remaining consumers to import from the specific sub-modules.
+
+**Outcome:** That follow-up has now landed. The temporary barrel served as a migration bridge, and `src/features/billing/usage.ts` has been deleted after all consumers moved to direct imports.
 
 ## Migration Strategy
 
@@ -309,7 +310,7 @@ After all functions are extracted, `billing/usage.ts` either:
 
 1. **`attempts-helpers.ts` first** — Most impactful split (530 lines, 10 deps). Three consumers to update. No behavioral changes.
 2. **`openrouter.ts` second** — Self-contained within `features/ai/providers/`. Two consumers to update.
-3. **`billing/usage.ts` third** — Depends on PRD 2 completing first. Use barrel re-export to minimize consumer churn.
+3. **`billing/usage.ts` third** — Depends on PRD 2 completing first. Use a temporary barrel re-export only if it helps land the split safely, then remove it.
 
 ### Per-Split Execution
 
@@ -317,18 +318,18 @@ Each split follows the same pattern:
 
 1. Create the new file(s) with the extracted functions. Preserve JSDoc and inline comments.
 2. Update the original file to import from the new files (or delete the moved code).
-3. Update the original file's exports if using barrel pattern, or update consumer imports directly.
+3. If using a temporary barrel, update the original file's exports first, then follow with a direct-import cleanup that removes the barrel.
 4. Run `pnpm type-check` to verify no type errors.
 5. Run `pnpm test:changed` to verify no test failures.
 6. Verify the original file's line count matches expectations.
 
 ### Consumer Impact
 
-| Split                 | Production files to update                            | Test files to update     |
-| --------------------- | ----------------------------------------------------- | ------------------------ |
-| `attempts-helpers.ts` | 3 (`attempts.ts`, `rate-limit.ts`, `orchestrator.ts`) | Check for direct imports |
-| `openrouter.ts`       | 1 (`router.ts`)                                       | 1 (`openrouter.spec.ts`) |
-| `billing/usage.ts`    | 0 if using barrel re-export; ~16 if not               | 5+ test files            |
+| Split                 | Production files to update                                          | Test files to update     |
+| --------------------- | ------------------------------------------------------------------- | ------------------------ |
+| `attempts-helpers.ts` | 3 (`attempts.ts`, `rate-limit.ts`, `orchestrator.ts`)               | Check for direct imports |
+| `openrouter.ts`       | 1 (`router.ts`)                                                     | 1 (`openrouter.spec.ts`) |
+| `billing/usage.ts`    | transitional barrel first, then ~16 production/test import rewrites | 5+ test files            |
 
 ## Verification
 
@@ -340,7 +341,7 @@ For each split:
 4. Post-split line counts match expectations:
    - `attempts-helpers.ts`: ~90 lines (down from 530)
    - `openrouter.ts`: ~380 lines (down from 611)
-   - `billing/usage.ts`: ~20 lines barrel or deleted (down from ~500)
+   - `billing/usage.ts`: deleted after consumer import cleanup (down from ~500)
 5. No new external dependencies introduced — each new file uses a subset of the original's dependencies.
 6. All public exports maintain identical signatures and return types.
 

@@ -61,7 +61,7 @@ A new deep module under `src/features/plans/` that consolidates plan lifecycle o
 The lifecycle service depends on explicit port interfaces for its external collaborators:
 
 - **PlanPersistencePort** — atomic plan insertion, plan retrieval, status updates. Production adapter wraps existing Drizzle queries and `atomicCheckAndInsertPlan`.
-- **QuotaPort** — tier resolution, plan limit checks, duration cap enforcement, PDF quota reservation/rollback. Production adapter wraps `features/billing/usage.ts`.
+- **QuotaPort** — tier resolution, plan limit checks, duration cap enforcement, PDF quota reservation/rollback. Production adapter composes `features/billing/tier.ts`, `features/billing/usage-metrics.ts`, and `features/billing/quota.ts` directly.
 - **PdfOriginPort** — proof verification, context sanitization, provenance tracking. Production adapter wraps `features/plans/api/pdf-origin.ts` and `features/pdf/security/pdf-extraction-proof.ts`.
 - **GenerationPort** — AI generation execution. Production adapter wraps `features/ai/orchestrator.ts`.
 - **UsageRecordingPort** — AI token usage recording. Production adapter wraps `lib/db/usage.ts`.

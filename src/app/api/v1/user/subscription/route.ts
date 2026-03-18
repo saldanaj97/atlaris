@@ -9,7 +9,7 @@ import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import { getStripe } from '@/features/billing/client';
-import { getUsageSummary } from '@/features/billing/usage';
+import { getUsageSummary } from '@/features/billing/usage-metrics';
 
 const CANCEL_AT_PERIOD_END_SAFE_DEFAULT = false;
 

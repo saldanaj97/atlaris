@@ -2,15 +2,15 @@
 
 > **PRD:** [`prds/break-up-god-modules/prd.md`](./prd.md)
 > **Parent Issue:** [#244 — PRD: Break Up God Modules](https://github.com/saldanaj97/atlaris/issues/244)
-> **Status:** Phase 1, 2, & 3 complete (PR [#279](https://github.com/saldanaj97/atlaris/pull/279)).
+> **Status:** Phase 1, 2, & 3 complete, including the direct-import follow-up that deleted the temporary billing barrel (PR [#279](https://github.com/saldanaj97/atlaris/pull/279)).
 
 ## Current State
 
-| God Module                                       | Original Lines | Target Lines   | Actual Lines | Status      |
-| ------------------------------------------------ | -------------- | -------------- | ------------ | ----------- |
-| `src/lib/db/queries/helpers/attempts-helpers.ts` | 530            | ~90 (reduced)  | 70           | ✅ Complete |
-| `src/features/ai/providers/openrouter.ts`        | 611            | ~380 (reduced) | 340          | ✅ Complete |
-| `src/features/billing/usage.ts`                  | 552            | ~20 (barrel)   | 23           | ✅ Complete |
+| God Module                                       | Original Lines | Target Lines                  | Actual Lines | Status      |
+| ------------------------------------------------ | -------------- | ----------------------------- | ------------ | ----------- |
+| `src/lib/db/queries/helpers/attempts-helpers.ts` | 530            | ~90 (reduced)                 | 70           | ✅ Complete |
+| `src/features/ai/providers/openrouter.ts`        | 611            | ~380 (reduced)                | 340          | ✅ Complete |
+| `src/features/billing/usage.ts`                  | 552            | transitional ~20, then delete | deleted      | ✅ Complete |
 
 ## Prerequisites
 
@@ -51,7 +51,7 @@
   - After this, `openrouter.ts` is reduced to ~380 lines (class + SDK + Sentry instrumentation)
   - **Blocked by:** nothing
 
-### Phase 3: Split `billing/usage.ts` (~500 post-PRD-2 → 3 files + barrel)
+### Phase 3: Split `billing/usage.ts` (~500 post-PRD-2 → 3 files + transitional barrel, then delete barrel)
 
 > **BLOCKED** — cannot start until PRD 2 ([#236](https://github.com/saldanaj97/atlaris/issues/236)) completes and reduces `usage.ts` from ~850 to ~500 lines. Issues are sequential to avoid merge conflicts.
 
@@ -65,9 +65,14 @@
   - External deps reduced to 3 (db/runtime, db/schema, logging/logger)
   - Exports `getCurrentMonth`, `ensureUsageMetricsExist`, `incrementUsageInTx`, `incrementPdfUsageInTx` for `quota.ts`
 
-- [x] **[#269](https://github.com/saldanaj97/atlaris/issues/269) — Extract `billing/quota.ts` + convert `usage.ts` to barrel** (~200 lines → 208 actual + 23-line barrel)
+- [x] **[#269](https://github.com/saldanaj97/atlaris/issues/269) — Extract `billing/quota.ts` + convert `usage.ts` to transitional barrel** (~200 lines → 208 actual + 23-line barrel)
   - Move atomic quota enforcement: `atomicCheckAndIncrementUsage`, `atomicCheckAndIncrementPdfUsage`
-  - Converted `usage.ts` to 23-line barrel re-export — all consumer imports preserved
+  - Converted `usage.ts` to a temporary 23-line barrel re-export so the split could land with minimal churn
+
+- [x] **Follow-up — remove the temporary `billing/usage.ts` barrel**
+  - Migrated all 15 remaining consumers to direct imports from `billing/tier.ts`, `billing/usage-metrics.ts`, and `billing/quota.ts`
+  - Deleted `src/features/billing/usage.ts`
+  - Documented in `prds/remove-billing-usage-barrel/todos.md`
 
 ## Dependency Graph
 
@@ -101,7 +106,7 @@ Each slice follows the same pattern (from PRD §Migration Strategy):
 - [x] Post-split line counts match expectations:
   - `attempts-helpers.ts`: 70 lines (down from 530, target ~90)
   - `openrouter.ts`: 340 lines (down from 611, target ~380)
-  - `billing/usage.ts`: N/A — blocked on PRD 2
+  - `billing/usage.ts`: deleted after the direct-import follow-up
 - [x] No new external dependencies introduced
 - [x] All public exports maintain identical signatures and return types
 - [x] No behavioral changes — pure refactor
@@ -110,4 +115,12 @@ Each slice follows the same pattern (from PRD §Migration Strategy):
 
 - **#270** (remove deprecated billing functions) is tracked under PRD #256, not this PRD. The PRD explicitly defers removal to PRD 4. This PRD only _moves_ deprecated functions to `quota.ts`.
 - The billing split targets the **post-PRD-2 state** of `usage.ts` (~500 lines). Do not attempt the billing phase against the current 850-line file.
-- Use **Option A** (barrel re-export) for `billing/usage.ts` to preserve backward compatibility. Add deprecation comments on the barrel re-exports.
+- The barrel re-export was the initial migration tactic, not the final architecture. The follow-up direct-import cleanup has now removed `src/features/billing/usage.ts` entirely.
+
+## Review notes
+
+### 2026-03-18
+
+- Completed the follow-up cleanup that removed the temporary `src/features/billing/usage.ts` barrel.
+- Migrated all 15 remaining consumers to direct imports from `billing/tier.ts`, `billing/usage-metrics.ts`, and `billing/quota.ts`.
+- Verified with `pnpm type-check`, `pnpm lint`, and `pnpm test:changed`.

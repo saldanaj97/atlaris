@@ -12,7 +12,7 @@ import { eq, sql } from 'drizzle-orm';
 
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import type { SubscriptionTier } from '@/features/billing/tier-limits.types';
-import { resolveUserTier } from '@/features/billing/usage';
+import { resolveUserTier } from '@/features/billing/tier';
 
 import { PlanCreationError, PlanLimitReachedError } from '../errors';
 import { UserNotFoundError } from '@/features/billing/errors';

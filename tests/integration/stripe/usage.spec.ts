@@ -3,7 +3,10 @@ import { sql } from 'drizzle-orm';
 import { ensureUser, truncateAll } from '@/../tests/helpers/db';
 import { db } from '@/lib/db/service-role';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
-import { incrementUsage, getUsageSummary } from '@/features/billing/usage';
+import {
+  getUsageSummary,
+  incrementUsage,
+} from '@/features/billing/usage-metrics';
 import { checkPlanLimit } from '@/features/plans/lifecycle';
 
 describe('Usage Tracking', () => {
