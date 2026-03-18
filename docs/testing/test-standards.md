@@ -1,5 +1,7 @@
 # Testing Guidelines (Vitest + Testing Library)
 
+For database query helper patterns (Drizzle mocking, SQL capture, fixtures), see [db-test-patterns.md](./db-test-patterns.md).
+
 These guidelines are designed to keep the test suite:
 
 - **Robust**: refactors shouldn’t break tests unless behavior changed.
@@ -348,7 +350,7 @@ export function buildUser(overrides: Partial<User> = {}): User {
 
 Rules:
 
-- Factories live in one place (e.g., `tests/_fixtures`).
+- Factories live in one place (`tests/fixtures/`).
 - Factories produce **valid by default** objects.
 - Don’t retype huge objects in test files.
 

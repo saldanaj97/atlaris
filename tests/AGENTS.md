@@ -1,45 +1,38 @@
 # Tests Module
 
-**Parent:** [Root AGENTS.md](../../../AGENTS.md)
+**Parent:** [Root AGENTS.md](../AGENTS.md)
 
-## Overview
+## General Principles
 
-Vitest multi-project setup with 5 test types. DB reset between tests. Factories for test data.
+- Make sure to always update the test suite when making changes to the codebase, especially for critical paths like plan generation and billing.
+- Make sure to update the docs when making changes to the test suite, especially if you add new patterns or change existing ones.
+- Always run the relevant tests locally before marking any task as done, and use `pnpm test:changed` to verify that you are running the right tests.
+
+### Docs
+
+ALWAYS refer to these docs for testing standards and patterns when writing, auditing, or editing tests(this is non-negotiable):
+
+- [Test standards & principles](../docs/testing/test-standards.md) — test pyramid, RTL guidelines, PR checklist
+- [DB test patterns](../docs/testing/db-test-patterns.md) — Drizzle mocking, SQL capture, fixtures
 
 ## Structure
 
 ```
 tests/
 ├── unit/              # Pure logic, no IO (fast, parallel)
-│   ├── ai/
-│   ├── api/
-│   ├── components/
-│   ├── scheduling/
-│   └── setup.ts       # Unit-specific setup
 ├── integration/       # DB + service (sequential, isolated)
-│   ├── api/
-│   ├── db/
-│   ├── stripe/
-│   └── generation/
 ├── e2e/               # User journeys (sequential)
 ├── security/          # RLS policy verification (sequential)
-├── smoke/             # Startup checks (sequential)
-├── fixtures/          # Test data factories
+├── fixtures/          # Test data factories (users, plans, ids)
 ├── helpers/           # DB reset, test utilities
-│   └── db.ts          # truncateAll(), resetDbForIntegrationTestFile()
-├── mocks/
-│   ├── shared/        # Cross-test mocks (google-api)
-│   ├── unit/          # Unit test mocks
-│   └── e2e/           # E2E mocks
-├── setup/
-│   ├── test-env.ts          # Environment defaults
-│   └── testcontainers.ts    # Vitest globalSetup: ephemeral Postgres via Testcontainers
-└── setup.ts                 # Global setup (integration/e2e/security)
+├── mocks/             # shared/, unit/, e2e/
+├── setup/             # test-env.ts, testcontainers.ts
+└── setup.ts           # Global setup (integration/e2e/security)
 ```
 
 ## Test Types
 
-| Type        | Config                | Concurrency | DB  | Timeout |
+| Type        | Setup                 | Concurrency | DB  | Timeout |
 | ----------- | --------------------- | ----------- | --- | ------- |
 | Unit        | `tests/unit/setup.ts` | Parallel    | No  | 20s     |
 | Integration | `tests/setup.ts`      | Sequential  | Yes | 90s     |
@@ -52,30 +45,13 @@ tests/
 ```bash
 pnpm test                              # Unit tests only
 pnpm test:changed                      # Changed files
-pnpm test:integration                  # Integration tests (full suite)
-RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/  # Security (RLS) tests
 ./scripts/test-unit.sh path/to/file    # Single unit test file
+./scripts/test-integration.sh path     # Single integration file (Testcontainers)
+pnpm test:integration                  # Full integration suite
+RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/
 ```
 
-### Running a Single Integration Test File
-
-Testcontainers spins up a Postgres container automatically — no manual Docker required.
-
-```bash
-# Via script (recommended)
-./scripts/test-integration.sh tests/integration/db/plans.spec.ts
-
-# Via vitest directly
-NODE_ENV=test pnpm vitest run --project integration tests/integration/db/plans.spec.ts
-
-# Legacy Docker Compose mode (if needed)
-./scripts/test-integration.sh tests/integration/db/plans.spec.ts --docker
-```
-
-The container starts once, runs the targeted file, then tears down. Use this for
-quick iteration instead of running the full integration suite.
-
-**Prerequisite:** Docker must be running (Testcontainers talks to the Docker daemon).
+**Prerequisite for integration tests:** Docker must be running (Testcontainers spins up an ephemeral Postgres automatically).
 
 To skip Testcontainers and use an existing database (e.g. CI):
 
@@ -83,119 +59,43 @@ To skip Testcontainers and use an existing database (e.g. CI):
 SKIP_TESTCONTAINERS=true DATABASE_URL="..." pnpm vitest run --project integration tests/integration/db/plans.spec.ts
 ```
 
-## Local Development Testing
-
-**NEVER run integration tests locally unless specifically requested by the user.**
-
-**NEVER run `pnpm test:all` unless absolutely necessary.**
-
 ## DB Lifecycle (Integration/E2E/Security)
 
-```typescript
-// tests/setup.ts
-beforeEach(async () => {
-  await resetDbForIntegrationTestFile(); // Truncates all tables
-  await ensureStripeWebhookEvents(); // Ensures required tables exist
-  // ...
-});
+`tests/setup.ts` runs `resetDbForIntegrationTestFile()` in `beforeEach` to truncate all tables. Guardrails prevent truncating non-test databases.
 
-afterEach(() => {
-  cleanup(); // React Testing Library
-});
-```
+## Do's and Don'ts
 
-Guardrails prevent truncating non-test databases.
+### Do
 
-## Writing Tests
+- **Test behavior, not implementation** — assert outputs, side effects, and user-visible results
+- **Inject dependencies** — pass mock clients/providers as function args (`{ provider: vi.fn() }`)
+- **Use factories** — `buildUserFixture()`, `createTestPlan()`, `createId()` from `tests/fixtures/`
+- **One assertion focus per test** — each test should fail for one clear reason
+- **Use semantic queries for UI** — `getByRole`, `getByLabelText`, `findByRole` (in that priority order)
+- **Use `findBy*` for async UI** — not `waitFor` unless no specific element to wait on
+- **Use `it.each` for many cases** — table-driven tests keep branching logic coverage clean
+- **Make time/randomness injectable** — pass `now`/`clock`/`idGenerator` into functions
+- **Run only what you changed** — `pnpm test:changed` or `./scripts/test-unit.sh path/to/file`
+- **Verify after changes** — run `pnpm test:changed` before marking any task done
+- **Use `seedFailedAttemptsForDurableWindow()`** for durable generation-window tests (from `tests/fixtures/attempts.ts`)
 
-### Unit Tests
+### Don't
 
-```typescript
-// tests/unit/scheduling/distribute.spec.ts
-import { describe, it, expect } from 'vitest';
-import { distributeTasks } from '@/lib/scheduling/distribute';
+- **Don't run `pnpm test:all` or full integration suite locally** — target specific files
+- **Don't use `vi.mock()` when you can inject** — frequent module mocking signals bad boundaries
+- **Don't hardcode IDs** — always use factories or `createId()`
+- **Don't assert on CSS classes** — no `toHaveClass('flex')`, use roles/labels/attributes instead
+- **Don't use `setTimeout`/sleep for async** — use `waitFor` or `findBy*`
+- **Don't depend on test execution order** — each test must pass in isolation
+- **Don't snapshot dynamic content** — snapshots on large DOM trees or changing data are brittle
+- **Don't over-assert full objects** — assert the contract (status, shape, key fields), not every property
+- **Don't test framework glue** — skip Next.js handler wrappers, router wiring, component library internals
+- **Don't copy-paste mock objects** — extract to factories or shared builders in `tests/fixtures/`
+- **Don't write tests just for coverage numbers** — prioritize branches, error paths, and high-risk modules
 
-describe('distributeTasks', () => {
-  it('distributes evenly across available slots', () => {
-    const result = distributeTasks(tasks, slots);
-    expect(result).toHaveLength(slots.length);
-  });
-});
-```
+## Security Tests (RLS)
 
-No DB, no mocks if possible. Inject dependencies.
-
-### Integration Tests
-
-```typescript
-// tests/integration/db/plans.spec.ts
-import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
-import { createTestUser, createTestPlan } from '@/tests/fixtures';
-
-describe('Plan queries', () => {
-  let userId: string;
-
-  beforeEach(async () => {
-    // DB already reset by setup.ts
-    const user = await createTestUser();
-    userId = user.id;
-  });
-
-  it('creates plan with modules', async () => {
-    const plan = await createTestPlan({ userId });
-    expect(plan.modules).toHaveLength(3);
-  });
-});
-```
-
-## Factories
-
-```typescript
-// tests/fixtures or inline
-export async function createTestUser(overrides = {}) {
-  return db
-    .insert(users)
-    .values({
-      authUserId: `user_${nanoid()}`,
-      email: `test-${nanoid()}@example.com`,
-      ...overrides,
-    })
-    .returning();
-}
-```
-
-Always use factories, never hardcoded IDs.
-
-For durable generation-window tests, use `seedFailedAttemptsForDurableWindow()` and `getDurableWindowSeedCount()` from `tests/fixtures/attempts.ts` instead of hardcoded numeric caps.
-
-## Mocking
-
-Prefer dependency injection over `vi.mock()`:
-
-```typescript
-// Good: DI
-const mockProvider = { generate: vi.fn() };
-await runGenerationAttempt(ctx, { provider: mockProvider });
-
-// Avoid: Module mock
-vi.mock('@/lib/ai/providers/factory');
-```
-
-Shared mocks in `tests/mocks/shared/` (e.g., Google API rate limiter).
-
-## Anti-Patterns
-
-- Running full test suite
-- Depending on test execution order
-- Hardcoding IDs (use factories)
-- Asserting on CSS classes
-- Using `setTimeout` for async (use `waitFor`)
-- Mocking what you can inject
-
-## Security Test Expectations (RLS)
-
-- Verify anonymous cannot read user-facing app data
-- Verify anonymous write attempts fail on user-owned tables
-- Verify authenticated users keep existing own-data behavior
-- Verify `pg_policies` metadata for user-facing tables is `authenticated`-scoped and not `PUBLIC`
+- Anonymous cannot read user-facing data
+- Anonymous write attempts fail on user-owned tables
+- Authenticated users retain own-data access
+- `pg_policies` metadata is `authenticated`-scoped, not `PUBLIC`

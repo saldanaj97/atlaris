@@ -2,8 +2,6 @@
 
 ## Overview
 
-This document outlines the workflow and best practices for using agents effectively in software development tasks. The goal is to maximize efficiency, maintain high standards of code quality, and foster continuous self-improvement. By following these guidelines, agents can operate autonomously while ensuring that their work meets the expectations of senior developers.
-
 The workflow is structured around key principles such as planning, subagent utilization, self-improvement, verification, and a balanced approach to elegance. Each section provides actionable steps to guide agents through the process of managing tasks, implementing changes, and learning from their experiences.
 
 We will primarily be utilizing the `prds/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
@@ -50,14 +48,36 @@ We will primarily be utilizing the `prds/` directory to organize prds, plans, to
 - Zero context switching required from the user
 - Go fix failing Cl tests without being told how
 
+## 7. Testing
+
+- Use TDD for new features and bug fixes when applicable
+- Ensure tests cover relevant scenarios and edge cases
+- Write clear, descriptive test cases that explain the intent of the test
+- Regularly run tests after changes to maintain code quality and reliability (ONLY use `pnpm test:changed` to run only affected tests)
+
 # Task Management
 
-1. Plan First: Write plan to `prds/<prd-name>/todos.md` with checkable items
-2. Verify Plan: Check in before starting implementation
-3. Track Progress: Mark items complete as you go. Do not wait until the end to update progress
-4. Explain Changes: High-level summary at each step
-5. Document Results: Add review section to the relevant `prds/<prd-name>/todos.md`
-6. Capture Lessons: Update `prds/lessons.md` after corrections
+1. PRD Creation: For any non-trivial task or new feature implementation, first create a PRD in `prds/<prd-name>/todos.md` outlining the plan with checkable items using the `prd-to-issue` skill.
+
+2. Plan: Write plan to `prds/<prd-name>/todos.md` with checkable items using any of the following (in order of preference):
+   - `prds/<prd-name>/prd.md`file
+   - `gh issue view <issue-number>`
+   - `prd-to-issue` skill.
+
+   This plan should be detailed enough to guide implementation without ambiguity.
+
+3. Verify Plan: Check in before starting implementation
+
+4. Track Progress: Mark items complete as you go. Do not wait until the end to update progress. Make sure:
+   - If you deviate from the original plan, update the the main PRD file and the todos with the new plan and add a note about why you deviated to for future reference.
+   - If you get stuck or skip a task, update the todos with where you got stuck and what you tried so far. This will help others understand the context if they need to step in to help.
+   - Mark the issue as done or complete within github as well when you finish the task to keep everything in sync and up to date.
+
+5. Explain Changes: High-level summary at each step
+
+6. Document Results: Add review section to the relevant `prds/<prd-name>/todos.md`
+
+7. Capture Lessons: Update `prds/lessons.md` after corrections
 
 # Core Principles
 
@@ -67,3 +87,4 @@ We will primarily be utilizing the `prds/` directory to organize prds, plans, to
 - Self-Improvement: Learn from mistakes. Update lessons. Iterate until mastered.
 - Verification: Prove correctness before marking done. Tests, diffs, logs, demos.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
+- Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
