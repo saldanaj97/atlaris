@@ -4,7 +4,7 @@ import {
   finalizeAttemptSuccess,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
-import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-helpers';
+import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-persistence';
 import { logger } from '@/lib/logging/logger';
 import * as Sentry from '@sentry/nextjs';
 import { attachAbortListener } from './abort';

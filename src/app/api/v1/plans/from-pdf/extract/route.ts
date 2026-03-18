@@ -1,4 +1,4 @@
-import { resolveUserTier } from '@/features/billing/usage';
+import { resolveUserTier } from '@/features/billing/tier';
 import {
   extractTextFromPdf as defaultExtractTextFromPdf,
   getPdfPageCountFromBuffer as defaultGetPdfPageCountFromBuffer,

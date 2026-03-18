@@ -2,10 +2,8 @@ import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
-import {
-  incrementPdfPlanUsage,
-  resolveUserTier,
-} from '@/features/billing/usage';
+import { resolveUserTier } from '@/features/billing/tier';
+import { incrementPdfPlanUsage } from '@/features/billing/usage-metrics';
 import { extractTextFromPdf } from '@/features/pdf/extract';
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';

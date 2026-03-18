@@ -1,18 +1,24 @@
 import { ATTEMPT_CAP } from '@/lib/config/env';
 import { hashSha256 } from '@/lib/crypto/hash';
 import {
-  assertAttemptIdMatchesReservation,
-  buildMetadata,
-  computeRetryAfterSeconds,
-  getPdfProvenance,
   isProviderErrorRetryable,
   logAttemptEvent,
+} from '@/lib/db/queries/helpers/attempts-helpers';
+import {
+  assertAttemptIdMatchesReservation,
   normalizeParsedModules,
   persistSuccessfulAttempt,
-  sanitizeInput,
+} from '@/lib/db/queries/helpers/attempts-persistence';
+import {
+  computeRetryAfterSeconds,
   selectUserGenerationAttemptWindowStats,
+} from '@/lib/db/queries/helpers/attempts-rate-limit';
+import {
+  buildMetadata,
+  getPdfProvenance,
+  sanitizeInput,
   toPromptHashPayload,
-} from '@/lib/db/queries/helpers/attempts-helpers';
+} from '@/lib/db/queries/helpers/attempts-input';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import type {
   FinalizeFailureParams,

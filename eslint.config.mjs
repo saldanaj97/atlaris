@@ -338,21 +338,7 @@ export default [
       ],
     },
   },
-  // Exception: openapi.ts depends on features/plans/validation (Zod schema coupling)
-  {
-    files: ['src/lib/api/openapi.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            ...restrictedTypeDirectoryImports,
-            ...requestLayerRestrictedImports,
-          ],
-        },
-      ],
-    },
-  },
+
   // Next.js recommended + Core Web Vitals via compat until flat config is fully supported upstream
   ...compat.extends('plugin:@next/next/core-web-vitals'),
   // Relax rules for test files (must come after Next.js config)

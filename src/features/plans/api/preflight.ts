@@ -1,7 +1,7 @@
 import { AttemptCapExceededError, ForbiddenError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/features/billing/tier-limits';
-import { resolveUserTier } from '@/features/billing/usage';
+import { resolveUserTier } from '@/features/billing/tier';
 import {
   atomicCheckAndInsertPlan,
   checkPlanDurationCap,

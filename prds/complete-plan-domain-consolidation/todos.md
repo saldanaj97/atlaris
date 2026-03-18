@@ -8,6 +8,8 @@
 
 Move plan lifecycle operations from `features/billing/usage.ts` to `features/plans/`, reducing billing/usage.ts from ~850 lines to ~500 lines. Pure code relocation — no behavioral changes.
 
+Follow-up note: the temporary post-split billing barrel has since been removed in `prds/remove-billing-usage-barrel/todos.md`, so references to `src/features/billing/usage.ts` here describe historical migration steps rather than the current end state.
+
 ---
 
 ## Slice 1: Extract plan domain files — [#259](https://github.com/saldanaj97/atlaris/issues/259)

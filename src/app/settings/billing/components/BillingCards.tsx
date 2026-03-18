@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/features/billing/subscriptions';
-import { getUsageSummary } from '@/features/billing/usage';
+import { getUsageSummary } from '@/features/billing/usage-metrics';
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
 

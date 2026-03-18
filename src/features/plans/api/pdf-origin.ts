@@ -4,10 +4,8 @@ import { logger } from '@/lib/logging/logger';
 import { sanitizePdfContextForPersistence } from '@/features/pdf/context';
 import type { PdfContext } from '@/features/pdf/context.types';
 import { verifyAndConsumePdfExtractionProof } from '@/features/pdf/security/pdf-extraction-proof';
-import {
-  atomicCheckAndIncrementPdfUsage,
-  decrementPdfPlanUsage,
-} from '@/features/billing/usage';
+import { atomicCheckAndIncrementPdfUsage } from '@/features/billing/quota';
+import { decrementPdfPlanUsage } from '@/features/billing/usage-metrics';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
 export type PdfProvenance = {

@@ -15,7 +15,7 @@ export const GET = async (request: Request) => {
     return toErrorResponse(error);
   }
 
-  const document = getOpenApiDocument();
+  const document = await getOpenApiDocument();
 
   return json(document);
 };

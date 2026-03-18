@@ -4,11 +4,9 @@
  * Thin wrapper around existing billing and plan utility functions.
  */
 
-import {
-  atomicCheckAndIncrementPdfUsage,
-  decrementPdfPlanUsage,
-  resolveUserTier,
-} from '@/features/billing/usage';
+import { atomicCheckAndIncrementPdfUsage } from '@/features/billing/quota';
+import { resolveUserTier } from '@/features/billing/tier';
+import { decrementPdfPlanUsage } from '@/features/billing/usage-metrics';
 import { checkPlanDurationCap } from '@/features/plans/lifecycle/plan-operations';
 import { normalizePlanDurationForTier } from '@/features/plans/api/shared';
 import type { DbClient } from '@/lib/db/types';

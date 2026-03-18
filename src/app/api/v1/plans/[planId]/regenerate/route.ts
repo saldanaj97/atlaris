@@ -28,11 +28,9 @@ import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { logger } from '@/lib/logging/logger';
 import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
 import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
-import {
-  atomicCheckAndIncrementUsage,
-  decrementRegenerationUsage,
-  resolveUserTier,
-} from '@/features/billing/usage';
+import { atomicCheckAndIncrementUsage } from '@/features/billing/quota';
+import { resolveUserTier } from '@/features/billing/tier';
+import { decrementRegenerationUsage } from '@/features/billing/usage-metrics';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 
