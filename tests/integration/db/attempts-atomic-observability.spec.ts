@@ -5,10 +5,6 @@ import {
 } from '@/lib/db/queries/attempts';
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import {
-  getAttemptMetricsSnapshot,
-  resetAttemptMetrics,
-} from '@/features/plans/metrics';
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import type { MockInstance } from 'vitest';
@@ -30,7 +26,6 @@ describe('Atomic attempt observability', () => {
 
   beforeEach(async () => {
     await resetDbForIntegrationTestFile();
-    resetAttemptMetrics();
     consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const authUserId = `auth-${randomUUID()}`;
@@ -55,7 +50,7 @@ describe('Atomic attempt observability', () => {
     consoleInfoSpy?.mockRestore();
   });
 
-  it('records success metrics and emits success log event', async () => {
+  it('emits success log event after attempt finalization', async () => {
     const startedAt = new Date('2026-01-01T10:00:00.000Z');
     const finishedAt = new Date('2026-01-01T10:00:01.250Z');
 
@@ -94,13 +89,6 @@ describe('Atomic attempt observability', () => {
       now: () => finishedAt,
     });
 
-    const snapshot = getAttemptMetricsSnapshot();
-    expect(snapshot.totalAttempts).toBe(1);
-    expect(snapshot.success.count).toBe(1);
-    expect(snapshot.success.duration.last).toBe(1_250);
-    expect(snapshot.success.modules.last).toBe(1);
-    expect(snapshot.success.tasks.last).toBe(1);
-
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] success',
       expect.objectContaining({
@@ -111,7 +99,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('records timeout failure metrics, marks plan pending retry, and emits failure log event', async () => {
+  it('marks plan pending retry and emits failure log event for retryable failures', async () => {
     const startedAt = new Date('2026-01-02T10:00:00.000Z');
     const finishedAt = new Date('2026-01-02T10:00:02.000Z');
 
@@ -142,11 +130,6 @@ describe('Atomic attempt observability', () => {
       where: eq(learningPlans.id, planId),
     });
 
-    const snapshot = getAttemptMetricsSnapshot();
-    expect(snapshot.totalAttempts).toBe(1);
-    expect(snapshot.failure.count).toBe(1);
-    expect(snapshot.failure.duration.last).toBe(2_000);
-    expect(snapshot.failure.classifications.timeout).toBe(1);
     expect(plan?.generationStatus).toBe('pending_retry');
 
     expect(consoleInfoSpy).toHaveBeenCalledWith(
@@ -184,10 +167,16 @@ describe('Atomic attempt observability', () => {
     const plan = await db.query.learningPlans.findFirst({
       where: eq(learningPlans.id, planId),
     });
-    const snapshot = getAttemptMetricsSnapshot();
 
     expect(plan?.generationStatus).toBe('failed');
     expect(plan?.isQuotaEligible).toBe(false);
-    expect(snapshot.failure.classifications.validation).toBe(1);
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      '[attempts] failure',
+      expect.objectContaining({
+        planId,
+        classification: 'validation',
+        correlationId: null,
+      })
+    );
   });
 });

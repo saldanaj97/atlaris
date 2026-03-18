@@ -1,3 +1,17 @@
+/**
+ * Queue operations for background workers.
+ *
+ * All functions bind the service-role DB client because queue operations
+ * run in worker context without a user session. This module exists to
+ * centralize that binding and prevent service-role imports from spreading
+ * to multiple consumer files.
+ */
+import type {
+  Job,
+  JobPayload,
+  JobResult,
+  JobType,
+} from '@/features/jobs/types';
 import {
   claimNextPendingJob,
   completeJobRecord,
@@ -7,7 +21,6 @@ import {
 } from '@/lib/db/queries/jobs';
 import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
 import { db } from '@/lib/db/service-role';
-import type { Job, JobPayload, JobResult, JobType } from '@/features/jobs/types';
 
 type FailJobOptions = {
   retryable?: boolean;

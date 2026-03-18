@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
-import { getSystemWideJobMetrics } from '@/lib/db/queries/jobs';
+import { getSystemWideJobMetrics } from '@/lib/db/queries/admin/jobs-metrics';
 import { logger } from '@/lib/logging/logger';
 
 const STUCK_JOB_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
