@@ -15,12 +15,12 @@ Apply the same `.returning()` + count/existence verification pattern already use
 
 ## Todos
 
-- [ ] `write-tests` — Write unit tests for the new verification behavior (task insertion count mismatch, learning plan zero-row update)
-- [ ] `implement-task-verification` — Add `.returning({ id: tasks.id })` to task insertion and verify count matches `taskValues.length`
-- [ ] `implement-plan-verification` — Add `.returning({ id: learningPlans.id })` to learning plan update and throw if zero rows updated
-- [ ] `verify-checks` — Run type-check, lint, and changed tests to confirm everything passes
-- [ ] `code-review` — Run code review skill and apply any sensible fixes
-- [ ] `commit-and-close` — Stage only our changes, commit, push, and close both issues
+- [x] `write-tests` — Write unit tests for the new verification behavior (task insertion count mismatch, learning plan zero-row update)
+- [x] `implement-task-verification` — Add `.returning({ id: tasks.id })` to task insertion and verify count matches `taskValues.length`
+- [x] `implement-plan-verification` — Add `.returning({ id: learningPlans.id })` to learning plan update and throw if zero rows updated
+- [x] `verify-checks` — Run type-check, lint, and changed tests to confirm everything passes
+- [x] `code-review` — Run code review skill and apply any sensible fixes
+- [x] `commit-and-close` — Stage only our changes, commit, push, and close both issues
 
 ## Notes
 
