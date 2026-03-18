@@ -187,7 +187,14 @@ export async function persistSuccessfulAttempt(
     }
 
     if (taskValues.length > 0) {
-      await tx.insert(tasks).values(taskValues);
+      const insertedTaskRows = await tx
+        .insert(tasks)
+        .values(taskValues)
+        .returning({ id: tasks.id });
+
+      if (insertedTaskRows.length !== taskValues.length) {
+        throw new Error('Failed to insert all tasks for generation attempt.');
+      }
     }
 
     const [attempt] = await tx
@@ -217,7 +224,7 @@ export async function persistSuccessfulAttempt(
       throw new Error('Failed to finalize generation attempt as success.');
     }
 
-    await tx
+    const [updatedPlan] = await tx
       .update(learningPlans)
       .set({
         generationStatus: 'ready',
@@ -225,7 +232,12 @@ export async function persistSuccessfulAttempt(
         finalizedAt: finishedAt,
         updatedAt: finishedAt,
       })
-      .where(eq(learningPlans.id, planId));
+      .where(eq(learningPlans.id, planId))
+      .returning({ id: learningPlans.id });
+
+    if (!updatedPlan) {
+      throw new Error('Failed to update learning plan status to ready.');
+    }
 
     return attempt;
   });
