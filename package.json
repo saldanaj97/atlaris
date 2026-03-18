@@ -18,7 +18,8 @@
     "test:watch": "./scripts/test-unit.sh --watch",
     "test:integration": "./scripts/test-integration.sh tests/integration --changed",
     "test:all": "./scripts/full-test-suite.sh",
-    "type-check": "tsc --noEmit",
+    "tsgo": "tsgo",
+    "type-check": "tsgo --noEmit",
     "prepare": "husky || true"
   },
   "dependencies": {
