@@ -6,6 +6,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { UsageMetricsLoadError } from './errors';
 import { getUserTier, type DbClient } from './tier';
 import { TIER_LIMITS } from './tier-limits';
+import type { SubscriptionTier } from './tier-limits.types';
 
 // Usage type for incrementing counters
 type UsageType = 'plan' | 'regeneration' | 'export';
@@ -14,6 +15,22 @@ type DecrementUsageColumn = 'pdfPlansGenerated' | 'regenerationsUsed';
 
 type IncrementPdfPlanUsageOptions = {
   now?: () => Date;
+};
+
+export type UsageSummary = {
+  tier: SubscriptionTier;
+  activePlans: {
+    current: number;
+    limit: number;
+  };
+  regenerations: {
+    used: number;
+    limit: number;
+  };
+  exports: {
+    used: number;
+    limit: number;
+  };
 };
 
 /**
@@ -126,7 +143,7 @@ export async function incrementPdfPlanUsage(
 export async function getUsageSummary(
   userId: string,
   dbClient: DbClient = getDb()
-) {
+): Promise<UsageSummary> {
   const tier = await getUserTier(userId, dbClient);
   const limits = TIER_LIMITS[tier];
   const month = getCurrentMonth();

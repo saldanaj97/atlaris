@@ -123,14 +123,18 @@ export const createLearningPlanSchema = createLearningPlanObject
       });
     }
 
-    if (data.origin === 'pdf' && data.pdfProofVersion !== undefined) {
-      if (data.pdfProofVersion !== 1) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['pdfProofVersion'],
-          message: 'pdfProofVersion is invalid.',
-        });
-      }
+    if (data.origin === 'pdf' && data.pdfProofVersion === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pdfProofVersion'],
+        message: 'pdfProofVersion is required for PDF-based plans.',
+      });
+    } else if (data.origin === 'pdf' && data.pdfProofVersion !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['pdfProofVersion'],
+        message: 'pdfProofVersion is invalid.',
+      });
     }
 
     if (data.origin !== 'pdf' && (!data.topic || data.topic.length < 3)) {

@@ -14,6 +14,7 @@ export {
   incrementPdfPlanUsage,
   incrementUsage,
 } from './usage-metrics';
+export type { UsageSummary } from './usage-metrics';
 
 export {
   atomicCheckAndIncrementPdfUsage,

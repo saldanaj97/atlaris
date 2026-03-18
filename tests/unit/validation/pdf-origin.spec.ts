@@ -80,6 +80,9 @@ describe('createLearningPlanSchema PDF origin', () => {
       expect(flatErrors.fieldErrors.pdfExtractionHash).toEqual([
         'pdfExtractionHash is required for PDF-based plans.',
       ]);
+      expect(flatErrors.fieldErrors.pdfProofVersion).toEqual([
+        'pdfProofVersion is required for PDF-based plans.',
+      ]);
     }
   });
 });
