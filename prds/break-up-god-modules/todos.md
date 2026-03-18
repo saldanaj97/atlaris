@@ -53,7 +53,7 @@
 
 ### Phase 3: Split `billing/usage.ts` (~500 post-PRD-2 → 3 files + transitional barrel, then delete barrel)
 
-> **BLOCKED** — cannot start until PRD 2 ([#236](https://github.com/saldanaj97/atlaris/issues/236)) completes and reduces `usage.ts` from ~850 to ~500 lines. Issues are sequential to avoid merge conflicts.
+> Historical note: this phase was blocked until PRD 2 ([#236](https://github.com/saldanaj97/atlaris/issues/236)) completed and reduced `usage.ts` from ~850 to ~500 lines. It is now complete.
 
 - [x] **[#263](https://github.com/saldanaj97/atlaris/issues/263) — Extract `billing/tier.ts`** (~25 lines → 32 actual)
   - Move tier resolution: `resolveUserTier`, `getUserTier` alias
@@ -83,7 +83,7 @@ Phase 3 (billing):      #236 (PRD 2) ──→ #263 ──→ #266 ──→ #26
 
 Parallelism:
   • Phase 1 and Phase 2 can run simultaneously
-  • Phase 3 is fully blocked until PRD 2 completes
+  • Phase 3 was blocked until PRD 2 completed
 ```
 
 ## Per-Slice Execution Pattern
@@ -109,7 +109,7 @@ Each slice follows the same pattern (from PRD §Migration Strategy):
   - `billing/usage.ts`: deleted after the direct-import follow-up
 - [x] No new external dependencies introduced
 - [x] All public exports maintain identical signatures and return types
-- [x] No behavioral changes — pure refactor
+- [x] No unintended behavioral changes from the module split itself; branch-level follow-up also hardened PDF-origin validation by requiring `pdfProofVersion`
 
 ## Notes
 

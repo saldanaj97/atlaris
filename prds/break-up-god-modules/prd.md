@@ -29,7 +29,7 @@ Split each god module into cohesive, single-responsibility files. Each new file 
 - Fewer external dependencies than the original
 - Independent testability (you can test one file without pulling in the entire module)
 
-No behavioral changes. During migration, public exports may be preserved temporarily via re-exports, but the intended end state is direct imports from focused modules.
+The module-split work aims to avoid behavioral changes. This branch also includes a small API contract hardening alongside the refactor: PDF-origin plan creation now requires `pdfProofVersion`, and the OpenAPI docs reflect that stricter contract. During migration, public exports may be preserved temporarily via re-exports, but the intended end state is direct imports from focused modules.
 
 ## User Stories
 
@@ -66,8 +66,8 @@ Input preparation, sanitization, and metadata construction. Pure functions with 
 
 - `@/lib/crypto/hash` — `hashSha256`
 - `@/lib/db/queries/helpers/truncation` — `truncateToLength`
-- `@/features/plans/validation/learningPlans` — `TOPIC_MAX_LENGTH`, `NOTES_MAX_LENGTH`
-- `@/features/ai/types/provider.types` — `GenerationInput` (type only)
+- `@/shared/constants/learning-plans` — `TOPIC_MAX_LENGTH`, `NOTES_MAX_LENGTH`
+- `@/shared/types/ai-provider.types` — `GenerationInput` (type only)
 
 **Consumers:**
 
@@ -116,7 +116,7 @@ Rate-limit window statistics query and retry-after computation.
 **External dependencies (2):**
 
 - `@/lib/db/schema` — `generationAttempts`, `learningPlans`
-- `@/features/ai/generation-policy` — `PLAN_GENERATION_WINDOW_MS` (note: PRD 1 may move this to `src/shared/constants/`, in which case the import path changes)
+- `@/shared/constants/generation` — `PLAN_GENERATION_WINDOW_MS`
 
 **Consumers:**
 
@@ -308,7 +308,7 @@ Then, as a follow-up, delete `billing/usage.ts` entirely and update all remainin
 
 ### Order of Operations
 
-1. **`attempts-helpers.ts` first** — Most impactful split (530 lines, 10 deps). Three consumers to update. No behavioral changes.
+1. **`attempts-helpers.ts` first** — Most impactful split (530 lines, 10 deps). Three consumers to update. Keep the split behavioral-neutral.
 2. **`openrouter.ts` second** — Self-contained within `features/ai/providers/`. Two consumers to update.
 3. **`billing/usage.ts` third** — Depends on PRD 2 completing first. Use a temporary barrel re-export only if it helps land the split safely, then remove it.
 

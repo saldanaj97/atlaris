@@ -1,12 +1,14 @@
 # PRD 2: Complete Plan Domain Consolidation
 
-**Status:** Draft
+**Status:** Completed (historical)
 **Depends on:** PRD 1 (shared layer must exist for tier-limits types)
 **Last Updated:** March 2026
 
+Historical note: this PRD captures the stage where plan lifecycle logic was first moved out of `src/features/billing/usage.ts`. That file was later split further and then deleted, so references here to `billing/usage.ts` describe the migration state at that time rather than the current end state.
+
 ## Problem
 
-The codebase restructure moved many plan-related files into `src/features/plans/` (from 2 files / 91 lines to 13 files / 1,662 lines). However, core plan lifecycle operations still live in `src/features/billing/usage.ts` -- a 850-line god module whose name misleads developers into thinking everything inside is billing logic.
+The codebase restructure moved many plan-related files into `src/features/plans/` (from 2 files / 91 lines to 13 files / 1,662 lines). At the time of this PRD, core plan lifecycle operations still lived in `src/features/billing/usage.ts` -- a 850-line god module whose name misled developers into thinking everything inside was billing logic.
 
 Specifically, these functions in `features/billing/usage.ts` are plan domain operations that have zero interaction with the Stripe SDK:
 
@@ -81,7 +83,7 @@ countPlansContributingToCap(dbOrTx, userId)
 ```
 features/plans/lifecycle.ts
   ├── @/features/billing/tier-limits   (TIER_LIMITS constant, SubscriptionTier type)
-  ├── @/features/billing/usage         (resolveUserTier)
+  ├── @/features/billing/tier          (resolveUserTier)
   ├── @/lib/db/runtime                 (getDb)
   ├── @/lib/db/schema                  (learningPlans, users, usageMetrics)
   ├── @/lib/logging/logger
