@@ -2,19 +2,19 @@
 
 > **PRD:** [`prds/break-up-god-modules/prd.md`](./prd.md)
 > **Parent Issue:** [#244 — PRD: Break Up God Modules](https://github.com/saldanaj97/atlaris/issues/244)
-> **Status:** Phase 1 & 2 complete (PR [#279](https://github.com/saldanaj97/atlaris/pull/279)). Phase 3 blocked on PRD 2.
+> **Status:** Phase 1, 2, & 3 complete (PR [#279](https://github.com/saldanaj97/atlaris/pull/279)).
 
 ## Current State
 
-| God Module                                       | Original Lines | Target Lines   | Actual Lines | Status              |
-| ------------------------------------------------ | -------------- | -------------- | ------------ | ------------------- |
-| `src/lib/db/queries/helpers/attempts-helpers.ts` | 530            | ~90 (reduced)  | 70           | ✅ Complete         |
-| `src/features/ai/providers/openrouter.ts`        | 611            | ~380 (reduced) | 340          | ✅ Complete         |
-| `src/features/billing/usage.ts`                  | 850            | ~20 (barrel)   | —            | ⬜ Blocked on PRD 2 |
+| God Module                                       | Original Lines | Target Lines   | Actual Lines | Status      |
+| ------------------------------------------------ | -------------- | -------------- | ------------ | ----------- |
+| `src/lib/db/queries/helpers/attempts-helpers.ts` | 530            | ~90 (reduced)  | 70           | ✅ Complete |
+| `src/features/ai/providers/openrouter.ts`        | 611            | ~380 (reduced) | 340          | ✅ Complete |
+| `src/features/billing/usage.ts`                  | 552            | ~20 (barrel)   | 23           | ✅ Complete |
 
 ## Prerequisites
 
-- [ ] **PRD 2 — Plan Lifecycle Orchestration** ([#236](https://github.com/saldanaj97/atlaris/issues/236)) must complete before the billing split (Phase 3) can begin. PRD 2 extracts plan lifecycle functions from `billing/usage.ts`, reducing it from ~850 to ~500 lines. The billing split described here applies to that post-PRD-2 state. **Status: OPEN — not yet started.**
+- [x] **PRD 2 — Plan Lifecycle Orchestration** ([#236](https://github.com/saldanaj97/atlaris/issues/236)) — complete. Phase 3 billing split executed on the post-PRD-2 state (552 lines).
 
 ## Vertical Slices
 
@@ -55,22 +55,19 @@
 
 > **BLOCKED** — cannot start until PRD 2 ([#236](https://github.com/saldanaj97/atlaris/issues/236)) completes and reduces `usage.ts` from ~850 to ~500 lines. Issues are sequential to avoid merge conflicts.
 
-- [ ] **[#263](https://github.com/saldanaj97/atlaris/issues/263) — Extract `billing/tier.ts`** (~25 lines)
+- [x] **[#263](https://github.com/saldanaj97/atlaris/issues/263) — Extract `billing/tier.ts`** (~25 lines → 32 actual)
   - Move tier resolution: `resolveUserTier`, `getUserTier` alias
   - External deps reduced to 2 (db/runtime, db/schema)
-  - 6+ consumers to update or barrel re-export
-  - **Blocked by:** #236 (PRD 2)
+  - Barrel re-export in `usage.ts` — no consumer import changes needed
 
-- [ ] **[#266](https://github.com/saldanaj97/atlaris/issues/266) — Extract `billing/usage-metrics.ts`** (~175 lines)
+- [x] **[#266](https://github.com/saldanaj97/atlaris/issues/266) — Extract `billing/usage-metrics.ts`** (~175 lines → 323 actual)
   - Move monthly usage metrics CRUD: `getCurrentMonth`, `getOrCreateUsageMetrics`, `ensureUsageMetricsExist`, `incrementUsage`, `incrementUsageInTx`, `incrementPdfPlanUsage`, `incrementPdfUsageInTx`, `getUsageSummary`, `decrementUsageColumn`, `decrementPdfPlanUsage`, `decrementRegenerationUsage`
   - External deps reduced to 3 (db/runtime, db/schema, logging/logger)
-  - **Blocked by:** #263
+  - Exports `getCurrentMonth`, `ensureUsageMetricsExist`, `incrementUsageInTx`, `incrementPdfUsageInTx` for `quota.ts`
 
-- [ ] **[#269](https://github.com/saldanaj97/atlaris/issues/269) — Extract `billing/quota.ts` + convert `usage.ts` to barrel** (~200 lines + ~20 line barrel)
+- [x] **[#269](https://github.com/saldanaj97/atlaris/issues/269) — Extract `billing/quota.ts` + convert `usage.ts` to barrel** (~200 lines → 208 actual + 23-line barrel)
   - Move atomic quota enforcement: `atomicCheckAndIncrementUsage`, `atomicCheckAndIncrementPdfUsage`
-  - Move deprecated functions (mark for removal in PRD 4): `checkRegenerationLimit`, `checkExportLimit`, `checkPdfPlanQuota`
-  - Convert `usage.ts` to ~20-line barrel re-export with deprecation comments
-  - **Blocked by:** #266
+  - Converted `usage.ts` to 23-line barrel re-export — all consumer imports preserved
 
 ## Dependency Graph
 
