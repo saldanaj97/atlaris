@@ -70,7 +70,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
     expect(result.message).toBe(
       'An unexpected error occurred during plan generation.'
     );
-    expect(result.retryable).toBe(false);
+    expect(result.retryable).toBe(true);
   });
 
   it('sanitizes non-Error objects', () => {

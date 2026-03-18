@@ -11,7 +11,7 @@ type FailurePresentation = {
 const DEFAULT_FAILURE_PRESENTATION: FailurePresentation = {
   code: 'GENERATION_FAILED',
   message: 'An unexpected error occurred during plan generation.',
-  retryable: false,
+  retryable: true,
 };
 
 const CONFLICT_FAILURE_PRESENTATION: FailurePresentation = {
