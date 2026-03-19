@@ -7,6 +7,7 @@
 import { PlanLimitReachedError } from '@/features/plans/errors';
 import {
   atomicCheckAndInsertPlan,
+  findRecentDuplicatePlan,
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/features/plans/lifecycle/plan-operations';
@@ -43,6 +44,13 @@ export class PlanPersistenceAdapter implements PlanPersistencePort {
 
   async findCappedPlanWithoutModules(userId: string): Promise<string | null> {
     return findCappedPlanWithoutModules(userId, this.dbClient);
+  }
+
+  async findRecentDuplicatePlan(
+    userId: string,
+    normalizedTopic: string
+  ): Promise<string | null> {
+    return findRecentDuplicatePlan(userId, normalizedTopic, this.dbClient);
   }
 
   async markGenerationSuccess(planId: string): Promise<void> {

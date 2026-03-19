@@ -19,6 +19,7 @@ function createMockPorts(
         id: 'plan-123',
       }),
       findCappedPlanWithoutModules: async () => null,
+      findRecentDuplicatePlan: async () => null,
       markGenerationSuccess: async () => {},
       markGenerationFailure: async () => {},
     },
@@ -55,6 +56,14 @@ function createMockPorts(
         status: 'success' as const,
         modules: [],
         metadata: {},
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+          model: 'unknown',
+          provider: 'unknown',
+          estimatedCostCents: 0,
+        },
         durationMs: 1000,
       }),
     },
@@ -230,6 +239,75 @@ describe('PlanLifecycleService', () => {
       await service.createPlan({ ...validInput, topic: '  Learn Rust  ' });
 
       expect(capturedData).toMatchObject({ topic: 'Learn Rust' });
+    });
+
+    it('returns duplicate_detected when a recent duplicate plan exists', async () => {
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          findRecentDuplicatePlan: async () => 'existing-plan-id',
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPlan(validInput);
+
+      expect(result.status).toBe('duplicate_detected');
+      if (result.status === 'duplicate_detected') {
+        expect(result.existingPlanId).toBe('existing-plan-id');
+      }
+    });
+
+    it('does not call atomicInsertPlan when duplicate is detected', async () => {
+      const insertSpy = vi
+        .fn()
+        .mockResolvedValue({ success: true as const, id: 'plan-new' });
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          findRecentDuplicatePlan: async () => 'existing-plan-id',
+          atomicInsertPlan: insertSpy,
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await service.createPlan(validInput);
+
+      expect(insertSpy).not.toHaveBeenCalled();
+    });
+
+    it('passes userId and trimmed topic to findRecentDuplicatePlan', async () => {
+      let capturedUserId: string | undefined;
+      let capturedTopic: string | undefined;
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          findRecentDuplicatePlan: async (userId, topic) => {
+            capturedUserId = userId;
+            capturedTopic = topic;
+            return null;
+          },
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await service.createPlan({
+        ...validInput,
+        topic: '  Learn TypeScript  ',
+      });
+
+      expect(capturedUserId).toBe('user-abc');
+      expect(capturedTopic).toBe('Learn TypeScript');
+    });
+
+    it('proceeds to create plan when no duplicate exists', async () => {
+      // Default mock returns null for findRecentDuplicatePlan
+      const result = await service.createPlan(validInput);
+
+      expect(result.status).toBe('success');
+      if (result.status === 'success') {
+        expect(result.planId).toBe('plan-123');
+      }
     });
 
     it('resolves tier for the correct userId', async () => {
@@ -439,6 +517,60 @@ describe('PlanLifecycleService', () => {
         internalUserId: 'user-abc',
         reserved: false,
       });
+    });
+
+    it('returns duplicate_detected when a recent duplicate PDF plan exists', async () => {
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          findRecentDuplicatePlan: async () => 'existing-pdf-plan-id',
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPdfPlan(validPdfInput);
+
+      expect(result.status).toBe('duplicate_detected');
+      if (result.status === 'duplicate_detected') {
+        expect(result.existingPlanId).toBe('existing-pdf-plan-id');
+      }
+    });
+
+    it('does not reserve PDF quota when duplicate is detected', async () => {
+      const prepareSpy = vi.fn();
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          findRecentDuplicatePlan: async () => 'existing-pdf-plan-id',
+        },
+        pdfOrigin: {
+          preparePlanInput: prepareSpy,
+          rollbackPdfUsage: async () => {},
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await service.createPdfPlan(validPdfInput);
+
+      expect(prepareSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not call atomicInsertPlan when PDF duplicate is detected', async () => {
+      const insertSpy = vi
+        .fn()
+        .mockResolvedValue({ success: true as const, id: 'plan-new' });
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          findRecentDuplicatePlan: async () => 'existing-pdf-plan-id',
+          atomicInsertPlan: insertSpy,
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await service.createPdfPlan(validPdfInput);
+
+      expect(insertSpy).not.toHaveBeenCalled();
     });
 
     it('does not call rollback on success', async () => {

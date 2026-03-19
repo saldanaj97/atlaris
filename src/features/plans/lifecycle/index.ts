@@ -27,6 +27,7 @@ export {
   atomicCheckAndInsertPlan,
   checkPlanDurationCap,
   checkPlanLimit,
+  findRecentDuplicatePlan,
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from './plan-operations';
@@ -40,6 +41,7 @@ export type {
   RetryableFailure,
   PermanentFailure,
   QuotaRejection,
+  DuplicateDetected,
   ProcessGenerationInput,
   GenerationAttemptResult,
   GenerationSuccess,

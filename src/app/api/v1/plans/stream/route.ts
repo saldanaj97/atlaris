@@ -94,6 +94,14 @@ export function createStreamHandler(deps?: {
         const db = getDb();
         const internalUserId = currentUser.id;
 
+        // ─── Rate limiting (generation-specific, checked BEFORE plan creation) ──
+        const rateLimit = await checkPlanGenerationRateLimit(
+          internalUserId,
+          db
+        );
+        const generationRateLimitHeaders =
+          getPlanGenerationRateLimitHeaders(rateLimit);
+
         // ─── Plan creation via lifecycle service ─────────────────
         logger.info(
           { authUserId: userId },
@@ -153,6 +161,16 @@ export function createStreamHandler(deps?: {
 
         if (createResult.status !== 'success') {
           await closeStreamDb();
+          if (createResult.status === 'duplicate_detected') {
+            throw new AppError(
+              'A plan with this topic is already being generated. Please wait for it to complete.',
+              {
+                status: 409,
+                code: 'DUPLICATE_PLAN',
+                details: { existingPlanId: createResult.existingPlanId },
+              }
+            );
+          }
           if (createResult.status === 'quota_rejected') {
             throw new AppError(createResult.reason, {
               status: 403,
@@ -182,14 +200,6 @@ export function createStreamHandler(deps?: {
           { planId, userId: internalUserId, authUserId: userId },
           'Plan created via lifecycle service'
         );
-
-        // ─── Rate limiting (generation-specific) ─────────────────
-        const rateLimit = await checkPlanGenerationRateLimit(
-          internalUserId,
-          db
-        );
-        const generationRateLimitHeaders =
-          getPlanGenerationRateLimitHeaders(rateLimit);
 
         // ─── Model override from URL params ──────────────────────
         const url = new URL(req.url);

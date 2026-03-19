@@ -123,6 +123,12 @@ export type QuotaRejection = {
   readonly upgradeUrl?: string;
 };
 
+/** A duplicate plan was detected (idempotent return). */
+export type DuplicateDetected = {
+  readonly status: 'duplicate_detected';
+  readonly existingPlanId: string;
+};
+
 /**
  * Discriminated union of all possible outcomes from plan creation.
  * The service never throws for these expected lifecycle outcomes.
@@ -131,7 +137,8 @@ export type CreatePlanResult =
   | CreatePlanSuccess
   | RetryableFailure
   | PermanentFailure
-  | QuotaRejection;
+  | QuotaRejection
+  | DuplicateDetected;
 
 // ─── Generated module types ──────────────────────────────────────
 

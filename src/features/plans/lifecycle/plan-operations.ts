@@ -8,7 +8,7 @@ import { learningPlans, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { PdfContext } from '@/features/pdf/context.types';
 import type { DbClient } from '@/lib/db/types';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and, gte } from 'drizzle-orm';
 
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import type { SubscriptionTier } from '@/features/billing/tier-limits.types';
@@ -16,6 +16,9 @@ import { resolveUserTier } from '@/features/billing/tier';
 
 import { PlanCreationError, PlanLimitReachedError } from '../errors';
 import { UserNotFoundError } from '@/features/billing/errors';
+
+/** Window (in seconds) for detecting duplicate plan submissions. */
+const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;
 
 // Explicit upgrade path mapping: current tier -> recommended next tier
 const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {
@@ -245,4 +248,36 @@ export function checkPlanDurationCap(params: {
     };
   }
   return { allowed: true };
+}
+
+/**
+ * Find a recent plan with the same normalized topic for the given user.
+ * Used for duplicate/idempotent submission detection.
+ *
+ * Matches plans created within the dedup window that are still active
+ * (generating or ready), using case-insensitive topic comparison.
+ */
+export async function findRecentDuplicatePlan(
+  userId: string,
+  normalizedTopic: string,
+  dbClient: DbClient
+): Promise<string | null> {
+  const windowStart = new Date(
+    Date.now() - DUPLICATE_DETECTION_WINDOW_SECONDS * 1000
+  );
+
+  const [row] = await dbClient
+    .select({ id: learningPlans.id })
+    .from(learningPlans)
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        sql`lower(${learningPlans.topic}) = lower(${normalizedTopic})`,
+        gte(learningPlans.createdAt, windowStart),
+        sql`${learningPlans.generationStatus} IN ('generating', 'ready')`
+      )
+    )
+    .limit(1);
+
+  return row?.id ?? null;
 }
