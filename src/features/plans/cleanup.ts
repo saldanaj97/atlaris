@@ -3,6 +3,8 @@ import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import { and, eq, isNull, lt, sql } from 'drizzle-orm';
 
+import { markPlanGenerationFailure } from '@/features/plans/lifecycle/plan-operations';
+
 /** Plans stuck in 'generating' longer than this are considered abandoned. */
 export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -12,37 +14,52 @@ export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 /**
  * Marks plans stuck in 'generating' status for longer than the threshold as 'failed'.
  * Uses a generous threshold (15min) to avoid marking slow-but-active generations as failed.
+ * Rows are locked inside a transaction before failure transitions so cleanup
+ * does not race concurrent generation state updates.
  */
+export type CleanupStuckPlansDependencies = {
+  markFailure?: typeof markPlanGenerationFailure;
+};
+
 export async function cleanupStuckPlans(
   dbClient: DbClient,
-  thresholdMs: number = STUCK_PLAN_THRESHOLD_MS
+  thresholdMs: number = STUCK_PLAN_THRESHOLD_MS,
+  deps: CleanupStuckPlansDependencies = {}
 ): Promise<{ cleaned: number }> {
   const cutoff = new Date(Date.now() - thresholdMs);
+  const markFailure = deps.markFailure ?? markPlanGenerationFailure;
 
-  const result = await dbClient
-    .update(learningPlans)
-    .set({
-      generationStatus: 'failed',
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(learningPlans.generationStatus, 'generating'),
-        lt(learningPlans.updatedAt, cutoff)
+  return dbClient.transaction(async (tx) => {
+    const stuckPlans = await tx
+      .select({ id: learningPlans.id })
+      .from(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.generationStatus, 'generating'),
+          lt(learningPlans.updatedAt, cutoff)
+        )
       )
-    )
-    .returning({ id: learningPlans.id });
+      .limit(Number.MAX_SAFE_INTEGER)
+      .for('update');
 
-  const cleaned = result.length;
+    const timestamp = new Date();
 
-  if (cleaned > 0) {
-    logger.info(
-      { source: 'cleanup', event: 'stuck_plans_cleaned', count: cleaned },
-      `Marked ${cleaned} stuck plan(s) as failed`
-    );
-  }
+    for (const plan of stuckPlans) {
+      // Reuse a single timestamp so the batch gets a consistent failed-at moment.
+      await markFailure(plan.id, tx, () => timestamp);
+    }
 
-  return { cleaned };
+    const cleaned = stuckPlans.length;
+
+    if (cleaned > 0) {
+      logger.info(
+        { source: 'cleanup', event: 'stuck_plans_cleaned', count: cleaned },
+        `Marked ${cleaned} stuck plan(s) as failed`
+      );
+    }
+
+    return { cleaned };
+  });
 }
 
 /**

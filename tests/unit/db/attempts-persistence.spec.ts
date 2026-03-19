@@ -1,12 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence';
-import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  tasks,
-} from '@/lib/db/schema';
+import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
@@ -76,13 +71,11 @@ type MockTxUpdate = (table: unknown) => {
 function createMockTx(options?: {
   moduleReturnRows?: Array<{ id: string }>;
   taskReturnRows?: Array<{ id: string }>;
-  planReturnRows?: Array<{ id: string }>;
   attemptReturnRow?: typeof mockAttemptRecord | undefined;
 }) {
   const {
     moduleReturnRows = [{ id: 'mod-1' }],
     taskReturnRows = [{ id: 'task-1' }],
-    planReturnRows = [{ id: 'plan-1' }],
     attemptReturnRow = mockAttemptRecord,
   } = options ?? {};
 
@@ -119,15 +112,6 @@ function createMockTx(options?: {
           })),
         };
       }
-      if (table === learningPlans) {
-        return {
-          set: vi.fn(() => ({
-            where: vi.fn(() => ({
-              returning: vi.fn().mockResolvedValue(planReturnRows),
-            })),
-          })),
-        };
-      }
       throw new Error(`Unexpected update table: ${String(table)}`);
     }) as MockTxUpdate),
   };
@@ -155,20 +139,13 @@ describe('persistSuccessfulAttempt', () => {
     );
   });
 
-  it('throws when learning plan update returns zero rows', async () => {
-    useMockTransaction(
-      createMockTx({ planReturnRows: [] }) // 0 rows — plan not found or already finalized
-    );
-
-    await expect(persistSuccessfulAttempt(createBaseParams())).rejects.toThrow(
-      'Failed to update learning plan status to ready.'
-    );
-  });
-
   it('returns the attempt record when all operations succeed', async () => {
-    useMockTransaction(createMockTx());
+    const mockTx = createMockTx();
+    useMockTransaction(mockTx);
 
     const result = await persistSuccessfulAttempt(createBaseParams());
     expect(result).toEqual(mockAttemptRecord);
+    expect(mockTx.update).toHaveBeenCalledTimes(1);
+    expect(mockTx.update).toHaveBeenCalledWith(generationAttempts);
   });
 });

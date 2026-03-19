@@ -193,6 +193,7 @@ Post-launch (parallel):
 ## Phase 3: Post-Launch Cleanup
 
 > Both slices can start after launch. Slice 9 has no blockers. Slice 10 depends on slice 4.
+> **Branch status:** ✅ Implemented and validated on `phase-3`; broader RLS hardening follow-up deferred to [#297](https://github.com/saldanaj97/atlaris/issues/297).
 
 ### 9. Read-Path Optimization & Subscription Caching — [#293](https://github.com/saldanaj97/atlaris/issues/293)
 
@@ -204,11 +205,11 @@ Post-launch (parallel):
 
 **Acceptance criteria:**
 
-- [ ] Plan-list endpoints return paginated results by default
-- [ ] Lightweight plan summaries are used for list views (not full plan objects)
-- [ ] Subscription status is served from webhook-synced local state
-- [ ] Live provider reads are only used for repair/admin/fallback, not default reads
-- [ ] Tests cover pagination defaults, summary contracts, and billing-status fallback behavior
+- [x] Plan-list endpoints return paginated results by default
+- [x] Lightweight plan summaries are used for list views (not full plan objects)
+- [x] Subscription status is served from webhook-synced local state
+- [x] Live provider reads are only used for repair/admin/fallback, not default reads
+- [x] Tests cover pagination defaults, summary contracts, and billing-status fallback behavior
 
 ---
 
@@ -222,10 +223,15 @@ Post-launch (parallel):
 
 **Acceptance criteria:**
 
-- [ ] Generation/attempt persistence is simplified (fewer tables or cleaner state machine)
-- [ ] Background job paths are consolidated where possible
-- [ ] Remaining technical debt is explicitly documented as deferred with rationale
-- [ ] No regression in generation correctness or lifecycle behavior
-- [ ] Tests cover any persistence changes and verify no behavioral regressions
+- [x] Generation/attempt persistence is simplified (fewer tables or cleaner state machine)
+- [x] Background job paths are consolidated where possible
+- [x] Remaining technical debt is explicitly documented as deferred with rationale
+- [x] No regression in generation correctness or lifecycle behavior
+- [x] Tests cover any persistence changes and verify no behavioral regressions
+
+**Follow-up note:** broader RLS/state-ownership hardening was intentionally left
+out of this Phase 3 branch and tracked separately in [#297](https://github.com/saldanaj97/atlaris/issues/297). The remaining
+`reserveAttemptSlot()` ownership defer is documented in
+`prds/launch-readiness-audit/phase3-todos.md` and `docs/technical-debt.md`.
 
 ---

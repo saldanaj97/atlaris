@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   getLearningPlanDetail,
+  getLightweightPlanSummaries,
   getPlanAttemptsForUser,
 } from '@/lib/db/queries/plans';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
@@ -82,6 +83,18 @@ describe('Plan Queries - Tenant Scoping', () => {
       const result = await getPlanAttemptsForUser(ownerPlanId, attackerId);
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('pagination validation', () => {
+    it('rejects invalid lightweight summary pagination instead of silently clamping', async () => {
+      await expect(
+        getLightweightPlanSummaries(ownerId, undefined, { limit: 0 })
+      ).rejects.toThrow('limit must be an integer greater than or equal to 1');
+
+      await expect(
+        getLightweightPlanSummaries(ownerId, undefined, { offset: -1 })
+      ).rejects.toThrow('offset must be an integer greater than or equal to 0');
     });
   });
 });

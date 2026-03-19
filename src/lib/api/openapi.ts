@@ -28,38 +28,42 @@ const errorResponseSchema = z
   })
   .openapi('ErrorResponse');
 
-const learningPlanSchema = z
+const learningPlanSchema = z.object({
+  id: z.string().uuid(),
+  topic: z.string(),
+  skillLevel: SKILL_LEVEL_ENUM,
+  weeklyHours: z.number().int().nullable().optional(),
+  learningStyle: LEARNING_STYLE_ENUM,
+  visibility: z.literal('private'),
+  origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const),
+  createdAt: z.string().datetime().nullable().optional(),
+});
+
+const lightweightPlanSummarySchema = z
   .object({
     id: z.string().uuid(),
     topic: z.string(),
     skillLevel: SKILL_LEVEL_ENUM,
-    weeklyHours: z.number().int().nullable().optional(),
     learningStyle: LEARNING_STYLE_ENUM,
     visibility: z.literal('private'),
     origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const),
-    createdAt: z.string().datetime().nullable().optional(),
-  })
-  .openapi('LearningPlan');
-
-const planSummarySchema = z
-  .object({
-    plan: learningPlanSchema,
+    generationStatus: z.enum([
+      'generating',
+      'ready',
+      'failed',
+      'pending_retry',
+    ] as const),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
     completion: z.number(),
     completedTasks: z.number().int(),
     totalTasks: z.number().int(),
     totalMinutes: z.number().int(),
     completedMinutes: z.number().int(),
-    modules: z.array(
-      z.object({
-        id: z.string().uuid(),
-        planId: z.string().uuid(),
-        title: z.string(),
-        order: z.number().int(),
-      })
-    ),
+    moduleCount: z.number().int(),
     completedModules: z.number().int(),
   })
-  .openapi('PlanSummary');
+  .openapi('LightweightPlanSummary');
 
 const createPlanResponseSchema = z
   .object({
@@ -137,6 +141,8 @@ export async function getOpenApiDocument() {
   const registry = new OpenAPIRegistry();
   const createPlanRequestSchema = await buildCreatePlanRequestSchema();
 
+  registry.register('LearningPlan', learningPlanSchema);
+
   registry.registerPath({
     method: 'get',
     path: '/api/v1/plans',
@@ -148,7 +154,7 @@ export async function getOpenApiDocument() {
         description: 'List of learning plans.',
         content: {
           'application/json': {
-            schema: z.array(planSummarySchema),
+            schema: z.array(lightweightPlanSummarySchema),
           },
         },
       },

@@ -13,18 +13,25 @@ import {
   generationAttempts,
   learningPlans,
   modules,
+  taskProgress,
   tasks,
 } from '@/lib/db/schema';
 import {
+  mapLightweightPlanSummaries,
   mapLearningPlanDetail,
   mapPlanSummaries,
 } from '@/lib/db/queries/mappers';
 import type {
   GenerationAttempt,
   LearningPlanDetail,
+  LightweightPlanSummary,
   PlanSummary,
 } from '@/shared/types/db.types';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import {
+  assertValidPaginationOptions,
+  type PaginationOptions,
+} from '@/shared/constants/pagination';
+import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;
@@ -58,18 +65,17 @@ function isDeletablePlanStatus(
  *
  * @param userId - Authenticated user ID (RLS scopes results)
  * @param dbClient - Optional client; defaults to getDb()
- * @param options - Optional pagination controls for large plan sets
+ * @param options - Optional pagination controls for large plan sets. Invalid
+ * options throw RangeError so callers do not silently hide programming mistakes.
  * @returns PlanSummary[] - Empty array if user has no plans
  */
 export async function getPlanSummariesForUser(
   userId: string,
   dbClient?: DbClient,
-  options?: {
-    limit?: number;
-    offset?: number;
-  }
+  options?: PaginationOptions
 ): Promise<PlanSummary[]> {
   const client = dbClient ?? getDb();
+  assertValidPaginationOptions(options);
 
   const planQuery = client
     .select()
@@ -80,11 +86,11 @@ export async function getPlanSummariesForUser(
   planQuery.orderBy(desc(learningPlans.createdAt));
 
   if (options?.limit !== undefined) {
-    planQuery.limit(Math.max(1, options.limit));
+    planQuery.limit(options.limit);
   }
 
   if (options?.offset !== undefined) {
-    planQuery.offset(Math.max(0, options.offset));
+    planQuery.offset(options.offset);
   }
 
   const planRows = await planQuery;
@@ -126,6 +132,91 @@ export async function getPlanSummariesForUser(
     moduleRows,
     taskRows,
     progressRows,
+  });
+}
+
+/**
+ * Fetches lightweight plan summaries for API list views.
+ * Invalid pagination options throw RangeError instead of silently clamping.
+ * Excludes large plan payload fields and computes completion via grouped counts.
+ */
+export async function getLightweightPlanSummaries(
+  userId: string,
+  dbClient?: DbClient,
+  options?: PaginationOptions
+): Promise<LightweightPlanSummary[]> {
+  const client = dbClient ?? getDb();
+  assertValidPaginationOptions(options);
+
+  const planQuery = client
+    .select({
+      id: learningPlans.id,
+      topic: learningPlans.topic,
+      skillLevel: learningPlans.skillLevel,
+      learningStyle: learningPlans.learningStyle,
+      visibility: learningPlans.visibility,
+      origin: learningPlans.origin,
+      generationStatus: learningPlans.generationStatus,
+      createdAt: learningPlans.createdAt,
+      updatedAt: learningPlans.updatedAt,
+    })
+    .from(learningPlans)
+    .where(eq(learningPlans.userId, userId))
+    .$dynamic();
+
+  planQuery.orderBy(desc(learningPlans.createdAt));
+
+  if (options?.limit !== undefined) {
+    planQuery.limit(options.limit);
+  }
+
+  if (options?.offset !== undefined) {
+    planQuery.offset(options.offset);
+  }
+
+  const planRows = await planQuery;
+
+  if (!planRows.length) {
+    return [];
+  }
+
+  const planIds = planRows.map((plan) => plan.id);
+
+  const moduleMetricsRows = await client
+    .select({
+      planId: modules.planId,
+      moduleId: modules.id,
+      totalTasks: sql<number>`count(${tasks.id})::int`,
+      completedTasks: sql<number>`
+        count(${taskProgress.id}) filter (
+          where ${taskProgress.status} = 'completed'
+        )::int
+      `,
+      totalMinutes: sql<number>`coalesce(sum(${tasks.estimatedMinutes}), 0)::int`,
+      completedMinutes: sql<number>`
+        coalesce(
+          sum(
+            case
+              when ${taskProgress.status} = 'completed' then ${tasks.estimatedMinutes}
+              else 0
+            end
+          ),
+          0
+        )::int
+      `,
+    })
+    .from(modules)
+    .leftJoin(tasks, eq(tasks.moduleId, modules.id))
+    .leftJoin(
+      taskProgress,
+      and(eq(taskProgress.taskId, tasks.id), eq(taskProgress.userId, userId))
+    )
+    .where(inArray(modules.planId, planIds))
+    .groupBy(modules.planId, modules.id);
+
+  return mapLightweightPlanSummaries({
+    planRows,
+    moduleMetricsRows,
   });
 }
 
@@ -325,4 +416,22 @@ export async function deletePlan(
   }
 
   return { success: false, reason: 'not_found' };
+}
+
+/**
+ * Returns the total count of plans for a user. Used for pagination metadata
+ * (X-Total-Count header) without fetching full plan rows.
+ */
+export async function getPlanSummaryCount(
+  userId: string,
+  dbClient?: DbClient
+): Promise<number> {
+  const client = dbClient ?? getDb();
+
+  const [result] = await client
+    .select({ total: count() })
+    .from(learningPlans)
+    .where(eq(learningPlans.userId, userId));
+
+  return result?.total ?? 0;
 }

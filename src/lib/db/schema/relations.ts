@@ -3,7 +3,6 @@ import { relations } from 'drizzle-orm';
 import {
   generationAttempts,
   learningPlans,
-  planGenerations,
   planSchedules,
 } from './tables/plans';
 import {
@@ -42,7 +41,6 @@ export const learningPlansRelations = relations(
     }),
     modules: many(modules),
     planSchedules: one(planSchedules),
-    planGenerations: many(planGenerations),
     generationAttempts: many(generationAttempts),
     googleCalendarSyncState: one(googleCalendarSyncState),
     jobQueue: many(jobQueue),
@@ -55,16 +53,6 @@ export const planSchedulesRelations = relations(planSchedules, ({ one }) => ({
     references: [learningPlans.id],
   }),
 }));
-
-export const planGenerationsRelations = relations(
-  planGenerations,
-  ({ one }) => ({
-    plan: one(learningPlans, {
-      fields: [planGenerations.planId],
-      references: [learningPlans.id],
-    }),
-  })
-);
 
 export const generationAttemptsRelations = relations(
   generationAttempts,

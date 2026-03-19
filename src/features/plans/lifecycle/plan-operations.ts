@@ -33,6 +33,8 @@ type PlanDurationCapResult = {
   upgradeUrl?: string;
 };
 
+export type PlanWriteClient = Pick<DbClient, 'update'>;
+
 /**
  * Check if user can create more plans
  * @returns true if user can create more plans, false otherwise
@@ -174,7 +176,7 @@ export async function atomicCheckAndInsertPlan(
 
 export async function markPlanGenerationSuccess(
   planId: string,
-  dbClient: DbClient,
+  dbClient: PlanWriteClient,
   now: () => Date = () => new Date()
 ): Promise<void> {
   const timestamp = now();
@@ -200,7 +202,8 @@ export async function markPlanGenerationSuccess(
 
 export async function markPlanGenerationFailure(
   planId: string,
-  dbClient: DbClient,
+  dbClient: PlanWriteClient,
+  // Accept a clock supplier so callers can share one timestamp across a batch.
   now: () => Date = () => new Date()
 ): Promise<void> {
   const timestamp = now();

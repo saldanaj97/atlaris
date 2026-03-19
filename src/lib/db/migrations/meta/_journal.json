@@ -120,6 +120,13 @@
       "when": 1771100000000,
       "tag": "0016_generation_attempts_rls_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1771150000000,
+      "tag": "0017_cancel_at_period_end_drop_plan_generations",
+      "breakpoints": true
     }
   ]
 }

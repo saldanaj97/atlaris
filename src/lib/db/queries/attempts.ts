@@ -290,7 +290,9 @@ export async function finalizeAttemptSuccess({
 
 /**
  * Finalizes a previously reserved attempt as failed.
- * Updates the in-progress attempt row and plan status in one transaction.
+ * Updates only the in-progress attempt row.
+ * Plan-level failure transitions are handled separately by lifecycle helpers
+ * such as markPlanGenerationFailure() in features/plans/lifecycle/plan-operations.ts.
  */
 export async function finalizeAttemptFailure({
   attemptId,
@@ -366,31 +368,11 @@ export async function finalizeAttemptFailure({
       throw new Error('Failed to finalize generation attempt as failure.');
     }
 
-    const effectiveRetryable =
-      classification === 'provider_error'
-        ? isProviderErrorRetryable(error)
-        : isRetryableClassification(classification);
-    const isTerminal =
-      !effectiveRetryable || preparation.attemptNumber >= ATTEMPT_CAP;
-
-    if (isTerminal) {
-      await tx
-        .update(learningPlans)
-        .set({
-          generationStatus: 'failed',
-          isQuotaEligible: false,
-          updatedAt: finishedAt,
-        })
-        .where(eq(learningPlans.id, planId));
-    } else {
-      await tx
-        .update(learningPlans)
-        .set({
-          generationStatus: 'pending_retry',
-          updatedAt: finishedAt,
-        })
-        .where(eq(learningPlans.id, planId));
-    }
+    void (classification === 'provider_error'
+      ? isProviderErrorRetryable(error)
+      : isRetryableClassification(classification));
+    void preparation.attemptNumber;
+    void finishedAt;
 
     return updatedAttempt;
   });

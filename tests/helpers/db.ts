@@ -8,7 +8,6 @@ import {
   jobQueue,
   learningPlans,
   modules,
-  planGenerations,
   resources,
   stripeWebhookEvents,
   taskCalendarEvents,
@@ -43,9 +42,6 @@ export async function truncateAll() {
   );
   await db.execute(sql`TRUNCATE TABLE ${tasks} RESTART IDENTITY CASCADE`);
   await db.execute(sql`TRUNCATE TABLE ${modules} RESTART IDENTITY CASCADE`);
-  await db.execute(
-    sql`TRUNCATE TABLE ${planGenerations} RESTART IDENTITY CASCADE`
-  );
   await db.execute(
     sql`TRUNCATE TABLE ${learningPlans} RESTART IDENTITY CASCADE`
   );

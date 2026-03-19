@@ -1,5 +1,3 @@
-import type Stripe from 'stripe';
-
 import {
   type PlainHandler,
   withAuthAndRateLimit,
@@ -7,82 +5,23 @@ import {
 } from '@/lib/api/auth';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
-import { logger } from '@/lib/logging/logger';
-import { getStripe } from '@/features/billing/client';
 import { getUsageSummary } from '@/features/billing/usage-metrics';
 
-const CANCEL_AT_PERIOD_END_SAFE_DEFAULT = false;
+export const GET: PlainHandler = withErrorBoundary(
+  withAuthAndRateLimit('read', async ({ user }) => {
+    const db = getDb();
+    const usage = await getUsageSummary(user.id, db);
 
-async function getCancelAtPeriodEnd(
-  stripeSubscriptionId: string | null,
-  stripeInstance?: Stripe
-): Promise<boolean> {
-  if (!stripeSubscriptionId) {
-    return CANCEL_AT_PERIOD_END_SAFE_DEFAULT;
-  }
-
-  try {
-    const stripe = stripeInstance ?? getStripe();
-    const subscription =
-      await stripe.subscriptions.retrieve(stripeSubscriptionId);
-
-    if (subscription.cancel_at_period_end) {
-      return true;
-    }
-
-    if (typeof subscription.cancel_at === 'number') {
-      return subscription.cancel_at * 1000 > Date.now();
-    }
-
-    return false;
-  } catch (error) {
-    logger.warn(
-      {
-        stripeSubscriptionId,
-        error,
+    return json({
+      tier: user.subscriptionTier,
+      status: user.subscriptionStatus,
+      periodEnd: user.subscriptionPeriodEnd?.toISOString() ?? null,
+      cancelAtPeriodEnd: user.cancelAtPeriodEnd ?? false,
+      usage: {
+        activePlans: usage.activePlans,
+        regenerations: usage.regenerations,
+        exports: usage.exports,
       },
-      'Failed to resolve cancelAtPeriodEnd from Stripe; using safe default'
-    );
-
-    return CANCEL_AT_PERIOD_END_SAFE_DEFAULT;
-  }
-}
-
-/**
- * Factory for the subscription GET handler. Accepts an optional Stripe
- * client for tests; production uses getStripe() when omitted.
- */
-export function createSubscriptionGetHandler(
-  stripeInstance?: Stripe
-): PlainHandler {
-  return withErrorBoundary(
-    withAuthAndRateLimit('read', async ({ user }) => {
-      const db = getDb();
-      const usagePromise = getUsageSummary(user.id, db);
-      const cancelAtPeriodEndPromise = getCancelAtPeriodEnd(
-        user.stripeSubscriptionId,
-        stripeInstance
-      );
-      const [usage, cancelAtPeriodEnd] = await Promise.all([
-        usagePromise,
-        cancelAtPeriodEndPromise,
-      ]);
-
-      const response = {
-        tier: user.subscriptionTier,
-        status: user.subscriptionStatus,
-        periodEnd: user.subscriptionPeriodEnd?.toISOString() ?? null,
-        cancelAtPeriodEnd,
-        usage: {
-          activePlans: usage.activePlans,
-          regenerations: usage.regenerations,
-          exports: usage.exports,
-        },
-      };
-
-      return json(response);
-    })
-  );
-}
-
-export const GET = createSubscriptionGetHandler();
+    });
+  })
+);

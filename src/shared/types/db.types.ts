@@ -22,9 +22,6 @@ export type Module = InferSelectModel<DbSchemaModule['modules']>;
 export type Task = InferSelectModel<DbSchemaModule['tasks']>;
 export type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
 export type TaskProgress = InferSelectModel<DbSchemaModule['taskProgress']>;
-export type PlanGeneration = InferSelectModel<
-  DbSchemaModule['planGenerations']
->;
 export type GenerationAttempt = InferSelectModel<
   DbSchemaModule['generationAttempts']
 >;
@@ -37,21 +34,43 @@ export type LearningPlanWithModules = LearningPlan & {
   modules: ModuleWithTasks[];
 };
 
-export type PlanSummary = {
-  plan: LearningPlan;
+export type ProgressMetrics = {
   completion: number;
   completedTasks: number;
   totalTasks: number;
   totalMinutes: number;
   completedMinutes: number;
-  modules: Module[];
   completedModules: number;
 };
 
-export type LearningPlanDetail = {
+type TaskCountMetrics = Pick<ProgressMetrics, 'completedTasks' | 'totalTasks'>;
+
+export type PlanSummary = ProgressMetrics & {
+  plan: LearningPlan;
+  modules: Module[];
+};
+
+type LightweightPlanListFields = Pick<
+  LearningPlan,
+  | 'id'
+  | 'topic'
+  | 'skillLevel'
+  | 'learningStyle'
+  | 'visibility'
+  | 'origin'
+  | 'generationStatus'
+  | 'createdAt'
+  | 'updatedAt'
+>;
+
+/** Lightweight plan summary for API list views. */
+export type LightweightPlanSummary = LightweightPlanListFields &
+  ProgressMetrics & {
+    moduleCount: number;
+  };
+
+export type LearningPlanDetail = TaskCountMetrics & {
   plan: LearningPlanWithModules;
-  totalTasks: number;
-  completedTasks: number;
   latestAttempt: GenerationAttempt | null;
   attemptsCount: number;
 };

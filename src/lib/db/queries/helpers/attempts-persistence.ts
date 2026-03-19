@@ -6,12 +6,7 @@ import type {
   NormalizedModuleData,
   NormalizedModulesResult,
 } from '@/lib/db/queries/types/attempts.types';
-import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  tasks,
-} from '@/lib/db/schema';
+import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { db as serviceDb } from '@/lib/db/service-role';
 import {
   aggregateNormalizationFlags,
@@ -103,7 +98,6 @@ export async function persistSuccessfulAttempt(
     tasksCount,
     durationMs,
     metadata,
-    finishedAt,
     dbClient,
   } = params;
 
@@ -222,21 +216,6 @@ export async function persistSuccessfulAttempt(
 
     if (!attempt) {
       throw new Error('Failed to finalize generation attempt as success.');
-    }
-
-    const [updatedPlan] = await tx
-      .update(learningPlans)
-      .set({
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-        finalizedAt: finishedAt,
-        updatedAt: finishedAt,
-      })
-      .where(eq(learningPlans.id, planId))
-      .returning({ id: learningPlans.id });
-
-    if (!updatedPlan) {
-      throw new Error('Failed to update learning plan status to ready.');
     }
 
     return attempt;

@@ -4,6 +4,8 @@
  */
 
 export const JOB_TYPE_MAP = {
+  // Reserved for a future async initial-generation pipeline. Initial plan
+  // generation is not using a job queue today; it is handled by the streaming route.
   PLAN_GENERATION: 'plan_generation',
   PLAN_REGENERATION: 'plan_regeneration',
 } as const;

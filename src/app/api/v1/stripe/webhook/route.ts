@@ -224,6 +224,7 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
               subscriptionStatus: 'canceled',
               stripeSubscriptionId: null,
               subscriptionPeriodEnd: null,
+              cancelAtPeriodEnd: false,
               updatedAt: new Date(),
             })
             .where(eq(users.stripeCustomerId, customerId))

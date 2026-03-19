@@ -7,7 +7,6 @@ import {
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
 import type { DbClient } from '@/lib/db/types';
-
 // Mock the logger to avoid console noise and allow assertion
 vi.mock('@/lib/logging/logger', () => ({
   logger: {
@@ -18,19 +17,45 @@ vi.mock('@/lib/logging/logger', () => ({
   },
 }));
 
-function createMockDbClient(updateCount: number) {
-  const rows = Array.from({ length: updateCount }, (_, i) => ({
+function createMockDbClient(resultCount: number) {
+  const rows = Array.from({ length: resultCount }, (_, i) => ({
     id: `id-${i}`,
   }));
+  const forFn = vi.fn().mockResolvedValue(rows);
+  const limitFn = vi.fn().mockReturnValue({ for: forFn });
+  const whereSelectFn = vi.fn().mockReturnValue({ limit: limitFn });
+  const transactionFn = vi.fn();
+  const fromFn = vi.fn().mockReturnValue({ where: whereSelectFn });
+  const selectFn = vi.fn().mockReturnValue({ from: fromFn });
   const returningFn = vi.fn().mockResolvedValue(rows);
   const whereFn = vi.fn().mockReturnValue({ returning: returningFn });
   const setFn = vi.fn().mockReturnValue({ where: whereFn });
   const updateFn = vi.fn().mockReturnValue({ set: setFn });
 
+  const client = {
+    select: selectFn,
+    update: updateFn,
+    transaction: transactionFn,
+  } as unknown as DbClient;
+
+  transactionFn.mockImplementation(
+    async (callback: (tx: DbClient) => unknown) => callback(client)
+  );
+
   return {
-    // Deliberate test-only shim: only the update() chain is needed for cleanup tests
-    client: { update: updateFn } as unknown as DbClient,
-    spies: { updateFn, setFn, whereFn, returningFn },
+    client,
+    spies: {
+      selectFn,
+      fromFn,
+      whereSelectFn,
+      limitFn,
+      forFn,
+      updateFn,
+      setFn,
+      whereFn,
+      returningFn,
+      transactionFn,
+    },
   };
 }
 
@@ -43,16 +68,36 @@ describe('cleanupStuckPlans', () => {
 
   it('marks stuck generating plans as failed and returns count', async () => {
     mockDb = createMockDbClient(3);
+    const markFailure = vi.fn().mockResolvedValue(undefined);
 
-    const result = await cleanupStuckPlans(mockDb.client);
+    const result = await cleanupStuckPlans(mockDb.client, undefined, {
+      markFailure,
+    });
 
     expect(result.cleaned).toBe(3);
-    expect(mockDb.spies.updateFn).toHaveBeenCalledTimes(1);
-    expect(mockDb.spies.setFn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        generationStatus: 'failed',
-      })
+    expect(mockDb.spies.transactionFn).toHaveBeenCalledTimes(1);
+    expect(mockDb.spies.selectFn).toHaveBeenCalledTimes(1);
+    expect(mockDb.spies.limitFn).toHaveBeenCalledWith(Number.MAX_SAFE_INTEGER);
+    expect(mockDb.spies.forFn).toHaveBeenCalledWith('update');
+    expect(markFailure).toHaveBeenCalledTimes(3);
+    expect(markFailure).toHaveBeenNthCalledWith(
+      1,
+      'id-0',
+      mockDb.client,
+      expect.any(Function)
     );
+
+    const firstClock = markFailure.mock.calls[0]?.[2] as
+      | (() => Date)
+      | undefined;
+    const secondClock = markFailure.mock.calls[1]?.[2] as
+      | (() => Date)
+      | undefined;
+
+    expect(firstClock).toBeDefined();
+    expect(secondClock).toBeDefined();
+    expect(firstClock?.()).toBeInstanceOf(Date);
+    expect(secondClock?.()).toBe(firstClock?.());
   });
 
   it('returns 0 when no stuck plans exist', async () => {

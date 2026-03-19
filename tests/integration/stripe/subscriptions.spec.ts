@@ -142,6 +142,7 @@ describe('Subscription Management', () => {
         id: expectedSubscriptionId,
         customer: stripeCustomerId,
         status: 'active',
+        cancel_at_period_end: true,
         items: {
           data: [
             {
@@ -182,6 +183,7 @@ describe('Subscription Management', () => {
       expect(user?.subscriptionStatus).toBe('active');
       expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
       expect(user?.subscriptionPeriodEnd).toEqual(new Date(1735689600 * 1000));
+      expect(user?.cancelAtPeriodEnd).toBe(true);
     });
 
     it('syncs canceled subscription to DB', async () => {

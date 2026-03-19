@@ -176,66 +176,6 @@ export const planSchedules = pgTable(
   }
 ).enableRLS();
 
-export const planGenerations = pgTable(
-  'plan_generations',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    planId: uuid('plan_id')
-      .notNull()
-      .references(() => learningPlans.id, { onDelete: 'cascade' }),
-    model: text('model').notNull(), // e.g., gpt-5
-    prompt: jsonb('prompt').notNull(), // inputs
-    parameters: jsonb('parameters'), // e.g., temperature
-    outputSummary: jsonb('output_summary'), // high-level summary or counts
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => {
-    const planOwnership = planOwnedByCurrentUser({
-      planIdColumn: table.planId,
-      planTable: learningPlans,
-      planIdReferenceColumn: learningPlans.id,
-      planUserIdColumn: learningPlans.userId,
-    });
-
-    return [
-      index('idx_plan_generations_plan_id').on(table.planId),
-
-      // RLS Policies (session-variable-based)
-
-      // Users can read generation records only for their own plans
-      pgPolicy('plan_generations_select', {
-        for: 'select',
-        to: 'authenticated',
-        using: planOwnership,
-      }),
-
-      // Users can create generation records only for their own plans
-      pgPolicy('plan_generations_insert', {
-        for: 'insert',
-        to: 'authenticated',
-        withCheck: planOwnership,
-      }),
-
-      // Users can update generation records only for their own plans
-      pgPolicy('plan_generations_update', {
-        for: 'update',
-        to: 'authenticated',
-        using: planOwnership,
-        withCheck: planOwnership,
-      }),
-
-      // Users can delete generation records only for their own plans
-      pgPolicy('plan_generations_delete', {
-        for: 'delete',
-        to: 'authenticated',
-        using: planOwnership,
-      }),
-    ];
-  }
-).enableRLS();
-
 export const generationAttempts = pgTable(
   'generation_attempts',
   {

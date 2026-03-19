@@ -99,7 +99,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('marks plan pending retry and emits failure log event for retryable failures', async () => {
+  it('does not mutate plan status during retryable attempt finalization and emits failure log event', async () => {
     const startedAt = new Date('2026-01-02T10:00:00.000Z');
     const finishedAt = new Date('2026-01-02T10:00:02.000Z');
 
@@ -130,7 +130,7 @@ describe('Atomic attempt observability', () => {
       where: eq(learningPlans.id, planId),
     });
 
-    expect(plan?.generationStatus).toBe('pending_retry');
+    expect(plan?.generationStatus).toBe('generating');
 
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] failure',
@@ -144,7 +144,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('marks plan failed for terminal validation failures', async () => {
+  it('does not mutate plan status during terminal attempt finalization', async () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
@@ -168,8 +168,8 @@ describe('Atomic attempt observability', () => {
       where: eq(learningPlans.id, planId),
     });
 
-    expect(plan?.generationStatus).toBe('failed');
-    expect(plan?.isQuotaEligible).toBe(false);
+    expect(plan?.generationStatus).toBe('generating');
+    expect(plan?.isQuotaEligible).toBe(true);
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] failure',
       expect.objectContaining({

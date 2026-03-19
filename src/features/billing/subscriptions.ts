@@ -207,6 +207,7 @@ export async function syncSubscriptionToDb(
       stripeSubscriptionId: subscription.id,
       subscriptionStatus: status,
       subscriptionPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
       updatedAt: new Date(),
     })
     .where(eq(users.id, user.id));

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   integer,
   pgPolicy,
   pgTable,
@@ -34,6 +35,7 @@ export const users = pgTable(
     subscriptionPeriodEnd: timestamp('subscription_period_end', {
       withTimezone: true,
     }),
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
     monthlyExportCount: integer('monthly_export_count').notNull().default(0),
     preferredAiModel: preferredAiModelEnum('preferred_ai_model'),
     ...timestampFields,
