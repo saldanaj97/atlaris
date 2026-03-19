@@ -6,6 +6,7 @@ import {
   type GenerationAttemptResult,
   type JobQueuePort,
 } from '@/features/plans/lifecycle';
+import { shouldRetryJob } from '@/features/plans/retry-policy';
 import { planRegenerationOverridesSchema } from '@/features/plans/validation/learningPlans';
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
@@ -160,6 +161,19 @@ export async function processNextRegenerationJob(): Promise<ProcessRegenerationJ
       }
 
       case 'retryable_failure': {
+        const decision = shouldRetryJob({
+          attemptNumber: job.attempts + 1,
+          maxAttempts: job.maxAttempts,
+          retryable: true,
+        });
+        logger.info(
+          {
+            jobId: job.id,
+            classification: result.classification,
+            retryDecision: decision.reason,
+          },
+          'Regeneration job retryable failure — retry decision applied'
+        );
         await failJob(job.id, result.error.message, { retryable: true });
         return {
           processed: true,
