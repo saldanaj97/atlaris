@@ -36,8 +36,10 @@ vi.mock('@/features/ai/ai-models', () => ({
 // ─── computeCostCents ────────────────────────────────────────────
 
 describe('computeCostCents', () => {
-  it('returns 0 for unknown model', () => {
-    expect(computeCostCents('unknown-model', 1000, 500)).toBe(0);
+  it('throws for unknown model', () => {
+    expect(() => computeCostCents('unknown-model', 1000, 500)).toThrow(
+      /Unknown model "unknown-model"/
+    );
   });
 
   it('returns 0 when both token counts are 0', () => {

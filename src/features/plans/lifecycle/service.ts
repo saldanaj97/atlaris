@@ -173,6 +173,9 @@ export class PlanLifecycleService {
       tier,
       normalizedInput: {
         topic: normalizedTopic,
+        skillLevel: input.skillLevel,
+        weeklyHours: input.weeklyHours,
+        learningStyle: input.learningStyle,
         startDate: duration.startDate,
         deadlineDate: duration.deadlineDate,
       },
@@ -326,6 +329,9 @@ export class PlanLifecycleService {
         tier,
         normalizedInput: {
           topic: prepared.topic,
+          skillLevel: input.skillLevel,
+          weeklyHours: input.weeklyHours,
+          learningStyle: input.learningStyle,
           startDate: duration.startDate,
           deadlineDate: duration.deadlineDate,
           pdfContext: prepared.extractedContext as PdfContext | null,

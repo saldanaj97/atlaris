@@ -9,18 +9,20 @@ import {
 } from '@/features/ai/streaming/events';
 import type { IsoDateString } from '@/features/ai/types/provider.types';
 import { parsePersistedPdfContext } from '@/features/pdf/context';
+import type { FailureClassification } from '@/shared/types/client.types';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/features/plans/api/route-context';
 import { resolveUserTier } from '@/features/billing/tier';
-import {
-  createPlanLifecycleService,
-  type GenerationAttemptResult,
-  type JobQueuePort,
-  type ProcessGenerationInput,
+import { createPlanLifecycleService } from '@/features/plans/lifecycle';
+import type {
+  GenerationAttemptResult,
+  JobQueuePort,
+  ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import type { PlainHandler } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
 import {
   checkPlanGenerationRateLimit,
@@ -53,6 +55,22 @@ const noopJobQueue: JobQueuePort = {
 };
 
 /**
+ * Derives a {@link FailureClassification} from an unknown thrown value.
+ * Falls back to `'provider_error'` when the error carries no recognisable classification.
+ */
+function classifyError(error: unknown): FailureClassification | 'unknown' {
+  if (error instanceof AppError) {
+    return error.classification() ?? 'provider_error';
+  }
+  if (error instanceof Error) {
+    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+      return 'timeout';
+    }
+  }
+  return 'provider_error';
+}
+
+/**
  * Dependency injection interface for tests.
  * Tests can override `processGenerationAttempt` to inject mocked generation behavior.
  */
@@ -68,7 +86,7 @@ export interface RetryDependencyOverrides {
  */
 export function createRetryHandler(deps?: {
   overrides?: RetryDependencyOverrides;
-}) {
+}): PlainHandler {
   return withErrorBoundary(
     withAuthAndRateLimit(
       'aiGeneration',
@@ -147,8 +165,8 @@ export function createRetryHandler(deps?: {
                   weeklyHours: plan.weeklyHours,
                   learningStyle: plan.learningStyle,
                   notes: undefined,
-                  startDate: toIsoDateString(plan.startDate) ?? undefined,
-                  deadlineDate: toIsoDateString(plan.deadlineDate) ?? undefined,
+                  startDate: toIsoDateString(plan.startDate),
+                  deadlineDate: toIsoDateString(plan.deadlineDate),
                   visibility: 'private',
                   origin: plan.origin ?? 'ai',
                 },
@@ -163,11 +181,12 @@ export function createRetryHandler(deps?: {
               emit,
               processGeneration: () => processGeneration(generationInput),
               onUnhandledError: async (error, startedAt) => {
+                const classification = classifyError(error);
                 logger.error(
                   {
                     planId: plan.id,
                     userId: user.id,
-                    classification: 'provider_error',
+                    classification,
                     durationMs: Math.max(0, Date.now() - startedAt),
                     error:
                       error instanceof Error

@@ -20,7 +20,9 @@ import * as Sentry from '@sentry/nextjs';
 
 /**
  * @deprecated Import directly from `@/features/ai/cost` instead.
- * This re-export exists only for backward compatibility and will be removed.
+ * This re-export exists only for backward compatibility and will be
+ * removed in v0.5.0 (or by 2025-09-01, whichever comes first).
+ * TODO: Create a tracking issue to remove this re-export.
  */
 export { computeCostCents } from '@/features/ai/cost';
 
@@ -52,11 +54,18 @@ export function normalizeToCanonicalUsage(
   const resolvedOutputTokens = usage?.completionTokens ?? 0;
   const resolvedTotalTokens =
     usage?.totalTokens ?? resolvedInputTokens + resolvedOutputTokens;
-  const estimatedCostCents = computeCostCents(
-    resolvedModel,
-    resolvedInputTokens,
-    resolvedOutputTokens
-  );
+  let estimatedCostCents: number;
+  try {
+    estimatedCostCents = computeCostCents(
+      resolvedModel,
+      resolvedInputTokens,
+      resolvedOutputTokens
+    );
+  } catch {
+    // Unknown models default to 0 cost here; the IncompleteUsageError
+    // thrown below already surfaces the missing/unknown model field.
+    estimatedCostCents = 0;
+  }
 
   const canonical: CanonicalAIUsage = {
     inputTokens: resolvedInputTokens,

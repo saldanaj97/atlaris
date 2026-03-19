@@ -16,8 +16,10 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 // ─── computeCostCents ────────────────────────────────────────────
 
 describe('computeCostCents', () => {
-  it('returns 0 for unknown model', () => {
-    expect(computeCostCents('unknown-model', 1000, 500)).toBe(0);
+  it('throws for unknown model', () => {
+    expect(() => computeCostCents('unknown-model', 1000, 500)).toThrow(
+      /Unknown model "unknown-model"/
+    );
   });
 
   it('returns 0 when both token counts are 0', () => {
@@ -85,7 +87,7 @@ describe('calculateCostFromUsage', () => {
     expect(calculateCostFromUsage(usage)).toBe(750);
   });
 
-  it('returns 0 for unknown model regardless of estimatedCostCents', () => {
+  it('throws for unknown model regardless of estimatedCostCents', () => {
     const usage: CanonicalAIUsage = {
       inputTokens: 100_000,
       outputTokens: 50_000,
@@ -94,7 +96,9 @@ describe('calculateCostFromUsage', () => {
       provider: 'openrouter',
       estimatedCostCents: 500,
     };
-    expect(calculateCostFromUsage(usage)).toBe(0);
+    expect(() => calculateCostFromUsage(usage)).toThrow(
+      /Unknown model "totally-unknown-model"/
+    );
   });
 
   it('is deterministic — repeated calls return same value', () => {
@@ -180,10 +184,14 @@ describe('tier consistency', () => {
     // Free models are a subset of pro models
     for (const freeModel of freeTierModels) {
       const proCounterpart = proTierModels.find((m) => m.id === freeModel.id);
-      expect(proCounterpart).toBeDefined();
+      if (!proCounterpart) {
+        throw new Error(
+          `Free-tier model "${freeModel.id}" has no pro-tier counterpart`
+        );
+      }
 
       const freeCeiling = getOutputTokenCeiling(freeModel.id);
-      const proCeiling = getOutputTokenCeiling(proCounterpart!.id);
+      const proCeiling = getOutputTokenCeiling(proCounterpart.id);
       expect(freeCeiling).toBe(proCeiling);
     }
   });
@@ -198,12 +206,6 @@ describe('tier consistency', () => {
     const freeIds = new Set(freeMap.keys());
     const starterIds = new Set(starterMap.keys());
     expect(freeIds).toEqual(starterIds);
-
-    for (const id of freeIds) {
-      expect(getOutputTokenCeiling(id)).toBe(
-        getOutputTokenCeiling(starterMap.get(id)!.id)
-      );
-    }
   });
 
   it('getOutputTokenCeiling is a pure function of modelId (no tier parameter)', () => {

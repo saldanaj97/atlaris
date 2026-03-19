@@ -10,6 +10,7 @@ import {
   createPlanLifecycleService,
   type JobQueuePort,
 } from '@/features/plans/lifecycle';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -38,13 +39,10 @@ const noopJobQueue: JobQueuePort = {
 
 export const POST: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('mutation', async ({ req, userId, user }) => {
-    let body: Record<string, unknown>;
+    let body: CreateLearningPlanInput;
     try {
       const parsed: unknown = await req.json();
-      body = createLearningPlanSchema.parse(parsed) as unknown as Record<
-        string,
-        unknown
-      >;
+      body = createLearningPlanSchema.parse(parsed);
     } catch (error) {
       if (error instanceof ZodError) {
         throw new ValidationError('Invalid request body.', error.flatten());
@@ -65,43 +63,43 @@ export const POST: PlainHandler = withErrorBoundary(
       jobQueue: noopJobQueue,
     });
 
-    const typedBody = body as {
-      topic: string;
-      skillLevel: 'beginner' | 'intermediate' | 'advanced';
-      weeklyHours: number;
-      learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-      startDate?: string;
-      deadlineDate?: string;
-      origin?: string;
-      extractedContent?: unknown;
-      pdfProofToken?: string;
-      pdfExtractionHash?: string;
-    };
+    const isPdfOrigin = body.origin === 'pdf';
 
-    const isPdfOrigin = typedBody.origin === 'pdf';
+    if (isPdfOrigin) {
+      if (!body.pdfProofToken || !body.pdfExtractionHash) {
+        throw new ValidationError(
+          'pdfProofToken and pdfExtractionHash are required for PDF-based plans.',
+          {
+            pdfProofToken: body.pdfProofToken ? undefined : 'Required',
+            pdfExtractionHash: body.pdfExtractionHash ? undefined : 'Required',
+          }
+        );
+      }
+    }
+
     const createResult = isPdfOrigin
       ? await lifecycleService.createPdfPlan({
           userId: user.id,
           authUserId: userId,
-          body,
-          topic: typedBody.topic,
-          skillLevel: typedBody.skillLevel,
-          weeklyHours: typedBody.weeklyHours,
-          learningStyle: typedBody.learningStyle,
-          startDate: typedBody.startDate,
-          deadlineDate: typedBody.deadlineDate,
-          extractedContent: typedBody.extractedContent,
-          pdfProofToken: typedBody.pdfProofToken as string,
-          pdfExtractionHash: typedBody.pdfExtractionHash as string,
+          body: body as Record<string, unknown>,
+          topic: body.topic,
+          skillLevel: body.skillLevel,
+          weeklyHours: body.weeklyHours,
+          learningStyle: body.learningStyle,
+          startDate: body.startDate,
+          deadlineDate: body.deadlineDate,
+          extractedContent: body.extractedContent,
+          pdfProofToken: body.pdfProofToken!,
+          pdfExtractionHash: body.pdfExtractionHash!,
         })
       : await lifecycleService.createPlan({
           userId: user.id,
-          topic: typedBody.topic,
-          skillLevel: typedBody.skillLevel,
-          weeklyHours: typedBody.weeklyHours,
-          learningStyle: typedBody.learningStyle,
-          startDate: typedBody.startDate,
-          deadlineDate: typedBody.deadlineDate,
+          topic: body.topic,
+          skillLevel: body.skillLevel,
+          weeklyHours: body.weeklyHours,
+          learningStyle: body.learningStyle,
+          startDate: body.startDate,
+          deadlineDate: body.deadlineDate,
         });
 
     // Map lifecycle result to HTTP response
@@ -112,9 +110,9 @@ export const POST: PlainHandler = withErrorBoundary(
           {
             id: createResult.planId,
             topic: createResult.normalizedInput.topic,
-            skillLevel: typedBody.skillLevel,
-            weeklyHours: typedBody.weeklyHours,
-            learningStyle: typedBody.learningStyle,
+            skillLevel: createResult.normalizedInput.skillLevel,
+            weeklyHours: createResult.normalizedInput.weeklyHours,
+            learningStyle: createResult.normalizedInput.learningStyle,
             visibility: 'private',
             origin: isPdfOrigin ? 'pdf' : 'ai',
             createdAt: now.toISOString(),

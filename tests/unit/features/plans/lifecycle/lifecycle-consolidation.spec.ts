@@ -20,10 +20,14 @@ import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
-function createMockPorts(
-  overrides?: Partial<PlanLifecycleServicePorts>
-): PlanLifecycleServicePorts {
-  return {
+type PortOverrides = {
+  [K in keyof PlanLifecycleServicePorts]?: Partial<
+    PlanLifecycleServicePorts[K]
+  >;
+};
+
+function createMockPorts(overrides?: PortOverrides): PlanLifecycleServicePorts {
+  const defaults = {
     planPersistence: {
       atomicInsertPlan: async () => ({
         success: true as const,
@@ -79,14 +83,28 @@ function createMockPorts(
       completeJob: async () => {},
       failJob: async () => {},
     },
-    ...overrides,
+  };
+
+  return {
+    planPersistence: {
+      ...defaults.planPersistence,
+      ...overrides?.planPersistence,
+    },
+    quota: { ...defaults.quota, ...overrides?.quota },
+    pdfOrigin: { ...defaults.pdfOrigin, ...overrides?.pdfOrigin },
+    generation: { ...defaults.generation, ...overrides?.generation },
+    usageRecording: {
+      ...defaults.usageRecording,
+      ...overrides?.usageRecording,
+    },
+    jobQueue: { ...defaults.jobQueue, ...overrides?.jobQueue },
   };
 }
 
 // ─── Inputs simulating different entry points ────────────────────
 
 /** Simulates stream route building a generation input (initial creation). */
-const streamInput: ProcessGenerationInput = {
+const STREAM_INPUT: ProcessGenerationInput = {
   planId: 'plan-stream-001',
   userId: 'user-001',
   tier: 'free',
@@ -103,7 +121,7 @@ const streamInput: ProcessGenerationInput = {
 };
 
 /** Simulates retry route building a generation input from existing plan data. */
-const retryInput: ProcessGenerationInput = {
+const RETRY_INPUT: ProcessGenerationInput = {
   planId: 'plan-retry-002',
   userId: 'user-001',
   tier: 'free',
@@ -118,7 +136,7 @@ const retryInput: ProcessGenerationInput = {
 };
 
 /** Simulates regeneration worker building input with overrides. */
-const regenerationInput: ProcessGenerationInput = {
+const REGENERATION_INPUT: ProcessGenerationInput = {
   planId: 'plan-regen-003',
   userId: 'user-001',
   tier: 'pro',
@@ -134,7 +152,7 @@ const regenerationInput: ProcessGenerationInput = {
 };
 
 /** Simulates PDF-origin plan generation input. */
-const pdfInput: ProcessGenerationInput = {
+const PDF_INPUT: ProcessGenerationInput = {
   planId: 'plan-pdf-004',
   userId: 'user-001',
   tier: 'free',
@@ -173,7 +191,7 @@ describe('Lifecycle Consolidation', () => {
 
   describe('PDF flow uses the same lifecycle boundary as non-PDF flows', () => {
     it('forwards PDF fields (pdfContext, pdfExtractionHash, pdfProofVersion) to generation port', async () => {
-      await service.processGenerationAttempt(pdfInput);
+      await service.processGenerationAttempt(PDF_INPUT);
       const runGeneration = vi.mocked(ports.generation.runGeneration);
 
       expect(runGeneration).toHaveBeenCalledWith(
@@ -198,8 +216,8 @@ describe('Lifecycle Consolidation', () => {
     });
 
     it('handles PDF generation success identically to non-PDF generation', async () => {
-      const nonPdfResult = await service.processGenerationAttempt(streamInput);
-      const pdfResult = await service.processGenerationAttempt(pdfInput);
+      const nonPdfResult = await service.processGenerationAttempt(STREAM_INPUT);
+      const pdfResult = await service.processGenerationAttempt(PDF_INPUT);
 
       expect(nonPdfResult.status).toBe('generation_success');
       expect(pdfResult.status).toBe('generation_success');
@@ -218,8 +236,8 @@ describe('Lifecycle Consolidation', () => {
       });
       service = new PlanLifecycleService(ports);
 
-      const nonPdfResult = await service.processGenerationAttempt(retryInput);
-      const pdfResult = await service.processGenerationAttempt(pdfInput);
+      const nonPdfResult = await service.processGenerationAttempt(RETRY_INPUT);
+      const pdfResult = await service.processGenerationAttempt(PDF_INPUT);
 
       expect(nonPdfResult.status).toBe('retryable_failure');
       expect(pdfResult.status).toBe('retryable_failure');
@@ -230,7 +248,7 @@ describe('Lifecycle Consolidation', () => {
 
   describe('modelOverride forwarding', () => {
     it('forwards modelOverride to generation port', async () => {
-      await service.processGenerationAttempt(streamInput);
+      await service.processGenerationAttempt(STREAM_INPUT);
       const runGeneration = vi.mocked(ports.generation.runGeneration);
 
       expect(runGeneration).toHaveBeenCalledWith(
@@ -241,7 +259,7 @@ describe('Lifecycle Consolidation', () => {
     });
 
     it('omits modelOverride when not provided (retry/regeneration default)', async () => {
-      await service.processGenerationAttempt(retryInput);
+      await service.processGenerationAttempt(RETRY_INPUT);
       const runGeneration = vi.mocked(ports.generation.runGeneration);
 
       expect(runGeneration).toHaveBeenCalledWith(
@@ -255,17 +273,22 @@ describe('Lifecycle Consolidation', () => {
   // ─── One lifecycle record per attempt ───────────────────────
 
   describe('one lifecycle record per generation attempt', () => {
-    it('calls generation port exactly once per processGenerationAttempt call', async () => {
+    it('calls generation port exactly once for stream input', async () => {
       const runGeneration = vi.mocked(ports.generation.runGeneration);
-
-      await service.processGenerationAttempt(streamInput);
+      await service.processGenerationAttempt(STREAM_INPUT);
       expect(runGeneration).toHaveBeenCalledTimes(1);
+    });
 
-      await service.processGenerationAttempt(retryInput);
-      expect(runGeneration).toHaveBeenCalledTimes(2);
+    it('calls generation port exactly once for retry input', async () => {
+      const runGeneration = vi.mocked(ports.generation.runGeneration);
+      await service.processGenerationAttempt(RETRY_INPUT);
+      expect(runGeneration).toHaveBeenCalledTimes(1);
+    });
 
-      await service.processGenerationAttempt(regenerationInput);
-      expect(runGeneration).toHaveBeenCalledTimes(3);
+    it('calls generation port exactly once for regeneration input', async () => {
+      const runGeneration = vi.mocked(ports.generation.runGeneration);
+      await service.processGenerationAttempt(REGENERATION_INPUT);
+      expect(runGeneration).toHaveBeenCalledTimes(1);
     });
 
     it('calls markGenerationSuccess exactly once on successful generation', async () => {
@@ -273,7 +296,7 @@ describe('Lifecycle Consolidation', () => {
         ports.planPersistence.markGenerationSuccess
       );
 
-      await service.processGenerationAttempt(streamInput);
+      await service.processGenerationAttempt(STREAM_INPUT);
       expect(markSuccess).toHaveBeenCalledTimes(1);
     });
 
@@ -294,7 +317,7 @@ describe('Lifecycle Consolidation', () => {
         ports.planPersistence.markGenerationFailure
       );
 
-      await service.processGenerationAttempt(retryInput);
+      await service.processGenerationAttempt(RETRY_INPUT);
       expect(markFailure).toHaveBeenCalledTimes(1);
     });
   });
@@ -337,6 +360,8 @@ describe('Lifecycle Consolidation', () => {
               classification,
               error: new Error(`${classification} error`),
               durationMs: 100,
+              // Permanent failures (validation, capped) include usage data from
+              // the provider; retryable failures (timeout, rate_limit, etc.) do not.
               ...(expectedStatus === 'permanent_failure'
                 ? { usage: makeCanonicalUsage() }
                 : {}),
@@ -345,13 +370,13 @@ describe('Lifecycle Consolidation', () => {
         });
         service = new PlanLifecycleService(ports);
 
-        const result = await service.processGenerationAttempt(streamInput);
+        const result = await service.processGenerationAttempt(STREAM_INPUT);
         expect(result.status).toBe(expectedStatus);
 
         const markFailure = vi.mocked(
           ports.planPersistence.markGenerationFailure
         );
-        expect(markFailure).toHaveBeenCalledWith(streamInput.planId);
+        expect(markFailure).toHaveBeenCalledWith(STREAM_INPUT.planId);
       }
     );
 
@@ -368,7 +393,7 @@ describe('Lifecycle Consolidation', () => {
       });
       service = new PlanLifecycleService(ports);
 
-      const result = await service.processGenerationAttempt(retryInput);
+      const result = await service.processGenerationAttempt(RETRY_INPUT);
 
       expect(result.status).toBe('retryable_failure');
       if (
@@ -388,10 +413,10 @@ describe('Lifecycle Consolidation', () => {
     it('processes stream, retry, and regeneration inputs identically through the same path', async () => {
       const runGeneration = vi.mocked(ports.generation.runGeneration);
 
-      const streamResult = await service.processGenerationAttempt(streamInput);
-      const retryResult = await service.processGenerationAttempt(retryInput);
+      const streamResult = await service.processGenerationAttempt(STREAM_INPUT);
+      const retryResult = await service.processGenerationAttempt(RETRY_INPUT);
       const regenResult =
-        await service.processGenerationAttempt(regenerationInput);
+        await service.processGenerationAttempt(REGENERATION_INPUT);
 
       // All three should succeed via the same lifecycle path
       expect(streamResult.status).toBe('generation_success');
@@ -429,9 +454,9 @@ describe('Lifecycle Consolidation', () => {
       service = new PlanLifecycleService(ports);
 
       const results = await Promise.all([
-        service.processGenerationAttempt(streamInput),
-        service.processGenerationAttempt(retryInput),
-        service.processGenerationAttempt(regenerationInput),
+        service.processGenerationAttempt(STREAM_INPUT),
+        service.processGenerationAttempt(RETRY_INPUT),
+        service.processGenerationAttempt(REGENERATION_INPUT),
       ]);
 
       // All three should be retryable_failure
@@ -496,10 +521,7 @@ describe('Lifecycle Consolidation', () => {
     it('PDF and AI plan creation both check capped plans', async () => {
       const findCapped = vi.fn().mockResolvedValue('capped-plan-id');
       ports = createMockPorts({
-        planPersistence: {
-          ...createMockPorts().planPersistence,
-          findCappedPlanWithoutModules: findCapped,
-        },
+        planPersistence: { findCappedPlanWithoutModules: findCapped },
       });
       service = new PlanLifecycleService(ports);
 

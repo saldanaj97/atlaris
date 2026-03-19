@@ -94,6 +94,9 @@ export type CreatePlanSuccess = {
   /** Normalized values produced during creation — used by the route for generation input. */
   readonly normalizedInput: {
     readonly topic: string;
+    readonly skillLevel: 'beginner' | 'intermediate' | 'advanced';
+    readonly weeklyHours: number;
+    readonly learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
     readonly startDate: string | null;
     readonly deadlineDate: string | null;
     readonly pdfContext?: PdfContext | null;

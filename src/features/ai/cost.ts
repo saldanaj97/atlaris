@@ -28,7 +28,8 @@ export const DEFAULT_OUTPUT_TOKEN_CEILING = 32_768;
 /**
  * Compute estimated cost in **USD cents** from model pricing and token counts.
  *
- * Returns 0 when the model is not in the registry or both counts are zero.
+ * Throws when the model is not in the registry (unknown models must not
+ * silently waive charges). Returns 0 when both counts are zero.
  * The result is deterministic: identical inputs always produce identical output.
  */
 export function computeCostCents(
@@ -49,8 +50,10 @@ export function computeCostCents(
 
   const model = getModelById(modelId);
   if (!model) {
-    logger.warn({ modelId }, 'Unknown model in computeCostCents — returning 0');
-    return 0;
+    logger.error({ modelId }, 'Unknown model in computeCostCents');
+    throw new Error(
+      `Unknown model "${modelId}" in computeCostCents — cannot determine pricing.`
+    );
   }
   if (inputTokens === 0 && outputTokens === 0) return 0;
 
