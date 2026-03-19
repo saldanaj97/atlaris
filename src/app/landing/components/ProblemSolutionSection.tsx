@@ -30,9 +30,8 @@ export function ProblemSolutionSection() {
 
         <div className="grid gap-8 md:grid-cols-2">
           {/* Problem Card */}
-          <div
+          <section
             className="group border-destructive/30 from-destructive/10 dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-linear-to-br to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
-            role="region"
             aria-labelledby="problem-card-heading"
           >
             {/* Decorative glow */}
@@ -53,7 +52,7 @@ export function ProblemSolutionSection() {
               </h3>
             </div>
 
-            <ul className="space-y-4" role="list">
+            <ul className="space-y-4">
               <ProblemItem>
                 Endless searches across YouTube, blogs, and courses
               </ProblemItem>
@@ -65,12 +64,11 @@ export function ProblemSolutionSection() {
               </ProblemItem>
               <ProblemItem>Motivation dies by week two</ProblemItem>
             </ul>
-          </div>
+          </section>
 
           {/* Solution Card */}
-          <div
+          <section
             className="group border-primary/30 from-primary/10 dark:border-primary/20 dark:from-primary/5 dark:to-card/40 relative overflow-hidden rounded-3xl border bg-linear-to-br to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl"
-            role="region"
             aria-labelledby="solution-card-heading"
           >
             {/* Decorative glow */}
@@ -88,13 +86,13 @@ export function ProblemSolutionSection() {
               </h3>
             </div>
 
-            <ul className="space-y-4" role="list">
+            <ul className="space-y-4">
               <SolutionItem>Coherent roadmap from day one</SolutionItem>
               <SolutionItem>Time-blocked in your calendar</SolutionItem>
               <SolutionItem>Resources attached to every session</SolutionItem>
               <SolutionItem>Progress visible at a glance</SolutionItem>
             </ul>
-          </div>
+          </section>
         </div>
       </div>
     </section>

@@ -85,7 +85,10 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
               <span className="flex-shrink-0 text-xs text-slate-400">
                 {activity.timestamp}
               </span>
-              <button className="rounded-lg p-1 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-white/10">
+              <button
+                type="button"
+                className="rounded-lg p-1 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-500 dark:hover:bg-white/10"
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </button>
             </div>
