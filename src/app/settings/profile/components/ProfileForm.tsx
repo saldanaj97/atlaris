@@ -1,18 +1,17 @@
 'use client';
 
+import { Pencil } from 'lucide-react';
 import Link from 'next/link';
 import {
+  type ReactElement,
   useCallback,
   useEffect,
   useReducer,
   useRef,
-  type ReactElement,
 } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-
-import { Pencil } from 'lucide-react';
-
+import { ProfileFormSkeleton } from '@/app/settings/profile/components/ProfileFormSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,8 +19,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-
-import { ProfileFormSkeleton } from '@/app/settings/profile/components/ProfileFormSkeleton';
 
 const profileSchema = z.object({
   id: z.string(),

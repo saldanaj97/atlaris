@@ -8,14 +8,14 @@ import {
   ProviderInvalidResponseError,
 } from '@/features/ai/providers/errors';
 import {
-  type StreamEventLike,
+  getStatusCodeFromError,
   isAsyncIterable,
   isObjectRecord,
+  normalizeUsage,
+  parseContent,
+  type StreamEventLike,
   streamFromEvents,
   validateNonStreamingResponse,
-  parseContent,
-  normalizeUsage,
-  getStatusCodeFromError,
 } from '@/features/ai/providers/openrouter-response';
 import { toStream } from '@/features/ai/streaming/utils';
 import {

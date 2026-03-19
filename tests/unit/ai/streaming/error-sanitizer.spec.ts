@@ -1,5 +1,5 @@
-import { sanitizeSseError } from '@/features/ai/streaming/error-sanitizer';
 import { describe, expect, it } from 'vitest';
+import { sanitizeSseError } from '@/features/ai/streaming/error-sanitizer';
 
 describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
   it('sanitizes timeout errors', () => {

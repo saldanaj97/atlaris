@@ -1,5 +1,5 @@
+import pino, { type LoggerOptions, stdTimeFunctions } from 'pino';
 import { appEnv, loggingEnv } from '@/lib/config/env';
-import pino, { stdTimeFunctions, type LoggerOptions } from 'pino';
 
 export type Logger = import('pino').Logger;
 

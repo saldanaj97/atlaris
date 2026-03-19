@@ -1,3 +1,7 @@
+import { randomUUID } from 'crypto';
+import { eq } from 'drizzle-orm';
+import type { MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -5,10 +9,6 @@ import {
 } from '@/lib/db/queries/attempts';
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { randomUUID } from 'crypto';
-import { eq } from 'drizzle-orm';
-import type { MockInstance } from 'vitest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 

@@ -42,7 +42,7 @@ jobs:
               - 'drizzle.config.ts'
 
   lint-and-type-check:
-    name: Lint & Type Check
+    name: Lint & type check
     needs: [changes]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -79,7 +79,7 @@ jobs:
             git status --short src/lib/db/migrations/
             exit 1
           fi
-      - name: Run ESLint
+      - name: Run Biome check
         run: pnpm lint
       - name: Run TypeScript type check
         run: pnpm type-check

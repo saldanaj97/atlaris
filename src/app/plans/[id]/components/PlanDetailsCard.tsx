@@ -1,15 +1,14 @@
+import type { PlanDetailsCardStats } from '@/app/plans/[id]/types';
+
+import { Badge } from '@/components/ui/badge';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import {
   formatLearningStyle,
   formatMinutes,
   formatSkillLevel,
   formatWeeklyHours,
 } from '@/features/plans/formatters';
-
-import { Badge } from '@/components/ui/badge';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-
-import type { PlanDetailsCardStats } from '@/app/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 interface PlanDetailsCardProps {

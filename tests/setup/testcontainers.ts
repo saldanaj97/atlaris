@@ -13,14 +13,14 @@
  * set SKIP_TESTCONTAINERS=true.
  */
 
+import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
-import { randomUUID } from 'node:crypto';
-import { execSync } from 'node:child_process';
-import { unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import postgres from 'postgres';
 
 let container: StartedPostgreSqlContainer | null = null;

@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NextRequest } from 'next/server';
-import { db } from '@/lib/db/service-role';
-import { users, integrationTokens, oauthStateTokens } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { NextRequest } from 'next/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getOAuthTokens } from '@/features/integrations/oauth';
 import { generateAndStoreOAuthStateToken } from '@/features/integrations/oauth-state';
+import { integrationTokens, oauthStateTokens, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../helpers/auth';
 import { ensureUser } from '../helpers/db';
 

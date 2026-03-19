@@ -1,15 +1,15 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getPlanSchedule } from '@/features/scheduling/schedule-api';
 import {
   learningPlans,
-  users,
   modules,
-  tasks,
   resources,
   taskResources,
+  tasks,
+  users,
 } from '@/lib/db/schema';
-import { getPlanSchedule } from '@/features/scheduling/schedule-api';
-import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db/service-role';
 
 describe('End-to-End Schedule Flow', () => {
   let testUserId: string;

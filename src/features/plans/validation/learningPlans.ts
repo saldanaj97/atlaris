@@ -6,6 +6,7 @@ import {
   startOfToday,
 } from 'date-fns';
 import { z } from 'zod';
+
 export type {
   CreateLearningPlanInput,
   OnboardingFormValues,
@@ -21,15 +22,15 @@ import {
 } from './shared';
 
 export {
+  createLearningPlanObject,
+  createLearningPlanSchema,
+} from '@/shared/schemas/learning-plans.schemas';
+export {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
   weeklyHoursSchema,
 } from './shared';
 
-export {
-  createLearningPlanObject,
-  createLearningPlanSchema,
-} from '@/shared/schemas/learning-plans.schemas';
 import {
   createLearningPlanObject,
   topicSchema,

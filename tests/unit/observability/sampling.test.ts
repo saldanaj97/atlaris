@@ -295,33 +295,35 @@ describe('shouldEnableLogs', () => {
 // ---------------------------------------------------------------------------
 
 describe('high-severity capture guarantees', () => {
-  it.each(['production', 'development', 'test'])(
-    'error replays are 100%% in %s',
-    (env) => {
-      withEnv(env, () => {
-        expect(getReplayErrorSampleRate()).toBe(1.0);
-      });
-    }
-  );
+  it.each([
+    'production',
+    'development',
+    'test',
+  ])('error replays are 100%% in %s', (env) => {
+    withEnv(env, () => {
+      expect(getReplayErrorSampleRate()).toBe(1.0);
+    });
+  });
 
-  it.each(['production', 'development', 'test'])(
-    'traces with sampled parents are never dropped in %s',
-    (env) => {
-      withEnv(env, () => {
-        expect(tracesSampler({ name: 'anything', parentSampled: true })).toBe(
-          1.0
-        );
-      });
-    }
-  );
+  it.each([
+    'production',
+    'development',
+    'test',
+  ])('traces with sampled parents are never dropped in %s', (env) => {
+    withEnv(env, () => {
+      expect(tracesSampler({ name: 'anything', parentSampled: true })).toBe(
+        1.0
+      );
+    });
+  });
 
-  it.each(['production', 'development'])(
-    'API routes have non-zero sample rate in %s',
-    (env) => {
-      withEnv(env, () => {
-        const rate = tracesSampler({ name: 'POST /api/plans' });
-        expect(rate).toBeGreaterThan(0);
-      });
-    }
-  );
+  it.each([
+    'production',
+    'development',
+  ])('API routes have non-zero sample rate in %s', (env) => {
+    withEnv(env, () => {
+      const rate = tracesSampler({ name: 'POST /api/plans' });
+      expect(rate).toBeGreaterThan(0);
+    });
+  });
 });

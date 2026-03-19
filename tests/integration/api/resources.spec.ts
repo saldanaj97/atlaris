@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resources } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
-import { setTestUser, clearTestUser } from '../../helpers/auth';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { auth } from '../../mocks/shared/auth-server';
 

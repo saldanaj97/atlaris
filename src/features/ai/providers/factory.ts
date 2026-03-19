@@ -1,9 +1,8 @@
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { RouterGenerationProvider } from '@/features/ai/providers/router';
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-
-import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 
 function parseMockSeed(): number | undefined {
   return typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)

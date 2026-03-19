@@ -1,10 +1,10 @@
+import { and, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { and, eq, sql } from 'drizzle-orm';
 
 import { UsageMetricsLoadError } from './errors';
-import { getUserTier, type DbClient } from './tier';
+import { type DbClient, getUserTier } from './tier';
 import { TIER_LIMITS } from './tier-limits';
 import type { SubscriptionTier } from './tier-limits.types';
 

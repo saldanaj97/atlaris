@@ -1,15 +1,13 @@
 'use client';
 
-import type { JSX } from 'react';
-
-import { EmptyPlansList } from '@/app/plans/components/EmptyPlansList';
-import { getPlanStatus } from '@/app/plans/components/plan-utils';
-import { PlanRow } from '@/app/plans/components/PlanRow';
-import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
+import type { JSX } from 'react';
 import { useMemo, useState } from 'react';
-
+import { EmptyPlansList } from '@/app/plans/components/EmptyPlansList';
+import { PlanRow } from '@/app/plans/components/PlanRow';
+import { getPlanStatus } from '@/app/plans/components/plan-utils';
 import type { FilterStatus, PlanStatus } from '@/app/plans/types';
+import { Button } from '@/components/ui/button';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 interface UsageData {

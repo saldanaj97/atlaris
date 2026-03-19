@@ -1,16 +1,15 @@
 import { pdfPreviewEditSchema } from '@/features/pdf/validation/pdf';
 
 import type { PdfPreviewEditInput } from '@/features/pdf/validation/pdf.types';
+import {
+  PERSISTED_PDF_CONTEXT_CAPS,
+  PROMPT_PDF_CONTEXT_CAPS,
+} from './constants';
 import type {
   PdfContext,
   PdfContextCaps,
   PdfContextSection,
 } from './context.types';
-
-import {
-  PERSISTED_PDF_CONTEXT_CAPS,
-  PROMPT_PDF_CONTEXT_CAPS,
-} from './constants';
 
 const PDF_CONTEXT_INPUT_SCHEMA = pdfPreviewEditSchema.pick({
   mainTopic: true,

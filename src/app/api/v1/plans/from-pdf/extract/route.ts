@@ -10,15 +10,15 @@ import {
   toPdfExtractionProofPayload,
 } from '@/features/pdf/security/pdf-extraction-proof';
 import {
-  capExtractionResponsePayload,
   type CapExtractionResponse,
+  capExtractionResponsePayload,
 } from '@/features/pdf/structure';
 import type { ExtractedSection } from '@/features/pdf/types';
 import { pdfExtractionFormDataSchema } from '@/features/pdf/validation/pdf';
 import {
+  type PlainHandler,
   withAuthAndRateLimit,
   withErrorBoundary,
-  type PlainHandler,
 } from '@/lib/api/auth';
 import {
   acquireGlobalPdfExtractionSlot,

@@ -1,12 +1,11 @@
 'use client';
 
+import { Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { useId, useState } from 'react';
-
 import BrandLogo from '@/components/shared/BrandLogo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Menu, X } from 'lucide-react';
 
 const NAV_LINK_CLASSES =
   'text-sm font-medium text-muted-foreground transition hover:text-primary focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none';

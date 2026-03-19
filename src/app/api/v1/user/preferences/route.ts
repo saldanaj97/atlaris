@@ -1,3 +1,4 @@
+import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 import {
   getDefaultModelForTier,
   getModelsForTier,
@@ -11,7 +12,6 @@ import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
-import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 
 /**
  * GET /api/v1/user/preferences

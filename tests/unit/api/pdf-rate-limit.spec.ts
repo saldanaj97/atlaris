@@ -1,3 +1,4 @@
+import { describe, expect, it, vi } from 'vitest';
 import {
   acquireGlobalPdfExtractionSlot,
   checkPdfExtractionThrottle,
@@ -6,7 +7,6 @@ import {
   validatePdfUpload,
   withGlobalPdfSlot,
 } from '@/lib/api/pdf-rate-limit';
-import { describe, expect, it, vi } from 'vitest';
 
 describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
   describe('Extraction throttling', () => {

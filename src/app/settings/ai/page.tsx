@@ -1,10 +1,8 @@
 import type { ReactElement } from 'react';
 import { Suspense } from 'react';
-
-import { Card } from '@/components/ui/card';
-
 import { ModelSelectionCard } from '@/app/settings/ai/components/ModelSelectionCard';
 import { ModelSelectionCardSkeleton } from '@/app/settings/ai/components/ModelSelectionCardSkeleton';
+import { Card } from '@/components/ui/card';
 
 /**
  * AI Settings sub-page.

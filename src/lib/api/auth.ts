@@ -1,17 +1,16 @@
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { auth, getSessionSafe } from '@/lib/auth/server';
-import { appEnv, devAuthEnv } from '@/lib/config/env';
-import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
-import { AuthError } from './errors';
-import { checkUserRateLimit, getUserRateLimitHeaders } from './user-rate-limit';
-
 import type {
   PlainHandler,
   RouteHandlerContext,
 } from '@/lib/api/types/auth.types';
+import { auth, getSessionSafe } from '@/lib/auth/server';
+import { appEnv, devAuthEnv } from '@/lib/config/env';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
+import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import type { RlsClient } from '@/lib/db/rls';
+import { AuthError } from './errors';
 import type { UserRateLimitCategory } from './user-rate-limit';
+import { checkUserRateLimit, getUserRateLimitHeaders } from './user-rate-limit';
 
 export type {
   PlainHandler,

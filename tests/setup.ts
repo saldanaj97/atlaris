@@ -1,8 +1,7 @@
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
-
-import { client, isClientInitialized } from '@/lib/db/service-role';
 import { Mutex } from 'async-mutex';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
+import { client, isClientInitialized } from '@/lib/db/service-role';
 import {
   ensureGoogleCalendarSyncState,
   ensureStripeWebhookEvents,

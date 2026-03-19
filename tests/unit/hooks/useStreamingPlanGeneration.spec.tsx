@@ -1,15 +1,16 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 
 const encoder = new TextEncoder();
 
 const toStream = (chunks: string[]) =>
   new ReadableStream<Uint8Array>({
     start(controller) {
-      chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)));
+      for (const chunk of chunks) {
+        controller.enqueue(encoder.encode(chunk));
+      }
       controller.close();
     },
   });

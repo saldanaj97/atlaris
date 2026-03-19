@@ -9,11 +9,11 @@
 
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import type { GenerationInput } from '@/features/ai/types/provider.types';
 import { safeNormalizeUsage } from '@/features/ai/usage';
 import type { PdfContext } from '@/features/pdf/context.types';
-import type { GenerationInput } from '@/features/ai/types/provider.types';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { DbClient } from '@/lib/db/types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 import type { GenerationPort } from '../ports';
 import type {

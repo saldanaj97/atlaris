@@ -1,3 +1,6 @@
+import { randomUUID } from 'crypto';
+import { eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
 import {
   finalizeAttemptFailure,
@@ -6,9 +9,6 @@ import {
 } from '@/lib/db/queries/attempts';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { randomUUID } from 'crypto';
-import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createFailedAttemptsInDb,
   getDurableWindowSeedCount,

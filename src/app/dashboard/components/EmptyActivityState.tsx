@@ -1,3 +1,5 @@
+import { Activity, Plus } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -7,8 +9,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Activity, Plus } from 'lucide-react';
-import Link from 'next/link';
 
 import type { ActivityFilter, ActivityLabel } from '../types';
 

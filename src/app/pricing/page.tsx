@@ -1,19 +1,19 @@
+import type { Metadata } from 'next';
+import type { ReactElement } from 'react';
 import { PricingGrid } from '@/app/pricing/components/PricingGrid';
 import { PricingMissingStripeNotice } from '@/app/pricing/components/PricingMissingStripeNotice';
 import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import type { TierConfig } from '@/app/pricing/components/pricing-config';
 import {
   MONTHLY_TIER_CONFIGS,
   YEARLY_TIER_CONFIGS,
 } from '@/app/pricing/components/pricing-config';
-import type { TierConfig } from '@/app/pricing/components/pricing-config';
-import { fetchStripeTierData } from '@/app/pricing/components/stripe-pricing';
 import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
+import { fetchStripeTierData } from '@/app/pricing/components/stripe-pricing';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { logger } from '@/lib/logging/logger';
-import type { Metadata } from 'next';
-import type { ReactElement } from 'react';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',

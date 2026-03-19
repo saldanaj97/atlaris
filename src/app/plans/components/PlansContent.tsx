@@ -1,16 +1,14 @@
-import type { JSX } from 'react';
-
-import { Button } from '@/components/ui/button';
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import { getDb } from '@/lib/db/runtime';
-import { getUsageSummary } from '@/features/billing/usage-metrics';
 import { Plus, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-
+import type { JSX } from 'react';
 import { PlanCountBadge } from '@/app/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/plans/components/PlansList';
+import { Button } from '@/components/ui/button';
+import { getUsageSummary } from '@/features/billing/usage-metrics';
+import { withServerComponentContext } from '@/lib/api/auth';
+import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
+import { getDb } from '@/lib/db/runtime';
 
 /**
  * Async component that fetches usage data and renders the plan count badge.

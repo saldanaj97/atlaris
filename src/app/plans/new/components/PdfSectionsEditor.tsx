@@ -1,9 +1,9 @@
 'use client';
 
-import type { SectionWithId } from '@/app/plans/new/components/usePdfExtractionDraft';
-import { PdfSectionEditorRow } from '@/app/plans/new/components/PdfSectionEditorRow';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import type { JSX } from 'react';
+import { PdfSectionEditorRow } from '@/app/plans/new/components/PdfSectionEditorRow';
+import type { SectionWithId } from '@/app/plans/new/components/usePdfExtractionDraft';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PdfSectionsEditorProps {
   sectionsLabelId: string;

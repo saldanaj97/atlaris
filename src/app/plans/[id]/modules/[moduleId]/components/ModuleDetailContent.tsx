@@ -1,11 +1,11 @@
-import { Skeleton } from '@/components/ui/skeleton';
+import { redirect } from 'next/navigation';
 import { getCachedModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/data';
 import {
   getModuleError,
   isModuleSuccess,
 } from '@/app/plans/[id]/modules/[moduleId]/helpers';
+import { Skeleton } from '@/components/ui/skeleton';
 import { logger } from '@/lib/logging/logger';
-import { redirect } from 'next/navigation';
 
 import { ModuleDetailPageError } from './Error';
 import { ModuleDetail } from './ModuleDetail';

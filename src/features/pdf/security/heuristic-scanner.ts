@@ -1,5 +1,8 @@
+import type {
+  ScanProvider,
+  ScanVerdict,
+} from '@/features/pdf/security/scanner.types';
 import { logger as defaultLogger } from '@/lib/logging/logger';
-import type { ScanProvider, ScanVerdict } from '@/features/pdf/security/scanner.types';
 
 /** Minimal logger interface for DI; callers may pass a full Logger or a mock. */
 type HeuristicScanLogger = {

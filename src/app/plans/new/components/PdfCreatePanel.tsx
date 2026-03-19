@@ -1,26 +1,21 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import {
   PdfExtractionPreview,
   type PdfPlanSettings,
 } from '@/app/plans/new/components/PdfExtractionPreview';
 import { PdfGeneratingState } from '@/app/plans/new/components/PdfGeneratingState';
 import {
+  type ErrorCode,
   isKnownErrorCode,
   PdfUploadError,
-  type ErrorCode,
 } from '@/app/plans/new/components/PdfUploadError';
 import { PdfUploadingState } from '@/app/plans/new/components/PdfUploadingState';
 import { PdfUploadZone } from '@/app/plans/new/components/PdfUploadZone';
 import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
-import {
-  isStreamingError,
-  useStreamingPlanGeneration,
-} from '@/hooks/useStreamingPlanGeneration';
-import { normalizeApiErrorResponse } from '@/lib/api/error-response';
-import { isAbortError } from '@/lib/errors';
-import { clientLogger } from '@/lib/logging/client';
-import { mapPdfSettingsToCreateInput } from '@/features/plans/create-mapper';
 import { extractionApiResponseSchema } from '@/features/pdf/validation/pdf';
 import type {
   ExtractionApiResponseData,
@@ -28,9 +23,14 @@ import type {
   ExtractionSection,
   TruncationData,
 } from '@/features/pdf/validation/pdf.types';
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { toast } from 'sonner';
+import { mapPdfSettingsToCreateInput } from '@/features/plans/create-mapper';
+import {
+  isStreamingError,
+  useStreamingPlanGeneration,
+} from '@/hooks/useStreamingPlanGeneration';
+import { normalizeApiErrorResponse } from '@/lib/api/error-response';
+import { isAbortError } from '@/lib/errors';
+import { clientLogger } from '@/lib/logging/client';
 
 const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
 

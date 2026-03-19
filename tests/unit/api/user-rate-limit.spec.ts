@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { RateLimitError } from '@/lib/api/errors';
 import {
   checkUserRateLimit,
   clearAllUserRateLimiters,
@@ -8,7 +8,6 @@ import {
   resetUserRateLimits,
   USER_RATE_LIMIT_CONFIGS,
 } from '@/lib/api/user-rate-limit';
-import { RateLimitError } from '@/lib/api/errors';
 
 describe('User Rate Limiting', () => {
   beforeEach(() => {

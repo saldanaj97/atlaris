@@ -1,10 +1,10 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
-import { setTestUser, clearTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
-import { db } from '@/lib/db/service-role';
+import { NextRequest } from 'next/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { learningPlans, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
 
 // Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({

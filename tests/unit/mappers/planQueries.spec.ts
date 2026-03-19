@@ -1,4 +1,4 @@
-import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
+import { describe, expect, it } from 'vitest';
 import type {
   ProgressStatusRow,
   SummaryTaskRow,
@@ -7,6 +7,7 @@ import {
   mapLearningPlanDetail,
   mapPlanSummaries,
 } from '@/lib/db/queries/mappers';
+import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
   GenerationAttempt,
   LearningPlan,
@@ -14,7 +15,6 @@ import type {
   Task,
   TaskProgress,
 } from '@/shared/types/db.types';
-import { describe, expect, it } from 'vitest';
 
 import { createId } from '../../fixtures/ids';
 

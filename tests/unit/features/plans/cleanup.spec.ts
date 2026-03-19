@@ -7,6 +7,7 @@ import {
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
 import type { DbClient } from '@/lib/db/types';
+
 // Mock the logger to avoid console noise and allow assertion
 vi.mock('@/lib/logging/logger', () => ({
   logger: {

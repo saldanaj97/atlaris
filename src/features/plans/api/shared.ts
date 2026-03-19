@@ -1,13 +1,16 @@
 import { and, count, eq, gte, notExists } from 'drizzle-orm';
 
 import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
-import { getDb } from '@/lib/db/runtime';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
-import { TIER_LIMITS, type SubscriptionTier } from '@/features/billing/tier-limits';
+import {
+  type SubscriptionTier,
+  TIER_LIMITS,
+} from '@/features/billing/tier-limits';
 import {
   DEFAULT_PLAN_DURATION_WEEKS,
   MILLISECONDS_PER_WEEK,
 } from '@/features/plans/validation/learningPlans';
+import type { getDb } from '@/lib/db/runtime';
+import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 
 export function calculateTotalWeeks({
   startDate,

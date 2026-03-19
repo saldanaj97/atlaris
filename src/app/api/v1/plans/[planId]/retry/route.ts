@@ -8,21 +8,20 @@ import {
   streamHeaders,
 } from '@/features/ai/streaming/events';
 import type { IsoDateString } from '@/features/ai/types/provider.types';
+import { resolveUserTier } from '@/features/billing/tier';
 import { parsePersistedPdfContext } from '@/features/pdf/context';
-import type { FailureClassification } from '@/shared/types/client.types';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/features/plans/api/route-context';
-import { resolveUserTier } from '@/features/billing/tier';
-import { createPlanLifecycleService } from '@/features/plans/lifecycle';
 import type {
   GenerationAttemptResult,
   JobQueuePort,
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { createPlanLifecycleService } from '@/features/plans/lifecycle';
 import type { PlainHandler } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
 import {
   checkPlanGenerationRateLimit,
@@ -30,6 +29,7 @@ import {
 } from '@/lib/api/rate-limit';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 export const maxDuration = 60;
 

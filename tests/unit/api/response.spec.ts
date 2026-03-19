@@ -1,5 +1,5 @@
-import { json, jsonError } from '@/lib/api/response';
 import { describe, expect, it } from 'vitest';
+import { json, jsonError } from '@/lib/api/response';
 
 describe('json', () => {
   it('should create JSON response with default status 200', async () => {

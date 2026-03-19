@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GET } from '@/app/api/v1/plans/route';
-import { db } from '@/lib/db/service-role';
 import { learningPlans, taskProgress } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { buildTestPlanInsert } from '../../fixtures/plans';
 import { clearTestUser, setTestUser } from '../../helpers/auth';

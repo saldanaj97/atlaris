@@ -1,5 +1,3 @@
-import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
-import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 import {
   createLearningPlanSchema,
   onboardingFormSchema,
@@ -8,6 +6,8 @@ import type {
   CreateLearningPlanInput,
   OnboardingFormValues,
 } from '@/features/plans/validation/learningPlans.types';
+import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
+import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
 const WEEKLY_HOURS_RANGE_TO_INT: Record<string, number> = {
   '1-2': 2,

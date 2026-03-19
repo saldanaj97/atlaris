@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-
-import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
+import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type {
   CreateAiPlanInput,
   CreatePdfPlanInput,

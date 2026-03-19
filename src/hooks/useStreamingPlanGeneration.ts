@@ -4,9 +4,9 @@ import { useCallback, useRef, useState } from 'react';
 
 import { StreamingEventSchema } from '@/features/ai/streaming/schema';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
 type GenerationStatus =
   | 'idle'

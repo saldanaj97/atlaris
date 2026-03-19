@@ -1,12 +1,12 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import {
-  EnvValidationError,
   aiEnv,
   appEnv,
+  EnvValidationError,
   optionalEnv,
   requireEnv,
 } from '@/lib/config/env';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('Environment Configuration', () => {
   // Store original env values

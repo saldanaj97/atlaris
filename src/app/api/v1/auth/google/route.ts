@@ -1,11 +1,10 @@
+import { google } from 'googleapis';
 import { NextResponse } from 'next/server';
-
+import { generateAndStoreOAuthStateToken } from '@/features/integrations/oauth-state';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { ServiceUnavailableError } from '@/lib/api/errors';
 import { googleOAuthEnv } from '@/lib/config/env';
-import { generateAndStoreOAuthStateToken } from '@/features/integrations/oauth-state';
 import { logger } from '@/lib/logging/logger';
-import { google } from 'googleapis';
 
 function getGoogleOAuthConfig() {
   return {

@@ -1,24 +1,23 @@
-import {
-  MAX_PROVIDER_RETRIES,
-  PROVIDER_RETRY_MAX_MS,
-  PROVIDER_RETRY_MIN_MS,
-} from '@/features/plans/retry-policy';
+import pRetry from 'p-retry';
 import {
   ProviderError,
   ProviderInvalidResponseError,
 } from '@/features/ai/providers/errors';
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
-import { aiEnv, appEnv } from '@/lib/config/env';
-import { logger } from '@/lib/logging/logger';
-import pRetry from 'p-retry';
-
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
 } from '@/features/ai/types/provider.types';
+import {
+  MAX_PROVIDER_RETRIES,
+  PROVIDER_RETRY_MAX_MS,
+  PROVIDER_RETRY_MIN_MS,
+} from '@/features/plans/retry-policy';
+import { aiEnv, appEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
 
 export type RouterConfig = {
   useMock?: boolean;
@@ -30,9 +29,9 @@ export type RouterConfig = {
  * Intentional exception to the "no unknown/any" guideline: the parameter is typed
  * as `unknown` so callers must pass through untyped errors (e.g. from fetch or
  * OpenRouter SDK) and we narrow safely using explicit checks for `status`,
- * `statusCode`, and `response.status`. If the linter flags `unknown` here, add an
- * eslint-disable-next-line for that rule only and reference getStatusCode in the
- * comment so future readers know it is intentional.
+ * `statusCode`, and `response.status`. If the linter flags `unknown` here, add a
+ * targeted biome-ignore for that rule and reference getStatusCode in the comment
+ * so future readers know it is intentional.
  */
 function getStatusCode(error: unknown): number | undefined {
   if (!error || typeof error !== 'object') {
@@ -184,7 +183,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
           },
           'AI router provider failed'
         );
-        continue; // try next provider
       }
     }
 

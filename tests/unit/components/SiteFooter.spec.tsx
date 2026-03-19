@@ -1,6 +1,6 @@
-import SiteFooter from '@/components/shared/SiteFooter';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import SiteFooter from '@/components/shared/SiteFooter';
 
 describe('SiteFooter', () => {
   afterEach(() => {

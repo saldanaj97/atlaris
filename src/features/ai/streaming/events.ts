@@ -1,6 +1,5 @@
-import { logger } from '@/lib/logging/logger';
-
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
+import { logger } from '@/lib/logging/logger';
 
 const encoder = new TextEncoder();
 

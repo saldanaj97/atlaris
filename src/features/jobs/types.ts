@@ -1,4 +1,3 @@
-export { JOB_TYPES } from '@/shared/types/jobs.types';
 export type {
   Job,
   JobErrorHistoryEntry,
@@ -13,3 +12,4 @@ export type {
   PlanRegenerationJobPayload,
   PlanRegenerationJobResult,
 } from '@/shared/types/jobs.types';
+export { JOB_TYPES } from '@/shared/types/jobs.types';

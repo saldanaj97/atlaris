@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   isPlanOwnershipWriteError,
@@ -8,7 +9,6 @@ import type { getDb } from '@/lib/db/runtime';
 import { planSchedules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
-import { eq } from 'drizzle-orm';
 
 /** RLS-enforced database client for schedule queries. */
 type DbClient = ReturnType<typeof getDb>;

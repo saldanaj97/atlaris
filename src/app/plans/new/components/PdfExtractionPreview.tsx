@@ -1,19 +1,19 @@
 'use client';
 
+import type { JSX } from 'react';
+import { useId } from 'react';
 import { PdfExtractionHeader } from '@/app/plans/new/components/PdfExtractionHeader';
 import { PdfMainTopicEditor } from '@/app/plans/new/components/PdfMainTopicEditor';
 import { PdfPlanSettingsEditor } from '@/app/plans/new/components/PdfPlanSettingsEditor';
 import { PdfPreviewActions } from '@/app/plans/new/components/PdfPreviewActions';
 import { PdfSectionsEditor } from '@/app/plans/new/components/PdfSectionsEditor';
 import {
+  type PdfPlanSettings,
   stripSectionIds,
   usePdfExtractionDraft,
-  type PdfPlanSettings,
 } from '@/app/plans/new/components/usePdfExtractionDraft';
 import { Card } from '@/components/ui/card';
 import type { ExtractedSection } from '@/features/pdf/types';
-import type { JSX } from 'react';
-import { useId } from 'react';
 
 export type { PdfPlanSettings } from '@/app/plans/new/components/usePdfExtractionDraft';
 

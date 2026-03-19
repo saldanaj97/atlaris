@@ -1,13 +1,11 @@
-import { sanitizePdfContextForPrompt } from '@/features/pdf/context';
-
-import type { PdfContext } from '@/features/pdf/context.types';
-
 import {
   NOTES_PROMPT_MAX_CHARS,
   PDF_SECTION_TITLE_MAX_CHARS,
   TOPIC_PROMPT_MAX_CHARS,
 } from '@/features/ai/constants';
 import { PDF_SECTION_CONTENT_LIMIT } from '@/features/pdf/constants';
+import { sanitizePdfContextForPrompt } from '@/features/pdf/context';
+import type { PdfContext } from '@/features/pdf/context.types';
 
 export type PromptParams = {
   topic: string;

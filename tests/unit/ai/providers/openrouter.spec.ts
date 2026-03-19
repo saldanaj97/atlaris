@@ -6,8 +6,8 @@ import {
 } from '@/features/ai/cost';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import {
-  OpenRouterProvider,
   type OpenRouterClient,
+  OpenRouterProvider,
   type OpenRouterProviderConfig,
 } from '@/features/ai/providers/openrouter';
 import type { GenerationInput } from '@/features/ai/types/provider.types';

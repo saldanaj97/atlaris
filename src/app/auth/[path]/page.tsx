@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
-import type { JSX } from 'react';
 import { AuthView } from '@neondatabase/auth/react';
 import { authViewPaths } from '@neondatabase/auth/react/ui/server';
+import type { Metadata } from 'next';
+import type { JSX } from 'react';
 
 interface AuthPageProps {
   params: Promise<{ path: string }>;

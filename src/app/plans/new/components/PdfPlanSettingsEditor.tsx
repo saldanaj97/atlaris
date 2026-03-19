@@ -1,5 +1,7 @@
 'use client';
 
+import { Calendar, Clock } from 'lucide-react';
+import type { JSX } from 'react';
 import {
   DEADLINE_OPTIONS,
   LEARNING_STYLE_OPTIONS,
@@ -8,8 +10,6 @@ import {
 } from '@/app/plans/new/components/plan-form/constants';
 import { InlineDropdown } from '@/app/plans/new/components/plan-form/InlineDropdown';
 import type { PdfPlanSettings } from '@/app/plans/new/components/usePdfExtractionDraft';
-import { Calendar, Clock } from 'lucide-react';
-import type { JSX } from 'react';
 
 interface PdfPlanSettingsEditorProps {
   baseId: string;

@@ -51,7 +51,7 @@ export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
+  // Upload a larger set of source maps for more readable stack traces (increases build time)
   widenClientFileUpload: true,
 
   // Tunnel route disabled — unnecessary pre-launch and keeps server/DB warm for no reason.

@@ -1,10 +1,5 @@
 'use client';
 
-import type { ElementType, JSX } from 'react';
-
-import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
-import { formatMinutes } from '@/features/plans/formatters';
 import {
   ArrowRight,
   CheckCircle2,
@@ -17,8 +12,11 @@ import {
   Target,
 } from 'lucide-react';
 import Link from 'next/link';
-
+import type { ElementType, JSX } from 'react';
 import { UpdateTaskStatusButton } from '@/app/plans/[id]/components/UpdateTaskStatusButton';
+import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
+import { formatMinutes } from '@/features/plans/formatters';
 import type { ClientTask } from '@/shared/types/client.types';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 

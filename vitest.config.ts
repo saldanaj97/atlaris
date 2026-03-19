@@ -1,6 +1,6 @@
-import { config } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
 // In CI, rely on env vars injected by the workflow.

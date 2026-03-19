@@ -1,6 +1,5 @@
-import type { FailureClassification } from '@/shared/types/client.types';
-
 import { toApiErrorJsonResponse } from '@/lib/api/error-response';
+import type { FailureClassification } from '@/shared/types/client.types';
 
 interface JsonOptions {
   status?: number;

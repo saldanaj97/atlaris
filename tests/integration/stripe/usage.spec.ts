@@ -1,13 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ensureUser, truncateAll } from '@/../tests/helpers/db';
-import { db } from '@/lib/db/service-role';
-import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import {
   getUsageSummary,
   incrementUsage,
 } from '@/features/billing/usage-metrics';
 import { checkPlanLimit } from '@/features/plans/lifecycle';
+import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 describe('Usage Tracking', () => {
   beforeEach(async () => {

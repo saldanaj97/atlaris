@@ -1,12 +1,12 @@
 'use client';
 
-import { useRef, useState, type ReactElement } from 'react';
+import { type ReactElement, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { createPortalResponseSchema } from '@/features/billing/validation/stripe';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { createPortalResponseSchema } from '@/features/billing/validation/stripe';
 
 const PORTAL_TIMEOUT_MS = 15_000;
 

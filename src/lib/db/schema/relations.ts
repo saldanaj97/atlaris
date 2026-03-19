@@ -1,25 +1,24 @@
 import { relations } from 'drizzle-orm';
-
+import {
+  googleCalendarSyncState,
+  integrationTokens,
+  taskCalendarEvents,
+} from './tables/integrations';
+import { jobQueue } from './tables/jobs';
 import {
   generationAttempts,
   learningPlans,
   planSchedules,
 } from './tables/plans';
 import {
-  integrationTokens,
-  googleCalendarSyncState,
-  taskCalendarEvents,
-} from './tables/integrations';
-import { jobQueue } from './tables/jobs';
-import {
-  resources,
   modules,
-  taskResources,
+  resources,
   taskProgress,
+  taskResources,
   tasks,
 } from './tables/tasks';
-import { users } from './tables/users';
 import { aiUsageEvents, usageMetrics } from './tables/usage';
+import { users } from './tables/users';
 
 export const usersRelations = relations(users, ({ many }) => ({
   learningPlans: many(learningPlans),

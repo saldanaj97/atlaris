@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence';
+import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-
-import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
 
 // Minimal mock attempt record returned by the generationAttempts update
 const mockAttemptRecord = {

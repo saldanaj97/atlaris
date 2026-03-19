@@ -23,9 +23,11 @@ pnpm start            # Start production server
 ### Linting & Formatting
 
 ```bash
-pnpm lint             # Run ESLint (type-aware, flat config)
-pnpm lint:fix         # Auto-fix lint issues
-pnpm format           # Run Prettier (Tailwind class sorting enabled)
+pnpm lint             # Biome: format + lint + import assist (check only)
+pnpm lint:fix         # Biome: apply safe fixes (format + lint + organize imports)
+pnpm lint:changed     # Biome check only files changed vs base branch (see scripts/biome-changed.sh)
+pnpm format           # Biome formatter only
+pnpm format:changed   # Format only files changed vs base branch
 pnpm type-check       # TypeScript type checking only
 ```
 

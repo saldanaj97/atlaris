@@ -1,12 +1,11 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown } from 'lucide-react';
-import { useId } from 'react';
 import type { JSX } from 'react';
-
+import { useId } from 'react';
 import type { DropdownOption } from '@/app/plans/new/components/plan-form/types';
+import { cn } from '@/lib/utils';
 
 type DropdownVariant = 'primary' | 'accent' | 'cyan' | 'rose';
 

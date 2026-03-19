@@ -1,6 +1,5 @@
-import type { JSX } from 'react';
-
 import { MessageSquare } from 'lucide-react';
+import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {

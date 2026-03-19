@@ -1,8 +1,8 @@
+import type { Metadata } from 'next';
+import type { JSX } from 'react';
 import type { CreateMethod } from '@/app/plans/new/components/CreateMethodToggle';
 import { CreatePlanPageClient } from '@/app/plans/new/components/CreatePlanPageClient';
 import { MouseGlowContainer } from '@/app/plans/new/components/MouseGlow';
-import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 interface CreateNewPlanPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

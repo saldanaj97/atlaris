@@ -1,13 +1,13 @@
+import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getDb } from '@/lib/db/runtime';
 import { getSubscriptionTier } from '@/features/billing/subscriptions';
 import { getUsageSummary } from '@/features/billing/usage-metrics';
-import { redirect } from 'next/navigation';
-import type { JSX } from 'react';
+import { withServerComponentContext } from '@/lib/api/auth';
+import { getDb } from '@/lib/db/runtime';
 
 /**
  * Async component that fetches subscription and usage data.

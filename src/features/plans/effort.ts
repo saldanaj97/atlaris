@@ -4,12 +4,12 @@ export type {
 } from '@/shared/constants/effort';
 
 export {
+  aggregateNormalizationFlags,
   MODULE_MAX_MINUTES,
   MODULE_MIN_MINUTES,
-  TASK_MAX_MINUTES,
-  TASK_MIN_MINUTES,
-  aggregateNormalizationFlags,
   normalizeEffort,
   normalizeModuleMinutes,
   normalizeTaskMinutes,
+  TASK_MAX_MINUTES,
+  TASK_MIN_MINUTES,
 } from '@/shared/constants/effort';

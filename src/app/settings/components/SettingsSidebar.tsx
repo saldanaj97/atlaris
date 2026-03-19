@@ -1,16 +1,16 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import {
   Bell,
   Bot,
   CreditCard,
   Link2,
-  User,
   type LucideIcon,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 interface SettingsNavItem {
   label: string;

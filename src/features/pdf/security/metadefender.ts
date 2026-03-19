@@ -1,8 +1,10 @@
 import { z } from 'zod';
-
+import type {
+  ScanProvider,
+  ScanVerdict,
+} from '@/features/pdf/security/scanner.types';
 import { EnvValidationError } from '@/lib/config/env';
 import { logger as defaultLogger, type Logger } from '@/lib/logging/logger';
-import type { ScanProvider, ScanVerdict } from '@/features/pdf/security/scanner.types';
 
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const DEFAULT_MAX_POLL_ATTEMPTS = 30;

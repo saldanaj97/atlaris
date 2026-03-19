@@ -1,7 +1,7 @@
-import { safeMarkPlanFailed } from '@/app/api/v1/plans/stream/helpers';
-import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/helpers';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { StreamingHelperDependencies } from '@/app/api/v1/plans/stream/helpers';
+import { safeMarkPlanFailed } from '@/app/api/v1/plans/stream/helpers';
+import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
 import { createId } from '../../../fixtures/ids';
 

@@ -30,12 +30,12 @@
  * Note: In test environments, BYPASSRLS allows tests to access tables directly.
  */
 
+import { drizzle } from 'drizzle-orm/postgres-js';
+import type { Sql } from 'postgres';
+import postgres from 'postgres';
 import { databaseEnv } from '@/lib/config/env';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import type { Sql } from 'postgres';
 import * as schema from './schema';
 
 export type RlsClient = DbClient;

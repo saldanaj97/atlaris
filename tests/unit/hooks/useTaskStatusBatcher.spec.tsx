@@ -2,8 +2,8 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  useTaskStatusBatcher,
   type TaskStatusUpdate,
+  useTaskStatusBatcher,
 } from '@/hooks/useTaskStatusBatcher';
 import type { ProgressStatus } from '@/shared/types/db.types';
 

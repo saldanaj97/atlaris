@@ -1,5 +1,5 @@
-import { planOrigin } from '@/lib/db/enums';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { planOrigin } from '@/lib/db/enums';
 
 /**
  * Regression tests for GitHub Issue #283.

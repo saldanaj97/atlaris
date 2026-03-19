@@ -1,7 +1,7 @@
+import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { usageMetrics, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { and, eq } from 'drizzle-orm';
 
 import { UsageMetricsLockError, UserNotFoundError } from './errors';
 import type { DbClient } from './tier';

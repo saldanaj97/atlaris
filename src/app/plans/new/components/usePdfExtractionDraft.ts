@@ -1,8 +1,8 @@
 'use client';
 
-import type { ExtractedSection } from '@/features/pdf/types';
 import { nanoid } from 'nanoid';
 import { useCallback, useEffect, useReducer, useRef } from 'react';
+import type { ExtractedSection } from '@/features/pdf/types';
 
 export interface PdfPlanSettings {
   skillLevel: string;

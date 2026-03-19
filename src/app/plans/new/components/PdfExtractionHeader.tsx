@@ -1,9 +1,9 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { CheckCircle2, FileText } from 'lucide-react';
 import type { JSX } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const CONFIDENCE_COLORS: Record<'high' | 'medium' | 'low', string> = {
   high: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',

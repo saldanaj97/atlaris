@@ -1,6 +1,6 @@
+import { eq, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { aiUsageEvents, users } from '@/lib/db/schema';
-import { eq, sql } from 'drizzle-orm';
 
 type DbClient = ReturnType<typeof getDb>;
 

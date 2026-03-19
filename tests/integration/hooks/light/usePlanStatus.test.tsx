@@ -1,4 +1,3 @@
-import { usePlanStatus } from '@/hooks/usePlanStatus';
 import { act, renderHook } from '@testing-library/react';
 import {
   afterEach,
@@ -6,9 +5,10 @@ import {
   describe,
   expect,
   it,
-  vi,
   type Mock,
+  vi,
 } from 'vitest';
+import { usePlanStatus } from '@/hooks/usePlanStatus';
 
 // Helper to flush timers in jsdom environment
 async function advance(ms: number) {

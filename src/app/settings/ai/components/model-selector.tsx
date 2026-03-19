@@ -1,5 +1,8 @@
 'use client';
 
+import { AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,9 +30,6 @@ import type {
 import { ROUTES } from '@/features/navigation';
 import { clientLogger } from '@/lib/logging/client';
 import { cn } from '@/lib/utils';
-import { AlertCircle } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
 
 interface ModelSelectorProps {
   currentModel: string | null;

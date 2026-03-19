@@ -1,8 +1,8 @@
+import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ModuleWithTasks,
   TaskResourceWithResource,
 } from '@/lib/db/queries/types/modules.types';
-import type { InferSelectModel } from 'drizzle-orm';
 
 type DbEnumsModule = typeof import('@/lib/db/enums');
 type DbSchemaModule = typeof import('@/lib/db/schema');

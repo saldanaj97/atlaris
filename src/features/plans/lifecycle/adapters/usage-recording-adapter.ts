@@ -9,12 +9,11 @@
  */
 
 import { incrementUsage } from '@/features/billing/usage-metrics';
+import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
+import type { DbClient } from '@/lib/db/types';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
-import type { DbClient } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
-
-import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
 
 export class UsageRecordingAdapter implements UsageRecordingPort {
   constructor(private readonly dbClient: DbClient) {}

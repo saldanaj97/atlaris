@@ -1,6 +1,6 @@
 import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
-import { logger } from '@/lib/logging/logger';
 import { derivePlanStatus } from '@/features/plans/status';
+import { logger } from '@/lib/logging/logger';
 import type {
   AttemptStatus,
   ClientGenerationAttempt,

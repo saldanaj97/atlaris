@@ -1,12 +1,12 @@
 'use client';
 
 import {
+  type JSX,
   useCallback,
   useLayoutEffect,
   useOptimistic,
   useRef,
   useTransition,
-  type JSX,
 } from 'react';
 
 import { batchUpdateModuleTaskProgressAction } from '@/app/plans/[id]/modules/[moduleId]/actions';

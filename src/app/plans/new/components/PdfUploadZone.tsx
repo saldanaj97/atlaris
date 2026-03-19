@@ -1,11 +1,12 @@
 'use client';
 
+import { AlertCircle, FileText, Loader2, Upload } from 'lucide-react';
+import type React from 'react';
+import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
-import { AlertCircle, FileText, Loader2, Upload } from 'lucide-react';
-import React, { useCallback, useId, useRef, useState } from 'react';
-import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react';
 
 interface PdfUploadZoneProps {
   onFileSelect: (file: File) => void;

@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
-import { users, integrationTokens } from '@/lib/db/schema';
+import { and, eq, sql } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  storeOAuthTokens,
-  getOAuthTokens,
   deleteOAuthTokens,
+  getOAuthTokens,
+  storeOAuthTokens,
 } from '@/features/integrations/oauth';
-import { eq, and, sql } from 'drizzle-orm';
+import { integrationTokens, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 async function ensureIntegrationTokensTable() {
   // Recreate enum to guarantee expected values

@@ -1,9 +1,9 @@
+import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SCHEDULE_TIMEZONE,
   resolveScheduleTimezone,
 } from '@/features/scheduling/schedule-api';
 import type { DbClient } from '@/lib/db/types';
-import { describe, expect, it } from 'vitest';
 
 describe('resolveScheduleTimezone', () => {
   it('returns DEFAULT_SCHEDULE_TIMEZONE when no user timezone is available (fallback)', () => {

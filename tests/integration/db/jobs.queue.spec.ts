@@ -1,8 +1,7 @@
+import { ensureUser } from '@tests/helpers/db';
 import { and, eq, lt } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-
-import { jobQueue, learningPlans, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import {
   completeJob,
   enqueueJob,
@@ -15,9 +14,8 @@ import {
   type JobType,
   type PlanGenerationJobData,
 } from '@/features/jobs/types';
-import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
-
-import { ensureUser } from '@tests/helpers/db';
+import { jobQueue, learningPlans, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 const JOB_TYPE = JOB_TYPES.PLAN_GENERATION;
 

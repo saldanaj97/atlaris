@@ -1,7 +1,6 @@
+import { BookOpen, Flame, Lock, Star, Target, Trophy, Zap } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
-
-import { BookOpen, Flame, Lock, Star, Target, Trophy, Zap } from 'lucide-react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card, CardContent } from '@/components/ui/card';

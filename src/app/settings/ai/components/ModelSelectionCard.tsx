@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
 import { ModelSelector } from '@/app/settings/ai/components/model-selector';
 import {
   Card,
@@ -7,11 +9,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
+import { getSubscriptionTier } from '@/features/billing/subscriptions';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { getDb } from '@/lib/db/runtime';
-import { getSubscriptionTier } from '@/features/billing/subscriptions';
-import { redirect } from 'next/navigation';
-import type { JSX } from 'react';
 
 /**
  * Async component that fetches user subscription data and renders the model selector.

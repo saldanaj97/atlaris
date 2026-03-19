@@ -1,3 +1,9 @@
+export {
+  daySchema,
+  scheduleJsonSchema,
+  sessionAssignmentSchema,
+  weekSchema,
+} from '@/shared/schemas/scheduling.schemas';
 export type {
   Day,
   ScheduleCacheRow,
@@ -6,10 +12,3 @@ export type {
   SessionAssignment,
   Week,
 } from '@/shared/types/scheduling.types';
-
-export {
-  daySchema,
-  scheduleJsonSchema,
-  sessionAssignmentSchema,
-  weekSchema,
-} from '@/shared/schemas/scheduling.schemas';

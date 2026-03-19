@@ -4,10 +4,11 @@
  * Use these only for internal health checks and monitoring endpoints.
  * Do not import them into user-scoped request flows.
  */
+
+import { eq, lt, sql } from 'drizzle-orm';
 import { jobQueue } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
 import { JOB_TYPES } from '@/shared/types/jobs.types';
-import { eq, lt, sql } from 'drizzle-orm';
 
 export type SystemWideJobMetrics = {
   stuckJobsCount: number;

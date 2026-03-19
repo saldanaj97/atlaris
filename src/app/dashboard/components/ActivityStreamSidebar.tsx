@@ -1,11 +1,10 @@
 import { BookOpen, Calendar, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { Activity } from 'react';
 import type { JSX } from 'react';
-import { getEventTypeConfig, getRelativeTime } from './activity-utils';
-
+import { Activity } from 'react';
 import type { PlanSummary } from '@/shared/types/db.types';
 import type { ScheduledEvent } from '../types';
+import { getEventTypeConfig, getRelativeTime } from './activity-utils';
 
 interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;

@@ -1,3 +1,4 @@
+import { and, eq, sql } from 'drizzle-orm';
 import type {
   AttemptReservation,
   AttemptsDbClient,
@@ -13,7 +14,6 @@ import {
   normalizeModuleMinutes,
   normalizeTaskMinutes,
 } from '@/shared/constants/effort';
-import { and, eq, sql } from 'drizzle-orm';
 
 import type { ParsedModule } from '@/shared/types/ai-parser.types';
 

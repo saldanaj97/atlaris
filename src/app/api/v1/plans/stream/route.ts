@@ -1,3 +1,4 @@
+import { ZodError } from 'zod';
 import {
   buildPlanStartEvent,
   executeLifecycleGenerationStream,
@@ -8,14 +9,16 @@ import {
   createEventStream,
   streamHeaders,
 } from '@/features/ai/streaming/events';
+import type { JobQueuePort } from '@/features/plans/lifecycle';
 import {
   createPlanLifecycleService,
   type GenerationAttemptResult,
   type ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
-import type { JobQueuePort } from '@/features/plans/lifecycle';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import {
   checkPlanGenerationRateLimit,
@@ -24,9 +27,6 @@ import {
 import { appEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import { ZodError } from 'zod';
 
 /** Classification used when an unstructured exception occurs in the generation catch block. */
 export const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;

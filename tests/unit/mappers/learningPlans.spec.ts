@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import {
-  normalizeOnboardingValues,
   mapOnboardingToCreateInput,
+  normalizeOnboardingValues,
 } from '@/features/plans/create-mapper';
 import type { OnboardingFormValues } from '@/features/plans/validation/learningPlans.types';
 

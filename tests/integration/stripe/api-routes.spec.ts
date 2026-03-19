@@ -197,82 +197,77 @@ describe('Stripe API Routes', () => {
     it.each([
       { cancelAtPeriodEnd: true, eventId: 'evt_sub_created_true' },
       { cancelAtPeriodEnd: false, eventId: 'evt_sub_created_false' },
-    ])(
-      'handles subscription.created event and syncs cancelAtPeriodEnd=$cancelAtPeriodEnd to DB',
-      async ({ cancelAtPeriodEnd, eventId }) => {
-        const userId = await createAuthTestUser();
-        const { stripeCustomerId } = await markUserAsSubscribed(userId, {
-          subscriptionTier: 'free',
-          subscriptionStatus: 'canceled',
-        });
-        const expectedSubscriptionId = buildStripeSubscriptionId(
-          userId,
-          'webhook-created'
-        );
+    ])('handles subscription.created event and syncs cancelAtPeriodEnd=$cancelAtPeriodEnd to DB', async ({
+      cancelAtPeriodEnd,
+      eventId,
+    }) => {
+      const userId = await createAuthTestUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'free',
+        subscriptionStatus: 'canceled',
+      });
+      const expectedSubscriptionId = buildStripeSubscriptionId(
+        userId,
+        'webhook-created'
+      );
 
-        const event = {
-          id: eventId,
-          type: 'customer.subscription.created',
-          livemode: false,
-          data: {
-            object: {
-              id: expectedSubscriptionId,
-              customer: stripeCustomerId,
-              status: 'active',
-              cancel_at_period_end: cancelAtPeriodEnd,
-              items: {
-                data: [
-                  {
-                    price: 'price_starter',
-                  },
-                ],
-              },
-              current_period_end: 1735689600,
+      const event = {
+        id: eventId,
+        type: 'customer.subscription.created',
+        livemode: false,
+        data: {
+          object: {
+            id: expectedSubscriptionId,
+            customer: stripeCustomerId,
+            status: 'active',
+            cancel_at_period_end: cancelAtPeriodEnd,
+            items: {
+              data: [
+                {
+                  price: 'price_starter',
+                },
+              ],
             },
+            current_period_end: 1735689600,
           },
-        } as unknown as Stripe.Event;
+        },
+      } as unknown as Stripe.Event;
 
-        const mockStripe = {
-          prices: {
-            retrieve: vi.fn().mockResolvedValue({
-              id: 'price_starter',
-              product: {
-                metadata: { tier: 'starter' },
-              },
-            }),
-          },
-        } as unknown as Stripe;
+      const mockStripe = {
+        prices: {
+          retrieve: vi.fn().mockResolvedValue({
+            id: 'price_starter',
+            product: {
+              metadata: { tier: 'starter' },
+            },
+          }),
+        },
+      } as unknown as Stripe;
 
-        const webhookPOSTWithMock = createWebhookHandler(mockStripe);
+      const webhookPOSTWithMock = createWebhookHandler(mockStripe);
 
-        vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
+      vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 
-        const request = new Request('http://localhost/api/v1/stripe/webhook', {
-          method: 'POST',
-          headers: {
-            'stripe-signature': 'test_signature',
-          },
-          body: JSON.stringify(event),
-        });
+      const request = new Request('http://localhost/api/v1/stripe/webhook', {
+        method: 'POST',
+        headers: {
+          'stripe-signature': 'test_signature',
+        },
+        body: JSON.stringify(event),
+      });
 
-        const response = await webhookPOSTWithMock(request);
+      const response = await webhookPOSTWithMock(request);
 
-        expect(response.status).toBe(200);
+      expect(response.status).toBe(200);
 
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(sql`id = ${userId}`);
-        expect(user?.subscriptionTier).toBe('starter');
-        expect(user?.subscriptionStatus).toBe('active');
-        expect(user?.stripeCustomerId).toBe(stripeCustomerId);
-        expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
-        expect(user?.subscriptionPeriodEnd).toEqual(
-          new Date(1735689600 * 1000)
-        );
-        expect(user?.cancelAtPeriodEnd).toBe(cancelAtPeriodEnd);
-      }
-    );
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
+      expect(user?.subscriptionTier).toBe('starter');
+      expect(user?.subscriptionStatus).toBe('active');
+      expect(user?.stripeCustomerId).toBe(stripeCustomerId);
+      expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
+      expect(user?.subscriptionPeriodEnd).toEqual(new Date(1735689600 * 1000));
+      expect(user?.cancelAtPeriodEnd).toBe(cancelAtPeriodEnd);
+    });
 
     it('handles subscription.deleted event and downgrades to free', async () => {
       const userId = await createAuthTestUser();
@@ -324,10 +319,7 @@ describe('Stripe API Routes', () => {
       expect(response.status).toBe(200);
 
       // Verify downgraded to free
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(sql`id = ${userId}`);
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
       expect(user?.subscriptionTier).toBe('free');
       expect(user?.subscriptionStatus).toBe('canceled');
       expect(user?.stripeSubscriptionId).toBeNull();

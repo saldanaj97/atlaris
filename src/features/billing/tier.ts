@@ -1,6 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 
 import { UserNotFoundError } from './errors';
 import type { SubscriptionTier } from './tier-limits.types';

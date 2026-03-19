@@ -1,11 +1,10 @@
 'use client';
 
+import { CheckCircle2, CircleDashed } from 'lucide-react';
 import type { JSX } from 'react';
-
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import { CheckCircle2, CircleDashed } from 'lucide-react';
 
 interface UpdateTaskStatusButtonProps {
   taskId: string;

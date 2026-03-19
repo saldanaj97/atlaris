@@ -5,11 +5,11 @@
  * concurrent requests from bypassing the plan limit.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
-import { learningPlans, users } from '@/lib/db/schema';
-import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle';
 import { eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle';
+import { learningPlans, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 describe('Plan Limit Race Condition Prevention (T200)', () => {
   let testUserId: string;

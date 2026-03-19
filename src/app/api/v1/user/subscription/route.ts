@@ -1,3 +1,4 @@
+import { getUsageSummary } from '@/features/billing/usage-metrics';
 import {
   type PlainHandler,
   withAuthAndRateLimit,
@@ -5,7 +6,6 @@ import {
 } from '@/lib/api/auth';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
-import { getUsageSummary } from '@/features/billing/usage-metrics';
 
 export const GET: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ user }) => {

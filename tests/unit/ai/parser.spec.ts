@@ -1,6 +1,6 @@
-import { parseGenerationStream, ParserError } from '@/features/ai/parser';
-import type { ParserCallbacks } from '@/features/ai/types/parser.types';
 import { describe, expect, it, vi } from 'vitest';
+import { ParserError, parseGenerationStream } from '@/features/ai/parser';
+import type { ParserCallbacks } from '@/features/ai/types/parser.types';
 import { createDeferredPromise } from '../../helpers/deferred-promise';
 
 // Helper to create async iterable from string chunks

@@ -299,7 +299,9 @@ export function getRateLimitHeaders(
  * Clears all rate limiters. Useful for testing.
  */
 export function clearAllRateLimiters(): void {
-  rateLimiters.forEach((limiter) => limiter.clear());
+  for (const limiter of rateLimiters.values()) {
+    limiter.clear();
+  }
   rateLimiters.clear();
   lastUnknownIpWarnTimestamp = 0;
 }

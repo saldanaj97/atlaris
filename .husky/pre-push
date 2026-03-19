@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+
+# Read-only: same scope as pnpm lint:changed (branch-aware --since in scripts/biome-changed.sh).
+# Pre-commit already applies fixes on staged files; this catches drift vs base (rebases, partial commits).
+echo "Running Biome check on files changed vs base branch..."
+./scripts/biome-changed.sh check --no-errors-on-unmatched

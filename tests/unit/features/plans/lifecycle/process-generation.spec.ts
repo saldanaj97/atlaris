@@ -141,31 +141,32 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
 
   // ─── Retryable failure path ──────────────────────────────────
 
-  it.each(['provider_error', 'timeout', 'rate_limit', 'conflict'] as const)(
-    'returns retryable_failure for %s classification',
-    async (classification) => {
-      ports = createMockPorts({
-        generation: {
-          runGeneration: vi.fn().mockResolvedValue({
-            status: 'failure',
-            classification,
-            error: new Error(`${classification} occurred`),
-            durationMs: 500,
-          }),
-        },
-      });
-      service = new PlanLifecycleService(ports);
+  it.each([
+    'provider_error',
+    'timeout',
+    'rate_limit',
+    'conflict',
+  ] as const)('returns retryable_failure for %s classification', async (classification) => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'failure',
+          classification,
+          error: new Error(`${classification} occurred`),
+          durationMs: 500,
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
 
-      const result =
-        await service.processGenerationAttempt(validGenerationInput);
+    const result = await service.processGenerationAttempt(validGenerationInput);
 
-      expect(result.status).toBe('retryable_failure');
-      if (result.status === 'retryable_failure') {
-        expect(result.classification).toBe(classification);
-        expect(result.error.message).toContain(classification);
-      }
+    expect(result.status).toBe('retryable_failure');
+    if (result.status === 'retryable_failure') {
+      expect(result.classification).toBe(classification);
+      expect(result.error.message).toContain(classification);
     }
-  );
+  });
 
   it('marks plan as failed on retryable failure', async () => {
     ports = createMockPorts({
@@ -209,41 +210,40 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
 
   // ─── Permanent failure path ──────────────────────────────────
 
-  it.each(['validation', 'capped'] as const)(
-    'returns permanent_failure for %s classification',
-    async (classification) => {
-      ports = createMockPorts({
-        generation: {
-          runGeneration: vi.fn().mockResolvedValue({
-            status: 'failure',
-            classification,
-            error: new Error(`${classification} error`),
-            metadata: {
-              provider: 'openai',
-              model: 'gpt-4o',
-              usage: { inputTokens: 50, outputTokens: 0 },
-            },
-            usage: makeCanonicalUsage({
-              inputTokens: 50,
-              outputTokens: 0,
-              totalTokens: 50,
-            }),
-            durationMs: 200,
+  it.each([
+    'validation',
+    'capped',
+  ] as const)('returns permanent_failure for %s classification', async (classification) => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'failure',
+          classification,
+          error: new Error(`${classification} error`),
+          metadata: {
+            provider: 'openai',
+            model: 'gpt-4o',
+            usage: { inputTokens: 50, outputTokens: 0 },
+          },
+          usage: makeCanonicalUsage({
+            inputTokens: 50,
+            outputTokens: 0,
+            totalTokens: 50,
           }),
-        },
-      });
-      service = new PlanLifecycleService(ports);
+          durationMs: 200,
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
 
-      const result =
-        await service.processGenerationAttempt(validGenerationInput);
+    const result = await service.processGenerationAttempt(validGenerationInput);
 
-      expect(result.status).toBe('permanent_failure');
-      if (result.status === 'permanent_failure') {
-        expect(result.classification).toBe(classification);
-        expect(result.error.message).toContain(classification);
-      }
+    expect(result.status).toBe('permanent_failure');
+    if (result.status === 'permanent_failure') {
+      expect(result.classification).toBe(classification);
+      expect(result.error.message).toContain(classification);
     }
-  );
+  });
 
   it('marks plan as failed on permanent failure', async () => {
     ports = createMockPorts({
@@ -375,12 +375,14 @@ describe('isRetryableClassification', () => {
     expect(isRetryableClassification('capped')).toBe(false);
   });
 
-  it.each(['provider_error', 'timeout', 'rate_limit', 'conflict'] as const)(
-    'treats %s as retryable',
-    (classification) => {
-      expect(isRetryableClassification(classification)).toBe(true);
-    }
-  );
+  it.each([
+    'provider_error',
+    'timeout',
+    'rate_limit',
+    'conflict',
+  ] as const)('treats %s as retryable', (classification) => {
+    expect(isRetryableClassification(classification)).toBe(true);
+  });
 
   it('treats unknown as retryable', () => {
     expect(isRetryableClassification('unknown')).toBe(true);

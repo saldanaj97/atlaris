@@ -49,7 +49,6 @@ export function trackEvent(params: TrackEventParams): void {
   } catch (error) {
     // Silently handle analytics errors to not affect app flow
     if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
       console.warn('[Analytics] Failed to track event:', error);
     }
   }

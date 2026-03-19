@@ -1,5 +1,9 @@
 'use client';
 
+import { Menu, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -9,10 +13,6 @@ import {
 } from '@/components/ui/sheet';
 import type { NavItem } from '@/features/navigation';
 import { trackEvent } from '@/lib/analytics';
-import { Menu, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
 
 import BrandLogo from '../BrandLogo';
 

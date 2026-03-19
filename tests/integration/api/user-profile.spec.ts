@@ -1,10 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { USER_PROFILE_NAME_MAX_LENGTH } from '@/app/api/v1/user/profile/validation';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { USER_PROFILE_NAME_MAX_LENGTH } from '@/app/api/v1/user/profile/validation';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';

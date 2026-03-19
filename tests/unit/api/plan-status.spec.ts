@@ -1,5 +1,5 @@
-import { derivePlanStatus } from '@/features/plans/status';
 import { describe, expect, it } from 'vitest';
+import { derivePlanStatus } from '@/features/plans/status';
 
 describe('derivePlanStatus', () => {
   it('returns ready when modules exist even if status is generating', () => {

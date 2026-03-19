@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import type { JSX } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface PdfPreviewActionsProps {
   mainTopic: string;

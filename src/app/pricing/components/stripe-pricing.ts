@@ -1,18 +1,17 @@
 import type Stripe from 'stripe';
-
+import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
 import { formatAmount } from '@/app/pricing/components/utils';
-import { logger } from '@/lib/logging/logger';
 import { getStripe } from '@/features/billing/client';
-import {
-  stripePriceFieldsSchema,
-  stripeProductFieldsSchema,
-} from '@/features/billing/validation/stripe';
 import type {
   StripePriceFields,
   StripeProductFields,
 } from '@/features/billing/validation/stripe';
-import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
-import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import {
+  stripePriceFieldsSchema,
+  stripeProductFieldsSchema,
+} from '@/features/billing/validation/stripe';
+import { logger } from '@/lib/logging/logger';
 export interface StripeTierData {
   name: string;
   amount: string;

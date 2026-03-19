@@ -1,9 +1,9 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { clientLogger } from '@/lib/logging/client';
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { clientLogger } from '@/lib/logging/client';
 
 interface ErrorProps {
   error: Error & { digest?: string };

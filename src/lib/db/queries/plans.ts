@@ -2,11 +2,18 @@
  * Plan-related queries for learning plans, summaries, detail views, and generation attempts.
  * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
  */
+
+import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   fetchTaskProgressRows,
   fetchTaskResourceRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
+import {
+  mapLearningPlanDetail,
+  mapLightweightPlanSummaries,
+  mapPlanSummaries,
+} from '@/lib/db/queries/mappers';
 import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
 import {
@@ -17,21 +24,15 @@ import {
   tasks,
 } from '@/lib/db/schema';
 import {
-  mapLightweightPlanSummaries,
-  mapLearningPlanDetail,
-  mapPlanSummaries,
-} from '@/lib/db/queries/mappers';
+  assertValidPaginationOptions,
+  type PaginationOptions,
+} from '@/shared/constants/pagination';
 import type {
   GenerationAttempt,
   LearningPlanDetail,
   LightweightPlanSummary,
   PlanSummary,
 } from '@/shared/types/db.types';
-import {
-  assertValidPaginationOptions,
-  type PaginationOptions,
-} from '@/shared/constants/pagination';
-import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;

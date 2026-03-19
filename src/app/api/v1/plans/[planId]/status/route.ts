@@ -2,16 +2,16 @@ import { desc, eq } from 'drizzle-orm';
 
 import { classificationToUserMessage } from '@/features/ai/failure-presentation';
 import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/features/plans/api/route-context';
+import { derivePlanStatus } from '@/features/plans/status';
+import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, modules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { derivePlanStatus } from '@/features/plans/status';
 import type { FailureClassification } from '@/shared/types/client.types';
 
 /**

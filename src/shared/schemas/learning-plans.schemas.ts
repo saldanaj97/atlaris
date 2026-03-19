@@ -4,12 +4,12 @@ import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
 } from '@/shared/constants/learning-plans';
+import { pdfPreviewEditSchema } from '@/shared/schemas/pdf-validation.schemas';
 import {
   LEARNING_STYLE_ENUM,
   SKILL_LEVEL_ENUM,
   weeklyHoursSchema,
 } from '@/shared/schemas/plan-validation.schemas';
-import { pdfPreviewEditSchema } from '@/shared/schemas/pdf-validation.schemas';
 
 function enforceMaxLength(
   value: string,

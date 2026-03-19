@@ -18,8 +18,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-
-import { db } from '@/lib/db/service-role';
 import {
   learningPlans,
   modules,
@@ -29,6 +27,7 @@ import {
   tasks,
   users,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { truncateAll } from '../helpers/db';
 import {
   cleanupTrackedRlsClients,

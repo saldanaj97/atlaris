@@ -1,12 +1,12 @@
-import { AppError, ForbiddenError } from '@/lib/api/errors';
-import { getDb } from '@/lib/db/runtime';
-import { logger } from '@/lib/logging/logger';
+import { atomicCheckAndIncrementPdfUsage } from '@/features/billing/quota';
+import { decrementPdfPlanUsage } from '@/features/billing/usage-metrics';
 import { sanitizePdfContextForPersistence } from '@/features/pdf/context';
 import type { PdfContext } from '@/features/pdf/context.types';
 import { verifyAndConsumePdfExtractionProof } from '@/features/pdf/security/pdf-extraction-proof';
-import { atomicCheckAndIncrementPdfUsage } from '@/features/billing/quota';
-import { decrementPdfPlanUsage } from '@/features/billing/usage-metrics';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import { AppError, ForbiddenError } from '@/lib/api/errors';
+import type { getDb } from '@/lib/db/runtime';
+import { logger } from '@/lib/logging/logger';
 
 export type PdfProvenance = {
   extractionHash: string;

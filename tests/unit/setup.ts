@@ -50,11 +50,10 @@ if (typeof Element.prototype.scrollIntoView !== 'function') {
 // Extend expect with jest-dom matchers
 import '@testing-library/jest-dom';
 
-// Provide React global for JSX runtime in tests
-import React from 'react';
-
 // Import Vitest and RTL hooks
 import { cleanup } from '@testing-library/react';
+// Provide React global for JSX runtime in tests
+import React from 'react';
 import { afterEach } from 'vitest';
 
 // Make React available as a global for classic JSX runtime

@@ -1,16 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-
-import { findActivePlan, generateActivities } from './activity-utils';
+import type { PlanSummary } from '@/shared/types/db.types';
+import type { ActivityFilter } from '../types';
 import { ActivityCard } from './ActivityCard';
 import { ActivityFilterTabs } from './ActivityFilterTabs';
 import { ActivityStreamSidebar } from './ActivityStreamSidebar';
+import { findActivePlan, generateActivities } from './activity-utils';
 import { EmptyActivityState } from './EmptyActivityState';
 import { ResumeLearningHero } from './ResumeLearningHero';
-
-import type { PlanSummary } from '@/shared/types/db.types';
-import type { ActivityFilter } from '../types';
 
 interface ActivityStreamProps {
   summaries: PlanSummary[];

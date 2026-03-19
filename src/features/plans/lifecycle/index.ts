@@ -1,27 +1,14 @@
 // ─── Service ─────────────────────────────────────────────────────
-export { PlanLifecycleService } from './service';
-export type { PlanLifecycleServicePorts } from './service';
 
-// ─── Factory ─────────────────────────────────────────────────────
-export { createPlanLifecycleService } from './factory';
+export { GenerationAdapter } from './adapters/generation-adapter';
+export { PdfOriginAdapter } from './adapters/pdf-origin-adapter';
+export { PlanPersistenceAdapter } from './adapters/plan-persistence-adapter';
 
 // ─── Adapters ────────────────────────────────────────────────────
 export { QuotaAdapter } from './adapters/quota-adapter';
-export { PlanPersistenceAdapter } from './adapters/plan-persistence-adapter';
-export { PdfOriginAdapter } from './adapters/pdf-origin-adapter';
-export { GenerationAdapter } from './adapters/generation-adapter';
 export { UsageRecordingAdapter } from './adapters/usage-recording-adapter';
-
-// ─── Ports ───────────────────────────────────────────────────────
-export type {
-  PlanPersistencePort,
-  QuotaPort,
-  PdfOriginPort,
-  GenerationPort,
-  UsageRecordingPort,
-  JobQueuePort,
-} from './ports';
-
+// ─── Factory ─────────────────────────────────────────────────────
+export { createPlanLifecycleService } from './factory';
 // ─── Plan Operations ─────────────────────────────────────────────
 export {
   atomicCheckAndInsertPlan,
@@ -31,30 +18,41 @@ export {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from './plan-operations';
+// ─── Ports ───────────────────────────────────────────────────────
+export type {
+  GenerationPort,
+  JobQueuePort,
+  PdfOriginPort,
+  PlanPersistencePort,
+  QuotaPort,
+  UsageRecordingPort,
+} from './ports';
+export type { PlanLifecycleServicePorts } from './service';
+export { PlanLifecycleService } from './service';
 
 // ─── Types ───────────────────────────────────────────────────────
 export type {
+  AlreadyFinalized,
+  AtomicInsertResult,
   CreateAiPlanInput,
   CreatePdfPlanInput,
   CreatePlanResult,
   CreatePlanSuccess,
-  RetryableFailure,
-  PermanentFailure,
-  QuotaRejection,
   DuplicateDetected,
-  ProcessGenerationInput,
+  DurationCapResult,
+  FailureClassification,
+  GeneratedModule,
+  GeneratedTask,
   GenerationAttemptResult,
   GenerationSuccess,
   GenerationSuccessData,
-  GeneratedModule,
-  GeneratedTask,
-  AlreadyFinalized,
-  PlanInsertData,
-  AtomicInsertResult,
-  DurationCapResult,
   NormalizedDuration,
   PdfQuotaReservationResult,
+  PermanentFailure,
+  PlanInsertData,
+  ProcessGenerationInput,
+  QuotaRejection,
+  RetryableFailure,
   SubscriptionTier,
-  FailureClassification,
 } from './types';
 export { isRetryableClassification } from './types';

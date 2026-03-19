@@ -1,9 +1,9 @@
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 

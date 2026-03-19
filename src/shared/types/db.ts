@@ -5,14 +5,15 @@ import {
   resourceType,
   skillLevel,
 } from '@/lib/db/enums';
+
 export type {
   GenerationAttempt,
   GenerationStatus,
   LearningPlan,
   LearningPlanDetail,
   LearningPlanWithModules,
-  LightweightPlanSummary,
   LearningStyle,
+  LightweightPlanSummary,
   Module,
   PlanSummary,
   ProgressStatus,

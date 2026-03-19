@@ -5,9 +5,9 @@ import {
   getPdfPageCountFromBuffer,
 } from '@/features/pdf/extract';
 import {
+  type CapExtractionResponse,
   capExtractionResponsePayload,
   detectStructure,
-  type CapExtractionResponse,
 } from '@/features/pdf/structure';
 
 const buildPdfBuffer = (text: string) => {

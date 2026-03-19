@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  formatMinutes,
-  formatWeeklyHours,
-  formatSkillLevel,
   formatLearningStyle,
+  formatMinutes,
+  formatSkillLevel,
+  formatWeeklyHours,
 } from '@/features/plans/formatters';
 
 describe('formatMinutes', () => {

@@ -1,3 +1,4 @@
+import { and, asc, countDistinct, eq } from 'drizzle-orm';
 import {
   buildResourcesByTask,
   computeModuleNavItemsFromCounts,
@@ -13,7 +14,6 @@ import type {
 } from '@/lib/db/queries/types/modules.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
-import { and, asc, countDistinct, eq } from 'drizzle-orm';
 
 type ModulesDbClient = ReturnType<typeof getDb>;
 

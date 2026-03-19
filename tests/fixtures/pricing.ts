@@ -1,5 +1,5 @@
-import type { TierConfig } from '@/app/pricing/components/pricing-config';
 import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import type { TierConfig } from '@/app/pricing/components/pricing-config';
 import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
 
 type TierConfigByKey = {

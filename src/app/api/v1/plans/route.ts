@@ -1,16 +1,16 @@
 import { ZodError } from 'zod';
-
+import {
+  createPlanLifecycleService,
+  type JobQueuePort,
+} from '@/features/plans/lifecycle';
+import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import {
   type PlainHandler,
   withAuthAndRateLimit,
   withErrorBoundary,
 } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
-import {
-  createPlanLifecycleService,
-  type JobQueuePort,
-} from '@/features/plans/lifecycle';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -20,9 +20,8 @@ import {
   getLightweightPlanSummaries,
   getPlanSummaryCount,
 } from '@/lib/db/queries/plans';
-import { logger } from '@/lib/logging/logger';
 import { getDb } from '@/lib/db/runtime';
-import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
+import { logger } from '@/lib/logging/logger';
 import {
   clampPageSize,
   getPaginationDefault,
@@ -137,33 +136,34 @@ export const POST: PlainHandler = withErrorBoundary(
 
     const isPdfOrigin = body.origin === 'pdf';
 
-    if (isPdfOrigin) {
-      if (!body.pdfProofToken || !body.pdfExtractionHash) {
-        throw new ValidationError(
-          'pdfProofToken and pdfExtractionHash are required for PDF-based plans.',
-          {
-            pdfProofToken: body.pdfProofToken ? undefined : 'Required',
-            pdfExtractionHash: body.pdfExtractionHash ? undefined : 'Required',
-          }
-        );
-      }
-    }
-
     const createResult = isPdfOrigin
-      ? await lifecycleService.createPdfPlan({
-          userId: user.id,
-          authUserId: userId,
-          body: body as Record<string, unknown>,
-          topic: body.topic,
-          skillLevel: body.skillLevel,
-          weeklyHours: body.weeklyHours,
-          learningStyle: body.learningStyle,
-          startDate: body.startDate,
-          deadlineDate: body.deadlineDate,
-          extractedContent: body.extractedContent,
-          pdfProofToken: body.pdfProofToken!,
-          pdfExtractionHash: body.pdfExtractionHash!,
-        })
+      ? await (() => {
+          const pdfProofToken = body.pdfProofToken;
+          const pdfExtractionHash = body.pdfExtractionHash;
+          if (!pdfProofToken || !pdfExtractionHash) {
+            throw new ValidationError(
+              'pdfProofToken and pdfExtractionHash are required for PDF-based plans.',
+              {
+                pdfProofToken: pdfProofToken ? undefined : 'Required',
+                pdfExtractionHash: pdfExtractionHash ? undefined : 'Required',
+              }
+            );
+          }
+          return lifecycleService.createPdfPlan({
+            userId: user.id,
+            authUserId: userId,
+            body: body as Record<string, unknown>,
+            topic: body.topic,
+            skillLevel: body.skillLevel,
+            weeklyHours: body.weeklyHours,
+            learningStyle: body.learningStyle,
+            startDate: body.startDate,
+            deadlineDate: body.deadlineDate,
+            extractedContent: body.extractedContent,
+            pdfProofToken,
+            pdfExtractionHash,
+          });
+        })()
       : await lifecycleService.createPlan({
           userId: user.id,
           topic: body.topic,

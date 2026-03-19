@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/route';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import {
   computePdfExtractionHash,
   issuePdfExtractionProof,
 } from '@/features/pdf/security/pdf-extraction-proof';
+import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { createPdfProof } from '../../fixtures/validation';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';

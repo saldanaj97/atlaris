@@ -4,18 +4,16 @@
 // lifecycle state machine (create → generating → ready/failed) and plan
 // quota enforcement. They belong in the plans domain, not in billing.
 
-import { learningPlans, users } from '@/lib/db/schema';
-import { logger } from '@/lib/logging/logger';
-import type { PdfContext } from '@/features/pdf/context.types';
-import type { DbClient } from '@/lib/db/types';
-import { eq, sql, and, gte } from 'drizzle-orm';
-
+import { and, eq, gte, sql } from 'drizzle-orm';
+import { UserNotFoundError } from '@/features/billing/errors';
+import { resolveUserTier } from '@/features/billing/tier';
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import type { SubscriptionTier } from '@/features/billing/tier-limits.types';
-import { resolveUserTier } from '@/features/billing/tier';
-
+import type { PdfContext } from '@/features/pdf/context.types';
+import { learningPlans, users } from '@/lib/db/schema';
+import type { DbClient } from '@/lib/db/types';
+import { logger } from '@/lib/logging/logger';
 import { PlanCreationError, PlanLimitReachedError } from '../errors';
-import { UserNotFoundError } from '@/features/billing/errors';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
 const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;

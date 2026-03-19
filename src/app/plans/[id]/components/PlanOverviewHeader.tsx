@@ -1,7 +1,6 @@
-import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 import { BookOpen, Calendar, Clock, TrendingUp } from 'lucide-react';
-
 import type { PlanOverviewStats } from '@/app/plans/[id]/types';
+import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 interface PlanOverviewProps {

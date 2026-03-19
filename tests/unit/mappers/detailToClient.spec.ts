@@ -1,18 +1,18 @@
-import type {
-  ModuleWithTasks,
-  TaskWithRelations,
-} from '@/lib/db/queries/types/modules.types';
+import { describe, expect, it } from 'vitest';
 import {
   mapAttemptsToClient,
   mapDetailToClient,
 } from '@/features/plans/detail-mapper';
+import type {
+  ModuleWithTasks,
+  TaskWithRelations,
+} from '@/lib/db/queries/types/modules.types';
 import type {
   GenerationAttempt,
   GenerationStatus,
   LearningPlanDetail,
   TaskProgress,
 } from '@/shared/types/db.types';
-import { describe, expect, it } from 'vitest';
 import {
   buildGenerationAttempt,
   buildModule,

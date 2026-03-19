@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { appEnv, EnvValidationError } from '@/lib/config/env';
 import {
   createScanProvider,
   resetScanProviderCache,
 } from '@/features/pdf/security/scanner-factory';
+import { appEnv, EnvValidationError } from '@/lib/config/env';
 
 describe('scanner-factory', () => {
   const originalEnv = { ...process.env };

@@ -18,11 +18,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { formatMinutes } from '@/features/plans/formatters';
 import type {
   ModuleNavItem,
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
-import { formatMinutes } from '@/features/plans/formatters';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleHeaderProps {

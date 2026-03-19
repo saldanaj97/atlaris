@@ -1,9 +1,16 @@
+import { and, count, eq, sql } from 'drizzle-orm';
 import { ATTEMPT_CAP } from '@/lib/config/env';
 import { hashSha256 } from '@/lib/crypto/hash';
 import {
   isProviderErrorRetryable,
   logAttemptEvent,
 } from '@/lib/db/queries/helpers/attempts-helpers';
+import {
+  buildMetadata,
+  getPdfProvenance,
+  sanitizeInput,
+  toPromptHashPayload,
+} from '@/lib/db/queries/helpers/attempts-input';
 import {
   assertAttemptIdMatchesReservation,
   normalizeParsedModules,
@@ -13,12 +20,6 @@ import {
   computeRetryAfterSeconds,
   selectUserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/helpers/attempts-rate-limit';
-import {
-  buildMetadata,
-  getPdfProvenance,
-  sanitizeInput,
-  toPromptHashPayload,
-} from '@/lib/db/queries/helpers/attempts-input';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import type {
   FinalizeFailureParams,
@@ -35,7 +36,6 @@ import {
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
-import { and, count, eq, sql } from 'drizzle-orm';
 
 /**
  * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.

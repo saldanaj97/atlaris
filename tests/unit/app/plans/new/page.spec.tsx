@@ -3,18 +3,18 @@
 import '../../../../mocks/unit/client-logger.unit';
 import '../../../../mocks/unit/sonner.unit';
 
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { toast } from 'sonner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
   StreamingPlanState,
   UseStreamingPlanGenerationResult,
 } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { toast } from 'sonner';
 import { createDeferredPromise } from '../../../../helpers/deferred-promise';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn<(href: string) => void>();
 

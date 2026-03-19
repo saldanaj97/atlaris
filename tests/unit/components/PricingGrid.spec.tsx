@@ -1,15 +1,17 @@
-import type { TierConfig } from '@/app/pricing/components/pricing-config';
+import { render, screen } from '@testing-library/react';
+import type React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { PricingGrid } from '@/app/pricing/components/PricingGrid';
 import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import type { TierConfig } from '@/app/pricing/components/pricing-config';
 import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
 
 // Mock SubscribeButton
 vi.mock('@/app/pricing/components/SubscribeButton', () => ({
   default: ({ priceId, label }: { priceId: string; label: string }) => (
-    <button data-testid={`subscribe-${priceId}`}>{label}</button>
+    <button type="button" data-testid={`subscribe-${priceId}`}>
+      {label}
+    </button>
   ),
 }));
 

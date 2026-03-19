@@ -1,3 +1,9 @@
+import { eq } from 'drizzle-orm';
+import { google } from 'googleapis';
+import { type NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { storeOAuthTokens } from '@/features/integrations/oauth';
+import { validateOAuthStateToken } from '@/features/integrations/oauth-state';
 import { getAuthUserId, withErrorBoundary } from '@/lib/api/auth';
 import {
   createRequestContext as createApiRequestContext,
@@ -9,16 +15,10 @@ import { googleOAuthEnv } from '@/lib/config/env';
 import { createAuthenticatedRlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
-import { storeOAuthTokens } from '@/features/integrations/oauth';
-import { validateOAuthStateToken } from '@/features/integrations/oauth-state';
 import {
   attachRequestIdHeader,
   createRequestContext as createLoggingRequestContext,
 } from '@/lib/logging/request-context';
-import { eq } from 'drizzle-orm';
-import { google } from 'googleapis';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const GoogleTokensSchema = z.object({
   access_token: z.string().min(1),

@@ -1,6 +1,5 @@
-import type { ReactElement } from 'react';
-
 import { headers } from 'next/headers';
+import type { ReactElement } from 'react';
 
 import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
 

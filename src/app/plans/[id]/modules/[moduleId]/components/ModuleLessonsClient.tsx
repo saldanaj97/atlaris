@@ -1,13 +1,11 @@
 'use client';
 
-import type { JSX } from 'react';
-
-import { Accordion } from '@/components/ui/accordion';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import type { JSX } from 'react';
 import { useMemo } from 'react';
-
 import { LessonAccordionItem } from '@/app/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
+import { Accordion } from '@/components/ui/accordion';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 

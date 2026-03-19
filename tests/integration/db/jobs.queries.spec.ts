@@ -1,6 +1,6 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-
+import { JOB_TYPES } from '@/features/jobs/types';
 import {
   cleanupOldJobs,
   getActiveRegenerationJob,
@@ -10,7 +10,6 @@ import {
 } from '@/lib/db/queries/jobs';
 import { jobQueue, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { JOB_TYPES } from '@/features/jobs/types';
 import { createTestUser } from '../../fixtures/users';
 
 type JobInsert = InferInsertModel<typeof jobQueue>;

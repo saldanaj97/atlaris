@@ -1,10 +1,10 @@
+import { and, count, eq, gte, min, type SQL } from 'drizzle-orm';
 import type {
-  UserGenerationAttemptWindowStats,
   UserGenerationAttemptsSinceParams,
+  UserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { PLAN_GENERATION_WINDOW_MS } from '@/shared/constants/generation';
-import { and, count, eq, gte, min, type SQL } from 'drizzle-orm';
 
 function userAttemptsSincePredicate(
   userId: string,

@@ -64,7 +64,6 @@ export function logAttemptEvent(
   );
 
   if (appEnv.isTest) {
-    // eslint-disable-next-line no-console
     console.info(`[attempts] ${event}`, enriched);
   }
 }

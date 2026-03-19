@@ -1,8 +1,8 @@
-import { appEnv, avScannerEnv, EnvValidationError } from '@/lib/config/env';
 import { MetaDefenderScanProvider } from '@/features/pdf/security/metadefender';
 import type { ScanProvider } from '@/features/pdf/security/scanner.types';
+import { appEnv, avScannerEnv, EnvValidationError } from '@/lib/config/env';
 
-let cachedScanProvider: ScanProvider | null | undefined = undefined;
+let cachedScanProvider: ScanProvider | null | undefined;
 
 /**
  * Resets the cached scan provider. For testing only; production code should not call this.

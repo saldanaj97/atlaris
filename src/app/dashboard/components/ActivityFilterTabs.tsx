@@ -1,8 +1,8 @@
 'use client';
 
+import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Filter } from 'lucide-react';
 import type { ActivityFilter, ActivityFilterTab } from '../types';
 
 interface ActivityFilterTabsProps {

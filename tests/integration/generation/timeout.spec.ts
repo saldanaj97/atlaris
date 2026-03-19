@@ -1,5 +1,5 @@
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
   generationAttempts,
@@ -8,7 +8,6 @@ import {
   tasks,
 } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';

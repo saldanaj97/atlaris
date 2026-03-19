@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   boolean,
   check,
   index,
@@ -10,7 +11,6 @@ import {
   timestamp,
   unique,
   uuid,
-  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 import { progressStatus, resourceType } from '../../enums';

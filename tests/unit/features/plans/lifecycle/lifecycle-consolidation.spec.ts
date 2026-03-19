@@ -350,35 +350,35 @@ describe('Lifecycle Consolidation', () => {
         classification: 'capped' as const,
         expectedStatus: 'permanent_failure',
       },
-    ])(
-      '$classification → $expectedStatus with plan marked failed',
-      async ({ classification, expectedStatus }) => {
-        ports = createMockPorts({
-          generation: {
-            runGeneration: vi.fn().mockResolvedValue({
-              status: 'failure',
-              classification,
-              error: new Error(`${classification} error`),
-              durationMs: 100,
-              // Permanent failures (validation, capped) include usage data from
-              // the provider; retryable failures (timeout, rate_limit, etc.) do not.
-              ...(expectedStatus === 'permanent_failure'
-                ? { usage: makeCanonicalUsage() }
-                : {}),
-            }),
-          },
-        });
-        service = new PlanLifecycleService(ports);
+    ])('$classification → $expectedStatus with plan marked failed', async ({
+      classification,
+      expectedStatus,
+    }) => {
+      ports = createMockPorts({
+        generation: {
+          runGeneration: vi.fn().mockResolvedValue({
+            status: 'failure',
+            classification,
+            error: new Error(`${classification} error`),
+            durationMs: 100,
+            // Permanent failures (validation, capped) include usage data from
+            // the provider; retryable failures (timeout, rate_limit, etc.) do not.
+            ...(expectedStatus === 'permanent_failure'
+              ? { usage: makeCanonicalUsage() }
+              : {}),
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
 
-        const result = await service.processGenerationAttempt(STREAM_INPUT);
-        expect(result.status).toBe(expectedStatus);
+      const result = await service.processGenerationAttempt(STREAM_INPUT);
+      expect(result.status).toBe(expectedStatus);
 
-        const markFailure = vi.mocked(
-          ports.planPersistence.markGenerationFailure
-        );
-        expect(markFailure).toHaveBeenCalledWith(STREAM_INPUT.planId);
-      }
-    );
+      const markFailure = vi.mocked(
+        ports.planPersistence.markGenerationFailure
+      );
+      expect(markFailure).toHaveBeenCalledWith(STREAM_INPUT.planId);
+    });
 
     it('always includes classification and error on failure result', async () => {
       ports = createMockPorts({

@@ -1,6 +1,6 @@
-import { decryptToken, encryptToken } from '@/features/integrations/oauth';
-import type { OAuthTokenData } from '@/features/integrations/oauth';
 import { describe, expect, it } from 'vitest';
+import type { OAuthTokenData } from '@/features/integrations/oauth';
+import { decryptToken, encryptToken } from '@/features/integrations/oauth';
 
 describe('OAuth Token Encryption', () => {
   const mockToken: OAuthTokenData = {

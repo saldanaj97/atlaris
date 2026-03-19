@@ -1,11 +1,11 @@
+import { describe, expect, it } from 'vitest';
 import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import {
+  type ModelResolution,
   resolveModelForTier,
   validateModelForTier,
-  type ModelResolution,
 } from '@/features/ai/model-resolver';
-import { describe, expect, it } from 'vitest';
 
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
@@ -195,18 +195,15 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     it.each([
       ["empty string ''", ''],
       ['null', null],
-    ] as const)(
-      'treats %s as invalid for pro tier: resolves to AI_DEFAULT_MODEL with fallback invalid_model',
-      (_label, edgeValue) => {
-        const { result } = resolveWithMockProvider('pro', edgeValue);
+    ] as const)('treats %s as invalid for pro tier: resolves to AI_DEFAULT_MODEL with fallback invalid_model', (_label, edgeValue) => {
+      const { result } = resolveWithMockProvider('pro', edgeValue);
 
-        expectResolution(result, {
-          modelId: AI_DEFAULT_MODEL,
-          fallback: true,
-          fallbackReason: 'invalid_model',
-        });
-      }
-    );
+      expectResolution(result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'invalid_model',
+      });
+    });
   });
 
   describe('Provider factory errors', () => {

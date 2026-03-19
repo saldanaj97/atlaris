@@ -1,9 +1,8 @@
+import { and, eq, isNull, lt, sql } from 'drizzle-orm';
+import { markPlanGenerationFailure } from '@/features/plans/lifecycle/plan-operations';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
-import { and, eq, isNull, lt, sql } from 'drizzle-orm';
-
-import { markPlanGenerationFailure } from '@/features/plans/lifecycle/plan-operations';
 
 /** Plans stuck in 'generating' longer than this are considered abandoned. */
 export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes

@@ -1,13 +1,16 @@
 import { nanoid } from 'nanoid';
-
+import type {
+  ExtractedSection,
+  ExtractedStructure,
+} from '@/features/pdf/types';
 import { logger } from '@/lib/logging/logger';
-import type { ExtractedSection, ExtractedStructure } from '@/features/pdf/types';
 import type {
   CapExtractionResponse,
   ExtractionResponseCapConfig,
   ExtractionResponsePayload,
   ExtractionTruncationMetadata,
 } from './structure.types';
+
 export type { CapExtractionResponse } from './structure.types';
 
 const HEADER_MAX_LENGTH = 120;

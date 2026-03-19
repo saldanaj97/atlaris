@@ -1,28 +1,27 @@
-import { AttemptCapExceededError, ForbiddenError } from '@/lib/api/errors';
-import { logger } from '@/lib/logging/logger';
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import { resolveUserTier } from '@/features/billing/tier';
+import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import {
-  atomicCheckAndInsertPlan,
-  checkPlanDurationCap,
-} from '@/features/plans/lifecycle';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-
-import {
+  type PreparedPlanInput,
   preparePlanInputWithPdfOrigin,
   rollbackPdfUsageIfReserved,
-  type PreparedPlanInput,
 } from '@/features/plans/api/pdf-origin';
 import {
-  requireInternalUserByAuthId,
   type PlansDbClient,
+  requireInternalUserByAuthId,
 } from '@/features/plans/api/route-context';
 import {
   calculateTotalWeeks,
   findCappedPlanWithoutModules,
   normalizePlanDurationForTier,
 } from '@/features/plans/api/shared';
+import {
+  atomicCheckAndInsertPlan,
+  checkPlanDurationCap,
+} from '@/features/plans/lifecycle';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import { AttemptCapExceededError, ForbiddenError } from '@/lib/api/errors';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
+import { logger } from '@/lib/logging/logger';
 
 type PlanCreationPreflightData = {
   user: DbUser;

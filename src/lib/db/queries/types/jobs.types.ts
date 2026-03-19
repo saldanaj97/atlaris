@@ -1,6 +1,6 @@
+import type { InferSelectModel } from 'drizzle-orm';
 import type { getDb } from '@/lib/db/runtime';
 import type { JobErrorHistoryEntry } from '@/shared/types/jobs.types';
-import type { InferSelectModel } from 'drizzle-orm';
 
 type DbSchemaModule = typeof import('@/lib/db/schema');
 

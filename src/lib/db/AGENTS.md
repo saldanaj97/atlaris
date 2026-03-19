@@ -23,7 +23,7 @@ import { db } from '@/lib/db/service-role';
 ```
 
 **Why?** Service-role bypasses RLS → security vulnerability if used in request handlers.  
-ESLint enforces this in `src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`.
+Keep service-role imports out of these paths; align with layer rules and Biome checks in `biome.json` (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`).
 
 ## Auth Wrappers (How DB Context Gets Established)
 

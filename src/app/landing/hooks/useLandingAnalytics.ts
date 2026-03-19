@@ -34,7 +34,6 @@ export function useLandingAnalytics() {
 
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
       console.log('[Analytics] CTA Click:', event);
     }
 
@@ -54,7 +53,6 @@ export function useLandingAnalytics() {
     } catch (error) {
       // Silently handle analytics errors to not affect app flow
       if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
         console.warn('[Analytics] Failed to track with gtag:', error);
       }
     }
@@ -71,7 +69,6 @@ export function useLandingAnalytics() {
     } catch (error) {
       // Silently handle analytics errors to not affect app flow
       if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
         console.warn('[Analytics] Failed to track with dataLayer:', error);
       }
     }

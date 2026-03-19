@@ -1,6 +1,6 @@
-import AuthControls from '@/components/shared/AuthControls';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import AuthControls from '@/components/shared/AuthControls';
 
 vi.mock('@neondatabase/auth/react', () => ({
   UserButton: () => <div data-testid="user-button">Mocked UserButton</div>,
@@ -46,14 +46,14 @@ describe('AuthControls', () => {
       expect(screen.getByTestId('user-button')).toBeInTheDocument();
     });
 
-    it.each(['starter', 'pro'] as const)(
-      'renders %s tier when authenticated and tier is provided',
-      (tier) => {
-        render(<AuthControls isAuthenticated={true} tier={tier} />);
+    it.each([
+      'starter',
+      'pro',
+    ] as const)('renders %s tier when authenticated and tier is provided', (tier) => {
+      render(<AuthControls isAuthenticated={true} tier={tier} />);
 
-        expect(screen.getByText(tier)).toBeInTheDocument();
-        expect(screen.getByTestId('user-button')).toBeInTheDocument();
-      }
-    );
+      expect(screen.getByText(tier)).toBeInTheDocument();
+      expect(screen.getByTestId('user-button')).toBeInTheDocument();
+    });
   });
 });

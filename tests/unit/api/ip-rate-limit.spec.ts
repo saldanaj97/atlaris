@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { RateLimitError } from '@/lib/api/errors';
 import {
   checkIpRateLimit,
   clearAllRateLimiters,
@@ -8,7 +8,6 @@ import {
   getRateLimitHeaders,
   IP_RATE_LIMIT_CONFIGS,
 } from '@/lib/api/ip-rate-limit';
-import { RateLimitError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 
 function createMockRequest(headers: Record<string, string> = {}): Request {

@@ -1,10 +1,10 @@
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getSessionSafe } from '@/lib/auth/server';
+import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/features/navigation';
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
+import { withServerComponentContext } from '@/lib/api/auth';
+import { getSessionSafe } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';

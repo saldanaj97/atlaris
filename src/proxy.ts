@@ -138,7 +138,6 @@ export default async function proxy(
       pathname.startsWith('/api/');
 
     if (devBypass) {
-      // eslint-disable-next-line no-console -- Edge runtime; Pino unavailable, dev-only path
       console.debug('[dev_auth_bypass]', {
         event: 'dev_auth_bypass',
         userId: devAuthEnv.userId,

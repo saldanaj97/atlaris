@@ -1,5 +1,15 @@
 'use client';
 
+import {
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  Link as LinkIcon,
+  PlayCircle,
+  Target,
+} from 'lucide-react';
+import type { Dispatch, ElementType, SetStateAction } from 'react';
+import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -11,20 +21,10 @@ import {
 } from '@/components/ui/card';
 import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
-import {
-  CheckCircle2,
-  ExternalLink,
-  FileText,
-  Link as LinkIcon,
-  PlayCircle,
-  Target,
-} from 'lucide-react';
-import { useMemo } from 'react';
-import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 import type { ClientModule } from '@/shared/types/client.types';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
-import type { Dispatch, ElementType, SetStateAction } from 'react';
+import { UpdateTaskStatusButton } from './UpdateTaskStatusButton';
 
 const EMPTY_TASKS: ClientModule['tasks'] = [];
 

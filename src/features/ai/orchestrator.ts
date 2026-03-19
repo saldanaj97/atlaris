@@ -1,20 +1,4 @@
-import { aiTimeoutEnv } from '@/lib/config/env';
-import {
-  finalizeAttemptFailure,
-  finalizeAttemptSuccess,
-  reserveAttemptSlot,
-} from '@/lib/db/queries/attempts';
-import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-persistence';
-import { logger } from '@/lib/logging/logger';
 import * as Sentry from '@sentry/nextjs';
-import { attachAbortListener } from './abort';
-import { classifyFailure } from './classification';
-import { pacePlan } from './pacing';
-import { parseGenerationStream } from './parser';
-import { ProviderTimeoutError } from './providers/errors';
-import { getGenerationProvider } from './providers/factory';
-import { createAdaptiveTimeout } from './timeout';
-
 import type {
   AttemptOperations,
   AttemptOperationsOverrides,
@@ -29,13 +13,28 @@ import type {
   ProviderMetadata,
 } from '@/features/ai/types/provider.types';
 import type { AdaptiveTimeoutConfig } from '@/features/ai/types/timeout.types';
+import { aiTimeoutEnv } from '@/lib/config/env';
+import {
+  finalizeAttemptFailure,
+  finalizeAttemptSuccess,
+  reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
+import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-persistence';
 import type {
   AttemptRejection,
   AttemptReservation,
   AttemptsDbClient,
   FinalizeFailureParams,
 } from '@/lib/db/queries/types/attempts.types';
+import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/client.types';
+import { attachAbortListener } from './abort';
+import { classifyFailure } from './classification';
+import { pacePlan } from './pacing';
+import { parseGenerationStream } from './parser';
+import { ProviderTimeoutError } from './providers/errors';
+import { getGenerationProvider } from './providers/factory';
+import { createAdaptiveTimeout } from './timeout';
 
 const DEFAULT_CLOCK = () => Date.now();
 

@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createRetryHandler,
   POST,
@@ -5,7 +6,6 @@ import {
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';

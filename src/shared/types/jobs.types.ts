@@ -1,6 +1,5 @@
-import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
-
 import { JOB_TYPE_MAP, type JobTypeValue } from '@/shared/constants/jobs';
+import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 
 export const JOB_TYPES = JOB_TYPE_MAP;
 

@@ -1,6 +1,5 @@
-import type { JSX } from 'react';
-
 import { Check } from 'lucide-react';
+import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

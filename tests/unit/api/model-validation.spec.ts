@@ -1,7 +1,7 @@
+import { describe, expect, it, vi } from 'vitest';
+import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 import { AI_DEFAULT_MODEL, isValidModelId } from '@/features/ai/ai-models';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
-import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
-import { describe, expect, it, vi } from 'vitest';
 
 const stubProviderGetter = vi.fn((_modelId: string) => ({
   generate: vi.fn(async () => {

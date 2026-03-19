@@ -10,11 +10,10 @@ import {
   Target,
 } from 'lucide-react';
 import type { ElementType, ReactElement } from 'react';
-
-import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { formatMinutes } from '@/features/plans/formatters';
-import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
+import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import { cn } from '@/lib/utils';
+import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface TaskCardProps {

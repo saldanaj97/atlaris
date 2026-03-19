@@ -1,15 +1,13 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { PDFParse, PasswordException } from 'pdf-parse';
+import { PasswordException, PDFParse } from 'pdf-parse';
 import { getPath } from 'pdf-parse/worker';
-
-import { logger } from '@/lib/logging/logger';
-
 import { detectStructure } from '@/features/pdf/structure';
 import type {
   PdfExtractionOptions,
   PdfExtractionResponse,
 } from '@/features/pdf/types';
+import { logger } from '@/lib/logging/logger';
 
 const PDF_HEADER = '%PDF-';
 const ENCRYPT_TOKEN = '/Encrypt';

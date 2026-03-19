@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  aggregateNormalizationFlags,
   MODULE_MAX_MINUTES,
   MODULE_MIN_MINUTES,
-  TASK_MAX_MINUTES,
-  TASK_MIN_MINUTES,
-  aggregateNormalizationFlags,
   normalizeModuleMinutes,
   normalizeTaskMinutes,
+  TASK_MAX_MINUTES,
+  TASK_MIN_MINUTES,
 } from '@/features/plans/effort';
 import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
 

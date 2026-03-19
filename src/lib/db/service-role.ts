@@ -36,9 +36,9 @@
  * If you're seeing an ESLint error, you're using the wrong client!
  */
 
-import { databaseEnv } from '@/lib/config/env';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres, { type Sql } from 'postgres';
+import { databaseEnv } from '@/lib/config/env';
 
 import { configureLocalNeon } from './neon-config';
 import * as schema from './schema';

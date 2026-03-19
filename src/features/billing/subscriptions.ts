@@ -1,9 +1,9 @@
+import { eq } from 'drizzle-orm';
+import type Stripe from 'stripe';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
-import { eq } from 'drizzle-orm';
-import type Stripe from 'stripe';
 import { getStripe } from './client';
 
 type DbClient = ReturnType<typeof getDb>;

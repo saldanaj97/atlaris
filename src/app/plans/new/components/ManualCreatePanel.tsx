@@ -1,20 +1,20 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { UnifiedPlanInput } from '@/app/plans/new/components/plan-form';
 import {
   deadlineWeeksToDate,
   getTodayDateString,
 } from '@/app/plans/new/components/plan-form/helpers';
 import type { PlanFormData } from '@/app/plans/new/components/plan-form/types';
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
-import { clientLogger } from '@/lib/logging/client';
+import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
 import { mapOnboardingToCreateInput } from '@/features/plans/create-mapper';
 import type { OnboardingFormValues } from '@/features/plans/validation/learningPlans.types';
-import { useRouter } from 'next/navigation';
-import React, { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
-
-import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
+import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
+import { clientLogger } from '@/lib/logging/client';
 
 interface ManualCreatePanelProps {
   initialTopic?: string | null;

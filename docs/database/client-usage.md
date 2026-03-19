@@ -85,9 +85,9 @@ RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/
 
 Functions like `atomicCheckAndInsertPlan` may use service-role DB for atomicity, but **must validate all inputs are caller-scoped**.
 
-## ESLint Enforcement
+## Lint enforcement
 
-Importing `@/lib/db/service-role` in request layers is blocked by lint rules:
+Do not import `@/lib/db/service-role` from request-layer paths (see `src/lib/db/service-role.ts` and architecture docs). Automated import boundaries were previously enforced with ESLint; use Biome plus review until equivalent rules land in `biome.json`.
 
 - `src/app/api/**`
 - `src/lib/api/**`

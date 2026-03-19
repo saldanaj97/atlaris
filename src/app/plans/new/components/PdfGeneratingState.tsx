@@ -1,9 +1,8 @@
 'use client';
 
-import type { ReactElement } from 'react';
-
-import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import type { ReactElement } from 'react';
+import { Card } from '@/components/ui/card';
 
 export function PdfGeneratingState(): ReactElement {
   return (

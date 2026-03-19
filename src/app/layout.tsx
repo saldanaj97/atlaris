@@ -1,11 +1,11 @@
+import { NeonAuthUIProvider } from '@neondatabase/auth/react';
+import type { Metadata } from 'next';
+import { Work_Sans, Young_Serif } from 'next/font/google';
+import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/app/ThemeProvider';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { authClient } from '@/lib/auth/client';
-import { NeonAuthUIProvider } from '@neondatabase/auth/react';
-import { type Metadata } from 'next';
-import { Work_Sans, Young_Serif } from 'next/font/google';
-import { Toaster } from 'sonner';
 import './globals.css';
 
 const workSans = Work_Sans({

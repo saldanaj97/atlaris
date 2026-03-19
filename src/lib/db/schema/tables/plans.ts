@@ -14,11 +14,11 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
+  type GenerationAttemptStatus,
   generationStatus,
   learningStyle,
   planOrigin,
   skillLevel,
-  type GenerationAttemptStatus,
 } from '../../enums';
 import { timestampFields } from '../helpers';
 import {

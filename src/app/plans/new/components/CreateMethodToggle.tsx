@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useId } from 'react';
+import { FileText, Sparkles } from 'lucide-react';
+import type React from 'react';
+import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { FileText, Sparkles } from 'lucide-react';
 
 export type CreateMethod = 'manual' | 'pdf';
 

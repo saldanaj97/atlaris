@@ -1,13 +1,13 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import React, { Suspense, useCallback, useId, useState } from 'react';
 import {
-  CreateMethodToggle,
   type CreateMethod,
+  CreateMethodToggle,
 } from '@/app/plans/new/components/CreateMethodToggle';
 import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRouter } from 'next/navigation';
-import React, { Suspense, useCallback, useId, useState } from 'react';
 
 const PdfCreatePanel = React.lazy(() =>
   import('@/app/plans/new/components/PdfCreatePanel').then((module) => ({

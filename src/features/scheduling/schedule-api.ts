@@ -1,3 +1,8 @@
+import { format } from 'date-fns';
+import { and, asc, eq } from 'drizzle-orm';
+import { distributeTasksToSessions } from '@/features/scheduling/distribute';
+import { computeInputsHash } from '@/features/scheduling/hash';
+import type { ScheduleInputs, ScheduleJson } from '@/features/scheduling/types';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
@@ -5,11 +10,6 @@ import {
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
-import { distributeTasksToSessions } from '@/features/scheduling/distribute';
-import { computeInputsHash } from '@/features/scheduling/hash';
-import type { ScheduleInputs, ScheduleJson } from '@/features/scheduling/types';
-import { format } from 'date-fns';
-import { and, asc, eq } from 'drizzle-orm';
 
 interface GetPlanScheduleParams {
   planId: string;

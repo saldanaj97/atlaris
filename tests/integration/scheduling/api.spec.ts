@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
-import { learningPlans, users, modules, tasks } from '@/lib/db/schema';
-import { getPlanSchedule } from '@/features/scheduling/schedule-api';
 import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getPlanSchedule } from '@/features/scheduling/schedule-api';
+import { learningPlans, modules, tasks, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 describe('getPlanSchedule API', () => {
   let testUserId: string;

@@ -1,6 +1,8 @@
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-
 import { resolveUserTier } from '@/features/billing/tier';
+import { completeJob, failJob, getNextJob } from '@/features/jobs/queue';
+import { JOB_TYPES } from '@/features/jobs/types';
 import {
   createPlanLifecycleService,
   type GenerationAttemptResult,
@@ -12,10 +14,6 @@ import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import { eq } from 'drizzle-orm';
-
-import { completeJob, failJob, getNextJob } from '@/features/jobs/queue';
-import { JOB_TYPES } from '@/features/jobs/types';
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 

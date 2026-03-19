@@ -1,17 +1,17 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { usePlanStatus } from '@/hooks/usePlanStatus';
-import { useRetryGeneration } from '@/hooks/useRetryGeneration';
-import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/constants';
-import { formatSkillLevel } from '@/features/plans/formatters';
-import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/constants';
+import { formatSkillLevel } from '@/features/plans/formatters';
+import { usePlanStatus } from '@/hooks/usePlanStatus';
+import { useRetryGeneration } from '@/hooks/useRetryGeneration';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 // Maximum retry attempts (shared constant used by both client and server)
 const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;

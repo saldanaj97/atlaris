@@ -21,15 +21,15 @@ import type {
   PlanAccessResult,
   ScheduleAccessResult,
 } from '@/app/plans/[id]/types';
-import { withServerActionContext } from '@/lib/api/auth';
 import {
   getPlanSchedule,
   SCHEDULE_FETCH_ERROR_CODE,
   ScheduleFetchError,
 } from '@/features/scheduling/schedule-api';
+import { withServerActionContext } from '@/lib/api/auth';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
-import { getDb } from '@/lib/db/runtime';
+import type { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import { PROGRESS_STATUSES } from '@/shared/types/db';

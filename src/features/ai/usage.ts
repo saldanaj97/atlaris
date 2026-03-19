@@ -9,6 +9,7 @@
  * source of truth for pricing and output-token ceilings.
  */
 
+import * as Sentry from '@sentry/nextjs';
 import { computeCostCents } from '@/features/ai/cost';
 import { logger } from '@/lib/logging/logger';
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
@@ -16,7 +17,6 @@ import {
   type CanonicalAIUsage,
   IncompleteUsageError,
 } from '@/shared/types/ai-usage.types';
-import * as Sentry from '@sentry/nextjs';
 
 /**
  * @deprecated Import directly from `@/features/ai/cost` instead.

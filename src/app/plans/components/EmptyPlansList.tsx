@@ -1,3 +1,6 @@
+import { FileText, Plus } from 'lucide-react';
+import Link from 'next/link';
+import type { FilterStatus } from '@/app/plans/types';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -7,10 +10,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { FileText, Plus } from 'lucide-react';
-import Link from 'next/link';
-
-import type { FilterStatus } from '@/app/plans/types';
 
 interface EmptyPlansListProps {
   searchQuery: string;

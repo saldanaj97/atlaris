@@ -1,13 +1,11 @@
-import type { JSX } from 'react';
-
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { logger } from '@/lib/logging/logger';
-import { mapDetailToClient } from '@/features/plans/detail-mapper';
 import { redirect } from 'next/navigation';
-
+import type { JSX } from 'react';
 import { getCachedPlanForPage } from '@/app/plans/[id]/data';
 import { getPlanError, isPlanSuccess } from '@/app/plans/[id]/helpers';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { mapDetailToClient } from '@/features/plans/detail-mapper';
+import { logger } from '@/lib/logging/logger';
 
 import { PlanDetailPageError } from './Error';
 import { PlanDetails } from './PlanDetails';

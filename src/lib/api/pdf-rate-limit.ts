@@ -1,10 +1,10 @@
+import { LRUCache } from 'lru-cache';
 import { RateLimitError } from '@/lib/api/errors';
 import { appEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import { LRUCache } from 'lru-cache';
 
 export type GlobalExtractionState = {
   inFlight: number;

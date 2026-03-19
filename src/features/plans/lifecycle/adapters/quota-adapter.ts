@@ -7,8 +7,8 @@
 import { atomicCheckAndIncrementPdfUsage } from '@/features/billing/quota';
 import { resolveUserTier } from '@/features/billing/tier';
 import { decrementPdfPlanUsage } from '@/features/billing/usage-metrics';
-import { checkPlanDurationCap } from '@/features/plans/lifecycle/plan-operations';
 import { normalizePlanDurationForTier } from '@/features/plans/api/shared';
+import { checkPlanDurationCap } from '@/features/plans/lifecycle/plan-operations';
 import type { DbClient } from '@/lib/db/types';
 
 import type { QuotaPort } from '../ports';

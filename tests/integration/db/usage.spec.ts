@@ -1,9 +1,9 @@
-import { db } from '@/lib/db/service-role';
-import { aiUsageEvents, learningPlans } from '@/lib/db/schema';
-import { recordUsage } from '@/lib/db/usage';
-import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
+import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle';
+import { aiUsageEvents, learningPlans } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
+import { recordUsage } from '@/lib/db/usage';
 
 import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';

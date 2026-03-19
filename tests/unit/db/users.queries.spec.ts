@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { buildUserFixture } from '../../fixtures/users';
 import {
   createUser,
   getUserByAuthId,
   updateUserPreferredAiModel,
 } from '@/lib/db/queries/users';
-import { getDb } from '@/lib/db/runtime';
+import type { getDb } from '@/lib/db/runtime';
+import { buildUserFixture } from '../../fixtures/users';
 
 const mockedGetRequestContext = vi.fn();
 const mockedGetDb = vi.fn();

@@ -1,15 +1,27 @@
 import { ZodError } from 'zod';
-
+import { atomicCheckAndIncrementUsage } from '@/features/billing/quota';
+import { resolveUserTier } from '@/features/billing/tier';
+import { decrementRegenerationUsage } from '@/features/billing/usage-metrics';
+import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
+import { enqueueJobWithResult } from '@/features/jobs/queue';
 import {
-  withAuthAndRateLimit,
-  withErrorBoundary,
-  type PlainHandler,
-} from '@/lib/api/auth';
-import { AppError, RateLimitError, ValidationError } from '@/lib/api/errors';
+  drainRegenerationQueue,
+  releaseInlineDrainLock,
+  tryAcquireInlineDrainLock,
+} from '@/features/jobs/regeneration-worker';
+import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/features/plans/api/route-context';
+import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
+import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
+import {
+  type PlainHandler,
+  withAuthAndRateLimit,
+  withErrorBoundary,
+} from '@/lib/api/auth';
+import { AppError, RateLimitError, ValidationError } from '@/lib/api/errors';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -18,21 +30,8 @@ import { json } from '@/lib/api/response';
 import { regenerationQueueEnv } from '@/lib/config/env';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
 import { getDb } from '@/lib/db/runtime';
-import { enqueueJobWithResult } from '@/features/jobs/queue';
-import {
-  drainRegenerationQueue,
-  releaseInlineDrainLock,
-  tryAcquireInlineDrainLock,
-} from '@/features/jobs/regeneration-worker';
-import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { logger } from '@/lib/logging/logger';
 import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
-import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
-import { atomicCheckAndIncrementUsage } from '@/features/billing/quota';
-import { resolveUserTier } from '@/features/billing/tier';
-import { decrementRegenerationUsage } from '@/features/billing/usage-metrics';
-import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
-import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 
 /**
  * POST /api/v1/plans/:planId/regenerate

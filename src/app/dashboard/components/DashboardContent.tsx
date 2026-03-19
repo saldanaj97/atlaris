@@ -1,16 +1,15 @@
-import { Skeleton } from '@/components/ui/skeleton';
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
-
+import { ActivityFeedClient } from '@/app/dashboard/components/ActivityFeedClient';
+import { ActivityStreamSidebar } from '@/app/dashboard/components/ActivityStreamSidebar';
 import {
   findActivePlan,
   generateActivities,
 } from '@/app/dashboard/components/activity-utils';
-import { ActivityFeedClient } from '@/app/dashboard/components/ActivityFeedClient';
-import { ActivityStreamSidebar } from '@/app/dashboard/components/ActivityStreamSidebar';
 import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHero';
+import { Skeleton } from '@/components/ui/skeleton';
+import { withServerComponentContext } from '@/lib/api/auth';
+import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 
 /**
  * Async component that fetches user plan data and renders dashboard content.

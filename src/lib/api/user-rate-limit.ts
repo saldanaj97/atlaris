@@ -193,7 +193,9 @@ export function getUserRateLimitHeaders(
  * Clears all user rate limiters. Useful for testing.
  */
 export function clearAllUserRateLimiters(): void {
-  rateLimiters.forEach((limiter) => limiter.clear());
+  for (const limiter of rateLimiters.values()) {
+    limiter.clear();
+  }
   rateLimiters.clear();
 }
 
@@ -202,5 +204,7 @@ export function clearAllUserRateLimiters(): void {
  * Useful for testing and admin operations.
  */
 export function resetUserRateLimits(userId: string): void {
-  rateLimiters.forEach((limiter) => limiter.reset(userId));
+  for (const limiter of rateLimiters.values()) {
+    limiter.reset(userId);
+  }
 }

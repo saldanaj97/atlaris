@@ -1,5 +1,7 @@
 'use client';
 
+import { BookOpen, RefreshCw, Share2, Trophy } from 'lucide-react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import {
   HoverCard,
@@ -7,8 +9,6 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import type { SubscriptionTier } from '@/features/billing/tier-limits';
-import { BookOpen, RefreshCw, Share2, Trophy } from 'lucide-react';
-import Link from 'next/link';
 
 interface UsageData {
   tier: string;

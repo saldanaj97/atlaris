@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import {
   BACKOFF_MULTIPLIER,
   computeNextDelay,
@@ -5,7 +6,6 @@ import {
   JITTER_FACTOR,
   MAX_POLL_MS,
 } from '@/shared/constants/polling';
-import { describe, expect, it } from 'vitest';
 
 describe('computeNextDelay', () => {
   it('multiplies the current delay by the backoff multiplier', () => {
@@ -41,12 +41,15 @@ describe('computeNextDelay', () => {
     expect(high).toBeLessThanOrEqual(expected * (1 + JITTER_FACTOR));
   });
 
-  it.each([NaN, Infinity, -Infinity, -1, 0])(
-    'returns INITIAL_POLL_MS for invalid input: %s',
-    (input) => {
-      expect(computeNextDelay(input)).toBe(INITIAL_POLL_MS);
-    }
-  );
+  it.each([
+    NaN,
+    Infinity,
+    -Infinity,
+    -1,
+    0,
+  ])('returns INITIAL_POLL_MS for invalid input: %s', (input) => {
+    expect(computeNextDelay(input)).toBe(INITIAL_POLL_MS);
+  });
 
   it('produces different values with different random seeds', () => {
     const results = new Set<number>();

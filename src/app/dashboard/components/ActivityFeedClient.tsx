@@ -1,11 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import type { ActivityFilter, ActivityItem } from '../types';
 import { ActivityCard } from './ActivityCard';
 import { ActivityFilterTabs } from './ActivityFilterTabs';
 import { EmptyActivityState } from './EmptyActivityState';
-
-import type { ActivityFilter, ActivityItem } from '../types';
 
 interface ActivityFeedClientProps {
   activities: ActivityItem[];

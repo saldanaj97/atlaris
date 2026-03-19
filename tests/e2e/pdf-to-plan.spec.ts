@@ -1,8 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import { resolveUserTier } from '@/features/billing/tier';
+import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import { incrementPdfPlanUsage } from '@/features/billing/usage-metrics';
 import { extractTextFromPdf } from '@/features/pdf/extract';
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';

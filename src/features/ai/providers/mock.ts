@@ -1,14 +1,13 @@
 import { createAbortError } from '@/features/ai/abort';
 import { ProviderError } from '@/features/ai/providers/errors';
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
-import { aiEnv } from '@/lib/config/env';
-
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
   ProviderGenerateResult,
 } from '@/features/ai/types/provider.types';
+import { aiEnv } from '@/lib/config/env';
 
 // Timing thresholds for test mode behavior
 const FAST_TEST_THRESHOLD_MS = 100;

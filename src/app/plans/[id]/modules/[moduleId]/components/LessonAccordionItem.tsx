@@ -1,20 +1,6 @@
 'use client';
 
 import {
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Badge } from '@/components/ui/badge';
-import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
-import { formatMinutes } from '@/features/plans/formatters';
-import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
-import {
-  generatePlaceholderContent,
-  hashString,
-  type ContentBlock,
-} from '@/app/plans/[id]/modules/[moduleId]/components/placeholder-content';
-import {
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -24,7 +10,21 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
-import { useMemo, type ElementType, type JSX } from 'react';
+import { type ElementType, type JSX, useMemo } from 'react';
+import {
+  type ContentBlock,
+  generatePlaceholderContent,
+  hashString,
+} from '@/app/plans/[id]/modules/[moduleId]/components/placeholder-content';
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import { formatMinutes } from '@/features/plans/formatters';
+import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
+import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {

@@ -1,27 +1,4 @@
 import {
-  activeRegenerationJobWhere,
-  appendErrorHistoryEntry,
-  assertValidJobTypes,
-  clampLimit,
-  mapRowToJob,
-} from '@/lib/db/queries/helpers/jobs-helpers';
-import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import type {
-  JobEnqueueResult,
-  JobQueueRow,
-  JobsDbClient,
-  JobStats,
-} from '@/lib/db/queries/types/jobs.types';
-import { getDb } from '@/lib/db/runtime';
-import { jobQueue } from '@/lib/db/schema';
-import {
-  JOB_TYPES,
-  type Job,
-  type JobPayload,
-  type JobResult,
-  type JobType,
-} from '@/shared/types/jobs.types';
-import {
   and,
   desc,
   eq,
@@ -34,9 +11,32 @@ import {
   sql,
 } from 'drizzle-orm';
 import {
+  activeRegenerationJobWhere,
+  appendErrorHistoryEntry,
+  assertValidJobTypes,
+  clampLimit,
+  mapRowToJob,
+} from '@/lib/db/queries/helpers/jobs-helpers';
+import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import type {
+  JobEnqueueResult,
+  JobQueueRow,
+  JobStats,
+  JobsDbClient,
+} from '@/lib/db/queries/types/jobs.types';
+import { getDb } from '@/lib/db/runtime';
+import { jobQueue } from '@/lib/db/schema';
+import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,
 } from '@/shared/constants/retry-policy';
+import {
+  JOB_TYPES,
+  type Job,
+  type JobPayload,
+  type JobResult,
+  type JobType,
+} from '@/shared/types/jobs.types';
 
 /**
  * Job queue queries: enqueue, claim, complete, fail, stats, cleanup, and lookups by plan/user.
@@ -466,7 +466,7 @@ export async function failJobRecord(
 
     const retryDelaySeconds = Math.min(
       MAX_RETRY_DELAY_SECONDS,
-      Math.pow(JOB_RETRY_BASE_SECONDS, nextAttempts)
+      JOB_RETRY_BASE_SECONDS ** nextAttempts
     );
     const scheduledForRetry = new Date(
       now.getTime() + retryDelaySeconds * 1000

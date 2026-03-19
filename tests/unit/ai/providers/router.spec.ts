@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
 import {
-  RouterGenerationProvider,
   type RouterConfig,
+  RouterGenerationProvider,
 } from '@/features/ai/providers/router';
 import { createGenerationInput } from '../../../fixtures/generation-input';
 

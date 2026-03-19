@@ -1,9 +1,8 @@
+import { asc, eq, inArray } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { asc, eq, inArray } from 'drizzle-orm';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';

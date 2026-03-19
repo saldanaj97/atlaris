@@ -1,9 +1,9 @@
 'use client';
 
+import type { JSX } from 'react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
-import { useEffect } from 'react';
-import type { JSX } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string };

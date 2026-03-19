@@ -1,23 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
-
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  markUserAsSubscribed,
-  buildStripeCustomerId,
-  buildStripeSubscriptionId,
-} from '../../helpers/subscription';
-import { db } from '@/lib/db/service-role';
-import { users } from '@/lib/db/schema';
-import {
+  cancelSubscription,
   createCustomer,
+  getCustomerPortalUrl,
   getSubscriptionTier,
   syncSubscriptionToDb,
-  cancelSubscription,
-  getCustomerPortalUrl,
 } from '@/features/billing/subscriptions';
+import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
+import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import {
+  buildStripeCustomerId,
+  buildStripeSubscriptionId,
+  markUserAsSubscribed,
+} from '../../helpers/subscription';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 async function createUniqueUser() {
   const authUserId = buildTestAuthUserId('stripe-subscriptions');
@@ -59,10 +58,7 @@ describe('Subscription Management', () => {
       });
 
       // Verify DB updated
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(sql`id = ${userId}`);
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
       expect(user?.stripeCustomerId).toBe(expectedCustomerId);
     });
 
@@ -174,10 +170,7 @@ describe('Subscription Management', () => {
       await syncSubscriptionToDb(mockSubscription, mockStripe);
 
       // Verify DB updated
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(sql`id = ${userId}`);
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
 
       expect(user?.subscriptionTier).toBe('starter');
       expect(user?.subscriptionStatus).toBe('active');
@@ -233,10 +226,7 @@ describe('Subscription Management', () => {
       await syncSubscriptionToDb(mockSubscription, mockStripe);
 
       // Verify DB updated
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(sql`id = ${userId}`);
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
 
       expect(user?.subscriptionTier).toBe('pro');
       expect(user?.subscriptionStatus).toBe('canceled');
@@ -289,10 +279,7 @@ describe('Subscription Management', () => {
 
       await syncSubscriptionToDb(mockSubscription, mockStripe);
 
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(sql`id = ${userId}`);
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
 
       expect(user?.subscriptionStatus).toBe('past_due');
       expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
@@ -342,10 +329,7 @@ describe('Subscription Management', () => {
 
       await syncSubscriptionToDb(mockSubscription, mockStripe);
 
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(sql`id = ${userId}`);
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
 
       expect(user?.subscriptionTier).toBe('free');
       expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);

@@ -1,20 +1,20 @@
 'use client';
 
+import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
+import type { JSX } from 'react';
+import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { isDevelopment } from '@/lib/config/client-env';
 import { assertNever } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
-import type { JSX } from 'react';
-import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
   LEARNING_STYLE_OPTIONS,
   SKILL_LEVEL_OPTIONS,
   WEEKLY_HOURS_OPTIONS,
 } from './constants';
+import { InlineDropdown } from './InlineDropdown';
 
 import type { PlanFormData } from './types';
 

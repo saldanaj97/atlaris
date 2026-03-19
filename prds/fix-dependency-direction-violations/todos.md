@@ -402,7 +402,7 @@ Add ESLint rules to enforce the three-layer dependency direction contract, preve
 
 ##### Changes
 
-- [x] Add `sharedLayerRestrictedPatterns` and `libLayerRestrictedPatterns` to `eslint.config.mjs`
+- [x] Add `sharedLayerRestrictedPatterns` and `libLayerRestrictedPatterns` (was `eslint.config.mjs`; lint is now Biome — see `biome.json`)
 - [x] Add enforcement blocks for `src/shared/**` (no lib/features) and `src/lib/**` (no features)
 - [x] Add documented exceptions for:
   - 3 DB-derived type files in shared (`db.types.ts`, `client.types.ts`, `db.ts`) — allowed to import from `@/lib/db`

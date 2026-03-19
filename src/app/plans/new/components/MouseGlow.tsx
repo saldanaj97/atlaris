@@ -1,7 +1,7 @@
 'use client';
 
-import { useMouseGlow } from './useMouseGlow';
 import { useRef } from 'react';
+import { useMouseGlow } from './useMouseGlow';
 
 /** Configuration for trail segments */
 const TRAIL_SEGMENTS = [4, 3, 2, 1, 0] as const;

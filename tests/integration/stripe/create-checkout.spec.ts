@@ -1,14 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
-import { ensureUser, truncateAll } from '@/../tests/helpers/db';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '@/../tests/helpers/auth';
-import { db } from '@/lib/db/service-role';
-import { users } from '@/lib/db/schema';
+import { ensureUser, truncateAll } from '@/../tests/helpers/db';
 import {
   createCreateCheckoutHandler,
   POST,
 } from '@/app/api/v1/stripe/create-checkout/route';
+import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
@@ -88,10 +88,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     });
 
     // Verify customer ID was saved to DB
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(sql`id = ${userId}`);
+    const [user] = await db.select().from(users).where(sql`id = ${userId}`);
     expect(user?.stripeCustomerId).toBe('cus_new123');
   });
 
