@@ -13,7 +13,7 @@ import { safeNormalizeUsage } from '@/features/ai/usage';
 import type { PdfContext } from '@/features/pdf/context.types';
 import type { GenerationInput } from '@/features/ai/types/provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import type { DbClient } from '@/lib/db/types';
 
 import type { GenerationPort } from '../ports';
 import type {
@@ -23,7 +23,7 @@ import type {
 } from '../types';
 
 export class GenerationAdapter implements GenerationPort {
-  constructor(private readonly dbClient: AttemptsDbClient) {}
+  constructor(private readonly dbClient: DbClient) {}
 
   async runGeneration(params: {
     planId: string;

@@ -28,7 +28,6 @@ const noOpJobQueue: JobQueuePort = {
 
 const lifecycleService = createPlanLifecycleService({
   dbClient: db,
-  attemptsDbClient: db,
   jobQueue: noOpJobQueue,
 });
 

@@ -122,7 +122,6 @@ export function createRetryHandler(deps?: {
 
         const lifecycleService = createPlanLifecycleService({
           dbClient: db,
-          attemptsDbClient: db,
           jobQueue: noopJobQueue,
         });
 

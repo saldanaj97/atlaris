@@ -59,7 +59,6 @@ export const POST: PlainHandler = withErrorBoundary(
     // Delegate plan creation to PlanLifecycleService
     const lifecycleService = createPlanLifecycleService({
       dbClient: db,
-      attemptsDbClient: db,
       jobQueue: noopJobQueue,
     });
 
