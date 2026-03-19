@@ -19,7 +19,7 @@ import type { ModuleAccessResult } from '@/app/plans/[id]/modules/[moduleId]/typ
 import { withServerActionContext } from '@/lib/api/auth';
 import { getModuleDetail } from '@/lib/db/queries/modules';
 import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
-import { getDb } from '@/lib/db/runtime';
+import type { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import { PROGRESS_STATUSES } from '@/shared/types/db';

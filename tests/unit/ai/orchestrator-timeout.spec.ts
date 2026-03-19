@@ -5,7 +5,7 @@ import type {
   GenerationInput,
   GenerationOptions,
 } from '@/features/ai/types/provider.types';
-import {
+import type {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,

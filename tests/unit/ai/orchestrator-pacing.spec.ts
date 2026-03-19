@@ -12,7 +12,7 @@ import type {
   AiPlanGenerationProvider,
   GenerationInput,
 } from '@/features/ai/types/provider.types';
-import {
+import type {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,

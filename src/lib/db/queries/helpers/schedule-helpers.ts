@@ -1,5 +1,5 @@
 import type { PgErrorShape } from '@/lib/db/queries/types/schedule.types';
-import { planSchedules } from '@/lib/db/schema';
+import type { planSchedules } from '@/lib/db/schema';
 import { scheduleJsonSchema } from '@/shared/schemas/scheduling.schemas';
 import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
 

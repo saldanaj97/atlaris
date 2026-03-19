@@ -1,4 +1,4 @@
-import { type Metadata } from 'next';
+import type { Metadata } from 'next';
 
 export const LANDING_CANONICAL_URL = '/landing';
 export const LANDING_CANONICAL_TITLE =

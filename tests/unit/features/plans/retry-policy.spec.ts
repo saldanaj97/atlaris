@@ -82,9 +82,9 @@ describe('retry-policy', () => {
 
   describe('getRetryDelay', () => {
     it('computes exponential backoff', () => {
-      expect(getRetryDelay(1)).toBe(Math.pow(JOB_RETRY_BASE_SECONDS, 1) * 1000);
-      expect(getRetryDelay(2)).toBe(Math.pow(JOB_RETRY_BASE_SECONDS, 2) * 1000);
-      expect(getRetryDelay(3)).toBe(Math.pow(JOB_RETRY_BASE_SECONDS, 3) * 1000);
+      expect(getRetryDelay(1)).toBe(JOB_RETRY_BASE_SECONDS ** 1 * 1000);
+      expect(getRetryDelay(2)).toBe(JOB_RETRY_BASE_SECONDS ** 2 * 1000);
+      expect(getRetryDelay(3)).toBe(JOB_RETRY_BASE_SECONDS ** 3 * 1000);
     });
 
     it('caps delay at JOB_RETRY_MAX_DELAY_SECONDS', () => {
