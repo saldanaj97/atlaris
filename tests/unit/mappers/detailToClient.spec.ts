@@ -110,18 +110,18 @@ describe('mapDetailToClient', () => {
     const result = mapDetailToClient(detail);
 
     expect(result).toBeDefined();
-    expect(result!.id).toBe('plan-1');
-    expect(result!.topic).toBe('TypeScript');
-    expect(result!.skillLevel).toBe('intermediate');
-    expect(result!.modules).toHaveLength(1);
-    expect(result!.modules[0].title).toBe('Basics');
-    expect(result!.modules[0].tasks).toHaveLength(1);
-    expect(result!.modules[0].tasks[0].title).toBe('Learn basics');
-    expect(result!.modules[0].tasks[0].status).toBe('completed');
-    expect(result!.modules[0].tasks[0].resources).toHaveLength(1);
-    expect(result!.status).toBe('ready');
-    expect(result!.latestAttempt).toBeDefined();
-    expect(result!.latestAttempt!.model).toBe('gpt-4');
+    expect(result?.id).toBe('plan-1');
+    expect(result?.topic).toBe('TypeScript');
+    expect(result?.skillLevel).toBe('intermediate');
+    expect(result?.modules).toHaveLength(1);
+    expect(result?.modules[0].title).toBe('Basics');
+    expect(result?.modules[0].tasks).toHaveLength(1);
+    expect(result?.modules[0].tasks[0].title).toBe('Learn basics');
+    expect(result?.modules[0].tasks[0].status).toBe('completed');
+    expect(result?.modules[0].tasks[0].resources).toHaveLength(1);
+    expect(result?.status).toBe('ready');
+    expect(result?.latestAttempt).toBeDefined();
+    expect(result?.latestAttempt?.model).toBe('gpt-4');
   });
 
   it('should return undefined for null detail', () => {
@@ -193,11 +193,11 @@ describe('mapDetailToClient', () => {
     const result = mapDetailToClient(detail);
 
     expect(result).toBeDefined();
-    expect(result!.modules[0].description).toBeNull();
-    expect(result!.modules[0].estimatedMinutes).toBe(0);
-    expect(result!.modules[0].tasks[0].description).toBeNull();
-    expect(result!.modules[0].tasks[0].estimatedMinutes).toBe(0);
-    expect(result!.modules[0].tasks[0].status).toBe('not_started');
+    expect(result?.modules[0].description).toBeNull();
+    expect(result?.modules[0].estimatedMinutes).toBe(0);
+    expect(result?.modules[0].tasks[0].description).toBeNull();
+    expect(result?.modules[0].tasks[0].estimatedMinutes).toBe(0);
+    expect(result?.modules[0].tasks[0].status).toBe('not_started');
   });
 
   it('should sort modules and tasks by order', () => {
@@ -266,10 +266,10 @@ describe('mapDetailToClient', () => {
     const result = mapDetailToClient(detail);
 
     expect(result).toBeDefined();
-    expect(result!.modules[0].title).toBe('First');
-    expect(result!.modules[1].title).toBe('Second');
-    expect(result!.modules[0].tasks[0].title).toBe('First Task');
-    expect(result!.modules[0].tasks[1].title).toBe('Second Task');
+    expect(result?.modules[0].title).toBe('First');
+    expect(result?.modules[1].title).toBe('Second');
+    expect(result?.modules[0].tasks[0].title).toBe('First Task');
+    expect(result?.modules[0].tasks[1].title).toBe('Second Task');
   });
 
   it('should derive status as "ready" when modules exist', () => {
@@ -304,7 +304,7 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('ready');
+    expect(result?.status).toBe('ready');
   });
 
   it('should derive status as "failed" when plan generation status is failed', () => {
@@ -313,7 +313,7 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('failed');
+    expect(result?.status).toBe('failed');
   });
 
   it('should derive status as "processing" when generation is in progress with no modules', () => {
@@ -322,7 +322,7 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('processing');
+    expect(result?.status).toBe('processing');
   });
 
   it('should sort resources within tasks by order', () => {
@@ -353,7 +353,7 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.modules[0].tasks[0].resources.map((r) => r.order)).toEqual([
+    expect(result?.modules[0].tasks[0].resources.map((r) => r.order)).toEqual([
       1, 2,
     ]);
   });
@@ -372,9 +372,9 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.latestAttempt!.status).toBe('success');
-    expect(result!.latestAttempt!.classification).toBeNull();
-    expect(result!.latestAttempt!.model).toBe('gpt-4o-mini');
+    expect(result?.latestAttempt?.status).toBe('success');
+    expect(result?.latestAttempt?.classification).toBeNull();
+    expect(result?.latestAttempt?.model).toBe('gpt-4o-mini');
   });
 
   it('should derive status as "pending" when generation status is ready without modules and attempts are below cap', () => {
@@ -400,7 +400,7 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('pending');
+    expect(result?.status).toBe('pending');
   });
 
   it('should derive status as "pending" for unknown generation status fallback', () => {
@@ -412,7 +412,7 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('pending');
+    expect(result?.status).toBe('pending');
   });
 
   it('should handle null attempt gracefully', () => {
@@ -437,7 +437,7 @@ describe('mapDetailToClient', () => {
     });
 
     const result = mapDetailToClient(detail);
-    expect(result!.latestAttempt).toBeNull();
+    expect(result?.latestAttempt).toBeNull();
   });
 });
 

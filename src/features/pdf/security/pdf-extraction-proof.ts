@@ -69,16 +69,16 @@ function stableSerialize(value: unknown): string {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
-    return '[' + value.map((v) => stableSerialize(v)).join(',') + ']';
+    return `[${value.map((v) => stableSerialize(v)).join(',')}]`;
   }
   const sortedKeys = Object.keys(value as Record<string, unknown>)
     .slice()
     .sort();
   const pairs = sortedKeys.map((k) => {
     const v = (value as Record<string, unknown>)[k];
-    return JSON.stringify(k) + ':' + stableSerialize(v);
+    return `${JSON.stringify(k)}:${stableSerialize(v)}`;
   });
-  return '{' + pairs.join(',') + '}';
+  return `{${pairs.join(',')}}`;
 }
 
 /**

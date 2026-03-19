@@ -158,9 +158,9 @@ describe('POST /api/v1/plans/:planId/retry', () => {
     const events = await readStreamingResponse(response);
     const errorEvent = events.find((e) => e.type === 'error');
     expect(errorEvent).toBeDefined();
-    expect(errorEvent!.data!.code).toBe('ATTEMPTS_EXHAUSTED');
-    expect(errorEvent!.data!.classification).toBe('capped');
-    expect(errorEvent!.data!.retryable).toBe(false);
+    expect(errorEvent?.data?.code).toBe('ATTEMPTS_EXHAUSTED');
+    expect(errorEvent?.data?.classification).toBe('capped');
+    expect(errorEvent?.data?.retryable).toBe(false);
   });
 
   it('emits SSE error event when another attempt is already in progress', async () => {
@@ -200,8 +200,8 @@ describe('POST /api/v1/plans/:planId/retry', () => {
     const events = await readStreamingResponse(response);
     const errorEvent = events.find((e) => e.type === 'error');
     expect(errorEvent).toBeDefined();
-    expect(errorEvent!.data!.code).toBe('RATE_LIMITED');
-    expect(errorEvent!.data!.classification).toBe('rate_limit');
-    expect(errorEvent!.data!.retryable).toBe(true);
+    expect(errorEvent?.data?.code).toBe('RATE_LIMITED');
+    expect(errorEvent?.data?.classification).toBe('rate_limit');
+    expect(errorEvent?.data?.retryable).toBe(true);
   });
 });

@@ -53,18 +53,27 @@ describe('OpenAPI origin enum parity with DB planOrigin', () => {
   it('LearningPlan response schema origin matches DB enum', () => {
     const originEnum = getOriginEnum(schemas.LearningPlan);
     expect(originEnum).toBeDefined();
-    expect([...originEnum!].sort()).toEqual(dbOriginValues);
+    if (!originEnum) {
+      throw new Error('expected LearningPlan.origin enum');
+    }
+    expect([...originEnum].sort()).toEqual(dbOriginValues);
   });
 
   it('CreatePlanResponse schema origin matches DB enum', () => {
     const originEnum = getOriginEnum(schemas.CreatePlanResponse);
     expect(originEnum).toBeDefined();
-    expect([...originEnum!].sort()).toEqual(dbOriginValues);
+    if (!originEnum) {
+      throw new Error('expected CreatePlanResponse.origin enum');
+    }
+    expect([...originEnum].sort()).toEqual(dbOriginValues);
   });
 
   it('CreateLearningPlanRequest schema origin matches DB enum', () => {
     const originEnum = getOriginEnum(schemas.CreateLearningPlanRequest);
     expect(originEnum).toBeDefined();
-    expect([...originEnum!].sort()).toEqual(dbOriginValues);
+    if (!originEnum) {
+      throw new Error('expected CreateLearningPlanRequest.origin enum');
+    }
+    expect([...originEnum].sort()).toEqual(dbOriginValues);
   });
 });

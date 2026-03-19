@@ -60,8 +60,6 @@ export async function ModuleDetailContent({
             planId={planId}
           />
         );
-
-      case 'INTERNAL_ERROR':
       default:
         // Unexpected error - show generic message
         return (

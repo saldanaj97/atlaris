@@ -71,7 +71,7 @@ async function expectRlsViolation(operation: () => Promise<unknown>) {
     const err = error as Error;
     const message = err.message;
     const causeMessage = (err.cause as Error)?.message || '';
-    const combinedMessage = message + ' ' + causeMessage;
+    const combinedMessage = `${message} ${causeMessage}`;
 
     if (!/row.*level.*security|permission/i.test(combinedMessage)) {
       throw new Error(

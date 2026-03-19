@@ -82,7 +82,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
               item.href === '/'
                 ? pathname === '/'
                 : pathname === item.href ||
-                  pathname.startsWith(item.href + '/');
+                  pathname.startsWith(`${item.href}/`);
             return (
               <div key={item.href} className="flex flex-col gap-1">
                 <Link

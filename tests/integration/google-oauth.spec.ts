@@ -158,7 +158,10 @@ describe.skip('Google OAuth Flow', () => {
       expect(location).toContain('calendar');
       expect(location).toContain('access_type=offline');
       expect(location).toContain('prompt=consent');
-      const url = new URL(location!);
+      if (!location) {
+        throw new Error('expected Location header');
+      }
+      const url = new URL(location);
       const stateParam = url.searchParams.get('state');
       expect(stateParam).toBeTruthy();
     });
@@ -172,7 +175,11 @@ describe.skip('Google OAuth Flow', () => {
       );
       const response = await googleAuthGET(request);
 
-      const location = response.headers.get('Location')!;
+      const location = response.headers.get('Location');
+      expect(location).toBeTruthy();
+      if (!location) {
+        throw new Error('expected Location header');
+      }
       const url = new URL(location);
       const scopeParam = url.searchParams.get('scope') ?? '';
       expect(scopeParam).toContain('www.googleapis.com/auth/calendar');
@@ -188,7 +195,11 @@ describe.skip('Google OAuth Flow', () => {
       );
       const response = await googleAuthGET(request);
 
-      const location = response.headers.get('Location')!;
+      const location = response.headers.get('Location');
+      expect(location).toBeTruthy();
+      if (!location) {
+        throw new Error('expected Location header');
+      }
       const url = new URL(location);
       const state = url.searchParams.get('state');
       expect(state).toBeTruthy();
@@ -350,8 +361,8 @@ describe.skip('Google OAuth Flow', () => {
       // Verify tokens were stored
       const storedTokens = await getOAuthTokens(testUserId, 'google_calendar');
       expect(storedTokens).toBeDefined();
-      expect(storedTokens!.accessToken).toBe('mock_access_token_12345');
-      expect(storedTokens!.refreshToken).toBe('mock_refresh_token_67890');
+      expect(storedTokens?.accessToken).toBe('mock_access_token_12345');
+      expect(storedTokens?.refreshToken).toBe('mock_refresh_token_67890');
     });
 
     it('should handle callback with access token but no refresh token', async () => {
@@ -392,8 +403,8 @@ describe.skip('Google OAuth Flow', () => {
       // Verify tokens were stored without refresh token
       const storedTokens = await getOAuthTokens(testUserId, 'google_calendar');
       expect(storedTokens).toBeDefined();
-      expect(storedTokens!.accessToken).toBe('mock_access_token_only');
-      expect(storedTokens!.refreshToken).toBeUndefined();
+      expect(storedTokens?.accessToken).toBe('mock_access_token_only');
+      expect(storedTokens?.refreshToken).toBeUndefined();
     });
 
     it('should handle callback with access token but no expiry date', async () => {
@@ -434,7 +445,7 @@ describe.skip('Google OAuth Flow', () => {
       // Verify tokens were stored without expiry
       const storedTokens = await getOAuthTokens(testUserId, 'google_calendar');
       expect(storedTokens).toBeDefined();
-      expect(storedTokens!.expiresAt).toBeUndefined();
+      expect(storedTokens?.expiresAt).toBeUndefined();
     });
 
     it('should redirect with error when user denies authorization', async () => {
@@ -660,7 +671,7 @@ describe.skip('Google OAuth Flow', () => {
       // Verify default scope was used
       const storedTokens = await getOAuthTokens(testUserId, 'google_calendar');
       expect(storedTokens).toBeDefined();
-      expect(storedTokens!.scope).toBe('calendar');
+      expect(storedTokens?.scope).toBe('calendar');
     });
 
     it('should store full scope when provided by Google', async () => {
@@ -700,7 +711,7 @@ describe.skip('Google OAuth Flow', () => {
       // Verify full scope was stored
       const storedTokens = await getOAuthTokens(testUserId, 'google_calendar');
       expect(storedTokens).toBeDefined();
-      expect(storedTokens!.scope).toBe(
+      expect(storedTokens?.scope).toBe(
         'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events'
       );
     });
@@ -775,8 +786,8 @@ describe.skip('Google OAuth Flow', () => {
       // Verify new tokens replaced old ones
       const storedTokens = await getOAuthTokens(testUserId, 'google_calendar');
       expect(storedTokens).toBeDefined();
-      expect(storedTokens!.accessToken).toBe('new_access_token');
-      expect(storedTokens!.refreshToken).toBe('new_refresh_token');
+      expect(storedTokens?.accessToken).toBe('new_access_token');
+      expect(storedTokens?.refreshToken).toBe('new_refresh_token');
 
       // Verify only one record exists
       const count = await db
@@ -821,8 +832,8 @@ describe.skip('Google OAuth Flow', () => {
       // Verify expiry date was stored correctly
       const storedTokens = await getOAuthTokens(testUserId, 'google_calendar');
       expect(storedTokens).toBeDefined();
-      expect(storedTokens!.expiresAt).toBeInstanceOf(Date);
-      expect(storedTokens!.expiresAt!.getTime()).toBe(expiryTimestamp);
+      expect(storedTokens?.expiresAt).toBeInstanceOf(Date);
+      expect(storedTokens?.expiresAt?.getTime()).toBe(expiryTimestamp);
     });
 
     it('should handle Google API network errors gracefully', async () => {
@@ -1005,7 +1016,10 @@ describe.skip('Google OAuth Flow', () => {
     expect(location).toContain('calendar');
 
     // Verify that state parameter is present and is not the user ID
-    const url = new URL(location!);
+    if (!location) {
+      throw new Error('expected Location header');
+    }
+    const url = new URL(location);
     const stateParam = url.searchParams.get('state');
     expect(stateParam).toBeTruthy();
     expect(stateParam).not.toBe('test_auth_user_id');

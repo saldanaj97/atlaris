@@ -33,7 +33,7 @@ export function SettingsSidebar(): React.ReactElement {
     <nav aria-label="Settings" className="flex flex-col gap-1">
       {SETTINGS_NAV_ITEMS.map((item) => {
         const isActive =
-          pathname === item.href || pathname.startsWith(item.href + '/');
+          pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
 
         return (

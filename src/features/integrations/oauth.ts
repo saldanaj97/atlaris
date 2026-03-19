@@ -47,7 +47,7 @@ export function encryptToken(tokenData: OAuthTokenData): string {
   const authTag = cipher.getAuthTag();
 
   // Return: IV + auth tag + encrypted data (hex encoded)
-  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
 }
 
 export function decryptToken(encryptedData: string): OAuthTokenData {

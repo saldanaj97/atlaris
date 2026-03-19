@@ -229,7 +229,7 @@ function generateSentence(
     words.push(pickRandom(random, LOREM_WORDS));
   }
 
-  return capitalize(words.join(' ')) + '.';
+  return `${capitalize(words.join(' '))}.`;
 }
 
 /**

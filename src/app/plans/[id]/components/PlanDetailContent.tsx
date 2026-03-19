@@ -43,8 +43,6 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
         return (
           <PlanDetailPageError message="You do not have permission to view this plan." />
         );
-
-      case 'INTERNAL_ERROR':
       default:
         return (
           <PlanDetailPageError message="Something went wrong. Please try again later." />

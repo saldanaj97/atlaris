@@ -92,7 +92,7 @@ export default function DesktopNavigation({
     const isActive =
       item.href === '/'
         ? pathname === '/'
-        : pathname === item.href || pathname.startsWith(item.href + '/');
+        : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
     if (item.dropdown) {
       return (

@@ -75,9 +75,9 @@ describe('Phase 4: API Integration', () => {
       });
 
       expect(plan).toBeDefined();
-      expect(plan!.topic).toBe('Applied Machine Learning');
-      expect(plan!.skillLevel).toBe('intermediate');
-      expect(plan!.generationStatus).toBe('generating');
+      expect(plan?.topic).toBe('Applied Machine Learning');
+      expect(plan?.skillLevel).toBe('intermediate');
+      expect(plan?.generationStatus).toBe('generating');
     });
   });
 

@@ -85,9 +85,9 @@ describe.skip('OAuth Token Storage', () => {
     const retrieved = await getOAuthTokens(testUserId, 'google_calendar');
 
     expect(retrieved).toBeDefined();
-    expect(retrieved!.accessToken).toBe(tokenData.accessToken);
-    expect(retrieved!.refreshToken).toBe(tokenData.refreshToken);
-    expect(retrieved!.scope).toBe(tokenData.scope);
+    expect(retrieved?.accessToken).toBe(tokenData.accessToken);
+    expect(retrieved?.refreshToken).toBe(tokenData.refreshToken);
+    expect(retrieved?.scope).toBe(tokenData.scope);
   });
 
   it('should update existing tokens on duplicate user/provider', async () => {
@@ -113,7 +113,7 @@ describe.skip('OAuth Token Storage', () => {
     });
 
     const retrieved = await getOAuthTokens(testUserId, 'google_calendar');
-    expect(retrieved!.accessToken).toBe('new_token');
+    expect(retrieved?.accessToken).toBe('new_token');
 
     // Should only have one record
     const count = await db

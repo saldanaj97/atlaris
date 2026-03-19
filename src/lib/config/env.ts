@@ -167,7 +167,11 @@ const getServerRequired = (key: string): string => {
   if (!serverRequiredCache.has(key)) {
     serverRequiredCache.set(key, requireEnv(key));
   }
-  return serverRequiredCache.get(key)!;
+  const cached = serverRequiredCache.get(key);
+  if (cached === undefined) {
+    throw new Error(`Invariant: env cache missing key "${key}"`);
+  }
+  return cached;
 };
 
 /**
@@ -222,7 +226,11 @@ const getServerRequiredProdOnly = (key: string): string | undefined => {
   if (!serverRequiredCache.has(key)) {
     serverRequiredCache.set(key, requireEnv(key));
   }
-  return serverRequiredCache.get(key)!;
+  const cached = serverRequiredCache.get(key);
+  if (cached === undefined) {
+    throw new Error(`Invariant: env cache missing key "${key}"`);
+  }
+  return cached;
 };
 
 export const appEnv = {

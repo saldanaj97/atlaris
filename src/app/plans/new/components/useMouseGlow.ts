@@ -72,8 +72,8 @@ export function useMouseGlow(
       glow.style.setProperty('--glow-y', `${currentY}px`);
 
       for (let i = 0; i < trailCount; i++) {
-        glow.style.setProperty('--trail-x-' + i, `${trailPositions[i].x}px`);
-        glow.style.setProperty('--trail-y-' + i, `${trailPositions[i].y}px`);
+        glow.style.setProperty(`--trail-x-${i}`, `${trailPositions[i].x}px`);
+        glow.style.setProperty(`--trail-y-${i}`, `${trailPositions[i].y}px`);
       }
 
       animationId = requestAnimationFrame(animate);
