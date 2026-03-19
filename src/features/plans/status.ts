@@ -1,6 +1,22 @@
 import type { PlanStatus } from '@/shared/types/client.types';
 import type { GenerationStatus } from '@/shared/types/db.types';
 
+/**
+ * Derives the client-facing plan status from database state.
+ *
+ * State machine:
+ *   pending    → plan created, generation not started or between retries
+ *   processing → actively generating or pending retry
+ *   ready      → generation succeeded (modules exist)
+ *   failed     → generation permanently failed or attempt cap exhausted
+ *
+ * Priority rules:
+ *   1. hasModules        → always 'ready' (modules are the ground truth)
+ *   2. status 'failed'   → 'failed'
+ *   3. status 'generating' | 'pending_retry' → 'processing'
+ *   4. attemptsCount ≥ attemptCap            → 'failed' (exhausted)
+ *   5. Default           → 'pending'
+ */
 export function derivePlanStatus(params: {
   generationStatus: GenerationStatus;
   hasModules: boolean;
