@@ -1,4 +1,8 @@
-import { RETRY_BACKOFF_MS } from '@/features/ai/constants';
+import {
+  MAX_PROVIDER_RETRIES,
+  PROVIDER_RETRY_MAX_MS,
+  PROVIDER_RETRY_MIN_MS,
+} from '@/features/plans/retry-policy';
 import {
   ProviderError,
   ProviderInvalidResponseError,
@@ -152,9 +156,9 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       try {
         // Retry only transient provider failures.
         const result = await pRetry(() => provider.generate(input, options), {
-          retries: 1,
-          minTimeout: RETRY_BACKOFF_MS.min,
-          maxTimeout: RETRY_BACKOFF_MS.max,
+          retries: MAX_PROVIDER_RETRIES,
+          minTimeout: PROVIDER_RETRY_MIN_MS,
+          maxTimeout: PROVIDER_RETRY_MAX_MS,
           randomize: true,
           signal: options?.signal,
           onFailedAttempt: ({ error }) => {

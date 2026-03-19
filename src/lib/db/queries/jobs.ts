@@ -40,10 +40,10 @@ import {
  */
 
 const MAX_MONITORING_ROWS = 200;
-/** Hard cap on attempts regardless of retryable override; prevents unbounded retries. */
-const ABSOLUTE_MAX_ATTEMPTS = 100;
+import { JOB_RETRY_MAX_DELAY_SECONDS } from '@/shared/constants/retry-policy';
+
 /** Cap for exponential retry delay in seconds (5 minutes). */
-const MAX_RETRY_DELAY_SECONDS = 300;
+const MAX_RETRY_DELAY_SECONDS = JOB_RETRY_MAX_DELAY_SECONDS;
 
 const jobQueueSelect = {
   id: jobQueue.id,
@@ -98,17 +98,13 @@ async function lockJobAndCheckTerminal(
 function computeShouldRetry(
   retryable: boolean | undefined,
   nextAttempts: number,
-  maxAttempts: number,
-  absoluteMaxAttempts: number
+  maxAttempts: number
 ): boolean {
   if (retryable === false) {
     return false;
   }
 
-  if (retryable === true) {
-    return nextAttempts < absoluteMaxAttempts;
-  }
-
+  // retryable === true OR undefined: both respect maxAttempts (no ABSOLUTE_MAX bypass)
   return nextAttempts < maxAttempts;
 }
 
@@ -429,13 +425,13 @@ export async function completeJobRecord(
  * is set to failed with completedAt set.
  *
  * Retry decision: when retryable is undefined, shouldRetry follows
- * nextAttempts < current.maxAttempts. When retryable is true, it can override
- * current.maxAttempts but is bounded by ABSOLUTE_MAX_ATTEMPTS for safety.
+ * nextAttempts < current.maxAttempts. When retryable is true, it also
+ * respects current.maxAttempts (bounded by MAX_JOB_RETRIES from the retry policy).
  * When retryable is false, retry is never scheduled.
  *
  * @param jobId - Job id to fail
  * @param error - Error message to record
- * @param retryable - Optional retry override; when true, overrides maxAttempts but capped by ABSOLUTE_MAX_ATTEMPTS
+ * @param retryable - Optional retry override; when true, respects maxAttempts (no unbounded escalation)
  * @param dbClient - Database client (default: getDb())
  * @returns Updated job row as Job, or null if job not found or already terminal
  */
@@ -462,8 +458,7 @@ export async function failJobRecord(
     const shouldRetry = computeShouldRetry(
       retryable,
       nextAttempts,
-      current.maxAttempts,
-      ABSOLUTE_MAX_ATTEMPTS
+      current.maxAttempts
     );
 
     const retryDelaySeconds = Math.min(
