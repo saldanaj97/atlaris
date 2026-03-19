@@ -1,6 +1,7 @@
 import { OpenRouter } from '@openrouter/sdk';
 import * as Sentry from '@sentry/nextjs';
 
+import { getOutputTokenCeiling } from '@/features/ai/cost';
 import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
 import {
   ProviderError,
@@ -129,6 +130,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
               stream: true,
               temperature: this.temperature,
               responseFormat: { type: 'json_object' },
+              maxTokens: getOutputTokenCeiling(this.model),
             },
             requestOptions
           );

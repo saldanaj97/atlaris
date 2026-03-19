@@ -289,7 +289,7 @@ describe('OpenRouterProvider', () => {
       });
     });
 
-    it('calls SDK with correct parameters', async () => {
+    it('calls SDK with correct parameters including maxTokens', async () => {
       const { client, send } = createMockClient();
       send.mockResolvedValueOnce({
         choices: [
@@ -317,6 +317,7 @@ describe('OpenRouterProvider', () => {
           temperature: 0.7,
           stream: true,
           responseFormat: { type: 'json_object' },
+          maxTokens: expect.any(Number),
           messages: expect.arrayContaining([
             expect.objectContaining({ role: 'system' }),
             expect.objectContaining({ role: 'user' }),
@@ -505,6 +506,72 @@ describe('OpenRouterProvider', () => {
         expect(usage.completionTokens).toBe(400);
         expect(usage.totalTokens).toBe(480);
       });
+    });
+  });
+
+  describe('output-token ceiling enforcement', () => {
+    it('sends maxTokens derived from the model ceiling', async () => {
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
+        choices: [
+          {
+            message: { content: JSON.stringify(VALID_PLAN_RESPONSE) },
+          },
+        ],
+      });
+
+      const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
+      await provider.generate(SAMPLE_INPUT);
+
+      const requestBody = send.mock.calls[0][0];
+      expect(requestBody).toHaveProperty('maxTokens');
+      expect(typeof requestBody.maxTokens).toBe('number');
+      expect(requestBody.maxTokens).toBeGreaterThan(0);
+    });
+
+    it('uses model-specific ceiling for models with explicit maxOutputTokens', async () => {
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
+        choices: [
+          {
+            message: { content: JSON.stringify(VALID_PLAN_RESPONSE) },
+          },
+        ],
+      });
+
+      // openai/gpt-4o has maxOutputTokens: 64_000
+      const provider = new OpenRouterProvider(
+        { model: 'openai/gpt-4o' },
+        client
+      );
+      await provider.generate(SAMPLE_INPUT);
+
+      const requestBody = send.mock.calls[0][0];
+      expect(requestBody.maxTokens).toBe(64_000);
+    });
+
+    it('uses default ceiling for unknown models', async () => {
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
+        choices: [
+          {
+            message: { content: JSON.stringify(VALID_PLAN_RESPONSE) },
+          },
+        ],
+      });
+
+      const { DEFAULT_OUTPUT_TOKEN_CEILING } = await import(
+        '@/features/ai/cost'
+      );
+
+      const provider = new OpenRouterProvider(
+        { model: 'unknown/model-xyz' },
+        client
+      );
+      await provider.generate(SAMPLE_INPUT);
+
+      const requestBody = send.mock.calls[0][0];
+      expect(requestBody.maxTokens).toBe(DEFAULT_OUTPUT_TOKEN_CEILING);
     });
   });
 

@@ -1,12 +1,15 @@
 /**
- * Canonical AI usage normalization and cost computation.
+ * Canonical AI usage normalization.
  *
  * This module bridges raw provider metadata (ProviderMetadata) to the
  * canonical usage shape (CanonicalAIUsage). All persistence and billing
  * code should consume CanonicalAIUsage — never raw metadata fields.
+ *
+ * Cost computation is delegated to `@/features/ai/cost` — the single
+ * source of truth for pricing and output-token ceilings.
  */
 
-import { getModelById } from '@/features/ai/ai-models';
+import { computeCostCents } from '@/features/ai/cost';
 import { logger } from '@/lib/logging/logger';
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import {
@@ -15,25 +18,8 @@ import {
 } from '@/shared/types/ai-usage.types';
 import * as Sentry from '@sentry/nextjs';
 
-/**
- * Compute estimated cost in USD cents from model pricing and token counts.
- * Returns 0 when the model is not in the registry or both counts are zero.
- */
-export function computeCostCents(
-  modelId: string,
-  inputTokens: number,
-  outputTokens: number
-): number {
-  const model = getModelById(modelId);
-  if (!model) {
-    return 0;
-  }
-  if (inputTokens === 0 && outputTokens === 0) return 0;
-  const totalUsd =
-    (inputTokens / 1_000_000) * model.inputCostPerMillion +
-    (outputTokens / 1_000_000) * model.outputCostPerMillion;
-  return Math.round(totalUsd * 100);
-}
+// Re-export for backward compatibility
+export { computeCostCents } from '@/features/ai/cost';
 
 /**
  * Strictly normalize provider metadata into a CanonicalAIUsage.

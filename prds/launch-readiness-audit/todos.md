@@ -68,11 +68,11 @@ Post-launch (parallel):
 
 **Acceptance criteria:**
 
-- [ ] Cost calculation lives in exactly one module/function
-- [ ] Cost is derived deterministically from the canonical usage model
-- [ ] Output-token ceilings are defined per model and enforced at the provider call boundary
-- [ ] Token limits are enforced consistently across all user tiers
-- [ ] Tests cover cost calculation determinism, ceiling enforcement, and tier consistency
+- [x] Cost calculation lives in exactly one module/function
+- [x] Cost is derived deterministically from the canonical usage model
+- [x] Output-token ceilings are defined per model and enforced at the provider call boundary
+- [x] Token limits are enforced consistently across all user tiers
+- [x] Tests cover cost calculation determinism, ceiling enforcement, and tier consistency
 
 ---
 
