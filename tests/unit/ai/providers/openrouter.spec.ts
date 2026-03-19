@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  DEFAULT_OUTPUT_TOKEN_CEILING,
+  getOutputTokenCeiling,
+} from '@/features/ai/cost';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import {
   OpenRouterProvider,
@@ -523,7 +527,11 @@ describe('OpenRouterProvider', () => {
       const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
       await provider.generate(SAMPLE_INPUT);
 
-      const requestBody = send.mock.calls[0][0];
+      const requestBody = send.mock.calls[0][0] as {
+        maxTokens: number;
+        model: string;
+        [key: string]: unknown;
+      };
       expect(requestBody).toHaveProperty('maxTokens');
       expect(typeof requestBody.maxTokens).toBe('number');
       expect(requestBody.maxTokens).toBeGreaterThan(0);
@@ -546,8 +554,13 @@ describe('OpenRouterProvider', () => {
       );
       await provider.generate(SAMPLE_INPUT);
 
-      const requestBody = send.mock.calls[0][0];
-      expect(requestBody.maxTokens).toBe(64_000);
+      const requestBody = send.mock.calls[0][0] as {
+        maxTokens: number;
+        [key: string]: unknown;
+      };
+      expect(requestBody.maxTokens).toBe(
+        getOutputTokenCeiling('openai/gpt-4o')
+      );
     });
 
     it('uses default ceiling for unknown models', async () => {
@@ -560,17 +573,16 @@ describe('OpenRouterProvider', () => {
         ],
       });
 
-      const { DEFAULT_OUTPUT_TOKEN_CEILING } = await import(
-        '@/features/ai/cost'
-      );
-
       const provider = new OpenRouterProvider(
         { model: 'unknown/model-xyz' },
         client
       );
       await provider.generate(SAMPLE_INPUT);
 
-      const requestBody = send.mock.calls[0][0];
+      const requestBody = send.mock.calls[0][0] as {
+        maxTokens: number;
+        [key: string]: unknown;
+      };
       expect(requestBody.maxTokens).toBe(DEFAULT_OUTPUT_TOKEN_CEILING);
     });
   });

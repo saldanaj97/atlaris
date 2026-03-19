@@ -183,7 +183,7 @@ describe('tier consistency', () => {
       expect(proCounterpart).toBeDefined();
 
       const freeCeiling = getOutputTokenCeiling(freeModel.id);
-      const proCeiling = getOutputTokenCeiling(freeModel.id);
+      const proCeiling = getOutputTokenCeiling(proCounterpart!.id);
       expect(freeCeiling).toBe(proCeiling);
     }
   });
@@ -192,18 +192,21 @@ describe('tier consistency', () => {
     const freeModels = getModelsForTier('free');
     const starterModels = getModelsForTier('starter');
 
-    expect(freeModels.length).toBe(starterModels.length);
-    for (let i = 0; i < freeModels.length; i++) {
-      expect(getOutputTokenCeiling(freeModels[i].id)).toBe(
-        getOutputTokenCeiling(starterModels[i].id)
+    const freeMap = new Map(freeModels.map((m) => [m.id, m]));
+    const starterMap = new Map(starterModels.map((m) => [m.id, m]));
+
+    const freeIds = new Set(freeMap.keys());
+    const starterIds = new Set(starterMap.keys());
+    expect(freeIds).toEqual(starterIds);
+
+    for (const id of freeIds) {
+      expect(getOutputTokenCeiling(id)).toBe(
+        getOutputTokenCeiling(starterMap.get(id)!.id)
       );
     }
   });
 
-  it('ceilings are tier-independent — defined by model, not by tier', () => {
-    // This test verifies that getOutputTokenCeiling is a pure function
-    // of modelId, with no tier parameter. The function signature itself
-    // guarantees tier independence.
+  it('getOutputTokenCeiling is a pure function of modelId (no tier parameter)', () => {
     const allModels = AVAILABLE_MODELS;
     for (const model of allModels) {
       const ceiling1 = getOutputTokenCeiling(model.id);

@@ -18,7 +18,10 @@ import {
 } from '@/shared/types/ai-usage.types';
 import * as Sentry from '@sentry/nextjs';
 
-// Re-export for backward compatibility
+/**
+ * @deprecated Import directly from `@/features/ai/cost` instead.
+ * This re-export exists only for backward compatibility and will be removed.
+ */
 export { computeCostCents } from '@/features/ai/cost';
 
 /**

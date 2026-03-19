@@ -13,6 +13,7 @@
  */
 
 import { getModelById } from '@/features/ai/ai-models';
+import { logger } from '@/lib/logging/logger';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 /**
@@ -35,8 +36,22 @@ export function computeCostCents(
   inputTokens: number,
   outputTokens: number
 ): number {
+  if (
+    !Number.isFinite(inputTokens) ||
+    !Number.isFinite(outputTokens) ||
+    inputTokens < 0 ||
+    outputTokens < 0
+  ) {
+    throw new Error(
+      `Invalid token counts: inputTokens=${inputTokens}, outputTokens=${outputTokens}. Values must be finite and >= 0.`
+    );
+  }
+
   const model = getModelById(modelId);
-  if (!model) return 0;
+  if (!model) {
+    logger.warn({ modelId }, 'Unknown model in computeCostCents — returning 0');
+    return 0;
+  }
   if (inputTokens === 0 && outputTokens === 0) return 0;
 
   const totalUsd =
@@ -69,5 +84,12 @@ export function calculateCostFromUsage(usage: CanonicalAIUsage): number {
  */
 export function getOutputTokenCeiling(modelId: string): number {
   const model = getModelById(modelId);
-  return model?.maxOutputTokens ?? DEFAULT_OUTPUT_TOKEN_CEILING;
+  if (!model) {
+    logger.warn(
+      { modelId },
+      'Unknown model in getOutputTokenCeiling — falling back to DEFAULT_OUTPUT_TOKEN_CEILING'
+    );
+    return DEFAULT_OUTPUT_TOKEN_CEILING;
+  }
+  return model.maxOutputTokens ?? DEFAULT_OUTPUT_TOKEN_CEILING;
 }
