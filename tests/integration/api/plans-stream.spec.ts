@@ -642,7 +642,6 @@ describe('POST /api/v1/plans/stream', () => {
           const { getDb: getDbFn } = await import('@/lib/db/runtime');
           const svc = createSvc({
             dbClient: getDbFn(),
-            attemptsDbClient: getDbFn(),
             jobQueue: {
               async enqueueJob() {
                 return '';

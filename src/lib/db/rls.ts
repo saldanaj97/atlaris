@@ -73,7 +73,8 @@ type RlsClientResult = {
  * ```
  */
 export async function createAuthenticatedRlsClient(
-  authUserId: string
+  authUserId: string,
+  options?: { idleTimeout?: number }
 ): Promise<RlsClientResult> {
   const jwtClaims = JSON.stringify({ sub: authUserId });
 
@@ -84,7 +85,7 @@ export async function createAuthenticatedRlsClient(
   const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
   const sql: Sql = postgres(connectionUrl, {
     max: 1, // Single connection per client (important for session variable isolation)
-    idle_timeout: 20, // Close idle connections after 20s
+    idle_timeout: options?.idleTimeout ?? 20, // Default 20s; stream routes use longer timeouts
     connect_timeout: 10, // Timeout for connection attempts
   });
 

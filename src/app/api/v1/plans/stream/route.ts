@@ -102,7 +102,10 @@ export function createStreamHandler(deps?: {
         const generationRateLimitHeaders =
           getPlanGenerationRateLimitHeaders(rateLimit);
 
-        // ─── Plan creation via lifecycle service ─────────────────
+        // ─── Stream-scoped DB connection for ALL lifecycle operations ─────
+        // Connection 1 (db from getDb/withAuth) is only for rate limiting above.
+        // All plan creation, generation, usage recording, and success/failure marking
+        // use this stream-scoped connection that survives the entire SSE stream.
         logger.info(
           { authUserId: userId },
           'Creating plan via lifecycle service'
@@ -125,8 +128,7 @@ export function createStreamHandler(deps?: {
         };
 
         const lifecycleService = createPlanLifecycleService({
-          dbClient: db,
-          attemptsDbClient: streamDb,
+          dbClient: streamDb,
           jobQueue: noopJobQueue,
         });
 
@@ -328,7 +330,9 @@ async function createStreamDbClient(authUserId: string): Promise<{
   }
 
   const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-  const { db, cleanup } = await createAuthenticatedRlsClient(authUserId);
+  const { db, cleanup } = await createAuthenticatedRlsClient(authUserId, {
+    idleTimeout: 180,
+  });
   return {
     dbClient: db,
     cleanup,
