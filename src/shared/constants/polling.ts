@@ -25,8 +25,14 @@ export const JITTER_FACTOR = 0.2;
  * 3. Apply uniform random jitter in the range ±{@link JITTER_FACTOR}.
  * 4. Clamp the result to [{@link INITIAL_POLL_MS}, {@link MAX_POLL_MS}].
  */
-export function computeNextDelay(currentDelay: number): number {
+export function computeNextDelay(
+  currentDelay: number,
+  randomFn: () => number = Math.random
+): number {
+  if (!Number.isFinite(currentDelay) || currentDelay <= 0) {
+    return INITIAL_POLL_MS;
+  }
   const base = Math.min(currentDelay * BACKOFF_MULTIPLIER, MAX_POLL_MS);
-  const jitter = 1 + (Math.random() * 2 - 1) * JITTER_FACTOR;
+  const jitter = 1 + (randomFn() * 2 - 1) * JITTER_FACTOR;
   return Math.max(INITIAL_POLL_MS, Math.min(base * jitter, MAX_POLL_MS));
 }

@@ -111,8 +111,8 @@ describe('retry-policy', () => {
       expect(computeEffectiveMaxAttempts(5)).toBe(5);
     });
 
-    it('returns 0 when retryableOverride is false', () => {
-      expect(computeEffectiveMaxAttempts(10, false)).toBe(0);
+    it('returns 1 when retryableOverride is false', () => {
+      expect(computeEffectiveMaxAttempts(10, false)).toBe(1);
     });
 
     it('never returns 100 (old ABSOLUTE_MAX_ATTEMPTS)', () => {

@@ -16,6 +16,7 @@ import {
  */
 const FIRST_BACKOFF = 1500; // computeNextDelay(1000) = 1000 * 1.5
 const SECOND_BACKOFF = 2250; // computeNextDelay(1500) = 1500 * 1.5
+const THIRD_BACKOFF = 3375; // computeNextDelay(2250) = 2250 * 1.5
 
 describe('usePlanStatus', () => {
   beforeEach(() => {
@@ -489,7 +490,6 @@ describe('usePlanStatus', () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
 
     // Next backoff would be 3375ms, but status changes → resets to INITIAL_POLL_MS
-    const THIRD_BACKOFF = 3375; // computeNextDelay(2250) = 2250 * 1.5
     await act(async () => {
       await vi.advanceTimersByTimeAsync(THIRD_BACKOFF);
     });

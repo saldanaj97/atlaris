@@ -154,6 +154,9 @@ export async function createAuthenticatedRlsClient(
  * }
  * ```
  */
+// Anonymous sessions are short-lived (auth redirects, public pages) so
+// idle_timeout is fixed at 20s. Only authenticated stream connections
+// need the configurable timeout (up to 180s for AI generation).
 export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
   // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
   // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.

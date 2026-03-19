@@ -30,9 +30,10 @@ export async function cleanupStuckPlans(
         eq(learningPlans.generationStatus, 'generating'),
         lt(learningPlans.updatedAt, cutoff)
       )
-    );
+    )
+    .returning({ id: learningPlans.id });
 
-  const cleaned = result.count ?? 0;
+  const cleaned = result.length;
 
   if (cleaned > 0) {
     logger.info(
@@ -58,6 +59,8 @@ export async function cleanupOrphanedAttempts(
     .update(generationAttempts)
     .set({
       classification: 'timeout',
+      // Raw SQL literal — the generation_attempts.status column uses a DB enum
+      // whose TypeScript type doesn't include 'failure' directly.
       status: sql<string>`'failure'`,
     })
     .where(
@@ -66,9 +69,10 @@ export async function cleanupOrphanedAttempts(
         eq(generationAttempts.status, 'in_progress'),
         lt(generationAttempts.createdAt, cutoff)
       )
-    );
+    )
+    .returning({ id: generationAttempts.id });
 
-  const cleaned = result.count ?? 0;
+  const cleaned = result.length;
 
   if (cleaned > 0) {
     logger.info(

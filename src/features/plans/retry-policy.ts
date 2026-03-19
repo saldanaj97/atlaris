@@ -73,6 +73,6 @@ export function computeEffectiveMaxAttempts(
   baseMax: number,
   retryableOverride?: boolean
 ): number {
-  if (retryableOverride === false) return 0; // No retries
+  if (retryableOverride === false) return 1; // One attempt, no retries
   return baseMax;
 }

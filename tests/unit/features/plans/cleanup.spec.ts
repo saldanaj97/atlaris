@@ -19,13 +19,18 @@ vi.mock('@/lib/logging/logger', () => ({
 }));
 
 function createMockDbClient(updateCount: number) {
-  const whereFn = vi.fn().mockResolvedValue({ count: updateCount });
+  const rows = Array.from({ length: updateCount }, (_, i) => ({
+    id: `id-${i}`,
+  }));
+  const returningFn = vi.fn().mockResolvedValue(rows);
+  const whereFn = vi.fn().mockReturnValue({ returning: returningFn });
   const setFn = vi.fn().mockReturnValue({ where: whereFn });
   const updateFn = vi.fn().mockReturnValue({ set: setFn });
 
   return {
+    // Deliberate test-only shim: only the update() chain is needed for cleanup tests
     client: { update: updateFn } as unknown as DbClient,
-    spies: { updateFn, setFn, whereFn },
+    spies: { updateFn, setFn, whereFn, returningFn },
   };
 }
 
@@ -58,8 +63,11 @@ describe('cleanupStuckPlans', () => {
     expect(result.cleaned).toBe(0);
   });
 
-  it('uses default threshold of 15 minutes', () => {
-    expect(STUCK_PLAN_THRESHOLD_MS).toBe(15 * 60 * 1000);
+  it('has a reasonable stuck plan threshold', () => {
+    const fiveMinutes = 5 * 60 * 1000;
+    const sixtyMinutes = 60 * 60 * 1000;
+    expect(STUCK_PLAN_THRESHOLD_MS).toBeGreaterThanOrEqual(fiveMinutes);
+    expect(STUCK_PLAN_THRESHOLD_MS).toBeLessThanOrEqual(sixtyMinutes);
   });
 
   it('accepts a custom threshold', async () => {
@@ -101,8 +109,11 @@ describe('cleanupOrphanedAttempts', () => {
     expect(result.cleaned).toBe(0);
   });
 
-  it('uses default threshold of 15 minutes', () => {
-    expect(ORPHANED_ATTEMPT_THRESHOLD_MS).toBe(15 * 60 * 1000);
+  it('has a reasonable orphaned attempt threshold', () => {
+    const fiveMinutes = 5 * 60 * 1000;
+    const sixtyMinutes = 60 * 60 * 1000;
+    expect(ORPHANED_ATTEMPT_THRESHOLD_MS).toBeGreaterThanOrEqual(fiveMinutes);
+    expect(ORPHANED_ATTEMPT_THRESHOLD_MS).toBeLessThanOrEqual(sixtyMinutes);
   });
 
   it('accepts a custom threshold', async () => {

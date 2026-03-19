@@ -33,6 +33,10 @@ import {
   or,
   sql,
 } from 'drizzle-orm';
+import {
+  JOB_RETRY_BASE_SECONDS,
+  JOB_RETRY_MAX_DELAY_SECONDS,
+} from '@/shared/constants/retry-policy';
 
 /**
  * Job queue queries: enqueue, claim, complete, fail, stats, cleanup, and lookups by plan/user.
@@ -40,7 +44,6 @@ import {
  */
 
 const MAX_MONITORING_ROWS = 200;
-import { JOB_RETRY_MAX_DELAY_SECONDS } from '@/shared/constants/retry-policy';
 
 /** Cap for exponential retry delay in seconds (5 minutes). */
 const MAX_RETRY_DELAY_SECONDS = JOB_RETRY_MAX_DELAY_SECONDS;
@@ -426,7 +429,7 @@ export async function completeJobRecord(
  *
  * Retry decision: when retryable is undefined, shouldRetry follows
  * nextAttempts < current.maxAttempts. When retryable is true, it also
- * respects current.maxAttempts (bounded by MAX_JOB_RETRIES from the retry policy).
+ * respects current.maxAttempts (set at job creation time).
  * When retryable is false, retry is never scheduled.
  *
  * @param jobId - Job id to fail
@@ -463,7 +466,7 @@ export async function failJobRecord(
 
     const retryDelaySeconds = Math.min(
       MAX_RETRY_DELAY_SECONDS,
-      Math.pow(2, nextAttempts)
+      Math.pow(JOB_RETRY_BASE_SECONDS, nextAttempts)
     );
     const scheduledForRetry = new Date(
       now.getTime() + retryDelaySeconds * 1000

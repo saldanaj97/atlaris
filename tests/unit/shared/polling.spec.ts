@@ -5,37 +5,28 @@ import {
   JITTER_FACTOR,
   MAX_POLL_MS,
 } from '@/shared/constants/polling';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('computeNextDelay', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it('multiplies the current delay by the backoff multiplier', () => {
-    // Remove jitter for deterministic assertion
-    vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    const result = computeNextDelay(INITIAL_POLL_MS);
+    const result = computeNextDelay(INITIAL_POLL_MS, () => 0.5);
     expect(result).toBe(INITIAL_POLL_MS * BACKOFF_MULTIPLIER);
   });
 
   it('caps result at MAX_POLL_MS', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    const result = computeNextDelay(MAX_POLL_MS);
+    const result = computeNextDelay(MAX_POLL_MS, () => 0.5);
     expect(result).toBe(MAX_POLL_MS);
   });
 
   it('never returns below INITIAL_POLL_MS', () => {
     // Force jitter to produce the lowest possible value
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    const result = computeNextDelay(INITIAL_POLL_MS);
+    const result = computeNextDelay(INITIAL_POLL_MS, () => 0);
     expect(result).toBeGreaterThanOrEqual(INITIAL_POLL_MS);
   });
 
   it('never returns above MAX_POLL_MS', () => {
     // Force jitter to produce the highest possible value
-    vi.spyOn(Math, 'random').mockReturnValue(1);
-    const result = computeNextDelay(MAX_POLL_MS);
+    const result = computeNextDelay(MAX_POLL_MS, () => 1);
     expect(result).toBeLessThanOrEqual(MAX_POLL_MS);
   });
 
@@ -43,23 +34,24 @@ describe('computeNextDelay', () => {
     const base = 2000;
     const expected = base * BACKOFF_MULTIPLIER;
 
-    // Low jitter
-    vi.spyOn(Math, 'random').mockReturnValue(0);
-    const low = computeNextDelay(base);
+    const low = computeNextDelay(base, () => 0);
     expect(low).toBeGreaterThanOrEqual(expected * (1 - JITTER_FACTOR));
 
-    // High jitter
-    vi.spyOn(Math, 'random').mockReturnValue(1);
-    const high = computeNextDelay(base);
+    const high = computeNextDelay(base, () => 1);
     expect(high).toBeLessThanOrEqual(expected * (1 + JITTER_FACTOR));
   });
+
+  it.each([NaN, Infinity, -Infinity, -1, 0])(
+    'returns INITIAL_POLL_MS for invalid input: %s',
+    (input) => {
+      expect(computeNextDelay(input)).toBe(INITIAL_POLL_MS);
+    }
+  );
 
   it('produces different values with different random seeds', () => {
     const results = new Set<number>();
     for (const r of [0, 0.25, 0.5, 0.75, 1]) {
-      vi.spyOn(Math, 'random').mockReturnValue(r);
-      results.add(computeNextDelay(2000));
-      vi.restoreAllMocks();
+      results.add(computeNextDelay(2000, () => r));
     }
     expect(results.size).toBeGreaterThan(1);
   });
