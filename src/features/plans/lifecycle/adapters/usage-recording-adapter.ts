@@ -10,7 +10,7 @@ import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
-import type { UsageRecordingPort } from '../ports';
+import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
 
 export class UsageRecordingAdapter implements UsageRecordingPort {
   async recordUsage(params: {

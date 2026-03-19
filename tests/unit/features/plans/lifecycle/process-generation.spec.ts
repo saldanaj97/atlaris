@@ -4,23 +4,7 @@ import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/servi
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import { isRetryableClassification } from '@/features/plans/lifecycle/types';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
-
-// ─── Helpers ─────────────────────────────────────────────────────
-
-function makeCanonicalUsage(
-  overrides?: Partial<CanonicalAIUsage>
-): CanonicalAIUsage {
-  return {
-    inputTokens: 100,
-    outputTokens: 200,
-    totalTokens: 300,
-    model: 'gpt-4o',
-    provider: 'openai',
-    estimatedCostCents: 0,
-    ...overrides,
-  };
-}
+import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
 
 function createMockPorts(
   overrides?: Partial<PlanLifecycleServicePorts>
@@ -243,8 +227,6 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
               inputTokens: 50,
               outputTokens: 0,
               totalTokens: 50,
-              provider: 'openai',
-              model: 'gpt-4o',
             }),
             durationMs: 200,
           }),
@@ -361,7 +343,6 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
             inputTokens: 0,
             outputTokens: 0,
             totalTokens: 0,
-            estimatedCostCents: 0,
           }),
           durationMs: 800,
         }),

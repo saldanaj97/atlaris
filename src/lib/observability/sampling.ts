@@ -24,6 +24,12 @@ type Environment = 'production' | 'development' | 'test';
 /**
  * Resolve the current runtime environment.
  * Works on both client (inlined at build time) and server (runtime).
+ *
+ * NOTE: We intentionally read `process.env.NODE_ENV` directly instead of
+ * importing from `@/lib/config/env`. That module eagerly validates
+ * server-only secrets (e.g. NEON_AUTH_*) at import time, which would
+ * throw in client bundles and Sentry edge/instrumentation configs that
+ * load before the full server environment is available.
  */
 export function getEnvironment(): Environment {
   const env =
@@ -94,7 +100,7 @@ const HIGH_VALUE_PATTERNS: RegExp[] = [
 export function tracesSampler(context: {
   name?: string;
   parentSampled?: boolean;
-  attributes?: Record<string, unknown>;
+  _attributes?: Record<string, unknown>;
 }): number {
   const env = getEnvironment();
   const name = context.name ?? '';
@@ -133,10 +139,20 @@ export function tracesSampler(context: {
 /**
  * Whether to enable Sentry SDK log shipping (`enableLogs`).
  *
+ * Override: set `SENTRY_ENABLE_LOGS=true` to force-enable log shipping in
+ * any environment (useful for ops debugging in production).
+ *
+ * Default behaviour:
  * Production: disabled — reduces ingest volume. Errors are still captured
  * via `captureException`; pino logs locally for operational tailing.
  * Development/test: enabled for full observability during debugging.
  */
 export function shouldEnableLogs(): boolean {
+  const override =
+    typeof process !== 'undefined'
+      ? process.env.SENTRY_ENABLE_LOGS?.trim().toLowerCase()
+      : undefined;
+  if (override === 'true' || override === '1') return true;
+  if (override === 'false' || override === '0') return false;
   return getEnvironment() !== 'production';
 }

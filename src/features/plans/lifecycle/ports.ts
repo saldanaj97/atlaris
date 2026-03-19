@@ -27,15 +27,20 @@ export type { FailureClassification } from './types';
 export interface PlanPersistencePort {
   /** Atomically check plan limit and insert a new plan within a transaction. */
   atomicInsertPlan(
+    this: void,
     userId: string,
     planData: PlanInsertData
   ): Promise<AtomicInsertResult>;
 
   /** Find a plan that has exhausted generation attempts (capped without modules). */
-  findCappedPlanWithoutModules(userId: string): Promise<string | null>;
+  findCappedPlanWithoutModules(
+    this: void,
+    userId: string
+  ): Promise<string | null>;
 
   /** Find a recent duplicate plan with the same normalized topic (dedup window). */
   findRecentDuplicatePlan(
+    this: void,
     userId: string,
     normalizedTopic: string
   ): Promise<string | null>;
@@ -51,40 +56,56 @@ export interface PlanPersistencePort {
 
 export interface QuotaPort {
   /** Resolve the user's current subscription tier. */
-  resolveUserTier(userId: string): Promise<SubscriptionTier>;
+  resolveUserTier(this: void, userId: string): Promise<SubscriptionTier>;
 
   /** Check if the plan duration is within the tier's cap. */
-  checkDurationCap(params: {
-    tier: SubscriptionTier;
-    weeklyHours: number;
-    totalWeeks: number;
-  }): DurationCapResult;
+  checkDurationCap(
+    this: void,
+    params: {
+      tier: SubscriptionTier;
+      weeklyHours: number;
+      totalWeeks: number;
+    }
+  ): DurationCapResult;
 
   /** Normalize plan dates and compute total weeks based on tier constraints. */
-  normalizePlanDuration(params: {
-    tier: SubscriptionTier;
-    weeklyHours: number;
-    startDate?: string | null;
-    deadlineDate?: string | null;
-    today?: Date;
-  }): NormalizedDuration;
+  normalizePlanDuration(
+    this: void,
+    params: {
+      tier: SubscriptionTier;
+      weeklyHours: number;
+      startDate?: string | null;
+      deadlineDate?: string | null;
+      today?: Date;
+    }
+  ): NormalizedDuration;
 
   /** Reserve a PDF quota slot for PDF-origin plans. */
-  reservePdfQuota(userId: string): Promise<PdfQuotaReservationResult>;
+  reservePdfQuota(
+    this: void,
+    userId: string
+  ): Promise<PdfQuotaReservationResult>;
 
   /** Roll back a previously reserved PDF quota slot on failure. */
-  rollbackPdfQuota(userId: string, reserved: boolean): Promise<void>;
+  rollbackPdfQuota(
+    this: void,
+    userId: string,
+    reserved: boolean
+  ): Promise<void>;
 }
 
 // ─── PdfOriginPort ───────────────────────────────────────────────
 
 export interface PdfOriginPort {
   /** Verify PDF proof token and prepare plan input from extracted PDF context. */
-  preparePlanInput(params: {
-    body: Record<string, unknown>;
-    authUserId: string;
-    internalUserId: string;
-  }): Promise<{
+  preparePlanInput(
+    this: void,
+    params: {
+      body: Record<string, unknown>;
+      authUserId: string;
+      internalUserId: string;
+    }
+  ): Promise<{
     origin: 'pdf';
     extractedContext: unknown;
     topic: string;
@@ -96,10 +117,13 @@ export interface PdfOriginPort {
   }>;
 
   /** Roll back PDF usage reservation on failure. */
-  rollbackPdfUsage(params: {
-    internalUserId: string;
-    reserved: boolean;
-  }): Promise<void>;
+  rollbackPdfUsage(
+    this: void,
+    params: {
+      internalUserId: string;
+      reserved: boolean;
+    }
+  ): Promise<void>;
 }
 
 // ─── GenerationPort ──────────────────────────────────────────────
@@ -164,19 +188,27 @@ export interface UsageRecordingPort {
 
 export interface JobQueuePort {
   /** Enqueue a job for background processing. */
-  enqueueJob(params: {
-    type: string;
-    planId: string | null;
-    userId: string;
-    data: Record<string, unknown>;
-    priority?: number;
-  }): Promise<string>;
+  enqueueJob(
+    this: void,
+    params: {
+      type: string;
+      planId: string | null;
+      userId: string;
+      data: Record<string, unknown>;
+      priority?: number;
+    }
+  ): Promise<string>;
 
   /** Mark a job as completed with its result. */
-  completeJob(jobId: string, result: Record<string, unknown>): Promise<void>;
+  completeJob(
+    this: void,
+    jobId: string,
+    result: Record<string, unknown>
+  ): Promise<void>;
 
   /** Mark a job as failed with an error message. */
   failJob(
+    this: void,
     jobId: string,
     error: string,
     options?: { retryable?: boolean }

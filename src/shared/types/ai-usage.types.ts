@@ -44,6 +44,7 @@ export class IncompleteUsageError extends Error {
     missingFields: readonly string[]
   ) {
     super(message);
+    Object.setPrototypeOf(this, IncompleteUsageError.prototype);
     this.name = 'IncompleteUsageError';
     this.partialUsage = partialUsage;
     this.missingFields = missingFields;

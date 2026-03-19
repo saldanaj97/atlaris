@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   getEnvironment,
@@ -76,12 +76,10 @@ describe('getReplaySessionSampleRate', () => {
 });
 
 describe('getReplayErrorSampleRate', () => {
-  it('always returns 1.0 regardless of environment', () => {
-    for (const env of ['production', 'development', 'test']) {
-      withEnv(env, () => {
-        expect(getReplayErrorSampleRate()).toBe(1.0);
-      });
-    }
+  it.each(['production', 'development', 'test'])('returns 1.0 in %s', (env) => {
+    withEnv(env, () => {
+      expect(getReplayErrorSampleRate()).toBe(1.0);
+    });
   });
 });
 
@@ -113,6 +111,10 @@ describe('tracesSampler', () => {
       vi.stubEnv('NODE_ENV', 'production');
     });
 
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
     it.each([
       ['Next.js static assets', 'GET /_next/static/chunk.js'],
       ['favicon', 'GET /favicon.ico'],
@@ -132,6 +134,10 @@ describe('tracesSampler', () => {
       vi.stubEnv('NODE_ENV', 'development');
     });
 
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
     it('samples low-value traces at minimal rate in dev', () => {
       expect(tracesSampler({ name: 'GET /_next/static/chunk.js' })).toBe(0.01);
     });
@@ -140,6 +146,10 @@ describe('tracesSampler', () => {
   describe('high-value traces — API routes (production)', () => {
     beforeEach(() => {
       vi.stubEnv('NODE_ENV', 'production');
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
     });
 
     it.each([
@@ -154,6 +164,10 @@ describe('tracesSampler', () => {
   describe('high-value traces — API routes (development)', () => {
     beforeEach(() => {
       vi.stubEnv('NODE_ENV', 'development');
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
     });
 
     it('samples API routes at 1.0 in dev', () => {
@@ -224,6 +238,56 @@ describe('shouldEnableLogs', () => {
       expect(shouldEnableLogs()).toBe(true);
     });
   });
+
+  it('SENTRY_ENABLE_LOGS=true overrides production default', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SENTRY_ENABLE_LOGS', 'true');
+    try {
+      expect(shouldEnableLogs()).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('SENTRY_ENABLE_LOGS=1 overrides production default', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SENTRY_ENABLE_LOGS', '1');
+    try {
+      expect(shouldEnableLogs()).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('SENTRY_ENABLE_LOGS=false overrides development default', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('SENTRY_ENABLE_LOGS', 'false');
+    try {
+      expect(shouldEnableLogs()).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('SENTRY_ENABLE_LOGS=0 overrides development default', () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('SENTRY_ENABLE_LOGS', '0');
+    try {
+      expect(shouldEnableLogs()).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('ignores unrecognised SENTRY_ENABLE_LOGS values and falls back to env', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('SENTRY_ENABLE_LOGS', 'yes');
+    try {
+      expect(shouldEnableLogs()).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -231,30 +295,33 @@ describe('shouldEnableLogs', () => {
 // ---------------------------------------------------------------------------
 
 describe('high-severity capture guarantees', () => {
-  it('error replays are always 100 % regardless of environment', () => {
-    for (const env of ['production', 'development', 'test']) {
+  it.each(['production', 'development', 'test'])(
+    'error replays are 100%% in %s',
+    (env) => {
       withEnv(env, () => {
         expect(getReplayErrorSampleRate()).toBe(1.0);
       });
     }
-  });
+  );
 
-  it('traces with sampled parents are never dropped', () => {
-    for (const env of ['production', 'development', 'test']) {
+  it.each(['production', 'development', 'test'])(
+    'traces with sampled parents are never dropped in %s',
+    (env) => {
       withEnv(env, () => {
         expect(tracesSampler({ name: 'anything', parentSampled: true })).toBe(
           1.0
         );
       });
     }
-  });
+  );
 
-  it('API routes always have non-zero sample rate', () => {
-    for (const env of ['production', 'development']) {
+  it.each(['production', 'development'])(
+    'API routes have non-zero sample rate in %s',
+    (env) => {
       withEnv(env, () => {
         const rate = tracesSampler({ name: 'POST /api/plans' });
         expect(rate).toBeGreaterThan(0);
       });
     }
-  });
+  );
 });

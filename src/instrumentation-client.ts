@@ -11,6 +11,11 @@ import {
   tracesSampler,
 } from '@/lib/observability/sampling';
 
+// NOTE: We read `process.env` directly here instead of importing from
+// `@/lib/config/env` because that module eagerly validates server-only
+// secrets (NEON_AUTH_*, DATABASE_URL, etc.) at import time, which would
+// throw in this client-side instrumentation bundle. NEXT_PUBLIC_* vars
+// are also not exposed through the server env config.
 const sendDefaultPii =
   process.env.NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII?.trim().toLowerCase() ===
   'true';

@@ -537,7 +537,9 @@ describe('PlanLifecycleService', () => {
     });
 
     it('does not reserve PDF quota when duplicate is detected', async () => {
-      const prepareSpy = vi.fn();
+      const prepareSpy = vi
+        .fn()
+        .mockRejectedValue(new Error('preparePlanInput should not be called'));
       ports = createMockPorts({
         planPersistence: {
           ...createMockPorts().planPersistence,
