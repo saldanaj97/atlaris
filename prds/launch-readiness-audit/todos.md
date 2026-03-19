@@ -128,11 +128,11 @@ Post-launch (parallel):
 
 **Acceptance criteria:**
 
-- [ ] Status delivery no longer depends on an aggressive fixed-interval polling loop
-- [ ] A simplified read model or event-driven mechanism serves status updates
-- [ ] Backoff and jitter are applied if polling is retained
-- [ ] Status contract is documented and stable across pending, ready, failed, and retryable states
-- [ ] Tests cover status behavior for each state without depending on polling internals
+- [x] Status delivery no longer depends on an aggressive fixed-interval polling loop
+- [x] A simplified read model or event-driven mechanism serves status updates
+- [x] Backoff and jitter are applied if polling is retained
+- [x] Status contract is documented and stable across pending, ready, failed, and retryable states
+- [x] Tests cover status behavior for each state without depending on polling internals
 
 ---
 
@@ -146,11 +146,11 @@ Post-launch (parallel):
 
 **Acceptance criteria:**
 
-- [ ] One module/service owns retry policy for all generation paths
-- [ ] Retry counts are bounded and intentional (no accidental multiplication)
-- [ ] Duplicate submissions are detected and handled consistently
-- [ ] Abandoned requests are cleaned up without consuming budget
-- [ ] Tests cover duplicate handling, abandoned-request behavior, and bounded retry semantics
+- [x] One module/service owns retry policy for all generation paths
+- [x] Retry counts are bounded and intentional (no accidental multiplication)
+- [x] Duplicate submissions are detected and handled consistently
+- [x] Abandoned requests are cleaned up without consuming budget
+- [x] Tests cover duplicate handling, abandoned-request behavior, and bounded retry semantics
 
 ---
 
@@ -164,11 +164,11 @@ Post-launch (parallel):
 
 **Acceptance criteria:**
 
-- [ ] Generation flow opens only the minimum required database contexts
-- [ ] Any remaining multi-context paths have documented, explicit roles
-- [ ] Request-scoped vs worker-scoped DB boundaries are clearly separated
-- [ ] No unnecessary extra DB connections are opened per request
-- [ ] Tests verify DB boundary behavior is correct and observable
+- [x] Generation flow opens only the minimum required database contexts
+- [x] Any remaining multi-context paths have documented, explicit roles
+- [x] Request-scoped vs worker-scoped DB boundaries are clearly separated
+- [x] No unnecessary extra DB connections are opened per request
+- [x] Tests verify DB boundary behavior is correct and observable
 
 ---
 
