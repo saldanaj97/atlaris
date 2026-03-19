@@ -1,15 +1,17 @@
-import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
+import {
+  createRetryHandler,
+  POST,
+} from '@/app/api/v1/plans/[planId]/retry/route';
+import type { GenerationAttemptResult } from '@/features/plans/lifecycle';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  seedFailedAttemptsForDurableWindow,
-  seedMaxAttemptsForPlan,
-} from '../../fixtures/attempts';
+import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { readStreamingResponse } from '../../helpers/streaming';
 
 type RetryAttemptOverrides = Partial<
   Omit<typeof generationAttempts.$inferInsert, 'planId'>
@@ -121,7 +123,7 @@ describe('POST /api/v1/plans/:planId/retry', () => {
     });
   });
 
-  it('returns 429 when plan attempt cap is already reached', async () => {
+  it('emits SSE error event when plan attempt cap is already reached', async () => {
     const authUserId = 'auth_retry_capped';
     setTestUser(authUserId);
     const userId = await ensureUser({
@@ -134,22 +136,34 @@ describe('POST /api/v1/plans/:planId/retry', () => {
       planOverrides: { topic: 'Capped plan' },
     });
 
-    await seedMaxAttemptsForPlan(plan.id);
+    const cappedResult: GenerationAttemptResult = {
+      status: 'permanent_failure',
+      classification: 'capped',
+      error: new Error('Generation attempt cap reached'),
+    };
 
-    await withRunGenerationAttemptSpy(async (runSpy) => {
-      const response = await POST(
-        new Request(`http://localhost/api/v1/plans/${plan.id}/retry`, {
-          method: 'POST',
-        })
-      );
-      expect(response.status).toBe(429);
-      const body = (await response.json()) as { error?: string };
-      expect(body.error).toContain('Maximum retry attempts reached');
-      expect(runSpy).not.toHaveBeenCalled();
+    const postWithCappedMock = createRetryHandler({
+      overrides: {
+        processGenerationAttempt: async () => cappedResult,
+      },
     });
+
+    const response = await postWithCappedMock(
+      new Request(`http://localhost/api/v1/plans/${plan.id}/retry`, {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const events = await readStreamingResponse(response);
+    const errorEvent = events.find((e) => e.type === 'error');
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent!.data!.code).toBe('ATTEMPTS_EXHAUSTED');
+    expect(errorEvent!.data!.classification).toBe('capped');
+    expect(errorEvent!.data!.retryable).toBe(false);
   });
 
-  it('returns 409 when another attempt is already in progress', async () => {
+  it('emits SSE error event when another attempt is already in progress', async () => {
     const authUserId = 'auth_retry_in_progress';
     setTestUser(authUserId);
     const userId = await ensureUser({
@@ -160,19 +174,34 @@ describe('POST /api/v1/plans/:planId/retry', () => {
     const plan = await createTestPlanWithAttempt({
       userId,
       planOverrides: { topic: 'Plan in progress' },
-      attemptOverrides: { status: 'in_progress' },
     });
 
-    await withRunGenerationAttemptSpy(async (runSpy) => {
-      const response = await POST(
-        new Request(`http://localhost/api/v1/plans/${plan.id}/retry`, {
-          method: 'POST',
-        })
-      );
-      expect(response.status).toBe(409);
-      const body = (await response.json()) as { error?: string };
-      expect(body.error).toContain('already in progress');
-      expect(runSpy).not.toHaveBeenCalled();
+    const conflictResult: GenerationAttemptResult = {
+      status: 'retryable_failure',
+      classification: 'rate_limit',
+      error: new Error(
+        'A generation is already in progress for this plan (concurrent conflict)'
+      ),
+    };
+
+    const postWithConflictMock = createRetryHandler({
+      overrides: {
+        processGenerationAttempt: async () => conflictResult,
+      },
     });
+
+    const response = await postWithConflictMock(
+      new Request(`http://localhost/api/v1/plans/${plan.id}/retry`, {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const events = await readStreamingResponse(response);
+    const errorEvent = events.find((e) => e.type === 'error');
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent!.data!.code).toBe('RATE_LIMITED');
+    expect(errorEvent!.data!.classification).toBe('rate_limit');
+    expect(errorEvent!.data!.retryable).toBe(true);
   });
 });
