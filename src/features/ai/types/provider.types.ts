@@ -11,6 +11,9 @@ export type {
   ProviderUsage,
 } from '@/shared/types/ai-provider.types';
 
+export type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+export { IncompleteUsageError } from '@/shared/types/ai-usage.types';
+
 export type { PdfContext };
 
 export type ProviderGenerateResult = {

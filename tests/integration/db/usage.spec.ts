@@ -48,7 +48,6 @@ describe('AI usage logging', () => {
       inputTokens: 10,
       outputTokens: 100,
       costCents: 0,
-      kind: 'plan',
     });
 
     const rows = await db

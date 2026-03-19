@@ -120,7 +120,24 @@ export class PlanLifecycleService {
 
     const normalizedTopic = input.topic.trim();
 
-    // 6. Atomic insert (checks plan limit + inserts within a single transaction)
+    // 6. Duplicate detection — return existing plan for idempotent submissions
+    const existingPlanId =
+      await this.ports.planPersistence.findRecentDuplicatePlan(
+        input.userId,
+        normalizedTopic
+      );
+    if (existingPlanId) {
+      logger.info(
+        { userId: input.userId, existingPlanId },
+        'plan.lifecycle.create: duplicate detected'
+      );
+      return {
+        status: 'duplicate_detected',
+        existingPlanId,
+      };
+    }
+
+    // 7. Atomic insert (checks plan limit + inserts within a single transaction)
     const insertResult = await this.ports.planPersistence.atomicInsertPlan(
       input.userId,
       {
@@ -239,7 +256,25 @@ export class PlanLifecycleService {
       };
     }
 
-    // 6. Reserve PDF quota + verify proof via PdfOriginPort
+    // 6. Duplicate detection — return existing plan for idempotent submissions
+    const normalizedTopic = input.topic.trim();
+    const existingPlanId =
+      await this.ports.planPersistence.findRecentDuplicatePlan(
+        input.userId,
+        normalizedTopic
+      );
+    if (existingPlanId) {
+      logger.info(
+        { userId: input.userId, existingPlanId },
+        'plan.lifecycle.create_pdf: duplicate detected'
+      );
+      return {
+        status: 'duplicate_detected',
+        existingPlanId,
+      };
+    }
+
+    // 7. Reserve PDF quota + verify proof via PdfOriginPort
     const prepared = await this.ports.pdfOrigin.preparePlanInput({
       body: input.body,
       authUserId: input.authUserId,
@@ -250,7 +285,7 @@ export class PlanLifecycleService {
       'plan.lifecycle.create_pdf: pdf quota reserved'
     );
 
-    // 7. Atomic insert — rollback PDF quota on any failure after reservation
+    // 8. Atomic insert — rollback PDF quota on any failure after reservation
     let succeeded = false;
     try {
       const insertResult = await this.ports.planPersistence.atomicInsertPlan(
@@ -343,19 +378,9 @@ export class PlanLifecycleService {
     if (generationResult.status === 'success') {
       await this.ports.planPersistence.markGenerationSuccess(input.planId);
 
-      // Extract usage from metadata for recording
-      const metadata = generationResult.metadata;
       await this.ports.usageRecording.recordUsage({
         userId: input.userId,
-        provider: (metadata.provider as string) ?? 'unknown',
-        model: (metadata.model as string) ?? 'unknown',
-        inputTokens: (metadata.usage as Record<string, unknown>)
-          ?.inputTokens as number | undefined,
-        outputTokens: (metadata.usage as Record<string, unknown>)
-          ?.outputTokens as number | undefined,
-        costCents: (metadata.usage as Record<string, unknown>)?.costCents as
-          | number
-          | undefined,
+        usage: generationResult.usage,
         kind: 'plan',
       });
 
@@ -393,22 +418,14 @@ export class PlanLifecycleService {
       };
     }
 
-    // Permanent failure — record usage (attempt consumed)
-    const metadata = generationResult.metadata;
-    await this.ports.usageRecording.recordUsage({
-      userId: input.userId,
-      provider: (metadata?.provider as string) ?? 'unknown',
-      model: (metadata?.model as string) ?? 'unknown',
-      inputTokens: (metadata?.usage as Record<string, unknown>)?.inputTokens as
-        | number
-        | undefined,
-      outputTokens: (metadata?.usage as Record<string, unknown>)
-        ?.outputTokens as number | undefined,
-      costCents: (metadata?.usage as Record<string, unknown>)?.costCents as
-        | number
-        | undefined,
-      kind: 'plan',
-    });
+    // Permanent failure — record usage if available (attempt consumed)
+    if (generationResult.usage) {
+      await this.ports.usageRecording.recordUsage({
+        userId: input.userId,
+        usage: generationResult.usage,
+        kind: 'plan',
+      });
+    }
 
     logger.warn(
       { planId: input.planId, classification },

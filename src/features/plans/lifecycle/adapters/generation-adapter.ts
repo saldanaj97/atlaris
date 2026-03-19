@@ -4,12 +4,15 @@
  * Wraps the AI orchestrator's `runGenerationAttempt()` function,
  * mapping between the port interface and the orchestrator's types.
  * Handles model/provider resolution internally via `resolveModelForTier()`.
+ * Normalizes raw provider metadata into CanonicalAIUsage at the boundary.
  */
 
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { safeNormalizeUsage } from '@/features/ai/usage';
 import type { PdfContext } from '@/features/pdf/context.types';
 import type { GenerationInput } from '@/features/ai/types/provider.types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
 import type { GenerationPort } from '../ports';
@@ -45,6 +48,7 @@ export class GenerationAdapter implements GenerationPort {
         status: 'success';
         modules: GeneratedModule[];
         metadata: Record<string, unknown>;
+        usage: CanonicalAIUsage;
         durationMs: number;
       }
     | {
@@ -52,6 +56,7 @@ export class GenerationAdapter implements GenerationPort {
         classification: FailureClassification;
         error: Error;
         metadata?: Record<string, unknown>;
+        usage?: CanonicalAIUsage;
         durationMs: number;
       }
   > {
@@ -91,6 +96,7 @@ export class GenerationAdapter implements GenerationPort {
         status: 'success',
         modules: result.modules as GeneratedModule[],
         metadata: result.metadata as Record<string, unknown>,
+        usage: safeNormalizeUsage(result.metadata),
         durationMs: result.durationMs,
       };
     }
@@ -100,6 +106,7 @@ export class GenerationAdapter implements GenerationPort {
       classification: result.classification,
       error: result.error,
       metadata: result.metadata as Record<string, unknown> | undefined,
+      usage: result.metadata ? safeNormalizeUsage(result.metadata) : undefined,
       durationMs: result.durationMs,
     };
   }

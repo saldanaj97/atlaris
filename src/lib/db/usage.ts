@@ -8,11 +8,10 @@ type RecordUsageParams = {
   userId: string;
   provider: string;
   model: string;
-  inputTokens?: number | null;
-  outputTokens?: number | null;
-  costCents?: number | null;
+  inputTokens: number;
+  outputTokens: number;
+  costCents: number;
   requestId?: string | null;
-  kind?: 'plan' | 'regeneration';
 };
 
 export async function recordUsage(
@@ -23,9 +22,9 @@ export async function recordUsage(
     userId: params.userId,
     provider: params.provider,
     model: params.model,
-    inputTokens: params.inputTokens ?? 0,
-    outputTokens: params.outputTokens ?? 0,
-    costCents: params.costCents ?? 0,
+    inputTokens: params.inputTokens,
+    outputTokens: params.outputTokens,
+    costCents: params.costCents,
     requestId: params.requestId ?? null,
   });
 }

@@ -6,6 +6,8 @@
  * these interfaces — never on concrete implementations.
  */
 
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+
 import type {
   AtomicInsertResult,
   DurationCapResult,
@@ -31,6 +33,12 @@ export interface PlanPersistencePort {
 
   /** Find a plan that has exhausted generation attempts (capped without modules). */
   findCappedPlanWithoutModules(userId: string): Promise<string | null>;
+
+  /** Find a recent duplicate plan with the same normalized topic (dedup window). */
+  findRecentDuplicatePlan(
+    userId: string,
+    normalizedTopic: string
+  ): Promise<string | null>;
 
   /** Mark a plan's generation as successful. */
   markGenerationSuccess(this: void, planId: string): Promise<void>;
@@ -124,6 +132,7 @@ export interface GenerationPort {
         status: 'success';
         modules: GeneratedModule[];
         metadata: Record<string, unknown>;
+        usage: CanonicalAIUsage;
         durationMs: number;
       }
     | {
@@ -131,6 +140,7 @@ export interface GenerationPort {
         classification: FailureClassification;
         error: Error;
         metadata?: Record<string, unknown>;
+        usage?: CanonicalAIUsage;
         durationMs: number;
       }
   >;
@@ -144,12 +154,7 @@ export interface UsageRecordingPort {
     this: void,
     params: {
       userId: string;
-      provider: string;
-      model: string;
-      inputTokens?: number | null;
-      outputTokens?: number | null;
-      costCents?: number | null;
-      requestId?: string | null;
+      usage: CanonicalAIUsage;
       kind?: 'plan' | 'regeneration';
     }
   ): Promise<void>;

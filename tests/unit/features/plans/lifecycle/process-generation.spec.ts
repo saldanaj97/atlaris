@@ -4,8 +4,23 @@ import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/servi
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import { isRetryableClassification } from '@/features/plans/lifecycle/types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 // ─── Helpers ─────────────────────────────────────────────────────
+
+function makeCanonicalUsage(
+  overrides?: Partial<CanonicalAIUsage>
+): CanonicalAIUsage {
+  return {
+    inputTokens: 100,
+    outputTokens: 200,
+    totalTokens: 300,
+    model: 'gpt-4o',
+    provider: 'openai',
+    estimatedCostCents: 0,
+    ...overrides,
+  };
+}
 
 function createMockPorts(
   overrides?: Partial<PlanLifecycleServicePorts>
@@ -17,6 +32,7 @@ function createMockPorts(
         id: 'plan-123',
       }),
       findCappedPlanWithoutModules: async () => null,
+      findRecentDuplicatePlan: async () => null,
       markGenerationSuccess: vi.fn().mockResolvedValue(undefined),
       markGenerationFailure: vi.fn().mockResolvedValue(undefined),
     },
@@ -57,6 +73,7 @@ function createMockPorts(
           model: 'gpt-4o',
           usage: { inputTokens: 100, outputTokens: 200 },
         },
+        usage: makeCanonicalUsage(),
         durationMs: 1500,
       }),
     },
@@ -120,8 +137,10 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     expect(recordUsage).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-abc',
-        provider: 'openai',
-        model: 'gpt-4o',
+        usage: expect.objectContaining({
+          provider: 'openai',
+          model: 'gpt-4o',
+        }),
         kind: 'plan',
       })
     );
@@ -220,6 +239,13 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
               model: 'gpt-4o',
               usage: { inputTokens: 50, outputTokens: 0 },
             },
+            usage: makeCanonicalUsage({
+              inputTokens: 50,
+              outputTokens: 0,
+              totalTokens: 50,
+              provider: 'openai',
+              model: 'gpt-4o',
+            }),
             durationMs: 200,
           }),
         },
@@ -270,6 +296,13 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
             model: 'claude-3',
             usage: { inputTokens: 80, outputTokens: 10 },
           },
+          usage: makeCanonicalUsage({
+            inputTokens: 80,
+            outputTokens: 10,
+            totalTokens: 90,
+            provider: 'anthropic',
+            model: 'claude-3',
+          }),
           durationMs: 150,
         }),
       },
@@ -282,8 +315,10 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     expect(recordUsage).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 'user-abc',
-        provider: 'anthropic',
-        model: 'claude-3',
+        usage: expect.objectContaining({
+          provider: 'anthropic',
+          model: 'claude-3',
+        }),
         kind: 'plan',
       })
     );
@@ -320,6 +355,14 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
           status: 'success',
           modules: [],
           metadata: {},
+          usage: makeCanonicalUsage({
+            provider: 'unknown',
+            model: 'unknown',
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+            estimatedCostCents: 0,
+          }),
           durationMs: 800,
         }),
       },
@@ -331,8 +374,10 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
 
     expect(recordUsage).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: 'unknown',
-        model: 'unknown',
+        usage: expect.objectContaining({
+          provider: 'unknown',
+          model: 'unknown',
+        }),
       })
     );
   });

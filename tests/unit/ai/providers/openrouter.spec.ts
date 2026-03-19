@@ -280,10 +280,12 @@ describe('OpenRouterProvider', () => {
       const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
       const result = await provider.generate(SAMPLE_INPUT);
 
+      // Missing usage data is reported as undefined (not silently defaulted to 0)
+      // so downstream normalization can detect and alert on it.
       expect(result.metadata.usage).toEqual({
-        promptTokens: 0,
-        completionTokens: 0,
-        totalTokens: 0,
+        promptTokens: undefined,
+        completionTokens: undefined,
+        totalTokens: undefined,
       });
     });
 

@@ -166,12 +166,12 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
           });
         }
 
-        // Defaulting undefined to 0 simplifies downstream handling; consumers cannot distinguish
-        // "provider reported zero" from "provider did not report usage."
+        // Initialize with undefined so downstream normalization can detect
+        // missing usage (rather than silently treating absent data as zero).
         const metadataUsage: ProviderUsage = {
-          promptTokens: 0,
-          completionTokens: 0,
-          totalTokens: 0,
+          promptTokens: undefined,
+          completionTokens: undefined,
+          totalTokens: undefined,
         };
         const isStreamingResponse = isAsyncIterable(response);
         // Streaming: when SDK returns AsyncIterable we yield chunk-by-chunk; otherwise single-chunk fallback.

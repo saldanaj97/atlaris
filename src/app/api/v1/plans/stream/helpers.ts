@@ -1,4 +1,3 @@
-import { getModelById } from '@/features/ai/ai-models';
 import { isRetryableClassification } from '@/features/ai/failures';
 import {
   sanitizeSseError,
@@ -11,6 +10,7 @@ import type { StreamingEvent } from '@/features/ai/types/streaming.types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import { incrementUsage } from '@/features/billing/usage-metrics';
 import { getCorrelationId } from '@/lib/api/context';
+import { safeNormalizeUsage } from '@/features/ai/usage';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { getDb } from '@/lib/db/runtime';
 import { recordUsage } from '@/lib/db/usage';
@@ -277,37 +277,13 @@ export function buildPlanStartEvent({
 }
 
 /**
- * Attempts to record usage information from generation metadata. Errors are logged but do not throw.
+ * Attempts to record usage information from generation metadata.
+ * Normalizes raw provider metadata into canonical usage shape.
+ * Errors are logged but do not throw.
  *
  * @param userId - ID of the user to associate usage with
  * @param result - GenerationResult containing metadata and usage information
  */
-function computeCostCents(
-  modelId: string,
-  inputTokens: number,
-  outputTokens: number
-): number {
-  const model = getModelById(modelId);
-  if (!model) {
-    logger.warn(
-      {
-        modelId,
-        inputTokens,
-        outputTokens,
-        source: 'computeCostCents',
-        lookup: 'getModelById',
-      },
-      'computeCostCents: getModelById returned null for unknown/misconfigured modelId, returning 0'
-    );
-    return 0;
-  }
-  if (inputTokens === 0 && outputTokens === 0) return 0;
-  const totalUsd =
-    (inputTokens / 1_000_000) * model.inputCostPerMillion +
-    (outputTokens / 1_000_000) * model.outputCostPerMillion;
-  return Math.round(totalUsd * 100);
-}
-
 export async function tryRecordUsage(
   userId: string,
   result: GenerationResult,
@@ -317,26 +293,17 @@ export async function tryRecordUsage(
   try {
     const usageRecorder = deps?.recordUsage ?? recordUsage;
     const usageIncrementer = deps?.incrementUsage ?? incrementUsage;
-    const usage = result.metadata?.usage;
-    const modelId = result.metadata?.model ?? 'unknown';
-    const inputTokens = usage?.promptTokens;
-    const outputTokens = usage?.completionTokens;
-    const costCents =
-      modelId !== 'unknown' &&
-      typeof inputTokens === 'number' &&
-      typeof outputTokens === 'number'
-        ? computeCostCents(modelId, inputTokens, outputTokens)
-        : 0;
+
+    const canonical = safeNormalizeUsage(result.metadata);
 
     await usageRecorder(
       {
         userId,
-        provider: result.metadata?.provider ?? 'unknown',
-        model: modelId,
-        inputTokens,
-        outputTokens,
-        costCents,
-        kind: 'plan',
+        provider: canonical.provider,
+        model: canonical.model,
+        inputTokens: canonical.inputTokens,
+        outputTokens: canonical.outputTokens,
+        costCents: canonical.estimatedCostCents,
       },
       dbClient
     );

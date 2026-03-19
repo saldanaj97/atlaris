@@ -2,26 +2,30 @@
  * UsageRecordingAdapter — production implementation of UsageRecordingPort.
  *
  * Thin wrapper around `recordUsage()` from the DB usage module.
+ * Accepts CanonicalAIUsage — all normalization happens upstream.
  */
 
 import { incrementUsage } from '@/features/billing/usage-metrics';
 import { recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 import type { UsageRecordingPort } from '../ports';
 
 export class UsageRecordingAdapter implements UsageRecordingPort {
   async recordUsage(params: {
     userId: string;
-    provider: string;
-    model: string;
-    inputTokens?: number | null;
-    outputTokens?: number | null;
-    costCents?: number | null;
-    requestId?: string | null;
+    usage: CanonicalAIUsage;
     kind?: 'plan' | 'regeneration';
   }): Promise<void> {
-    await recordUsage(params);
+    await recordUsage({
+      userId: params.userId,
+      provider: params.usage.provider,
+      model: params.usage.model,
+      inputTokens: params.usage.inputTokens,
+      outputTokens: params.usage.outputTokens,
+      costCents: params.usage.estimatedCostCents,
+    });
 
     if (params.kind) {
       try {
