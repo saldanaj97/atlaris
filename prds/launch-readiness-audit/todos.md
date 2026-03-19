@@ -104,12 +104,12 @@ Post-launch (parallel):
 
 **Acceptance criteria:**
 
-- [ ] PlanLifecycleService owns create, generate, retry, and regenerate for all entry points
-- [ ] Legacy orchestration paths are thin adapters delegating to the lifecycle service, or removed
-- [ ] PDF plan flows use the same lifecycle boundary as non-PDF flows
-- [ ] Failed generations end in a clear, consistent, user-visible state
-- [ ] One lifecycle record exists per generation attempt (inspectable by support)
-- [ ] Tests cover lifecycle consistency across stream, retry, regeneration, and PDF paths
+- [x] PlanLifecycleService owns create, generate, retry, and regenerate for all entry points
+- [x] Legacy orchestration paths are thin adapters delegating to the lifecycle service, or removed
+- [x] PDF plan flows use the same lifecycle boundary as non-PDF flows
+- [x] Failed generations end in a clear, consistent, user-visible state
+- [x] One lifecycle record exists per generation attempt (inspectable by support)
+- [x] Tests cover lifecycle consistency across stream, retry, regeneration, and PDF paths
 
 ---
 
