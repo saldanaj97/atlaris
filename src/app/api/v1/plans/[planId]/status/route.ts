@@ -39,14 +39,18 @@ export const GET = withErrorBoundary(
       dbClient: db,
     });
 
-    // Check if plan has modules (indicates successful generation)
-    const planModules = await db
-      .select({ id: modules.id })
-      .from(modules)
-      .where(eq(modules.planId, planId))
-      .limit(1);
-
-    const hasModules = planModules.length > 0;
+    // Only query modules when generationStatus is 'ready' — that's the only
+    // state where hasModules can change the derived status result.
+    const hasModules =
+      plan.generationStatus === 'ready'
+        ? (
+            await db
+              .select({ id: modules.id })
+              .from(modules)
+              .where(eq(modules.planId, planId))
+              .limit(1)
+          ).length > 0
+        : false;
 
     // Fetch bounded recent attempts (max retries is ATTEMPT_CAP), derive count + latest in memory.
     const recentAttempts = await db
@@ -88,14 +92,17 @@ export const GET = withErrorBoundary(
       );
     }
 
-    return json({
-      planId: plan.id,
-      status,
-      attempts,
-      latestError,
-      createdAt: plan.createdAt?.toISOString(),
-      updatedAt: plan.updatedAt?.toISOString(),
-    });
+    return json(
+      {
+        planId: plan.id,
+        status,
+        attempts,
+        latestError,
+        createdAt: plan.createdAt?.toISOString(),
+        updatedAt: plan.updatedAt?.toISOString(),
+      },
+      { headers: { 'Cache-Control': 'max-age=1, stale-while-revalidate=2' } }
+    );
   })
 );
 

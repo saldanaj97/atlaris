@@ -2,6 +2,7 @@
 
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
+import { computeNextDelay, INITIAL_POLL_MS } from '@/shared/constants/polling';
 import { PLAN_STATUSES } from '@/shared/types/client';
 import type { PlanStatus } from '@/shared/types/client.types';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -61,6 +62,9 @@ export function usePlanStatus(
   const [pollingError, setPollingError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const consecutiveFailuresRef = useRef(0);
+  const previousStatusRef = useRef<PlanStatus>(initialStatus);
+  const delayRef = useRef(INITIAL_POLL_MS);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousPlanIdRef = useRef(planId);
   // Track latest initialStatus without making planId-reset effect depend on it.
   // This prevents a spurious full reset when initialStatus changes on the same plan.
@@ -95,6 +99,7 @@ export function usePlanStatus(
 
       const data = parseResult.data;
 
+      previousStatusRef.current = data.status;
       setStatus(data.status);
       setAttempts(data.attempts);
 
@@ -157,15 +162,43 @@ export function usePlanStatus(
     }
 
     setIsPolling(true);
-    void fetchStatus();
+    delayRef.current = INITIAL_POLL_MS;
 
-    // Then poll every 3 seconds
-    const pollInterval = setInterval(() => {
-      void fetchStatus();
-    }, 3000);
+    let cancelled = false;
+
+    const schedulePoll = () => {
+      if (cancelled) return;
+      timeoutRef.current = setTimeout(() => {
+        if (cancelled) return;
+        const prevStatus = previousStatusRef.current;
+        void fetchStatus().then(() => {
+          if (cancelled) return;
+          // Reset backoff when a status transition occurs
+          if (previousStatusRef.current !== prevStatus) {
+            delayRef.current = INITIAL_POLL_MS;
+          } else {
+            delayRef.current = computeNextDelay(delayRef.current);
+          }
+          schedulePoll();
+        });
+      }, delayRef.current);
+    };
+
+    // Fire the first poll immediately, then start the backoff loop
+    void (async () => {
+      await fetchStatus();
+      if (!cancelled) {
+        delayRef.current = computeNextDelay(delayRef.current);
+        schedulePoll();
+      }
+    })();
 
     return () => {
-      clearInterval(pollInterval);
+      cancelled = true;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       setIsPolling(false);
     };
   }, [shouldPoll, fetchStatus]);
