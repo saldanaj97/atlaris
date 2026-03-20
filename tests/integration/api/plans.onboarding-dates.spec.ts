@@ -87,9 +87,10 @@ describe('POST /api/v1/plans with dates in job payload', () => {
 
     const payload = await response.json();
     expect(payload).toMatchObject({
-      code: 'FORBIDDEN',
+      code: 'QUOTA_EXCEEDED',
       error:
         'free tier limited to 2-week plans. Upgrade to starter for longer plans.',
+      details: { upgradeUrl: '/pricing' },
     });
   });
 

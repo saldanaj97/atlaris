@@ -546,8 +546,8 @@ describe('Lifecycle Consolidation', () => {
         pdfExtractionHash: 'hash-abc',
       });
 
-      expect(aiResult.status).toBe('quota_rejected');
-      expect(pdfResult.status).toBe('quota_rejected');
+      expect(aiResult.status).toBe('attempt_cap_exceeded');
+      expect(pdfResult.status).toBe('attempt_cap_exceeded');
       expect(findCapped).toHaveBeenCalledTimes(2);
     });
   });

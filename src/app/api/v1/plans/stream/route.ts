@@ -19,7 +19,11 @@ import { createLearningPlanSchema } from '@/features/plans/validation/learningPl
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { AppError, ValidationError } from '@/lib/api/errors';
+import {
+  AppError,
+  AttemptCapExceededError,
+  ValidationError,
+} from '@/lib/api/errors';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -178,6 +182,11 @@ export function createStreamHandler(deps?: {
               status: 403,
               code: 'QUOTA_EXCEEDED',
               details: { upgradeUrl: createResult.upgradeUrl },
+            });
+          }
+          if (createResult.status === 'attempt_cap_exceeded') {
+            throw new AttemptCapExceededError(createResult.reason, {
+              planId: createResult.cappedPlanId,
             });
           }
           // permanent_failure or retryable_failure from plan creation

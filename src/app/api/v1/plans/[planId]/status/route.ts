@@ -39,18 +39,16 @@ export const GET = withErrorBoundary(
       dbClient: db,
     });
 
-    // Only query modules when generationStatus is 'ready' — that's the only
-    // state where hasModules can change the derived status result.
+    // Match detail endpoint: modules in DB are the ground truth for `hasModules`
+    // (see derivePlanStatus — any modules → 'ready' regardless of generationStatus).
     const hasModules =
-      plan.generationStatus === 'ready'
-        ? (
-            await db
-              .select({ id: modules.id })
-              .from(modules)
-              .where(eq(modules.planId, planId))
-              .limit(1)
-          ).length > 0
-        : false;
+      (
+        await db
+          .select({ id: modules.id })
+          .from(modules)
+          .where(eq(modules.planId, planId))
+          .limit(1)
+      ).length > 0;
 
     // Fetch bounded recent attempts (max retries is ATTEMPT_CAP), derive count + latest in memory.
     const recentAttempts = await db

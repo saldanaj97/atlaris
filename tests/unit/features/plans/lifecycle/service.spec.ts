@@ -180,10 +180,11 @@ describe('PlanLifecycleService', () => {
 
       const result = await service.createPlan(validInput);
 
-      expect(result.status).toBe('quota_rejected');
-      if (result.status === 'quota_rejected') {
+      expect(result.status).toBe('attempt_cap_exceeded');
+      if (result.status === 'attempt_cap_exceeded') {
         expect(result.reason).toContain('capped-plan-456');
         expect(result.reason).toContain('exhausted generation attempts');
+        expect(result.cappedPlanId).toBe('capped-plan-456');
       }
     });
 
@@ -518,8 +519,22 @@ describe('PlanLifecycleService', () => {
       });
     });
 
-    it('returns duplicate_detected when a recent duplicate PDF plan exists', async () => {
+    it('returns duplicate_detected after proof and rolls back PDF quota', async () => {
+      const rollbackSpy = vi.fn().mockResolvedValue(undefined);
       ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi.fn().mockResolvedValue({
+            origin: 'pdf' as const,
+            extractedContext: { mainTopic: 'TypeScript Basics' },
+            topic: 'TypeScript Basics',
+            skillLevel: 'beginner',
+            weeklyHours: 5,
+            learningStyle: 'mixed',
+            pdfUsageReserved: true,
+            pdfProvenance: { extractionHash: 'hash-abc', proofVersion: 1 },
+          }),
+          rollbackPdfUsage: rollbackSpy,
+        },
         planPersistence: {
           ...createMockPorts().planPersistence,
           findRecentDuplicatePlan: async () => 'existing-pdf-plan-id',
@@ -529,38 +544,39 @@ describe('PlanLifecycleService', () => {
 
       const result = await service.createPdfPlan(validPdfInput);
 
+      expect(ports.pdfOrigin.preparePlanInput).toHaveBeenCalledWith({
+        body: validPdfInput.body,
+        authUserId: 'auth-abc',
+        internalUserId: 'user-abc',
+      });
       expect(result.status).toBe('duplicate_detected');
       if (result.status === 'duplicate_detected') {
         expect(result.existingPlanId).toBe('existing-pdf-plan-id');
       }
-    });
-
-    it('does not reserve PDF quota when duplicate is detected', async () => {
-      const prepareSpy = vi
-        .fn()
-        .mockRejectedValue(new Error('preparePlanInput should not be called'));
-      ports = createMockPorts({
-        planPersistence: {
-          ...createMockPorts().planPersistence,
-          findRecentDuplicatePlan: async () => 'existing-pdf-plan-id',
-        },
-        pdfOrigin: {
-          preparePlanInput: prepareSpy,
-          rollbackPdfUsage: async () => {},
-        },
+      expect(rollbackSpy).toHaveBeenCalledWith({
+        internalUserId: 'user-abc',
+        reserved: true,
       });
-      service = new PlanLifecycleService(ports);
-
-      await service.createPdfPlan(validPdfInput);
-
-      expect(prepareSpy).not.toHaveBeenCalled();
     });
 
-    it('does not call atomicInsertPlan when PDF duplicate is detected', async () => {
+    it('does not call atomicInsertPlan when PDF duplicate is detected after proof', async () => {
       const insertSpy = vi
         .fn()
         .mockResolvedValue({ success: true as const, id: 'plan-new' });
       ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi.fn().mockResolvedValue({
+            origin: 'pdf' as const,
+            extractedContext: null,
+            topic: 'Learn TypeScript',
+            skillLevel: 'beginner',
+            weeklyHours: 5,
+            learningStyle: 'mixed',
+            pdfUsageReserved: true,
+            pdfProvenance: null,
+          }),
+          rollbackPdfUsage: async () => {},
+        },
         planPersistence: {
           ...createMockPorts().planPersistence,
           findRecentDuplicatePlan: async () => 'existing-pdf-plan-id',

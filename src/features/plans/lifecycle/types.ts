@@ -10,6 +10,7 @@ import type { PdfContext } from '@/features/pdf/context.types';
 import type { FailureClassification } from '@/shared/types/client.types';
 
 // Re-export commonly used types so the service can import from one place
+// Re-export commonly used types so the service can import from one place
 export type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 export type { PdfContext } from '@/features/pdf/context.types';
 export type { FailureClassification } from '@/shared/types/client.types';
@@ -126,6 +127,13 @@ export type QuotaRejection = {
   readonly upgradeUrl?: string;
 };
 
+/** User has an existing plan that exhausted generation attempts (attempt cap). */
+export type AttemptCapExceeded = {
+  readonly status: 'attempt_cap_exceeded';
+  readonly reason: string;
+  readonly cappedPlanId: string;
+};
+
 /** A duplicate plan was detected (idempotent return). */
 export type DuplicateDetected = {
   readonly status: 'duplicate_detected';
@@ -141,6 +149,7 @@ export type CreatePlanResult =
   | RetryableFailure
   | PermanentFailure
   | QuotaRejection
+  | AttemptCapExceeded
   | DuplicateDetected;
 
 // ─── Generated module types ──────────────────────────────────────

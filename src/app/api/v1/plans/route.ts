@@ -10,7 +10,11 @@ import {
   withAuthAndRateLimit,
   withErrorBoundary,
 } from '@/lib/api/auth';
-import { AppError, ValidationError } from '@/lib/api/errors';
+import {
+  AppError,
+  AttemptCapExceededError,
+  ValidationError,
+} from '@/lib/api/errors';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -208,6 +212,10 @@ export const POST: PlainHandler = withErrorBoundary(
           code: 'QUOTA_EXCEEDED',
           details: { upgradeUrl: createResult.upgradeUrl },
         });
+      case 'attempt_cap_exceeded':
+        throw new AttemptCapExceededError(createResult.reason, {
+          planId: createResult.cappedPlanId,
+        });
       case 'permanent_failure':
       case 'retryable_failure': {
         const err =
@@ -221,6 +229,12 @@ export const POST: PlainHandler = withErrorBoundary(
             ? 'PLAN_CREATION_TEMPORARY_FAILURE'
             : 'PLAN_CREATION_FAILED',
         });
+      }
+      default: {
+        const _exhaustive: never = createResult;
+        throw new Error(
+          `Unhandled lifecycle result: ${(_exhaustive as { status: string }).status}`
+        );
       }
     }
   })

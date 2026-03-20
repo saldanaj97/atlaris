@@ -32,23 +32,37 @@ describe('usePlanStatus', () => {
   });
 
   it('T050 transitions pending -> processing -> ready and stops polling', async () => {
-    const responses = [
-      { planId: 'plan-1', status: 'pending', attempts: 0, latestError: null },
-      {
-        planId: 'plan-1',
-        status: 'processing',
-        attempts: 1,
-        latestError: null,
-      },
-      { planId: 'plan-1', status: 'ready', attempts: 1, latestError: null },
+    // Strict Mode may run the polling effect twice on mount (two immediate fetches).
+    // Single-mount only has one immediate fetch. Use a long enough sequence and an
+    // extra advance when still pending so both layouts reach `processing` then `ready`.
+    // Duplicate `processing` so a single event-loop turn cannot skip the state
+    // when multiple polls resolve back-to-back.
+    const statusSequence: Array<'pending' | 'processing' | 'ready'> = [
+      'pending',
+      'pending',
+      'processing',
+      'processing',
+      'ready',
     ];
+    let fetchIndex = 0;
     (global.fetch as unknown as Mock).mockImplementation(() => {
-      const next = responses.shift() ?? responses[responses.length - 1];
+      const at = Math.min(fetchIndex, statusSequence.length - 1);
+      const status = statusSequence[at] ?? 'ready';
+      fetchIndex += 1;
+      const attempts = status === 'pending' ? 0 : 1;
       return Promise.resolve(
-        new Response(JSON.stringify(next), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
+        new Response(
+          JSON.stringify({
+            planId: 'plan-1',
+            status,
+            attempts,
+            latestError: null,
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
       );
     });
 
@@ -57,42 +71,54 @@ describe('usePlanStatus', () => {
     // Initial state reflects the provided initialStatus
     expect(result.current.status).toBe('pending');
 
-    // Advance 3s to trigger second poll -> processing
-    await advance(3000);
+    // Small steps avoid skipping `processing` when fake timers coalesce long advances
+    let guard = 0;
+    while (result.current.status === 'pending' && guard++ < 120) {
+      await advance(100);
+    }
+    expect(guard).toBeLessThan(120); // sanity: ensure we didn't timeout waiting for processing
     expect(result.current.status).toBe('processing');
 
-    // Advance 3s to trigger third poll -> ready
-    await advance(3000);
+    guard = 0;
+    while (result.current.status === 'processing' && guard++ < 120) {
+      await advance(100);
+    }
+    expect(guard).toBeLessThan(120); // sanity: ensure we didn't timeout waiting for ready
     expect(result.current.status).toBe('ready');
 
     const fetchCallsAfterReady = (global.fetch as Mock).mock.calls.length;
 
-    // Advance more time; should not poll after terminal state
-    await advance(6000);
+    guard = 0;
+    while (guard++ < 60) {
+      await advance(100);
+    }
 
     expect((global.fetch as Mock).mock.calls.length).toBe(fetchCallsAfterReady);
     expect(result.current.isPolling).toBe(false);
   });
 
   it('T051 sets error and stops when failed', async () => {
-    const responses = [
-      {
-        planId: 'plan-err',
-        status: 'processing',
-        attempts: 1,
-        latestError: null,
-      },
-      {
-        planId: 'plan-err',
-        status: 'failed',
-        attempts: 2,
-        latestError: 'Provider timeout',
-      },
-    ];
+    // First two polls return processing (Strict Mode may run two immediate polls);
+    // the next poll returns failed.
+    let callCount = 0;
     (global.fetch as unknown as Mock).mockImplementation(() => {
-      const next = responses.shift() ?? responses[responses.length - 1];
+      callCount += 1;
+      const body =
+        callCount <= 2
+          ? {
+              planId: 'plan-err',
+              status: 'processing',
+              attempts: 1,
+              latestError: null,
+            }
+          : {
+              planId: 'plan-err',
+              status: 'failed',
+              attempts: 2,
+              latestError: 'Provider timeout',
+            };
       return Promise.resolve(
-        new Response(JSON.stringify(next), {
+        new Response(JSON.stringify(body), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         })
@@ -106,8 +132,10 @@ describe('usePlanStatus', () => {
     // Initial state
     expect(result.current.status).toBe('processing');
 
-    // Next tick -> failed
     await advance(3000);
+    if (result.current.status !== 'failed') {
+      await advance(3000);
+    }
     expect(result.current.status).toBe('failed');
     expect(result.current.error).toBe('Provider timeout');
 

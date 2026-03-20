@@ -8,6 +8,7 @@
  * Only unexpected errors (bugs) propagate as thrown exceptions.
  */
 
+import { calculateTotalWeeks } from '@/features/plans/api/shared';
 import { logger } from '@/lib/logging/logger';
 
 import type {
@@ -47,8 +48,8 @@ export class PlanLifecycleService {
   /**
    * Create a new AI-origin learning plan.
    *
-   * Flow: validate → resolve tier → normalize duration → check duration cap
-   *       → check attempt cap → prepare input → atomic insert
+   * Flow: validate → resolve tier → check requested duration cap → normalize duration
+   *       → check normalized duration cap → check attempt cap → prepare input → atomic insert
    *
    * @returns A discriminated union result — never throws for lifecycle outcomes.
    */
@@ -75,7 +76,29 @@ export class PlanLifecycleService {
       'plan.lifecycle.create: tier resolved'
     );
 
-    // 3. Normalize plan duration for the tier
+    // 3. Reject raw requested range before tier normalization (normalization clamps dates and would hide over-limit requests)
+    const requestedWeeks = calculateTotalWeeks({
+      startDate: input.startDate ?? null,
+      deadlineDate: input.deadlineDate ?? null,
+    });
+    const requestedCap = this.ports.quota.checkDurationCap({
+      tier,
+      weeklyHours: input.weeklyHours,
+      totalWeeks: requestedWeeks,
+    });
+    if (!requestedCap.allowed) {
+      logger.info(
+        { userId: input.userId, tier },
+        'plan.lifecycle.create: quota rejected (requested duration cap)'
+      );
+      return {
+        status: 'quota_rejected',
+        reason: requestedCap.reason ?? 'Plan duration exceeds tier limits',
+        upgradeUrl: requestedCap.upgradeUrl,
+      };
+    }
+
+    // 4. Normalize plan duration for the tier
     const duration = this.ports.quota.normalizePlanDuration({
       tier,
       weeklyHours: input.weeklyHours,
@@ -83,7 +106,7 @@ export class PlanLifecycleService {
       deadlineDate: input.deadlineDate,
     });
 
-    // 4. Check duration cap
+    // 5. Check duration cap on normalized duration
     const durationCap = this.ports.quota.checkDurationCap({
       tier,
       weeklyHours: input.weeklyHours,
@@ -93,7 +116,7 @@ export class PlanLifecycleService {
     if (!durationCap.allowed) {
       logger.info(
         { userId: input.userId, tier },
-        'plan.lifecycle.create: quota rejected (duration cap)'
+        'plan.lifecycle.create: quota rejected (normalized duration cap)'
       );
       return {
         status: 'quota_rejected',
@@ -102,7 +125,7 @@ export class PlanLifecycleService {
       };
     }
 
-    // 5. Check for capped plan (exhausted generation attempts)
+    // 6. Check for capped plan (exhausted generation attempts)
     const cappedPlanId =
       await this.ports.planPersistence.findCappedPlanWithoutModules(
         input.userId
@@ -110,17 +133,18 @@ export class PlanLifecycleService {
     if (cappedPlanId) {
       logger.info(
         { userId: input.userId, cappedPlanId },
-        'plan.lifecycle.create: quota rejected (capped plan)'
+        'plan.lifecycle.create: attempt cap exceeded (existing capped plan)'
       );
       return {
-        status: 'quota_rejected',
+        status: 'attempt_cap_exceeded',
         reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
+        cappedPlanId,
       };
     }
 
     const normalizedTopic = input.topic.trim();
 
-    // 6. Duplicate detection — return existing plan for idempotent submissions
+    // 7. Duplicate detection — return existing plan for idempotent submissions
     const existingPlanId =
       await this.ports.planPersistence.findRecentDuplicatePlan(
         input.userId,
@@ -137,7 +161,7 @@ export class PlanLifecycleService {
       };
     }
 
-    // 7. Atomic insert (checks plan limit + inserts within a single transaction)
+    // 8. Atomic insert (checks plan limit + inserts within a single transaction)
     const insertResult = await this.ports.planPersistence.atomicInsertPlan(
       input.userId,
       {
@@ -185,8 +209,8 @@ export class PlanLifecycleService {
   /**
    * Create a new PDF-origin learning plan.
    *
-   * Flow: validate → resolve tier → normalize duration → check duration cap
-   *       → check attempt cap → prepare PDF input (quota + proof) → atomic insert
+   * Flow: validate → resolve tier → check requested duration cap → normalize duration
+   *       → check normalized duration cap → check attempt cap → prepare PDF input (quota + proof) → atomic insert
    *
    * Rollback guarantee: if any step after PDF quota reservation fails,
    * the reserved quota is automatically rolled back via PdfOriginPort.
@@ -216,7 +240,29 @@ export class PlanLifecycleService {
     // 2. Resolve tier
     const tier = await this.ports.quota.resolveUserTier(input.userId);
 
-    // 3. Normalize plan duration for the tier
+    // 3. Reject raw requested range before tier normalization
+    const requestedWeeksPdf = calculateTotalWeeks({
+      startDate: input.startDate ?? null,
+      deadlineDate: input.deadlineDate ?? null,
+    });
+    const requestedCapPdf = this.ports.quota.checkDurationCap({
+      tier,
+      weeklyHours: input.weeklyHours,
+      totalWeeks: requestedWeeksPdf,
+    });
+    if (!requestedCapPdf.allowed) {
+      logger.info(
+        { userId: input.userId, tier },
+        'plan.lifecycle.create_pdf: quota rejected (requested duration cap)'
+      );
+      return {
+        status: 'quota_rejected',
+        reason: requestedCapPdf.reason ?? 'Plan duration exceeds tier limits',
+        upgradeUrl: requestedCapPdf.upgradeUrl,
+      };
+    }
+
+    // 4. Normalize plan duration for the tier
     const duration = this.ports.quota.normalizePlanDuration({
       tier,
       weeklyHours: input.weeklyHours,
@@ -224,7 +270,7 @@ export class PlanLifecycleService {
       deadlineDate: input.deadlineDate,
     });
 
-    // 4. Check duration cap
+    // 5. Check duration cap on normalized duration
     const durationCap = this.ports.quota.checkDurationCap({
       tier,
       weeklyHours: input.weeklyHours,
@@ -234,7 +280,7 @@ export class PlanLifecycleService {
     if (!durationCap.allowed) {
       logger.info(
         { userId: input.userId, tier },
-        'plan.lifecycle.create_pdf: quota rejected (duration cap)'
+        'plan.lifecycle.create_pdf: quota rejected (normalized duration cap)'
       );
       return {
         status: 'quota_rejected',
@@ -243,7 +289,7 @@ export class PlanLifecycleService {
       };
     }
 
-    // 5. Check for capped plan (exhausted generation attempts)
+    // 6. Check for capped plan (exhausted generation attempts)
     const cappedPlanId =
       await this.ports.planPersistence.findCappedPlanWithoutModules(
         input.userId
@@ -251,33 +297,17 @@ export class PlanLifecycleService {
     if (cappedPlanId) {
       logger.info(
         { userId: input.userId, cappedPlanId },
-        'plan.lifecycle.create_pdf: quota rejected (capped plan)'
+        'plan.lifecycle.create_pdf: attempt cap exceeded (existing capped plan)'
       );
       return {
-        status: 'quota_rejected',
+        status: 'attempt_cap_exceeded',
         reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
+        cappedPlanId,
       };
     }
 
-    // 6. Duplicate detection — return existing plan for idempotent submissions
-    const normalizedTopic = input.topic.trim();
-    const existingPlanId =
-      await this.ports.planPersistence.findRecentDuplicatePlan(
-        input.userId,
-        normalizedTopic
-      );
-    if (existingPlanId) {
-      logger.info(
-        { userId: input.userId, existingPlanId },
-        'plan.lifecycle.create_pdf: duplicate detected'
-      );
-      return {
-        status: 'duplicate_detected',
-        existingPlanId,
-      };
-    }
-
-    // 7. Reserve PDF quota + verify proof via PdfOriginPort
+    // 7. Reserve PDF quota + verify proof before duplicate detection so replayed
+    // one-time tokens fail with invalid proof (403) instead of duplicate topic (409).
     const prepared = await this.ports.pdfOrigin.preparePlanInput({
       body: input.body,
       authUserId: input.authUserId,
@@ -288,7 +318,28 @@ export class PlanLifecycleService {
       'plan.lifecycle.create_pdf: pdf quota reserved'
     );
 
-    // 8. Atomic insert — rollback PDF quota on any failure after reservation
+    // 8. Duplicate detection — after proof so consumed tokens surface as invalid proof first
+    const existingPlanId =
+      await this.ports.planPersistence.findRecentDuplicatePlan(
+        input.userId,
+        prepared.topic.trim()
+      );
+    if (existingPlanId) {
+      await this.ports.pdfOrigin.rollbackPdfUsage({
+        internalUserId: input.userId,
+        reserved: prepared.pdfUsageReserved,
+      });
+      logger.info(
+        { userId: input.userId, existingPlanId },
+        'plan.lifecycle.create_pdf: duplicate detected after proof'
+      );
+      return {
+        status: 'duplicate_detected',
+        existingPlanId,
+      };
+    }
+
+    // 9. Atomic insert — rollback PDF quota on any failure after reservation
     let succeeded = false;
     try {
       const insertResult = await this.ports.planPersistence.atomicInsertPlan(
