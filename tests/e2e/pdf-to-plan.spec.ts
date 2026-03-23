@@ -7,11 +7,7 @@ import { extractTextFromPdf } from '@/features/pdf/extract';
 import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import {
-  ensureStripeWebhookEvents,
-  ensureUser,
-  resetDbForIntegrationTestFile,
-} from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../helpers/testIds';
 
 const buildPdfBuffer = (text: string, pageCount = 1): Buffer => {
@@ -112,9 +108,6 @@ describe('PDF to Plan E2E Flow', () => {
   const email = buildTestEmail(authUserId);
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-    await ensureStripeWebhookEvents();
-
     userId = await ensureUser({
       authUserId,
       email,

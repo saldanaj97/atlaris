@@ -14,14 +14,13 @@ import {
   getDurableWindowSeedCount,
 } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
   let userId: string;
   let planId: string;
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
     const authUserId = `auth-${randomUUID()}`;
     userId = await ensureUser({
       authUserId,

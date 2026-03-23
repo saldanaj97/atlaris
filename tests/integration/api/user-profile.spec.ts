@@ -6,7 +6,7 @@ import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 // Mock Auth auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
@@ -17,8 +17,6 @@ describe('GET /api/v1/user/profile', () => {
   const authUserId = 'auth_profile_test_user';
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-
     const { auth } = await import('@/lib/auth/server');
     vi.mocked(auth.getSession).mockResolvedValue({
       data: { user: { id: authUserId } },
@@ -80,8 +78,6 @@ describe('PUT /api/v1/user/profile', () => {
   const authUserId = 'auth_profile_update_user';
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-
     const { auth } = await import('@/lib/auth/server');
     vi.mocked(auth.getSession).mockResolvedValue({
       data: { user: { id: authUserId } },

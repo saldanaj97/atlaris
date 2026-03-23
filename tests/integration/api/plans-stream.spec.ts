@@ -26,7 +26,7 @@ import {
   DEFAULT_PDF_PROOF_VERSION,
 } from '../../fixtures/validation';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import {
   readStreamingResponse,
   type StreamingEvent,
@@ -56,9 +56,7 @@ afterAll(() => {
 });
 
 describe('POST /api/v1/plans/stream', () => {
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
+  beforeEach(async () => {});
 
   it('streams generation and persists plan data', async () => {
     const authUserId = buildTestAuthUserId('stream-user');

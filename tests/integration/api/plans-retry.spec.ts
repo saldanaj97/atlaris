@@ -10,7 +10,7 @@ import { db } from '@/lib/db/service-role';
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { readStreamingResponse } from '../../helpers/streaming';
 
 type RetryAttemptOverrides = Partial<
@@ -59,9 +59,7 @@ async function withRunGenerationAttemptSpy<T>(
 }
 
 describe('POST /api/v1/plans/:planId/retry', () => {
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
+  beforeEach(async () => {});
 
   it('applies durable generation_attempts rate limit before retry starts', async () => {
     const authUserId = 'auth_retry_rate_limit';

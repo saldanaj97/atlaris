@@ -8,7 +8,7 @@ import { db } from '@/lib/db/service-role';
 
 import { createPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const ORIGINAL_ENV = {
@@ -41,9 +41,7 @@ async function createRegenerateRequest(planId: string, body: unknown) {
 }
 
 describe('POST /api/internal/jobs/regeneration/process', () => {
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
+  beforeEach(async () => {});
 
   afterEach(() => {
     const envKeys: Array<keyof typeof ORIGINAL_ENV> = [

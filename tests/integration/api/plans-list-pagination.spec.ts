@@ -7,7 +7,7 @@ import { db } from '@/lib/db/service-role';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { buildTestPlanInsert } from '../../fixtures/plans';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 // Keep the module mock here because withAuthAndRateLimit closes over auth.getSession()
 // inside the Next.js route wrapper, so dependency injection would be more invasive.
@@ -20,8 +20,6 @@ describe('GET /api/v1/plans pagination', () => {
   let userId = '';
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-
     const { auth } = await import('@/lib/auth/server');
     vi.mocked(auth.getSession).mockResolvedValue({
       data: { user: { id: authUserId } },

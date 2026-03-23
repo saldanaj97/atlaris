@@ -11,7 +11,7 @@ import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import {
   buildStripeCustomerId,
   buildStripeSubscriptionId,
@@ -33,7 +33,6 @@ describe('Stripe API Routes', () => {
   });
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
     vi.clearAllMocks();
   });
 

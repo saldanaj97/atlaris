@@ -10,7 +10,7 @@ import {
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { createPlan } from '../../fixtures/plans';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 const TEST_INPUT = {
   topic: 'Atomic observability',
@@ -25,7 +25,6 @@ describe('Atomic attempt observability', () => {
   let consoleInfoSpy: MockInstance<(...args: unknown[]) => void> | undefined;
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
     consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     const authUserId = `auth-${randomUUID()}`;

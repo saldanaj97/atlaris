@@ -5,7 +5,7 @@ import { learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId } from '../../helpers/testIds';
 
 type StatusFixture = {
@@ -49,9 +49,7 @@ async function createPlanFixture(
 }
 
 describe('Plan status parity contract', () => {
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
+  beforeEach(async () => {});
 
   it('returns matching status between detail and status endpoints', async () => {
     const authUserId = buildTestAuthUserId('status_parity');

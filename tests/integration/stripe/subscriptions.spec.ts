@@ -10,7 +10,7 @@ import {
 } from '@/features/billing/subscriptions';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import {
   buildStripeCustomerId,
   buildStripeSubscriptionId,
@@ -26,7 +26,6 @@ async function createUniqueUser() {
 
 describe('Subscription Management', () => {
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
     vi.clearAllMocks();
   });
 

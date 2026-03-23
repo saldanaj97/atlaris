@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { truncateAll } from '../../helpers/db';
 
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
@@ -16,8 +15,6 @@ describe('POST /api/v1/plans user provisioning', () => {
   const authEmail = 'provisioning@example.com';
 
   beforeEach(async () => {
-    await truncateAll();
-
     const { auth } = await import('@/lib/auth/server');
 
     vi.mocked(auth.getSession).mockResolvedValue({

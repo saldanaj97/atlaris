@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '@/../tests/helpers/auth';
-import { ensureUser, truncateAll } from '@/../tests/helpers/db';
+import { ensureUser } from '@/../tests/helpers/db';
 import {
   createCreateCheckoutHandler,
   POST,
@@ -16,7 +16,6 @@ vi.mock('@/lib/auth/server', () => ({
 
 describe('POST /api/v1/stripe/create-checkout', () => {
   beforeEach(async () => {
-    await truncateAll();
     vi.clearAllMocks();
   });
 

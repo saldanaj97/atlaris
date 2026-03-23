@@ -11,7 +11,7 @@ import {
 } from '../../fixtures/attempts';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -35,9 +35,7 @@ describe('Phase 4: API Integration', () => {
   const authUserId = buildTestAuthUserId('phase4-user');
   const authEmail = buildTestEmail(authUserId);
 
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
+  beforeEach(async () => {});
 
   describe('T040: Plan creation creates plan record', () => {
     it('POST /api/v1/plans returns 201 with status generating and creates plan record', async () => {

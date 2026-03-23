@@ -1,6 +1,6 @@
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
-import { resetDbForIntegrationTestFile } from '@tests/helpers/db';
+
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ScheduleJson } from '@/features/scheduling/types';
 import {
@@ -63,8 +63,6 @@ describe('Schedule Queries', () => {
   let planId: string;
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-
     const owner = await createTestUser();
     const unauthorizedUser = await createTestUser();
 

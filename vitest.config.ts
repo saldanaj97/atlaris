@@ -66,9 +66,9 @@ export default defineConfig({
           alias: testAliases,
         },
       },
-      {
-        test: {
-          name: 'integration',
+       {
+         test: {
+           name: 'integration',
           globals: true,
           environment: 'jsdom',
           isolate: true,
@@ -78,14 +78,18 @@ export default defineConfig({
           testTimeout: 90_000,
           include: ['tests/integration/**/*.{test,spec}.{ts,tsx}'],
           globalSetup: ['tests/setup/testcontainers.ts'],
-          setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
-          maxConcurrency: 1,
-          alias: testAliases,
-        },
+           setupFiles: [
+             'tests/setup/test-env.ts',
+             'tests/setup.ts',
+             'tests/setup/db.ts',
+           ],
+           maxConcurrency: 1,
+           alias: testAliases,
+         },
       },
-      {
-        test: {
-          name: 'e2e',
+       {
+         test: {
+           name: 'e2e',
           globals: true,
           environment: 'jsdom',
           isolate: true,
@@ -95,14 +99,18 @@ export default defineConfig({
           testTimeout: 90_000,
           include: ['tests/e2e/**/*.{test,spec}.{ts,tsx}'],
           globalSetup: ['tests/setup/testcontainers.ts'],
-          setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
-          maxConcurrency: 1,
-          alias: testAliases,
-        },
+           setupFiles: [
+             'tests/setup/test-env.ts',
+             'tests/setup.ts',
+             'tests/setup/db.ts',
+           ],
+           maxConcurrency: 1,
+           alias: testAliases,
+         },
       },
-      {
-        test: {
-          name: 'security',
+       {
+         test: {
+           name: 'security',
           globals: true,
           environment: 'jsdom',
           isolate: true,
@@ -112,10 +120,10 @@ export default defineConfig({
           testTimeout: 90_000,
           include: ['tests/security/**/*.{test,spec}.{ts,tsx}'],
           globalSetup: ['tests/setup/testcontainers.ts'],
-          setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
-          maxConcurrency: 1,
-          alias: testAliases,
-        },
+           setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
+           maxConcurrency: 1,
+           alias: testAliases,
+         },
       },
       {
         test: {

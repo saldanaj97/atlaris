@@ -8,7 +8,7 @@ import { db } from '@/lib/db/service-role';
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -30,7 +30,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
   beforeEach(async () => {
     clearAllUserRateLimiters();
-    await resetDbForIntegrationTestFile();
   });
 
   it('enqueues regeneration with priority', async () => {

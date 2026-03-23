@@ -7,12 +7,10 @@ import {
 } from '@/lib/db/queries/jobs';
 import { jobQueue } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { ensureUser, resetDbForIntegrationTestFile } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 
 describe('Monitoring Queries', () => {
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
+  beforeEach(async () => {});
   describe('getJobStats', () => {
     it('should return correct counts and statistics for jobs', async () => {
       // T060: Monitoring queries test

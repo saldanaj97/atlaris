@@ -6,7 +6,7 @@ import { db } from '@/lib/db/service-role';
 import { createFailedAttempts } from '../../fixtures/attempts';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 const authUserId = 'auth_generation_cap_boundary';
@@ -19,7 +19,6 @@ async function seedFailureAttempts(planId: string, count: number) {
 
 describe('generation integration - attempt cap boundary', () => {
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
     setTestUser(authUserId);
   });
 

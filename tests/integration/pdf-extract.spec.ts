@@ -9,11 +9,7 @@ import {
 } from 'vitest';
 
 import { clearTestUser, setTestUser } from '@/../tests/helpers/auth';
-import {
-  ensureStripeWebhookEvents,
-  ensureUser,
-  resetDbForIntegrationTestFile,
-} from '@/../tests/helpers/db';
+import { ensureUser } from '@/../tests/helpers/db';
 import {
   createPostHandler,
   type PdfExtractRouteDeps,
@@ -84,8 +80,6 @@ const createPdfRequest = (): Request => {
 
 describe('POST /api/v1/plans/from-pdf/extract', () => {
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-    await ensureStripeWebhookEvents();
     mockExtractTextFromPdf = vi.fn();
     mockGetPdfPageCountFromBuffer = vi.fn();
     mockScanBufferForMalware = vi.fn();
