@@ -8,12 +8,6 @@
     "**/.pnpm-store": true
   },
   "editor.defaultFormatter": "biomejs.biome",
-  "[json]": {
-    "editor.defaultFormatter": "vscode.json-language-features"
-  },
-  "[jsonc]": {
-    "editor.defaultFormatter": "vscode.json-language-features"
-  },
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "always",

@@ -1,7 +1,6 @@
 ---
-description: 
-globs: src/**/*.tsx
-alwaysApply: false
+description: Run after making React changes to catch issues early. Use when reviewing code, finishing a feature, or fixing bugs in a React project.
+alwaysApply: true
 ---
 
 # React Doctor

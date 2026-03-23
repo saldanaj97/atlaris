@@ -1,13 +1,11 @@
 {
-  "servers": {
+  "mcpServers": {
     "Sentry": {
-      "url": "https://mcp.sentry.dev/mcp",
-      "type": "http"
+      "url": "https://mcp.sentry.dev/mcp"
     },
     "chrome-devtools": {
       "command": "npx",
       "args": ["-y", "chrome-devtools-mcp@latest"]
     }
-  },
-  "inputs": []
+  }
 }
