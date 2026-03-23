@@ -100,5 +100,7 @@ We will primarily be utilizing the `prds/` directory to organize prds, plans, to
 ## Learned Workspace Facts
 
 - PostgreSQL RLS controls which rows a role can see or change; it does not restrict which columns may be updated. Column-level writes use `GRANT` / `REVOKE` on columns (or table-level privileges), not RLS alone.
-- Privilege changes that are not modeled in Drizzle schema belong in hand-written SQL migrations; keep the same `REVOKE`/`GRANT` logic in migration, `tests/helpers/db.ts`, testcontainers `grantRlsPermissions`, and CI grant steps when they must stay in lockstep.
+- Privilege changes that are not modeled in Drizzle schema belong in hand-written SQL migrations; keep the same `REVOKE`/`GRANT` logic in migration, the canonical TS allowlist under `src/lib/db/privileges/` when used, `tests/helpers/db` bootstrap, testcontainers `grantRlsPermissions`, and CI grant steps when they must stay in lockstep.
 - Ephemeral Postgres for security/integration tests applies migrations via `pnpm db:migrate` so `pg_policy` and related objects match the migration chain; relying on `drizzle-kit push` alone can drift from migration-defined policy text.
+- RLS security tests that assert permission failures should use helpers that account for Drizzle-wrapped Postgres errors (e.g. a shared `expectRlsViolation` that inspects message/cause), not only `rejects.toThrow(/permission denied/)`.
+- `src/lib/db/privileges/` is for migration-aligned privilege metadata such as column allowlists; large procedural RLS bootstrap SQL stays in test helpers, not under `privileges/`.
