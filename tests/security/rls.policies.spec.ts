@@ -374,6 +374,10 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
     });
 
     it('authenticated users cannot update billing/system-managed columns on their own row', async () => {
+      // RLS limits authenticated users to their own row, and migration 0018's
+      // column-level UPDATE grants keep billing/system-managed fields writable
+      // only by the service role. This test guards against drift between those
+      // layers by proving rejected updates leave the row unchanged.
       const [user] = await db
         .insert(users)
         .values({
@@ -381,7 +385,12 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
           email: 'billing-guard@test.com',
           name: 'Billing Guard User',
         })
-        .returning();
+        .returning({
+          id: users.id,
+          cancelAtPeriodEnd: users.cancelAtPeriodEnd,
+          stripeCustomerId: users.stripeCustomerId,
+          subscriptionStatus: users.subscriptionStatus,
+        });
 
       const userDb = await createRlsDbForUser('user_billing_guard');
 
@@ -405,6 +414,21 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
           .set({ subscriptionStatus: 'active' })
           .where(eq(users.id, user.id))
       );
+
+      const [billingAfterViolations] = await userDb
+        .select({
+          cancelAtPeriodEnd: users.cancelAtPeriodEnd,
+          stripeCustomerId: users.stripeCustomerId,
+          subscriptionStatus: users.subscriptionStatus,
+        })
+        .from(users)
+        .where(eq(users.id, user.id));
+
+      expect(billingAfterViolations).toEqual({
+        cancelAtPeriodEnd: user.cancelAtPeriodEnd,
+        stripeCustomerId: user.stripeCustomerId,
+        subscriptionStatus: user.subscriptionStatus,
+      });
 
       const updatedName = await userDb
         .update(users)

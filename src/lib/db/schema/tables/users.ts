@@ -64,9 +64,9 @@ export const users = pgTable(
     }),
 
     // Users can update only their own profile fields.
-    // Column-level privileges (migration 0018) restrict the authenticated
-    // role to: name, preferred_ai_model, updated_at. Billing and system
-    // columns are only writable by the service-role (BYPASSRLS).
+    // Column-level privileges (migration 0018; see
+    // privileges/users-authenticated-update-columns.ts) restrict the authenticated
+    // role. Billing and system columns are only writable by the service-role (BYPASSRLS).
     pgPolicy('users_update_own', {
       for: 'update',
       to: 'authenticated',

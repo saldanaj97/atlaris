@@ -23,6 +23,8 @@ import {
 } from '@testcontainers/postgresql';
 import postgres from 'postgres';
 
+import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '@/lib/db/privileges/users-authenticated-update-columns';
+
 let container: StartedPostgreSqlContainer | null = null;
 const testDbPassword = randomUUID();
 
@@ -103,12 +105,32 @@ async function grantRlsPermissions(connectionUrl: string): Promise<void> {
       GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous;
     `);
 
-    // Restrict authenticated role to user-editable columns on users table.
-    // Matches migration 0018_harden_users_update_columns.sql.
+    // SYNC WITH: src/lib/db/migrations/0018_harden_users_update_columns.sql
+    // and src/lib/db/privileges/users-authenticated-update-columns.ts
     await sql.unsafe(`
       REVOKE UPDATE ON "users" FROM authenticated;
-      GRANT UPDATE (name, preferred_ai_model, updated_at) ON "users" TO authenticated;
+      GRANT UPDATE (${USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "users" TO authenticated;
     `);
+
+    const updateColumnGrants = await sql<{ column_name: string }[]>`
+      select column_name::text
+      from information_schema.column_privileges
+      where table_schema = 'public'
+        and table_name = 'users'
+        and grantee = 'authenticated'
+        and privilege_type = 'UPDATE'
+      order by column_name
+    `;
+    const grantedSorted = updateColumnGrants.map((r) => r.column_name);
+    const expectedSorted = [...USERS_AUTHENTICATED_UPDATE_COLUMNS].sort();
+    if (
+      grantedSorted.length !== expectedSorted.length ||
+      grantedSorted.some((c, i) => c !== expectedSorted[i])
+    ) {
+      throw new Error(
+        `Testcontainers: authenticated UPDATE columns on public.users expected [${expectedSorted.join(', ')}], got [${grantedSorted.join(', ')}]. Sync grantRlsPermissions with src/lib/db/migrations/0018_harden_users_update_columns.sql and src/lib/db/privileges/users-authenticated-update-columns.ts.`
+      );
+    }
 
     // Default privileges for future tables
     await sql.unsafe(`
@@ -148,7 +170,7 @@ export async function setup(): Promise<void> {
 
   await bootstrapDatabase(connectionUrl);
 
-  console.log('[Testcontainers] Applying schema via drizzle-kit migrate…');
+  console.log('[Testcontainers] Applying migrations via pnpm db:migrate…');
 
   applySchema(connectionUrl);
 

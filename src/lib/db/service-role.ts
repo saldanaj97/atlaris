@@ -9,7 +9,7 @@
  * ═══════════════════════════════════════════════════════════════════════
  * ✅ Workers and background jobs (src/workers/...)
  * ✅ Database migrations and schema changes
- * ✅ Test setup and seeding (tests/helpers/db.ts, tests/.../setup.ts)
+ * ✅ Test setup and seeding (tests/helpers/db/, tests/.../setup.ts)
  * ✅ Administrative scripts (scripts/...)
  *
  * ═══════════════════════════════════════════════════════════════════════

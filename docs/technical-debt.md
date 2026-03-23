@@ -92,7 +92,7 @@ When adding new user-editable columns to the `users` table, the column-level
 GRANT must be updated in **four locations**:
 
 1. A new migration SQL file extending the GRANT list
-2. `tests/helpers/db.ts` — `ensureRlsRolesAndPermissions()`
+2. `tests/helpers/db/rls-bootstrap.ts` — `ensureRlsRolesAndPermissions()`
 3. `tests/setup/testcontainers.ts` — `grantRlsPermissions()`
 4. `.github/workflows/ci-trunk.yml` — both E2E and Integration grant blocks
 
