@@ -1,3 +1,9 @@
+---
+description: 
+globs: src/**/*.tsx
+alwaysApply: false
+---
+
 # React Doctor
 
 Run after making React changes to catch issues early. Use when reviewing code, finishing a feature, or fixing bugs in a React project.
