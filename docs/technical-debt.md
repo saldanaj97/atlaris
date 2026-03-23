@@ -80,3 +80,21 @@ would also require a migration plus compatibility work for any persisted rows
 and UI logic.
 
 This remains deferred until a broader resource-taxonomy cleanup is scheduled.
+
+## `users` table column-level UPDATE grant
+
+Migration `0018_harden_users_update_columns.sql` restricts the `authenticated`
+role to only UPDATE `name`, `preferred_ai_model`, and `updated_at` on the
+`users` table. All other columns (billing, system-managed) are only writable by
+the service-role which has BYPASSRLS.
+
+When adding new user-editable columns to the `users` table, the column-level
+GRANT must be updated in **four locations**:
+
+1. A new migration SQL file extending the GRANT list
+2. `tests/helpers/db.ts` — `ensureRlsRolesAndPermissions()`
+3. `tests/setup/testcontainers.ts` — `grantRlsPermissions()`
+4. `.github/workflows/ci-trunk.yml` — both E2E and Integration grant blocks
+
+Failure to update these will cause the new column to be unwritable by
+authenticated users (caught by existing RLS tests failing).

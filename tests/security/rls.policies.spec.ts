@@ -264,19 +264,20 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         .where(eq(learningPlans.id, plan.id));
       expect(readableRows).toHaveLength(0);
 
-      const updated = await anonDb
-        .update(learningPlans)
-        .set({ topic: 'Should Not Update' })
-        .where(eq(learningPlans.id, plan.id))
-        .returning({ id: learningPlans.id });
+      await expectRlsViolation(() =>
+        anonDb
+          .update(learningPlans)
+          .set({ topic: 'Should Not Update' })
+          .where(eq(learningPlans.id, plan.id))
+          .returning({ id: learningPlans.id })
+      );
 
-      const deleted = await anonDb
-        .delete(learningPlans)
-        .where(eq(learningPlans.id, plan.id))
-        .returning({ id: learningPlans.id });
-
-      expect(updated).toHaveLength(0);
-      expect(deleted).toHaveLength(0);
+      await expectRlsViolation(() =>
+        anonDb
+          .delete(learningPlans)
+          .where(eq(learningPlans.id, plan.id))
+          .returning({ id: learningPlans.id })
+      );
 
       const persistedPlan = await db.query.learningPlans.findFirst({
         where: (fields, operators) => operators.eq(fields.id, plan.id),
@@ -370,6 +371,60 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         .returning({ id: users.id });
 
       expect(crossTenantUpdate).toHaveLength(0);
+    });
+
+    it('authenticated users cannot update billing/system-managed columns on their own row', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'user_billing_guard',
+          email: 'billing-guard@test.com',
+          name: 'Billing Guard User',
+        })
+        .returning();
+
+      const userDb = await createRlsDbForUser('user_billing_guard');
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ cancelAtPeriodEnd: true })
+          .where(eq(users.id, user.id))
+      );
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ stripeCustomerId: 'cus_fake123' })
+          .where(eq(users.id, user.id))
+      );
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ subscriptionStatus: 'active' })
+          .where(eq(users.id, user.id))
+      );
+
+      const updatedName = await userDb
+        .update(users)
+        .set({ name: 'Updated Name' })
+        .where(eq(users.id, user.id))
+        .returning({ id: users.id, name: users.name });
+
+      expect(updatedName).toHaveLength(1);
+      expect(updatedName[0]?.name).toBe('Updated Name');
+
+      const updatedPreferred = await userDb
+        .update(users)
+        .set({ preferredAiModel: 'google/gemini-2.0-flash-exp:free' })
+        .where(eq(users.id, user.id))
+        .returning({ id: users.id, preferredAiModel: users.preferredAiModel });
+
+      expect(updatedPreferred).toHaveLength(1);
+      expect(updatedPreferred[0]?.preferredAiModel).toBe(
+        'google/gemini-2.0-flash-exp:free'
+      );
     });
 
     it('authenticated users can read their own learning plans', async () => {

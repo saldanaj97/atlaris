@@ -63,9 +63,10 @@ export const users = pgTable(
       withCheck: sql`${table.authUserId} = ${currentUserId}`,
     }),
 
-    // Users can update only their own profile fields
-    // Note: Application-level validation should restrict which fields
-    // users can modify (e.g., name is OK, stripe fields are not)
+    // Users can update only their own profile fields.
+    // Column-level privileges (migration 0018) restrict the authenticated
+    // role to: name, preferred_ai_model, updated_at. Billing and system
+    // columns are only writable by the service-role (BYPASSRLS).
     pgPolicy('users_update_own', {
       for: 'update',
       to: 'authenticated',

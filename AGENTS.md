@@ -88,3 +88,17 @@ We will primarily be utilizing the `prds/` directory to organize prds, plans, to
 - Verification: Prove correctness before marking done. Tests, diffs, logs, demos.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
 - Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
+
+## Learned User Preferences
+
+- When implementing from an attached PRD plan, do not edit the plan file; track work in `prds/<prd-name>/todos.md` and existing todo items instead.
+- When a plan specifies a commit order or split (e.g. migration vs tests), match that order in git commits.
+- If the user says not to push yet, commit locally only and do not push or assume remote updates.
+- When asked to run tests, prefer scoped commands (e.g. `pnpm test:changed` or a single spec file); do not run the full integration or full suite if the user asks to limit scope.
+- Before changing code for review-bot or external findings, verify each item against the current tree so fixes stay accurate and minimal.
+
+## Learned Workspace Facts
+
+- PostgreSQL RLS controls which rows a role can see or change; it does not restrict which columns may be updated. Column-level writes use `GRANT` / `REVOKE` on columns (or table-level privileges), not RLS alone.
+- Privilege changes that are not modeled in Drizzle schema belong in hand-written SQL migrations; keep the same `REVOKE`/`GRANT` logic in migration, `tests/helpers/db.ts`, testcontainers `grantRlsPermissions`, and CI grant steps when they must stay in lockstep.
+- Ephemeral Postgres for security/integration tests applies migrations via `pnpm db:migrate` so `pg_policy` and related objects match the migration chain; relying on `drizzle-kit push` alone can drift from migration-defined policy text.
