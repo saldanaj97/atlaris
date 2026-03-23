@@ -7,7 +7,7 @@
  *   - Creates a test database with extensions and RLS roles
  *   - Sets DATABASE_URL / DATABASE_URL_NON_POOLING so the service-role
  *     client and drizzle-kit connect to the ephemeral instance
- *   - Applies the schema via `drizzle-kit push` (same as the old shell script)
+ *   - Applies the schema via `pnpm db:migrate` (migration chain matches production)
  *
  * To skip Testcontainers (e.g. in CI where a sidecar DB already exists)
  * set SKIP_TESTCONTAINERS=true.
@@ -71,11 +71,12 @@ async function bootstrapDatabase(connectionUrl: string): Promise<void> {
 }
 
 /**
- * Apply the Drizzle schema to the running Postgres instance using `drizzle-kit push`.
- * Uses --force to auto-approve data-loss statements (safe for ephemeral test DB).
+ * Apply migrations so DB policy SQL matches the migration chain (e.g. ALTER POLICY
+ * updates after column renames). `drizzle-kit push` alone can leave policy drift
+ * relative to `pnpm db:migrate` / production.
  */
 function applySchema(connectionUrl: string): void {
-  execSync('pnpm drizzle-kit push --force --config drizzle.config.ts', {
+  execSync('pnpm db:migrate', {
     stdio: 'pipe',
     env: {
       ...process.env,
@@ -100,6 +101,13 @@ async function grantRlsPermissions(connectionUrl: string): Promise<void> {
       GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
       GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
       GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous;
+    `);
+
+    // Restrict authenticated role to user-editable columns on users table.
+    // Matches migration 0018_harden_users_update_columns.sql.
+    await sql.unsafe(`
+      REVOKE UPDATE ON "users" FROM authenticated;
+      GRANT UPDATE (name, preferred_ai_model, updated_at) ON "users" TO authenticated;
     `);
 
     // Default privileges for future tables
@@ -140,7 +148,7 @@ export async function setup(): Promise<void> {
 
   await bootstrapDatabase(connectionUrl);
 
-  console.log('[Testcontainers] Applying schema via drizzle-kit push…');
+  console.log('[Testcontainers] Applying schema via drizzle-kit migrate…');
 
   applySchema(connectionUrl);
 

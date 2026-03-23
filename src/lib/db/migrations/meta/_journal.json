@@ -127,6 +127,13 @@
       "when": 1771150000000,
       "tag": "0017_cancel_at_period_end_drop_plan_generations",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1771200000000,
+      "tag": "0018_harden_users_update_columns",
+      "breakpoints": true
     }
   ]
 }

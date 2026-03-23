@@ -160,6 +160,13 @@ export async function ensureRlsRolesAndPermissions() {
     GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
   `);
 
+  // Restrict authenticated role to user-editable columns on users table.
+  // Matches migration 0018_harden_users_update_columns.sql.
+  await db.execute(sql`
+    REVOKE UPDATE ON "users" FROM authenticated;
+    GRANT UPDATE (name, preferred_ai_model, updated_at) ON "users" TO authenticated;
+  `);
+
   // Grant read-only permissions to anonymous role
   await db.execute(sql`
     GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;

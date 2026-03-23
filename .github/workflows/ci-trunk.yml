@@ -152,6 +152,12 @@ jobs:
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
           SQL
 
+          # Restrict authenticated role to user-editable columns on users table (matches migration 0018)
+          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
+          REVOKE UPDATE ON "users" FROM authenticated;
+          GRANT UPDATE (name, preferred_ai_model, updated_at) ON "users" TO authenticated;
+          SQL
+
           # Grant read-only permissions to anonymous role
           psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
           GRANT USAGE ON SCHEMA public TO anonymous;
@@ -351,6 +357,12 @@ jobs:
           GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
           ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
+          SQL
+
+          # Restrict authenticated role to user-editable columns on users table (matches migration 0018)
+          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
+          REVOKE UPDATE ON "users" FROM authenticated;
+          GRANT UPDATE (name, preferred_ai_model, updated_at) ON "users" TO authenticated;
           SQL
 
           # Grant read-only permissions to anonymous role
