@@ -23,6 +23,7 @@
     "test:all": "./scripts/full-test-suite.sh",
     "tsgo": "tsgo",
     "type-check": "tsgo --noEmit",
+    "dup-check": "jscpd",
     "prepare": "husky || true"
   },
   "dependencies": {
@@ -98,6 +99,7 @@
     "jscpd": "^4.0.5",
     "jsdom": "^27.0.0",
     "jsonwebtoken": "^9.0.3",
+    "node-sarif-builder": "^4.0.0",
     "tailwindcss": "^4.1.18",
     "testcontainers": "^11.12.0",
     "tsx": "^4.20.5",
