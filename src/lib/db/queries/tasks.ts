@@ -1,13 +1,28 @@
+import type { SQL } from 'drizzle-orm';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import type {
   DbTask,
   DbTaskProgress,
   TasksDbClient,
+  TasksTransaction,
 } from '@/lib/db/queries/types/tasks.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
 import type { ProgressStatus } from '@/shared/types/db.types';
+
+function selectOwnedTaskIdsForUser(
+  tx: TasksTransaction,
+  userId: string,
+  taskScope: SQL
+) {
+  return tx
+    .select({ id: tasks.id })
+    .from(tasks)
+    .innerJoin(modules, eq(tasks.moduleId, modules.id))
+    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+    .where(and(eq(learningPlans.userId, userId), taskScope));
+}
 
 /**
  * Retrieves all tasks in a specific learning plan for a user.
@@ -52,12 +67,11 @@ export async function setTaskProgress(
   const client = dbClient ?? getDb();
 
   return await client.transaction(async (tx) => {
-    const [taskRow] = await tx
-      .select({ id: tasks.id })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-      .where(and(eq(tasks.id, taskId), eq(learningPlans.userId, userId)))
+    const [taskRow] = await selectOwnedTaskIdsForUser(
+      tx,
+      userId,
+      eq(tasks.id, taskId)
+    )
       .limit(1)
       .for('update');
 
@@ -134,13 +148,11 @@ export async function setTaskProgressBatch(
   }
 
   return await client.transaction(async (tx) => {
-    const ownedTasks = await tx
-      .select({ id: tasks.id })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-      .where(and(inArray(tasks.id, taskIds), eq(learningPlans.userId, userId)))
-      .for('update');
+    const ownedTasks = await selectOwnedTaskIdsForUser(
+      tx,
+      userId,
+      inArray(tasks.id, taskIds)
+    ).for('update');
 
     const ownedIds = new Set(ownedTasks.map((t) => t.id));
     const missingIds = taskIds.filter((id) => !ownedIds.has(id));

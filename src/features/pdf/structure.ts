@@ -40,6 +40,21 @@ const payloadSizeBytes = (payload: ExtractionResponsePayload): number => {
   return UTF8_ENCODER.encode(JSON.stringify(payload)).length;
 };
 
+function halvePayloadSections(
+  boundedPayload: ExtractionResponsePayload
+): ExtractionResponsePayload {
+  return {
+    ...boundedPayload,
+    structure: {
+      ...boundedPayload.structure,
+      sections: boundedPayload.structure.sections.slice(
+        0,
+        Math.max(1, Math.floor(boundedPayload.structure.sections.length / 2))
+      ),
+    },
+  };
+}
+
 /**
  * UTF-8 byte length of the JSON-encoded string value (matches how "text" is
  * serialized inside payloadSizeBytes / JSON.stringify(payload)).
@@ -180,16 +195,7 @@ export function capExtractionResponsePayload(
     returnedBytes > config.maxBytes &&
     boundedPayload.structure.sections.length > 1
   ) {
-    boundedPayload = {
-      ...boundedPayload,
-      structure: {
-        ...boundedPayload.structure,
-        sections: boundedPayload.structure.sections.slice(
-          0,
-          Math.max(1, Math.floor(boundedPayload.structure.sections.length / 2))
-        ),
-      },
-    };
+    boundedPayload = halvePayloadSections(boundedPayload);
     reasons.push('byte_cap_section_trim');
     returnedBytes = payloadSizeBytes(boundedPayload);
   }
@@ -212,19 +218,7 @@ export function capExtractionResponsePayload(
         (trimReasonCounts.get('byte_cap_text_trim') ?? 0) + 1
       );
     } else if (boundedPayload.structure.sections.length > 1) {
-      boundedPayload = {
-        ...boundedPayload,
-        structure: {
-          ...boundedPayload.structure,
-          sections: boundedPayload.structure.sections.slice(
-            0,
-            Math.max(
-              1,
-              Math.floor(boundedPayload.structure.sections.length / 2)
-            )
-          ),
-        },
-      };
+      boundedPayload = halvePayloadSections(boundedPayload);
       trimReasonCounts.set(
         'byte_cap_section_trim',
         (trimReasonCounts.get('byte_cap_section_trim') ?? 0) + 1

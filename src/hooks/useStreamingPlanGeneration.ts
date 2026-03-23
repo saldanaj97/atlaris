@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-
-import { StreamingEventSchema } from '@/features/ai/streaming/schema';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import { parseSsePlanEventLine } from '@/hooks/streaming/parse-sse-plan-event';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 
@@ -76,28 +75,15 @@ const INITIAL_STATE: StreamingPlanState = {
   modules: [],
 };
 
-const parseEventLine = (line: string): StreamingEvent | null => {
-  const trimmed = line.trim();
-  if (!trimmed) return null;
-  const payload = trimmed.startsWith('data:')
-    ? trimmed.slice('data:'.length).trim()
-    : trimmed;
-  if (!payload) return null;
-  try {
-    const parsed: unknown = JSON.parse(payload);
-    const result = StreamingEventSchema.safeParse(parsed);
-    if (result.success) {
-      return result.data;
-    }
-    clientLogger.warn('Streaming event validation failed', {
-      issues: result.error.issues,
-      raw: payload,
-    });
-    return null;
-  } catch {
-    return null;
-  }
-};
+const parseEventLine = (line: string): StreamingEvent | null =>
+  parseSsePlanEventLine(line, {
+    onValidationFailed: ({ issues, payload }) => {
+      clientLogger.warn('Streaming event validation failed', {
+        issues,
+        raw: payload,
+      });
+    },
+  });
 
 export type StartGenerationOptions = {
   onPlanIdReady?: (planId: string) => void;

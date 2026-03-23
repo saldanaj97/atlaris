@@ -21,6 +21,10 @@ import {
   selectUserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/helpers/attempts-rate-limit';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import {
+  prepareRlsTransactionContext,
+  reapplyJwtClaimsInTransaction,
+} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type {
   FinalizeFailureParams,
   FinalizeSuccessParams,
@@ -29,7 +33,6 @@ import type {
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { db as serviceDb } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import {
   getPlanGenerationWindowStart,
@@ -75,29 +78,11 @@ export async function reserveAttemptSlot(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
   );
 
-  const shouldNormalizeRlsContext = dbClient !== serviceDb;
-  let requestJwtClaims: string | null = null;
-
-  if (shouldNormalizeRlsContext) {
-    // Capture existing claims from the current RLS session and re-apply them
-    // inside the transaction. This avoids an extra users-table read here while
-    // still defending against tx-scoped claim drift in some environments.
-    const claimsRows = await dbClient.execute<{ claims: string | null }>(
-      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
-    );
-    const rawClaims = claimsRows[0]?.claims;
-    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
-      requestJwtClaims = rawClaims;
-    }
-  }
+  const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
-    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
-      await tx.execute(
-        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
-      );
-    }
+    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
     // Acquire per-user advisory lock to serialize concurrent reservations.
     // Uses the two-int4 overload so namespace 1 is separated from the
@@ -324,25 +309,10 @@ export async function finalizeAttemptFailure({
     failure: { classification, timedOut },
   });
 
-  const shouldNormalizeRlsContext = dbClient !== serviceDb;
-  let requestJwtClaims: string | null = null;
-
-  if (shouldNormalizeRlsContext) {
-    const claimsRows = await dbClient.execute<{ claims: string | null }>(
-      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
-    );
-    const rawClaims = claimsRows[0]?.claims;
-    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
-      requestJwtClaims = rawClaims;
-    }
-  }
+  const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   const attempt = await dbClient.transaction(async (tx) => {
-    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
-      await tx.execute(
-        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
-      );
-    }
+    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
     const [updatedAttempt] = await tx
       .update(generationAttempts)

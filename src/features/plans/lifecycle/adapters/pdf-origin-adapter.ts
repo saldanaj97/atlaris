@@ -12,25 +12,18 @@ import {
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { DbClient } from '@/lib/db/types';
 
-import type { PdfOriginPort } from '../ports';
+import type {
+  PdfOriginPort,
+  PreparePlanInputParams,
+  PreparePlanInputSuccess,
+} from '../ports';
 
 export class PdfOriginAdapter implements PdfOriginPort {
   constructor(private readonly dbClient: DbClient) {}
 
-  async preparePlanInput(params: {
-    body: Record<string, unknown>;
-    authUserId: string;
-    internalUserId: string;
-  }): Promise<{
-    origin: 'pdf';
-    extractedContext: unknown;
-    topic: string;
-    skillLevel: string;
-    weeklyHours: number;
-    learningStyle: string;
-    pdfUsageReserved: boolean;
-    pdfProvenance: { extractionHash: string; proofVersion: 1 } | null;
-  }> {
+  async preparePlanInput(
+    params: PreparePlanInputParams
+  ): Promise<PreparePlanInputSuccess> {
     const result = await preparePlanInputWithPdfOrigin({
       body: params.body as CreateLearningPlanInput,
       authUserId: params.authUserId,

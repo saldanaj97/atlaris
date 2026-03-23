@@ -6,6 +6,10 @@ import type {
   CreateLearningPlanInput,
   OnboardingFormValues,
 } from '@/features/plans/validation/learningPlans.types';
+import {
+  deadlineWeeksToDate,
+  formatDateToYmd,
+} from '@/lib/date/format-local-ymd';
 import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
@@ -56,23 +60,6 @@ function parseWeeklyHours(value: string | number): number {
   throw new Error(`Unable to parse weekly hours from value: ${value}`);
 }
 
-const toLocalDateString = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-function deadlineWeeksToDate(weeks: string): string {
-  const weeksNum = parseInt(weeks, 10);
-  if (!Number.isFinite(weeksNum) || weeksNum < 0) {
-    throw new Error(`Invalid weeks value: ${weeks}`);
-  }
-  const date = new Date();
-  date.setDate(date.getDate() + weeksNum * 7);
-  return toLocalDateString(date);
-}
-
 export function normalizeOnboardingValues(values: OnboardingFormValues) {
   const parsed = onboardingFormSchema.parse(values);
   return {
@@ -90,7 +77,7 @@ export function mapOnboardingToCreateInput(
   // Default optional startDate to today (YYYY-MM-DD, local time) if the user
   // omitted it. Using local time matches how the onboarding form displays and
   // validates dates.
-  const todayStr = toLocalDateString(new Date());
+  const todayStr = formatDateToYmd(new Date());
   return createLearningPlanSchema.parse({
     ...normalized,
     startDate: normalized.startDate ?? todayStr,
@@ -137,7 +124,7 @@ export function mapPdfSettingsToCreateInput(
     skillLevel: asSkillLevel(params.skillLevel),
     weeklyHours: parseWeeklyHours(params.weeklyHours),
     learningStyle: asLearningStyle(params.learningStyle),
-    startDate: toLocalDateString(new Date()),
+    startDate: formatDateToYmd(new Date()),
     deadlineDate: deadlineWeeksToDate(params.deadlineWeeks),
     visibility: 'private',
   });

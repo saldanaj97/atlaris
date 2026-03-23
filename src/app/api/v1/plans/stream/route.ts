@@ -1,4 +1,5 @@
 import { ZodError } from 'zod';
+import { throwPlanCreationFailureError } from '@/app/api/v1/plans/plan-creation-failure';
 import {
   buildPlanStartEvent,
   executeLifecycleGenerationStream,
@@ -189,18 +190,16 @@ export function createStreamHandler(deps?: {
               planId: createResult.cappedPlanId,
             });
           }
-          // permanent_failure or retryable_failure from plan creation
-          const err =
-            'error' in createResult
-              ? createResult.error
-              : new Error('Plan creation failed');
-          const isRetryable = createResult.status === 'retryable_failure';
-          throw new AppError(err.message, {
-            status: isRetryable ? 503 : 400,
-            code: isRetryable
-              ? 'PLAN_CREATION_TEMPORARY_FAILURE'
-              : 'PLAN_CREATION_FAILED',
-          });
+          if (
+            createResult.status === 'permanent_failure' ||
+            createResult.status === 'retryable_failure'
+          ) {
+            throwPlanCreationFailureError(createResult);
+          }
+          const _unhandled: never = createResult;
+          throw new Error(
+            `Unhandled plan creation status: ${(_unhandled as { status: string }).status}`
+          );
         }
 
         const planId = createResult.planId;

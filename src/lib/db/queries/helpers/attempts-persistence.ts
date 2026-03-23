@@ -1,4 +1,8 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import {
+  prepareRlsTransactionContext,
+  reapplyJwtClaimsInTransaction,
+} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type {
   AttemptReservation,
   AttemptsDbClient,
@@ -8,7 +12,6 @@ import type {
   NormalizedModulesResult,
 } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';
-import { db as serviceDb } from '@/lib/db/service-role';
 import {
   aggregateNormalizationFlags,
   normalizeModuleMinutes,
@@ -101,25 +104,10 @@ export async function persistSuccessfulAttempt(
     dbClient,
   } = params;
 
-  const shouldNormalizeRlsContext = dbClient !== serviceDb;
-  let requestJwtClaims: string | null = null;
-
-  if (shouldNormalizeRlsContext) {
-    const claimsRows = await dbClient.execute<{ claims: string | null }>(
-      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
-    );
-    const rawClaims = claimsRows[0]?.claims;
-    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
-      requestJwtClaims = rawClaims;
-    }
-  }
+  const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   return dbClient.transaction(async (tx) => {
-    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
-      await tx.execute(
-        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
-      );
-    }
+    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
     await tx.delete(modules).where(eq(modules.planId, planId));
 

@@ -157,6 +157,23 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
     const { stripeWebhookEvents, users } = await import('@/lib/db/schema');
     const { eq } = await import('drizzle-orm');
 
+    const updateUsersByStripeCustomerId = async (
+      customerId: string,
+      set: {
+        subscriptionTier?: 'free';
+        subscriptionStatus?: 'canceled' | 'past_due';
+        stripeSubscriptionId?: null;
+        subscriptionPeriodEnd?: null;
+        cancelAtPeriodEnd?: boolean;
+        updatedAt: Date;
+      }
+    ) =>
+      db
+        .update(users)
+        .set(set)
+        .where(eq(users.stripeCustomerId, customerId))
+        .returning({ userId: users.id });
+
     const [insertedEvent] = await db
       .insert(stripeWebhookEvents)
       .values({
@@ -217,18 +234,14 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
               ? subscription.customer
               : subscription.customer.id;
 
-          const updatedUsers = await db
-            .update(users)
-            .set({
-              subscriptionTier: 'free',
-              subscriptionStatus: 'canceled',
-              stripeSubscriptionId: null,
-              subscriptionPeriodEnd: null,
-              cancelAtPeriodEnd: false,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.stripeCustomerId, customerId))
-            .returning({ userId: users.id });
+          const updatedUsers = await updateUsersByStripeCustomerId(customerId, {
+            subscriptionTier: 'free',
+            subscriptionStatus: 'canceled',
+            stripeSubscriptionId: null,
+            subscriptionPeriodEnd: null,
+            cancelAtPeriodEnd: false,
+            updatedAt: new Date(),
+          });
 
           if (updatedUsers.length === 0) {
             logger.warn(
@@ -253,14 +266,13 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
               : invoice.customer?.id;
 
           if (customerId) {
-            const updatedUsers = await db
-              .update(users)
-              .set({
+            const updatedUsers = await updateUsersByStripeCustomerId(
+              customerId,
+              {
                 subscriptionStatus: 'past_due',
                 updatedAt: new Date(),
-              })
-              .where(eq(users.stripeCustomerId, customerId))
-              .returning({ userId: users.id });
+              }
+            );
 
             if (updatedUsers.length === 0) {
               logger.warn(

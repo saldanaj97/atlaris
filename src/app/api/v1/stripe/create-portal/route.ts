@@ -1,10 +1,13 @@
 import type Stripe from 'stripe';
 import { z } from 'zod';
+import {
+  isValidRedirectUrl,
+  resolveRedirectUrl,
+} from '@/app/api/v1/stripe/_shared/redirect';
 import { getCustomerPortalUrl } from '@/features/billing/subscriptions';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
-import { appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 
 const DEFAULT_BILLING_SETTINGS_PATH = '/settings/billing';
@@ -12,38 +15,6 @@ const DEFAULT_BILLING_SETTINGS_PATH = '/settings/billing';
 const createPortalBodySchema = z.object({
   returnUrl: z.string().optional(),
 });
-
-function isValidRedirectUrl(url: string | undefined): boolean {
-  if (!url) return true;
-
-  if (url.startsWith('/')) return true;
-
-  const baseUrl = appEnv.url;
-  try {
-    const parsed = new URL(url);
-    const base = new URL(baseUrl);
-    return parsed.origin === base.origin;
-  } catch {
-    return false;
-  }
-}
-
-function resolveRedirectUrl(
-  url: string | undefined,
-  defaultPath: string
-): string {
-  const baseUrl = appEnv.url;
-
-  if (!url) {
-    return `${baseUrl}${defaultPath}`;
-  }
-
-  if (url.startsWith('/')) {
-    return `${baseUrl}${url}`;
-  }
-
-  return url;
-}
 
 /**
  * Factory for the create-portal POST handler. Accepts an optional Stripe

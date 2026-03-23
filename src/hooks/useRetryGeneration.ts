@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 
-import { StreamingEventSchema } from '@/features/ai/streaming/schema';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
+import { parseSsePlanEventLine } from '@/hooks/streaming/parse-sse-plan-event';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 
@@ -24,32 +24,21 @@ function redactPayload(payload: string): {
   };
 }
 
-const parseEventLine = (line: string): StreamingEvent | null => {
-  const trimmed = line.trim();
-  if (!trimmed) return null;
-  const payload = trimmed.startsWith('data:')
-    ? trimmed.slice('data:'.length).trim()
-    : trimmed;
-  if (!payload) return null;
-  try {
-    const parsed: unknown = JSON.parse(payload);
-    const result = StreamingEventSchema.safeParse(parsed);
-    if (result.success) {
-      return result.data;
-    }
-    clientLogger.warn('Retry generation event validation failed', {
-      issues: result.error.issues,
-      ...redactPayload(payload),
-    });
-    return null;
-  } catch (err) {
-    clientLogger.warn('Failed to parse SSE event data', {
-      error: err instanceof Error ? err.message : String(err),
-      ...redactPayload(payload),
-    });
-    return null;
-  }
-};
+const parseEventLine = (line: string): StreamingEvent | null =>
+  parseSsePlanEventLine(line, {
+    onValidationFailed: ({ issues, payload }) => {
+      clientLogger.warn('Retry generation event validation failed', {
+        issues,
+        ...redactPayload(payload),
+      });
+    },
+    onJsonError: ({ error, payload }) => {
+      clientLogger.warn('Failed to parse SSE event data', {
+        error: error instanceof Error ? error.message : String(error),
+        ...redactPayload(payload),
+      });
+    },
+  });
 
 /** Runtime shape for SSE error event data (message and/or error key). */
 const errorEventDataSchema = z.looseObject({

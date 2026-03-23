@@ -1,4 +1,5 @@
 import { ZodError } from 'zod';
+import { throwPlanCreationFailureError } from '@/app/api/v1/plans/plan-creation-failure';
 import {
   createPlanLifecycleService,
   type JobQueuePort,
@@ -217,19 +218,9 @@ export const POST: PlainHandler = withErrorBoundary(
           planId: createResult.cappedPlanId,
         });
       case 'permanent_failure':
-      case 'retryable_failure': {
-        const err =
-          'error' in createResult
-            ? createResult.error
-            : new Error('Plan creation failed');
-        const isRetryable = createResult.status === 'retryable_failure';
-        throw new AppError(err.message, {
-          status: isRetryable ? 503 : 400,
-          code: isRetryable
-            ? 'PLAN_CREATION_TEMPORARY_FAILURE'
-            : 'PLAN_CREATION_FAILED',
-        });
-      }
+      // biome-ignore lint/suspicious/noFallthroughSwitchClause: grouped with retryable_failure; handler always throws
+      case 'retryable_failure':
+        throwPlanCreationFailureError(createResult);
       default: {
         const _exhaustive: never = createResult;
         throw new Error(

@@ -16,7 +16,18 @@
 
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-
+import {
+  type getDb,
+  learningPlans,
+  logger,
+  modules,
+  PROGRESS_STATUSES,
+  type ProgressStatus,
+  setTaskProgress,
+  setTaskProgressBatch,
+  tasks,
+  withServerActionContext,
+} from '@/app/plans/[id]/server/task-progress-action-deps';
 import type {
   PlanAccessResult,
   ScheduleAccessResult,
@@ -26,14 +37,7 @@ import {
   SCHEDULE_FETCH_ERROR_CODE,
   ScheduleFetchError,
 } from '@/features/scheduling/schedule-api';
-import { withServerActionContext } from '@/lib/api/auth';
 import { getLearningPlanDetail } from '@/lib/db/queries/plans';
-import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
-import type { getDb } from '@/lib/db/runtime';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { logger } from '@/lib/logging/logger';
-import { PROGRESS_STATUSES } from '@/shared/types/db';
-import type { ProgressStatus } from '@/shared/types/db.types';
 import {
   planError,
   planSuccess,

@@ -28,7 +28,7 @@ const errorResponseSchema = z
   })
   .openapi('ErrorResponse');
 
-const learningPlanSchema = z.object({
+const learningPlanBaseFields = {
   id: z.string().uuid(),
   topic: z.string(),
   skillLevel: SKILL_LEVEL_ENUM,
@@ -37,6 +37,10 @@ const learningPlanSchema = z.object({
   visibility: z.literal('private'),
   origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const),
   createdAt: z.string().datetime().nullable().optional(),
+};
+
+const learningPlanSchema = z.object({
+  ...learningPlanBaseFields,
 });
 
 const lightweightPlanSummarySchema = z
@@ -67,14 +71,7 @@ const lightweightPlanSummarySchema = z
 
 const createPlanResponseSchema = z
   .object({
-    id: z.string().uuid(),
-    topic: z.string(),
-    skillLevel: SKILL_LEVEL_ENUM,
-    weeklyHours: z.number().int().nullable().optional(),
-    learningStyle: LEARNING_STYLE_ENUM,
-    visibility: z.literal('private'),
-    origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const),
-    createdAt: z.string().datetime().nullable().optional(),
+    ...learningPlanBaseFields,
     status: z.literal('generating'),
   })
   .openapi('CreatePlanResponse');

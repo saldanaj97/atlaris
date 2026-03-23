@@ -96,25 +96,29 @@ export interface QuotaPort {
 
 // ─── PdfOriginPort ───────────────────────────────────────────────
 
+export type PreparePlanInputParams = {
+  body: Record<string, unknown>;
+  authUserId: string;
+  internalUserId: string;
+};
+
+export type PreparePlanInputSuccess = {
+  origin: 'pdf';
+  extractedContext: unknown;
+  topic: string;
+  skillLevel: string;
+  weeklyHours: number;
+  learningStyle: string;
+  pdfUsageReserved: boolean;
+  pdfProvenance: { extractionHash: string; proofVersion: 1 } | null;
+};
+
 export interface PdfOriginPort {
   /** Verify PDF proof token and prepare plan input from extracted PDF context. */
   preparePlanInput(
     this: void,
-    params: {
-      body: Record<string, unknown>;
-      authUserId: string;
-      internalUserId: string;
-    }
-  ): Promise<{
-    origin: 'pdf';
-    extractedContext: unknown;
-    topic: string;
-    skillLevel: string;
-    weeklyHours: number;
-    learningStyle: string;
-    pdfUsageReserved: boolean;
-    pdfProvenance: { extractionHash: string; proofVersion: 1 } | null;
-  }>;
+    params: PreparePlanInputParams
+  ): Promise<PreparePlanInputSuccess>;
 
   /** Roll back PDF usage reservation on failure. */
   rollbackPdfUsage(
@@ -128,46 +132,51 @@ export interface PdfOriginPort {
 
 // ─── GenerationPort ──────────────────────────────────────────────
 
+export type GenerationRunParams = {
+  planId: string;
+  userId: string;
+  tier: SubscriptionTier;
+  input: {
+    topic: string;
+    skillLevel: 'beginner' | 'intermediate' | 'advanced';
+    weeklyHours: number;
+    learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+    startDate?: string | null;
+    deadlineDate?: string | null;
+    notes?: string | null;
+    pdfContext?: PdfContext | null;
+    pdfExtractionHash?: string;
+    pdfProofVersion?: 1;
+  };
+  modelOverride?: string | null;
+  signal?: AbortSignal;
+};
+
+export type GenerationRunSuccess = {
+  status: 'success';
+  modules: GeneratedModule[];
+  metadata: Record<string, unknown>;
+  usage: CanonicalAIUsage;
+  durationMs: number;
+};
+
+export type GenerationRunFailure = {
+  status: 'failure';
+  classification: FailureClassification;
+  error: Error;
+  metadata?: Record<string, unknown>;
+  usage?: CanonicalAIUsage;
+  durationMs: number;
+};
+
+export type GenerationRunResult = GenerationRunSuccess | GenerationRunFailure;
+
 export interface GenerationPort {
   /** Execute an AI plan generation attempt. */
   runGeneration(
     this: void,
-    params: {
-      planId: string;
-      userId: string;
-      tier: SubscriptionTier;
-      input: {
-        topic: string;
-        skillLevel: 'beginner' | 'intermediate' | 'advanced';
-        weeklyHours: number;
-        learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-        startDate?: string | null;
-        deadlineDate?: string | null;
-        notes?: string | null;
-        pdfContext?: PdfContext | null;
-        pdfExtractionHash?: string;
-        pdfProofVersion?: 1;
-      };
-      modelOverride?: string | null;
-      signal?: AbortSignal;
-    }
-  ): Promise<
-    | {
-        status: 'success';
-        modules: GeneratedModule[];
-        metadata: Record<string, unknown>;
-        usage: CanonicalAIUsage;
-        durationMs: number;
-      }
-    | {
-        status: 'failure';
-        classification: FailureClassification;
-        error: Error;
-        metadata?: Record<string, unknown>;
-        usage?: CanonicalAIUsage;
-        durationMs: number;
-      }
-  >;
+    params: GenerationRunParams
+  ): Promise<GenerationRunResult>;
 }
 
 // ─── UsageRecordingPort ──────────────────────────────────────────

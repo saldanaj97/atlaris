@@ -98,6 +98,23 @@ async function lockJobAndCheckTerminal(
   return { row, isTerminal };
 }
 
+async function runJobMutationIfEditable(
+  client: JobsDbClient,
+  jobId: string,
+  mutate: (tx: JobsTransaction, row: JobQueueRow) => Promise<Job | null>
+): Promise<Job | null> {
+  return client.transaction(async (tx) => {
+    const locked = await lockJobAndCheckTerminal(tx, jobId);
+    if (!locked) {
+      return null;
+    }
+    if (locked.isTerminal) {
+      return mapRowToJob(locked.row);
+    }
+    return mutate(tx, locked.row);
+  });
+}
+
 function computeShouldRetry(
   retryable: boolean | undefined,
   nextAttempts: number,
@@ -395,15 +412,7 @@ export async function completeJobRecord(
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
-  return client.transaction(async (tx) => {
-    const locked = await lockJobAndCheckTerminal(tx, jobId);
-    if (!locked) {
-      return null;
-    }
-    if (locked.isTerminal) {
-      return mapRowToJob(locked.row);
-    }
-
+  return runJobMutationIfEditable(client, jobId, async (tx) => {
     const completedAt = new Date();
     const [updated] = await tx
       .update(jobQueue)
@@ -446,16 +455,7 @@ export async function failJobRecord(
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
-  return client.transaction(async (tx) => {
-    const locked = await lockJobAndCheckTerminal(tx, jobId);
-    if (!locked) {
-      return null;
-    }
-    if (locked.isTerminal) {
-      return mapRowToJob(locked.row);
-    }
-
-    const current = locked.row;
+  return runJobMutationIfEditable(client, jobId, async (tx, current) => {
     const nextAttempts = current.attempts + 1;
     const now = new Date();
     const shouldRetry = computeShouldRetry(

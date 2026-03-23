@@ -9,6 +9,7 @@
  */
 
 import { getFailurePresentation } from '@/features/ai/failure-presentation';
+import { coerceUnknownToMessage } from '@/lib/api/coerce-unknown-to-message';
 import { logger } from '@/lib/logging/logger';
 
 import type { FailureClassification } from '@/shared/types/client.types';
@@ -48,26 +49,13 @@ type StringifyErrorValue =
   | Serializable;
 
 function stringifyUnknownError(value: StringifyErrorValue): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-  if (
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    value === null ||
-    value === undefined
-  ) {
-    return String(value);
-  }
   if (
     typeof value === 'object' &&
-    'message' in value &&
-    typeof (value as { message?: unknown }).message === 'string'
-  ) {
-    return (value as { message: string }).message;
-  }
-  if (
-    typeof value === 'object' &&
+    value !== null &&
+    !(
+      'message' in value &&
+      typeof (value as { message?: unknown }).message === 'string'
+    ) &&
     'toString' in value &&
     value.toString !== Object.prototype.toString
   ) {
@@ -81,11 +69,7 @@ function stringifyUnknownError(value: StringifyErrorValue): string {
     }
   }
 
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return 'Unserializable error value';
-  }
+  return coerceUnknownToMessage(value as unknown);
 }
 
 /**

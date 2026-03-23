@@ -11,55 +11,21 @@ import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import type { GenerationInput } from '@/features/ai/types/provider.types';
 import { safeNormalizeUsage } from '@/features/ai/usage';
-import type { PdfContext } from '@/features/pdf/context.types';
 import type { DbClient } from '@/lib/db/types';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
-import type { GenerationPort } from '../ports';
 import type {
-  FailureClassification,
-  GeneratedModule,
-  SubscriptionTier,
-} from '../types';
+  GenerationPort,
+  GenerationRunParams,
+  GenerationRunResult,
+} from '../ports';
+import type { GeneratedModule } from '../types';
 
 export class GenerationAdapter implements GenerationPort {
   constructor(private readonly dbClient: DbClient) {}
 
-  async runGeneration(params: {
-    planId: string;
-    userId: string;
-    tier: SubscriptionTier;
-    input: {
-      topic: string;
-      skillLevel: 'beginner' | 'intermediate' | 'advanced';
-      weeklyHours: number;
-      learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-      startDate?: string | null;
-      deadlineDate?: string | null;
-      notes?: string | null;
-      pdfContext?: PdfContext | null;
-      pdfExtractionHash?: string;
-      pdfProofVersion?: 1;
-    };
-    modelOverride?: string | null;
-    signal?: AbortSignal;
-  }): Promise<
-    | {
-        status: 'success';
-        modules: GeneratedModule[];
-        metadata: Record<string, unknown>;
-        usage: CanonicalAIUsage;
-        durationMs: number;
-      }
-    | {
-        status: 'failure';
-        classification: FailureClassification;
-        error: Error;
-        metadata?: Record<string, unknown>;
-        usage?: CanonicalAIUsage;
-        durationMs: number;
-      }
-  > {
+  async runGeneration(
+    params: GenerationRunParams
+  ): Promise<GenerationRunResult> {
     const { provider } = resolveModelForTier(
       params.tier,
       params.modelOverride ?? undefined

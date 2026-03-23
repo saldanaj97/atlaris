@@ -6,6 +6,7 @@ import { logger } from '@/lib/logging/logger';
 import { UsageMetricsLockError, UserNotFoundError } from './errors';
 import type { DbClient } from './tier';
 import { TIER_LIMITS } from './tier-limits';
+import type { SubscriptionTier } from './tier-limits.types';
 import {
   ensureUsageMetricsExist,
   getCurrentMonth,
@@ -23,6 +24,42 @@ type AtomicPdfUsageResult =
   | { allowed: true; newCount: number; limit: number }
   | { allowed: false; currentCount: number; limit: number };
 
+type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
+
+export async function selectUserSubscriptionTierForUpdate(
+  tx: BillingTx,
+  userId: string
+): Promise<{ subscriptionTier: SubscriptionTier }> {
+  const [user] = await tx
+    .select({ subscriptionTier: users.subscriptionTier })
+    .from(users)
+    .where(eq(users.id, userId))
+    .for('update');
+
+  if (!user) {
+    throw new UserNotFoundError(userId);
+  }
+  return user;
+}
+
+async function lockUsageMetricsForMonth(
+  tx: BillingTx,
+  userId: string,
+  month: string
+) {
+  await ensureUsageMetricsExist(tx, userId, month);
+  const [metrics] = await tx
+    .select()
+    .from(usageMetrics)
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .for('update');
+
+  if (!metrics) {
+    throw new UsageMetricsLockError(userId, month);
+  }
+  return metrics;
+}
+
 /**
  * Atomically check PDF plan quota and increment usage counter in a single transaction.
  * This uses database-level locking to ensure concurrent requests cannot exceed the user's PDF plan limit.
@@ -38,35 +75,13 @@ export async function atomicCheckAndIncrementPdfUsage(
   dbClient: DbClient = getDb()
 ): Promise<AtomicPdfUsageResult> {
   return dbClient.transaction(async (tx) => {
-    const [user] = await tx
-      .select({ subscriptionTier: users.subscriptionTier })
-      .from(users)
-      .where(eq(users.id, userId))
-      .for('update');
-
-    if (!user) {
-      throw new UserNotFoundError(userId);
-    }
-
+    const user = await selectUserSubscriptionTierForUpdate(tx, userId);
     const tier = user.subscriptionTier;
     const limit = TIER_LIMITS[tier].monthlyPdfPlans;
+    const month = getCurrentMonth();
 
     if (limit === Infinity) {
-      const month = getCurrentMonth();
-      await ensureUsageMetricsExist(tx, userId, month);
-
-      const [metrics] = await tx
-        .select()
-        .from(usageMetrics)
-        .where(
-          and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
-        )
-        .for('update');
-
-      if (!metrics) {
-        throw new UsageMetricsLockError(userId, month);
-      }
-
+      const metrics = await lockUsageMetricsForMonth(tx, userId, month);
       const currentCount = metrics.pdfPlansGenerated;
       const newCount = currentCount + 1;
 
@@ -84,20 +99,7 @@ export async function atomicCheckAndIncrementPdfUsage(
       return { allowed: true, newCount, limit: Infinity };
     }
 
-    const month = getCurrentMonth();
-    await ensureUsageMetricsExist(tx, userId, month);
-
-    const [metrics] = await tx
-      .select()
-      .from(usageMetrics)
-      .where(
-        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
-      )
-      .for('update');
-
-    if (!metrics) {
-      throw new UsageMetricsLockError(userId, month);
-    }
+    const metrics = await lockUsageMetricsForMonth(tx, userId, month);
 
     const currentCount = metrics.pdfPlansGenerated;
 
@@ -137,37 +139,16 @@ export async function atomicCheckAndIncrementUsage(
   dbClient: DbClient = getDb()
 ): Promise<AtomicUsageResult> {
   return dbClient.transaction(async (tx) => {
-    const [user] = await tx
-      .select({ subscriptionTier: users.subscriptionTier })
-      .from(users)
-      .where(eq(users.id, userId))
-      .for('update');
-
-    if (!user) {
-      throw new UserNotFoundError(userId);
-    }
-
+    const user = await selectUserSubscriptionTierForUpdate(tx, userId);
     const tier = user.subscriptionTier;
     const limit =
       type === 'regeneration'
         ? TIER_LIMITS[tier].monthlyRegenerations
         : TIER_LIMITS[tier].monthlyExports;
+    const month = getCurrentMonth();
 
     if (limit === Infinity) {
-      const month = getCurrentMonth();
-      await ensureUsageMetricsExist(tx, userId, month);
-
-      const [metrics] = await tx
-        .select()
-        .from(usageMetrics)
-        .where(
-          and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
-        )
-        .for('update');
-
-      if (!metrics) {
-        throw new UsageMetricsLockError(userId, month);
-      }
+      const metrics = await lockUsageMetricsForMonth(tx, userId, month);
 
       const currentCount =
         type === 'regeneration'
@@ -179,20 +160,7 @@ export async function atomicCheckAndIncrementUsage(
       return { allowed: true, newCount, limit: Infinity };
     }
 
-    const month = getCurrentMonth();
-    await ensureUsageMetricsExist(tx, userId, month);
-
-    const [metrics] = await tx
-      .select()
-      .from(usageMetrics)
-      .where(
-        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
-      )
-      .for('update');
-
-    if (!metrics) {
-      throw new UsageMetricsLockError(userId, month);
-    }
+    const metrics = await lockUsageMetricsForMonth(tx, userId, month);
 
     const currentCount =
       type === 'regeneration' ? metrics.regenerationsUsed : metrics.exportsUsed;

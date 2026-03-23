@@ -158,33 +158,28 @@ export async function storeOAuthTokens(
       })
     : null;
 
+  const tokenRow = {
+    encryptedAccessToken: encryptedAccess,
+    encryptedRefreshToken: encryptedRefresh,
+    scope: tokenData.scope,
+    expiresAt: tokenData.expiresAt ?? null,
+    workspaceId: workspaceId ?? null,
+    workspaceName: workspaceName ?? null,
+    botId: botId ?? null,
+    updatedAt: new Date(),
+  };
+
   const db = getDb();
   await db
     .insert(integrationTokens)
     .values({
       userId,
       provider,
-      encryptedAccessToken: encryptedAccess,
-      encryptedRefreshToken: encryptedRefresh,
-      scope: tokenData.scope,
-      expiresAt: tokenData.expiresAt ?? null,
-      workspaceId: workspaceId ?? null,
-      workspaceName: workspaceName ?? null,
-      botId: botId ?? null,
-      updatedAt: new Date(),
+      ...tokenRow,
     })
     .onConflictDoUpdate({
       target: [integrationTokens.userId, integrationTokens.provider],
-      set: {
-        encryptedAccessToken: encryptedAccess,
-        encryptedRefreshToken: encryptedRefresh,
-        scope: tokenData.scope,
-        expiresAt: tokenData.expiresAt ?? null,
-        workspaceId: workspaceId ?? null,
-        workspaceName: workspaceName ?? null,
-        botId: botId ?? null,
-        updatedAt: new Date(),
-      },
+      set: tokenRow,
     });
 }
 

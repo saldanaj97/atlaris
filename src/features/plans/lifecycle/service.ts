@@ -24,8 +24,10 @@ import type {
   CreatePdfPlanInput,
   CreatePlanResult,
   GenerationAttemptResult,
+  NormalizedDuration,
   PdfContext,
   ProcessGenerationInput,
+  SubscriptionTier,
 } from './types';
 import { isRetryableClassification } from './types';
 
@@ -43,6 +45,106 @@ export class PlanLifecycleService {
 
   constructor(ports: PlanLifecycleServicePorts) {
     this.ports = ports;
+  }
+
+  /**
+   * Shared tier resolution, duration normalization, duration caps, and
+   * attempt-cap pre-check for both AI and PDF plan creation.
+   */
+  private async checkTierDurationAndAttemptCap(
+    userId: string,
+    weeklyHours: number,
+    startDate: string | null,
+    deadlineDate: string | null,
+    lifecycleLabel: 'create' | 'create_pdf'
+  ): Promise<
+    | { blocked: true; result: CreatePlanResult }
+    | {
+        blocked: false;
+        tier: SubscriptionTier;
+        duration: NormalizedDuration;
+      }
+  > {
+    const logBase =
+      lifecycleLabel === 'create'
+        ? 'plan.lifecycle.create'
+        : 'plan.lifecycle.create_pdf';
+
+    const tier = await this.ports.quota.resolveUserTier(userId);
+    if (lifecycleLabel === 'create') {
+      logger.info({ userId, tier }, `${logBase}: tier resolved`);
+    }
+
+    const requestedWeeks = calculateTotalWeeks({
+      startDate: startDate ?? null,
+      deadlineDate: deadlineDate ?? null,
+    });
+    const requestedCap = this.ports.quota.checkDurationCap({
+      tier,
+      weeklyHours,
+      totalWeeks: requestedWeeks,
+    });
+    if (!requestedCap.allowed) {
+      logger.info(
+        { userId, tier },
+        `${logBase}: quota rejected (requested duration cap)`
+      );
+      return {
+        blocked: true,
+        result: {
+          status: 'quota_rejected',
+          reason: requestedCap.reason ?? 'Plan duration exceeds tier limits',
+          upgradeUrl: requestedCap.upgradeUrl,
+        },
+      };
+    }
+
+    const duration = this.ports.quota.normalizePlanDuration({
+      tier,
+      weeklyHours,
+      startDate,
+      deadlineDate,
+    });
+
+    const durationCap = this.ports.quota.checkDurationCap({
+      tier,
+      weeklyHours,
+      totalWeeks: duration.totalWeeks,
+    });
+
+    if (!durationCap.allowed) {
+      logger.info(
+        { userId, tier },
+        `${logBase}: quota rejected (normalized duration cap)`
+      );
+      return {
+        blocked: true,
+        result: {
+          status: 'quota_rejected',
+          reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
+          upgradeUrl: durationCap.upgradeUrl,
+        },
+      };
+    }
+
+    const cappedPlanId =
+      await this.ports.planPersistence.findCappedPlanWithoutModules(userId);
+    if (cappedPlanId) {
+      logger.info(
+        { userId, cappedPlanId },
+        `${logBase}: attempt cap exceeded (existing capped plan)`
+      );
+      return {
+        blocked: true,
+        result: {
+          status: 'attempt_cap_exceeded',
+          reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
+          cappedPlanId,
+        },
+      };
+    }
+
+    return { blocked: false, tier, duration };
   }
 
   /**
@@ -69,78 +171,17 @@ export class PlanLifecycleService {
       };
     }
 
-    // 2. Resolve tier
-    const tier = await this.ports.quota.resolveUserTier(input.userId);
-    logger.info(
-      { userId: input.userId, tier },
-      'plan.lifecycle.create: tier resolved'
+    const gate = await this.checkTierDurationAndAttemptCap(
+      input.userId,
+      input.weeklyHours,
+      input.startDate ?? null,
+      input.deadlineDate ?? null,
+      'create'
     );
-
-    // 3. Reject raw requested range before tier normalization (normalization clamps dates and would hide over-limit requests)
-    const requestedWeeks = calculateTotalWeeks({
-      startDate: input.startDate ?? null,
-      deadlineDate: input.deadlineDate ?? null,
-    });
-    const requestedCap = this.ports.quota.checkDurationCap({
-      tier,
-      weeklyHours: input.weeklyHours,
-      totalWeeks: requestedWeeks,
-    });
-    if (!requestedCap.allowed) {
-      logger.info(
-        { userId: input.userId, tier },
-        'plan.lifecycle.create: quota rejected (requested duration cap)'
-      );
-      return {
-        status: 'quota_rejected',
-        reason: requestedCap.reason ?? 'Plan duration exceeds tier limits',
-        upgradeUrl: requestedCap.upgradeUrl,
-      };
+    if (gate.blocked) {
+      return gate.result;
     }
-
-    // 4. Normalize plan duration for the tier
-    const duration = this.ports.quota.normalizePlanDuration({
-      tier,
-      weeklyHours: input.weeklyHours,
-      startDate: input.startDate,
-      deadlineDate: input.deadlineDate,
-    });
-
-    // 5. Check duration cap on normalized duration
-    const durationCap = this.ports.quota.checkDurationCap({
-      tier,
-      weeklyHours: input.weeklyHours,
-      totalWeeks: duration.totalWeeks,
-    });
-
-    if (!durationCap.allowed) {
-      logger.info(
-        { userId: input.userId, tier },
-        'plan.lifecycle.create: quota rejected (normalized duration cap)'
-      );
-      return {
-        status: 'quota_rejected',
-        reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
-        upgradeUrl: durationCap.upgradeUrl,
-      };
-    }
-
-    // 6. Check for capped plan (exhausted generation attempts)
-    const cappedPlanId =
-      await this.ports.planPersistence.findCappedPlanWithoutModules(
-        input.userId
-      );
-    if (cappedPlanId) {
-      logger.info(
-        { userId: input.userId, cappedPlanId },
-        'plan.lifecycle.create: attempt cap exceeded (existing capped plan)'
-      );
-      return {
-        status: 'attempt_cap_exceeded',
-        reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
-        cappedPlanId,
-      };
-    }
+    const { tier, duration } = gate;
 
     const normalizedTopic = input.topic.trim();
 
@@ -237,74 +278,17 @@ export class PlanLifecycleService {
       };
     }
 
-    // 2. Resolve tier
-    const tier = await this.ports.quota.resolveUserTier(input.userId);
-
-    // 3. Reject raw requested range before tier normalization
-    const requestedWeeksPdf = calculateTotalWeeks({
-      startDate: input.startDate ?? null,
-      deadlineDate: input.deadlineDate ?? null,
-    });
-    const requestedCapPdf = this.ports.quota.checkDurationCap({
-      tier,
-      weeklyHours: input.weeklyHours,
-      totalWeeks: requestedWeeksPdf,
-    });
-    if (!requestedCapPdf.allowed) {
-      logger.info(
-        { userId: input.userId, tier },
-        'plan.lifecycle.create_pdf: quota rejected (requested duration cap)'
-      );
-      return {
-        status: 'quota_rejected',
-        reason: requestedCapPdf.reason ?? 'Plan duration exceeds tier limits',
-        upgradeUrl: requestedCapPdf.upgradeUrl,
-      };
+    const pdfGate = await this.checkTierDurationAndAttemptCap(
+      input.userId,
+      input.weeklyHours,
+      input.startDate ?? null,
+      input.deadlineDate ?? null,
+      'create_pdf'
+    );
+    if (pdfGate.blocked) {
+      return pdfGate.result;
     }
-
-    // 4. Normalize plan duration for the tier
-    const duration = this.ports.quota.normalizePlanDuration({
-      tier,
-      weeklyHours: input.weeklyHours,
-      startDate: input.startDate,
-      deadlineDate: input.deadlineDate,
-    });
-
-    // 5. Check duration cap on normalized duration
-    const durationCap = this.ports.quota.checkDurationCap({
-      tier,
-      weeklyHours: input.weeklyHours,
-      totalWeeks: duration.totalWeeks,
-    });
-
-    if (!durationCap.allowed) {
-      logger.info(
-        { userId: input.userId, tier },
-        'plan.lifecycle.create_pdf: quota rejected (normalized duration cap)'
-      );
-      return {
-        status: 'quota_rejected',
-        reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
-        upgradeUrl: durationCap.upgradeUrl,
-      };
-    }
-
-    // 6. Check for capped plan (exhausted generation attempts)
-    const cappedPlanId =
-      await this.ports.planPersistence.findCappedPlanWithoutModules(
-        input.userId
-      );
-    if (cappedPlanId) {
-      logger.info(
-        { userId: input.userId, cappedPlanId },
-        'plan.lifecycle.create_pdf: attempt cap exceeded (existing capped plan)'
-      );
-      return {
-        status: 'attempt_cap_exceeded',
-        reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
-        cappedPlanId,
-      };
-    }
+    const { tier, duration } = pdfGate;
 
     // 7. Reserve PDF quota + verify proof before duplicate detection so replayed
     // one-time tokens fail with invalid proof (403) instead of duplicate topic (409).

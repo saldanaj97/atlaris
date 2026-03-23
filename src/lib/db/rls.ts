@@ -38,6 +38,26 @@ import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import * as schema from './schema';
 
+function createIdempotentPostgresCleanup(
+  sql: Sql,
+  options: {
+    onConnectionCloseError: (error: unknown) => void;
+  }
+): () => Promise<void> {
+  let isCleanedUp = false;
+  return async () => {
+    if (isCleanedUp) {
+      return;
+    }
+    isCleanedUp = true;
+    try {
+      await sql.end({ timeout: 5 });
+    } catch (error) {
+      options.onConnectionCloseError(error);
+    }
+  };
+}
+
 export type RlsClient = DbClient;
 
 /**
@@ -102,27 +122,14 @@ export async function createAuthenticatedRlsClient(
   // Using set_config() with template tag parameterization is safer than string interpolation
   await sql`SELECT set_config('request.jwt.claims', ${jwtClaims}, false)`;
 
-  // Track cleanup state to make cleanup idempotent
-  let isCleanedUp = false;
-
-  const cleanup = async () => {
-    // Idempotent cleanup: safe to call multiple times
-    if (isCleanedUp) {
-      return;
-    }
-    isCleanedUp = true;
-
-    try {
-      await sql.end({ timeout: 5 });
-    } catch (error) {
-      // Log but don't throw - connection cleanup errors shouldn't fail the request
-      // The connection will eventually timeout and close on its own
+  const cleanup = createIdempotentPostgresCleanup(sql, {
+    onConnectionCloseError: (error) => {
       logger.warn(
         { error, authUserId },
         'Failed to close RLS database connection'
       );
-    }
-  };
+    },
+  });
 
   return {
     db: drizzle(sql, { schema }),
@@ -182,27 +189,14 @@ export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
   // Using set_config() with template tag parameterization is safer than string interpolation
   await sql`SELECT set_config('request.jwt.claims', ${'null'}, false)`;
 
-  // Track cleanup state to make cleanup idempotent
-  let isCleanedUp = false;
-
-  const cleanup = async () => {
-    // Idempotent cleanup: safe to call multiple times
-    if (isCleanedUp) {
-      return;
-    }
-    isCleanedUp = true;
-
-    try {
-      await sql.end({ timeout: 5 });
-    } catch (error) {
-      // Log but don't throw - connection cleanup errors shouldn't fail the request
-      // The connection will eventually timeout and close on its own
+  const cleanup = createIdempotentPostgresCleanup(sql, {
+    onConnectionCloseError: (error) => {
       logger.warn(
         { error },
         'Failed to close anonymous RLS database connection'
       );
-    }
-  };
+    },
+  });
 
   return {
     db: drizzle(sql, { schema }),

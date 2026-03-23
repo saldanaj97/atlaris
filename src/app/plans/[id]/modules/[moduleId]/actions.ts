@@ -16,14 +16,19 @@ import {
   moduleSuccess,
 } from '@/app/plans/[id]/modules/[moduleId]/helpers';
 import type { ModuleAccessResult } from '@/app/plans/[id]/modules/[moduleId]/types';
-import { withServerActionContext } from '@/lib/api/auth';
+import {
+  type getDb,
+  learningPlans,
+  logger,
+  modules,
+  PROGRESS_STATUSES,
+  type ProgressStatus,
+  setTaskProgress,
+  setTaskProgressBatch,
+  tasks,
+  withServerActionContext,
+} from '@/app/plans/[id]/server/task-progress-action-deps';
 import { getModuleDetail } from '@/lib/db/queries/modules';
-import { setTaskProgress, setTaskProgressBatch } from '@/lib/db/queries/tasks';
-import type { getDb } from '@/lib/db/runtime';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { logger } from '@/lib/logging/logger';
-import { PROGRESS_STATUSES } from '@/shared/types/db';
-import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface UpdateTaskProgressInput {
   planId: string;

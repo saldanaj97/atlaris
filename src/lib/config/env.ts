@@ -142,6 +142,21 @@ const ensureServerRuntime = () => {
 const serverRequiredCache = new Map<string, string>();
 const serverOptionalCache = new Map<string, string | undefined>();
 
+function getCachedServerRequired(
+  cache: Map<string, string>,
+  key: string,
+  loader: () => string
+): string {
+  if (!cache.has(key)) {
+    cache.set(key, loader());
+  }
+  const cached = cache.get(key);
+  if (cached === undefined) {
+    throw new Error(`Invariant: env cache missing key "${key}"`);
+  }
+  return cached;
+}
+
 // In test runtime, environment values may change between tests; avoid caching.
 // Treat non-production runtimes (development, test) as mutable envs; avoid caching to
 // ensure tests and dev server reflect env changes without process restarts.
@@ -164,14 +179,9 @@ const getServerRequired = (key: string): string => {
   if (isTestRuntime) {
     return requireEnv(key);
   }
-  if (!serverRequiredCache.has(key)) {
-    serverRequiredCache.set(key, requireEnv(key));
-  }
-  const cached = serverRequiredCache.get(key);
-  if (cached === undefined) {
-    throw new Error(`Invariant: env cache missing key "${key}"`);
-  }
-  return cached;
+  return getCachedServerRequired(serverRequiredCache, key, () =>
+    requireEnv(key)
+  );
 };
 
 /**
@@ -223,14 +233,9 @@ const getServerRequiredProdOnly = (key: string): string | undefined => {
   }
 
   // In prod: genuinely required and cached
-  if (!serverRequiredCache.has(key)) {
-    serverRequiredCache.set(key, requireEnv(key));
-  }
-  const cached = serverRequiredCache.get(key);
-  if (cached === undefined) {
-    throw new Error(`Invariant: env cache missing key "${key}"`);
-  }
-  return cached;
+  return getCachedServerRequired(serverRequiredCache, key, () =>
+    requireEnv(key)
+  );
 };
 
 export const appEnv = {

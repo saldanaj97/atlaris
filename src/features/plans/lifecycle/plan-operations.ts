@@ -5,12 +5,12 @@
 // quota enforcement. They belong in the plans domain, not in billing.
 
 import { and, eq, gte, sql } from 'drizzle-orm';
-import { UserNotFoundError } from '@/features/billing/errors';
+import { selectUserSubscriptionTierForUpdate } from '@/features/billing/quota';
 import { resolveUserTier } from '@/features/billing/tier';
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 import type { PdfContext } from '@/features/pdf/context.types';
-import { learningPlans, users } from '@/lib/db/schema';
+import { learningPlans } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import { PlanCreationError, PlanLimitReachedError } from '../errors';
@@ -125,16 +125,7 @@ export async function atomicCheckAndInsertPlan(
   dbClient: DbClient
 ): Promise<{ id: string }> {
   return dbClient.transaction(async (tx) => {
-    // Lock the user row for update to prevent concurrent limit checks
-    const [user] = await tx
-      .select({ subscriptionTier: users.subscriptionTier })
-      .from(users)
-      .where(eq(users.id, userId))
-      .for('update');
-
-    if (!user) {
-      throw new UserNotFoundError(userId);
-    }
+    const user = await selectUserSubscriptionTierForUpdate(tx, userId);
 
     // Read tier directly from the locked user row rather than via resolveUserTier()
     // to stay within the FOR UPDATE transaction. resolveUserTier() opens its own

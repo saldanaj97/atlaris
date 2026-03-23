@@ -114,6 +114,13 @@ export async function incrementUsage(
 /**
  * Increment PDF plan usage counter for the current month
  */
+function pdfPlansGeneratedIncrementSet() {
+  return {
+    pdfPlansGenerated: sql`${usageMetrics.pdfPlansGenerated} + 1`,
+    updatedAt: new Date(),
+  };
+}
+
 export async function incrementPdfPlanUsage(
   userId: string,
   dbClient: DbClient = getDb(),
@@ -125,10 +132,7 @@ export async function incrementPdfPlanUsage(
 
   await dbClient
     .update(usageMetrics)
-    .set({
-      pdfPlansGenerated: sql`${usageMetrics.pdfPlansGenerated} + 1`,
-      updatedAt: new Date(),
-    })
+    .set(pdfPlansGeneratedIncrementSet())
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }
 
@@ -332,9 +336,6 @@ export async function incrementPdfUsageInTx(
 ): Promise<void> {
   await tx
     .update(usageMetrics)
-    .set({
-      pdfPlansGenerated: sql`${usageMetrics.pdfPlansGenerated} + 1`,
-      updatedAt: new Date(),
-    })
+    .set(pdfPlansGeneratedIncrementSet())
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }

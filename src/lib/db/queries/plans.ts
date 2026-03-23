@@ -52,6 +52,28 @@ const defaultDeletePlanDeps: DeletePlanDeps = {
   selectOwnedPlanById,
 };
 
+function applyPlanListOrderingAndPagination(
+  planQuery: {
+    orderBy: <TOrderByArg>(column: TOrderByArg) => unknown;
+    limit: (n: number) => unknown;
+    offset: (n: number) => unknown;
+  },
+  orderByColumn: ReturnType<typeof desc>,
+  options?: PaginationOptions
+): void {
+  planQuery.orderBy(orderByColumn);
+  if (options?.limit !== undefined) {
+    planQuery.limit(options.limit);
+  }
+  if (options?.offset !== undefined) {
+    planQuery.offset(options.offset);
+  }
+}
+
+function userPlanListWhere(userId: string) {
+  return eq(learningPlans.userId, userId);
+}
+
 function isDeletablePlanStatus(
   status: PlanGenerationStatus
 ): status is (typeof DELETABLE_PLAN_STATUSES)[number] {
@@ -81,18 +103,14 @@ export async function getPlanSummariesForUser(
   const planQuery = client
     .select()
     .from(learningPlans)
-    .where(eq(learningPlans.userId, userId))
+    .where(userPlanListWhere(userId))
     .$dynamic();
 
-  planQuery.orderBy(desc(learningPlans.createdAt));
-
-  if (options?.limit !== undefined) {
-    planQuery.limit(options.limit);
-  }
-
-  if (options?.offset !== undefined) {
-    planQuery.offset(options.offset);
-  }
+  applyPlanListOrderingAndPagination(
+    planQuery,
+    desc(learningPlans.createdAt),
+    options
+  );
 
   const planRows = await planQuery;
 
@@ -162,18 +180,14 @@ export async function getLightweightPlanSummaries(
       updatedAt: learningPlans.updatedAt,
     })
     .from(learningPlans)
-    .where(eq(learningPlans.userId, userId))
+    .where(userPlanListWhere(userId))
     .$dynamic();
 
-  planQuery.orderBy(desc(learningPlans.createdAt));
-
-  if (options?.limit !== undefined) {
-    planQuery.limit(options.limit);
-  }
-
-  if (options?.offset !== undefined) {
-    planQuery.offset(options.offset);
-  }
+  applyPlanListOrderingAndPagination(
+    planQuery,
+    desc(learningPlans.createdAt),
+    options
+  );
 
   const planRows = await planQuery;
 

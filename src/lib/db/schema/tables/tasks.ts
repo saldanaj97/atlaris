@@ -25,6 +25,14 @@ import { users } from './users';
 
 // Modules, tasks, and supporting tables
 
+/** Shared column bundle for `modules` and `tasks` (order, titles, estimates). */
+const moduleContentColumns = {
+  order: integer('order').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  estimatedMinutes: integer('estimated_minutes').notNull(),
+};
+
 export const modules = pgTable(
   'modules',
   {
@@ -32,10 +40,7 @@ export const modules = pgTable(
     planId: uuid('plan_id')
       .notNull()
       .references(() => learningPlans.id, { onDelete: 'cascade' }),
-    order: integer('order').notNull(),
-    title: text('title').notNull(),
-    description: text('description'),
-    estimatedMinutes: integer('estimated_minutes').notNull(),
+    ...moduleContentColumns,
     ...timestampFields,
   },
   (table) => {
@@ -94,10 +99,7 @@ export const tasks = pgTable(
     moduleId: uuid('module_id')
       .notNull()
       .references(() => modules.id, { onDelete: 'cascade' }),
-    order: integer('order').notNull(),
-    title: text('title').notNull(),
-    description: text('description'),
-    estimatedMinutes: integer('estimated_minutes').notNull(),
+    ...moduleContentColumns,
     hasMicroExplanation: boolean('has_micro_explanation')
       .notNull()
       .default(false),
@@ -269,16 +271,21 @@ export const taskResources = pgTable(
   }
 ).enableRLS();
 
+/** id + taskId + userId for per-user rows scoped to a task (see integration sync tables). */
+export const taskUserScopedIds = {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id')
+    .notNull()
+    .references(() => tasks.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+};
+
 export const taskProgress = pgTable(
   'task_progress',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    taskId: uuid('task_id')
-      .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    ...taskUserScopedIds,
     status: progressStatus('status').notNull().default('not_started'),
     completedAt: timestamp('completed_at', { withTimezone: true }),
     updatedAt: timestamp('updated_at', { withTimezone: true })

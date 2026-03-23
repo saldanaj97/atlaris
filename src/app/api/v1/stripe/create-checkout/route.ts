@@ -1,12 +1,15 @@
 import Stripe from 'stripe';
 import { z } from 'zod';
+import {
+  isValidRedirectUrl,
+  resolveRedirectUrl,
+} from '@/app/api/v1/stripe/_shared/redirect';
 import { getStripe } from '@/features/billing/client';
 import { createCustomer } from '@/features/billing/subscriptions';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
-import { appEnv } from '@/lib/config/env';
 
 const createCheckoutBodySchema = z
   .object({
@@ -17,38 +20,6 @@ const createCheckoutBodySchema = z
     cancelUrl: z.string().optional(),
   })
   .strict();
-
-function isValidRedirectUrl(url: string | undefined): boolean {
-  if (!url) return true;
-
-  if (url.startsWith('/')) return true;
-
-  const baseUrl = appEnv.url;
-  try {
-    const parsed = new URL(url);
-    const base = new URL(baseUrl);
-    return parsed.origin === base.origin;
-  } catch {
-    return false;
-  }
-}
-
-function resolveRedirectUrl(
-  url: string | undefined,
-  defaultPath: string
-): string {
-  const baseUrl = appEnv.url;
-
-  if (!url) {
-    return `${baseUrl}${defaultPath}`;
-  }
-
-  if (url.startsWith('/')) {
-    return `${baseUrl}${url}`;
-  }
-
-  return url;
-}
 
 /**
  * Factory for the create-checkout POST handler. Accepts an optional Stripe

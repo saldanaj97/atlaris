@@ -18,10 +18,19 @@ import {
 } from '../policy-helpers';
 import { currentUserId } from './common';
 import { learningPlans } from './plans';
-import { modules, tasks } from './tasks';
+import { modules, tasks, taskUserScopedIds } from './tasks';
 import { users } from './users';
 
 // Integration-related tables
+
+const integrationCreatedUpdatedTimestamps = {
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+};
 
 /**
  * OAuth state tokens for CSRF protection during OAuth flows.
@@ -141,12 +150,7 @@ export const googleCalendarSyncState = pgTable(
     syncToken: text('sync_token'), // Google's incremental sync token
     calendarId: text('calendar_id').notNull().default('primary'),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    ...integrationCreatedUpdatedTimestamps,
   },
   (table) => {
     const userOwnsRecord = recordOwnedByCurrentUser(table.userId);
@@ -200,21 +204,10 @@ export const googleCalendarSyncState = pgTable(
 export const taskCalendarEvents = pgTable(
   'task_calendar_events',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    taskId: uuid('task_id')
-      .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    ...taskUserScopedIds,
     calendarEventId: text('calendar_event_id').notNull(),
     calendarId: text('calendar_id').notNull().default('primary'),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    ...integrationCreatedUpdatedTimestamps,
   },
   (table) => {
     const userAndTaskOwnership = userAndTaskOwnedByCurrentUser({
