@@ -4,7 +4,7 @@
 - [x] Run `pnpm vitest run --project integration tests/integration/db/rls-claim-transaction-stability.spec.ts`
 - [x] Run `npx tsc --noEmit` and `npx biome check` on changed files
 - [x] Update `docs/technical-debt.md` (lines 34–42) from test outcome + link to spec
-- [ ] Commit with Conventional Commits (`test:` / `docs:`)
+- [x] Commit with Conventional Commits (`test:` / `docs:`)
 
 ## Review
 
