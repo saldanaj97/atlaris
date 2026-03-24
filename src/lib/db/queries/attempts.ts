@@ -20,6 +20,7 @@ import {
   computeRetryAfterSeconds,
   selectUserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/helpers/attempts-rate-limit';
+import { setLearningPlanGenerating } from '@/lib/db/queries/helpers/plan-generation-status';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   prepareRlsTransactionContext,
@@ -32,7 +33,7 @@ import type {
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { generationAttempts } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import {
   getPlanGenerationWindowStart,
@@ -187,13 +188,7 @@ export async function reserveAttemptSlot(
       throw new Error('Failed to reserve generation attempt slot.');
     }
 
-    await tx
-      .update(learningPlans)
-      .set({
-        generationStatus: 'generating',
-        updatedAt: startedAt,
-      })
-      .where(eq(learningPlans.id, planId));
+    await setLearningPlanGenerating(tx, { planId, updatedAt: startedAt });
 
     return {
       reserved: true,

@@ -17,17 +17,19 @@ imports throughout worker and route code.
 This should only be refactored if a richer queue domain layer emerges. Until
 then, the wrapper stays as a narrow composition boundary.
 
-## Remaining `generationStatus = 'generating'` write in attempt reservation
+## ~~Remaining `generationStatus = 'generating'` write in attempt reservation~~ *(resolved)*
 
-This cleanup removed duplicate `ready`, `failed`, and `pending_retry` writes
-from attempt finalization so plan-success and plan-failure transitions are
-owned by lifecycle helpers. One direct `generationStatus = 'generating'` write
-still lives in `src/lib/db/queries/attempts.ts` during attempt reservation.
+Resolved by extracting `setLearningPlanGenerating()` and
+`PLAN_GENERATING_INSERT_DEFAULTS` into
+`src/lib/db/queries/helpers/plan-generation-status.ts`. Both
+`reserveAttemptSlot` (UPDATE on retry) and `atomicCheckAndInsertPlan` (INSERT
+on creation) now use the shared helper/constant, eliminating the inline drift
+risk while preserving the `lib/ → features/` dependency direction.
 
-That write is deferred because `lib/` is not allowed to import from
-`features/`, so moving it into `plan-operations.ts` would violate the current
-dependency direction. Revisit this when plan-state mutation helpers are moved
-to a shared lower-level module or the attempt reservation flow is reshaped.
+Success/failure transitions (`markPlanGenerationSuccess`,
+`markPlanGenerationFailure`) remain in `plan-operations.ts` by design — they
+touch billing-adjacent fields (`isQuotaEligible`, `finalizedAt`) and belong
+in the plans feature domain.
 
 ## RLS JWT claim re-application inside attempt transactions
 
