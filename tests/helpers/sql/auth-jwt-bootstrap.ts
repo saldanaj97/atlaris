@@ -7,6 +7,6 @@ export const AUTH_JWT_BOOTSTRAP_SQL = `
 CREATE SCHEMA IF NOT EXISTS auth;
 
 CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-LANGUAGE sql
+LANGUAGE sql STABLE
 AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
 `.trim();
