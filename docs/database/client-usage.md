@@ -75,10 +75,11 @@ describe('Plan creation', () => {
 });
 ```
 
-For RLS policy tests, use RLS clients and run:
+For RLS policy tests, use RLS clients and run (Docker required for Testcontainers):
 
 ```bash
-RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/
+pnpm test:security
+# or: pnpm vitest run --project security tests/security/
 ```
 
 ### Transactional Writes

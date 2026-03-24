@@ -20,6 +20,7 @@
     "test:changed": "./scripts/test-unit.sh --changed",
     "test:watch": "./scripts/test-unit.sh --watch",
     "test:integration": "./scripts/test-integration.sh tests/integration --changed",
+    "test:security": "./scripts/test-integration.sh tests/security",
     "test:all": "./scripts/full-test-suite.sh",
     "tsgo": "tsgo",
     "type-check": "tsgo --noEmit",

@@ -171,17 +171,17 @@ else
 fi
 
 # =============================================================================
-# Step 4: RLS Security Tests
+# Step 4: RLS Security Tests (Vitest security project + Testcontainers)
 # =============================================================================
 
-# log_step "Running RLS security tests..."
-# if NODE_ENV=test pnpm vitest run tests/security; then
-#   PASSED_SUITES+=("security/rls")
-#   log_info "RLS security tests passed"
-# else
-#   FAILED_SUITES+=("security/rls")
-#   log_error "RLS security tests failed"
-# fi
+log_step "Running RLS security tests..."
+if NODE_ENV=test ALLOW_DB_TRUNCATE=true pnpm vitest run --project security tests/security/; then
+  PASSED_SUITES+=("security/rls")
+  log_info "RLS security tests passed"
+else
+  FAILED_SUITES+=("security/rls")
+  log_error "RLS security tests failed"
+fi
 
 # =============================================================================
 # Step 5: E2E Tests (optional)

@@ -48,10 +48,10 @@ pnpm test:changed                      # Changed files
 ./scripts/test-unit.sh path/to/file    # Single unit test file
 ./scripts/test-integration.sh path     # Single integration file (Testcontainers)
 pnpm test:integration                  # Full integration suite
-RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/
+pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
 ```
 
-**Prerequisite for integration tests:** Docker must be running (Testcontainers spins up an ephemeral Postgres automatically).
+**Prerequisite for integration and security tests:** Docker must be running (Testcontainers spins up an ephemeral Postgres automatically).
 
 To skip Testcontainers and use an existing database (e.g. CI):
 

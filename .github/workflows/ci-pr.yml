@@ -610,9 +610,80 @@ jobs:
             psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
           fi
 
+  security-tests:
+    name: Security (RLS)
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Restore Vitest cache
+        uses: actions/cache/restore@v4
+        id: restore-vitest-cache
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
+      - name: Run RLS security tests
+        env:
+          NODE_ENV: 'test'
+          ALLOW_DB_TRUNCATE: 'true'
+        run: |
+          pnpm vitest run --project security tests/security/ \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results-security.json
+      - name: Generate test summary
+        if: always()
+        run: |
+          if [ -f test-results-security.json ]; then
+            echo "## Security (RLS) tests" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            TOTAL=$(jq -r '.numTotalTests // 0' test-results-security.json 2>/dev/null || echo "0")
+            PASSED=$(jq -r '.numPassedTests // 0' test-results-security.json 2>/dev/null || echo "0")
+            FAILED=$(jq -r '.numFailedTests // 0' test-results-security.json 2>/dev/null || echo "0")
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Save Vitest cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
+
   all-checks-pr:
     name: All Checks Passed (PR)
-    needs: [changes, lint-and-type-check, vulnerability-scan, build, unit-tests, integration-light]
+    needs: [changes, lint-and-type-check, vulnerability-scan, build, unit-tests, integration-light, security-tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -626,10 +697,11 @@ jobs:
             [build]="${{ needs.build.result }}"
             [unit-tests]="${{ needs['unit-tests'].result }}"
             [integration-light]="${{ needs['integration-light'].result }}"
+            [security-tests]="${{ needs['security-tests'].result }}"
           )
 
           failed=0
-          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light; do
+          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light security-tests; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)

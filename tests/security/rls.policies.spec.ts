@@ -36,12 +36,6 @@ import {
   getServiceRoleDb,
 } from '../helpers/rls';
 
-function shouldRunRlsTests(): boolean {
-  return process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
-}
-
-// Run RLS tests only when explicitly enabled (CI or RUN_RLS_TESTS=1)
-const runRls = shouldRunRlsTests();
 const policyRowSchema = z.object({
   tablename: z.string(),
   policyname: z.string(),
@@ -81,7 +75,7 @@ async function expectRlsViolation(operation: () => Promise<unknown>) {
   }
 }
 
-describe.skipIf(!runRls)('RLS Policy Verification', () => {
+describe('RLS Policy Verification', () => {
   beforeEach(async () => {
     await cleanupTrackedRlsClients();
     await truncateAll();
