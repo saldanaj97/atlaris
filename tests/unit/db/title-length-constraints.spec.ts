@@ -2,10 +2,10 @@
  * Validates that the title-length CHECK constraints in the migration match
  * the canonical constants, so DB and application limits stay in sync.
  */
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   MAX_MODULE_TITLE_LENGTH,
@@ -15,24 +15,73 @@ import {
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 
-const migrationPath = resolve(
-  TEST_DIR,
-  '../../../src/lib/db/migrations/0020_burly_jackal.sql'
-);
-const migrationContents = readFileSync(migrationPath, 'utf8');
+function findMigrationSqlForTitleConstraints(): string {
+  const migrationsDir = join(TEST_DIR, '../../../src/lib/db/migrations');
+  let files: string[];
+  try {
+    files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql'));
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Could not read migrations directory: ${migrationsDir}. ${message}`
+    );
+  }
 
-function extractCheckLimit(
-  constraintName: string,
-  text: string
-): number | null {
-  const regex = new RegExp(
-    `"${constraintName}"\\s+CHECK\\s*\\(\\s*char_length\\([^)]+\\)\\s*<=\\s*(\\d+)\\s*\\)`
+  const matches: string[] = [];
+  for (const file of files) {
+    const fullPath = join(migrationsDir, file);
+    const content = readFileSync(fullPath, 'utf8');
+    if (
+      content.includes('module_title_length') &&
+      content.includes('task_title_length') &&
+      content.includes('resource_title_length')
+    ) {
+      matches.push(content);
+    }
+  }
+
+  if (matches.length === 0) {
+    throw new Error(
+      `No migration in ${migrationsDir} contains module_title_length, task_title_length, and resource_title_length CHECK definitions.`
+    );
+  }
+
+  if (matches.length > 1) {
+    throw new Error(
+      `Multiple migrations contain the three title-length constraints; narrow discovery (found ${String(matches.length)} files).`
+    );
+  }
+
+  return matches[0];
+}
+
+/**
+ * Extracts the numeric `<= N` limit from a CHECK involving char_length/length(title).
+ * Throws with constraint name and a SQL sample if no match.
+ */
+function extractCheckLimit(constraintName: string, sqlText: string): number {
+  const escaped = constraintName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(
+    `(?:CONSTRAINT\\s+)?(?:"${escaped}"|${escaped})\\s+CHECK\\s*\\(\\s*(?:char_length|length)\\s*\\([^)]+\\)\\s*<=\\s*(\\d+)`,
+    'is'
   );
-  const match = text.match(regex);
-  return match ? Number(match[1]) : null;
+  const match = sqlText.match(re);
+  if (!match) {
+    const sample = sqlText.slice(0, 600);
+    throw new Error(
+      `Could not parse CHECK limit for constraint "${constraintName}". Sample SQL:\n${sample}`
+    );
+  }
+  return Number(match[1]);
 }
 
 describe('title length constraint sync', () => {
+  let migrationContents: string;
+
+  beforeAll(() => {
+    migrationContents = findMigrationSqlForTitleConstraints();
+  });
+
   it('module_title_length migration matches MAX_MODULE_TITLE_LENGTH', () => {
     const limit = extractCheckLimit('module_title_length', migrationContents);
     expect(limit).toBe(MAX_MODULE_TITLE_LENGTH);

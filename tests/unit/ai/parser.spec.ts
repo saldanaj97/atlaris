@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ParserError, parseGenerationStream } from '@/features/ai/parser';
 import type { ParserCallbacks } from '@/features/ai/types/parser.types';
+import { MAX_TITLE_LENGTH } from '@/lib/db/schema/constants';
 import { createDeferredPromise } from '../../helpers/deferred-promise';
 
 // Helper to create async iterable from string chunks
@@ -388,8 +389,64 @@ describe('AI Parser', () => {
       expect(result.modules[0].tasks[0].description).toBe('Task description');
     });
 
+    it('should not truncate module and task titles at MAX_TITLE_LENGTH - 1', async () => {
+      const title = 'B'.repeat(MAX_TITLE_LENGTH - 1);
+      const validJson = JSON.stringify({
+        modules: [
+          {
+            title,
+            estimatedMinutes: 60,
+            tasks: [{ title, estimatedMinutes: 30 }],
+          },
+        ],
+      });
+
+      const result = await parseGenerationStream(createStream([validJson]));
+      expect(result.modules[0].title).toBe(title);
+      expect(result.modules[0].tasks[0].title).toBe(title);
+    });
+
+    it('should not truncate module and task titles at exactly MAX_TITLE_LENGTH', async () => {
+      const title = 'C'.repeat(MAX_TITLE_LENGTH);
+      const validJson = JSON.stringify({
+        modules: [
+          {
+            title,
+            estimatedMinutes: 60,
+            tasks: [{ title, estimatedMinutes: 30 }],
+          },
+        ],
+      });
+
+      const result = await parseGenerationStream(createStream([validJson]));
+      expect(result.modules[0].title).toBe(title);
+      expect(result.modules[0].tasks[0].title).toBe(title);
+    });
+
+    it('should truncate module and task titles one character over MAX_TITLE_LENGTH', async () => {
+      const original = 'D'.repeat(MAX_TITLE_LENGTH + 1);
+      const validJson = JSON.stringify({
+        modules: [
+          {
+            title: original,
+            estimatedMinutes: 60,
+            tasks: [{ title: original, estimatedMinutes: 30 }],
+          },
+        ],
+      });
+
+      const result = await parseGenerationStream(createStream([validJson]));
+      expect(result.modules[0].title).toHaveLength(MAX_TITLE_LENGTH);
+      expect(result.modules[0].tasks[0].title).toHaveLength(MAX_TITLE_LENGTH);
+      expect(result.modules[0].title).toBe(original.slice(0, MAX_TITLE_LENGTH));
+      expect(result.modules[0].tasks[0].title).toBe(
+        original.slice(0, MAX_TITLE_LENGTH)
+      );
+    });
+
     it('should truncate module and task titles exceeding the max length', async () => {
-      const longTitle = 'A'.repeat(600);
+      const longTitle = 'A'.repeat(MAX_TITLE_LENGTH + 100);
+      const expected = longTitle.slice(0, MAX_TITLE_LENGTH);
       const validJson = JSON.stringify({
         modules: [
           {
@@ -408,8 +465,10 @@ describe('AI Parser', () => {
       const stream = createStream([validJson]);
       const result = await parseGenerationStream(stream);
 
-      expect(result.modules[0].title).toHaveLength(500);
-      expect(result.modules[0].tasks[0].title).toHaveLength(500);
+      expect(result.modules[0].title).toHaveLength(MAX_TITLE_LENGTH);
+      expect(result.modules[0].tasks[0].title).toHaveLength(MAX_TITLE_LENGTH);
+      expect(result.modules[0].title).toBe(expected);
+      expect(result.modules[0].tasks[0].title).toBe(expected);
     });
 
     it('should handle alternative field names (summary for description)', async () => {

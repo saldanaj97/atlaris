@@ -58,6 +58,35 @@ function ensureNumber(value: unknown, path: string): number {
   throw new ParserError('validation', `${path} must be a finite number.`);
 }
 
+/**
+ * Validates `value` as a non-empty string, truncates to `maxLength`, and
+ * guarantees the result is non-empty. Misconfigured `maxLength` (non-positive)
+ * or impossible truncation surface as configuration errors referencing
+ * `limitConstantName`.
+ */
+function truncateValidatedString(
+  value: unknown,
+  maxLength: number,
+  path: string,
+  limitConstantName: string
+): string {
+  if (!Number.isInteger(maxLength) || maxLength <= 0) {
+    throw new ParserError(
+      'validation',
+      `Invalid configuration: ${limitConstantName} must be a positive integer (got ${String(maxLength)}).`
+    );
+  }
+  const trimmed = ensureString(value, path);
+  const truncated = trimmed.slice(0, maxLength);
+  if (truncated.length === 0) {
+    throw new ParserError(
+      'validation',
+      `After truncation, ${path} would be empty with ${limitConstantName}=${maxLength}. Fix misconfiguration.`
+    );
+  }
+  return truncated;
+}
+
 function toParsedTask(
   task: unknown,
   moduleIndex: number,
@@ -71,10 +100,12 @@ function toParsedTask(
   }
 
   const record = task as Record<string, unknown>;
-  const title = ensureString(
+  const title = truncateValidatedString(
     record.title ?? record.task,
-    `Task ${taskIndex + 1} title`
-  ).slice(0, MAX_TASK_TITLE_LENGTH);
+    MAX_TASK_TITLE_LENGTH,
+    `Task ${taskIndex + 1} title`,
+    'MAX_TASK_TITLE_LENGTH'
+  );
   const description = ensureOptionalString(
     record.description ?? record.summary,
     `Task ${taskIndex + 1} in module ${moduleIndex + 1} description`
@@ -96,10 +127,12 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
   }
 
   const record = module as Record<string, unknown>;
-  const title = ensureString(
+  const title = truncateValidatedString(
     record.title,
-    `Module ${moduleIndex + 1} title`
-  ).slice(0, MAX_MODULE_TITLE_LENGTH);
+    MAX_MODULE_TITLE_LENGTH,
+    `Module ${moduleIndex + 1} title`,
+    'MAX_MODULE_TITLE_LENGTH'
+  );
   const description = ensureOptionalString(
     record.description ?? record.summary,
     `Module ${moduleIndex + 1} description`
