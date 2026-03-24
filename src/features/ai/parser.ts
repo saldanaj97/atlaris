@@ -78,12 +78,8 @@ function truncateValidatedString(
   }
   const trimmed = ensureString(value, path);
   const truncated = trimmed.slice(0, maxLength);
-  if (truncated.length === 0) {
-    throw new ParserError(
-      'validation',
-      `After truncation, ${path} would be empty with ${limitConstantName}=${maxLength}. Fix misconfiguration.`
-    );
-  }
+  // Invariant: trimmed is non-empty (ensureString) and maxLength > 0 (validated above),
+  // so truncated is guaranteed non-empty.
   return truncated;
 }
 
@@ -103,7 +99,7 @@ function toParsedTask(
   const title = truncateValidatedString(
     record.title ?? record.task,
     MAX_TASK_TITLE_LENGTH,
-    `Task ${taskIndex + 1} title`,
+    `Task ${taskIndex + 1} in module ${moduleIndex + 1} title`,
     'MAX_TASK_TITLE_LENGTH'
   );
   const description = ensureOptionalString(
