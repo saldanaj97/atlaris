@@ -34,12 +34,21 @@ in the plans feature domain.
 ## RLS JWT claim re-application inside attempt transactions
 
 Attempt reservation and finalization re-read and re-apply
-`request.jwt.claims` inside transactions. This is a deliberate workaround for
-transaction-scoped claim drift observed in some environments.
+`request.jwt.claims` inside transactions (transaction-local `set_config`).
 
-The workaround should stay until the DB/runtime layer guarantees stable claims
-through nested transaction scopes. Removing it prematurely risks subtle
-cross-tenant authorization failures.
+Integration coverage in
+[`tests/integration/db/rls-claim-transaction-stability.spec.ts`](../tests/integration/db/rls-claim-transaction-stability.spec.ts)
+shows that session-scoped `request.jwt.claims` (set with `set_config(..., false)` in
+`createAuthenticatedRlsClient`) **remains visible** inside `dbClient.transaction()`,
+including with `pg_advisory_xact_lock`, RLS `SELECT`s, and nested transactions
+(savepoints), **for Testcontainers Postgres** used in CI/local integration runs.
+
+Neon serverless or other poolers are not covered by that test; keep the
+re-apply pattern until production behavior is verified or explicitly safe.
+
+**Follow-up:** remove the ceremony (`prepareRlsTransactionContext` /
+`reapplyJwtClaimsInTransaction` at call sites) once Neon/runtime parity is
+confirmed, or keep it if any environment still shows drift.
 
 ## ~~Missing DB-level task title hardening~~ *(resolved)*
 
