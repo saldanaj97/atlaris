@@ -4,6 +4,7 @@ import {
   PLAN_GENERATING_INSERT_DEFAULTS,
   setLearningPlanGenerating,
 } from '@/lib/db/queries/helpers/plan-generation-status';
+import { learningPlans } from '@/lib/db/schema';
 
 describe('plan-generation-status helpers', () => {
   describe('PLAN_GENERATING_INSERT_DEFAULTS', () => {
@@ -43,7 +44,11 @@ describe('plan-generation-status helpers', () => {
         return { where: mockWhere };
       };
 
-      const mockUpdate = () => ({ set: mockSet });
+      let capturedTable: unknown;
+      const mockUpdate = (table: unknown) => {
+        capturedTable = table;
+        return { set: mockSet };
+      };
       const tx = { update: mockUpdate } as unknown as Parameters<
         typeof setLearningPlanGenerating
       >[0];
@@ -58,6 +63,10 @@ describe('plan-generation-status helpers', () => {
       expect(capturedSet?.generationStatus).toBe('generating');
       expect(capturedSet?.updatedAt).toBe(updatedAt);
       expect(capturedWhere).toBeDefined();
+      const { inspect } = await import('node:util');
+      const whereStr = inspect(capturedWhere, { depth: null });
+      expect(whereStr).toContain(planId);
+      expect(capturedTable).toBe(learningPlans);
     });
   });
 });

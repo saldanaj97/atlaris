@@ -27,20 +27,20 @@ type PlanFixture = {
   authUserId: string;
 };
 
-function buildPlanGenerationPayload(
+function buildPlanRegenerationPayload(
   plan: InsertedPlan,
-  overrides: Partial<PlanRegenerationJobData> = {}
+  data: Partial<PlanRegenerationJobData> = {}
 ): PlanRegenerationJobData {
   return {
     planId: plan.id,
     overrides: {
-      topic: overrides.overrides?.topic ?? plan.topic,
-      notes: overrides.overrides?.notes ?? null,
-      skillLevel: overrides.overrides?.skillLevel ?? plan.skillLevel,
-      weeklyHours: overrides.overrides?.weeklyHours ?? plan.weeklyHours,
-      learningStyle: overrides.overrides?.learningStyle ?? plan.learningStyle,
-      startDate: overrides.overrides?.startDate ?? null,
-      deadlineDate: overrides.overrides?.deadlineDate ?? null,
+      topic: data.overrides?.topic ?? plan.topic,
+      notes: data.overrides?.notes ?? null,
+      skillLevel: data.overrides?.skillLevel ?? plan.skillLevel,
+      weeklyHours: data.overrides?.weeklyHours ?? plan.weeklyHours,
+      learningStyle: data.overrides?.learningStyle ?? plan.learningStyle,
+      startDate: data.overrides?.startDate ?? null,
+      deadlineDate: data.overrides?.deadlineDate ?? null,
     },
   };
 }
@@ -73,7 +73,7 @@ async function createPlanFixture(key: string): Promise<PlanFixture> {
 describe('Job queue service', () => {
   it('enqueues a job with expected defaults', async () => {
     const { plan, userId } = await createPlanFixture('defaults');
-    const payload = buildPlanGenerationPayload(plan, {
+    const payload = buildPlanRegenerationPayload(plan, {
       overrides: {
         notes: 'Ensure defaults',
       },
@@ -104,13 +104,13 @@ describe('Job queue service', () => {
         JOB_TYPE,
         plan.id,
         userId,
-        buildPlanGenerationPayload(plan, { overrides: { topic: 'job-1' } })
+        buildPlanRegenerationPayload(plan, { overrides: { topic: 'job-1' } })
       ),
       enqueueJob(
         JOB_TYPE,
         plan.id,
         userId,
-        buildPlanGenerationPayload(plan, { overrides: { topic: 'job-2' } })
+        buildPlanRegenerationPayload(plan, { overrides: { topic: 'job-2' } })
       ),
     ]);
 
@@ -149,28 +149,34 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { overrides: { topic: 'low-order' } }),
+      buildPlanRegenerationPayload(plan, { overrides: { topic: 'low-order' } }),
       0
     );
     const midA = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { overrides: { topic: 'mid-a-order' } }),
+      buildPlanRegenerationPayload(plan, {
+        overrides: { topic: 'mid-a-order' },
+      }),
       5
     );
     const midB = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { overrides: { topic: 'mid-b-order' } }),
+      buildPlanRegenerationPayload(plan, {
+        overrides: { topic: 'mid-b-order' },
+      }),
       5
     );
     const high = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { overrides: { topic: 'high-order' } }),
+      buildPlanRegenerationPayload(plan, {
+        overrides: { topic: 'high-order' },
+      }),
       10
     );
 
@@ -262,7 +268,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       freePlan[0].id,
       freeUser.userId,
-      buildPlanGenerationPayload(freePlan[0], {
+      buildPlanRegenerationPayload(freePlan[0], {
         overrides: {
           topic: freeTopic,
           notes: null,
@@ -280,7 +286,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       paidPlan[0].id,
       paidUser.userId,
-      buildPlanGenerationPayload(paidPlan[0], {
+      buildPlanRegenerationPayload(paidPlan[0], {
         overrides: {
           topic: paidTopic,
           notes: null,
@@ -313,7 +319,9 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { overrides: { topic: 'retry-topic' } })
+      buildPlanRegenerationPayload(plan, {
+        overrides: { topic: 'retry-topic' },
+      })
     );
 
     await getNextJob([JOB_TYPE]);
@@ -342,7 +350,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, {
+      buildPlanRegenerationPayload(plan, {
         overrides: { topic: 'complete-topic' },
       })
     );
@@ -378,19 +386,19 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { overrides: { topic: 'window-1' } })
+      buildPlanRegenerationPayload(plan, { overrides: { topic: 'window-1' } })
     );
     const jobOlder = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { overrides: { topic: 'window-2' } })
+      buildPlanRegenerationPayload(plan, { overrides: { topic: 'window-2' } })
     );
     const jobOldest = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { overrides: { topic: 'window-3' } })
+      buildPlanRegenerationPayload(plan, { overrides: { topic: 'window-3' } })
     );
 
     const now = new Date();

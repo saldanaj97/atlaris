@@ -28,6 +28,7 @@ function findMigrationSqlForTitleConstraints(): string {
   }
 
   const matches: string[] = [];
+  const matchedFiles: string[] = [];
   for (const file of files) {
     const fullPath = join(migrationsDir, file);
     const content = readFileSync(fullPath, 'utf8');
@@ -37,18 +38,19 @@ function findMigrationSqlForTitleConstraints(): string {
       content.includes('resource_title_length')
     ) {
       matches.push(content);
+      matchedFiles.push(file);
     }
   }
 
   if (matches.length === 0) {
     throw new Error(
-      `No migration in ${migrationsDir} contains module_title_length, task_title_length, and resource_title_length CHECK definitions.`
+      `No migration in ${migrationsDir} contains module_title_length, task_title_length, and resource_title_length CHECK definitions. Scanned ${String(files.length)} files.`
     );
   }
 
   if (matches.length > 1) {
     throw new Error(
-      `Multiple migrations contain the three title-length constraints; narrow discovery (found ${String(matches.length)} files).`
+      `Multiple migrations contain the three title-length constraints: ${matchedFiles.join(', ')} (found ${String(matches.length)} files).`
     );
   }
 

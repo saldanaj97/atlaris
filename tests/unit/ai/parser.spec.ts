@@ -471,6 +471,36 @@ describe('AI Parser', () => {
       expect(result.modules[0].tasks[0].title).toBe(expected);
     });
 
+    it('should trim whitespace before truncating titles', async () => {
+      const padding = '  ';
+      const core = 'E'.repeat(MAX_TITLE_LENGTH + 10);
+      const paddedTitle = padding + core + padding;
+      const validJson = JSON.stringify({
+        modules: [
+          {
+            title: paddedTitle,
+            estimatedMinutes: 60,
+            tasks: [{ title: paddedTitle, estimatedMinutes: 30 }],
+          },
+        ],
+      });
+
+      const result = await parseGenerationStream(createStream([validJson]));
+
+      expect(result.modules[0].title).not.toMatch(/^\s/);
+      expect(result.modules[0].title).not.toMatch(/\s$/);
+      expect(result.modules[0].tasks[0].title).not.toMatch(/^\s/);
+      expect(result.modules[0].tasks[0].title).not.toMatch(/\s$/);
+
+      expect(result.modules[0].title).toHaveLength(MAX_TITLE_LENGTH);
+      expect(result.modules[0].tasks[0].title).toHaveLength(MAX_TITLE_LENGTH);
+
+      expect(result.modules[0].title).toBe(core.slice(0, MAX_TITLE_LENGTH));
+      expect(result.modules[0].tasks[0].title).toBe(
+        core.slice(0, MAX_TITLE_LENGTH)
+      );
+    });
+
     it('should handle alternative field names (summary for description)', async () => {
       const validJson = JSON.stringify({
         modules: [
