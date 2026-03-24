@@ -388,6 +388,30 @@ describe('AI Parser', () => {
       expect(result.modules[0].tasks[0].description).toBe('Task description');
     });
 
+    it('should truncate module and task titles exceeding the max length', async () => {
+      const longTitle = 'A'.repeat(600);
+      const validJson = JSON.stringify({
+        modules: [
+          {
+            title: longTitle,
+            estimatedMinutes: 60,
+            tasks: [
+              {
+                title: longTitle,
+                estimatedMinutes: 30,
+              },
+            ],
+          },
+        ],
+      });
+
+      const stream = createStream([validJson]);
+      const result = await parseGenerationStream(stream);
+
+      expect(result.modules[0].title).toHaveLength(500);
+      expect(result.modules[0].tasks[0].title).toHaveLength(500);
+    });
+
     it('should handle alternative field names (summary for description)', async () => {
       const validJson = JSON.stringify({
         modules: [

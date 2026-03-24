@@ -4,7 +4,6 @@ import {
   MAX_TASKS_PER_MODULE,
 } from '@/features/ai/constants';
 import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
-
 import type {
   ParsedGeneration,
   ParsedModule,
@@ -12,6 +11,10 @@ import type {
   ParserCallbacks,
   ParserErrorKind,
 } from '@/features/ai/types/parser.types';
+import {
+  MAX_MODULE_TITLE_LENGTH,
+  MAX_TASK_TITLE_LENGTH,
+} from '@/lib/db/schema/constants';
 
 export class ParserError extends Error {
   constructor(
@@ -71,7 +74,7 @@ function toParsedTask(
   const title = ensureString(
     record.title ?? record.task,
     `Task ${taskIndex + 1} title`
-  );
+  ).slice(0, MAX_TASK_TITLE_LENGTH);
   const description = ensureOptionalString(
     record.description ?? record.summary,
     `Task ${taskIndex + 1} in module ${moduleIndex + 1} description`
@@ -93,7 +96,10 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
   }
 
   const record = module as Record<string, unknown>;
-  const title = ensureString(record.title, `Module ${moduleIndex + 1} title`);
+  const title = ensureString(
+    record.title,
+    `Module ${moduleIndex + 1} title`
+  ).slice(0, MAX_MODULE_TITLE_LENGTH);
   const description = ensureOptionalString(
     record.description ?? record.summary,
     `Module ${moduleIndex + 1} description`

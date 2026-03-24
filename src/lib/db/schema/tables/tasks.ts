@@ -54,6 +54,7 @@ export const modules = pgTable(
     return [
       check('order_check', sql`${table.order} >= 1`),
       check('estimated_minutes_check', sql`${table.estimatedMinutes} >= 0`),
+      check('module_title_length', sql`char_length(${table.title}) <= 500`),
       unique('modules_plan_id_order_unique').on(table.planId, table.order),
       index('idx_modules_plan_id').on(table.planId),
       index('idx_modules_plan_id_order').on(table.planId, table.order),
@@ -124,6 +125,7 @@ export const tasks = pgTable(
     return [
       check('order_check', sql`${table.order} >= 1`),
       check('estimated_minutes_check', sql`${table.estimatedMinutes} >= 0`),
+      check('task_title_length', sql`char_length(${table.title}) <= 500`),
       unique('tasks_module_id_order_unique').on(table.moduleId, table.order),
       index('idx_tasks_module_id').on(table.moduleId),
       index('idx_tasks_module_id_order').on(table.moduleId, table.order),
@@ -178,9 +180,6 @@ export const resources = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     type: resourceType('type').notNull(),
-    // TODO: [RESOURCE-HARDENING] In a future migration, add DB-level title length
-    // constraint (e.g., char_length(title) <= MAX_RESOURCE_TITLE_LENGTH from
-    // @/lib/db/schema/constants) and add updatedAt for staleness tracking.
     title: text('title').notNull(),
     url: text('url').notNull().unique(),
     domain: text('domain'),
@@ -196,6 +195,7 @@ export const resources = pgTable(
   (table) => [
     check('duration_minutes_check', sql`${table.durationMinutes} >= 0`),
     check('cost_cents_check', sql`${table.costCents} >= 0`),
+    check('resource_title_length', sql`char_length(${table.title}) <= 500`),
     index('idx_resources_type').on(table.type),
 
     // RLS Policies
