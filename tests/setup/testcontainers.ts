@@ -25,6 +25,8 @@ import postgres from 'postgres';
 
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '@/lib/db/privileges/users-authenticated-update-columns';
 
+import { AUTH_JWT_BOOTSTRAP_SQL } from '../helpers/sql/auth-jwt-bootstrap';
+
 let container: StartedPostgreSqlContainer | null = null;
 const testDbPassword = randomUUID();
 
@@ -45,7 +47,7 @@ async function bootstrapDatabase(connectionUrl: string): Promise<void> {
     // Extensions
     await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
 
-    // RLS roles (union of CI and local expectations)
+    // Static role DDL only (no dynamic identifiers).
     await sql.unsafe(`
       DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       DO $$ BEGIN CREATE ROLE anonymous NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -54,19 +56,11 @@ async function bootstrapDatabase(connectionUrl: string): Promise<void> {
       DO $$ BEGIN CREATE ROLE neondb_owner NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     `);
 
-    // Auth schema + JWT helper used by RLS policies
     await sql`CREATE SCHEMA IF NOT EXISTS auth`;
-    await sql.unsafe(`
-      CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-        LANGUAGE sql
-        AS $fn$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $fn$;
-    `);
+    await sql.unsafe(AUTH_JWT_BOOTSTRAP_SQL);
 
-    // Grant schema access to RLS roles
-    await sql.unsafe(`
-      GRANT USAGE ON SCHEMA public TO authenticated, anonymous;
-      GRANT USAGE ON SCHEMA auth TO authenticated, anonymous;
-    `);
+    await sql`GRANT USAGE ON SCHEMA public TO authenticated, anonymous`;
+    await sql`GRANT USAGE ON SCHEMA auth TO authenticated, anonymous`;
   } finally {
     await sql.end();
   }
@@ -98,15 +92,11 @@ async function grantRlsPermissions(connectionUrl: string): Promise<void> {
   const sql = postgres(connectionUrl, { max: 1 });
 
   try {
-    // Table permissions for authenticated role
-    await sql.unsafe(`
-      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
-      GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
-      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous;
-    `);
+    await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated`;
+    await sql`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous`;
+    await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous`;
 
-    // SYNC WITH: src/lib/db/migrations/0018_harden_users_update_columns.sql
-    // and src/lib/db/privileges/users-authenticated-update-columns.ts
+    // Column identifiers come only from USERS_AUTHENTICATED_UPDATE_COLUMNS (canonical allowlist).
     await sql.unsafe(`
       REVOKE UPDATE ON "users" FROM authenticated;
       GRANT UPDATE (${USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "users" TO authenticated;
@@ -132,18 +122,20 @@ async function grantRlsPermissions(connectionUrl: string): Promise<void> {
       );
     }
 
-    // Default privileges for future tables
-    await sql.unsafe(`
+    await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated
+    `;
+    await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT SELECT ON TABLES TO anonymous;
+        GRANT SELECT ON TABLES TO anonymous
+    `;
+    await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anonymous;
-    `);
+        GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anonymous
+    `;
 
-    // Ensure the default superuser bypasses RLS
-    await sql.unsafe(`ALTER ROLE postgres BYPASSRLS`);
+    await sql`ALTER ROLE postgres BYPASSRLS`;
   } finally {
     await sql.end();
   }

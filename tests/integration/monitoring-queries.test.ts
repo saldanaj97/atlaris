@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { JOB_TYPES } from '@/features/jobs/types';
 import {
   cleanupOldJobs,
@@ -10,7 +10,6 @@ import { db } from '@/lib/db/service-role';
 import { ensureUser } from '../helpers/db';
 
 describe('Monitoring Queries', () => {
-  beforeEach(async () => {});
   describe('getJobStats', () => {
     it('should return correct counts and statistics for jobs', async () => {
       // T060: Monitoring queries test

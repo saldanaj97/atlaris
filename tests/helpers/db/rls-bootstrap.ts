@@ -3,6 +3,8 @@ import { sql } from 'drizzle-orm';
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '@/lib/db/privileges/users-authenticated-update-columns';
 import { db } from '@/lib/db/service-role';
 
+import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
+
 /**
  * Ensure RLS roles exist and have the necessary permissions to query tables.
  * This mirrors the setup in CI workflows (.github/workflows/ci-pr.yml).
@@ -33,12 +35,7 @@ export async function ensureRlsRolesAndPermissions() {
     CREATE SCHEMA IF NOT EXISTS auth;
   `);
 
-  // Create auth.jwt() function for RLS policies
-  await db.execute(sql`
-    CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-    LANGUAGE sql
-    AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
-  `);
+  await db.execute(sql.raw(AUTH_JWT_BOOTSTRAP_SQL)); // see tests/helpers/sql/auth-jwt-bootstrap.ts
 
   // Grant schema access to RLS roles
   await db.execute(sql`

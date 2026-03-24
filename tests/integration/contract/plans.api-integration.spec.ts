@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { POST } from '@/app/api/v1/plans/route';
@@ -34,8 +34,6 @@ async function createStatusRequest(planId: string) {
 describe('Phase 4: API Integration', () => {
   const authUserId = buildTestAuthUserId('phase4-user');
   const authEmail = buildTestEmail(authUserId);
-
-  beforeEach(async () => {});
 
   describe('T040: Plan creation creates plan record', () => {
     it('POST /api/v1/plans returns 201 with status generating and creates plan record', async () => {

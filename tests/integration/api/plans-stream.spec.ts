@@ -1,13 +1,5 @@
 import { eq } from 'drizzle-orm';
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
 import { parsePersistedPdfContext } from '@/features/pdf/context';
@@ -56,8 +48,6 @@ afterAll(() => {
 });
 
 describe('POST /api/v1/plans/stream', () => {
-  beforeEach(async () => {});
-
   it('streams generation and persists plan data', async () => {
     const authUserId = buildTestAuthUserId('stream-user');
     await ensureUser({

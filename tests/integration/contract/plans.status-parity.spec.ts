@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { GET as GET_PLAN_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_PLAN_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { learningPlans, modules } from '@/lib/db/schema';
@@ -49,8 +49,6 @@ async function createPlanFixture(
 }
 
 describe('Plan status parity contract', () => {
-  beforeEach(async () => {});
-
   it('returns matching status between detail and status endpoints', async () => {
     const authUserId = buildTestAuthUserId('status_parity');
     setTestUser(authUserId);

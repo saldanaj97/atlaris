@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { generationAttempts } from '@/lib/db/schema';
@@ -18,8 +18,6 @@ import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
  */
 
 describe('RLS attempt insertion', () => {
-  beforeEach(async () => {});
-
   it('blocks attempt insertion for non-owner user', async () => {
     const ownerAuthUserId = buildTestAuthUserId('rls-insert-owner');
     const attackerAuthUserId = buildTestAuthUserId('rls-insert-attacker');

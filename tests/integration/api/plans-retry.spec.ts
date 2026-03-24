@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createRetryHandler,
   POST,
@@ -59,8 +59,6 @@ async function withRunGenerationAttemptSpy<T>(
 }
 
 describe('POST /api/v1/plans/:planId/retry', () => {
-  beforeEach(async () => {});
-
   it('applies durable generation_attempts rate limit before retry starts', async () => {
     const authUserId = 'auth_retry_rate_limit';
     setTestUser(authUserId);

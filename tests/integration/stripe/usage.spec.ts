@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ensureUser } from '@/../tests/helpers/db';
 import {
   getUsageSummary,
@@ -10,8 +10,6 @@ import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 describe('Usage Tracking', () => {
-  beforeEach(async () => {});
-
   describe('checkPlanLimit', () => {
     it('allows free tier user with 0 plans to create up to 3 plans', async () => {
       const userId = await ensureUser({

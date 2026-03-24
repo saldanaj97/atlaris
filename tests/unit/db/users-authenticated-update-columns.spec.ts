@@ -1,3 +1,7 @@
+/**
+ * Intentional readFileSync: compares on-disk migration, workflows, and bootstrap
+ * sources to the canonical allowlist so privilege drift fails in CI.
+ */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,5 +55,47 @@ describe('authenticated users UPDATE allowlist sync', () => {
 
     expect(workflowMatches).toHaveLength(2);
     expect(workflowMatches).toEqual([expectedColumns, expectedColumns]);
+  });
+
+  it('keeps testcontainers using the canonical column list for users UPDATE', () => {
+    const contents = readFileSync(
+      resolve(TEST_DIR, '../../setup/testcontainers.ts'),
+      'utf8'
+    );
+
+    expect(contents).toMatch(
+      /GRANT UPDATE \(\$\{USERS_AUTHENTICATED_UPDATE_COLUMNS\.join\(', '\)\}\) ON "users" TO authenticated/
+    );
+  });
+
+  it('keeps rls-bootstrap using canonical privileges for users UPDATE', () => {
+    const contents = readFileSync(
+      resolve(TEST_DIR, '../../helpers/db/rls-bootstrap.ts'),
+      'utf8'
+    );
+
+    expect(contents).toContain('USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL');
+    expect(contents).toContain(
+      'sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)'
+    );
+  });
+
+  it('installs auth.jwt from the shared bootstrap in testcontainers and rls-bootstrap', () => {
+    const testcontainers = readFileSync(
+      resolve(TEST_DIR, '../../setup/testcontainers.ts'),
+      'utf8'
+    );
+    const rlsBootstrap = readFileSync(
+      resolve(TEST_DIR, '../../helpers/db/rls-bootstrap.ts'),
+      'utf8'
+    );
+
+    expect(testcontainers).toContain(
+      "from '../helpers/sql/auth-jwt-bootstrap'"
+    );
+    expect(testcontainers).toContain('AUTH_JWT_BOOTSTRAP_SQL');
+    expect(rlsBootstrap).toContain("from '../sql/auth-jwt-bootstrap'");
+    expect(rlsBootstrap).toContain('AUTH_JWT_BOOTSTRAP_SQL');
+    expect(rlsBootstrap).toContain('sql.raw(AUTH_JWT_BOOTSTRAP_SQL)');
   });
 });

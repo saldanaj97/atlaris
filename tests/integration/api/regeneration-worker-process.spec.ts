@@ -1,5 +1,5 @@
 import { desc, eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { POST as POST_DRAIN } from '@/app/api/internal/jobs/regeneration/process/route';
 import { POST as POST_REGENERATE } from '@/app/api/v1/plans/[planId]/regenerate/route';
@@ -41,8 +41,6 @@ async function createRegenerateRequest(planId: string, body: unknown) {
 }
 
 describe('POST /api/internal/jobs/regeneration/process', () => {
-  beforeEach(async () => {});
-
   afterEach(() => {
     const envKeys: Array<keyof typeof ORIGINAL_ENV> = [
       'AI_PROVIDER',

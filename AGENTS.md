@@ -2,7 +2,7 @@
 
 ## Overview
 
-The workflow is structured around key principles such as planning, subagent utilization, self-improvement, verification, and a balanced approach to elegance. Each section provides actionable steps to guide agents through the process of managing tasks, implementing changes, and learning from their experiences.
+**Agent memory:** Recurring preferences and durable workspace facts live in [`docs/agent-context/learnings.md`](docs/agent-context/learnings.md). Read that file whenever you read or apply this file.
 
 We will primarily be utilizing the `prds/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
 
@@ -22,17 +22,11 @@ We will primarily be utilizing the `prds/` directory to organize prds, plans, to
 
 ## 3. Self-Improvement Loop
 
-- After ANY correction from the user: update `prds/lessons.md` with the pattern
-- Write rules for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review lessons at session start for relevant project
-
-## 4. Verification Before Done
-
-- Never mark a task complete without proving it works
-- Diff behavior between main and your changes when relevant
-- Ask yourself: "Would a staff engineer approve this?"
-- Run tests, check logs, demonstrate correctness
+- After ANY correction from the user: update `docs/agent-context/learnings.md` with the pattern
+- Merge durable, reusable preferences and workspace facts into `docs/agent-context/learnings.md` when using the continual-learning skill or when the user asks
+- Write rules and learnings for yourself that prevent the same mistake
+- Ruthlessly iterate on these learnings until mistake rate drops
+- Review learnings at session start for relevant project
 
 ## 5. Demand Elegance (Balanced)
 
@@ -59,25 +53,32 @@ We will primarily be utilizing the `prds/` directory to organize prds, plans, to
 
 1. PRD Creation: For any non-trivial task or new feature implementation, first create a PRD in `prds/<prd-name>/todos.md` outlining the plan with checkable items using the `prd-to-issue` skill.
 
-2. Plan: Write plan to `prds/<prd-name>/todos.md` with checkable items using any of the following (in order of preference):
+2. Task Creation: Create a `prds/<prd-name>/todos.md` file with checkable items using any of the following (in order of preference):
    - `prds/<prd-name>/prd.md`file
    - `gh issue view <issue-number>`
    - `prd-to-issue` skill.
 
-   This plan should be detailed enough to guide implementation without ambiguity.
+   This task list should be detailed enough to guide the planning process without ambiguity, but not so detailed that it is overwhelming.
 
-3. Verify Plan: Check in before starting implementation
+3. Plan Creation: Create a plan file `prds/<prd-name>/plan.md` outlining the plan using the high level tasks from the `prds/<prd-name>/todos.md` file. This is where we want plenty of detail to reduce ambiguity and room for error by properly guiding the implementation.
+Make sure to use the general format for each step/phase/slice in a plan: 
+   1. Step X.0 — Fetch issue, confirm/add ACs
+   2. Steps X.1–X.N — Implementation
+   3. Validation Steps — Type check, lint, tests
+   4. Issue Verification & Closure — Walk through each AC with concrete verification commands, then close the issues and/or any subtasks.
 
-4. Track Progress: Mark items complete as you go. Do not wait until the end to update progress. Make sure:
+4. Verify Plan: Check in the plan before starting implementation to get feedback from the user and/or other agents.
+
+5. Track Progress: Mark items complete as you go. Do not wait until the end to update progress. Make sure:
    - If you deviate from the original plan, update the the main PRD file and the todos with the new plan and add a note about why you deviated to for future reference.
    - If you get stuck or skip a task, update the todos with where you got stuck and what you tried so far. This will help others understand the context if they need to step in to help.
    - Mark the issue as done or complete within github as well when you finish the task to keep everything in sync and up to date.
 
-5. Explain Changes: High-level summary at each step
+6. Explain Changes: High-level summary at each step
 
-6. Document Results: Add review section to the relevant `prds/<prd-name>/todos.md`
+7. Document Results: Add review section to the relevant `prds/<prd-name>/todos.md`
 
-7. Capture Lessons: Update `prds/lessons.md` after corrections
+8. Capture Learnings: Update `docs/agent-context/learnings.md` if corrections or learnings are discovered.
 
 # Core Principles
 
@@ -88,20 +89,3 @@ We will primarily be utilizing the `prds/` directory to organize prds, plans, to
 - Verification: Prove correctness before marking done. Tests, diffs, logs, demos.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
 - Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
-
-## Learned User Preferences
-
-- When implementing from an attached PRD plan, do not edit the plan file; track work in `prds/<prd-name>/todos.md` and existing todo items instead.
-- When a plan specifies a commit order or split (e.g. migration vs tests), match that order in git commits.
-- If the user says not to push yet, commit locally only and do not push or assume remote updates.
-- When asked to run tests, prefer scoped commands (e.g. `pnpm test:changed` or a single spec file); do not run the full integration or full suite if the user asks to limit scope.
-- Before changing code for review-bot or external findings, verify each item against the current tree so fixes stay accurate and minimal.
-
-## Learned Workspace Facts
-
-- PostgreSQL RLS controls which rows a role can see or change; it does not restrict which columns may be updated. Column-level writes use `GRANT` / `REVOKE` on columns (or table-level privileges), not RLS alone.
-- Privilege changes that are not modeled in Drizzle schema belong in hand-written SQL migrations; keep the same `REVOKE`/`GRANT` logic in migration, the canonical TS allowlist under `src/lib/db/privileges/` when used, `tests/helpers/db` bootstrap, testcontainers `grantRlsPermissions`, and CI grant steps when they must stay in lockstep.
-- Ephemeral Postgres for security/integration tests applies migrations via `pnpm db:migrate` so `pg_policy` and related objects match the migration chain; relying on `drizzle-kit push` alone can drift from migration-defined policy text.
-- RLS security tests that assert permission failures should use helpers that account for Drizzle-wrapped Postgres errors (e.g. a shared `expectRlsViolation` that inspects message/cause), not only `rejects.toThrow(/permission denied/)`.
-- `src/lib/db/privileges/` is for migration-aligned privilege metadata such as column allowlists; large procedural RLS bootstrap SQL stays under `tests/helpers/db/` (e.g. `rls-bootstrap.ts`), not under `privileges/`.
-- Optional local duplication audits: `pnpm run dup-check` runs jscpd using `.jscpd.json`; generated reports live under `jscpd-report/` and should stay gitignored.

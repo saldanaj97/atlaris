@@ -88,13 +88,18 @@ role to only UPDATE `name`, `preferred_ai_model`, and `updated_at` on the
 `users` table. All other columns (billing, system-managed) are only writable by
 the service-role which has BYPASSRLS.
 
-When adding new user-editable columns to the `users` table, the column-level
-GRANT must be updated in **four locations**:
+**Canonical column list:** [`src/lib/db/privileges/users-authenticated-update-columns.ts`](../src/lib/db/privileges/users-authenticated-update-columns.ts) (`USERS_AUTHENTICATED_UPDATE_COLUMNS`). Every other copy must match this module and the migration.
 
-1. A new migration SQL file extending the GRANT list
-2. `tests/helpers/db/rls-bootstrap.ts` — `ensureRlsRolesAndPermissions()`
-3. `tests/setup/testcontainers.ts` — `grantRlsPermissions()`
-4. `.github/workflows/ci-trunk.yml` — both E2E and Integration grant blocks
+When adding new user-editable columns to the `users` table, update in lockstep:
 
-Failure to update these will cause the new column to be unwritable by
-authenticated users (caught by existing RLS tests failing).
+1. **Migration** — new or amended SQL (e.g. extend `GRANT UPDATE (...)` in the migration chain).
+2. **Canonical TS** — `users-authenticated-update-columns.ts` (source of truth for tests and bootstrap).
+3. [`tests/helpers/db/rls-bootstrap.ts`](../tests/helpers/db/rls-bootstrap.ts) — `ensureRlsRolesAndPermissions()` (integration helpers that mirror grants after `db:migrate`).
+4. [`tests/setup/testcontainers.ts`](../tests/setup/testcontainers.ts) — `grantRlsPermissions()` (ephemeral Postgres for integration/e2e/security).
+5. [`.github/workflows/ci-trunk.yml`](../.github/workflows/ci-trunk.yml) — E2E and Integration job grant blocks.
+
+Unit tests in `tests/unit/db/users-authenticated-update-columns.spec.ts` compare the migration, `ci-trunk.yml`, and bootstrap sources against the canonical list.
+
+**CI PR note:** The fast integration job in `.github/workflows/ci-pr.yml` prepares the DB with `pnpm db:push` and broad table grants; it does **not** replicate the full migration `0018` column-level `REVOKE`/`GRANT` sequence. Do not assume PR integration DBs match production privilege layout; full alignment is enforced on trunk (`ci-trunk.yml`) and via migrations + the files above.
+
+Failure to update consumers after changing the allowlist will cause authenticated users to lose `UPDATE` on new columns or leave billing columns writable — caught by security/unit tests and the drift spec.

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/route';
 import {
@@ -25,8 +25,6 @@ async function createRequest(body: unknown) {
 describe('POST /api/v1/plans', () => {
   const authUserId = buildTestAuthUserId('contract-post');
   const authEmail = buildTestEmail(authUserId);
-
-  beforeEach(async () => {});
 
   it('creates a new plan and returns 201 with persisted payload', async () => {
     setTestUser(authUserId);
