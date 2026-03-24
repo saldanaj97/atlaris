@@ -6,7 +6,7 @@ import { appEnv } from '@/lib/config/env';
 export function isValidRedirectUrl(url: string | undefined): boolean {
   if (!url) return true;
 
-  if (url.startsWith('/')) return true;
+  if (url.startsWith('/') && !url.startsWith('//')) return true;
 
   const baseUrl = appEnv.url;
   try {
@@ -31,9 +31,17 @@ export function resolveRedirectUrl(
     return `${baseUrl}${defaultPath}`;
   }
 
-  if (url.startsWith('/')) {
+  if (url.startsWith('/') && !url.startsWith('//')) {
     return `${baseUrl}${url}`;
   }
 
-  return url;
+  try {
+    const parsed = new URL(url);
+    const base = new URL(baseUrl);
+    if (parsed.origin === base.origin) return url;
+  } catch {
+    // invalid URL falls through to default
+  }
+
+  return `${baseUrl}${defaultPath}`;
 }
