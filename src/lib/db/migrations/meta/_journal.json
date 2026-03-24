@@ -134,6 +134,13 @@
       "when": 1771200000000,
       "tag": "0018_harden_users_update_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1771250000000,
+      "tag": "0019_snapshot_realignment",
+      "breakpoints": true
     }
   ]
 }

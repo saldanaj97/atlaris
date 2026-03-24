@@ -1,0 +1,7 @@
+-- Snapshot realignment (no-op).
+--
+-- Migrations 0012-0018 were hand-written SQL without auto-generated
+-- snapshots, and the 0010/0011 snapshot chain had an id collision that
+-- blocked drizzle-kit generate. This migration carries no SQL; it exists
+-- solely to give drizzle-kit a valid snapshot of the current schema so
+-- future migrations can be auto-generated normally.

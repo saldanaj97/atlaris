@@ -1,159 +1,9 @@
 {
-  "id": "b72fd1ce-975c-47c8-ac14-32d43f4e4256",
-  "prevId": "6a0d7b7a-3cf8-41c3-ac88-9628a2d792bd",
+  "id": "43873ce8-65ef-476a-9dbf-4f3156db0187",
+  "prevId": "b72fd1ce-975c-47c8-ac14-32d43f4e4256",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.users": {
-      "name": "users",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "auth_user_id": {
-          "name": "auth_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "subscription_tier": {
-          "name": "subscription_tier",
-          "type": "subscription_tier",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'free'"
-        },
-        "stripe_customer_id": {
-          "name": "stripe_customer_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "stripe_subscription_id": {
-          "name": "stripe_subscription_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "subscription_status": {
-          "name": "subscription_status",
-          "type": "subscription_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "subscription_period_end": {
-          "name": "subscription_period_end",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "monthly_export_count": {
-          "name": "monthly_export_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "users_auth_user_id_unique": {
-          "name": "users_auth_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "auth_user_id"
-          ]
-        },
-        "users_email_unique": {
-          "name": "users_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        },
-        "users_stripe_customer_id_unique": {
-          "name": "users_stripe_customer_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "stripe_customer_id"
-          ]
-        },
-        "users_stripe_subscription_id_unique": {
-          "name": "users_stripe_subscription_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "stripe_subscription_id"
-          ]
-        }
-      },
-      "policies": {
-        "users_select_own": {
-          "name": "users_select_own",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
-        },
-        "users_insert_own": {
-          "name": "users_insert_own",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
-        },
-        "users_update_own": {
-          "name": "users_update_own",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'",
-          "withCheck": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
-        }
-      },
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.google_calendar_sync_state": {
       "name": "google_calendar_sync_state",
       "schema": "",
@@ -778,6 +628,265 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+    "public.job_queue": {
+      "name": "job_queue",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "plan_id": {
+          "name": "plan_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_type": {
+          "name": "job_type",
+          "type": "job_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "job_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "max_attempts": {
+          "name": "max_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_at": {
+          "name": "locked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_by": {
+          "name": "locked_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_for": {
+          "name": "scheduled_for",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_job_queue_status_scheduled_priority": {
+          "name": "idx_job_queue_status_scheduled_priority",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "scheduled_for",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "priority",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_user_id": {
+          "name": "idx_job_queue_user_id",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_plan_id": {
+          "name": "idx_job_queue_plan_id",
+          "columns": [
+            {
+              "expression": "plan_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_queue_created_at": {
+          "name": "idx_job_queue_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "job_queue_plan_id_learning_plans_id_fk": {
+          "name": "job_queue_plan_id_learning_plans_id_fk",
+          "tableFrom": "job_queue",
+          "tableTo": "learning_plans",
+          "columnsFrom": [
+            "plan_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_queue_user_id_users_id_fk": {
+          "name": "job_queue_user_id_users_id_fk",
+          "tableFrom": "job_queue",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {
+        "job_queue_select_own": {
+          "name": "job_queue_select_own",
+          "as": "PERMISSIVE",
+          "for": "SELECT",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
+        },
+        "job_queue_insert_own": {
+          "name": "job_queue_insert_own",
+          "as": "PERMISSIVE",
+          "for": "INSERT",
+          "to": [
+            "authenticated"
+          ],
+          "withCheck": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
+        }
+      },
+      "checkConstraints": {
+        "attempts_check": {
+          "name": "attempts_check",
+          "value": "\"job_queue\".\"attempts\" >= 0"
+        },
+        "max_attempts_check": {
+          "name": "max_attempts_check",
+          "value": "\"job_queue\".\"max_attempts\" >= 0"
+        }
+      },
+      "isRLSEnabled": true
+    },
     "public.generation_attempts": {
       "name": "generation_attempts",
       "schema": "",
@@ -882,11 +991,17 @@
           "method": "btree",
           "with": {}
         },
-        "idx_generation_attempts_created_at": {
-          "name": "idx_generation_attempts_created_at",
+        "idx_generation_attempts_created_at_plan_id": {
+          "name": "idx_generation_attempts_created_at_plan_id",
           "columns": [
             {
               "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "plan_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -933,6 +1048,25 @@
             "authenticated"
           ],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "generation_attempts_update": {
+          "name": "generation_attempts_update",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
+          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
+        },
+        "generation_attempts_delete_deny": {
+          "name": "generation_attempts_delete_deny",
+          "as": "RESTRICTIVE",
+          "for": "DELETE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "false"
         }
       },
       "checkConstraints": {},
@@ -1066,27 +1200,6 @@
           "method": "btree",
           "with": {}
         },
-        "idx_learning_plans_user_quota": {
-          "name": "idx_learning_plans_user_quota",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "is_quota_eligible",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "idx_learning_plans_user_generation_status": {
           "name": "idx_learning_plans_user_generation_status",
           "columns": [
@@ -1119,6 +1232,33 @@
             },
             {
               "expression": "origin",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_learning_plans_user_quota_generation_status": {
+          "name": "idx_learning_plans_user_quota_generation_status",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_quota_eligible",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "generation_status",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1193,134 +1333,9 @@
         },
         "extracted_context_pdf_shape": {
           "name": "extracted_context_pdf_shape",
-          "value": "(\"learning_plans\".\"extracted_context\" IS NULL OR (jsonb_typeof(\"learning_plans\".\"extracted_context\") = 'object' AND (\"learning_plans\".\"extracted_context\" ? 'mainTopic') AND (\"learning_plans\".\"extracted_context\" ? 'sections') AND jsonb_typeof(\"learning_plans\".\"extracted_context\"->'sections') = 'array' AND jsonb_typeof(\"learning_plans\".\"extracted_context\"->'mainTopic') = 'string'))"
+          "value": "(\n        \"learning_plans\".\"extracted_context\" IS NULL\n        OR (\n          jsonb_typeof(\"learning_plans\".\"extracted_context\") = 'object'\n          AND (\"learning_plans\".\"extracted_context\" ? 'mainTopic')\n          AND (\"learning_plans\".\"extracted_context\" ? 'sections')\n          AND jsonb_typeof(\"learning_plans\".\"extracted_context\"->'sections') = 'array'\n          AND jsonb_typeof(\"learning_plans\".\"extracted_context\"->'mainTopic') = 'string'\n        )\n      )"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.plan_generations": {
-      "name": "plan_generations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "model": {
-          "name": "model",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prompt": {
-          "name": "prompt",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parameters": {
-          "name": "parameters",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "output_summary": {
-          "name": "output_summary",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "idx_plan_generations_plan_id": {
-          "name": "idx_plan_generations_plan_id",
-          "columns": [
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "plan_generations_plan_id_learning_plans_id_fk": {
-          "name": "plan_generations_plan_id_learning_plans_id_fk",
-          "tableFrom": "plan_generations",
-          "tableTo": "learning_plans",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {
-        "plan_generations_select": {
-          "name": "plan_generations_select",
-          "as": "PERMISSIVE",
-          "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "plan_generations_insert": {
-          "name": "plan_generations_insert",
-          "as": "PERMISSIVE",
-          "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
-          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "plan_generations_update": {
-          "name": "plan_generations_update",
-          "as": "PERMISSIVE",
-          "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
-          "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        },
-        "plan_generations_delete": {
-          "name": "plan_generations_delete",
-          "as": "PERMISSIVE",
-          "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
-          "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_generations\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
-        }
-      },
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.plan_schedules": {
@@ -1452,6 +1467,75 @@
       },
       "checkConstraints": {},
       "isRLSEnabled": true
+    },
+    "public.stripe_webhook_events": {
+      "name": "stripe_webhook_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "livemode": {
+          "name": "livemode",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_stripe_webhook_events_created_at": {
+          "name": "idx_stripe_webhook_events_created_at",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "stripe_webhook_events_event_id_unique": {
+          "name": "stripe_webhook_events_event_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "event_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "public.modules": {
       "name": "modules",
@@ -1820,6 +1904,27 @@
         "idx_task_progress_task_id": {
           "name": "idx_task_progress_task_id",
           "columns": [
+            {
+              "expression": "task_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_task_progress_user_task": {
+          "name": "idx_task_progress_user_task",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
             {
               "expression": "task_id",
               "isExpression": false,
@@ -2347,6 +2452,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "idx_ai_usage_events_user_created_at": {
+          "name": "idx_ai_usage_events_user_created_at",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -2572,8 +2698,8 @@
       },
       "isRLSEnabled": true
     },
-    "public.stripe_webhook_events": {
-      "name": "stripe_webhook_events",
+    "public.users": {
+      "name": "users",
       "schema": "",
       "columns": {
         "id": {
@@ -2583,169 +2709,75 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "event_id": {
-          "name": "event_id",
+        "auth_user_id": {
+          "name": "auth_user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "livemode": {
-          "name": "livemode",
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscription_tier": {
+          "name": "subscription_tier",
+          "type": "subscription_tier",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'free'"
+        },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stripe_subscription_id": {
+          "name": "stripe_subscription_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscription_status": {
+          "name": "subscription_status",
+          "type": "subscription_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subscription_period_end": {
+          "name": "subscription_period_end",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancel_at_period_end": {
+          "name": "cancel_at_period_end",
           "type": "boolean",
           "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
           "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "idx_stripe_webhook_events_created_at": {
-          "name": "idx_stripe_webhook_events_created_at",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "stripe_webhook_events_event_id_unique": {
-          "name": "stripe_webhook_events_event_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "event_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.job_queue": {
-      "name": "job_queue",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": false
         },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "job_type": {
-          "name": "job_type",
-          "type": "job_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "job_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "priority": {
-          "name": "priority",
+        "monthly_export_count": {
+          "name": "monthly_export_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "max_attempts": {
-          "name": "max_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 3
-        },
-        "payload": {
-          "name": "payload",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result": {
-          "name": "result",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "locked_at": {
-          "name": "locked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "locked_by": {
-          "name": "locked_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scheduled_for": {
-          "name": "scheduled_for",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
+        "preferred_ai_model": {
+          "name": "preferred_ai_model",
+          "type": "preferred_ai_model",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
         },
@@ -2764,140 +2796,70 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "idx_job_queue_status_scheduled_priority": {
-          "name": "idx_job_queue_status_scheduled_priority",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "scheduled_for",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "priority",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_job_queue_user_id": {
-          "name": "idx_job_queue_user_id",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_job_queue_plan_id": {
-          "name": "idx_job_queue_plan_id",
-          "columns": [
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_job_queue_created_at": {
-          "name": "idx_job_queue_created_at",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "job_queue_plan_id_learning_plans_id_fk": {
-          "name": "job_queue_plan_id_learning_plans_id_fk",
-          "tableFrom": "job_queue",
-          "tableTo": "learning_plans",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "job_queue_user_id_users_id_fk": {
-          "name": "job_queue_user_id_users_id_fk",
-          "tableFrom": "job_queue",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "users_auth_user_id_unique": {
+          "name": "users_auth_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "auth_user_id"
+          ]
+        },
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        },
+        "users_stripe_customer_id_unique": {
+          "name": "users_stripe_customer_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "stripe_customer_id"
+          ]
+        },
+        "users_stripe_subscription_id_unique": {
+          "name": "users_stripe_subscription_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "stripe_subscription_id"
+          ]
+        }
+      },
       "policies": {
-        "job_queue_select_own": {
-          "name": "job_queue_select_own",
+        "users_select_own": {
+          "name": "users_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
           "to": [
             "authenticated"
           ],
-          "using": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
+          "using": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         },
-        "job_queue_insert_own": {
-          "name": "job_queue_insert_own",
+        "users_insert_own": {
+          "name": "users_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
           "to": [
             "authenticated"
           ],
-          "withCheck": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
-        }
-      },
-      "checkConstraints": {
-        "attempts_check": {
-          "name": "attempts_check",
-          "value": "\"job_queue\".\"attempts\" >= 0"
+          "withCheck": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         },
-        "max_attempts_check": {
-          "name": "max_attempts_check",
-          "value": "\"job_queue\".\"max_attempts\" >= 0"
+        "users_update_own": {
+          "name": "users_update_own",
+          "as": "PERMISSIVE",
+          "for": "UPDATE",
+          "to": [
+            "authenticated"
+          ],
+          "using": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'",
+          "withCheck": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         }
       },
+      "checkConstraints": {},
       "isRLSEnabled": true
     }
   },
@@ -2907,6 +2869,7 @@
       "schema": "public",
       "values": [
         "generating",
+        "pending_retry",
         "ready",
         "failed"
       ]
@@ -2954,6 +2917,25 @@
         "template",
         "manual",
         "pdf"
+      ]
+    },
+    "public.preferred_ai_model": {
+      "name": "preferred_ai_model",
+      "schema": "public",
+      "values": [
+        "google/gemini-2.0-flash-exp:free",
+        "openai/gpt-oss-20b:free",
+        "alibaba/tongyi-deepresearch-30b-a3b:free",
+        "anthropic/claude-haiku-4.5",
+        "google/gemini-2.5-flash-lite",
+        "google/gemini-3-flash-preview",
+        "google/gemini-3-pro-preview",
+        "anthropic/claude-sonnet-4.5",
+        "openai/gpt-4o-mini-2024-07-18",
+        "openai/gpt-4o-mini-search-preview",
+        "openai/gpt-4o",
+        "openai/gpt-5.1",
+        "openai/gpt-5.2"
       ]
     },
     "public.progress_status": {

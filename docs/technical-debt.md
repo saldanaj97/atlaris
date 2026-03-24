@@ -43,14 +43,13 @@ The workaround should stay until the DB/runtime layer guarantees stable claims
 through nested transaction scopes. Removing it prematurely risks subtle
 cross-tenant authorization failures.
 
-## Missing DB-level task title hardening
+## ~~Missing DB-level task title hardening~~ *(resolved)*
 
-`src/lib/db/schema/tables/tasks.ts` still relies on application validation for
-task title constraints. There is no DB-level length constraint yet.
-
-This is deferred because it requires a schema migration and careful rollout for
-existing rows. Revisit it when hardening content limits or touching the tasks
-schema for related work.
+Resolved in migration `0020_burly_jackal.sql`. CHECK constraints
+(`char_length(title) <= 500`) now exist on `modules`, `tasks`, and `resources`
+tables. The AI parser also truncates titles defensively before DB insertion.
+Constants live in `src/lib/db/schema/constants.ts`; drift is caught by
+`tests/unit/db/title-length-constraints.spec.ts`.
 
 ## Missing OpenRouter cost-tracking columns
 
@@ -61,16 +60,13 @@ product’s active limits, but not for finer-grained provider cost analysis.
 This should be revisited when cost dashboards, reconciliation, or model-level
 billing audits become a product requirement.
 
-## Drizzle snapshot metadata drift
+## ~~Drizzle snapshot metadata drift~~ *(resolved)*
 
-`src/lib/db/migrations/meta` currently has a broken generator snapshot chain:
-`0010_snapshot.json` and `0011_snapshot.json` share the same `id` and
-`prevId`, and snapshots for later journal entries are missing.
-
-`drizzle-kit generate` currently fails on that collision, so Phase 3’s schema
-change was added as a manual SQL migration plus `_journal.json` entry instead
-of an auto-generated snapshot set. Revisit this before the next schema change
-so future migrations can be generated normally again.
+Resolved by fixing the `0010`/`0011` snapshot ID collision, adding a no-op
+`0019_snapshot_realignment.sql` migration that carries a valid current-state
+snapshot, and removing the orphaned `0001_enable_force_rls.sql` file.
+`drizzle-kit generate` now works normally; migration `0020_burly_jackal.sql`
+was the first auto-generated migration since the fix.
 
 ## Enum naming mismatch: `youtube` vs `video`
 
