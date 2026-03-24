@@ -15,6 +15,14 @@ export function coerceUnknownToMessage(value: unknown): string {
     return String(value);
   }
 
+  if (typeof value === 'symbol') {
+    return value.toString();
+  }
+
+  if (typeof value === 'function') {
+    return `[Function: ${value.name || 'anonymous'}]`;
+  }
+
   if (
     typeof value === 'object' &&
     'message' in value &&
@@ -24,7 +32,11 @@ export function coerceUnknownToMessage(value: unknown): string {
   }
 
   try {
-    return JSON.stringify(value);
+    const result = JSON.stringify(value);
+    if (typeof result === 'string') {
+      return result;
+    }
+    return 'Unserializable thrown value';
   } catch {
     return 'Unserializable thrown value';
   }
