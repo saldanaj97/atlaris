@@ -1,5 +1,4 @@
 import { JOB_TYPE_MAP, type JobTypeValue } from '@/shared/constants/jobs';
-import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 
 export const JOB_TYPES = JOB_TYPE_MAP;
 
@@ -11,26 +10,6 @@ export interface JobErrorHistoryEntry {
   attempt: number;
   error: string;
   timestamp: string;
-}
-
-export interface PlanGenerationJobData {
-  topic: string;
-  notes: string | null;
-  skillLevel: 'beginner' | 'intermediate' | 'advanced';
-  weeklyHours: number;
-  learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-  startDate: string | null;
-  deadlineDate: string | null;
-}
-
-export interface PlanGenerationJobResult {
-  modulesCount: number;
-  tasksCount: number;
-  durationMs: number;
-  metadata?: {
-    provider: ProviderMetadata | null;
-    attemptId: string;
-  };
 }
 
 export interface PlanRegenerationJobData {
@@ -53,17 +32,13 @@ export interface PlanRegenerationJobResult {
   durationMs: number;
 }
 
-export type PlanGenerationJobPayload = PlanGenerationJobData & {
-  errorHistory?: JobErrorHistoryEntry[];
-};
-
 export type PlanRegenerationJobPayload = PlanRegenerationJobData & {
   errorHistory?: JobErrorHistoryEntry[];
 };
 
-export type JobPayload = PlanGenerationJobPayload | PlanRegenerationJobPayload;
+export type JobPayload = PlanRegenerationJobPayload;
 
-export type JobResult = PlanGenerationJobResult | PlanRegenerationJobResult;
+export type JobResult = PlanRegenerationJobResult;
 
 export interface Job<
   TPayload extends JobPayload = JobPayload,

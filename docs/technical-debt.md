@@ -1,15 +1,11 @@
 # Technical Debt
 
-## Reserved `plan_generation` job type
+## ~~Reserved `plan_generation` job type~~ *(resolved)*
 
-`plan_generation` remains in the shared job-type map and database enum, but no
-worker currently processes it. Initial plan generation still runs
-synchronously in the streaming route, so the enum value is effectively
-reserved for a future queue-backed initial-generation flow.
-
-This is deferred because deleting the enum value now would add migration churn
-without simplifying any active runtime path. Revisit it if initial generation
-moves onto workers, or if the team decides to shrink the job enum surface.
+Resolved by removing the `plan_generation` value from the job-type enum, the
+TypeScript constant map, and all associated dead types (`PlanGenerationJobData`,
+`PlanGenerationJobResult`, `PlanGenerationJobPayload`). A migration drops the
+enum value from PostgreSQL.
 
 ## Thin queue wrapper in `src/features/jobs/queue.ts`
 
@@ -68,14 +64,17 @@ snapshot, and removing the orphaned `0001_enable_force_rls.sql` file.
 `drizzle-kit generate` now works normally; migration `0020_burly_jackal.sql`
 was the first auto-generated migration since the fix.
 
-## Enum naming mismatch: `youtube` vs `video`
+## ~~Enum naming mismatch: `youtube` vs `video`~~ *(resolved)*
 
-`src/lib/db/enums.ts` still carries a TODO around the `youtube` resource enum
+Resolved: the `resource_type` enum value was renamed from `youtube` to `video`
+via `ALTER TYPE ... RENAME VALUE` migration, and all code references updated.
+
+~~`src/lib/db/enums.ts` still carries a TODO around the `youtube` resource enum
 name. Renaming it back to `video` would improve conceptual consistency, but it
 would also require a migration plus compatibility work for any persisted rows
-and UI logic.
+and UI logic.~~
 
-This remains deferred until a broader resource-taxonomy cleanup is scheduled.
+~~This remains deferred until a broader resource-taxonomy cleanup is scheduled.~~
 
 ## `users` table column-level UPDATE grant
 

@@ -43,7 +43,7 @@ interface TimelineModuleCardProps {
 }
 
 const RESOURCE_CONFIG: Record<ResourceType, ElementType> = {
-  youtube: PlayCircle,
+  video: PlayCircle,
   article: FileText,
   course: Target,
   doc: FileText,

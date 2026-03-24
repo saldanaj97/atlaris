@@ -148,6 +148,20 @@
       "when": 1774327554498,
       "tag": "0020_burly_jackal",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1774328702247,
+      "tag": "0021_majestic_puma",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1774328760514,
+      "tag": "0022_melodic_satana",
+      "breakpoints": true
     }
   ]
 }

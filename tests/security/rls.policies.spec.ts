@@ -1090,7 +1090,7 @@ describe('RLS Policy Verification', () => {
       // Try to insert a resource (should fail)
       await expectRlsViolation(() =>
         authDb.insert(resources).values({
-          type: 'youtube',
+          type: 'video',
           title: 'Unauthorized Resource',
           url: `https://example.com/video-${Date.now()}`,
         })

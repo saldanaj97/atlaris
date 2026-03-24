@@ -12,12 +12,12 @@ import {
 import {
   JOB_TYPES,
   type JobType,
-  type PlanGenerationJobData,
+  type PlanRegenerationJobData,
 } from '@/features/jobs/types';
 import { jobQueue, learningPlans, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
-const JOB_TYPE = JOB_TYPES.PLAN_GENERATION;
+const JOB_TYPE = JOB_TYPES.PLAN_REGENERATION;
 
 type InsertedPlan = typeof learningPlans.$inferSelect;
 
@@ -29,16 +29,19 @@ type PlanFixture = {
 
 function buildPlanGenerationPayload(
   plan: InsertedPlan,
-  overrides: Partial<PlanGenerationJobData> = {}
-): PlanGenerationJobData {
+  overrides: Partial<PlanRegenerationJobData> = {}
+): PlanRegenerationJobData {
   return {
-    topic: overrides.topic ?? plan.topic,
-    notes: overrides.notes ?? null,
-    skillLevel: overrides.skillLevel ?? plan.skillLevel,
-    weeklyHours: overrides.weeklyHours ?? plan.weeklyHours,
-    learningStyle: overrides.learningStyle ?? plan.learningStyle,
-    startDate: overrides.startDate ?? null,
-    deadlineDate: overrides.deadlineDate ?? null,
+    planId: plan.id,
+    overrides: {
+      topic: overrides.overrides?.topic ?? plan.topic,
+      notes: overrides.overrides?.notes ?? null,
+      skillLevel: overrides.overrides?.skillLevel ?? plan.skillLevel,
+      weeklyHours: overrides.overrides?.weeklyHours ?? plan.weeklyHours,
+      learningStyle: overrides.overrides?.learningStyle ?? plan.learningStyle,
+      startDate: overrides.overrides?.startDate ?? null,
+      deadlineDate: overrides.overrides?.deadlineDate ?? null,
+    },
   };
 }
 
@@ -70,15 +73,11 @@ async function createPlanFixture(key: string): Promise<PlanFixture> {
 describe('Job queue service', () => {
   it('enqueues a job with expected defaults', async () => {
     const { plan, userId } = await createPlanFixture('defaults');
-    const payload = {
-      topic: plan.topic,
-      notes: 'Ensure defaults',
-      skillLevel: plan.skillLevel,
-      weeklyHours: plan.weeklyHours,
-      learningStyle: plan.learningStyle,
-      startDate: null,
-      deadlineDate: null,
-    };
+    const payload = buildPlanGenerationPayload(plan, {
+      overrides: {
+        notes: 'Ensure defaults',
+      },
+    });
 
     const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, payload);
 
@@ -105,13 +104,13 @@ describe('Job queue service', () => {
         JOB_TYPE,
         plan.id,
         userId,
-        buildPlanGenerationPayload(plan, { topic: 'job-1' })
+        buildPlanGenerationPayload(plan, { overrides: { topic: 'job-1' } })
       ),
       enqueueJob(
         JOB_TYPE,
         plan.id,
         userId,
-        buildPlanGenerationPayload(plan, { topic: 'job-2' })
+        buildPlanGenerationPayload(plan, { overrides: { topic: 'job-2' } })
       ),
     ]);
 
@@ -150,28 +149,28 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'low-order' }),
+      buildPlanGenerationPayload(plan, { overrides: { topic: 'low-order' } }),
       0
     );
     const midA = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'mid-a-order' }),
+      buildPlanGenerationPayload(plan, { overrides: { topic: 'mid-a-order' } }),
       5
     );
     const midB = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'mid-b-order' }),
+      buildPlanGenerationPayload(plan, { overrides: { topic: 'mid-b-order' } }),
       5
     );
     const high = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'high-order' }),
+      buildPlanGenerationPayload(plan, { overrides: { topic: 'high-order' } }),
       10
     );
 
@@ -263,15 +262,17 @@ describe('Job queue service', () => {
       JOB_TYPE,
       freePlan[0].id,
       freeUser.userId,
-      {
-        topic: freeTopic,
-        notes: null,
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        startDate: null,
-        deadlineDate: null,
-      },
+      buildPlanGenerationPayload(freePlan[0], {
+        overrides: {
+          topic: freeTopic,
+          notes: null,
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          startDate: null,
+          deadlineDate: null,
+        },
+      }),
       freePriority
     );
 
@@ -279,15 +280,17 @@ describe('Job queue service', () => {
       JOB_TYPE,
       paidPlan[0].id,
       paidUser.userId,
-      {
-        topic: paidTopic,
-        notes: null,
-        skillLevel: 'intermediate',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        startDate: null,
-        deadlineDate: null,
-      },
+      buildPlanGenerationPayload(paidPlan[0], {
+        overrides: {
+          topic: paidTopic,
+          notes: null,
+          skillLevel: 'intermediate',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          startDate: null,
+          deadlineDate: null,
+        },
+      }),
       paidPriority
     );
 
@@ -310,7 +313,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'retry-topic' })
+      buildPlanGenerationPayload(plan, { overrides: { topic: 'retry-topic' } })
     );
 
     await getNextJob([JOB_TYPE]);
@@ -339,11 +342,18 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'complete-topic' })
+      buildPlanGenerationPayload(plan, {
+        overrides: { topic: 'complete-topic' },
+      })
     );
 
     await getNextJob([JOB_TYPE]);
-    const payload = { modulesCount: 3, tasksCount: 9, durationMs: 100 };
+    const payload = {
+      planId: plan.id,
+      modulesCount: 3,
+      tasksCount: 9,
+      durationMs: 100,
+    };
     const completed = await completeJob(jobId, payload);
 
     expect(completed?.status).toBe('completed');
@@ -353,6 +363,7 @@ describe('Job queue service', () => {
     expect(completed?.completedAt).toBeInstanceOf(Date);
 
     const duplicate = await completeJob(jobId, {
+      planId: plan.id,
       modulesCount: 1,
       tasksCount: 1,
       durationMs: 10,
@@ -367,19 +378,19 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'window-1' })
+      buildPlanGenerationPayload(plan, { overrides: { topic: 'window-1' } })
     );
     const jobOlder = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'window-2' })
+      buildPlanGenerationPayload(plan, { overrides: { topic: 'window-2' } })
     );
     const jobOldest = await enqueueJob(
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanGenerationPayload(plan, { topic: 'window-3' })
+      buildPlanGenerationPayload(plan, { overrides: { topic: 'window-3' } })
     );
 
     const now = new Date();
@@ -433,7 +444,7 @@ describe('Job queue service', () => {
   it('rejects invalid job types before query execution', async () => {
     // Deliberately bypass TS at call site to test runtime guard
     const invalidTypes = [
-      'plan_generation" ) or true -- ',
+      'plan_regeneration" ) or true -- ',
     ] as unknown as JobType[];
 
     await expect(getNextJob(invalidTypes)).rejects.toThrow('Invalid job type');

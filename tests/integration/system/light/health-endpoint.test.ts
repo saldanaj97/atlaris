@@ -46,7 +46,7 @@ describe('Health Endpoint', () => {
       // Recent pending job (not a backlog yet)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'pending',
         payload: { test: 'data1' },
         createdAt: now,
@@ -56,7 +56,7 @@ describe('Health Endpoint', () => {
       // Recent processing job (not stuck)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'processing',
         payload: { test: 'data2' },
         startedAt: new Date(now.getTime() - 60 * 1000), // 1 minute ago (not stuck)
@@ -67,7 +67,7 @@ describe('Health Endpoint', () => {
       // Completed job
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'completed',
         payload: { test: 'data3' },
         result: { success: true },
@@ -104,7 +104,7 @@ describe('Health Endpoint', () => {
       // Create a stuck job (processing for > 10 minutes)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'processing',
         payload: { test: 'stuck-job' },
         startedAt: elevenMinutesAgo,
@@ -136,7 +136,7 @@ describe('Health Endpoint', () => {
       // Create a recent processing job (not stuck)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'processing',
         payload: { test: 'recent-job' },
         startedAt: fiveMinutesAgo,
@@ -170,7 +170,7 @@ describe('Health Endpoint', () => {
       for (let i = 0; i < BACKLOG_THRESHOLD + 10; i++) {
         jobs.push({
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'pending' as const,
           payload: { test: `data${i}` },
           createdAt: now,
@@ -205,7 +205,7 @@ describe('Health Endpoint', () => {
       for (let i = 0; i < 5; i++) {
         jobs.push({
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'pending' as const,
           payload: { test: `data${i}` },
           createdAt: now,
@@ -238,7 +238,7 @@ describe('Health Endpoint', () => {
       // Create stuck job
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'processing',
         payload: { test: 'stuck' },
         startedAt: elevenMinutesAgo,
@@ -251,7 +251,7 @@ describe('Health Endpoint', () => {
       for (let i = 0; i < 110; i++) {
         jobs.push({
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'pending' as const,
           payload: { test: `data${i}` },
           createdAt: now,

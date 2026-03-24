@@ -98,7 +98,7 @@ describe('End-to-End Schedule Flow', () => {
       .insert(resources)
       .values([
         {
-          type: 'youtube',
+          type: 'video',
           title: 'React Tutorial',
           url: `https://example.com/react-${Date.now()}`,
         },

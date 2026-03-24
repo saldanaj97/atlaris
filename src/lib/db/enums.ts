@@ -23,9 +23,8 @@ export const generationStatus = pgEnum('generation_status', [
 
 export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
 
-// TODO: Change back to video instead of youtube
 export const resourceType = pgEnum('resource_type', [
-  'youtube',
+  'video',
   'article',
   'course',
   'doc',

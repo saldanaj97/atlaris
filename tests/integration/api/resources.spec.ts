@@ -38,7 +38,7 @@ describe('GET /api/v1/resources', () => {
         createdAt: new Date('2026-01-01T10:00:00.000Z'),
       },
       {
-        type: 'youtube',
+        type: 'video',
         title: 'Video Resource',
         url: 'https://youtube.com/watch?v=resource123',
         domain: 'youtube.com',
@@ -117,7 +117,7 @@ describe('GET /api/v1/resources', () => {
   it('filters resources by type', async () => {
     const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest(
-      'http://localhost:3000/api/v1/resources?type=youtube',
+      'http://localhost:3000/api/v1/resources?type=video',
       {
         method: 'GET',
       }
@@ -128,7 +128,7 @@ describe('GET /api/v1/resources', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toHaveLength(1);
-    expect(body[0]?.type).toBe('youtube');
+    expect(body[0]?.type).toBe('video');
     expect(body[0]?.title).toBe('Video Resource');
   });
 

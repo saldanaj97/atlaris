@@ -38,7 +38,7 @@ const RESOURCE_CONFIG: Record<
   ResourceType,
   { label: string; icon: ElementType; badgeClass: string }
 > = {
-  youtube: {
+  video: {
     label: 'Video',
     icon: PlayCircle,
     badgeClass: 'bg-red-500/10 text-red-600',

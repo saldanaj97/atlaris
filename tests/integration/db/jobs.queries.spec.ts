@@ -22,7 +22,7 @@ describe('Job Queries', () => {
     overrides: Partial<JobInsert> = {}
   ): Promise<InferSelectModel<typeof jobQueue>> {
     const defaults: Partial<JobInsert> = {
-      jobType: 'plan_generation',
+      jobType: 'plan_regeneration',
       planId,
       userId,
       priority: 0,

@@ -37,7 +37,7 @@ describe('truncateAll', () => {
     await db.insert(jobQueue).values({
       planId: plan.id,
       userId: user.id,
-      jobType: 'plan_generation',
+      jobType: 'plan_regeneration',
       payload: { marker: 'truncate' },
       scheduledFor: new Date(),
       priority: 0,
