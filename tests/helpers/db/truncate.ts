@@ -25,22 +25,24 @@ function assertSafeToTruncate() {
 
   if (process.env.ALLOW_DB_TRUNCATE === 'true') return;
 
+  let parsed: URL;
   try {
-    const parsed = new URL(url);
-    const dbName = parsed.pathname.replace(/^\//, '');
-    const looksLikeTestDb =
-      /(^|_)(test|tests)$/.test(dbName) || /_test$/.test(dbName);
-
-    if (!looksLikeTestDb) {
-      throw new Error(
-        `Refusing to truncate non-test database "${dbName}". ` +
-          'Use a dedicated test DB (e.g., "postgres_test") or set ALLOW_DB_TRUNCATE=true.'
-      );
-    }
+    parsed = new URL(url);
   } catch {
     throw new Error(
       'Refusing to truncate database: invalid DATABASE_URL for safety. ' +
         'Set a valid test DB URL or ALLOW_DB_TRUNCATE=true.'
+    );
+  }
+
+  const dbName = parsed.pathname.replace(/^\//, '');
+  const looksLikeTestDb =
+    /(^|_)(test|tests)$/.test(dbName) || /_test$/.test(dbName);
+
+  if (!looksLikeTestDb) {
+    throw new Error(
+      `Refusing to truncate non-test database "${dbName}". ` +
+        'Use a dedicated test DB (e.g., "postgres_test") or set ALLOW_DB_TRUNCATE=true.'
     );
   }
 }
