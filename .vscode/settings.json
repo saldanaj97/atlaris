@@ -12,5 +12,22 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "always",
     "quickfix.biome": "always"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "chat.mcp.serverSampling": {
+    "atlaris/.vscode/mcp.json: chrome-devtools": {
+      "allowedModels": [
+        "claude/claude-opus-4.6",
+        "copilot/gpt-5.4"
+      ]
+    },
+    "atlaris/.vscode/mcp.json: Sentry": {
+      "allowedModels": [
+        "claude-code/claude-haiku-4.5",
+        "copilot/gpt-5.4-mini"
+      ]
+    }
   }
 }
