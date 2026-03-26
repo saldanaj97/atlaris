@@ -61,28 +61,57 @@ const NeonAuthEnvSchema = z
     }
   });
 
-// TODO: Consider using zod for parsing and validation of numeric env vars
-function toNumber(value: string | undefined): number | undefined;
-function toNumber(value: string | undefined, fallback: number): number;
-function toNumber(
+/**
+ * Zod schema: string that parses to a number via `Number()`; `NaN` fails parse
+ * (callers fall back to optional defaults).
+ */
+const parseableNumericEnvString = z.string().transform((s, ctx) => {
+  const n = Number(s);
+  if (Number.isNaN(n)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Not a valid number',
+    });
+    return z.NEVER;
+  }
+  return n;
+});
+
+/**
+ * Parses optional env string into a number, matching legacy `Number()` semantics
+ * for invalid values (NaN maps to fallback or undefined).
+ */
+export function parseEnvNumber(value: string | undefined): number | undefined;
+export function parseEnvNumber(
+  value: string | undefined,
+  fallback: number
+): number;
+export function parseEnvNumber(
   value: string | undefined,
   fallback?: number
 ): number | undefined {
-  if (value === undefined) return fallback;
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
+  if (value === undefined) {
+    return fallback;
+  }
+  const parsed = parseableNumericEnvString.safeParse(value);
+  if (!parsed.success) {
+    return fallback;
+  }
+  return parsed.data;
 }
 
 /**
  * Parses a string to a boolean. Use for consistent env boolean parsing.
  * Truthy (case-insensitive, trimmed): 'true' | '1'. All other non-empty values are false.
- * TODO: Prefer toBoolean for all boolean env vars; migrate any ad-hoc parsers (e.g. webhookDevMode was migrated) for consistency.
  *
  * @param value - Raw string (e.g. from process.env)
  * @param fallback - Returned when value is undefined
  * @returns Parsed boolean
  */
-function toBoolean(value: string | undefined, fallback: boolean): boolean {
+export function toBoolean(
+  value: string | undefined,
+  fallback: boolean
+): boolean {
   if (value === undefined) {
     return fallback;
   }
@@ -289,7 +318,7 @@ export const appEnv = {
     return normalized;
   },
   get maintenanceMode(): boolean {
-    return getServerOptional('MAINTENANCE_MODE') === 'true';
+    return toBoolean(getServerOptional('MAINTENANCE_MODE'), false);
   },
 } as const;
 
@@ -387,14 +416,14 @@ export const aiEnv = {
     return getServerOptional('AI_USE_MOCK');
   },
   get mockSeed() {
-    return toNumber(getServerOptional('MOCK_GENERATION_SEED'));
+    return parseEnvNumber(getServerOptional('MOCK_GENERATION_SEED'));
   },
   mock: {
     get delayMs() {
-      return toNumber(getServerOptional('MOCK_GENERATION_DELAY_MS'));
+      return parseEnvNumber(getServerOptional('MOCK_GENERATION_DELAY_MS'));
     },
     get failureRate() {
-      return toNumber(getServerOptional('MOCK_GENERATION_FAILURE_RATE'));
+      return parseEnvNumber(getServerOptional('MOCK_GENERATION_FAILURE_RATE'));
     },
   },
   /**
@@ -455,20 +484,20 @@ export const avScannerEnv = {
   get scanTimeoutMs() {
     return Math.max(
       1_000,
-      toNumber(getServerOptional('AV_SCAN_TIMEOUT_MS'), 30_000)
+      parseEnvNumber(getServerOptional('AV_SCAN_TIMEOUT_MS'), 30_000)
     );
   },
 } as const;
 
 export const aiTimeoutEnv = {
   get baseMs() {
-    return toNumber(getServerOptional('AI_TIMEOUT_BASE_MS'), 120_000);
+    return parseEnvNumber(getServerOptional('AI_TIMEOUT_BASE_MS'), 120_000);
   },
   get extensionMs() {
-    return toNumber(getServerOptional('AI_TIMEOUT_EXTENSION_MS'), 60_000);
+    return parseEnvNumber(getServerOptional('AI_TIMEOUT_EXTENSION_MS'), 60_000);
   },
   get extensionThresholdMs() {
-    const override = toNumber(
+    const override = parseEnvNumber(
       getServerOptional('AI_TIMEOUT_EXTENSION_THRESHOLD_MS')
     );
     if (override !== undefined) {
@@ -517,7 +546,10 @@ export const devAuthEnv = {
 
 export const attemptsEnv = {
   get cap() {
-    return toNumber(getServerOptional('ATTEMPT_CAP'), DEFAULT_ATTEMPT_CAP);
+    return parseEnvNumber(
+      getServerOptional('ATTEMPT_CAP'),
+      DEFAULT_ATTEMPT_CAP
+    );
   },
 } as const;
 
@@ -546,10 +578,10 @@ export const regenerationQueueEnv = {
    * Explicit 0 means no work per drain (caller can use this to disable processing).
    */
   get maxJobsPerDrain() {
-    const parsed = toNumber(
+    const parsed = parseEnvNumber(
       getServerOptional('REGENERATION_MAX_JOBS_PER_DRAIN')
     );
-    // toNumber returns undefined for NaN; Number.isFinite rejects Infinity.
+    // parseEnvNumber returns undefined for NaN; Number.isFinite rejects Infinity.
     if (parsed === undefined || !Number.isFinite(parsed) || parsed < 0) {
       return 1;
     }
@@ -580,9 +612,12 @@ export const observabilityEnv = {
     return getServerOptional('SENTRY_DSN');
   },
   get sentryTracesSampleRate() {
-    return toNumber(getServerOptional('SENTRY_TRACES_SAMPLE_RATE'), 0.1);
+    return parseEnvNumber(getServerOptional('SENTRY_TRACES_SAMPLE_RATE'), 0.1);
   },
   get sentryProfilesSampleRate() {
-    return toNumber(getServerOptional('SENTRY_PROFILES_SAMPLE_RATE'), 0.1);
+    return parseEnvNumber(
+      getServerOptional('SENTRY_PROFILES_SAMPLE_RATE'),
+      0.1
+    );
   },
 } as const;

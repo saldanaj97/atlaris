@@ -5,7 +5,9 @@ import {
   appEnv,
   EnvValidationError,
   optionalEnv,
+  parseEnvNumber,
   requireEnv,
+  toBoolean,
 } from '@/lib/config/env';
 
 describe('Environment Configuration', () => {
@@ -188,6 +190,28 @@ describe('Environment Configuration', () => {
         expect(appEnv.vitestWorkerId).toBeUndefined();
       });
     });
+
+    describe('maintenanceMode', () => {
+      it('should return false when MAINTENANCE_MODE is unset', () => {
+        delete process.env.MAINTENANCE_MODE;
+        expect(appEnv.maintenanceMode).toBe(false);
+      });
+
+      it('should return true when MAINTENANCE_MODE is true (case-insensitive)', () => {
+        process.env.MAINTENANCE_MODE = 'TRUE';
+        expect(appEnv.maintenanceMode).toBe(true);
+      });
+
+      it('should return true when MAINTENANCE_MODE is 1', () => {
+        process.env.MAINTENANCE_MODE = '1';
+        expect(appEnv.maintenanceMode).toBe(true);
+      });
+
+      it('should return false for other non-truthy strings', () => {
+        process.env.MAINTENANCE_MODE = 'false';
+        expect(appEnv.maintenanceMode).toBe(false);
+      });
+    });
   });
 
   describe('aiEnv', () => {
@@ -249,7 +273,52 @@ describe('Environment Configuration', () => {
     });
   });
 
-  // Note: Tests for environment-specific configurations, number parsing, and boolean parsing
-  // are omitted because they require dynamic module reloading (using require())
-  // which is not compatible with ES modules and the project's linting rules.
+  describe('parseEnvNumber', () => {
+    it('returns undefined when value is undefined and no fallback', () => {
+      expect(parseEnvNumber(undefined)).toBeUndefined();
+    });
+
+    it('returns fallback when value is undefined and fallback is set', () => {
+      expect(parseEnvNumber(undefined, 42)).toBe(42);
+    });
+
+    it('parses integer and float strings', () => {
+      expect(parseEnvNumber('42')).toBe(42);
+      expect(parseEnvNumber('3.14')).toBe(3.14);
+    });
+
+    it('returns undefined for invalid string when no fallback', () => {
+      expect(parseEnvNumber('not-a-number')).toBeUndefined();
+    });
+
+    it('returns fallback for invalid string when fallback is set', () => {
+      expect(parseEnvNumber('not-a-number', 99)).toBe(99);
+    });
+
+    it('matches Number() for edge cases', () => {
+      expect(parseEnvNumber('0')).toBe(0);
+      expect(parseEnvNumber('')).toBe(0);
+      expect(parseEnvNumber('Infinity')).toBe(Number.POSITIVE_INFINITY);
+    });
+  });
+
+  describe('toBoolean', () => {
+    it('returns fallback when value is undefined', () => {
+      expect(toBoolean(undefined, true)).toBe(true);
+      expect(toBoolean(undefined, false)).toBe(false);
+    });
+
+    it('treats true and 1 as true (trimmed, case-insensitive)', () => {
+      expect(toBoolean('true', false)).toBe(true);
+      expect(toBoolean('TRUE', false)).toBe(true);
+      expect(toBoolean('1', false)).toBe(true);
+      expect(toBoolean('  true  ', false)).toBe(true);
+    });
+
+    it('treats other strings as false', () => {
+      expect(toBoolean('false', true)).toBe(false);
+      expect(toBoolean('', true)).toBe(false);
+      expect(toBoolean('0', true)).toBe(false);
+    });
+  });
 });
