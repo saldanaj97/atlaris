@@ -19,14 +19,6 @@ import {
 } from '@/shared/types/ai-usage.types';
 
 /**
- * @deprecated Import directly from `@/features/ai/cost` instead.
- * This re-export exists only for backward compatibility and will be
- * removed in v0.5.0 (or by 2025-09-01, whichever comes first).
- * TODO: Create a tracking issue to remove this re-export.
- */
-export { computeCostCents } from '@/features/ai/cost';
-
-/**
  * Strictly normalize provider metadata into a CanonicalAIUsage.
  *
  * Throws {@link IncompleteUsageError} if any required field (provider,

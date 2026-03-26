@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  computeCostCents,
   normalizeToCanonicalUsage,
   safeNormalizeUsage,
 } from '@/features/ai/usage';
@@ -32,40 +31,6 @@ vi.mock('@/features/ai/ai-models', () => ({
     return models[id] ?? undefined;
   },
 }));
-
-// ─── computeCostCents ────────────────────────────────────────────
-
-describe('computeCostCents', () => {
-  it('throws for unknown model', () => {
-    expect(() => computeCostCents('unknown-model', 1000, 500)).toThrow(
-      /Unknown model "unknown-model"/
-    );
-  });
-
-  it('returns 0 when both token counts are 0', () => {
-    expect(computeCostCents('openai/gpt-4o', 0, 0)).toBe(0);
-  });
-
-  it('returns 0 for free models', () => {
-    expect(
-      computeCostCents('google/gemini-2.0-flash-exp:free', 100_000, 50_000)
-    ).toBe(0);
-  });
-
-  it('computes cost correctly for paid models', () => {
-    // 1M input tokens at $2.5/M = $2.50 = 250 cents
-    // 500K output tokens at $10/M = $5.00 = 500 cents
-    // Total = 750 cents
-    expect(computeCostCents('openai/gpt-4o', 1_000_000, 500_000)).toBe(750);
-  });
-
-  it('rounds to nearest cent', () => {
-    // 100 input tokens at $2.5/M = $0.00025 = 0.025 cents → rounds to 0
-    expect(computeCostCents('openai/gpt-4o', 100, 0)).toBe(0);
-    // 10_000 input tokens at $2.5/M = $0.025 = 2.5 cents → rounds to 3
-    expect(computeCostCents('openai/gpt-4o', 10_000, 0)).toBe(3);
-  });
-});
 
 // ─── normalizeToCanonicalUsage ───────────────────────────────────
 
