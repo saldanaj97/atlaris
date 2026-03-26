@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,9 @@ export interface IntegrationCardProps {
   icon: string;
   status: IntegrationStatus;
   features: string[];
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  loading?: boolean;
 }
 
 function StatusBadge({ status }: { status: IntegrationStatus }) {
@@ -31,12 +34,30 @@ function StatusBadge({ status }: { status: IntegrationStatus }) {
   }
 }
 
-function ActionButton({ status }: { status: IntegrationStatus }) {
+function ActionButton({
+  status,
+  onConnect,
+  onDisconnect,
+  loading,
+}: {
+  status: IntegrationStatus;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  loading?: boolean;
+}) {
   switch (status) {
     case 'available':
       return (
-        // TODO: Implement OAuth/connection flow
-        <Button variant="default">Connect</Button>
+        <Button variant="default" onClick={onConnect} disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Connecting…
+            </>
+          ) : (
+            'Connect'
+          )}
+        </Button>
       );
     case 'coming_soon':
       return (
@@ -46,8 +67,16 @@ function ActionButton({ status }: { status: IntegrationStatus }) {
       );
     case 'connected':
       return (
-        // TODO: Implement manage/disconnect flow
-        <Button variant="outline">Manage</Button>
+        <Button variant="outline" onClick={onDisconnect} disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Disconnecting…
+            </>
+          ) : (
+            'Disconnect'
+          )}
+        </Button>
       );
   }
 }
@@ -58,6 +87,9 @@ export function IntegrationCard({
   icon,
   status,
   features,
+  onConnect,
+  onDisconnect,
+  loading,
 }: IntegrationCardProps): JSX.Element {
   return (
     <Card className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10">
@@ -95,7 +127,12 @@ export function IntegrationCard({
 
         {/* Action */}
         <div className="pt-2">
-          <ActionButton status={status} />
+          <ActionButton
+            status={status}
+            onConnect={onConnect}
+            onDisconnect={onDisconnect}
+            loading={loading}
+          />
         </div>
       </div>
     </Card>
