@@ -1,8 +1,6 @@
 import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
-import {
-  getDefaultModelForTier,
-  getModelsForTier,
-} from '@/features/ai/ai-models';
+import { getDefaultModelForTier } from '@/features/ai/ai-models';
+import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
@@ -12,6 +10,14 @@ import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
+
+function createPreferencesUpdateFailedError(userId: string | number): AppError {
+  return new AppError('Failed to persist preferences.', {
+    status: 500,
+    code: 'PREFERENCES_UPDATE_FAILED',
+    logMeta: { userId },
+  });
+}
 
 /**
  * GET /api/v1/user/preferences
@@ -26,7 +32,7 @@ export const GET = withErrorBoundary(
     });
 
     const userTier = user.subscriptionTier;
-    const availableModels = getModelsForTier(userTier);
+    const availableModels = getPersistableModelsForTier(userTier);
 
     const fallbackModel = getDefaultModelForTier(userTier);
     let preferredAiModel = fallbackModel;
@@ -91,6 +97,27 @@ export const PATCH = withErrorBoundary(
     }
 
     const userTier = user.subscriptionTier;
+
+    if (parsed.data.preferredAiModel === null) {
+      const updatedUser = await updateUserPreferredAiModel(user.id, null);
+
+      if (!updatedUser) {
+        throw createPreferencesUpdateFailedError(user.id);
+      }
+
+      logger.info(
+        { preferredAiModel: updatedUser.preferredAiModel },
+        'User preferences cleared (tier default applies)'
+      );
+
+      const response = json({
+        message: 'Preferences updated',
+        preferredAiModel: updatedUser.preferredAiModel,
+      });
+
+      return attachRequestIdHeader(response, requestId);
+    }
+
     const modelValidation = validateModelForTier(
       userTier,
       parsed.data.preferredAiModel
@@ -149,10 +176,7 @@ export const PATCH = withErrorBoundary(
     );
 
     if (!updatedUser) {
-      throw new AppError('Failed to persist preferences.', {
-        status: 500,
-        code: 'PREFERENCES_UPDATE_FAILED',
-      });
+      throw createPreferencesUpdateFailedError(user.id);
     }
 
     if (updatedUser.preferredAiModel === null) {

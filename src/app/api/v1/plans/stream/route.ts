@@ -6,6 +6,8 @@ import {
   safeMarkPlanFailed,
 } from '@/app/api/v1/plans/stream/helpers';
 import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { resolveSavedPreferenceForSettings } from '@/features/ai/model-preferences';
+import { validateModelForTier } from '@/features/ai/model-resolver';
 import {
   createEventStream,
   streamHeaders,
@@ -211,29 +213,70 @@ export function createStreamHandler(deps?: {
           'Plan created via lifecycle service'
         );
 
-        // ─── Model override from URL params ──────────────────────
+        // ─── Model override: valid ?model= wins, else saved preference, else tier default ─
         const url = new URL(req.url);
         let modelOverride: string | undefined;
+
         if (url.searchParams.has('model')) {
           const suppliedModel = url.searchParams.get('model') ?? '';
-          const isAllowedModel = ALLOWED_MODELS.has(suppliedModel);
+          const isModelAllowed =
+            ALLOWED_MODELS.has(suppliedModel) &&
+            validateModelForTier(tier, suppliedModel).valid;
 
-          if (isAllowedModel) {
+          if (isModelAllowed) {
+            modelOverride = suppliedModel;
             logger.info(
               {
                 authUserId: userId,
                 userId: internalUserId,
+                planId,
+                modelResolutionSource: 'query_override',
                 modelOverride: suppliedModel,
               },
-              'Model override provided for stream generation'
+              'Model override from query for stream generation'
             );
-            modelOverride = suppliedModel;
           } else {
             logger.warn(
-              { authUserId: userId, userId: internalUserId },
-              'Ignoring invalid model override for stream generation'
+              {
+                authUserId: userId,
+                userId: internalUserId,
+                planId,
+                tier,
+                suppliedModel,
+                modelResolutionSource: 'query_override',
+              },
+              'Ignoring invalid or tier-denied model override for stream generation'
             );
-            modelOverride = undefined;
+          }
+        }
+
+        if (modelOverride === undefined) {
+          const saved = resolveSavedPreferenceForSettings(
+            tier,
+            currentUser.preferredAiModel
+          );
+          if (saved != null) {
+            modelOverride = saved;
+            logger.info(
+              {
+                authUserId: userId,
+                userId: internalUserId,
+                planId,
+                modelResolutionSource: 'saved_preference',
+                modelOverride: saved,
+              },
+              'Using saved preferred AI model for stream generation'
+            );
+          } else {
+            logger.info(
+              {
+                authUserId: userId,
+                userId: internalUserId,
+                planId,
+                modelResolutionSource: 'tier_default',
+              },
+              'No query override or saved preference; tier default applies'
+            );
           }
         }
 

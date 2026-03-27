@@ -11,8 +11,15 @@ import { preferredAiModel } from '@/lib/db/enums';
  *
  * @module lib/validation/user-preferences
  */
-export const updatePreferencesSchema = z.object({
-  preferredAiModel: z.enum(preferredAiModel.enumValues, {
-    error: 'Invalid model ID',
-  }),
+const preferredAiModelEnum = z.enum(preferredAiModel.enumValues, {
+  error: 'Invalid model ID',
 });
+
+/**
+ * `preferredAiModel: null` clears the saved preference (tier default applies).
+ */
+export const updatePreferencesSchema = z
+  .object({
+    preferredAiModel: z.union([preferredAiModelEnum, z.null()]),
+  })
+  .strict();

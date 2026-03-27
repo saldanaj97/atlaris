@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
-import { ModelSelector } from '@/app/settings/ai/components/model-selector';
+import { ModelPreferencesSelector } from '@/app/settings/ai/components/ModelPreferencesSelector';
 import {
   Card,
   CardContent,
@@ -8,48 +8,61 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { getDefaultModelForTier, getModelById } from '@/features/ai/ai-models';
+import {
+  getPersistableModelsForTier,
+  resolveSavedPreferenceForSettings,
+} from '@/features/ai/model-preferences';
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
-import { getSubscriptionTier } from '@/features/billing/subscriptions';
 import { withServerComponentContext } from '@/lib/api/auth';
-import { getDb } from '@/lib/db/runtime';
 
 /**
  * Async component that fetches user subscription data and renders the model selector.
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function ModelSelectionCard(): Promise<JSX.Element> {
-  const result = await withServerComponentContext(async (user) => {
-    const db = getDb();
-    const sub = await getSubscriptionTier(user.id, db);
-    return { sub };
-  });
+  const user = await withServerComponentContext((u) => u);
 
-  if (!result) redirect('/auth/sign-in');
+  if (!user) redirect('/auth/sign-in');
 
-  const userTier: SubscriptionTier =
-    result.sub.subscriptionTier === 'starter'
-      ? 'starter'
-      : result.sub.subscriptionTier === 'pro'
-        ? 'pro'
-        : 'free';
+  const userTier: SubscriptionTier = user.subscriptionTier;
 
-  // TODO: [OPENROUTER-MIGRATION] Get user's preferred model from database when column exists
-  const userPreferredModel = null;
+  const availableModels = getPersistableModelsForTier(userTier);
+  const currentModel = resolveSavedPreferenceForSettings(
+    userTier,
+    user.preferredAiModel
+  );
+
+  const tierDefaultId = getDefaultModelForTier(userTier);
+  const tierDefaultMeta = getModelById(tierDefaultId);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Model Selection</CardTitle>
         <CardDescription>
-          Model preference saving will be available soon.
+          {currentModel != null ? (
+            <>
+              Your saved choice is used for new plan generations. You can still
+              use a one-off <code className="font-mono text-xs">?model=</code>{' '}
+              query on a generation request to override it for that run only.
+            </>
+          ) : (
+            <>
+              No explicit preference saved yet. New plans use{' '}
+              <strong>{tierDefaultMeta?.name ?? tierDefaultId}</strong> (the
+              default for your tier). Save a model below to store a preference.
+              The list only includes models you can persist; the automatic
+              router fallback is not listed here.
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ModelSelector
-          currentModel={userPreferredModel}
+        <ModelPreferencesSelector
+          currentModel={currentModel}
           userTier={userTier}
-          // TODO: [OPENROUTER-MIGRATION] Implement onSave when API is ready
-          onSave={undefined}
+          availableModels={availableModels}
         />
       </CardContent>
     </Card>

@@ -1,11 +1,11 @@
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
-import {
-  getDefaultModelForTier,
-  getModelsForTier,
-} from '@/features/ai/ai-models';
-
+import { getDefaultModelForTier } from '@/features/ai/ai-models';
+import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
+import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
@@ -41,7 +41,14 @@ describe('GET /api/v1/user/preferences', () => {
     const data = await response.json();
     expect(data).toHaveProperty('availableModels');
     expect(Array.isArray(data.availableModels)).toBe(true);
-    expect(data.availableModels.length).toBe(getModelsForTier('free').length);
+    expect(data.availableModels.length).toBe(
+      getPersistableModelsForTier('free').length
+    );
+    expect(
+      data.availableModels.some(
+        (m: { id: string }) => m.id === 'openrouter/free'
+      )
+    ).toBe(false);
   });
 
   it('returns default preferredAiModel when user has not set one', async () => {
@@ -142,6 +149,41 @@ describe('PATCH /api/v1/user/preferences', () => {
     const data = await response.json();
     expect(data.message).toBe('Preferences updated');
     expect(data.preferredAiModel).toBe('google/gemini-2.0-flash-exp:free');
+  });
+
+  it('clears preferredAiModel with null PATCH and GET reflects tier default', async () => {
+    setTestUser(testAuthUserId);
+
+    const setRequest = new Request('http://localhost/api/v1/user/preferences', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        preferredAiModel: 'anthropic/claude-haiku-4.5',
+      }),
+    });
+    const setResponse = await PATCH(setRequest);
+    expect(setResponse.status).toBe(200);
+
+    const clearRequest = new Request(
+      'http://localhost/api/v1/user/preferences',
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredAiModel: null }),
+      }
+    );
+    const clearResponse = await PATCH(clearRequest);
+    expect(clearResponse.status).toBe(200);
+    const clearData = await clearResponse.json();
+    expect(clearData.preferredAiModel).toBeNull();
+
+    const getRequest = new Request('http://localhost/api/v1/user/preferences', {
+      method: 'GET',
+    });
+    const getResponse = await GET(getRequest);
+    expect(getResponse.status).toBe(200);
+    const getData = await getResponse.json();
+    expect(getData.preferredAiModel).toBe(getDefaultModelForTier('free'));
   });
 
   it('persists preferredAiModel and returns it on GET', async () => {
@@ -318,7 +360,89 @@ describe('PATCH /api/v1/user/preferences', () => {
     });
 
     const response = await PATCH(request);
-    // Should return 400 or 500 due to JSON parse error
-    expect([400, 500]).toContain(response.status);
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects extra JSON fields with 400', async () => {
+    setTestUser(testAuthUserId);
+
+    const request = new Request('http://localhost/api/v1/user/preferences', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+        extraField: 'not-allowed',
+      }),
+    });
+
+    const response = await PATCH(request);
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects tier-denied model with 403', async () => {
+    setTestUser(testAuthUserId);
+
+    const request = new Request('http://localhost/api/v1/user/preferences', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        preferredAiModel: 'anthropic/claude-sonnet-4.5',
+      }),
+    });
+
+    const response = await PATCH(request);
+    expect(response.status).toBe(403);
+    const data = (await response.json()) as { code?: string };
+    expect(data.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
+  });
+});
+
+describe('GET /api/v1/user/preferences — invalid stored preference', () => {
+  const testAuthUserId = `preferences-downgrade-invalid-${Date.now()}`;
+
+  beforeAll(async () => {
+    await ensureUser({
+      authUserId: testAuthUserId,
+      email: `${testAuthUserId}@example.com`,
+      subscriptionTier: 'pro',
+    });
+    setTestUser(testAuthUserId);
+
+    const patchRequest = new Request(
+      'http://localhost/api/v1/user/preferences',
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preferredAiModel: 'anthropic/claude-sonnet-4.5',
+        }),
+      }
+    );
+    const patchResponse = await PATCH(patchRequest);
+    expect(patchResponse.status).toBe(200);
+
+    await db
+      .update(users)
+      .set({ subscriptionTier: 'free' })
+      .where(eq(users.authUserId, testAuthUserId));
+  });
+
+  afterAll(() => {
+    clearTestUser();
+  });
+
+  it('returns tier fallback when stored model is invalid for current tier', async () => {
+    const request = new Request('http://localhost/api/v1/user/preferences', {
+      method: 'GET',
+    });
+
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.preferredAiModel).toBe(getDefaultModelForTier('free'));
   });
 });

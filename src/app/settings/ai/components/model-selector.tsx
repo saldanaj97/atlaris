@@ -22,26 +22,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getModelsForTier } from '@/features/ai/ai-models';
 import type {
   AvailableModel,
   SubscriptionTier,
 } from '@/features/ai/types/model.types';
 import { ROUTES } from '@/features/navigation';
 import { clientLogger } from '@/lib/logging/client';
-import { cn } from '@/lib/utils';
+
+/** Placeholder value so Radix Select stays controlled (never uncontrolled↔controlled). */
+const NO_MODEL_VALUE = '__no_model_selected__';
+
+function normalizePreference(model: string | null): string {
+  return model ?? '';
+}
 
 interface ModelSelectorProps {
   currentModel: string | null;
   userTier: SubscriptionTier;
-  onSave?: (modelId: string) => Promise<void>;
+  availableModels: AvailableModel[];
+  onSave: (modelId: string | null) => Promise<void>;
 }
 
 interface ModelDropdownProps {
   availableModels: AvailableModel[];
   userTier: SubscriptionTier;
   currentModel: string | null;
-  onSave?: (modelId: string) => Promise<void>;
+  onSave: (modelId: string | null) => Promise<void>;
 }
 
 const ModelDropdown = ({
@@ -50,18 +56,19 @@ const ModelDropdown = ({
   currentModel,
   onSave,
 }: ModelDropdownProps) => {
-  const [selectedModel, setSelectedModel] = useState<string>(
-    currentModel ?? availableModels[0]?.id ?? ''
+  const [selectedModel, setSelectedModel] = useState<string>(() =>
+    normalizePreference(currentModel)
   );
+  const [optimisticBaseline, setOptimisticBaseline] = useState<
+    string | undefined
+  >(undefined);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<
-    'idle' | 'success' | 'error' | 'upgradeRequired'
-  >('idle');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>(
+    'idle'
+  );
 
-  // Ref to track timeout for cleanup
   const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup the timeout on unmount
   useEffect(() => {
     return () => {
       if (statusTimeoutRef.current) {
@@ -70,54 +77,121 @@ const ModelDropdown = ({
     };
   }, []);
 
+  useEffect(() => {
+    setSelectedModel(normalizePreference(currentModel));
+  }, [currentModel]);
+
+  // After save we set optimisticBaseline to the value we sent; when `currentModel`
+  // (server) catches up, setOptimisticBaseline compares normalizePreference(currentModel)
+  // to that baseline and clears optimisticBaseline. Until then, effectiveBaseline uses
+  // optimisticBaseline when set, otherwise normalizePreference(currentModel).
+  useEffect(() => {
+    setOptimisticBaseline((prev) => {
+      if (prev === undefined) return undefined;
+      return normalizePreference(currentModel) === prev ? undefined : prev;
+    });
+  }, [currentModel]);
+
+  const effectiveBaseline =
+    optimisticBaseline !== undefined
+      ? optimisticBaseline
+      : normalizePreference(currentModel);
+
   const selectedModelData = availableModels.find((m) => m.id === selectedModel);
 
-  const handleSave = async () => {
-    if (!selectedModelData) return;
+  const hasChanges = selectedModel !== effectiveBaseline;
 
-    // Check tier-gating
-    if (selectedModelData.tier === 'pro' && userTier !== 'pro') {
-      setSaveStatus('upgradeRequired');
-      return;
+  const scheduleStatusReset = () => {
+    if (statusTimeoutRef.current) {
+      clearTimeout(statusTimeoutRef.current);
     }
+    statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
+  };
+
+  const handleSave = async () => {
+    if (selectedModel === '') return;
 
     setIsSaving(true);
     setSaveStatus('idle');
 
-    // Clear any existing timeout
     if (statusTimeoutRef.current) {
       clearTimeout(statusTimeoutRef.current);
     }
 
     try {
-      if (onSave) {
-        await onSave(selectedModel);
-      }
+      await onSave(selectedModel);
+      setOptimisticBaseline(selectedModel);
       setSaveStatus('success');
-      statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
-      setIsSaving(false);
+      scheduleStatusReset();
     } catch (error) {
       clientLogger.error('Failed to save model preference:', {
         message: error instanceof Error ? error.message : String(error),
         selectedModel,
       });
       setSaveStatus('error');
-      statusTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
+      scheduleStatusReset();
+    } finally {
       setIsSaving(false);
     }
   };
 
-  const hasChanges = selectedModel !== currentModel;
+  const handleUseTierDefault = async () => {
+    setIsSaving(true);
+    setSaveStatus('idle');
+    if (statusTimeoutRef.current) {
+      clearTimeout(statusTimeoutRef.current);
+    }
+    try {
+      await onSave(null);
+      setOptimisticBaseline('');
+      setSelectedModel('');
+      setSaveStatus('success');
+      scheduleStatusReset();
+    } catch (error) {
+      clientLogger.error('Failed to clear model preference:', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      setSaveStatus('error');
+      scheduleStatusReset();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClearSelection = () => {
+    if (selectedModel !== '') {
+      setSelectedModel('');
+    }
+  };
+
+  const handleSecondaryAction = () => {
+    if (effectiveBaseline !== '') {
+      void handleUseTierDefault();
+    } else {
+      handleClearSelection();
+    }
+  };
+
+  const showSecondaryAction = effectiveBaseline !== '' || selectedModel !== '';
+
+  const saveDisabled =
+    !hasChanges || isSaving || selectedModel === '' || !selectedModelData;
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="model-select">Preferred AI Model</Label>
-        <Select value={selectedModel} onValueChange={setSelectedModel}>
+        <Select
+          value={selectedModel === '' ? NO_MODEL_VALUE : selectedModel}
+          onValueChange={(v) => setSelectedModel(v === NO_MODEL_VALUE ? '' : v)}
+        >
           <SelectTrigger id="model-select" className="w-full">
             <SelectValue placeholder="Select a model" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={NO_MODEL_VALUE}>
+              <span className="text-muted-foreground">Select a model</span>
+            </SelectItem>
             {availableModels.map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 <div className="flex items-center gap-2">
@@ -193,16 +267,6 @@ const ModelDropdown = ({
         </Card>
       )}
 
-      {saveStatus === 'upgradeRequired' && (
-        <div
-          role="alert"
-          className="border-destructive bg-destructive/10 text-destructive rounded-lg border-2 p-3 text-sm"
-        >
-          This model requires a Pro subscription. Please upgrade to use premium
-          models.
-        </div>
-      )}
-
       {saveStatus === 'error' && (
         <div
           role="alert"
@@ -222,10 +286,23 @@ const ModelDropdown = ({
         </div>
       )}
 
+      {showSecondaryAction && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={isSaving}
+          onClick={handleSecondaryAction}
+        >
+          {effectiveBaseline !== '' ? 'Use tier default' : 'Clear selection'}
+        </Button>
+      )}
+
       <Button
+        type="button"
         onClick={() => void handleSave()}
-        disabled={!hasChanges || isSaving}
-        className={cn('w-full', { 'opacity-50': !hasChanges })}
+        disabled={saveDisabled}
+        className="w-full"
       >
         {isSaving ? 'Saving...' : 'Save Preferences'}
       </Button>
@@ -250,12 +327,9 @@ const ModelDropdown = ({
 export function ModelSelector({
   userTier,
   currentModel = null,
+  availableModels,
   onSave,
 }: ModelSelectorProps) {
-  // Filter models by user's tier using centralized utility
-  const availableModels = getModelsForTier(userTier);
-
-  // Handle edge case with no available models
   if (availableModels.length === 0) {
     return (
       <Empty>

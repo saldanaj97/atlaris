@@ -209,9 +209,14 @@ describe('Model Validation (API Layer)', () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.flatten().fieldErrors.preferredAiModel).toContain(
-          'Invalid model ID'
+        const unionIssue = result.error.issues.find(
+          (i) =>
+            i.path.length === 1 &&
+            i.path[0] === 'preferredAiModel' &&
+            i.code === 'invalid_union'
         );
+        expect(unionIssue).toBeDefined();
+        expect(result.error.format()._errors).toContain('Invalid model ID');
       }
     });
 
@@ -234,19 +239,30 @@ describe('Model Validation (API Layer)', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects null preferredAiModel', () => {
+    it('accepts null preferredAiModel to clear saved preference', () => {
       const result = updatePreferencesSchema.safeParse({
         preferredAiModel: null,
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.preferredAiModel).toBeNull();
+      }
     });
 
-    it('allows extra fields (Zod default behavior)', () => {
+    it('rejects unknown keys (strict schema)', () => {
       const result = updatePreferencesSchema.safeParse({
         preferredAiModel: 'google/gemini-2.0-flash-exp:free',
-        extraField: 'ignored',
+        extraField: 'rejected',
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        const issue = result.error.issues.find(
+          (i) => i.code === 'unrecognized_keys'
+        );
+        expect(issue).toBeDefined();
+        expect(issue?.code).toBe('unrecognized_keys');
+        expect(issue?.keys).toContain('extraField');
+      }
     });
   });
 

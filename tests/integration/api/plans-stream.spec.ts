@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
+import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import { parsePersistedPdfContext } from '@/features/pdf/context';
 import {
   computePdfExtractionHash,
@@ -11,7 +12,13 @@ import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
+import type { PreferredAiModel } from '@/lib/db/enums';
+import {
+  generationAttempts,
+  learningPlans,
+  modules,
+  users,
+} from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import {
   createPdfProof,
@@ -26,6 +33,41 @@ import {
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const NUMERIC_HEADER_PATTERN = /^\d+$/;
+
+const STREAM_MOCK_SUCCESS: GenerationAttemptResult = {
+  status: 'generation_success',
+  data: {
+    modules: [
+      {
+        title: 'Captured Module',
+        estimatedMinutes: 60,
+        tasks: [{ title: 'T', estimatedMinutes: 30 }],
+      },
+    ],
+    metadata: {
+      provider: 'mock',
+      model: 'mock-model',
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+    },
+    durationMs: 5,
+  },
+};
+
+function createCapturingHandler(): {
+  post: ReturnType<typeof createStreamHandler>;
+  captured: ProcessGenerationInput[];
+} {
+  const captured: ProcessGenerationInput[] = [];
+  const post = createStreamHandler({
+    overrides: {
+      processGenerationAttempt: async (input: ProcessGenerationInput) => {
+        captured.push(input);
+        return STREAM_MOCK_SUCCESS;
+      },
+    },
+  });
+  return { post, captured };
+}
 
 function assertNumericHeader(response: Response, name: string): void {
   const value = response.headers.get(name);
@@ -343,6 +385,216 @@ describe('POST /api/v1/plans/stream', () => {
     const events = await readStreamingResponse(response);
     const completeEvent = events.find((event) => event.type === 'complete');
     expect(completeEvent?.data?.planId).toBeTruthy();
+  });
+
+  it('uses tier default when DB has no saved preference', async () => {
+    const authUserId = buildTestAuthUserId('stream-db-null-pref');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    await db
+      .update(users)
+      .set({ preferredAiModel: null })
+      .where(eq(users.authUserId, authUserId));
+
+    const { post, captured } = createCapturingHandler();
+
+    const payload = {
+      topic: 'Learning Python',
+      skillLevel: 'advanced',
+      weeklyHours: 10,
+      learningStyle: 'practice',
+      deadlineDate: '2030-12-01',
+      visibility: 'private',
+      origin: 'ai',
+    };
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await post(request);
+    expect(response.status).toBe(200);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.modelOverride).toBeUndefined();
+  });
+
+  it('passes saved preferred model when no query param', async () => {
+    const authUserId = buildTestAuthUserId('stream-saved-pref');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    await db
+      .update(users)
+      .set({ preferredAiModel: 'anthropic/claude-haiku-4.5' })
+      .where(eq(users.authUserId, authUserId));
+
+    const { post, captured } = createCapturingHandler();
+
+    const payload = {
+      topic: 'Learning Python',
+      skillLevel: 'advanced',
+      weeklyHours: 10,
+      learningStyle: 'practice',
+      deadlineDate: '2030-12-01',
+      visibility: 'private',
+      origin: 'ai',
+    };
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await post(request);
+    expect(response.status).toBe(200);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.modelOverride).toBe('anthropic/claude-haiku-4.5');
+  });
+
+  it('query model override beats saved preference', async () => {
+    const authUserId = buildTestAuthUserId('stream-query-beats-saved');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    await db
+      .update(users)
+      .set({ preferredAiModel: 'anthropic/claude-haiku-4.5' })
+      .where(eq(users.authUserId, authUserId));
+
+    const { post, captured } = createCapturingHandler();
+
+    const payload = {
+      topic: 'Learning Rust',
+      skillLevel: 'beginner',
+      weeklyHours: 4,
+      learningStyle: 'reading',
+      deadlineDate: '2030-08-01',
+      visibility: 'private',
+      origin: 'ai',
+    };
+
+    const request = new Request(
+      'http://localhost/api/v1/plans/stream?model=openai/gpt-oss-20b:free',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const response = await post(request);
+    expect(response.status).toBe(200);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.modelOverride).toBe('openai/gpt-oss-20b:free');
+  });
+
+  it('ignores invalid query param and uses saved preference', async () => {
+    const authUserId = buildTestAuthUserId('stream-invalid-query-saved');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    await db
+      .update(users)
+      .set({ preferredAiModel: 'google/gemini-2.0-flash-exp:free' })
+      .where(eq(users.authUserId, authUserId));
+
+    const { post, captured } = createCapturingHandler();
+
+    const payload = {
+      topic: 'Learning Go',
+      skillLevel: 'intermediate',
+      weeklyHours: 6,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-09-01',
+      visibility: 'private',
+      origin: 'ai',
+    };
+
+    const request = new Request(
+      'http://localhost/api/v1/plans/stream?model=invalid/model-id',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const response = await post(request);
+    expect(response.status).toBe(200);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.modelOverride).toBe('google/gemini-2.0-flash-exp:free');
+  });
+
+  it('ignores tier-invalid saved preference and uses tier default', async () => {
+    const authUserId = buildTestAuthUserId('stream-tier-invalid-saved');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    setTestUser(authUserId);
+
+    const proTierPersistableModel = AVAILABLE_MODELS.find(
+      (m) => m.tier === 'pro'
+    );
+    expect(proTierPersistableModel).toBeDefined();
+    if (!proTierPersistableModel) {
+      throw new Error('Expected a pro-tier model in AVAILABLE_MODELS');
+    }
+
+    await db
+      .update(users)
+      .set({
+        preferredAiModel: proTierPersistableModel.id as PreferredAiModel,
+      })
+      .where(eq(users.authUserId, authUserId));
+
+    const { post, captured } = createCapturingHandler();
+
+    const withinFreeTierWeeks = new Date();
+    withinFreeTierWeeks.setUTCDate(withinFreeTierWeeks.getUTCDate() + 10);
+    const deadlineDate = withinFreeTierWeeks.toISOString().slice(0, 10);
+
+    const payload = {
+      topic: 'Learning Kotlin',
+      skillLevel: 'beginner',
+      weeklyHours: 3,
+      learningStyle: 'video',
+      deadlineDate,
+      visibility: 'private',
+      origin: 'ai',
+    };
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const response = await post(request);
+    expect(response.status).toBe(200);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.modelOverride).toBeUndefined();
   });
 
   it('rejects PDF-origin stream request with forged extraction hash', async () => {

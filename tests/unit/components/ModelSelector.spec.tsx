@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   afterAll,
   afterEach,
@@ -46,10 +47,20 @@ const MODELS_BY_TIER: Record<SubscriptionTier, AvailableModel[]> = {
   pro: PRO_MODELS,
 };
 
-vi.mock('@/features/ai/ai-models', () => ({
-  getModelsForTier: (tier: SubscriptionTier): AvailableModel[] =>
-    MODELS_BY_TIER[tier],
-}));
+const defaultOnSave = vi
+  .fn<(modelId: string | null) => Promise<void>>()
+  .mockResolvedValue(undefined);
+
+async function selectFirstFreeModel(
+  user: ReturnType<typeof userEvent.setup>
+): Promise<void> {
+  await user.click(
+    screen.getByRole('combobox', { name: /preferred ai model/i })
+  );
+  await user.click(
+    screen.getByRole('option', { name: new RegExp(FIRST_FREE_MODEL.name, 'i') })
+  );
+}
 
 let ModelSelector: typeof import('@/app/settings/ai/components/model-selector').ModelSelector;
 
@@ -65,6 +76,7 @@ describe('ModelSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    defaultOnSave.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -77,17 +89,29 @@ describe('ModelSelector', () => {
 
   describe('Rendering', () => {
     it('renders with no current model selected', () => {
-      render(<ModelSelector currentModel={null} userTier="free" />);
+      render(
+        <ModelSelector
+          currentModel={null}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
+      );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /save preferences/i })
-      ).toBeInTheDocument();
+      ).toBeDisabled();
     });
 
     it('renders with a current model selected', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
@@ -95,7 +119,12 @@ describe('ModelSelector', () => {
 
     it('displays model details card when a model is selected', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       // Should show model details - use getAllBy for elements that may appear multiple times
@@ -108,7 +137,14 @@ describe('ModelSelector', () => {
     });
 
     it('displays upgrade prompt for non-pro users', () => {
-      render(<ModelSelector currentModel={null} userTier="free" />);
+      render(
+        <ModelSelector
+          currentModel={null}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
+      );
 
       expect(screen.getByText(/unlock premium models/i)).toBeInTheDocument();
       // Use getAllBy since "upgrade to pro" appears in both button and description
@@ -117,7 +153,14 @@ describe('ModelSelector', () => {
     });
 
     it('does not display upgrade prompt for pro users', () => {
-      render(<ModelSelector currentModel={null} userTier="pro" />);
+      render(
+        <ModelSelector
+          currentModel={null}
+          userTier="pro"
+          availableModels={MODELS_BY_TIER.pro}
+          onSave={defaultOnSave}
+        />
+      );
 
       expect(
         screen.queryByText(/unlock premium models/i)
@@ -128,7 +171,12 @@ describe('ModelSelector', () => {
   describe('Model Selection', () => {
     it('shows model description when selected', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       expect(
@@ -138,7 +186,12 @@ describe('ModelSelector', () => {
 
     it('displays correct model name', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       // The model name appears multiple times (trigger and card)
@@ -150,7 +203,12 @@ describe('ModelSelector', () => {
   describe('Save Button', () => {
     it('save button is disabled when no changes made', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       const saveButton = screen.getByRole('button', {
@@ -161,7 +219,12 @@ describe('ModelSelector', () => {
 
     it('renders save button', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       const saveButton = screen.getByRole('button', {
@@ -170,59 +233,131 @@ describe('ModelSelector', () => {
       expect(saveButton).toBeInTheDocument();
     });
 
-    it('calls onSave with model when save is triggered', async () => {
-      const mockOnSave = vi
-        .fn<(modelId: string) => Promise<void>>()
-        .mockResolvedValue(undefined);
-
-      // Render with no current model so the initial selection counts as a change
+    it('does not enable save until the user selects a model', async () => {
+      const user = userEvent.setup();
       render(
         <ModelSelector
           currentModel={null}
           userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
+      );
+
+      const saveButton = screen.getByRole('button', {
+        name: /save preferences/i,
+      });
+      expect(saveButton).toBeDisabled();
+
+      await selectFirstFreeModel(user);
+
+      await waitFor(() => {
+        expect(saveButton).not.toBeDisabled();
+      });
+    });
+
+    it('calls onSave with model when save is triggered after selection', async () => {
+      const mockOnSave = vi
+        .fn<(modelId: string | null) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      const user = userEvent.setup();
+
+      render(
+        <ModelSelector
+          currentModel={null}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
         />
       );
 
-      // The component defaults to selecting the first model, which is different from null
+      await selectFirstFreeModel(user);
+
       const saveButton = screen.getByRole('button', {
         name: /save preferences/i,
       });
-
-      // Since currentModel is null and default selection is FIRST_FREE_MODEL, there's a change
-      await waitFor(() => {
-        expect(saveButton).not.toBeDisabled();
-      });
-
-      fireEvent.click(saveButton);
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(mockOnSave).toHaveBeenCalledWith(FIRST_FREE_MODEL.id);
       });
     });
 
-    it('shows saving state while save is in progress', async () => {
-      const mockOnSave = vi.fn<(modelId: string) => Promise<void>>(
-        () => new Promise<void>((resolve) => setTimeout(resolve, 100))
+    it('calls onSave with null when Use tier default clears a saved preference', async () => {
+      const mockOnSave = vi
+        .fn<(modelId: string | null) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      const user = userEvent.setup();
+
+      render(
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={mockOnSave}
+        />
       );
+
+      await user.click(
+        screen.getByRole('button', { name: /use tier default/i })
+      );
+
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalledWith(null);
+      });
+    });
+
+    it('keeps save disabled immediately after a successful save', async () => {
+      const mockOnSave = vi
+        .fn<(modelId: string | null) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      const user = userEvent.setup();
 
       render(
         <ModelSelector
           currentModel={null}
           userTier="free"
+          availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
         />
       );
 
+      await selectFirstFreeModel(user);
       const saveButton = screen.getByRole('button', {
         name: /save preferences/i,
       });
+      await user.click(saveButton);
 
       await waitFor(() => {
-        expect(saveButton).not.toBeDisabled();
+        expect(
+          screen.getByText(/preferences saved successfully/i)
+        ).toBeInTheDocument();
       });
 
-      fireEvent.click(saveButton);
+      expect(saveButton).toBeDisabled();
+    });
+
+    it('shows saving state while save is in progress', async () => {
+      const mockOnSave = vi.fn<(modelId: string | null) => Promise<void>>(
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100))
+      );
+      const user = userEvent.setup();
+
+      render(
+        <ModelSelector
+          currentModel={null}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={mockOnSave}
+        />
+      );
+
+      await selectFirstFreeModel(user);
+
+      const saveButton = screen.getByRole('button', {
+        name: /save preferences/i,
+      });
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(screen.getByText(/saving/i)).toBeInTheDocument();
@@ -231,26 +366,25 @@ describe('ModelSelector', () => {
 
     it('shows success message after save', async () => {
       const mockOnSave = vi
-        .fn<(modelId: string) => Promise<void>>()
+        .fn<(modelId: string | null) => Promise<void>>()
         .mockResolvedValue(undefined);
+      const user = userEvent.setup();
 
       render(
         <ModelSelector
           currentModel={null}
           userTier="free"
+          availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
         />
       );
 
+      await selectFirstFreeModel(user);
+
       const saveButton = screen.getByRole('button', {
         name: /save preferences/i,
       });
-
-      await waitFor(() => {
-        expect(saveButton).not.toBeDisabled();
-      });
-
-      fireEvent.click(saveButton);
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(
@@ -261,26 +395,25 @@ describe('ModelSelector', () => {
 
     it('shows error message when save fails', async () => {
       const mockOnSave = vi
-        .fn<(modelId: string) => Promise<void>>()
+        .fn<(modelId: string | null) => Promise<void>>()
         .mockRejectedValue(new Error('Save failed'));
+      const user = userEvent.setup();
 
       render(
         <ModelSelector
           currentModel={null}
           userTier="free"
+          availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
         />
       );
 
+      await selectFirstFreeModel(user);
+
       const saveButton = screen.getByRole('button', {
         name: /save preferences/i,
       });
-
-      await waitFor(() => {
-        expect(saveButton).not.toBeDisabled();
-      });
-
-      fireEvent.click(saveButton);
+      await user.click(saveButton);
 
       await waitFor(() => {
         expect(
@@ -293,7 +426,12 @@ describe('ModelSelector', () => {
   describe('Tier Gating', () => {
     it('renders correctly for free tier user', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
@@ -301,7 +439,12 @@ describe('ModelSelector', () => {
 
     it('renders correctly for pro tier user', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="pro" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="pro"
+          availableModels={MODELS_BY_TIER.pro}
+          onSave={defaultOnSave}
+        />
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
@@ -315,7 +458,12 @@ describe('ModelSelector', () => {
   describe('Tier Badge Display', () => {
     it('displays tier badge on selected model card', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       // The selected model card should show a FREE badge
@@ -327,7 +475,12 @@ describe('ModelSelector', () => {
   describe('Model Details Display', () => {
     it('displays context window for selected model', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       // Check for context window display (should show as "XK tokens")
@@ -340,7 +493,12 @@ describe('ModelSelector', () => {
 
     it('displays cost information for selected model', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       // Free models should show "Free" for costs
@@ -350,7 +508,12 @@ describe('ModelSelector', () => {
 
     it('displays provider name for selected model', () => {
       render(
-        <ModelSelector currentModel={FIRST_FREE_MODEL.id} userTier="free" />
+        <ModelSelector
+          currentModel={FIRST_FREE_MODEL.id}
+          userTier="free"
+          availableModels={MODELS_BY_TIER.free}
+          onSave={defaultOnSave}
+        />
       );
 
       // Should show provider name (e.g. "by OpenRouter")

@@ -16,8 +16,11 @@ export default function AISettingsPage(): ReactElement {
       <header className="mb-6">
         <h2 className="text-xl font-semibold">AI Preferences</h2>
         <p className="text-muted-foreground text-sm">
-          Choose your preferred AI model for generating learning plans.
-          Different models offer varying levels of quality, speed, and cost.
+          Choose a saveable model for new plan generations. If you do not save a
+          preference, Atlaris uses your tier&apos;s default model (including the
+          automatic free router when applicable). A valid one-off{' '}
+          <code className="font-mono text-xs">?model=</code> on a generation
+          request still overrides your saved choice for that request only.
         </p>
       </header>
 
@@ -47,8 +50,9 @@ export default function AISettingsPage(): ReactElement {
               </li>
             </ul>
             <p>
-              Your selected model will be used for all future plan generations.
-              You can change it at any time.
+              A saved model applies to future plan generations until you change
+              it. Only explicitly listed models can be saved; the automatic
+              router fallback is used at runtime when no preference is stored.
             </p>
             <div className="border-border bg-muted/50 mt-4 rounded-lg border p-3">
               <p className="text-xs">
