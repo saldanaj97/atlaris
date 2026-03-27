@@ -57,3 +57,5 @@ jscpd-report/
 
 # plan files
 plans/*
+# CocoIndex Code (ccc)
+/.cocoindex_code/
