@@ -10,6 +10,7 @@ Persistent user preferences and durable workspace facts maintained by the `conti
 - When asked to run tests, prefer scoped commands (e.g. `pnpm test:changed` or a single spec file); do not run the full integration or full suite if the user asks to limit scope.
 - Before changing code for review-bot or external findings, verify each item against the current tree so fixes stay accurate and minimal.
 - When the working tree mixes changes from multiple agents or tasks, commit only files that belong to the current workstream (inspect `git status` / `git diff` before staging).
+- For substantial implementation plans, surface multiple viable approaches where tradeoffs differ so the user can choose before coding.
 
 ## Learned Workspace Facts
 
@@ -23,3 +24,4 @@ Persistent user preferences and durable workspace facts maintained by the `conti
 - Optional local duplication audits: `pnpm run dup-check` runs jscpd using `.jscpd.json`; generated reports live under `jscpd-report/` and should stay gitignored.
 - For the Vitest `integration` project, `tests/setup/db.ts` runs `resetDbForIntegrationTestFile()` in a global `beforeEach` (unless `SKIP_DB_TEST_SETUP=true`); per-file hooks that only repeat the same reset add cost without improving isolation.
 - Drizzle `CHECK` constraints that cap `char_length` should use literal numeric values in `sql` fragments in schema files (avoid interpolating TS constants into `sql` templates for those limits) so generated migration snapshots stay stable; keep caps in `src/lib/db/schema/constants.ts` and validate alignment with drift tests (e.g. title-length specs).
+- The `preferred_ai_model` database enum omits `openrouter/free` even when runtime tier defaults may use that catalog id — persistable settings options and saved-value validation must exclude it and keep tier/runtime fallback separate from “saved preference.”

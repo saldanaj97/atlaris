@@ -72,6 +72,20 @@ product’s active limits, but not for finer-grained provider cost analysis.
 This should be revisited when cost dashboards, reconciliation, or model-level
 billing audits become a product requirement.
 
+**Explicit deferral (OpenRouter migration slice, #296 / plan audit):** Do not add
+`estimated_cost_cents` or `model_pricing_snapshot` on `ai_usage_events`, or
+provider-returned cost provenance, until the accounting contract is defined end
+to end (canonical usage, metadata, persistence). `cost_cents` continues to hold
+the app-estimated value from `computeCostCents`.
+
+Persistable vs runtime-only models (e.g. excluding `openrouter/free` from saved
+prefs) and tier-aware listing are implemented in
+[`src/features/ai/model-preferences.ts`](../src/features/ai/model-preferences.ts),
+`GET`/`PATCH` [`/api/v1/user/preferences`](../src/app/api/v1/user/preferences/route.ts),
+and plan stream model resolution in
+[`plans/stream/route.ts`](../src/app/api/v1/plans/stream/route.ts). Further API
+contract changes for other consumers remain deferred until needed.
+
 ## ~~Drizzle snapshot metadata drift~~ *(resolved)*
 
 Resolved by fixing the `0010`/`0011` snapshot ID collision, adding a no-op
