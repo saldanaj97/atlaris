@@ -2,17 +2,16 @@
 
 ## Scope
 
-- [x] Workstream 1: Fix CSV export and integrations route/UI findings.
+- [x] Workstream 1: Fix integrations route/UI findings.
 - [x] Workstream 2: Fix AI settings UI, preferences validation, and plans stream model-resolution findings.
 - [x] Workstream 3: Fix OpenRouter, provider-cost, and env validation findings.
 - [x] Workstream 4: Fix DB usage schema/mapping, pricing snapshot, lifecycle usage wiring, and related test-fixture findings.
 
 ## Workstream 1
 
-- [x] Verify and harden `src/app/api/v1/exports/csv/route.ts`.
 - [x] Verify and harden `src/app/api/v1/integrations/status/route.ts`.
 - [x] Verify and harden integrations settings UI in `src/app/settings/integrations/components/*`.
-- [x] Update integrations and CSV-related unit/integration tests.
+- [x] Update integrations unit/integration tests.
 
 ## Workstream 2
 

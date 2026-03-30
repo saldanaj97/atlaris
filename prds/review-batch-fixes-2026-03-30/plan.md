@@ -6,25 +6,17 @@
 2. Split the review list into disjoint workstreams so parallel agents avoid file overlap.
 3. Keep production changes and their matching tests in the same workstream when practical.
 
-## Step 1.1 - Workstream 1: CSV export and integrations
+## Step 1.1 - Workstream 1: Integrations
 
-1. Update `src/app/api/v1/exports/csv/route.ts` to:
-   - quote CR/CRLF fields correctly,
-   - add explicit response typing,
-   - scope `taskProgress` by user,
-   - stop building the full CSV in memory,
-   - stream rows incrementally, and
-   - add a row-limit/background-job response path for oversized exports.
-2. Update `src/app/api/v1/integrations/status/route.ts` to:
+1. Update `src/app/api/v1/integrations/status/route.ts` to:
    - import and use the server logger,
    - type provider with the schema enum type, and
    - add structured success/error logging with try/catch.
 3. Update integrations settings UI to:
    - validate status API payloads with Zod,
-   - make CSV export wait for an actual server response before success toasts,
    - drive OAuth redirects from `integration.provider`, and
    - guard `IntegrationCard` button behavior when callbacks are absent.
-4. Update affected integrations/CSV tests to use stable semantic queries and cover new behavior.
+4. Update affected integrations tests to use stable semantic queries and cover new behavior.
 
 ## Step 1.2 - Workstream 2: AI settings and plans stream resolution
 

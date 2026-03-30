@@ -15,6 +15,13 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function makeSubscription(fields: {
+  id: string;
+  customer: string;
+}): Stripe.Subscription {
+  return fields as unknown as Stripe.Subscription;
+}
+
 function makeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {
   return {
     id: 'evt_test_001',
@@ -208,10 +215,7 @@ describe('handleStripeWebhookDedupeAndApply', () => {
         id: 'evt_rollback',
         type: 'customer.subscription.deleted',
         data: {
-          object: {
-            id: 'sub_123',
-            customer: 'cus_abc',
-          } as Stripe.Event.Data['object'],
+          object: makeSubscription({ id: 'sub_123', customer: 'cus_abc' }),
         },
       });
 
@@ -240,10 +244,7 @@ describe('handleStripeWebhookDedupeAndApply', () => {
         id: 'evt_rollback2',
         type: 'customer.subscription.deleted',
         data: {
-          object: {
-            id: 'sub_x',
-            customer: 'cus_x',
-          } as Stripe.Event.Data['object'],
+          object: makeSubscription({ id: 'sub_x', customer: 'cus_x' }),
         },
       });
 
@@ -279,10 +280,7 @@ describe('handleStripeWebhookDedupeAndApply', () => {
         id: 'evt_double_fail',
         type: 'customer.subscription.deleted',
         data: {
-          object: {
-            id: 'sub_y',
-            customer: 'cus_y',
-          } as Stripe.Event.Data['object'],
+          object: makeSubscription({ id: 'sub_y', customer: 'cus_y' }),
         },
       });
 
