@@ -1,5 +1,9 @@
 import { createAbortError } from '@/features/ai/abort';
-import { ProviderError } from '@/features/ai/providers/errors';
+import {
+  ProviderError,
+  ProviderRateLimitError,
+  ProviderTimeoutError,
+} from '@/features/ai/providers/errors';
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import type {
   AiPlanGenerationProvider,
@@ -21,6 +25,8 @@ type MockGenerationConfig = {
   delayMs?: number;
   failureRate?: number;
   deterministicSeed?: number; // If set, makes generation deterministic
+  /** Overrides env MOCK_AI_SCENARIO when set (e.g. tests). */
+  scenario?: string;
 };
 
 const TOPICS_TEMPLATES = {
@@ -242,14 +248,15 @@ function createMockStream(
 
 export class MockGenerationProvider implements AiPlanGenerationProvider {
   private readonly config: Required<
-    Omit<MockGenerationConfig, 'deterministicSeed'>
-  > & { deterministicSeed?: number };
+    Omit<MockGenerationConfig, 'deterministicSeed' | 'scenario'>
+  > & { deterministicSeed?: number; scenario?: string };
 
   constructor(config: MockGenerationConfig = {}) {
     this.config = {
       delayMs: config.delayMs ?? aiEnv.mock?.delayMs ?? 7000,
       failureRate: config.failureRate ?? aiEnv.mock?.failureRate ?? 0,
       deterministicSeed: config.deterministicSeed,
+      scenario: config.scenario ?? aiEnv.mockScenario,
     };
   }
 
@@ -257,6 +264,42 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     input: GenerationInput,
     options?: GenerationOptions
   ): Promise<ProviderGenerateResult> {
+    const scenario = this.config.scenario;
+    if (scenario === 'timeout') {
+      return Promise.reject(
+        new ProviderTimeoutError('MOCK_AI_SCENARIO=timeout (mock)')
+      );
+    }
+    if (scenario === 'provider_error') {
+      return Promise.reject(
+        new ProviderError('provider_error', 'MOCK_AI_SCENARIO=provider_error')
+      );
+    }
+    if (scenario === 'rate_limit') {
+      return Promise.reject(
+        new ProviderRateLimitError('MOCK_AI_SCENARIO=rate_limit')
+      );
+    }
+    if (scenario === 'invalid_response') {
+      return Promise.resolve({
+        stream: new ReadableStream<string>({
+          start(controller) {
+            controller.enqueue('not-valid-json{{{');
+            controller.close();
+          },
+        }),
+        metadata: {
+          provider: 'mock',
+          model: 'mock-invalid',
+          usage: {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+          },
+        },
+      });
+    }
+
     // Create seeded RNG if seed is provided
     const rng =
       this.config.deterministicSeed !== undefined

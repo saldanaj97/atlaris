@@ -1,4 +1,5 @@
 import { MetaDefenderScanProvider } from '@/features/pdf/security/metadefender';
+import { MockAvScanProvider } from '@/features/pdf/security/mock-av-provider';
 import type { ScanProvider } from '@/features/pdf/security/scanner.types';
 import { appEnv, avScannerEnv, EnvValidationError } from '@/lib/config/env';
 
@@ -39,6 +40,17 @@ export function createScanProvider(): ScanProvider | null {
       baseUrl: avScannerEnv.metadefenderBaseUrl,
       timeoutMs: avScannerEnv.scanTimeoutMs,
     });
+    return cachedScanProvider;
+  }
+
+  if (provider === 'mock') {
+    if (appEnv.isProduction) {
+      throw new EnvValidationError(
+        'AV_PROVIDER=mock is not allowed in production',
+        'AV_PROVIDER'
+      );
+    }
+    cachedScanProvider = new MockAvScanProvider(avScannerEnv.mockScenario);
     return cachedScanProvider;
   }
 
