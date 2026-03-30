@@ -39,6 +39,17 @@ pnpm db:migrate       # Apply migrations to database
 pnpm db:push          # Push schema directly to database
 ```
 
+### Local dev database (Docker)
+
+See [local-database.md](./local-database.md) for ports, env vars, and Neon vs local.
+
+```bash
+pnpm db:dev:up        # Start Postgres 17 (atlaris_dev on localhost:54331)
+pnpm db:dev:down      # Stop container
+pnpm db:dev:reset     # Remove volume and recreate container
+pnpm db:dev:bootstrap # Extensions, roles, migrations, RLS grants (localhost only)
+```
+
 ## Testing
 
 See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehensive testing documentation.
