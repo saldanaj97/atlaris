@@ -1,10 +1,6 @@
 import { sql } from 'drizzle-orm';
 
-import {
-  googleCalendarSyncState,
-  stripeWebhookEvents,
-  taskCalendarEvents,
-} from '@/lib/db/schema';
+import { stripeWebhookEvents } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 export async function ensureStripeWebhookEvents() {
@@ -26,18 +22,4 @@ export async function ensureJobTypeEnumValue() {
       END IF;
     END $$;
   `);
-}
-
-/**
- * Ensures the google_calendar_sync_state table exists using Drizzle's schema/migration system.
- */
-export async function ensureGoogleCalendarSyncState() {
-  await db.select().from(googleCalendarSyncState).limit(1);
-}
-
-/**
- * Ensures the task_calendar_events table exists using Drizzle's schema/migration system.
- */
-export async function ensureTaskCalendarEvents() {
-  await db.select().from(taskCalendarEvents).limit(1);
 }

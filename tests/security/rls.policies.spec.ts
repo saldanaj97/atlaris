@@ -22,7 +22,6 @@ import {
   learningPlans,
   modules,
   resources,
-  taskCalendarEvents,
   taskProgress,
   tasks,
   users,
@@ -45,8 +44,7 @@ const policyRowSchema = z.object({
 // this file. Do not add metadata-only tables here without functional tests.
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_schedules, plan_generations, generation_attempts, task_resources,
-// usage_metrics, ai_usage_events, oauth_state_tokens, integration_tokens,
-// google_calendar_sync_state, job_queue.
+// usage_metrics, ai_usage_events, oauth_state_tokens, job_queue.
 const expectedPolicyTables = [
   'users',
   'learning_plans',
@@ -54,7 +52,6 @@ const expectedPolicyTables = [
   'tasks',
   'resources',
   'task_progress',
-  'task_calendar_events',
 ] as const;
 
 async function expectRlsViolation(operation: () => Promise<unknown>) {
@@ -588,98 +585,6 @@ describe('RLS Policy Verification', () => {
           visibility: 'private',
         })
       );
-    });
-
-    it('authenticated users cannot insert calendar events for tasks they do not own', async () => {
-      const [owner] = await db
-        .insert(users)
-        .values({
-          authUserId: 'calendar_owner',
-          email: 'calendar-owner@test.com',
-        })
-        .returning();
-
-      const [attacker] = await db
-        .insert(users)
-        .values({
-          authUserId: 'calendar_attacker',
-          email: 'calendar-attacker@test.com',
-        })
-        .returning();
-
-      const [ownerPlan] = await db
-        .insert(learningPlans)
-        .values({
-          userId: owner.id,
-          topic: 'Owner Plan',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          visibility: 'private',
-        })
-        .returning();
-
-      const [ownerModule] = await db
-        .insert(modules)
-        .values({
-          planId: ownerPlan.id,
-          order: 1,
-          title: 'Owner Module',
-          estimatedMinutes: 60,
-        })
-        .returning();
-
-      const [ownerTask] = await db
-        .insert(tasks)
-        .values({
-          moduleId: ownerModule.id,
-          order: 1,
-          title: 'Owner Task',
-          estimatedMinutes: 30,
-        })
-        .returning();
-
-      const attackerDb = await createRlsDbForUser('calendar_attacker');
-
-      await expectRlsViolation(() =>
-        attackerDb.insert(taskCalendarEvents).values({
-          taskId: ownerTask.id,
-          userId: attacker.id,
-          calendarEventId: `event_${Date.now()}`,
-          calendarId: 'primary',
-        })
-      );
-
-      const [ownerEvent] = await db
-        .insert(taskCalendarEvents)
-        .values({
-          taskId: ownerTask.id,
-          userId: owner.id,
-          calendarEventId: `owner_event_${Date.now()}`,
-          calendarId: 'primary',
-        })
-        .returning({ id: taskCalendarEvents.id });
-
-      const updated = await attackerDb
-        .update(taskCalendarEvents)
-        .set({ calendarId: 'hacked' })
-        .where(eq(taskCalendarEvents.id, ownerEvent.id))
-        .returning({ id: taskCalendarEvents.id });
-
-      const deleted = await attackerDb
-        .delete(taskCalendarEvents)
-        .where(eq(taskCalendarEvents.id, ownerEvent.id))
-        .returning({ id: taskCalendarEvents.id });
-
-      expect(updated).toHaveLength(0);
-      expect(deleted).toHaveLength(0);
-
-      const persistedEvent = await db.query.taskCalendarEvents.findFirst({
-        where: (fields, operators) => operators.eq(fields.id, ownerEvent.id),
-      });
-
-      expect(persistedEvent).toBeDefined();
-      expect(persistedEvent?.calendarId).toBe('primary');
     });
 
     it('authenticated users can update their own plans', async () => {

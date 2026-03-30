@@ -81,3 +81,4 @@ The test scripts can also be invoked directly with additional options:
 - Prefer testing authenticated flows through the application UI so Neon Auth session cookies are established naturally.
 - For targeted backend verification, prefer unit or integration tests over ad-hoc curl scripts.
 - If you use local auth overrides such as `DEV_AUTH_USER_ID`, make sure the referenced user already exists in the database before invoking authenticated routes.
+- With `LOCAL_PRODUCT_TESTING=true`, you can seed the canonical user via `pnpm db:dev:bootstrap` and exercise local-safe billing, AI, and PDF upload flows without using hosted providers. See [environment.md](./environment.md) and [local-database.md](./local-database.md).

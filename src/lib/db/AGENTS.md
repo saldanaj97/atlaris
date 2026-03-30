@@ -140,7 +140,7 @@ Query modules that must enforce RLS on every call (e.g. generation attempts, aud
 | `modules`             | Plan sections                | `order` starts at 1                                                  |
 | `tasks`               | Learning activities          | `order` starts at 1                                                  |
 | `generation_attempts` | AI attempt audit log         | Max 3 per plan                                                       |
-| `integration_tokens`  | OAuth tokens                 | Provider-scoped encrypted integration credentials                    |
+| `oauth_state_tokens`  | Short-lived proof/state rows | Reused for PDF extraction proof and any future single-use state flow |
 
 ## Commands
 

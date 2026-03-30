@@ -145,15 +145,14 @@
 
 ## SECTION F: Third-Party Integrations
 
-### 13) OAuth & integration security (Google Calendar)
+### 13) Future OAuth & integration security
 
-- [ ] OAuth tokens encrypted at rest in database.
-- [ ] Refresh tokens handled securely (not exposed to client).
-- [ ] Token refresh failure gracefully handled (re-auth prompt, not crash).
+- [ ] If/when OAuth is added, tokens are encrypted at rest in the database.
+- [ ] Refresh tokens are handled server-side only and never exposed to the client.
 - [ ] Scope requested is minimum necessary (not over-privileged).
-- [ ] OAuth state parameter validated to prevent CSRF.
-- [ ] Integration disconnect actually revokes tokens (not just deletes local record).
-- [ ] Test integration with expired/revoked tokens.
+- [ ] OAuth state or equivalent anti-CSRF mechanism is validated on callback.
+- [ ] Integration disconnect actually revokes remote grants when the provider supports it.
+- [ ] Expired, revoked, and partially failed integration states are tested explicitly.
 
 ### 14) External API call security
 

@@ -1,5 +1,11 @@
 import { z } from 'zod';
-
+import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
+import {
+  LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
+  LOCAL_PRODUCT_TESTING_SEED_EMAIL,
+  LOCAL_PRODUCT_TESTING_SEED_NAME,
+  LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID,
+} from '@/lib/config/local-product-testing';
 import { AI_DEFAULT_MODEL, isValidModelId } from '@/shared/constants/ai-models';
 import {
   DEFAULT_ATTEMPT_CAP,
@@ -242,6 +248,30 @@ const getServerOptional = (key: string): string | undefined => {
 const isProdRuntime =
   typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
 
+const localProductTestingEnvEnabled = toBoolean(
+  optionalEnv('LOCAL_PRODUCT_TESTING'),
+  false
+);
+
+if (isProdRuntime && localProductTestingEnvEnabled) {
+  throw new EnvValidationError(
+    'LOCAL_PRODUCT_TESTING cannot be enabled in production',
+    'LOCAL_PRODUCT_TESTING'
+  );
+}
+
+const stripeLocalModeEnabled = toBoolean(
+  optionalEnv('STRIPE_LOCAL_MODE'),
+  false
+);
+
+if (isProdRuntime && stripeLocalModeEnabled) {
+  throw new EnvValidationError(
+    'STRIPE_LOCAL_MODE cannot be enabled in production',
+    'STRIPE_LOCAL_MODE'
+  );
+}
+
 /**
  * Retrieves an environment variable that is required in production but optional in dev/test.
  *
@@ -250,7 +280,7 @@ const isProdRuntime =
  * - Ensures the variable is only accessed in a server runtime.
  * - Caching behavior follows the same pattern as getServerRequired/getServerOptional.
  *
- * Use this for third-party integration credentials (e.g., Google OAuth)
+ * Use this for third-party integration credentials
  * that are required in production but can be mocked or omitted in tests.
  *
  * @param {string} key - The name of the environment variable to retrieve.
@@ -345,24 +375,6 @@ export const databaseEnv = {
   },
 } as const;
 
-export const googleOAuthEnv = {
-  get clientId() {
-    return getServerRequiredProdOnly('GOOGLE_CLIENT_ID');
-  },
-  get clientSecret() {
-    return getServerRequiredProdOnly('GOOGLE_CLIENT_SECRET');
-  },
-  get redirectUri() {
-    return getServerRequiredProdOnly('GOOGLE_REDIRECT_URI');
-  },
-} as const;
-
-export const oauthEncryptionEnv = {
-  get encryptionKey() {
-    return getServerRequired('OAUTH_ENCRYPTION_KEY');
-  },
-} as const;
-
 const parsedNeonAuthEnv = NeonAuthEnvSchema.safeParse({
   baseUrl: getServerRequired('NEON_AUTH_BASE_URL'),
   cookieSecret: getServerRequired('NEON_AUTH_COOKIE_SECRET'),
@@ -385,8 +397,37 @@ if (!parsedNeonAuthEnv.success) {
 
 export const neonAuthEnv = parsedNeonAuthEnv.data;
 
+export const googleOAuthEnv = {
+  get clientId() {
+    return getServerRequiredProdOnly('GOOGLE_CLIENT_ID');
+  },
+  get clientSecret() {
+    return getServerRequiredProdOnly('GOOGLE_CLIENT_SECRET');
+  },
+  get redirectUri() {
+    return getServerRequiredProdOnly('GOOGLE_REDIRECT_URI');
+  },
+} as const;
+
+export const oauthEncryptionEnv = {
+  get encryptionKey() {
+    return getServerRequired('OAUTH_ENCRYPTION_KEY');
+  },
+} as const;
+
 export const stripeEnv = {
+  /**
+   * Use in-process Stripe mocks and canonical local price ids (development/test only).
+   */
+  get localMode() {
+    return toBoolean(getServerOptional('STRIPE_LOCAL_MODE'), false);
+  },
   get secretKey() {
+    if (this.localMode) {
+      return (
+        getServerOptional('STRIPE_SECRET_KEY') ?? 'sk_test_local_placeholder'
+      );
+    }
     return getServerRequired('STRIPE_SECRET_KEY');
   },
   get webhookSecret() {
@@ -397,19 +438,39 @@ export const stripeEnv = {
   },
   pricing: {
     get starterMonthly() {
+      if (stripeEnv.localMode) {
+        return LOCAL_PRICE_IDS.starterMonthly;
+      }
       return getServerOptional('STRIPE_STARTER_MONTHLY_PRICE_ID');
     },
     get proMonthly() {
+      if (stripeEnv.localMode) {
+        return LOCAL_PRICE_IDS.proMonthly;
+      }
       return getServerOptional('STRIPE_PRO_MONTHLY_PRICE_ID');
     },
     get starterYearly() {
+      if (stripeEnv.localMode) {
+        return LOCAL_PRICE_IDS.starterYearly;
+      }
       return getServerOptional('STRIPE_STARTER_YEARLY_PRICE_ID');
     },
     get proYearly() {
+      if (stripeEnv.localMode) {
+        return LOCAL_PRICE_IDS.proYearly;
+      }
       return getServerOptional('STRIPE_PRO_YEARLY_PRICE_ID');
     },
   },
 } as const;
+
+const MOCK_AI_SCENARIO_VALUES = new Set([
+  'success',
+  'timeout',
+  'provider_error',
+  'invalid_response',
+  'rate_limit',
+]);
 
 export const aiEnv = {
   get provider() {
@@ -421,6 +482,23 @@ export const aiEnv = {
   },
   get mockSeed() {
     return parseEnvNumber(getServerOptional('MOCK_GENERATION_SEED'));
+  },
+  /**
+   * Named mock scenario for local product testing (mock provider only).
+   * Unset or `success` uses default success-path behavior with optional failureRate.
+   */
+  get mockScenario(): string | undefined {
+    const raw = getServerOptional('MOCK_AI_SCENARIO')?.trim().toLowerCase();
+    if (!raw || raw === 'success') {
+      return undefined;
+    }
+    if (!MOCK_AI_SCENARIO_VALUES.has(raw)) {
+      throw new EnvValidationError(
+        `MOCK_AI_SCENARIO must be one of: ${[...MOCK_AI_SCENARIO_VALUES].join(', ')}`,
+        'MOCK_AI_SCENARIO'
+      );
+    }
+    return raw;
   },
   mock: {
     get delayMs() {
@@ -451,14 +529,36 @@ export const aiEnv = {
   },
 } as const;
 
+const AV_MOCK_SCENARIO_VALUES = new Set([
+  'clean',
+  'infected',
+  'timeout',
+  'malformed',
+]);
+
 export const avScannerEnv = {
   /**
    * AV provider. Use 'metadefender' in production.
-   * Use 'none' for local development/testing when no external AV is configured.
+   * Use 'none' for heuristic-only local development.
+   * Use 'mock' for scenario-driven local mock scans (non-production only).
    */
   get provider() {
     const raw = getServerOptional('AV_PROVIDER');
     return raw?.toLowerCase() ?? 'none';
+  },
+  /** Outcome when AV_PROVIDER=mock. */
+  get mockScenario(): 'clean' | 'infected' | 'timeout' | 'malformed' {
+    const raw = getServerOptional('AV_MOCK_SCENARIO')?.trim().toLowerCase();
+    if (!raw || raw === 'clean') {
+      return 'clean';
+    }
+    if (!AV_MOCK_SCENARIO_VALUES.has(raw)) {
+      throw new EnvValidationError(
+        `AV_MOCK_SCENARIO must be one of: ${[...AV_MOCK_SCENARIO_VALUES].join(', ')}`,
+        'AV_MOCK_SCENARIO'
+      );
+    }
+    return raw as 'clean' | 'infected' | 'timeout' | 'malformed';
   },
   /** MetaDefender Cloud API key. Required in production when AV_PROVIDER=metadefender. */
   get metadefenderApiKey() {
@@ -533,6 +633,23 @@ export const openRouterEnv = {
     return (
       getServerOptional('OPENROUTER_BASE_URL') ?? OPENROUTER_DEFAULT_BASE_URL
     );
+  },
+} as const;
+
+export const localProductTestingEnv = {
+  /**
+   * When true, the app is intended to run the local product-testing workflow (seeded users,
+   * mocks per PRD). Always false in production (startup throws if misconfigured).
+   */
+  get enabled() {
+    return toBoolean(getServerOptional('LOCAL_PRODUCT_TESTING'), false);
+  },
+  /** Deterministic seed user row identifiers; same values as `pnpm db:dev:bootstrap` inserts. */
+  seed: {
+    userRowId: LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID,
+    authUserId: LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
+    email: LOCAL_PRODUCT_TESTING_SEED_EMAIL,
+    name: LOCAL_PRODUCT_TESTING_SEED_NAME,
   },
 } as const;
 

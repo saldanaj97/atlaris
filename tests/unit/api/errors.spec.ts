@@ -213,7 +213,7 @@ describe('ServiceUnavailableError', () => {
   });
 
   it('returns provided details from details()', () => {
-    const details = { provider: 'google_calendar' };
+    const details = { provider: 'future_oauth_provider' };
     const error = new ServiceUnavailableError(
       'OAuth provider unavailable',
       details

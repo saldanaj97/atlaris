@@ -76,13 +76,6 @@ export const preferredAiModel = pgEnum('preferred_ai_model', [
 
 export type PreferredAiModel = (typeof preferredAiModel.enumValues)[number];
 
-export const integrationProviderEnum = pgEnum('integration_provider', [
-  'google_calendar',
-]);
-
-export type IntegrationProvider =
-  (typeof integrationProviderEnum.enumValues)[number];
-
 export const planOrigin = pgEnum('plan_origin', [
   'ai',
   'template',

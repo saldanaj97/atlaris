@@ -14,15 +14,15 @@ Prefer the exported grouped configs instead of raw keys:
 
 - `appEnv` - Runtime mode, app URL, maintenance mode
 - `databaseEnv` - Database connection settings
-- `googleOAuthEnv` - Google OAuth credentials
-- `oauthEncryptionEnv` - OAuth token encryption key
 - `neonAuthEnv` - Neon Auth base URL and cookie secret
 - `stripeEnv` - Stripe API keys and settings
-- `aiEnv` - AI/LLM provider configuration
-- `avScannerEnv` - PDF upload malware scanning configuration
+- `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
+- `avScannerEnv` - PDF upload malware scanning configuration (includes `mockScenario` when `AV_PROVIDER=mock`)
+- `stripeEnv` - Stripe keys and `localMode` when `STRIPE_LOCAL_MODE=true`
 - `aiTimeoutEnv` - AI generation timeout settings
 - `openRouterEnv` - OpenRouter transport configuration
 - `devAuthEnv` - Development auth overrides
+- `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (development/test only; refused in production)
 - `attemptsEnv` - Attempt cap overrides
 - `regenerationQueueEnv` - Worker queue toggles and shared token
 - `loggingEnv` - Logging configuration
@@ -46,15 +46,27 @@ Key auth-related server variables include:
 | ------------------------- | ---------------------------------- | -------- |
 | `NEON_AUTH_BASE_URL`      | Server auth endpoint base URL      | Yes      |
 | `NEON_AUTH_COOKIE_SECRET` | Cookie signing / encryption secret | Yes      |
-| `DEV_AUTH_USER_ID`        | Optional dev/test auth override    | No       |
+| `LOCAL_PRODUCT_TESTING`   | Enables the local product-testing workflow (must be off in production) | No |
+| `DEV_AUTH_USER_ID`        | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB | No       |
 | `DEV_AUTH_USER_EMAIL`     | Optional dev/test display email    | No       |
 | `DEV_AUTH_USER_NAME`      | Optional dev/test display name     | No       |
+
+### Local product testing (development / test)
+
+| Variable                    | Purpose                                                                 |
+| --------------------------- | ----------------------------------------------------------------------- |
+| `LOCAL_PRODUCT_TESTING`     | Master flag for the seeded-user + mocks workflow (forbidden in production) |
+| `STRIPE_LOCAL_MODE`         | Use local billing catalog + in-process Stripe mock (forbidden in production) |
+| `MOCK_AI_SCENARIO`          | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
+| `AV_PROVIDER` / `AV_MOCK_SCENARIO` | Set `AV_PROVIDER=mock` (non-production) and `AV_MOCK_SCENARIO` for scan outcomes |
+
+Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.
 
 ### AV Scanner Variables
 
 | Variable                   | Purpose                                        | Required                                           |
 | -------------------------- | ---------------------------------------------- | -------------------------------------------------- |
-| `AV_PROVIDER`              | AV backend selector (`metadefender` or `none`) | Yes                                                |
+| `AV_PROVIDER`              | AV backend selector (`metadefender`, `mock`, or `none`) | Yes                                         |
 | `AV_METADEFENDER_API_KEY`  | API key for MetaDefender Cloud                 | Required when `AV_PROVIDER=metadefender`           |
 | `AV_METADEFENDER_BASE_URL` | MetaDefender API base URL                      | No (defaults to `https://api.metadefender.com/v4`) |
 | `AV_SCAN_TIMEOUT_MS`       | End-to-end scan timeout in milliseconds        | No (defaults to `30000`)                           |

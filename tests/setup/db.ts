@@ -2,9 +2,7 @@ import { Mutex } from 'async-mutex';
 import { afterEach, beforeEach } from 'vitest';
 
 import {
-  ensureGoogleCalendarSyncState,
   ensureStripeWebhookEvents,
-  ensureTaskCalendarEvents,
   resetDbForIntegrationTestFile,
 } from '../helpers/db';
 
@@ -18,8 +16,6 @@ if (!skipDbSetup) {
     try {
       await resetDbForIntegrationTestFile();
       await ensureStripeWebhookEvents();
-      await ensureGoogleCalendarSyncState();
-      await ensureTaskCalendarEvents();
     } catch (error) {
       releaseDbLock?.();
       releaseDbLock = null;

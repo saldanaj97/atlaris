@@ -9,11 +9,11 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 | Category       | Limit        | Window   | Use Case                                  |
 | -------------- | ------------ | -------- | ----------------------------------------- |
 | `aiGeneration` | 10 requests  | 1 hour   | AI generation, regeneration, enhancement  |
-| `integration`  | 30 requests  | 1 hour   | Third-party APIs (Google Calendar)        |
+| `integration`  | 30 requests  | 1 hour   | Reserved for future third-party endpoints |
 | `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes        |
 | `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences |
 | `billing`      | 10 requests  | 1 minute | Stripe checkout, portal sessions          |
-| `oauth`        | 20 requests  | 1 hour   | OAuth initiation flows (Google auth)      |
+| `oauth`        | 20 requests  | 1 hour   | Reserved for future OAuth initiation      |
 
 ### Plan Generation Rate Limit
 
@@ -73,11 +73,11 @@ export const POST = withErrorBoundary(
 | Endpoint Type                            | Category       |
 | ---------------------------------------- | -------------- |
 | AI generation, regeneration, enhancement | `aiGeneration` |
-| Google Calendar disconnect / sync writes | `integration`  |
+| Future third-party integration writes    | `integration`  |
 | Create/update/delete plans, tasks, etc.  | `mutation`     |
 | GET endpoints for data retrieval         | `read`         |
 | Stripe checkout/portal creation          | `billing`      |
-| OAuth initiation (not callbacks)         | `oauth`        |
+| Future OAuth initiation (not callbacks)  | `oauth`        |
 
 ### Plan Generation (Special Case)
 
@@ -143,10 +143,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `POST /api/v1/plans/[planId]/retry`
 - `POST /api/v1/plans/[planId]/regenerate`
 
-### Integration (`integration`)
-
-- `POST /api/v1/integrations/disconnect`
-
 ### Billing (`billing`)
 
 - `POST /api/v1/stripe/create-checkout`
@@ -171,11 +167,9 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 - `GET /api/v1/user/profile`
 - `GET /api/v1/resources`
 
-### OAuth (`oauth`)
+### Integration / OAuth (`integration`, `oauth`)
 
-OAuth routes use existing CSRF state token protection. Rate limiting is applied at the initiation level, not callbacks.
-
-- `GET /api/v1/auth/google`
+These categories remain available in the shared rate-limiter configuration for future provider work, but there are currently no active Google OAuth or integration API routes in the app.
 
 ## Future Considerations
 

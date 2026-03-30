@@ -3,12 +3,12 @@
 ## Core entities and relationships
 
 ```text
-users 1—* learning_plans, integration_tokens, usage_metrics, ai_usage_events, job_queue, task_progress
-learning_plans 1—* modules, generation_attempts, google_calendar_sync_state
+users 1—* learning_plans, usage_metrics, ai_usage_events, job_queue, task_progress
+learning_plans 1—* modules, generation_attempts
 modules 1—* tasks
-tasks 1—* task_resources, task_progress, task_calendar_events
+tasks 1—* task_resources, task_progress
 task_resources —* resources
-users 1—* oauth_state_tokens, integration_tokens
+users 1—* oauth_state_tokens
 ```
 
 ## Enums
@@ -26,7 +26,6 @@ Defined in `src/lib/db/enums.ts`:
 | `job_type`             | values sourced from `src/lib/jobs/constants.ts`  |
 | `subscription_tier`    | `free`, `starter`, `pro`                         |
 | `subscription_status`  | `active`, `canceled`, `past_due`, `trialing`     |
-| `integration_provider` | `google_calendar`                                |
 | `plan_origin`          | `ai`, `template`, `manual`, `pdf`                |
 
 ## Key constraints
@@ -37,7 +36,7 @@ Defined in `src/lib/db/enums.ts`:
 - **Ownership integrity:** foreign keys generally cascade on delete
 - **Ordering integrity:** `unique(plan_id, order)` on modules and `unique(module_id, order)` on tasks
 - **Context integrity:** `learning_plans.extracted_context` is validated against the persisted `PdfContext` shape
-- **OAuth integrity:** `integration_tokens` is unique on `(user_id, provider)` and `google_calendar_sync_state` is unique on `plan_id`
+- **Proof-token integrity:** `oauth_state_tokens.state_token_hash` is unique and reused by PDF extraction proof flows
 
 ## Row Level Security (RLS)
 
@@ -60,8 +59,6 @@ RLS is enforced through request-scoped Postgres session state:
 | `job_queue`                  | `(status, scheduled_for, priority)`                    |
 | `usage_metrics`              | `(user_id, month)`                                     |
 | `ai_usage_events`            | `(user_id, created_at)`                                |
-| `integration_tokens`         | `(user_id)`, `(provider)`, unique `(user_id,provider)` |
-| `google_calendar_sync_state` | `(plan_id)`, `(user_id)`, unique `(plan_id)`           |
 | `oauth_state_tokens`         | `(state_token_hash)`, `(expires_at)`                   |
 
 ## Code locations
@@ -84,5 +81,4 @@ RLS is enforced through request-scoped Postgres session state:
 - Attempt auditing with success / failure persistence
 - Plan scheduling and task progress tracking
 - Monthly usage and billing-related usage accounting
-- Google Calendar OAuth token storage, disconnect flow, and sync-state persistence
-- OAuth CSRF state-token persistence
+- PDF extraction proof token persistence via `oauth_state_tokens`

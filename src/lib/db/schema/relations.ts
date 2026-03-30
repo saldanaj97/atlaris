@@ -1,9 +1,4 @@
 import { relations } from 'drizzle-orm';
-import {
-  googleCalendarSyncState,
-  integrationTokens,
-  taskCalendarEvents,
-} from './tables/integrations';
 import { jobQueue } from './tables/jobs';
 import {
   generationAttempts,
@@ -22,13 +17,10 @@ import { users } from './tables/users';
 
 export const usersRelations = relations(users, ({ many }) => ({
   learningPlans: many(learningPlans),
-  integrationTokens: many(integrationTokens),
-  googleCalendarSyncState: many(googleCalendarSyncState),
   usageMetrics: many(usageMetrics),
   aiUsageEvents: many(aiUsageEvents),
   jobQueue: many(jobQueue),
   taskProgress: many(taskProgress),
-  taskCalendarEvents: many(taskCalendarEvents),
 }));
 
 export const learningPlansRelations = relations(
@@ -41,7 +33,6 @@ export const learningPlansRelations = relations(
     modules: many(modules),
     planSchedules: one(planSchedules),
     generationAttempts: many(generationAttempts),
-    googleCalendarSyncState: one(googleCalendarSyncState),
     jobQueue: many(jobQueue),
   })
 );
@@ -78,7 +69,6 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   taskResources: many(taskResources),
   taskProgress: many(taskProgress),
-  calendarEvents: many(taskCalendarEvents),
 }));
 
 export const resourcesRelations = relations(resources, ({ many }) => ({
@@ -106,44 +96,6 @@ export const taskProgressRelations = relations(taskProgress, ({ one }) => ({
     references: [users.id],
   }),
 }));
-
-export const integrationTokensRelations = relations(
-  integrationTokens,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [integrationTokens.userId],
-      references: [users.id],
-    }),
-  })
-);
-
-export const googleCalendarSyncStateRelations = relations(
-  googleCalendarSyncState,
-  ({ one }) => ({
-    plan: one(learningPlans, {
-      fields: [googleCalendarSyncState.planId],
-      references: [learningPlans.id],
-    }),
-    user: one(users, {
-      fields: [googleCalendarSyncState.userId],
-      references: [users.id],
-    }),
-  })
-);
-
-export const taskCalendarEventsRelations = relations(
-  taskCalendarEvents,
-  ({ one }) => ({
-    task: one(tasks, {
-      fields: [taskCalendarEvents.taskId],
-      references: [tasks.id],
-    }),
-    user: one(users, {
-      fields: [taskCalendarEvents.userId],
-      references: [users.id],
-    }),
-  })
-);
 
 export const usageMetricsRelations = relations(usageMetrics, ({ one }) => ({
   user: one(users, {

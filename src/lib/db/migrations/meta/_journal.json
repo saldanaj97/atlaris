@@ -169,6 +169,13 @@
       "when": 1774886264442,
       "tag": "0023_phase3_ai_usage_provider_cost",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1774906575293,
+      "tag": "0024_massive_scalphunter",
+      "breakpoints": true
     }
   ]
 }

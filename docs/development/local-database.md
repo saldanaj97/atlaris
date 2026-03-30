@@ -2,7 +2,22 @@
 
 Use a **local Postgres 17** instance when Neon compute quota blocks migrations, when you need **offline** work, or when you want to **dry-run** schema changes (`pnpm db:generate` → `pnpm db:migrate`) before pushing to CI or Neon.
 
-Neon Auth (`NEON_AUTH_*`, cookies) remains **cloud**; a local DB only replaces the **database** connection. Use `DEV_AUTH_*` and other patterns from [environment.md](./environment.md) for local sign-in.
+Neon Auth (`NEON_AUTH_*`, cookies) remains **cloud**; a local DB only replaces the **database** connection.
+
+### Local product testing
+
+After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODUCT_TESTING=true` and `DEV_AUTH_USER_ID=00000000-0000-4000-8000-000000000001` (same as `localProductTestingEnv.seed.authUserId` in `@/lib/config/env`) so server-side local identity matches that row. See [environment.md](./environment.md) and `src/lib/config/local-product-testing.ts` for precedence vs `AI_*`, `AV_*`, and Stripe envs.
+
+### Manual smoke checklist (local product testing)
+
+1. `pnpm db:dev:up` then `pnpm db:dev:bootstrap`.
+2. `.env.local`: `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seed auth id, optional `STRIPE_LOCAL_MODE=true`, `STRIPE_SECRET_KEY` optional when local Stripe mode is on.
+3. `pnpm dev` — open protected routes (e.g. dashboard); header should show authenticated nav for the seeded user.
+4. Pricing / checkout: with `STRIPE_LOCAL_MODE`, complete checkout redirects through `/api/v1/stripe/local/complete-checkout` and subscription state updates via webhook processor.
+5. Integrations: verify the settings page shows Google Calendar as an explicit `Coming Soon` placeholder rather than a live provider flow.
+6. AI: set `MOCK_AI_SCENARIO` to exercise failure paths (mock provider).
+7. PDF: set `AV_PROVIDER=mock` and `AV_MOCK_SCENARIO` for provider outcomes (heuristic pass still runs first).
+8. Real Neon Auth sessions, real third-party OAuth, and hosted Stripe remain staging; see [environment.md](./environment.md) for boundaries.
 
 ## Ports and compose files
 

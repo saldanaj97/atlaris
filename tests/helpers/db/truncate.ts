@@ -3,14 +3,11 @@ import { sql } from 'drizzle-orm';
 import {
   aiUsageEvents,
   generationAttempts,
-  googleCalendarSyncState,
-  integrationTokens,
   jobQueue,
   learningPlans,
   modules,
   resources,
   stripeWebhookEvents,
-  taskCalendarEvents,
   taskProgress,
   taskResources,
   tasks,
@@ -73,15 +70,6 @@ export async function truncateAll() {
   await db.execute(sql`TRUNCATE TABLE ${modules} RESTART IDENTITY CASCADE`);
   await db.execute(
     sql`TRUNCATE TABLE ${learningPlans} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(
-    sql`TRUNCATE TABLE ${integrationTokens} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(
-    sql`TRUNCATE TABLE ${googleCalendarSyncState} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(
-    sql`TRUNCATE TABLE ${taskCalendarEvents} RESTART IDENTITY CASCADE`
   );
   await db.execute(
     sql`TRUNCATE TABLE ${stripeWebhookEvents} RESTART IDENTITY CASCADE`
