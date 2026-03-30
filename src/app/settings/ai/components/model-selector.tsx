@@ -276,7 +276,7 @@ const ModelDropdown = ({
         <div
           role="status"
           aria-live="polite"
-          className="rounded-lg border-2 border-green-500 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400"
+          className="border-success bg-success/10 text-success rounded-lg border-2 p-3 text-sm dark:text-success-foreground"
         >
           Preferences saved successfully!
         </div>

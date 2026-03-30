@@ -69,9 +69,7 @@ export function FeaturesSection() {
               <div className="brand-fill-interactive mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg">
                 {feature.icon}
               </div>
-              <h3 className="text-foreground mb-3 text-xl font-semibold">
-                {feature.title}
-              </h3>
+              <h3 className="marketing-card-title mb-3">{feature.title}</h3>
               <p className="text-muted-foreground leading-relaxed">
                 {feature.description}
               </p>

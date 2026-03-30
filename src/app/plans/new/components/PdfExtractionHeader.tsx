@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 const CONFIDENCE_COLORS: Record<'high' | 'medium' | 'low', string> = {
-  high: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20',
+  high: 'border-success/30 bg-success/10 text-success dark:text-success-foreground',
   medium:
     'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20',
   low: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',

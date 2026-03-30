@@ -58,7 +58,7 @@ export function DashboardContentSkeleton(): JSX.Element {
     <>
       {/* ResumeLearningHero skeleton */}
       <section aria-label="Resume learning loading" className="mb-8">
-        <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-teal-500/20 via-emerald-500/20 to-cyan-500/20 p-6 shadow-lg">
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary/20 via-accent/20 to-primary-dark/20 p-6 shadow-lg">
           {/* Top row: label (left) and circular progress (right) */}
           <div className="flex items-start justify-between gap-4">
             <Skeleton className="h-4 w-28 bg-white/30" />

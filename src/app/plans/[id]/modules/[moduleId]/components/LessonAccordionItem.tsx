@@ -66,8 +66,7 @@ const RESOURCE_CONFIG: Record<
   other: {
     label: 'Resource',
     icon: LinkIcon,
-    badgeClass:
-      'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400',
+    badgeClass: 'bg-muted text-muted-foreground dark:bg-muted/80',
   },
 };
 
@@ -211,7 +210,7 @@ export function LessonAccordionItem({
       return 'border-stone-200/50 bg-stone-100/50 opacity-75 dark:border-stone-700/50 dark:bg-stone-800/30';
     }
     if (isCompleted) {
-      return 'border-green-200/50 bg-green-50/30 backdrop-blur-sm dark:border-green-800/30 dark:bg-green-950/20';
+      return 'border-success/30 bg-success/5 backdrop-blur-sm dark:border-success/30 dark:bg-success/10';
     }
     return 'border-white/40 bg-white/30 shadow-lg backdrop-blur-xl hover:border-primary/30 hover:shadow-xl dark:border-stone-800/50 dark:bg-stone-900/30 dark:hover:border-primary/30';
   };
@@ -236,7 +235,7 @@ export function LessonAccordionItem({
                 isLocked
                   ? 'bg-stone-200 text-stone-400 dark:bg-stone-700 dark:text-stone-500'
                   : isCompleted
-                    ? 'bg-green-500 text-white'
+                    ? 'bg-success text-success-foreground'
                     : 'bg-primary/20 text-primary dark:bg-primary/20 dark:text-primary'
               }`}
             >
@@ -253,7 +252,7 @@ export function LessonAccordionItem({
                 isLocked
                   ? 'text-stone-400 dark:text-stone-500'
                   : isCompleted
-                    ? 'text-green-700 dark:text-green-400'
+                    ? 'text-success dark:text-success'
                     : 'text-stone-900 dark:text-stone-100'
               }`}
             >

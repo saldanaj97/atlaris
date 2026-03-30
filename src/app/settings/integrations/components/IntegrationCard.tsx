@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: IntegrationStatus }) {
     case 'connected':
       return (
         <Badge variant="default" role="status" aria-label="Connected">
-          <span className="mr-1 inline-block h-2 w-2 rounded-full bg-green-400" />
+          <span className="bg-success mr-1 inline-block h-2 w-2 rounded-full" />
           Connected
         </Badge>
       );
@@ -136,7 +136,7 @@ export function IntegrationCard({
               key={feature}
               className="text-muted-foreground flex items-center gap-2 text-sm"
             >
-              <Check className="h-4 w-4 shrink-0 text-green-500" />
+              <Check className="text-success h-4 w-4 shrink-0" />
               {feature}
             </li>
           ))}

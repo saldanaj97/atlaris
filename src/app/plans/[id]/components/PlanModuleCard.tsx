@@ -61,7 +61,7 @@ const RESOURCE_CONFIG: Record<
   other: {
     label: 'Resource',
     icon: LinkIcon,
-    badgeClass: 'bg-slate-500/10 text-slate-600',
+    badgeClass: 'bg-muted text-muted-foreground',
   },
 };
 
@@ -102,7 +102,7 @@ export function PlanModuleCard({
   // Progress badge JSX - React Compiler handles this automatically
   const progressBadge =
     totalTasks === 0 ? null : moduleCompleted ? (
-      <Badge className="flex items-center gap-1 border border-green-200 bg-green-500/10 px-2.5 py-0.5 text-green-700">
+      <Badge className="border-success/30 bg-success/10 text-success flex items-center gap-1 border px-2.5 py-0.5">
         <CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />
         <span>Completed</span>
         <span className="sr-only">Module completed</span>
@@ -150,7 +150,7 @@ export function PlanModuleCard({
               className={cn(
                 'hover:border-primary/30 rounded-md border p-4 transition-colors',
                 isCompleted
-                  ? 'border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20'
+                  ? 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10'
                   : 'bg-card'
               )}
             >
@@ -159,15 +159,13 @@ export function PlanModuleCard({
                   <CardTitle
                     className={cn(
                       'flex items-center text-left',
-                      isCompleted ? 'text-green-600' : 'text-muted-foreground'
+                      isCompleted ? 'text-success' : 'text-muted-foreground'
                     )}
                   >
                     <CheckCircle2
                       className={cn(
                         'mr-2 h-5 w-5',
-                        isCompleted
-                          ? 'fill-white text-green-600'
-                          : 'text-muted-foreground'
+                        isCompleted ? 'text-success' : 'text-muted-foreground'
                       )}
                     />
                     {task.title}

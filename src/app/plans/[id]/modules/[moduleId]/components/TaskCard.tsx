@@ -53,8 +53,7 @@ const RESOURCE_CONFIG: Record<
   other: {
     label: 'Resource',
     icon: LinkIcon,
-    badgeClass:
-      'bg-slate-500/10 text-slate-600 dark:bg-slate-500/20 dark:text-slate-400',
+    badgeClass: 'bg-muted text-muted-foreground dark:bg-muted/80',
   },
 };
 
@@ -95,7 +94,7 @@ export function TaskCard({
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
                 isCompleted
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-success text-success-foreground'
                   : 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
               }`}
             >
@@ -108,7 +107,7 @@ export function TaskCard({
             <h3
               className={`text-lg font-semibold ${
                 isCompleted
-                  ? 'text-green-700 dark:text-green-400'
+                  ? 'text-success dark:text-success'
                   : 'text-stone-900 dark:text-stone-100'
               }`}
             >

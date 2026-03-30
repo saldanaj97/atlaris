@@ -69,7 +69,7 @@ export function TimelineModuleCard({
         <div
           className={`z-10 flex h-6 w-6 items-center justify-center rounded-full border-[3px] bg-white transition-all duration-500 ease-out dark:bg-stone-900 ${
             module.status === 'completed'
-              ? 'border-green-500 text-green-500'
+              ? 'border-success text-success'
               : module.status === 'active'
                 ? 'border-primary text-primary scale-110 shadow-[0_0_12px_hsl(var(--primary)/0.4)]'
                 : 'border-stone-300 text-stone-300 dark:border-stone-600 dark:text-stone-600'
@@ -114,7 +114,7 @@ export function TimelineModuleCard({
                   module.status === 'active'
                     ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
                     : module.status === 'completed'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                      ? 'bg-success/15 text-success dark:bg-success/25 dark:text-success-foreground'
                       : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
                 }`}
               >
@@ -179,7 +179,7 @@ export function TimelineModuleCard({
                       key={task.id}
                       className={`rounded-2xl border p-4 transition-colors ${
                         isCompleted
-                          ? 'border-green-200 bg-green-50/50 dark:border-green-800/50 dark:bg-green-950/20'
+                          ? 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10'
                           : 'hover:border-primary/30 dark:hover:border-primary/50 border-stone-100 bg-stone-50/50 dark:border-stone-800 dark:bg-stone-800/50'
                       }`}
                     >
@@ -189,7 +189,7 @@ export function TimelineModuleCard({
                             size={18}
                             className={
                               isCompleted
-                                ? 'fill-green-100 text-green-600 dark:text-green-400'
+                                ? 'fill-success/20 text-success dark:text-success'
                                 : 'text-stone-300 dark:text-stone-600'
                             }
                           />
@@ -199,7 +199,7 @@ export function TimelineModuleCard({
                             <p
                               className={`font-medium ${
                                 isCompleted
-                                  ? 'text-green-700 dark:text-green-400'
+                                  ? 'text-success dark:text-success'
                                   : 'text-stone-800 dark:text-stone-200'
                               } wrap-break-word`}
                             >

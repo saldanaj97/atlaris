@@ -22,7 +22,7 @@ const QUICK_STATS: StatItem[] = [
     label: 'Weekly Goal',
     value: '68%',
     trend: '8.5/12h',
-    color: 'text-emerald-500',
+    color: 'text-success',
   },
   {
     icon: Trophy,
@@ -36,7 +36,7 @@ const QUICK_STATS: StatItem[] = [
     label: 'This Week',
     value: '+12%',
     trend: 'vs last week',
-    color: 'text-cyan-500',
+    color: 'text-primary',
   },
 ];
 
@@ -50,14 +50,12 @@ export function QuickStats() {
         >
           <div className="mb-2 flex items-center gap-2">
             <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            <span className="text-xs font-medium text-slate-400 uppercase">
+            <span className="text-xs font-medium text-muted-foreground uppercase">
               {stat.label}
             </span>
           </div>
-          <div className="text-xl font-bold text-slate-900 dark:text-white">
-            {stat.value}
-          </div>
-          <div className="text-xs text-slate-400">{stat.trend}</div>
+          <div className="text-xl font-bold text-foreground">{stat.value}</div>
+          <div className="text-xs text-muted-foreground">{stat.trend}</div>
         </div>
       ))}
     </div>

@@ -44,10 +44,7 @@ export function ProblemSolutionSection() {
                   aria-hidden="true"
                 />
               </div>
-              <h3
-                id="problem-card-heading"
-                className="text-foreground text-2xl font-bold"
-              >
+              <h3 id="problem-card-heading" className="marketing-card-title">
                 The Manual Spiral
               </h3>
             </div>
@@ -78,10 +75,7 @@ export function ProblemSolutionSection() {
               <div className="from-primary to-accent flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br shadow-lg">
                 <Calendar className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
-              <h3
-                id="solution-card-heading"
-                className="text-foreground text-2xl font-bold"
-              >
+              <h3 id="solution-card-heading" className="marketing-card-title">
                 Execution, Scheduled
               </h3>
             </div>
