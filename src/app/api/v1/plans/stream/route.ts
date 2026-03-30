@@ -215,7 +215,7 @@ export function createStreamHandler(deps?: {
           resolveStreamModelResolution({
             searchParams: url.searchParams,
             tier,
-            savedPreferredAiModel: currentUser.preferredAiModel,
+            savedPreferredAiModel: currentUser.preferredAiModel ?? null,
           });
 
         if (
@@ -229,7 +229,7 @@ export function createStreamHandler(deps?: {
               planId,
               tier,
               suppliedModel,
-              modelResolutionSource: 'query_override',
+              modelResolutionSource: resolutionSource,
             },
             'Ignoring invalid or tier-denied model override for stream generation'
           );

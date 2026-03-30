@@ -289,7 +289,7 @@ export function buildPlanStartEvent({
 export async function tryRecordUsage(
   userId: string,
   result: GenerationResult,
-  dbClient?: AttemptsDbClient,
+  dbClient: AttemptsDbClient,
   deps?: Pick<
     StreamingHelperDependencies,
     'recordUsage' | 'incrementUsage' | 'canonicalUsageToRecordParams'

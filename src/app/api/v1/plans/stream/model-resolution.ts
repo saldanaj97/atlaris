@@ -1,17 +1,23 @@
 import { resolveSavedPreferenceForSettings } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
+import { logger } from '@/lib/logging/logger';
 
 export type StreamModelResolution = {
   modelOverride?: string;
-  resolutionSource: 'query_override' | 'saved_preference' | 'tier_default';
+  resolutionSource:
+    | 'query_override'
+    | 'query_override_invalid'
+    | 'saved_preference'
+    | 'tier_default';
   suppliedModel?: string;
+  validationError?: { reason: string };
 };
 
 type ResolveStreamModelResolutionInput = {
   searchParams: URLSearchParams;
   tier: SubscriptionTier;
-  savedPreferredAiModel: string | null | undefined;
+  savedPreferredAiModel: string | null;
 };
 
 export function resolveStreamModelResolution({
@@ -19,9 +25,7 @@ export function resolveStreamModelResolution({
   tier,
   savedPreferredAiModel,
 }: ResolveStreamModelResolutionInput): StreamModelResolution {
-  const suppliedModel = searchParams.has('model')
-    ? (searchParams.get('model') ?? '')
-    : undefined;
+  const suppliedModel = searchParams.get('model') ?? undefined;
 
   if (suppliedModel !== undefined) {
     const validation = validateModelForTier(tier, suppliedModel);
@@ -32,6 +36,16 @@ export function resolveStreamModelResolution({
         suppliedModel,
       };
     }
+
+    logger.warn(
+      { tier, suppliedModel, reason: validation.reason },
+      'Invalid or tier-denied model override supplied; ignoring query override'
+    );
+    return {
+      resolutionSource: 'query_override_invalid',
+      suppliedModel,
+      validationError: { reason: validation.reason },
+    };
   }
 
   const savedModel = resolveSavedPreferenceForSettings(

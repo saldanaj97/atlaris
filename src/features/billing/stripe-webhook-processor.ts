@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { syncSubscriptionToDb } from '@/features/billing/subscriptions';
 import { stripeWebhookEvents } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import type { createLogger } from '@/lib/logging/logger';
 
 type Logger = ReturnType<typeof createLogger>;
@@ -157,7 +156,7 @@ export async function handleStripeWebhookDedupeAndApply(
   event: Stripe.Event,
   deps: StripeWebhookSideEffectDeps
 ): Promise<'inserted' | 'duplicate'> {
-  const [insertedRow] = await db
+  const [insertedRow] = await deps.db
     .insert(stripeWebhookEvents)
     .values({
       eventId: event.id,
@@ -179,7 +178,7 @@ export async function handleStripeWebhookDedupeAndApply(
     await applyStripeWebhookEvent(event, deps);
   } catch (error) {
     try {
-      await db
+      await deps.db
         .delete(stripeWebhookEvents)
         .where(eq(stripeWebhookEvents.eventId, event.id));
     } catch (cleanupError) {

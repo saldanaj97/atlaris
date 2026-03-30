@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     left,
     right,
   })),
+  countMock: vi.fn(() => ({ kind: 'count' })),
 }));
 
 vi.mock('drizzle-orm', async (importOriginal) => {
@@ -22,6 +23,7 @@ vi.mock('drizzle-orm', async (importOriginal) => {
     ...actual,
     and: mocks.andMock,
     eq: mocks.eqMock,
+    count: mocks.countMock,
   };
 });
 
@@ -40,16 +42,22 @@ vi.mock('@/lib/logging/logger', () => ({
 
 import { GET } from '@/app/api/v1/exports/csv/route';
 
-function mockCsvQuery(rows: unknown[]): {
-  query: {
-    from: ReturnType<typeof vi.fn>;
-    leftJoin: ReturnType<typeof vi.fn>;
-    where: ReturnType<typeof vi.fn>;
-    orderBy: ReturnType<typeof vi.fn>;
-    limit: ReturnType<typeof vi.fn>;
+type MockQuery = {
+  from: ReturnType<typeof vi.fn>;
+  leftJoin: ReturnType<typeof vi.fn>;
+  where: ReturnType<typeof vi.fn>;
+  orderBy?: ReturnType<typeof vi.fn>;
+  limit?: ReturnType<typeof vi.fn>;
+};
+
+function makeMockSelect(countValue: number, rows: unknown[]): MockQuery {
+  const countQuery: MockQuery = {
+    from: vi.fn().mockReturnThis(),
+    leftJoin: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue([{ count: countValue }]),
   };
-} {
-  const query = {
+
+  const rowsQuery: MockQuery = {
     from: vi.fn().mockReturnThis(),
     leftJoin: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
@@ -58,10 +66,13 @@ function mockCsvQuery(rows: unknown[]): {
   };
 
   mocks.getDbMock.mockReturnValue({
-    select: vi.fn().mockReturnValue(query),
+    select: vi
+      .fn()
+      .mockReturnValueOnce(countQuery)
+      .mockReturnValueOnce(rowsQuery),
   });
 
-  return { query };
+  return rowsQuery;
 }
 
 describe('GET /api/v1/exports/csv', () => {
@@ -69,8 +80,8 @@ describe('GET /api/v1/exports/csv', () => {
     vi.clearAllMocks();
   });
 
-  it('streams CSV output and quotes CR and CRLF-containing fields', async () => {
-    mockCsvQuery([
+  it('streams CSV output, prepends UTF-8 BOM, and quotes CR/CRLF-containing fields', async () => {
+    makeMockSelect(1, [
       {
         planTopic: 'Plan A',
         skillLevel: 'beginner',
@@ -90,11 +101,20 @@ describe('GET /api/v1/exports/csv', () => {
     ]);
 
     const response = await GET({ user: { id: 'user-123' } } as never);
-    const csv = await response.text();
 
     expect(response.status).toBe(200);
     expect(response.body).toBeInstanceOf(ReadableStream);
     expect(response.headers.get('Content-Type')).toContain('text/csv');
+
+    // Verify UTF-8 BOM bytes (0xEF 0xBB 0xBF) are the first three bytes.
+    // TextDecoder strips the BOM from decoded text, so we inspect the raw buffer.
+    const buffer = await response.clone().arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    expect(bytes[0]).toBe(0xef);
+    expect(bytes[1]).toBe(0xbb);
+    expect(bytes[2]).toBe(0xbf);
+
+    const csv = await response.text();
     expect(csv).toContain('Plan,Skill Level,Weekly Hours');
     expect(csv).toContain('"Module\r\nOne"');
     expect(csv).toContain('"Task\rTitle"');
@@ -105,12 +125,12 @@ describe('GET /api/v1/exports/csv', () => {
   });
 
   it('scopes task progress joins by task id and user id', async () => {
-    const { query } = mockCsvQuery([]);
+    const rowsQuery = makeMockSelect(0, []);
 
     await GET({ user: { id: 'user-123' } } as never);
 
-    expect(query.leftJoin).toHaveBeenCalledTimes(3);
-    expect(query.leftJoin.mock.calls[2]?.[1]).toEqual({
+    expect(rowsQuery.leftJoin).toHaveBeenCalledTimes(3);
+    expect(rowsQuery.leftJoin.mock.calls[2]?.[1]).toEqual({
       kind: 'and',
       args: [
         { kind: 'eq', left: expect.anything(), right: expect.anything() },
@@ -119,25 +139,16 @@ describe('GET /api/v1/exports/csv', () => {
     });
   });
 
-  it('fails fast when the synchronous export row limit is exceeded', async () => {
-    mockCsvQuery(
-      Array.from({ length: 10_001 }, () => ({
-        planTopic: 'Plan A',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        startDate: null,
-        deadlineDate: null,
-        planCreatedAt: null,
-        moduleTitle: null,
-        moduleOrder: null,
-        moduleEstimatedMinutes: null,
-        taskTitle: null,
-        taskOrder: null,
-        taskEstimatedMinutes: null,
-        progressStatus: null,
-        completedAt: null,
-      }))
-    );
+  it('fails fast when the count query exceeds the synchronous row limit', async () => {
+    const countQuery: MockQuery = {
+      from: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([{ count: 10_001 }]),
+    };
+
+    mocks.getDbMock.mockReturnValue({
+      select: vi.fn().mockReturnValueOnce(countQuery),
+    });
 
     await expect(
       GET({ user: { id: 'user-123' } } as never)
@@ -152,11 +163,11 @@ describe('GET /api/v1/exports/csv', () => {
     );
   });
 
-  it('caps the query before materializing oversized exports', async () => {
-    const { query } = mockCsvQuery([]);
+  it('fetches rows with limit(MAX_CSV_EXPORT_ROWS) after a passing count', async () => {
+    const rowsQuery = makeMockSelect(1, []);
 
     await GET({ user: { id: 'user-123' } } as never);
 
-    expect(query.limit).toHaveBeenCalledWith(10_001);
+    expect(rowsQuery.limit).toHaveBeenCalledWith(10_000);
   });
 });

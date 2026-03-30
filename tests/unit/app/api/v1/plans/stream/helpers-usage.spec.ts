@@ -6,12 +6,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { tryRecordUsage } from '@/app/api/v1/plans/stream/helpers';
 import type { GenerationSuccessResult } from '@/features/ai/types/orchestrator.types';
 import { safeNormalizeUsage } from '@/features/ai/usage';
-import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.types';
+import type {
+  AttemptsDbClient,
+  GenerationAttemptRecord,
+} from '@/lib/db/queries/types/attempts.types';
 import { canonicalUsageToRecordParams } from '@/lib/db/usage';
 
 vi.mock('@sentry/nextjs', () => ({
   captureException: vi.fn(),
 }));
+
+const mockDbClient = {} as AttemptsDbClient;
 
 function buildAttemptRecord(): GenerationAttemptRecord {
   return {
@@ -57,7 +62,7 @@ describe('tryRecordUsage', () => {
     const expected = canonicalUsageToRecordParams(canonical, 'user-1');
     const mockToRecordParams = vi.fn().mockReturnValue(expected);
 
-    await tryRecordUsage('user-1', makeSuccessResult(metadata), undefined, {
+    await tryRecordUsage('user-1', makeSuccessResult(metadata), mockDbClient, {
       recordUsage: mockRecordUsage,
       incrementUsage: mockIncrementUsage,
       canonicalUsageToRecordParams: mockToRecordParams,
@@ -65,12 +70,12 @@ describe('tryRecordUsage', () => {
 
     expect(mockToRecordParams).toHaveBeenCalledWith(canonical, 'user-1');
     expect(mockRecordUsage).toHaveBeenCalledTimes(1);
-    expect(mockRecordUsage).toHaveBeenCalledWith(expected, undefined);
+    expect(mockRecordUsage).toHaveBeenCalledWith(expected, mockDbClient);
     expect(mockIncrementUsage).toHaveBeenCalledTimes(1);
     expect(mockIncrementUsage).toHaveBeenCalledWith(
       'user-1',
       'plan',
-      undefined
+      mockDbClient
     );
   });
 
@@ -93,14 +98,14 @@ describe('tryRecordUsage', () => {
     const expected = canonicalUsageToRecordParams(canonical, 'user-2');
     const mockToRecordParams = vi.fn().mockReturnValue(expected);
 
-    await tryRecordUsage('user-2', makeSuccessResult(metadata), undefined, {
+    await tryRecordUsage('user-2', makeSuccessResult(metadata), mockDbClient, {
       recordUsage: mockRecordUsage,
       incrementUsage: mockIncrementUsage,
       canonicalUsageToRecordParams: mockToRecordParams,
     });
 
     expect(mockToRecordParams).toHaveBeenCalledWith(canonical, 'user-2');
-    expect(mockRecordUsage).toHaveBeenCalledWith(expected, undefined);
+    expect(mockRecordUsage).toHaveBeenCalledWith(expected, mockDbClient);
   });
 
   it('deep-merges nested provider metadata overrides in the fixture', async () => {
@@ -113,7 +118,7 @@ describe('tryRecordUsage', () => {
       },
     });
 
-    await tryRecordUsage('user-3', makeSuccessResult(metadata), undefined, {
+    await tryRecordUsage('user-3', makeSuccessResult(metadata), mockDbClient, {
       recordUsage: mockRecordUsage,
       incrementUsage: mockIncrementUsage,
     });
