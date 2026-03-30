@@ -1,175 +1,132 @@
-# Local High-Fidelity Hosted-Service Mocks — Todos
+# Local Product-Testing Hosted-Service Mocks — Todos
 
 ## Notes
 
-- This PRD is planning work only. No implementation has started.
-- The goal is to maximize **local manual smoke-testability** while preserving production paths and minimizing drift.
-- Prefer reusing existing seams (`DEV_AUTH_USER_ID`, optional Stripe client injection, AI mock provider, AV scanner factory/context) over creating parallel architectures.
+- This PRD is now scoped to **local product testing**, not local auth/session parity.
+- Staging remains the place for real Neon Auth and hosted-provider end-to-end verification.
+- Seeded local users are part of the foundation, not a later DX add-on.
+- Reuse existing seams wherever possible: auth wrappers, RLS context, Stripe DI, AI runtime mock, and AV scanner factory.
 
 ## Execution Order Summary
 
 ```text
-Phase 1 (recommended order):
-  1. Local mock mode contract & env surface
-  2. Local auth/session mock path
-  3. Stripe/billing mock provider + webhook simulator
+Phase 1:
+  1. Local product-testing contract and bootstrap
+  2. Seeded local identity path
+  3. Stripe / billing local provider and webhook simulator
 
-Phase 2 (parallel after Phase 1 foundations):
-  4. Google OAuth / integration mock path
-  5. AI mock fidelity hardening
-  6. AV scanner mock mode improvements
+Phase 2:
+  4. AI runtime mock hardening
+  5. AV mock provider improvements
 
 Phase 3:
-  7. Docs, local smoke workflow, and DX cleanup
+  6. Docs, observability, smoke workflow, and DX polish
 ```
 
 ---
 
-## Phase 1: Core Local Hosted-Mock Foundations
+## Phase 1: Foundation and Core Product Flows
 
-### 1. Local Mock Mode Contract & Env Surface
-
-- **Blocked by:** None
-- **Parallel candidate:** No — should land first
-
-**Summary:** Define one coherent local mock contract, env surface, and service-selection pattern so auth, billing, integrations, AI, and AV mocks do not evolve as unrelated toggles.
-
-**Acceptance criteria:**
-
-- [ ] One explicit local mock mode contract exists and is documented
-- [ ] Service-specific mock flags/config are grouped under a coherent pattern
-- [ ] Production behavior remains unchanged when local mock mode is off
-- [ ] Existing service seams are reused where possible instead of introducing duplicate abstractions
-- [ ] Tests cover environment selection behavior
-
----
-
-### 2. Local Auth / Session Mock Path
-
-- **Blocked by:** Local Mock Mode Contract & Env Surface
-- **Parallel candidate:** No — depends on slice 1
-
-**Summary:** Extend the existing dev auth bypass into a higher-fidelity local signed-in flow that supports route protection, request auth resolution, and user provisioning without real Neon Auth for routine local work.
-
-**Acceptance criteria:**
-
-- [ ] Local dev can enter an authenticated app state without real Neon Auth
-- [ ] Protected API routes and page flows behave consistently in local mock mode
-- [ ] User provisioning works with local auth metadata
-- [ ] Known limitations around real cookie/session parity are documented
-- [ ] Tests cover signed-in local flows and route protection behavior
-
----
-
-### 3. Stripe / Billing Mock Provider and Webhook Simulation
-
-- **Blocked by:** Local Mock Mode Contract & Env Surface
-- **Parallel candidate:** Yes — can run after slice 1, in parallel with slice 2 where file overlap allows
-
-**Summary:** Add a mock Stripe client path that preserves checkout, portal, pricing, and webhook-driven subscription state transitions locally without hitting Stripe.
-
-**Acceptance criteria:**
-
-- [ ] Checkout route returns realistic local mock session URLs
-- [ ] Portal route returns realistic local mock portal URLs
-- [ ] Pricing page can render without live Stripe calls in local mock mode
-- [ ] Subscription lifecycle events can be simulated locally and still update DB state through the app’s normal sync paths
-- [ ] Tests cover success and failure paths for checkout, portal, pricing, and subscription sync
-
----
-
-## Phase 2: High-Fidelity Integrations
-
-### 4. Google OAuth / Integration Mock Path
-
-- **Blocked by:** Local Mock Mode Contract & Env Surface, Local Auth / Session Mock Path
-- **Parallel candidate:** Yes — after auth foundation is stable
-
-**Summary:** Make Google integration connect/disconnect flows locally testable by simulating OAuth initiation, callback token exchange, token storage, and disconnect cleanup.
-
-**Acceptance criteria:**
-
-- [ ] Local users can connect a simulated Google Calendar integration
-- [ ] Callback flow stores realistic mock tokens via the normal app paths
-- [ ] Disconnect flow revokes or simulates revocation and deletes stored tokens
-- [ ] Integration status endpoint reflects local mocked connection state
-- [ ] Tests cover connect, callback, status, and disconnect behavior
-
----
-
-### 5. AI Mock Fidelity Hardening
+### 1. Local Product-Testing Contract and Bootstrap
 
 - **Blocked by:** None
-- **Parallel candidate:** Yes — can run in parallel with slice 4
+- **Parallel candidate:** No
 
-**Summary:** Extend the existing AI mock provider so local manual testing sees more realistic streaming, content generation, usage accounting, and failure behavior.
-
-**Acceptance criteria:**
-
-- [ ] AI mock output varies meaningfully with input topic and difficulty
-- [ ] Mock mode supports deterministic and scenario-driven failures
-- [ ] SSE/streaming behavior remains believable for local product testing
-- [ ] Usage metadata is realistic enough for local billing/quota smoke checks
-- [ ] Tests cover realistic success and failure scenarios
-
----
-
-### 6. AV Scanner Mock Mode Improvements
-
-- **Blocked by:** Local Mock Mode Contract & Env Surface
-- **Parallel candidate:** Yes — can run in parallel with slice 4 or 5
-
-**Summary:** Expand the AV scanner’s existing seams so local dev can simulate clean, infected, timeout, and invalid-provider responses without external AV dependencies.
+**Summary:** Define the local product-testing mode, config rules, seeded-data expectations, and bootstrap path that the rest of the PRD relies on.
 
 **Acceptance criteria:**
 
-- [ ] Local PDF flows can run with no external AV provider
-- [ ] Mock mode can simulate clean and infected outcomes
-- [ ] Timeout and malformed-provider scenarios are locally testable
-- [ ] Existing heuristic protections still run in local mode where appropriate
-- [ ] Tests cover the key scan scenarios
+- [ ] Local product-testing mode is explicit and fails closed outside development/test
+- [ ] Config precedence is documented for new local-mode settings versus existing service-specific env vars
+- [ ] Local bootstrap defines the required DB, env, and seeded-user prerequisites
+- [ ] At least one deterministic seeded local user exists for smoke testing
+- [ ] Minimal docs explain how to start local mode before later polish work begins
 
 ---
 
-## Phase 3: Developer Experience & Verification
+### 2. Seeded Local Identity Path
 
-### 7. Docs, Env Examples, and Local Smoke Workflow
+- **Blocked by:** Local Product-Testing Contract and Bootstrap
+- **Parallel candidate:** No
 
-- **Blocked by:** Phase 1 and enough of Phase 2 to describe real workflows
-- **Parallel candidate:** No — should land after behavior settles
-
-**Summary:** Document how to run the app locally with high-fidelity mocks, what remains mocked vs real, and how to manually smoke-test major flows.
+**Summary:** Let local product flows resolve to an existing seeded user through an explicit local identity override, without pretending to provide real hosted auth/session parity.
 
 **Acceptance criteria:**
 
-- [ ] `.env.example` or equivalent documents local mock settings
-- [ ] Docs explain which services are mocked and which are still real
-- [ ] A recommended manual smoke-test flow exists for auth, plans, billing, integrations, and PDF upload
-- [ ] Known non-parity areas are explicitly called out
-- [ ] Local workflow is reproducible by a fresh developer without tribal knowledge
+- [ ] A seeded local user can access protected product routes needed for local testing
+- [ ] Protected API routes and protected page flows use the same local user identity source in development
+- [ ] Missing or invalid local user selections fail fast and do not auto-provision users
+- [ ] Real-session-only paths remain real-session-only
+- [ ] Local shell/header auth affordances stay consistent with the active local user state
 
 ---
 
-## Audit Review (2026-03-30)
+### 3. Stripe / Billing Local Provider and Webhook Simulator
 
-Status: Not planning-ready yet. Phase 1 research has several blocking gaps that should be corrected before detailed implementation plans are written.
+- **Blocked by:** Local Product-Testing Contract and Bootstrap, Seeded Local Identity Path
+- **Parallel candidate:** Partial
 
-### Blocking findings to resolve first
+**Summary:** Add a local Stripe path that keeps pricing, checkout, portal, and webhook-driven subscription state changes believable and internally consistent without real Stripe.
 
-- Local auth is currently described too loosely. `DEV_AUTH_USER_ID` is a server-side identity override seam, not a real session system, and the docs do not yet define how protected non-API routes will work without creating server/client auth drift.
-- The shared local mock contract is missing hard safety rules. The docs need explicit fail-closed behavior in production, precedence rules against existing env flags, and invalid-state handling for mixed old/new config.
-- Phase 1 research drifts past the PRD boundary by pulling Google, AI, and AV selector work into the foundational slice even though the PRD puts those in Phase 2.
-- Google local-mock planning does not yet preserve the real callback security boundary. The real callback currently requires a real authenticated user plus state-token validation, and the docs do not clearly protect that boundary.
-- Stripe webhook simulation is under-specified. The current no-secret dev webhook path is effectively a noop for DB sync, so Phase 1 cannot claim local subscription-state fidelity until it defines a stateful simulator path.
-- Billing mock design is missing a canonical local billing catalog for price IDs, amounts, interval metadata, and tier mapping. Without that, pricing, checkout, and webhook sync will drift.
-- The testing plan is not credible yet. `pnpm test:changed` is not enough for the route, middleware, DB, and webhook behaviors being changed; targeted integration validation needs to be defined per slice.
-- Fresh-developer local bootstrap is pushed too late. Local prerequisites such as auth user provisioning expectations, billing config, DB requirements, and OAuth token-encryption setup need to be documented as part of the foundation, not only in a later docs phase.
+**Acceptance criteria:**
 
-### Required doc corrections before planning
+- [ ] Local pricing renders from a canonical local billing catalog without live Stripe calls
+- [ ] Checkout returns a local-safe flow that still leads to webhook-driven DB updates
+- [ ] Portal supports local subscription-management smoke testing
+- [ ] Local webhook simulation reuses the app's normal event-processing logic, including dedupe and rollback behavior
+- [ ] Local billing failure scenarios are testable: bad price, duplicate event, sync failure, payment failure, and cancellation/deletion
 
-- Add explicit config-precedence and production-safety rules to the PRD/research.
-- Tighten acceptance criteria so they are observable and testable instead of relying on terms like `realistic`, `believable`, or `behave consistently`.
-- Re-scope Phase 1 research to the actual Phase 1 surface: mock contract, local auth path, and Stripe/billing.
-- Add a dedicated Google security-boundary design note before any future Google mock planning.
-- Expand Stripe research to cover event dedupe, retry/rollback behavior, delete-event state clearing, and local pricing-source invariants.
-- Replace generic validation steps with concrete slice-specific test commands and expected outcomes.
+---
+
+## Phase 2: AI and Upload Safety Flows
+
+### 4. AI Runtime Mock Hardening
+
+- **Blocked by:** Phase 1 foundation
+- **Parallel candidate:** Yes
+
+**Summary:** Expand the runtime AI mock so it is useful for deliberate local product testing, not only generic success-path demos.
+
+**Acceptance criteria:**
+
+- [ ] Local AI output remains deterministic when configured to be deterministic
+- [ ] Named local scenarios exist for success and important failures
+- [ ] Streaming behavior remains believable through the real route/orchestrator path
+- [ ] Usage and provider metadata are realistic enough for local product smoke checks
+- [ ] Failure scenarios are triggerable without editing code
+
+---
+
+### 5. AV Mock Provider Improvements
+
+- **Blocked by:** None
+- **Parallel candidate:** Yes
+
+**Summary:** Preserve heuristic-only scanning as the local default, while adding a richer AV mock provider for product-testing scenarios.
+
+**Acceptance criteria:**
+
+- [ ] `AV_PROVIDER=none` continues to mean heuristic-only scanning
+- [ ] A separate local mock AV provider supports clean, infected, timeout, and malformed-provider cases
+- [ ] PDF extraction continues to fail closed on malware or scan failure
+- [ ] Local AV behavior is visible in logs or debug output
+- [ ] Core AV scenarios are covered by tests
+
+---
+
+## Phase 3: Developer Experience, Docs, and Verification
+
+### 6. Docs, Observability, Smoke Workflow, and DX Polish
+
+- **Blocked by:** Local Product-Testing Contract and Bootstrap
+- **Parallel candidate:** No
+
+**Summary:** Turn the local product-testing system into a repeatable developer workflow with clear docs, visible mock-state diagnostics, and explicit boundaries.
+
+**Acceptance criteria:**
+
+- [ ] `.env.example` and dev docs explain local mode and required bootstrap steps
+- [ ] Docs list which flows are local-safe and which still require staging or real providers
+- [ ] A recommended manual smoke-test workflow exists for auth-adjacent flows, billing, AI, and PDF upload
+- [ ] Logs or UI diagnostics make it obvious which local mock paths are active
+- [ ] A fresh developer can reproduce the local workflow without tribal knowledge

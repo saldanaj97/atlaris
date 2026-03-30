@@ -5,11 +5,13 @@ import {
   resolveRedirectUrl,
 } from '@/app/api/v1/stripe/_shared/redirect';
 import { getStripe } from '@/features/billing/client';
+import { isLocalPriceId } from '@/features/billing/local-catalog';
 import { createCustomer } from '@/features/billing/subscriptions';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { json } from '@/lib/api/response';
+import { stripeEnv } from '@/lib/config/env';
 
 const createCheckoutBodySchema = z
   .object({
@@ -46,6 +48,12 @@ export function createCreateCheckoutHandler(
       }
 
       const { priceId, successUrl, cancelUrl } = parseResult.data;
+
+      if (stripeEnv.localMode && !isLocalPriceId(priceId)) {
+        throw new ValidationError(
+          'priceId must be a canonical local catalog id when STRIPE_LOCAL_MODE is enabled'
+        );
+      }
 
       if (!isValidRedirectUrl(successUrl)) {
         throw new ValidationError(

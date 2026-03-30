@@ -3,6 +3,7 @@ import type { TierKey } from '@/app/pricing/components/PricingTiers';
 import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
 import { formatAmount } from '@/app/pricing/components/utils';
 import { getStripe } from '@/features/billing/client';
+import { localDisplayAmountForTier } from '@/features/billing/local-catalog';
 import type {
   StripePriceFields,
   StripeProductFields,
@@ -11,6 +12,7 @@ import {
   stripePriceFieldsSchema,
   stripeProductFieldsSchema,
 } from '@/features/billing/validation/stripe';
+import { stripeEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 export interface StripeTierData {
   name: string;
@@ -111,6 +113,21 @@ export async function fetchStripeTierData({
   starterId: string;
   proId: string;
 }): Promise<Map<TierKey, StripeTierData>> {
+  if (stripeEnv.localMode) {
+    const map = new Map<TierKey, StripeTierData>();
+    const starterInterval = starterId.includes('yearly') ? 'yearly' : 'monthly';
+    const proInterval = proId.includes('yearly') ? 'yearly' : 'monthly';
+    map.set('starter', {
+      name: PRICING_TIERS.starter.name,
+      amount: localDisplayAmountForTier('starter', starterInterval),
+    });
+    map.set('pro', {
+      name: PRICING_TIERS.pro.name,
+      amount: localDisplayAmountForTier('pro', proInterval),
+    });
+    return map;
+  }
+
   const stripe = getStripe();
   const [rawStarterPrice, rawProPrice] = await retrieveStripePrices(
     stripe,

@@ -41,7 +41,11 @@ function normalizePortalUrl(portalUrl: string): string | null {
     return null;
   }
 
-  if (parsedUrl.protocol !== 'https:') {
+  const isLocalHttp =
+    parsedUrl.protocol === 'http:' &&
+    (parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1');
+
+  if (parsedUrl.protocol !== 'https:' && !isLocalHttp) {
     return null;
   }
 

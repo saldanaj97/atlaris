@@ -4,6 +4,7 @@ import {
   unauthenticatedNavItems,
 } from '@/features/navigation';
 import { withServerComponentContext } from '@/lib/api/auth';
+import { getShellAuthUserId } from '@/lib/auth/local-identity';
 import { getSessionSafe } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
 import DesktopHeader from './nav/DesktopHeader';
@@ -35,7 +36,7 @@ import MobileHeader from './nav/MobileHeader';
  */
 export default async function SiteHeader() {
   const { session } = await getSessionSafe();
-  const authUserId = session?.user?.id;
+  const authUserId = getShellAuthUserId(session?.user?.id);
   const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
 
   // Fetch tier only for authenticated users

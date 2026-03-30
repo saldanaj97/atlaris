@@ -14,6 +14,7 @@ import {
     bootstrapDatabase,
     grantRlsPermissions,
 } from '@tests/helpers/db/bootstrap';
+import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 
 const DEFAULT_LOCAL_URL =
   'postgresql://postgres:postgres@localhost:54331/atlaris_dev';
@@ -90,6 +91,9 @@ async function main(): Promise<void> {
 
   console.log('[bootstrap-local-db] Granting RLS permissions…');
   await grantRlsPermissions(databaseUrl);
+
+  console.log('[bootstrap-local-db] Seeding local product-testing user…');
+  await seedLocalProductTestingUser(databaseUrl);
 
   console.log('[bootstrap-local-db] Done.');
   console.log(`[bootstrap-local-db] DATABASE_URL=${databaseUrl}`);

@@ -1,4 +1,8 @@
 import Stripe from 'stripe';
+import {
+  getLocalStripeMock,
+  resolveStripeClientBaseUrl,
+} from '@/features/billing/local-stripe';
 import { stripeEnv } from '@/lib/config/env';
 
 /**
@@ -13,6 +17,10 @@ let stripeInstance: Stripe | null = null;
  * @throws Error if STRIPE_SECRET_KEY is not set
  */
 export function getStripe(): Stripe {
+  if (stripeEnv.localMode) {
+    return getLocalStripeMock(resolveStripeClientBaseUrl());
+  }
+
   if (!stripeInstance) {
     let secretKey: string;
     try {

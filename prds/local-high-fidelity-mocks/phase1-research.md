@@ -1,244 +1,209 @@
-# Phase 1: Core Local Hosted-Mock Foundations — Research & Implementation Plans
+# Phase 1: Foundation and Core Product Flows — Research
 
 > **Parent PRD:** `prds/local-high-fidelity-mocks/prd.md`
 > **Research date:** 2026-03-30
-> **Status:** Research complete — ready for implementation
+> **Scope:** Local product testing only; staging covers real auth/session verification
 
 ---
 
-## Slice 1: Local Mock Mode Contract & Env Surface
+## Slice 1: Local Product-Testing Contract and Bootstrap
 
-### 1. Current State
+### Current State
 
-The repo already has **service-specific local/test toggles**, but they are inconsistent and not coordinated under one local-mock concept.
+The repo already has several local-safe seams, but they are fragmented:
 
-- **Auth:** `DEV_AUTH_USER_ID`, `DEV_AUTH_USER_EMAIL`, and `DEV_AUTH_USER_NAME` exist in `src/lib/config/env.ts:539-549`. `getEffectiveAuthUserId()` in `src/lib/api/auth.ts:27-44` uses `DEV_AUTH_USER_ID` in development and test to bypass real Neon Auth session lookup.
-- **Proxy/middleware:** `src/proxy.ts:128-148` bypasses Neon Auth middleware for `/api/*` routes when `DEV_AUTH_USER_ID` is set in development.
-- **AI:** `src/features/ai/providers/factory.ts:13-23` and `:62-73` default to `MockGenerationProvider` in development/test unless explicitly disabled. Env surface already exists in `src/lib/config/env.ts:414-452`.
-- **AV scanning:** `src/lib/config/env.ts:454-494` defaults `AV_PROVIDER` to `none` in non-production. `src/features/pdf/security/scanner-factory.ts:18-49` returns `null` when the provider is `none`, causing `scanBufferForMalware()` to rely on heuristic-only scanning (`src/features/pdf/security/malware-scanner.ts:144-153`).
-- **Stripe:** There is no top-level mock mode flag. Billing code uses optional `stripeInstance` injection at the service/route level, but production local dev still relies on real `getStripe()` by default (`src/features/billing/client.ts:15-31`).
-- **Google OAuth:** `googleOAuthEnv` uses prod-only-required env behavior (`src/lib/config/env.ts:348-358`), but there is no local mock mode contract for OAuth routes or token storage.
+- `DEV_AUTH_USER_ID` can override the effective auth user on the server side in development and test.
+- AI already defaults to the runtime mock provider in development.
+- AV defaults to heuristic-only mode via `AV_PROVIDER=none` in non-production.
+- Stripe still requires a real secret by default.
+- The local DB bootstrap creates schema and grants, but it does not seed product-testing users or data.
+- Existing docs already warn that `DEV_AUTH_USER_ID` only works if the referenced user exists in the DB.
 
-Current behavior is therefore a patchwork: some services default to mock-like local behavior, some support test DI only, and some still assume real hosted dependencies in local dev.
+The missing piece is not another abstraction stack. The missing piece is one explicit local product-testing contract that says:
 
-### 2. Files to Change
+1. what local mode is for;
+2. which env/settings control it;
+3. what seeded data it assumes;
+4. which hosted-service behaviors are still intentionally real or deferred.
 
-| File | Change | Lines |
-|------|--------|-------|
-| `src/lib/config/env.ts` | Add coherent local-mock mode env surface and service-specific helpers | 388-549 |
-| `src/features/ai/providers/factory.ts` | Align AI mock selection with the shared local-mock contract | 13-23, 62-73 |
-| `src/features/pdf/security/scanner-factory.ts` | Align AV provider selection with shared local-mock contract | 18-49 |
-| `src/features/billing/client.ts` | Route Stripe client selection through shared local-mock contract | 15-31 |
-| `src/app/api/v1/auth/google/route.ts` | Use shared local-mock contract when deciding whether to use real Google OAuth | 17-59 |
-| `src/app/api/v1/auth/google/callback/route.ts` | Same as above for callback flow | 41-188 |
+### Recommended Direction
 
-**New files:**
+- Add one top-level local product-testing mode concept for development/test only.
+- Keep explicit per-service settings where needed, but define precedence instead of letting behavior emerge accidentally.
+- Seed at least one deterministic local user as part of bootstrap.
+- Treat minimal bootstrap/docs as foundation work, not later polish.
+- Fail closed in production if local product-testing mode is enabled.
 
-| File | Purpose |
-|------|---------|
-| `src/lib/config/local-mock.ts` or similar | Central mock-mode helpers and service-specific selectors |
-| `src/shared/types/local-mock.types.ts` | Shared type definitions for local mock modes/scenarios |
+### Files Likely To Change
 
-### 3. Implementation Steps (TDD)
+- `src/lib/config/env.ts`
+- `scripts/bootstrap-local-db.ts`
+- `.env.example`
+- `docs/development/environment.md`
+- `docs/development/local-database.md`
+- `docs/development/commands.md`
+- Likely new helper: `src/lib/config/local-product-testing.ts`
 
-1. **Write environment-selection tests first:**
-   - Test: local mock mode off preserves current production behavior
-   - Test: local mock mode on enables auth/billing/integrations selectors predictably
-   - Test: existing AI/AV env semantics still work under the new shared contract
+### Implementation Steps
 
-2. **Introduce a shared local-mock contract:**
-   - Add one explicit top-level local mock concept
-   - Preserve service-specific scenario control where it already exists
-   - Avoid creating a giant config object that every runtime path must import if a small helper module will do
+1. Define the local product-testing contract and config precedence.
+2. Add production-safety validation.
+3. Extend local DB bootstrap to seed deterministic product-testing users and any minimum supporting data.
+4. Document required env/bootstrap steps immediately.
+5. Validate bootstrap from a clean local environment.
 
-3. **Refactor service-selection call sites to use the shared contract:**
-   - AI provider factory
-   - Stripe client factory
-   - Google OAuth route decision points
-   - AV scanner factory
+### Risks
 
-4. **Validate:**
-   - `pnpm test:changed`
-   - Spot-check env resolution in local dev without starting implementation-heavy mocks yet
-
-### 4. Risk Areas
-
-- **Behavioral drift:** HIGH — centralizing mock selection can accidentally change existing local AI or AV behavior if defaults are not preserved.
-- **Import sprawl:** MEDIUM — if the new helper lives in the wrong layer, it could create dependency-direction issues.
-- **Env ambiguity:** MEDIUM — if both old flags and new flags coexist without clear precedence, local behavior will become hard to reason about.
-
-### 5. Estimated Overlap
-
-- **With Slice 2:** shared overlap in `src/lib/config/env.ts`
-- **With Slice 3:** shared overlap in env/config and service-selection logic
-- **Merge recommendation:** land slice 1 first; it provides the contract that slices 2 and 3 build on
+- If precedence is left ambiguous, local behavior will become another patchwork.
+- If seeded data is treated as optional, local auth and billing will remain brittle.
+- If bootstrap/docs land too late, later phases will be built on hidden setup assumptions.
 
 ---
 
-## Slice 2: Local Auth / Session Mock Path
+## Slice 2: Seeded Local Identity Path
 
-### 1. Current State
+### Current State
 
-Auth already has a **development seam**, but it is only partial.
+The existing seam is useful, but narrower than the old docs implied:
 
-- `src/lib/api/auth.ts:27-44` resolves the effective auth user via `DEV_AUTH_USER_ID` in development/test before falling back to `getSessionSafe()`.
-- `src/proxy.ts:128-148` bypasses Neon Auth middleware for `/api/*` routes in development when `DEV_AUTH_USER_ID` is set.
-- `src/lib/auth/server.ts:22-34` wraps `auth.getSession()` in `getSessionSafe()` because Neon Auth session refresh can throw when cookies are refreshed from plain Server Components.
-- `src/lib/api/auth.ts:69-97` provisions the DB user record via `ensureUserRecord()`, but that path still calls `auth.getSession()` to obtain email/name if the DB record does not yet exist.
-- `src/lib/api/auth.ts:144-168` uses a lighter test path under `appEnv.isTest`, but development still flows through the real auth code unless the env override is set.
-- `src/app/layout.tsx:75-106` wraps the app in `NeonAuthUIProvider`, so a higher-fidelity local auth mode may also need a client-side UI strategy instead of only patching server-side auth resolution.
-- The Google OAuth callback intentionally bypasses `DEV_AUTH_USER_ID` and requires a **real** session via `getAuthUserId()` (`src/app/api/v1/auth/google/callback/route.ts:46-55`), which is correct for security but blocks full local integration behavior today.
+- `getEffectiveAuthUserId()` already supports `DEV_AUTH_USER_ID` in development and test.
+- auth wrappers and server-side RLS context reuse that seam correctly.
+- `ensureUserRecord()` still tries to provision from a real auth session if the DB user is missing.
+- proxy bypass only covers `/api/*`, so protected product pages can still redirect through real Neon middleware.
+- header/app shell auth state still reads real session state in some places.
 
-This means local auth is already “good enough” for some API smoke paths, but not yet a high-fidelity local signed-in mode for the wider app experience.
+This means local auth should be reframed as **seeded local identity selection**, not local session emulation.
 
-### 2. Files to Change
+### Recommended Direction
 
-| File | Change | Lines |
-|------|--------|-------|
-| `src/lib/auth/server.ts` | Add a dev/local session injection path that can return richer mock session data | 1-34 |
-| `src/lib/api/auth.ts` | Teach auth resolution and user provisioning to use local auth metadata safely | 27-44, 69-97, 144-168 |
-| `src/proxy.ts` | Expand dev bypass strategy beyond the current API-only seam if needed | 128-172 |
-| `src/lib/config/env.ts` | Extend dev auth env surface or map it into the new local-mock contract | 539-549 |
-| `src/app/layout.tsx` | Potentially gate or adapt client-side auth UI/provider behavior in local mode | 75-106 |
+- Require local product testing to use an existing seeded user.
+- Do not auto-provision users in local mode.
+- Keep real-session-only paths real-session-only.
+- Expand development-only protected-route access only as far as needed for local product pages and protected API requests.
+- Make the visible app shell consistent with the active local user state.
 
-**New files:**
+### Files Likely To Change
 
-| File | Purpose |
-|------|---------|
-| `src/lib/auth/local-session.ts` | Local mock session builder/normalizer |
-| `tests/integration/auth/local-auth-mode.spec.ts` | Integration tests for local signed-in behavior |
+- `src/lib/api/auth.ts`
+- `src/proxy.ts`
+- `src/components/shared/SiteHeader.tsx`
+- `src/app/layout.tsx`
+- `src/lib/config/env.ts`
+- Likely new helper: `src/lib/auth/local-identity.ts`
+- New test file: `tests/integration/auth/local-auth-mode.spec.ts`
 
-### 3. Implementation Steps (TDD)
+### Implementation Steps
 
-1. **Write auth-mode tests first:**
-   - Test: protected API route works in local auth mode without real Neon Auth
-   - Test: local auth mode auto-provisions a user when the DB user record is missing
-   - Test: signed-out behavior still redirects/throws correctly when mock mode is off
-   - Test: security-sensitive paths that must ignore dev auth remain explicit
+1. Make seeded-user existence a hard requirement for local identity mode.
+2. Change missing-user behavior from auto-provision attempt to clear failure in local mode.
+3. Add a narrow development-only path for protected page access.
+4. Align shell/header behavior with the same local identity source.
+5. Verify protected page, protected API, and protected server-action behavior locally.
 
-2. **Implement local session injection:**
-   - Keep `DEV_AUTH_USER_ID` as the anchor seam
-   - Provide session-like metadata (id, email, name) through a shared local session helper
-   - Avoid pretending this is full cookie/session refresh parity
+### Risks
 
-3. **Align middleware and auth wrappers:**
-   - Decide whether non-API protected routes should also bypass Neon Auth middleware in local auth mode
-   - Keep handler-level auth checks intact even if middleware is relaxed
-
-4. **Validate:**
-   - `pnpm test:changed`
-   - Manual local flow: boot app, access signed-in routes, verify user provisioning and CRUD read paths
-
-### 4. Risk Areas
-
-- **Cookie/session parity gap:** HIGH — local auth mode will still not perfectly emulate Neon Auth cookie refresh behavior.
-- **Security-sensitive path confusion:** MEDIUM — some flows (especially OAuth callbacks) intentionally need real session semantics; the mock path must not blur that boundary.
-- **Middleware divergence:** MEDIUM — over-broad bypass logic in `proxy.ts` could unintentionally make local behavior too permissive.
-
-### 5. Estimated Overlap
-
-- **With Slice 1:** shared env/config contract
-- **With future Google OAuth slice:** high overlap around real-session vs local-session boundaries
-- **Merge recommendation:** implement after slice 1, before Google integration mock work
+- Over-broad proxy bypass would make local behavior too permissive.
+- Leaving shell/header behavior unchanged would create server/client auth drift.
+- Treating seeded-user mode as a fake session system would recreate the original confusion.
 
 ---
 
-## Slice 3: Stripe / Billing Mock Provider and Webhook Simulation
+## Slice 3: Stripe / Billing Local Provider and Webhook Simulator
 
-### 1. Current State
+### Current State
 
-Billing is already structured around **optional Stripe client injection**, which is a strong seam for local mocking.
+Billing already exposes the right seams, but the local story is incomplete:
 
-- `src/features/billing/client.ts:15-31` exposes `getStripe()` as a lazy singleton, but it always constructs a real Stripe client.
-- `src/features/billing/subscriptions.ts:93-303` accepts optional `stripeInstance` parameters for subscription sync, customer creation, portal sessions, and cancellation.
-- `src/app/api/v1/stripe/create-checkout/route.ts:24-129`, `src/app/api/v1/stripe/create-portal/route.ts:19-134`, and `src/app/api/v1/stripe/webhook/route.ts:25-310` are route factories that already accept optional Stripe clients.
-- `src/app/api/v1/stripe/webhook/route.ts:154-185` uses the service-role DB client and a `stripeWebhookEvents` dedupe table, so webhook-driven state changes already have the right persistence shape.
-- `src/features/billing/subscriptions.ts:138-180` performs live `stripe.prices.retrieve()` lookups during subscription sync to map price/product metadata back into local DB tier state.
-- `src/app/pricing/components/stripe-pricing.ts:107-180` also hits Stripe at render time to resolve displayed pricing data.
-- Current local workflow relies on `package.json:11` — `dev:stripe` using `stripe listen --forward-to ...` — which is useful but still depends on live Stripe tooling and setup.
+- service functions already accept injected Stripe clients;
+- checkout and portal handlers are factory-based and mock-friendly;
+- pricing still depends on live Stripe-derived data by default;
+- subscription state changes are webhook-driven;
+- the current no-secret dev webhook path is a noop for DB sync;
+- portal flow currently assumes an `https` URL on the client side.
 
-The architecture is therefore already mock-friendly, but local dev still lacks a first-class mock Stripe path.
+The critical observation is that local billing fidelity depends on preserving **webhook-driven state changes**, not on generating fake checkout URLs.
 
-### 2. Files to Change
+### Recommended Direction
 
-| File | Change | Lines |
-|------|--------|-------|
-| `src/features/billing/client.ts` | Route `getStripe()` through local mock selection instead of always constructing the real SDK | 15-31 |
-| `src/lib/config/env.ts` | Add Stripe mock env/config selectors | 388-412 |
-| `src/app/pricing/components/stripe-pricing.ts` | Support local-safe pricing data retrieval/fallback | 107-180 |
-| `src/app/api/v1/stripe/webhook/route.ts` | Potentially add mock-event ergonomics while preserving existing handler behavior | 25-310 |
-| `tests/helpers/subscription.ts` | Reuse and extend realistic Stripe ID builders for mock objects | 17-65 |
+- Reuse existing Stripe DI seams instead of creating a parallel billing architecture.
+- Add one canonical local billing catalog used by pricing, checkout, portal, and webhook simulation.
+- Keep checkout/portal flows realistic, but preserve webhook-driven DB mutation as the canonical state-change path.
+- Refactor webhook event processing so both the real webhook route and a local simulator can reuse it.
+- Support a small set of high-value local billing scenarios only.
 
-**New files:**
+### Files Likely To Change
 
-| File | Purpose |
-|------|---------|
-| `src/features/billing/mock.ts` | Mock Stripe client implementation |
-| `src/features/billing/mock-factory.ts` | Billing mock selector / scenario helpers |
-| `src/app/api/v1/stripe/_shared/mock-events.ts` | Local webhook event builders/templates |
+- `src/features/billing/client.ts`
+- `src/features/billing/subscriptions.ts`
+- `src/app/api/v1/stripe/create-checkout/route.ts`
+- `src/app/api/v1/stripe/create-portal/route.ts`
+- `src/app/api/v1/stripe/webhook/route.ts`
+- `src/app/pricing/components/pricing-config.ts`
+- `src/app/pricing/components/stripe-pricing.ts`
+- `src/components/billing/ManageSubscriptionButton.tsx`
+- `src/features/billing/validation/stripe.ts`
+- Likely new files:
+  - `src/features/billing/local-catalog.ts`
+  - `src/features/billing/local-stripe.ts`
+  - `src/features/billing/webhook-processor.ts`
+  - a local-only webhook simulation route or action
 
-### 3. Implementation Steps (TDD)
+### Implementation Steps
 
-1. **Write billing mock tests first:**
-   - Test: checkout route returns a valid local mock session URL
-   - Test: portal route returns a valid local mock portal URL
-   - Test: webhook route + mock subscription event updates DB state through existing sync logic
-   - Test: pricing page renders from local-safe data when mock mode is enabled
-   - Test: failure scenarios (bad price, lookup timeout, portal failure) surface correctly
+1. Define the canonical local billing catalog.
+2. Route local pricing, checkout, and portal through the catalog and local provider.
+3. Extract shared webhook event-processing logic.
+4. Add a local event simulator that still exercises dedupe, rollback, and DB writes.
+5. Verify success and failure scenarios against seeded local users.
 
-2. **Implement mock Stripe client/factory:**
-   - Keep production route/service code intact
-   - Return realistic IDs (`cus_*`, `sub_*`) and URLs
-   - Mock price/product metadata retrieval to preserve subscription tier sync behavior
+### High-Value Local Scenarios
 
-3. **Add local webhook simulation helpers:**
-   - Reuse current webhook route rather than bypassing it
-   - Ensure idempotency and service-role DB writes still happen through the normal path
+- starter or pro checkout success
+- portal access
+- duplicate webhook replay
+- payment failure
+- cancellation / subscription deleted
+- bad price ID
+- price lookup failure during sync
 
-4. **Validate:**
-   - `pnpm test:changed`
-   - Manual local flow: simulate checkout, portal, and webhook-driven subscription updates
+### Risks
 
-### 4. Risk Areas
-
-- **Webhook/state divergence:** HIGH — if the mock path skips normal webhook-driven sync, local billing behavior will drift from production quickly.
-- **Pricing fallback drift:** MEDIUM — pricing-page fallback data can become stale if not derived from one clear source.
-- **Mock scope creep:** MEDIUM — billing can easily turn into “rebuild Stripe”; the slice should focus on app-observable behavior only.
-
-### 5. Estimated Overlap
-
-- **With Slice 1:** shared env/config contract
-- **With Phase 2 docs/DX slice:** shared local workflow documentation
-- **Merge recommendation:** after slice 1; can run alongside slice 2 with coordination around env/config edits
+- If local checkout writes DB state directly, billing will drift from production quickly.
+- If the billing catalog is not canonical, pricing and subscription sync will diverge.
+- If local portal only works for `https`, local smoke testing will be artificially blocked.
 
 ---
 
-## Cross-Slice Analysis
+## Cross-Slice Notes
 
 ### Recommended Implementation Order
 
 ```text
-Slice 1: Local Mock Mode Contract & Env Surface
-  ├── Slice 2: Local Auth / Session Mock Path
-  └── Slice 3: Stripe / Billing Mock Provider and Webhook Simulation
+Slice 1: Local product-testing contract and bootstrap
+  -> Slice 2: Seeded local identity path
+  -> Slice 3: Stripe / billing local provider and webhook simulator
 ```
 
-**Rationale:** slice 1 establishes the contract and precedence rules that slices 2 and 3 rely on. Auth and billing can then proceed mostly in parallel, but both touch `src/lib/config/env.ts`, so they should either be coordinated carefully or landed sequentially if file churn becomes high.
+### Why This Order
 
-### Shared File Map
+- Billing depends on deterministic local users and bootstrap.
+- Identity behavior must be stable before product flows are trustworthy.
+- Bootstrap, auth, and billing are the minimum viable local product-testing foundation.
 
-| File | Slice 1 | Slice 2 | Slice 3 |
-|------|---------|---------|---------|
-| `src/lib/config/env.ts` | ✅ primary | ✅ secondary | ✅ secondary |
-| `src/lib/api/auth.ts` | — | ✅ primary | — |
-| `src/lib/auth/server.ts` | — | ✅ primary | — |
-| `src/proxy.ts` | — | ✅ primary | — |
-| `src/features/billing/client.ts` | ✅ secondary | — | ✅ primary |
-| `src/app/api/v1/stripe/webhook/route.ts` | — | — | ✅ primary |
+### Validation Commands
 
-### Key Phase 1 Findings
+- `pnpm db:dev:up`
+- `pnpm db:dev:bootstrap`
+- `./scripts/test-integration.sh tests/integration/auth/local-auth-mode.spec.ts`
+- `./scripts/test-integration.sh tests/integration/stripe/create-checkout.spec.ts`
+- `./scripts/test-integration.sh tests/integration/stripe/api-routes.spec.ts`
+- `./scripts/test-integration.sh tests/integration/stripe/subscriptions.spec.ts`
+- `pnpm test:changed`
 
-- The repo already has a **real auth seam** in `DEV_AUTH_USER_ID`; the PRD should extend that, not replace it.
-- Billing already has **the right DI shape** for local mocks through optional Stripe client injection and route factories.
-- The highest-risk part of the local billing story is **preserving webhook-driven subscription sync behavior**, not generating fake checkout URLs.
-- A single shared local-mock contract is necessary to prevent auth, billing, AI, and AV from becoming four unrelated local-mode systems.
+### Manual Validation
+
+1. Start the local DB and bootstrap it.
+2. Run the app with local product-testing mode enabled.
+3. Select or configure a seeded local user.
+4. Verify protected product pages and protected APIs resolve that user locally.
+5. Verify pricing, checkout, portal, and webhook-driven subscription changes work without real Stripe.

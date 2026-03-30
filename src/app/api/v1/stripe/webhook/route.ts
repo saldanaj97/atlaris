@@ -1,10 +1,13 @@
 import Stripe from 'stripe';
 import { z } from 'zod';
+import { handleStripeWebhookDedupeAndApply } from '@/features/billing/stripe-webhook-processor';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withErrorBoundary } from '@/lib/api/auth';
 import { RateLimitError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { appEnv, stripeEnv } from '@/lib/config/env';
+import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import {
   attachRequestIdHeader,
   createRequestContext,
@@ -151,189 +154,14 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
       return respond('ok');
     }
 
-    // Use service-role DB to bypass RLS for system-originated Stripe webhooks.
-    // Stripe webhooks run without a user session, so request-scoped RLS clients cannot authorize these writes.
-    const { db } = await import('@/lib/db/service-role');
-    const { stripeWebhookEvents, users } = await import('@/lib/db/schema');
-    const { eq } = await import('drizzle-orm');
+    await handleStripeWebhookDedupeAndApply(event, {
+      stripe: stripeInstance,
+      logger,
+      db,
+      users,
+    });
 
-    const updateUsersByStripeCustomerId = async (
-      customerId: string,
-      set: {
-        subscriptionTier?: 'free';
-        subscriptionStatus?: 'canceled' | 'past_due';
-        stripeSubscriptionId?: null;
-        subscriptionPeriodEnd?: null;
-        cancelAtPeriodEnd?: boolean;
-        updatedAt: Date;
-      }
-    ) =>
-      db
-        .update(users)
-        .set(set)
-        .where(eq(users.stripeCustomerId, customerId))
-        .returning({ userId: users.id });
-
-    const [insertedEvent] = await db
-      .insert(stripeWebhookEvents)
-      .values({
-        eventId: event.id,
-        livemode: event.livemode,
-        type: event.type,
-      })
-      .onConflictDoNothing({ target: stripeWebhookEvents.eventId })
-      .returning({ eventId: stripeWebhookEvents.eventId });
-
-    if (!insertedEvent) {
-      logger.info(
-        { type: event.type, eventId: event.id },
-        'Duplicate Stripe webhook event skipped'
-      );
-      return respond('ok');
-    }
-
-    try {
-      switch (event.type) {
-        case 'checkout.session.completed': {
-          logger.info('Stripe checkout.session.completed webhook processed');
-          break;
-        }
-
-        case 'customer.subscription.created':
-        case 'customer.subscription.updated': {
-          const subscription = event.data.object;
-          const { syncSubscriptionToDb } = await import(
-            '@/features/billing/subscriptions'
-          );
-          const syncTimeoutMs = 10_000;
-          const abortController = new AbortController();
-          const timeout = setTimeout(() => {
-            abortController.abort();
-          }, syncTimeoutMs);
-          try {
-            await syncSubscriptionToDb(subscription, stripeInstance, {
-              signal: abortController.signal,
-              timeoutMs: syncTimeoutMs,
-            });
-          } finally {
-            clearTimeout(timeout);
-          }
-          logger.info(
-            {
-              type: event.type,
-            },
-            'Stripe subscription sync webhook processed'
-          );
-          break;
-        }
-
-        case 'customer.subscription.deleted': {
-          const subscription = event.data.object;
-          const customerId =
-            typeof subscription.customer === 'string'
-              ? subscription.customer
-              : subscription.customer.id;
-
-          const updatedUsers = await updateUsersByStripeCustomerId(customerId, {
-            subscriptionTier: 'free',
-            subscriptionStatus: 'canceled',
-            stripeSubscriptionId: null,
-            subscriptionPeriodEnd: null,
-            cancelAtPeriodEnd: false,
-            updatedAt: new Date(),
-          });
-
-          if (updatedUsers.length === 0) {
-            logger.warn(
-              {
-                eventId: event.id,
-                customerId,
-                stripeSubscriptionId: subscription.id,
-              },
-              'No user mapping found for customer.subscription.deleted'
-            );
-          } else {
-            logger.info('Stripe subscription deletion webhook processed');
-          }
-          break;
-        }
-
-        case 'invoice.payment_failed': {
-          const invoice = event.data.object;
-          const customerId =
-            typeof invoice.customer === 'string'
-              ? invoice.customer
-              : invoice.customer?.id;
-
-          if (customerId) {
-            const updatedUsers = await updateUsersByStripeCustomerId(
-              customerId,
-              {
-                subscriptionStatus: 'past_due',
-                updatedAt: new Date(),
-              }
-            );
-
-            if (updatedUsers.length === 0) {
-              logger.warn(
-                {
-                  eventId: event.id,
-                  customerId,
-                  invoiceId: invoice.id,
-                },
-                'No user mapping found for invoice.payment_failed'
-              );
-            } else {
-              logger.info(
-                { customerId },
-                'Stripe invoice.payment_failed webhook processed'
-              );
-            }
-          } else {
-            logger.warn(
-              {
-                eventId: event.id,
-                invoiceId: invoice.id,
-                invoiceCustomer: invoice.customer ?? null,
-              },
-              'No stripeCustomerId available for invoice.payment_failed'
-            );
-          }
-          break;
-        }
-
-        default:
-          logger.debug({ type: event.type }, 'Unhandled Stripe webhook event');
-          break;
-      }
-
-      return respond('ok');
-    } catch (error) {
-      try {
-        await db
-          .delete(stripeWebhookEvents)
-          .where(eq(stripeWebhookEvents.eventId, event.id));
-      } catch (cleanupError) {
-        logger.error(
-          {
-            eventType: event.type,
-            eventId: event.id,
-            cleanupError,
-          },
-          'Failed to rollback Stripe webhook event record after processing error'
-        );
-      }
-
-      logger.error(
-        {
-          eventType: event.type,
-          eventId: event.id,
-          error,
-        },
-        'Stripe webhook processing failed; event record rolled back'
-      );
-      throw error;
-    }
+    return respond('ok');
   });
 }
 

@@ -4,7 +4,7 @@ import type {
   RouteHandlerContext,
 } from '@/lib/api/types/auth.types';
 import { auth, getSessionSafe } from '@/lib/auth/server';
-import { appEnv, devAuthEnv } from '@/lib/config/env';
+import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import type { RlsClient } from '@/lib/db/rls';
@@ -70,6 +70,12 @@ async function ensureUserRecord(authUserId: string): Promise<DbUser> {
   const existing = await getUserByAuthId(authUserId);
   if (existing) {
     return existing;
+  }
+
+  if (localProductTestingEnv.enabled) {
+    throw new AuthError(
+      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:bootstrap and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).'
+    );
   }
 
   const { data: session } = await auth.getSession();
