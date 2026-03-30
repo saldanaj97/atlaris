@@ -57,9 +57,9 @@ describe('authenticated users UPDATE allowlist sync', () => {
     expect(workflowMatches).toEqual([expectedColumns, expectedColumns]);
   });
 
-  it('keeps testcontainers using the canonical column list for users UPDATE', () => {
+  it('keeps shared Postgres bootstrap using the canonical column list for users UPDATE', () => {
     const contents = readFileSync(
-      resolve(TEST_DIR, '../../setup/testcontainers.ts'),
+      resolve(TEST_DIR, '../../helpers/db/bootstrap.ts'),
       'utf8'
     );
 
@@ -80,7 +80,11 @@ describe('authenticated users UPDATE allowlist sync', () => {
     );
   });
 
-  it('installs auth.jwt from the shared bootstrap in testcontainers and rls-bootstrap', () => {
+  it('installs auth.jwt from the shared bootstrap module and rls-bootstrap', () => {
+    const sharedBootstrap = readFileSync(
+      resolve(TEST_DIR, '../../helpers/db/bootstrap.ts'),
+      'utf8'
+    );
     const testcontainers = readFileSync(
       resolve(TEST_DIR, '../../setup/testcontainers.ts'),
       'utf8'
@@ -90,10 +94,9 @@ describe('authenticated users UPDATE allowlist sync', () => {
       'utf8'
     );
 
-    expect(testcontainers).toContain(
-      "from '../helpers/sql/auth-jwt-bootstrap'"
-    );
-    expect(testcontainers).toContain('AUTH_JWT_BOOTSTRAP_SQL');
+    expect(sharedBootstrap).toContain("from '../sql/auth-jwt-bootstrap'");
+    expect(sharedBootstrap).toContain('AUTH_JWT_BOOTSTRAP_SQL');
+    expect(testcontainers).toContain("from '@tests/helpers/db/bootstrap'");
     expect(rlsBootstrap).toContain("from '../sql/auth-jwt-bootstrap'");
     expect(rlsBootstrap).toContain('AUTH_JWT_BOOTSTRAP_SQL');
     expect(rlsBootstrap).toContain('sql.raw(AUTH_JWT_BOOTSTRAP_SQL)');
