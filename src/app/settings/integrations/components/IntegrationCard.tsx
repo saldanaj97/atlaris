@@ -21,12 +21,20 @@ export interface IntegrationCardProps {
 function StatusBadge({ status }: { status: IntegrationStatus }) {
   switch (status) {
     case 'available':
-      return <Badge variant="secondary">Available</Badge>;
+      return (
+        <Badge variant="secondary" role="status" aria-label="Available">
+          Available
+        </Badge>
+      );
     case 'coming_soon':
-      return <Badge variant="outline">Coming Soon</Badge>;
+      return (
+        <Badge variant="outline" role="status" aria-label="Coming Soon">
+          Coming Soon
+        </Badge>
+      );
     case 'connected':
       return (
-        <Badge variant="default">
+        <Badge variant="default" role="status" aria-label="Connected">
           <span className="mr-1 inline-block h-2 w-2 rounded-full bg-green-400" />
           Connected
         </Badge>
@@ -45,10 +53,15 @@ function ActionButton({
   onDisconnect?: () => void;
   loading?: boolean;
 }) {
+  const isDisabled =
+    loading ||
+    (status === 'available' && onConnect == null) ||
+    (status === 'connected' && onDisconnect == null);
+
   switch (status) {
     case 'available':
       return (
-        <Button variant="default" onClick={onConnect} disabled={loading}>
+        <Button variant="default" onClick={onConnect} disabled={isDisabled}>
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -67,7 +80,7 @@ function ActionButton({
       );
     case 'connected':
       return (
-        <Button variant="outline" onClick={onDisconnect} disabled={loading}>
+        <Button variant="outline" onClick={onDisconnect} disabled={isDisabled}>
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -92,7 +105,11 @@ export function IntegrationCard({
   loading,
 }: IntegrationCardProps): JSX.Element {
   return (
-    <Card className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10">
+    <Card
+      role="region"
+      aria-label={name}
+      className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10"
+    >
       <div className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30" />
 
       <div className="relative flex flex-col gap-5">

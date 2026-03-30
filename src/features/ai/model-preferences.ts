@@ -10,11 +10,17 @@ import type {
   SubscriptionTier,
 } from '@/features/ai/types/model.types';
 import { preferredAiModel } from '@/lib/db/enums';
+import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 
 const PERSISTABLE_MODEL_IDS = new Set<string>(preferredAiModel.enumValues);
 
 const RUNTIME_ONLY_MODEL_IDS = new Set<string>([AI_DEFAULT_MODEL]);
+
+/** Router / runtime-only models (no truthful catalog pricing snapshot). */
+export function isRuntimeOnlyModelId(modelId: string): boolean {
+  return RUNTIME_ONLY_MODEL_IDS.has(modelId);
+}
 
 /**
  * Model IDs that may be stored in `preferred_ai_model` (DB enum) and shown as
@@ -47,13 +53,25 @@ export function resolveSavedPreferenceForSettings(
   savedPreferredAiModel: string | null | undefined
 ): string | null {
   if (savedPreferredAiModel == null || savedPreferredAiModel === '') {
+    logger.debug(
+      { tier, savedPreferredAiModel },
+      'No saved preferred AI model available for settings resolution'
+    );
     return null;
   }
   if (!isPersistableModelId(savedPreferredAiModel)) {
+    logger.debug(
+      { tier, savedPreferredAiModel },
+      'Saved preferred AI model is not persistable for settings resolution'
+    );
     return null;
   }
   const validation = validateModelForTier(tier, savedPreferredAiModel);
   if (!validation.valid) {
+    logger.debug(
+      { tier, savedPreferredAiModel, reason: validation.reason },
+      'Saved preferred AI model is not allowed for current tier in settings resolution'
+    );
     return null;
   }
   return savedPreferredAiModel;

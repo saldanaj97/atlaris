@@ -55,7 +55,78 @@ describe('normalizeToCanonicalUsage', () => {
       model: 'openai/gpt-4o',
       provider: 'openrouter',
       estimatedCostCents: expect.any(Number),
+      providerCostMicrousd: null,
+      isPartial: false,
+      missingFields: [],
     });
+  });
+
+  it('maps providerReportedCostUsd to providerCostMicrousd when usage is complete', () => {
+    const metadata: ProviderMetadata = {
+      provider: 'openrouter',
+      model: 'openai/gpt-4o',
+      usage: {
+        promptTokens: 100,
+        completionTokens: 200,
+        providerReportedCostUsd: 0.001234,
+      },
+    };
+
+    const result = normalizeToCanonicalUsage(metadata);
+
+    expect(result.providerCostMicrousd).toBe(1234);
+    expect(result.isPartial).toBe(false);
+  });
+
+  it('preserves zero providerReportedCostUsd when usage is complete', () => {
+    const metadata: ProviderMetadata = {
+      provider: 'openrouter',
+      model: 'openai/gpt-4o',
+      usage: {
+        promptTokens: 100,
+        completionTokens: 200,
+        providerReportedCostUsd: 0,
+      },
+    };
+
+    expect(normalizeToCanonicalUsage(metadata).providerCostMicrousd).toBe(0);
+  });
+
+  it('ignores invalid providerReportedCostUsd values when usage is otherwise complete', () => {
+    const metadata: ProviderMetadata = {
+      provider: 'openrouter',
+      model: 'openai/gpt-4o',
+      usage: {
+        promptTokens: 100,
+        completionTokens: 200,
+        providerReportedCostUsd: Number.POSITIVE_INFINITY,
+      },
+    };
+
+    expect(normalizeToCanonicalUsage(metadata).providerCostMicrousd).toBeNull();
+  });
+
+  it('never reports providerCostMicrousd for partial usage', () => {
+    const metadata: ProviderMetadata = {
+      provider: 'openrouter',
+      model: 'openai/gpt-4o',
+      usage: {
+        promptTokens: 100,
+        providerReportedCostUsd: 0.004567,
+      },
+    };
+
+    expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
+      IncompleteUsageError
+    );
+
+    try {
+      normalizeToCanonicalUsage(metadata);
+      expect.unreachable('Expected IncompleteUsageError');
+    } catch (error) {
+      const usageError = error as IncompleteUsageError;
+      expect(usageError.partialUsage.providerCostMicrousd).toBeNull();
+    }
   });
 
   it('computes totalTokens when not provided by the provider', () => {
@@ -208,6 +279,9 @@ describe('normalizeToCanonicalUsage', () => {
         model: 'unknown',
         provider: 'unknown',
         estimatedCostCents: 0,
+        providerCostMicrousd: null,
+        isPartial: true,
+        missingFields: ['provider', 'model', 'inputTokens', 'outputTokens'],
       });
     }
   });
@@ -230,7 +304,7 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('does NOT throw when all fields are present (even if zero)', () => {
+  it('does not throw when all required fields are present, even if zero', () => {
     const metadata: ProviderMetadata = {
       provider: 'mock',
       model: 'mock-v1',
@@ -250,6 +324,9 @@ describe('normalizeToCanonicalUsage', () => {
       model: 'mock-v1',
       provider: 'mock',
       estimatedCostCents: 0,
+      providerCostMicrousd: null,
+      isPartial: false,
+      missingFields: [],
     });
   });
 });
@@ -296,6 +373,9 @@ describe('safeNormalizeUsage', () => {
       model: 'unknown',
       provider: 'unknown',
       estimatedCostCents: 0,
+      providerCostMicrousd: null,
+      isPartial: true,
+      missingFields: ['provider', 'model', 'inputTokens', 'outputTokens'],
     });
   });
 
@@ -326,6 +406,9 @@ describe('IncompleteUsageError', () => {
       model: 'unknown',
       provider: 'unknown',
       estimatedCostCents: 0,
+      providerCostMicrousd: null,
+      isPartial: true,
+      missingFields: ['provider', 'model'] as const,
     };
 
     const error = new IncompleteUsageError('test error', partialUsage, [

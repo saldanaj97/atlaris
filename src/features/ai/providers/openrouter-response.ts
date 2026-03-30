@@ -1,3 +1,8 @@
+import {
+  OPENROUTER_USAGE_COST_FIELD,
+  type OpenRouterStreamChunk,
+  type OpenRouterUsage,
+} from '@/features/ai/openrouter-cost-contract';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import type { ProviderUsage } from '@/features/ai/types/provider.types';
@@ -16,16 +21,8 @@ type StreamChoiceLike = {
   message?: StreamDeltaLike | null;
 };
 
-export type StreamEventLike = {
+export type StreamEventLike = OpenRouterStreamChunk & {
   choices?: StreamChoiceLike[];
-  usage?: {
-    promptTokens?: number;
-    completionTokens?: number;
-    totalTokens?: number;
-    input_tokens?: number;
-    output_tokens?: number;
-    total_tokens?: number;
-  };
   delta?: string;
 };
 
@@ -84,22 +81,32 @@ export function extractChunkText(event: StreamEventLike): string {
 }
 
 export function normalizeUsage(
-  usage:
-    | {
-        promptTokens?: number;
-        completionTokens?: number;
-        totalTokens?: number;
-        input_tokens?: number;
-        output_tokens?: number;
-        total_tokens?: number;
-      }
-    | undefined
+  usage: OpenRouterUsage | undefined | null
 ): ProviderUsage {
-  return {
+  const base: ProviderUsage = {
     promptTokens: usage?.promptTokens ?? usage?.input_tokens,
     completionTokens: usage?.completionTokens ?? usage?.output_tokens,
     totalTokens: usage?.totalTokens ?? usage?.total_tokens,
   };
+
+  if (usage !== undefined && isObjectRecord(usage)) {
+    const rawCost = usage.cost;
+    if (rawCost !== undefined && rawCost !== null) {
+      if (typeof rawCost !== 'number' || !Number.isFinite(rawCost)) {
+        throw new ProviderInvalidResponseError(
+          'OpenRouter usage.cost must be a finite number when present'
+        );
+      }
+      if (rawCost < 0) {
+        throw new ProviderInvalidResponseError(
+          'OpenRouter usage.cost must be non-negative when present'
+        );
+      }
+      return { ...base, providerReportedCostUsd: rawCost };
+    }
+  }
+
+  return base;
 }
 
 export const USAGE_TOKEN_FIELDS = [
@@ -123,17 +130,31 @@ export function isTextPartArray(value: unknown): value is TextPart[] {
   );
 }
 
-export function isUsageShape(
-  value: unknown
-): value is StreamEventLike['usage'] {
+export function isUsageShape(value: unknown): value is OpenRouterUsage {
   if (!isObjectRecord(value)) {
     return false;
   }
 
-  return USAGE_TOKEN_FIELDS.every((field) => {
-    const fieldValue = value[field];
-    return fieldValue === undefined || typeof fieldValue === 'number';
-  });
+  if (
+    !USAGE_TOKEN_FIELDS.every((field) => {
+      const fieldValue = value[field];
+      return fieldValue === undefined || typeof fieldValue === 'number';
+    })
+  ) {
+    return false;
+  }
+
+  const rawCost = value[OPENROUTER_USAGE_COST_FIELD];
+  if (rawCost !== undefined && rawCost !== null) {
+    if (typeof rawCost !== 'number' || !Number.isFinite(rawCost)) {
+      return false;
+    }
+    if (rawCost < 0) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function describeResponseValue(value: unknown): string {
@@ -256,16 +277,26 @@ export function getStatusCodeFromError(error: unknown): number | undefined {
   return undefined;
 }
 
+export type StreamUsageEventContext = {
+  /**
+   * True when `event.usage` is a plain object record; arrays are excluded because
+   * malformed list payloads should not become authoritative for streaming cost.
+   */
+  usageObjectPresent: boolean;
+};
+
 export function streamFromEvents(params: {
   events: AsyncIterable<StreamEventLike>;
-  onUsage: (usage: ProviderUsage) => void;
+  onUsage: (usage: ProviderUsage, context: StreamUsageEventContext) => void;
 }): ReadableStream<string> {
   const { events, onUsage } = params;
   const textChunks = (async function* () {
     let emittedAnyText = false;
 
     for await (const event of events) {
-      onUsage(normalizeUsage(event.usage));
+      const usageObjectPresent =
+        isObjectRecord(event.usage) && !Array.isArray(event.usage);
+      onUsage(normalizeUsage(event.usage), { usageObjectPresent });
       const text = extractChunkText(event);
       if (!text) {
         continue;

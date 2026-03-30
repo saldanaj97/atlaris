@@ -33,6 +33,16 @@ import {
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const NUMERIC_HEADER_PATTERN = /^\d+$/;
+const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
+  ({ tier, id }) => tier === 'free' && id !== 'openrouter/free'
+)?.id;
+const PRO_TIER_MODEL = AVAILABLE_MODELS.find(({ tier }) => tier === 'pro')?.id;
+
+if (!FREE_QUERY_OVERRIDE_MODEL || !PRO_TIER_MODEL) {
+  throw new Error(
+    'Expected free and pro model fixtures for plans stream tests'
+  );
+}
 
 const STREAM_MOCK_SUCCESS: GenerationAttemptResult = {
   status: 'generation_success',
@@ -75,6 +85,29 @@ function assertNumericHeader(response: Response, name: string): void {
   expect(value ?? '', `Header ${name} should be numeric`).toMatch(
     NUMERIC_HEADER_PATTERN
   );
+}
+
+function expectJsonObject(value: unknown): Record<string, unknown> {
+  expect(value).toBeTypeOf('object');
+  expect(value).not.toBeNull();
+  return value as Record<string, unknown>;
+}
+
+function expectCompletedPlanId(events: StreamingEvent[]): string {
+  expect(events.some((event) => event.type === 'plan_start')).toBe(true);
+  expect(events.some((event) => event.type === 'complete')).toBe(true);
+  expect(events.some((event) => event.type === 'error')).toBe(false);
+
+  const completeEvent = events.find((event) => event.type === 'complete');
+  const completeData = expectJsonObject(completeEvent?.data);
+  expect(completeData.planId).toEqual(expect.any(String));
+
+  const planId = completeData.planId;
+  if (typeof planId !== 'string' || planId.length === 0) {
+    throw new Error('Expected complete event to include a planId');
+  }
+
+  return planId;
 }
 
 // Stubbing env in beforeAll/afterAll is safe: Vitest runs each file in a separate worker,
@@ -130,9 +163,7 @@ describe('POST /api/v1/plans/stream', () => {
     }
 
     const events = await readStreamingResponse(response);
-    const completeEvent = events.find((event) => event.type === 'complete');
-    expect(completeEvent?.data?.planId).toBeTruthy();
-    const planId = completeEvent?.data?.planId as string;
+    const planId = expectCompletedPlanId(events);
 
     const [plan] = await db
       .select()
@@ -198,8 +229,12 @@ describe('POST /api/v1/plans/stream', () => {
     });
 
     const startEvent = events.find((e) => e.type === 'plan_start');
-    expect(startEvent?.data?.planId).toBeTruthy();
-    const planId = startEvent?.data?.planId as string;
+    const startData = expectJsonObject(startEvent?.data);
+    expect(startData.planId).toEqual(expect.any(String));
+    if (typeof startData.planId !== 'string' || startData.planId.length === 0) {
+      throw new Error('Expected plan_start event to include a planId');
+    }
+    const planId = startData.planId;
 
     const [plan] = await db
       .select()
@@ -293,7 +328,7 @@ describe('POST /api/v1/plans/stream', () => {
     // Use a different valid model to verify override is working
     // (using a model different from the default AI_DEFAULT_MODEL)
     const request = new Request(
-      'http://localhost/api/v1/plans/stream?model=openai/gpt-oss-20b:free',
+      `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
       {
         method: 'POST',
         headers: {
@@ -307,8 +342,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    const completeEvent = events.find((event) => event.type === 'complete');
-    expect(completeEvent?.data?.planId).toBeTruthy();
+    expectCompletedPlanId(events);
   });
 
   it('falls back to default model when invalid model override is provided', async () => {
@@ -347,8 +381,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    const completeEvent = events.find((event) => event.type === 'complete');
-    expect(completeEvent?.data?.planId).toBeTruthy();
+    expectCompletedPlanId(events);
   });
 
   it('works without model param (uses default)', async () => {
@@ -383,8 +416,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    const completeEvent = events.find((event) => event.type === 'complete');
-    expect(completeEvent?.data?.planId).toBeTruthy();
+    expectCompletedPlanId(events);
   });
 
   it('uses tier default when DB has no saved preference', async () => {
@@ -436,7 +468,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     await db
       .update(users)
-      .set({ preferredAiModel: 'anthropic/claude-haiku-4.5' })
+      .set({ preferredAiModel: FREE_QUERY_OVERRIDE_MODEL as PreferredAiModel })
       .where(eq(users.authUserId, authUserId));
 
     const { post, captured } = createCapturingHandler();
@@ -460,7 +492,7 @@ describe('POST /api/v1/plans/stream', () => {
     const response = await post(request);
     expect(response.status).toBe(200);
     expect(captured).toHaveLength(1);
-    expect(captured[0]?.modelOverride).toBe('anthropic/claude-haiku-4.5');
+    expect(captured[0]?.modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
   });
 
   it('query model override beats saved preference', async () => {
@@ -474,7 +506,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     await db
       .update(users)
-      .set({ preferredAiModel: 'anthropic/claude-haiku-4.5' })
+      .set({ preferredAiModel: FREE_QUERY_OVERRIDE_MODEL as PreferredAiModel })
       .where(eq(users.authUserId, authUserId));
 
     const { post, captured } = createCapturingHandler();
@@ -490,7 +522,7 @@ describe('POST /api/v1/plans/stream', () => {
     };
 
     const request = new Request(
-      'http://localhost/api/v1/plans/stream?model=openai/gpt-oss-20b:free',
+      `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -501,7 +533,7 @@ describe('POST /api/v1/plans/stream', () => {
     const response = await post(request);
     expect(response.status).toBe(200);
     expect(captured).toHaveLength(1);
-    expect(captured[0]?.modelOverride).toBe('openai/gpt-oss-20b:free');
+    expect(captured[0]?.modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
   });
 
   it('ignores invalid query param and uses saved preference', async () => {
@@ -515,7 +547,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     await db
       .update(users)
-      .set({ preferredAiModel: 'google/gemini-2.0-flash-exp:free' })
+      .set({ preferredAiModel: FREE_QUERY_OVERRIDE_MODEL as PreferredAiModel })
       .where(eq(users.authUserId, authUserId));
 
     const { post, captured } = createCapturingHandler();
@@ -542,7 +574,7 @@ describe('POST /api/v1/plans/stream', () => {
     const response = await post(request);
     expect(response.status).toBe(200);
     expect(captured).toHaveLength(1);
-    expect(captured[0]?.modelOverride).toBe('google/gemini-2.0-flash-exp:free');
+    expect(captured[0]?.modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
   });
 
   it('ignores tier-invalid saved preference and uses tier default', async () => {
@@ -554,18 +586,10 @@ describe('POST /api/v1/plans/stream', () => {
     });
     setTestUser(authUserId);
 
-    const proTierPersistableModel = AVAILABLE_MODELS.find(
-      (m) => m.tier === 'pro'
-    );
-    expect(proTierPersistableModel).toBeDefined();
-    if (!proTierPersistableModel) {
-      throw new Error('Expected a pro-tier model in AVAILABLE_MODELS');
-    }
-
     await db
       .update(users)
       .set({
-        preferredAiModel: proTierPersistableModel.id as PreferredAiModel,
+        preferredAiModel: PRO_TIER_MODEL as PreferredAiModel,
       })
       .where(eq(users.authUserId, authUserId));
 
@@ -650,7 +674,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     const response = await POST(request);
     expect(response.status).toBe(403);
-    const body = (await response.json()) as { error?: string };
+    const body = expectJsonObject(await response.json());
     expect(body.error).toBe('Invalid or expired PDF extraction proof.');
   });
 
@@ -719,7 +743,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     const replayResponse = await POST(replayRequest);
     expect(replayResponse.status).toBe(403);
-    const body = (await replayResponse.json()) as { error?: string };
+    const body = expectJsonObject(await replayResponse.json());
     expect(body.error).toBe('Invalid or expired PDF extraction proof.');
   });
 
@@ -781,7 +805,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     const response = await POST(request);
     expect(response.status).toBe(403);
-    const body = (await response.json()) as { error?: string };
+    const body = expectJsonObject(await response.json());
     expect(body.error).toBe('Invalid or expired PDF extraction proof.');
   });
 
@@ -838,7 +862,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     const response = await POST(request);
     expect(response.status).toBe(403);
-    const body = (await response.json()) as { error?: string };
+    const body = expectJsonObject(await response.json());
     expect(body.error).toBe('Invalid or expired PDF extraction proof.');
   });
 
@@ -921,9 +945,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    const completeEvent = events.find((event) => event.type === 'complete');
-    expect(completeEvent?.data?.planId).toBeTruthy();
-    const planId = completeEvent?.data?.planId as string;
+    const planId = expectCompletedPlanId(events);
 
     expect(capturedInputs).toHaveLength(1);
     const capturedInput = capturedInputs[0];

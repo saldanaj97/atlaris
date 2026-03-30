@@ -11,10 +11,12 @@
 
 import * as Sentry from '@sentry/nextjs';
 import { computeCostCents } from '@/features/ai/cost';
+import { usdCostToMicrousdInteger } from '@/features/ai/provider-cost-microusd';
 import { logger } from '@/lib/logging/logger';
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import {
   type CanonicalAIUsage,
+  type CanonicalUsageMissingField,
   IncompleteUsageError,
 } from '@/shared/types/ai-usage.types';
 
@@ -29,7 +31,7 @@ import {
 export function normalizeToCanonicalUsage(
   metadata: ProviderMetadata | undefined
 ): CanonicalAIUsage {
-  const missingFields: string[] = [];
+  const missingFields: CanonicalUsageMissingField[] = [];
 
   const provider = metadata?.provider;
   const model = metadata?.model;
@@ -59,6 +61,21 @@ export function normalizeToCanonicalUsage(
     estimatedCostCents = 0;
   }
 
+  const isPartial = missingFields.length > 0;
+
+  let providerCostMicrousd: number | null = null;
+  if (!isPartial) {
+    const usd = usage?.providerReportedCostUsd;
+    if (
+      usd != null &&
+      typeof usd === 'number' &&
+      Number.isFinite(usd) &&
+      usd >= 0
+    ) {
+      providerCostMicrousd = usdCostToMicrousdInteger(usd);
+    }
+  }
+
   const canonical: CanonicalAIUsage = {
     inputTokens: resolvedInputTokens,
     outputTokens: resolvedOutputTokens,
@@ -66,9 +83,12 @@ export function normalizeToCanonicalUsage(
     model: resolvedModel,
     provider: resolvedProvider,
     estimatedCostCents,
+    providerCostMicrousd,
+    isPartial,
+    missingFields,
   };
 
-  if (missingFields.length > 0) {
+  if (isPartial) {
     throw new IncompleteUsageError(
       `Incomplete AI usage data: missing [${missingFields.join(', ')}] from ${resolvedProvider}/${resolvedModel}`,
       canonical,

@@ -62,15 +62,16 @@ const NeonAuthEnvSchema = z
   });
 
 /**
- * Zod schema: string that parses to a number via `Number()`; `NaN` fails parse
+ * Zod schema: string that parses to a finite number via `Number()`; `NaN` and
+ * infinities fail parse
  * (callers fall back to optional defaults).
  */
 const parseableNumericEnvString = z.string().transform((s, ctx) => {
   const n = Number(s);
-  if (Number.isNaN(n)) {
+  if (!Number.isFinite(n)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Not a valid number',
+      message: 'Not a valid finite number',
     });
     return z.NEVER;
   }
@@ -78,8 +79,8 @@ const parseableNumericEnvString = z.string().transform((s, ctx) => {
 });
 
 /**
- * Parses optional env string into a number, matching legacy `Number()` semantics
- * for invalid values (NaN maps to fallback or undefined).
+ * Parses optional env string into a finite number. Invalid values map to the
+ * fallback or `undefined`.
  */
 export function parseEnvNumber(value: string | undefined): number | undefined;
 export function parseEnvNumber(
@@ -117,6 +118,9 @@ export function toBoolean(
   }
 
   const normalized = value.trim().toLowerCase();
+  if (normalized === '') {
+    return fallback;
+  }
   return normalized === 'true' || normalized === '1';
 }
 

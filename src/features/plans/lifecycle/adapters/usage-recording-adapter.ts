@@ -11,33 +11,48 @@
 import { incrementUsage } from '@/features/billing/usage-metrics';
 import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
 import type { DbClient } from '@/lib/db/types';
-import { recordUsage } from '@/lib/db/usage';
+import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
+type UsageRecordingAdapterDependencies = {
+  readonly recordUsage?: typeof recordUsage;
+  readonly incrementUsage?: typeof incrementUsage;
+  readonly canonicalUsageToRecordParams?: typeof canonicalUsageToRecordParams;
+};
+
 export class UsageRecordingAdapter implements UsageRecordingPort {
-  constructor(private readonly dbClient: DbClient) {}
+  private readonly recordUsageImpl: typeof recordUsage;
+  private readonly incrementUsageImpl: typeof incrementUsage;
+  private readonly toRecordParams: typeof canonicalUsageToRecordParams;
+
+  constructor(
+    private readonly dbClient: DbClient,
+    deps: UsageRecordingAdapterDependencies = {}
+  ) {
+    this.recordUsageImpl = deps.recordUsage ?? recordUsage;
+    this.incrementUsageImpl = deps.incrementUsage ?? incrementUsage;
+    this.toRecordParams =
+      deps.canonicalUsageToRecordParams ?? canonicalUsageToRecordParams;
+  }
 
   async recordUsage(params: {
     userId: string;
     usage: CanonicalAIUsage;
     kind?: 'plan' | 'regeneration';
   }): Promise<void> {
-    await recordUsage(
-      {
-        userId: params.userId,
-        provider: params.usage.provider,
-        model: params.usage.model,
-        inputTokens: params.usage.inputTokens,
-        outputTokens: params.usage.outputTokens,
-        costCents: params.usage.estimatedCostCents,
-      },
+    await this.recordUsageImpl(
+      this.toRecordParams(params.usage, params.userId),
       this.dbClient
     );
 
     if (params.kind) {
       try {
-        await incrementUsage(params.userId, params.kind, this.dbClient);
+        await this.incrementUsageImpl(
+          params.userId,
+          params.kind,
+          this.dbClient
+        );
       } catch (error) {
         logger.error(
           {

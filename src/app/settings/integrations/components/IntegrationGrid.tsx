@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type JSX, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
 import {
   AlertDialog,
@@ -29,7 +30,7 @@ type IntegrationDef = Omit<
   'status' | 'onConnect' | 'onDisconnect' | 'loading'
 > & {
   id: string;
-  provider?: string;
+  provider?: SupportedProvider;
   defaultStatus: IntegrationStatus;
 };
 
@@ -107,7 +108,32 @@ const INTEGRATIONS: IntegrationDef[] = [
   },
 ];
 
-type ConnectedProviders = Set<string>;
+const integrationStatusResponseSchema = z.object({
+  integrations: z.array(
+    z.object({
+      provider: z.enum(['google_calendar']),
+      connected: z.boolean(),
+      connectedAt: z.string().nullable().optional(),
+    })
+  ),
+});
+
+const OAUTH_CONFIG = {
+  google_calendar: {
+    authPath: '/api/v1/auth/google',
+    successParam: 'google',
+    successMessage: 'Google Calendar connected successfully',
+  },
+} as const;
+
+type SupportedProvider = keyof typeof OAUTH_CONFIG;
+
+type ConnectedProviders = Set<SupportedProvider>;
+
+function getDownloadFilename(contentDisposition: string | null): string {
+  const match = contentDisposition?.match(/filename="([^"]+)"/i);
+  return match?.[1] ?? 'atlaris-export.csv';
+}
 
 export function IntegrationGrid(): JSX.Element {
   const router = useRouter();
@@ -121,15 +147,32 @@ export function IntegrationGrid(): JSX.Element {
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/v1/integrations/status');
-      if (!res.ok) return;
-      const data = (await res.json()) as {
-        integrations: { provider: string; connected: boolean }[];
-      };
+      if (!res.ok) {
+        clientLogger.error('Failed to fetch integration status', {
+          status: res.status,
+        });
+        return;
+      }
+
+      const rawData: unknown = await res.json();
+      const parsed = integrationStatusResponseSchema.safeParse(rawData);
+
+      if (!parsed.success) {
+        clientLogger.error('Invalid integration status payload', {
+          issues: parsed.error.issues,
+          payload: rawData,
+        });
+        return;
+      }
+
       const providers = new Set(
-        data.integrations.filter((i) => i.connected).map((i) => i.provider)
+        parsed.data.integrations
+          .filter((integration) => integration.connected)
+          .map((integration) => integration.provider)
       );
       setConnected(providers);
-    } catch {
+    } catch (error: unknown) {
+      clientLogger.error('Integration status fetch failed', { error });
       // Non-critical — cards fall back to default status
     }
   }, []);
@@ -141,11 +184,16 @@ export function IntegrationGrid(): JSX.Element {
 
   // Handle OAuth redirect callback (?google=connected)
   useEffect(() => {
-    if (searchParams.get('google') === 'connected') {
-      toast.success('Google Calendar connected successfully');
-      void fetchStatus();
-      router.replace('/settings/integrations', { scroll: false });
-    } else if (searchParams.get('error')) {
+    for (const config of Object.values(OAUTH_CONFIG)) {
+      if (searchParams.get(config.successParam) === 'connected') {
+        toast.success(config.successMessage);
+        void fetchStatus();
+        router.replace('/settings/integrations', { scroll: false });
+        return;
+      }
+    }
+
+    if (searchParams.get('error')) {
       toast.error(
         `Connection failed: ${searchParams.get('error_description') ?? 'Unknown error'}`
       );
@@ -160,32 +208,70 @@ export function IntegrationGrid(): JSX.Element {
     };
   }, []);
 
-  const handleCsvExport = useCallback(() => {
+  const handleCsvExport = useCallback(async (): Promise<void> => {
     setLoadingId('csv_export');
 
-    const link = document.createElement('a');
-    link.href = '/api/v1/exports/csv';
-    link.download = '';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const res = await fetch('/api/v1/exports/csv');
 
-    toast.success('CSV export started — check your downloads');
-    setLoadingId(null);
+      if (!res.ok) {
+        const parsed = await parseApiErrorResponse(res, 'Failed to export CSV');
+        clientLogger.error('CSV export request failed', {
+          error: parsed.error,
+          status: res.status,
+        });
+        toast.error(parsed.error);
+        return;
+      }
+
+      const blob = await res.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      link.href = downloadUrl;
+      link.download = getDownloadFilename(
+        res.headers.get('Content-Disposition')
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+
+      toast.success('CSV export downloaded successfully');
+    } catch (error: unknown) {
+      clientLogger.error('CSV export failed', { error });
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to export CSV'
+      );
+    } finally {
+      setLoadingId(null);
+    }
   }, []);
 
   const handleConnect = useCallback(
     (integration: IntegrationDef) => {
       if (integration.id === 'csv_export') {
-        handleCsvExport();
+        void handleCsvExport();
         return;
       }
 
       if (!integration.provider) return;
 
-      // OAuth flow — redirect to backend which redirects to Google
+      const oauthConfig = OAUTH_CONFIG[integration.provider];
+      if (!oauthConfig) {
+        clientLogger.error(
+          'Missing OAuth configuration for integration provider',
+          {
+            provider: integration.provider,
+            integrationId: integration.id,
+          }
+        );
+        return;
+      }
+
+      // OAuth flow — redirect to backend which redirects to the provider
       setLoadingId(integration.id);
-      window.location.href = '/api/v1/auth/google';
+      window.location.href = oauthConfig.authPath;
     },
     [handleCsvExport]
   );

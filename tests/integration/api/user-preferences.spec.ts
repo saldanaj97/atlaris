@@ -9,9 +9,40 @@ import { db } from '@/lib/db/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
+type ApiModelResponse = {
+  id: string;
+  name: string;
+  provider: string;
+  description: string;
+  tier: string;
+  contextWindow: number;
+};
+
 // Prevent tests from running against production database
 if (process.env.DATABASE_URL?.includes('neon.tech')) {
   throw new Error('DO NOT RUN TESTS AGAINST REMOTE DB');
+}
+
+const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
+const FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[0]?.id;
+const SECOND_FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[1]?.id ?? FREE_MODEL_ID;
+const PRO_MODEL_ID = getPersistableModelsForTier('pro').find(
+  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id)
+)?.id;
+
+if (!FREE_MODEL_ID || !SECOND_FREE_MODEL_ID || !PRO_MODEL_ID) {
+  throw new Error('Expected free and pro persistable model fixtures');
+}
+
+function expectJsonObject(value: unknown): Record<string, unknown> {
+  expect(value).toBeTypeOf('object');
+  expect(value).not.toBeNull();
+  return value as Record<string, unknown>;
+}
+
+function expectModelArray(value: unknown): ApiModelResponse[] {
+  expect(Array.isArray(value)).toBe(true);
+  return value as ApiModelResponse[];
 }
 
 describe('GET /api/v1/user/preferences', () => {
@@ -38,17 +69,12 @@ describe('GET /api/v1/user/preferences', () => {
     const response = await GET(request);
     expect(response.status).toBe(200);
 
-    const data = await response.json();
-    expect(data).toHaveProperty('availableModels');
-    expect(Array.isArray(data.availableModels)).toBe(true);
-    expect(data.availableModels.length).toBe(
+    const data = expectJsonObject(await response.json());
+    const availableModels = expectModelArray(data.availableModels);
+    expect(availableModels.length).toBe(
       getPersistableModelsForTier('free').length
     );
-    expect(
-      data.availableModels.some(
-        (m: { id: string }) => m.id === 'openrouter/free'
-      )
-    ).toBe(false);
+    expect(availableModels.some((m) => m.id === 'openrouter/free')).toBe(false);
   });
 
   it('returns default preferredAiModel when user has not set one', async () => {
@@ -61,7 +87,7 @@ describe('GET /api/v1/user/preferences', () => {
     const response = await GET(request);
     expect(response.status).toBe(200);
 
-    const data = await response.json();
+    const data = expectJsonObject(await response.json());
     expect(data.preferredAiModel).toBe(getDefaultModelForTier('free'));
   });
 
@@ -73,9 +99,9 @@ describe('GET /api/v1/user/preferences', () => {
     });
 
     const response = await GET(request);
-    const data = await response.json();
+    const data = expectJsonObject(await response.json());
 
-    const firstModel = data.availableModels[0];
+    const firstModel = expectModelArray(data.availableModels)[0];
     expect(firstModel).toBeDefined();
 
     // API contract: id is a non-empty string
@@ -139,16 +165,16 @@ describe('PATCH /api/v1/user/preferences', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+        preferredAiModel: FREE_MODEL_ID,
       }),
     });
 
     const response = await PATCH(request);
     expect(response.status).toBe(200);
 
-    const data = await response.json();
+    const data = expectJsonObject(await response.json());
     expect(data.message).toBe('Preferences updated');
-    expect(data.preferredAiModel).toBe('google/gemini-2.0-flash-exp:free');
+    expect(data.preferredAiModel).toBe(FREE_MODEL_ID);
   });
 
   it('clears preferredAiModel with null PATCH and GET reflects tier default', async () => {
@@ -158,7 +184,7 @@ describe('PATCH /api/v1/user/preferences', () => {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        preferredAiModel: 'anthropic/claude-haiku-4.5',
+        preferredAiModel: SECOND_FREE_MODEL_ID,
       }),
     });
     const setResponse = await PATCH(setRequest);
@@ -174,7 +200,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     );
     const clearResponse = await PATCH(clearRequest);
     expect(clearResponse.status).toBe(200);
-    const clearData = await clearResponse.json();
+    const clearData = expectJsonObject(await clearResponse.json());
     expect(clearData.preferredAiModel).toBeNull();
 
     const getRequest = new Request('http://localhost/api/v1/user/preferences', {
@@ -190,7 +216,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     setTestUser(testAuthUserId);
     // Use a concrete model from the DB enum — openrouter/free is a
     // generation-time router fallback, not a persistable preference.
-    const resetModel = 'google/gemini-2.0-flash-exp:free';
+    const resetModel = FREE_MODEL_ID;
 
     const patchRequest = new Request(
       'http://localhost/api/v1/user/preferences',
@@ -200,7 +226,7 @@ describe('PATCH /api/v1/user/preferences', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          preferredAiModel: 'anthropic/claude-haiku-4.5',
+          preferredAiModel: SECOND_FREE_MODEL_ID,
         }),
       }
     );
@@ -215,8 +241,8 @@ describe('PATCH /api/v1/user/preferences', () => {
     const getResponse = await GET(getRequest);
     expect(getResponse.status).toBe(200);
 
-    const getData = await getResponse.json();
-    expect(getData.preferredAiModel).toBe('anthropic/claude-haiku-4.5');
+    const getData = expectJsonObject(await getResponse.json());
+    expect(getData.preferredAiModel).toBe(SECOND_FREE_MODEL_ID);
 
     const resetRequest = new Request(
       'http://localhost/api/v1/user/preferences',
@@ -246,7 +272,7 @@ describe('PATCH /api/v1/user/preferences', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          preferredAiModel: 'anthropic/claude-haiku-4.5',
+          preferredAiModel: SECOND_FREE_MODEL_ID,
         }),
       }
     );
@@ -254,8 +280,8 @@ describe('PATCH /api/v1/user/preferences', () => {
     const firstResponse = await PATCH(firstRequest);
     expect(firstResponse.status).toBe(200);
 
-    const firstData = await firstResponse.json();
-    expect(firstData.preferredAiModel).toBe('anthropic/claude-haiku-4.5');
+    const firstData = expectJsonObject(await firstResponse.json());
+    expect(firstData.preferredAiModel).toBe(SECOND_FREE_MODEL_ID);
 
     const secondRequest = new Request(
       'http://localhost/api/v1/user/preferences',
@@ -265,7 +291,7 @@ describe('PATCH /api/v1/user/preferences', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+          preferredAiModel: FREE_MODEL_ID,
         }),
       }
     );
@@ -273,10 +299,8 @@ describe('PATCH /api/v1/user/preferences', () => {
     const secondResponse = await PATCH(secondRequest);
     expect(secondResponse.status).toBe(200);
 
-    const secondData = await secondResponse.json();
-    expect(secondData.preferredAiModel).toBe(
-      'google/gemini-2.0-flash-exp:free'
-    );
+    const secondData = expectJsonObject(await secondResponse.json());
+    expect(secondData.preferredAiModel).toBe(FREE_MODEL_ID);
   });
 
   it('rejects invalid model ID with validation error', async () => {
@@ -295,7 +319,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     const response = await PATCH(request);
     expect(response.status).toBe(400);
 
-    const data = await response.json();
+    const data = expectJsonObject(await response.json());
     expect(data.error).toBeDefined();
   });
 
@@ -331,6 +355,23 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(response.status).toBe(400);
   });
 
+  it('rejects explicit undefined preferredAiModel', async () => {
+    setTestUser(testAuthUserId);
+
+    const request = new Request('http://localhost/api/v1/user/preferences', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        preferredAiModel: undefined,
+      }),
+    });
+
+    const response = await PATCH(request);
+    expect(response.status).toBe(400);
+  });
+
   it('returns 401 for unauthenticated request', async () => {
     clearTestUser();
 
@@ -340,7 +381,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+        preferredAiModel: FREE_MODEL_ID,
       }),
     });
 
@@ -372,7 +413,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+        preferredAiModel: FREE_MODEL_ID,
         extraField: 'not-allowed',
       }),
     });
@@ -390,13 +431,13 @@ describe('PATCH /api/v1/user/preferences', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        preferredAiModel: 'anthropic/claude-sonnet-4.5',
+        preferredAiModel: PRO_MODEL_ID,
       }),
     });
 
     const response = await PATCH(request);
     expect(response.status).toBe(403);
-    const data = (await response.json()) as { code?: string };
+    const data = expectJsonObject(await response.json());
     expect(data.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
   });
 });
@@ -418,7 +459,7 @@ describe('GET /api/v1/user/preferences — invalid stored preference', () => {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferredAiModel: 'anthropic/claude-sonnet-4.5',
+          preferredAiModel: PRO_MODEL_ID,
         }),
       }
     );
@@ -442,7 +483,7 @@ describe('GET /api/v1/user/preferences — invalid stored preference', () => {
 
     const response = await GET(request);
     expect(response.status).toBe(200);
-    const data = await response.json();
+    const data = expectJsonObject(await response.json());
     expect(data.preferredAiModel).toBe(getDefaultModelForTier('free'));
   });
 });

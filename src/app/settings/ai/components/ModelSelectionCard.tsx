@@ -15,6 +15,7 @@ import {
 } from '@/features/ai/model-preferences';
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import { withServerComponentContext } from '@/lib/api/auth';
+import { logger } from '@/lib/logging/logger';
 
 /**
  * Async component that fetches user subscription data and renders the model selector.
@@ -35,13 +36,21 @@ export async function ModelSelectionCard(): Promise<JSX.Element> {
 
   const tierDefaultId = getDefaultModelForTier(userTier);
   const tierDefaultMeta = getModelById(tierDefaultId);
+  const tierDefaultLabel = tierDefaultMeta?.name ?? 'your tier default model';
+
+  if (!tierDefaultMeta) {
+    logger.warn(
+      { userTier, tierDefaultId },
+      'Missing tier default model metadata for AI settings card'
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Model Selection</CardTitle>
         <CardDescription>
-          {currentModel != null ? (
+          {currentModel !== null ? (
             <>
               Your saved choice is used for new plan generations. You can still
               use a one-off <code className="font-mono text-xs">?model=</code>{' '}
@@ -50,10 +59,9 @@ export async function ModelSelectionCard(): Promise<JSX.Element> {
           ) : (
             <>
               No explicit preference saved yet. New plans use{' '}
-              <strong>{tierDefaultMeta?.name ?? tierDefaultId}</strong> (the
-              default for your tier). Save a model below to store a preference.
-              The list only includes models you can persist; the automatic
-              router fallback is not listed here.
+              <strong>{tierDefaultLabel}</strong>. Save a model below to store a
+              preference. Only persistable models are listed here; the runtime
+              router fallback is not.
             </>
           )}
         </CardDescription>

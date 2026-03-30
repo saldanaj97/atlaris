@@ -16,11 +16,10 @@ export default function AISettingsPage(): ReactElement {
       <header className="mb-6">
         <h2 className="text-xl font-semibold">AI Preferences</h2>
         <p className="text-muted-foreground text-sm">
-          Choose a saveable model for new plan generations. If you do not save a
-          preference, Atlaris uses your tier&apos;s default model (including the
-          automatic free router when applicable). A valid one-off{' '}
-          <code className="font-mono text-xs">?model=</code> on a generation
-          request still overrides your saved choice for that request only.
+          Save the model Atlaris should use for future plan generations. If you
+          do not save one, your tier default applies. A one-off{' '}
+          <code className="font-mono text-xs">?model=</code> still overrides a
+          single generation request.
         </p>
       </header>
 
@@ -35,29 +34,25 @@ export default function AISettingsPage(): ReactElement {
           <h3 className="mb-4 text-xl font-semibold">About AI Models</h3>
           <div className="text-muted-foreground space-y-4 text-sm">
             <p>
-              We offer a variety of AI models from leading providers including
-              Google, OpenAI, Anthropic, and Alibaba. Each model has different
-              strengths:
+              Different models trade off speed, price, and reasoning quality.
             </p>
             <ul className="list-inside list-disc space-y-2">
               <li>
-                <strong>Free models</strong> - Great quality at no cost, perfect
-                for most learning plans
+                <strong>Free models</strong> - Best for everyday plan generation
               </li>
               <li>
-                <strong>Pro models</strong> - Advanced reasoning and larger
-                context windows for complex topics
+                <strong>Pro models</strong> - Better for harder topics and
+                larger contexts
               </li>
             </ul>
             <p>
-              A saved model applies to future plan generations until you change
-              it. Only explicitly listed models can be saved; the automatic
-              router fallback is used at runtime when no preference is stored.
+              Your saved model stays in effect until you change it. Only listed
+              models can be saved.
             </p>
             <div className="border-border bg-muted/50 mt-4 rounded-lg border p-3">
               <p className="text-xs">
-                <strong>Note:</strong> Model availability and pricing may
-                change. Free models are always available to all users.
+                <strong>Note:</strong> Availability and pricing can change over
+                time.
               </p>
             </div>
           </div>

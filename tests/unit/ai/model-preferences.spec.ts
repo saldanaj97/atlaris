@@ -8,13 +8,24 @@ import {
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 
+const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
+const PRO_PERSISTABLE_MODELS = getPersistableModelsForTier('pro');
+const FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[0]?.id;
+const SECOND_FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[1]?.id ?? FREE_MODEL_ID;
+const PRO_ONLY_MODEL_ID = PRO_PERSISTABLE_MODELS.find(
+  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id)
+)?.id;
+
+if (!FREE_MODEL_ID || !SECOND_FREE_MODEL_ID || !PRO_ONLY_MODEL_ID) {
+  throw new Error('Expected persistable free and pro model fixtures');
+}
+
 describe('model-preferences', () => {
   describe('isPersistableModelId', () => {
     it.each([
-      'google/gemini-2.0-flash-exp:free',
-      'openai/gpt-oss-20b:free',
-      'anthropic/claude-haiku-4.5',
-      'anthropic/claude-sonnet-4.5',
+      FREE_MODEL_ID,
+      SECOND_FREE_MODEL_ID,
+      PRO_ONLY_MODEL_ID,
     ])('accepts persistable enum-listed id %s', (id) => {
       expect(isPersistableModelId(id)).toBe(true);
     });
@@ -36,9 +47,7 @@ describe('model-preferences', () => {
     it('excludes runtime router from free tier and includes a free-tier saveable model', () => {
       const freeModels = getPersistableModelsForTier('free');
       expect(freeModels.some((m) => m.id === 'openrouter/free')).toBe(false);
-      expect(freeModels.some((m) => m.id === 'openai/gpt-oss-20b:free')).toBe(
-        true
-      );
+      expect(freeModels.some((m) => m.id === FREE_MODEL_ID)).toBe(true);
     });
 
     it('starter tier matches free-tier filtering for persistable models', () => {
@@ -55,9 +64,7 @@ describe('model-preferences', () => {
       const freeIds = new Set(freeModels.map((m) => m.id));
       const proOnly = proModels.filter((m) => !freeIds.has(m.id));
       expect(proOnly.length).toBeGreaterThan(0);
-      expect(proOnly.some((m) => m.id === 'anthropic/claude-sonnet-4.5')).toBe(
-        true
-      );
+      expect(proOnly.some((m) => m.id === PRO_ONLY_MODEL_ID)).toBe(true);
     });
   });
 
@@ -66,13 +73,13 @@ describe('model-preferences', () => {
       ['free', null, null],
       ['free', undefined, null],
       ['free', '', null],
-      ['free', 'anthropic/claude-haiku-4.5', 'anthropic/claude-haiku-4.5'],
-      ['free', 'anthropic/claude-sonnet-4.5', null],
+      ['free', FREE_MODEL_ID, FREE_MODEL_ID],
+      ['free', PRO_ONLY_MODEL_ID, null],
       ['free', AI_DEFAULT_MODEL, null],
       ['free', 'not-a-real-model', null],
-      ['pro', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-sonnet-4.5'],
-      ['starter', 'anthropic/claude-sonnet-4.5', null],
-      ['starter', 'anthropic/claude-haiku-4.5', 'anthropic/claude-haiku-4.5'],
+      ['pro', PRO_ONLY_MODEL_ID, PRO_ONLY_MODEL_ID],
+      ['starter', PRO_ONLY_MODEL_ID, null],
+      ['starter', FREE_MODEL_ID, FREE_MODEL_ID],
     ])('tier %s with stored %j returns %j', (tier, stored, expected) => {
       expect(resolveSavedPreferenceForSettings(tier, stored)).toBe(expected);
     });

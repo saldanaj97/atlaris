@@ -202,6 +202,11 @@ describe('Environment Configuration', () => {
         expect(appEnv.maintenanceMode).toBe(true);
       });
 
+      it('should return true when MAINTENANCE_MODE is lowercase true', () => {
+        process.env.MAINTENANCE_MODE = 'true';
+        expect(appEnv.maintenanceMode).toBe(true);
+      });
+
       it('should return true when MAINTENANCE_MODE is 1', () => {
         process.env.MAINTENANCE_MODE = '1';
         expect(appEnv.maintenanceMode).toBe(true);
@@ -298,7 +303,13 @@ describe('Environment Configuration', () => {
     it('matches Number() for edge cases', () => {
       expect(parseEnvNumber('0')).toBe(0);
       expect(parseEnvNumber('')).toBe(0);
-      expect(parseEnvNumber('Infinity')).toBe(Number.POSITIVE_INFINITY);
+    });
+
+    it('rejects non-finite numeric strings', () => {
+      expect(parseEnvNumber('Infinity')).toBeUndefined();
+      expect(parseEnvNumber('-Infinity')).toBeUndefined();
+      expect(parseEnvNumber('Infinity', 42)).toBe(42);
+      expect(parseEnvNumber('NaN', 42)).toBe(42);
     });
   });
 
@@ -317,8 +328,12 @@ describe('Environment Configuration', () => {
 
     it('treats other strings as false', () => {
       expect(toBoolean('false', true)).toBe(false);
-      expect(toBoolean('', true)).toBe(false);
       expect(toBoolean('0', true)).toBe(false);
+    });
+
+    it('treats empty strings as missing and falls back', () => {
+      expect(toBoolean('', true)).toBe(true);
+      expect(toBoolean('   ', false)).toBe(false);
     });
   });
 });

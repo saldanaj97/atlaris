@@ -82,6 +82,9 @@ describe('calculateCostFromUsage', () => {
       model: 'openai/gpt-4o',
       provider: 'openrouter',
       estimatedCostCents: 999, // should be ignored — recalculated from model pricing
+      providerCostMicrousd: null,
+      isPartial: false,
+      missingFields: [],
     };
     // 1M input at $2.5/M + 500K output at $10/M = 250 + 500 = 750 cents
     expect(calculateCostFromUsage(usage)).toBe(750);
@@ -95,6 +98,9 @@ describe('calculateCostFromUsage', () => {
       model: 'totally-unknown-model',
       provider: 'openrouter',
       estimatedCostCents: 500,
+      providerCostMicrousd: null,
+      isPartial: false,
+      missingFields: [],
     };
     expect(() => calculateCostFromUsage(usage)).toThrow(
       /Unknown model "totally-unknown-model"/
@@ -109,6 +115,9 @@ describe('calculateCostFromUsage', () => {
       model: 'openai/gpt-4o',
       provider: 'openrouter',
       estimatedCostCents: 0,
+      providerCostMicrousd: null,
+      isPartial: false,
+      missingFields: [],
     };
     const first = calculateCostFromUsage(usage);
     const second = calculateCostFromUsage(usage);
@@ -125,6 +134,9 @@ describe('calculateCostFromUsage', () => {
       model: 'google/gemini-2.0-flash-exp:free',
       provider: 'openrouter',
       estimatedCostCents: 0,
+      providerCostMicrousd: null,
+      isPartial: false,
+      missingFields: [],
     };
     expect(calculateCostFromUsage(usage)).toBe(0);
   });

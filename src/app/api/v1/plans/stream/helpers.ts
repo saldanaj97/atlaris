@@ -17,8 +17,7 @@ import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
-import { getDb } from '@/lib/db/runtime';
-import { recordUsage } from '@/lib/db/usage';
+import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
 import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/client.types';
@@ -30,6 +29,7 @@ export interface StreamingHelperDependencies {
   markPlanGenerationSuccess?: typeof markPlanGenerationSuccess;
   recordUsage?: typeof recordUsage;
   incrementUsage?: typeof incrementUsage;
+  canonicalUsageToRecordParams?: typeof canonicalUsageToRecordParams;
   getCorrelationId?: typeof getCorrelationId;
 }
 
@@ -159,6 +159,7 @@ export async function handleSuccessfulGeneration(
   await tryRecordUsage(userId, result, dbClient, {
     recordUsage: ctx.recordUsage,
     incrementUsage: ctx.incrementUsage,
+    canonicalUsageToRecordParams: ctx.canonicalUsageToRecordParams,
   });
 
   emit({
@@ -197,6 +198,7 @@ export async function handleFailedGeneration(
     await tryRecordUsage(userId, result, dbClient, {
       recordUsage: ctx.recordUsage,
       incrementUsage: ctx.incrementUsage,
+      canonicalUsageToRecordParams: ctx.canonicalUsageToRecordParams,
     });
   }
 
@@ -288,27 +290,22 @@ export async function tryRecordUsage(
   userId: string,
   result: GenerationResult,
   dbClient?: AttemptsDbClient,
-  deps?: Pick<StreamingHelperDependencies, 'recordUsage' | 'incrementUsage'>
+  deps?: Pick<
+    StreamingHelperDependencies,
+    'recordUsage' | 'incrementUsage' | 'canonicalUsageToRecordParams'
+  >
 ): Promise<void> {
   try {
     const usageRecorder = deps?.recordUsage ?? recordUsage;
     const usageIncrementer = deps?.incrementUsage ?? incrementUsage;
+    const toRecordParams =
+      deps?.canonicalUsageToRecordParams ?? canonicalUsageToRecordParams;
 
     const canonical = safeNormalizeUsage(result.metadata);
 
-    await usageRecorder(
-      {
-        userId,
-        provider: canonical.provider,
-        model: canonical.model,
-        inputTokens: canonical.inputTokens,
-        outputTokens: canonical.outputTokens,
-        costCents: canonical.estimatedCostCents,
-      },
-      dbClient
-    );
+    await usageRecorder(toRecordParams(canonical, userId), dbClient);
 
-    await usageIncrementer(userId, 'plan', dbClient ?? getDb());
+    await usageIncrementer(userId, 'plan', dbClient);
   } catch (usageError) {
     logger.error(
       {

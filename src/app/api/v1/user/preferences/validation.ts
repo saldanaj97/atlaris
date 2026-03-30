@@ -20,6 +20,6 @@ const preferredAiModelEnum = z.enum(preferredAiModel.enumValues, {
  */
 export const updatePreferencesSchema = z
   .object({
-    preferredAiModel: z.union([preferredAiModelEnum, z.null()]),
+    preferredAiModel: preferredAiModelEnum.nullable(),
   })
   .strict();

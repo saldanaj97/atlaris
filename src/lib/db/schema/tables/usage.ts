@@ -1,8 +1,10 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   check,
   index,
   integer,
+  jsonb,
   pgPolicy,
   pgTable,
   text,
@@ -10,6 +12,8 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
+
+import type { ModelPricingSnapshot } from '@/shared/types/model-pricing-snapshot.types';
 
 import { timestampFields } from '../helpers';
 import { recordOwnedByCurrentUser } from '../policy-helpers';
@@ -76,11 +80,19 @@ export const aiUsageEvents = pgTable(
     model: text('model').notNull(),
     inputTokens: integer('input_tokens').notNull().default(0),
     outputTokens: integer('output_tokens').notNull().default(0),
+    /** App-estimated cost from the local catalog (`computeCostCents`); not provider invoice. */
     costCents: integer('cost_cents').notNull().default(0),
-    // TODO: [OPENROUTER-MIGRATION] Consider adding these fields for better cost tracking:
-    // estimatedCostCents: integer('estimated_cost_cents'), // OpenRouter provides cost data in responses
-    // modelPricingSnapshot: jsonb('model_pricing_snapshot'), // Cache pricing at request time for historical accuracy
-    // This would help track actual costs vs. estimates and preserve pricing even if model costs change later
+    /**
+     * OpenRouter-reported request cost in **integer micro-USD** (USD × 1e6). Nullable when
+     * the provider omitted cost or usage was partial.
+     */
+    providerCostMicrousd: bigint('provider_cost_microusd', {
+      mode: 'bigint',
+    }),
+    /** Catalog-backed inputs used to compute `cost_cents` at insert time. */
+    modelPricingSnapshot: jsonb(
+      'model_pricing_snapshot'
+    ).$type<ModelPricingSnapshot | null>(),
     requestId: text('request_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -92,6 +104,19 @@ export const aiUsageEvents = pgTable(
     index('idx_ai_usage_events_user_created_at').on(
       table.userId,
       table.createdAt
+    ),
+    check(
+      'ai_usage_events_input_tokens_nonneg',
+      sql`${table.inputTokens} >= 0`
+    ),
+    check(
+      'ai_usage_events_output_tokens_nonneg',
+      sql`${table.outputTokens} >= 0`
+    ),
+    check('ai_usage_events_cost_cents_nonneg', sql`${table.costCents} >= 0`),
+    check(
+      'ai_usage_events_provider_cost_microusd_nonneg',
+      sql`${table.providerCostMicrousd} IS NULL OR ${table.providerCostMicrousd} >= 0`
     ),
 
     // RLS policies

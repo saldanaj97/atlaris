@@ -1,13 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Hoist mock values so vi.mock factories can reference them
 const mocks = vi.hoisted(() => ({
   routerReplace: vi.fn(),
   searchParams: new URLSearchParams(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  clientLoggerError: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -19,12 +19,31 @@ vi.mock('sonner', () => ({
   toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }));
 
+vi.mock('@/lib/logging/client', () => ({
+  clientLogger: { error: mocks.clientLoggerError },
+}));
+
 import { IntegrationGrid } from '@/app/settings/integrations/components/IntegrationGrid';
 
 describe('IntegrationGrid', () => {
+  const mockLocation = { href: '' };
+
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: no integrations connected
+    mocks.searchParams = new URLSearchParams();
+    mockLocation.href = '';
+
+    Object.defineProperty(window, 'location', {
+      value: mockLocation,
+      writable: true,
+      configurable: true,
+    });
+
+    vi.stubGlobal('URL', {
+      createObjectURL: vi.fn(() => 'blob:csv-download'),
+      revokeObjectURL: vi.fn(),
+    });
+
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ integrations: [] }), { status: 200 })
     );
@@ -37,11 +56,21 @@ describe('IntegrationGrid', () => {
   it('renders all five integration cards', async () => {
     render(<IntegrationGrid />);
 
-    expect(screen.getByText('Google Calendar')).toBeInTheDocument();
-    expect(screen.getByText('CSV Export')).toBeInTheDocument();
-    expect(screen.getByText('Slack')).toBeInTheDocument();
-    expect(screen.getByText('Todoist')).toBeInTheDocument();
-    expect(screen.getByText('Zapier')).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Google Calendar' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'CSV Export' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Slack' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Todoist' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Zapier' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        '/api/v1/integrations/status'
+      );
+    });
   });
 
   it('fetches integration status on mount', async () => {
@@ -54,7 +83,7 @@ describe('IntegrationGrid', () => {
     });
   });
 
-  it('shows "Connected" badge when backend reports google_calendar is connected', async () => {
+  it('shows connected state when google_calendar is connected', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -72,81 +101,155 @@ describe('IntegrationGrid', () => {
 
     render(<IntegrationGrid />);
 
+    const googleCard = screen.getByRole('region', { name: 'Google Calendar' });
+
     await waitFor(() => {
-      expect(screen.getByText('Connected')).toBeInTheDocument();
+      expect(
+        within(googleCard).getByRole('status', { name: 'Connected' })
+      ).toBeInTheDocument();
     });
   });
 
-  it('gracefully handles status fetch failure', async () => {
+  it('logs status fetch failures and keeps default card state', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Network error'));
 
     render(<IntegrationGrid />);
 
-    // Should still render cards with default status
+    const googleCard = screen.getByRole('region', { name: 'Google Calendar' });
+
     await waitFor(() => {
-      expect(screen.getByText('Google Calendar')).toBeInTheDocument();
-    });
-    // Google Calendar should show "Available" (default), not "Connected"
-    const availableBadges = screen.getAllByText('Available');
-    expect(availableBadges.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('redirects to Google OAuth when Connect is clicked on Google Calendar', async () => {
-    const user = userEvent.setup();
-
-    // Mock window.location
-    const locationSpy = vi.spyOn(window, 'location', 'get');
-    const hrefSetter = vi.fn();
-    locationSpy.mockReturnValue({
-      ...window.location,
-      set href(val: string) {
-        hrefSetter(val);
-      },
-      get href() {
-        return window.location.href;
-      },
+      expect(
+        within(googleCard).getByRole('status', { name: 'Available' })
+      ).toBeInTheDocument();
     });
 
-    render(<IntegrationGrid />);
-
-    // The first "Connect" button should be Google Calendar
-    const connectButtons = screen.getAllByRole('button', { name: 'Connect' });
-    await user.click(connectButtons[0]);
-
-    expect(hrefSetter).toHaveBeenCalledWith('/api/v1/auth/google');
-    locationSpy.mockRestore();
-  });
-
-  it('triggers CSV download when Connect is clicked on CSV Export', async () => {
-    const user = userEvent.setup();
-
-    // Track element creation for download link
-    const clickSpy = vi.fn();
-    const origCreateElement = document.createElement.bind(document);
-    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
-      const el = origCreateElement(tag);
-      if (tag === 'a') {
-        vi.spyOn(el, 'click').mockImplementation(clickSpy);
-      }
-      return el;
-    });
-
-    render(<IntegrationGrid />);
-
-    // Second "Connect" button is CSV Export
-    const connectButtons = screen.getAllByRole('button', { name: 'Connect' });
-    await user.click(connectButtons[1]);
-
-    expect(clickSpy).toHaveBeenCalledOnce();
-    expect(mocks.toastSuccess).toHaveBeenCalledWith(
-      'CSV export started — check your downloads'
+    expect(mocks.clientLoggerError).toHaveBeenCalledWith(
+      'Integration status fetch failed',
+      expect.objectContaining({ error: expect.any(Error) })
     );
   });
 
-  it('shows disconnect confirmation dialog and calls disconnect API', async () => {
+  it('logs invalid status payloads and keeps default card state', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ integrations: [{ provider: 123 }] }), {
+        status: 200,
+      })
+    );
+
+    render(<IntegrationGrid />);
+
+    const googleCard = screen.getByRole('region', { name: 'Google Calendar' });
+
+    await waitFor(() => {
+      expect(mocks.clientLoggerError).toHaveBeenCalledWith(
+        'Invalid integration status payload',
+        expect.objectContaining({
+          issues: expect.any(Array),
+          payload: expect.any(Object),
+        })
+      );
+    });
+
+    expect(
+      within(googleCard).getByRole('status', { name: 'Available' })
+    ).toBeInTheDocument();
+  });
+
+  it('redirects to provider OAuth when Google Calendar connect is clicked', async () => {
     const user = userEvent.setup();
 
-    // Start with Google Calendar connected
+    render(<IntegrationGrid />);
+
+    const googleCard = screen.getByRole('region', { name: 'Google Calendar' });
+    await user.click(
+      within(googleCard).getByRole('button', { name: 'Connect' })
+    );
+
+    expect(window.location.href).toBe('/api/v1/auth/google');
+  });
+
+  it('waits for CSV fetch and blob download before success toast', async () => {
+    const user = userEvent.setup();
+    const clickSpy = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
+
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const element = originalCreateElement(tag);
+      if (tag === 'a') {
+        vi.spyOn(element, 'click').mockImplementation(clickSpy);
+      }
+      return element;
+    });
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ integrations: [] }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(new Blob(['csv-body'], { type: 'text/csv' }), {
+          status: 200,
+          headers: {
+            'Content-Disposition':
+              'attachment; filename="atlaris-export-2026-03-30.csv"',
+          },
+        })
+      );
+
+    render(<IntegrationGrid />);
+
+    const csvCard = screen.getByRole('region', { name: 'CSV Export' });
+    await user.click(within(csvCard).getByRole('button', { name: 'Connect' }));
+
+    expect(globalThis.fetch).toHaveBeenNthCalledWith(2, '/api/v1/exports/csv');
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:csv-download');
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      'CSV export downloaded successfully'
+    );
+  });
+
+  it('shows CSV export errors without a success toast', async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ integrations: [] }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: 'CSV export is too large for direct download.',
+            code: 'CSV_EXPORT_TOO_LARGE',
+          }),
+          { status: 413, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+
+    render(<IntegrationGrid />);
+
+    const csvCard = screen.getByRole('region', { name: 'CSV Export' });
+    await user.click(within(csvCard).getByRole('button', { name: 'Connect' }));
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        'CSV export is too large for direct download.'
+      );
+    });
+
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.clientLoggerError).toHaveBeenCalledWith(
+      'CSV export request failed',
+      expect.objectContaining({
+        error: 'CSV export is too large for direct download.',
+        status: 413,
+      })
+    );
+  });
+
+  it('uses dialog-scoped confirmation to disconnect an integration', async () => {
+    const user = userEvent.setup();
+
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(
         new Response(
@@ -165,28 +268,27 @@ describe('IntegrationGrid', () => {
 
     render(<IntegrationGrid />);
 
-    // Wait for connected state to render
+    const googleCard = screen.getByRole('region', { name: 'Google Calendar' });
+
     await waitFor(() => {
-      expect(screen.getByText('Connected')).toBeInTheDocument();
+      expect(
+        within(googleCard).getByRole('status', { name: 'Connected' })
+      ).toBeInTheDocument();
     });
 
-    // Click Disconnect on the connected card
-    await user.click(screen.getByRole('button', { name: 'Disconnect' }));
+    await user.click(
+      within(googleCard).getByRole('button', { name: 'Disconnect' })
+    );
 
-    // Confirmation dialog should appear
-    expect(screen.getByText('Disconnect Google Calendar?')).toBeInTheDocument();
+    const dialog = screen.getByRole('alertdialog');
+
     expect(
-      screen.getByText(
-        'This will revoke access and remove the connection. You can reconnect at any time.'
-      )
+      within(dialog).getByText('Disconnect Google Calendar?')
     ).toBeInTheDocument();
 
-    // Confirm disconnect
-    const confirmBtn = screen.getAllByRole('button', {
-      name: 'Disconnect',
-    });
-    // The last "Disconnect" button in the DOM is the dialog's action button
-    await user.click(confirmBtn[confirmBtn.length - 1]);
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Disconnect' })
+    );
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(

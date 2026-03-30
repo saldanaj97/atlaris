@@ -44,18 +44,33 @@ export function ModelPreferencesSelector({
     }
 
     if (!res.ok) {
-      const parsed = await parseApiErrorResponse(
-        res,
-        'Failed to save preferences'
-      );
+      const fallbackMessage = 'Failed to save preferences';
+      let errorMessage = fallbackMessage;
+      let errorCode: string | undefined;
+
+      try {
+        const parsed = await parseApiErrorResponse(res, fallbackMessage);
+        errorMessage = parsed.error;
+        errorCode = parsed.code;
+      } catch (error) {
+        clientLogger.error('Failed to parse preference update API error', {
+          operation: 'savePreferences',
+          modelId,
+          status: res.status,
+          statusText: res.statusText,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
       clientLogger.error('API rejected preference update', {
         operation: 'savePreferences',
         modelId,
         status: res.status,
-        code: parsed.code,
-        error: parsed.error,
+        statusText: res.statusText,
+        code: errorCode,
+        error: errorMessage,
       });
-      throw new Error(parsed.error);
+      throw new Error(errorMessage);
     }
 
     router.refresh();

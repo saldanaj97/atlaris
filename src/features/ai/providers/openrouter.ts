@@ -174,6 +174,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
           promptTokens: undefined,
           completionTokens: undefined,
           totalTokens: undefined,
+          providerReportedCostUsd: undefined,
         };
         const isStreamingResponse = isAsyncIterable(response);
         // Streaming: when SDK returns AsyncIterable we yield chunk-by-chunk; otherwise single-chunk fallback.
@@ -181,13 +182,22 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         const stream = isStreamingResponse
           ? streamFromEvents({
               events: response as AsyncIterable<StreamEventLike>,
-              onUsage: (usage) => {
+              onUsage: (usage, { usageObjectPresent }) => {
                 metadataUsage.promptTokens =
                   usage.promptTokens ?? metadataUsage.promptTokens;
                 metadataUsage.completionTokens =
                   usage.completionTokens ?? metadataUsage.completionTokens;
                 metadataUsage.totalTokens =
                   usage.totalTokens ?? metadataUsage.totalTokens;
+                if (usageObjectPresent) {
+                  // An authoritative usage object can intentionally clear a prior cost by omitting `cost`.
+                  if (usage.providerReportedCostUsd != null) {
+                    metadataUsage.providerReportedCostUsd =
+                      usage.providerReportedCostUsd;
+                  } else {
+                    metadataUsage.providerReportedCostUsd = undefined;
+                  }
+                }
               },
             })
           : (() => {
@@ -206,6 +216,10 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
                 metadataUsage.completionTokens;
               metadataUsage.totalTokens =
                 normalizedUsage.totalTokens ?? metadataUsage.totalTokens;
+              if (normalizedUsage.providerReportedCostUsd != null) {
+                metadataUsage.providerReportedCostUsd =
+                  normalizedUsage.providerReportedCostUsd;
+              }
               return toStream(content);
             })();
 

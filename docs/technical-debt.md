@@ -63,28 +63,30 @@ tables. The AI parser also truncates titles defensively before DB insertion.
 Constants live in `src/lib/db/schema/constants.ts`; drift is caught by
 `tests/unit/db/title-length-constraints.spec.ts`.
 
-## Missing OpenRouter cost-tracking columns
+## ~~OpenRouter cost accounting on `ai_usage_events`~~ *(shipped, #301)*
 
-`src/lib/db/schema/tables/usage.ts` still notes follow-up work for richer
-OpenRouter cost accounting fields. Current usage tracking is sufficient for the
-product’s active limits, but not for finer-grained provider cost analysis.
+`ai_usage_events` now carries three distinct cost-related fields:
 
-This should be revisited when cost dashboards, reconciliation, or model-level
-billing audits become a product requirement.
+- **`cost_cents`** — App-estimated cost from the local catalog (`computeCostCents`).
+  Unchanged meaning; used for limits and product-side accounting.
+- **`provider_cost_microusd`** — OpenRouter-reported request cost in integer
+  micro-USD (USD × 1e6), nullable when the provider omitted cost or canonical
+  usage was partial.
+- **`model_pricing_snapshot`** — Versioned (`ModelPricingSnapshotV1`) catalog
+  snapshot explaining how `cost_cents` was computed at insert time; `null` when
+  provenance would be wrong (partial usage, unknown model, router/alias models
+  such as `openrouter/free`).
 
-**Explicit deferral (OpenRouter migration slice, #296 / plan audit):** Do not add
-`estimated_cost_cents` or `model_pricing_snapshot` on `ai_usage_events`, or
-provider-returned cost provenance, until the accounting contract is defined end
-to end (canonical usage, metadata, persistence). `cost_cents` continues to hold
-the app-estimated value from `computeCostCents`.
+Normalization, gating, and the shared `CanonicalAIUsage` → `recordUsage` mapper
+live in `src/features/ai/usage.ts`, `src/features/ai/model-pricing-snapshot.ts`,
+and `src/lib/db/usage.ts`. Both persistence paths (`usage-recording-adapter`,
+plan stream `tryRecordUsage`) use the same mapper.
 
-Persistable vs runtime-only models (e.g. excluding `openrouter/free` from saved
-prefs) and tier-aware listing are implemented in
+Persistable vs runtime-only models and tier-aware listing remain in
 [`src/features/ai/model-preferences.ts`](../src/features/ai/model-preferences.ts),
 `GET`/`PATCH` [`/api/v1/user/preferences`](../src/app/api/v1/user/preferences/route.ts),
 and plan stream model resolution in
-[`plans/stream/route.ts`](../src/app/api/v1/plans/stream/route.ts). Further API
-contract changes for other consumers remain deferred until needed.
+[`plans/stream/route.ts`](../src/app/api/v1/plans/stream/route.ts).
 
 ## ~~Drizzle snapshot metadata drift~~ *(resolved)*
 

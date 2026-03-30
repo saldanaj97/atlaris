@@ -4,7 +4,8 @@ Persistent user preferences and durable workspace facts maintained by the `conti
 
 ## Learned User Preferences
 
-- When implementing from an attached PRD plan, do not edit the plan file; track work in `prds/<prd-name>/todos.md` and existing todo items instead.
+- When implementing from an attached PRD plan or a read-only reference under `.cursor/plans/`, do not edit that plan file unless the user explicitly asks; track work in `prds/<prd-name>/todos.md`, plan frontmatter todos, or existing todo items instead.
+- When the user asks to align after an audit, match their stated scope: if they ask to update only todos (or “nothing else” besides todos), do not edit the plan body—only sync todos/frontmatter (or the relevant `prds/...` todo file) so it matches their revisions.
 - When a plan specifies a commit order or split (e.g. migration vs tests), match that order in git commits.
 - If the user says not to push yet, commit locally only and do not push or assume remote updates.
 - When asked to run tests, prefer scoped commands (e.g. `pnpm test:changed` or a single spec file); do not run the full integration or full suite if the user asks to limit scope.
@@ -14,6 +15,7 @@ Persistent user preferences and durable workspace facts maintained by the `conti
 
 ## Learned Workspace Facts
 
+- Running `pnpm db:migrate` against Neon can fail with compute-time quota errors; that reflects Neon account/project limits, not necessarily bad migration SQL—use local Postgres for development migrations when Neon is quota-blocked.
 - PostgreSQL RLS controls which rows a role can see or change; it does not restrict which columns may be updated. Column-level writes use `GRANT` / `REVOKE` on columns (or table-level privileges), not RLS alone.
 - Privilege changes that are not modeled in Drizzle schema belong in hand-written SQL migrations; keep the same `REVOKE`/`GRANT` logic in migration, the canonical TS allowlist under `src/lib/db/privileges/` when used, `tests/helpers/db` bootstrap, testcontainers `grantRlsPermissions`, and CI grant steps when they must stay in lockstep.
 - Ephemeral Postgres for security/integration tests applies migrations via `pnpm db:migrate` so `pg_policy` and related objects match the migration chain; relying on `drizzle-kit push` alone can drift from migration-defined policy text.

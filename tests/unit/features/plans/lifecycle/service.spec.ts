@@ -6,6 +6,8 @@ import type {
   CreatePdfPlanInput,
 } from '@/features/plans/lifecycle/types';
 
+import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
+
 // ─── Helpers ─────────────────────────────────────────────────────
 
 function createMockPorts(
@@ -59,9 +61,12 @@ function createMockPorts(
           inputTokens: 0,
           outputTokens: 0,
           totalTokens: 0,
-          model: 'unknown',
-          provider: 'unknown',
+          model: 'openai/gpt-4o',
+          provider: 'openrouter',
           estimatedCostCents: 0,
+          providerCostMicrousd: null,
+          isPartial: false,
+          missingFields: [],
         },
         durationMs: 1000,
       }),
@@ -664,6 +669,90 @@ describe('PlanLifecycleService', () => {
         visibility: 'private',
         origin: 'pdf',
         extractedContext: { mainTopic: 'ML Fundamentals' },
+      });
+    });
+  });
+
+  describe('processGenerationAttempt', () => {
+    const validGenerationInput = {
+      planId: 'plan-gen-001',
+      userId: 'user-abc',
+      tier: 'free' as const,
+      input: {
+        topic: 'Learn TypeScript',
+        skillLevel: 'beginner' as const,
+        weeklyHours: 5,
+        learningStyle: 'mixed' as const,
+      },
+    };
+
+    it('passes partial usage with missing fields through to usage recording on success', async () => {
+      const recordUsageSpy = vi.fn().mockResolvedValue(undefined);
+      const partialUsage = makeCanonicalUsage({
+        provider: 'unknown',
+        isPartial: true,
+        missingFields: ['provider'],
+        providerCostMicrousd: null,
+      });
+      ports = createMockPorts({
+        usageRecording: {
+          recordUsage: recordUsageSpy,
+        },
+        generation: {
+          runGeneration: async () => ({
+            status: 'success',
+            modules: [],
+            metadata: {},
+            usage: partialUsage,
+            durationMs: 250,
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await service.processGenerationAttempt(validGenerationInput);
+
+      expect(recordUsageSpy).toHaveBeenCalledWith({
+        userId: 'user-abc',
+        usage: partialUsage,
+        kind: 'plan',
+      });
+    });
+
+    it('records partial permanent-failure usage when generation returns missing token fields', async () => {
+      const recordUsageSpy = vi.fn().mockResolvedValue(undefined);
+      const partialUsage = makeCanonicalUsage({
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        isPartial: true,
+        missingFields: ['inputTokens', 'outputTokens'],
+      });
+      ports = createMockPorts({
+        usageRecording: {
+          recordUsage: recordUsageSpy,
+        },
+        generation: {
+          runGeneration: async () => ({
+            status: 'failure',
+            classification: 'validation',
+            error: new Error('missing usage fields'),
+            metadata: {},
+            usage: partialUsage,
+            durationMs: 200,
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result =
+        await service.processGenerationAttempt(validGenerationInput);
+
+      expect(result.status).toBe('permanent_failure');
+      expect(recordUsageSpy).toHaveBeenCalledWith({
+        userId: 'user-abc',
+        usage: partialUsage,
+        kind: 'plan',
       });
     });
   });

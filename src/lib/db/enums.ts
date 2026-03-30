@@ -80,6 +80,9 @@ export const integrationProviderEnum = pgEnum('integration_provider', [
   'google_calendar',
 ]);
 
+export type IntegrationProvider =
+  (typeof integrationProviderEnum.enumValues)[number];
+
 export const planOrigin = pgEnum('plan_origin', [
   'ai',
   'template',
