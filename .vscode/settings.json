@@ -11,7 +11,7 @@
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "always",
-    "quickfix.biome": "always"
+    "source.fixAll.biome": "always"
   },
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"
@@ -29,5 +29,5 @@
         "copilot/gpt-5.4-mini"
       ]
     }
-  }
+  },
 }
