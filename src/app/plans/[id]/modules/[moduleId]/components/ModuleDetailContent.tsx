@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation';
-import { getCachedModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/data';
+import { loadModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/data';
 import {
   getModuleError,
   isModuleSuccess,
 } from '@/app/plans/[id]/modules/[moduleId]/helpers';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
 
 import { ModuleDetailPageError } from './Error';
@@ -23,7 +24,7 @@ export async function ModuleDetailContent({
   planId,
   moduleId,
 }: ModuleDetailContentProps) {
-  const moduleResult = await getCachedModuleForPage(moduleId);
+  const moduleResult = await loadModuleForPage(moduleId);
 
   // Handle module access errors with explicit error codes
   if (!isModuleSuccess(moduleResult)) {
@@ -37,11 +38,12 @@ export async function ModuleDetailContent({
     );
 
     switch (code) {
-      case 'UNAUTHORIZED':
-        // User needs to authenticate - redirect to sign-in
+      case 'UNAUTHORIZED': {
+        const redirectPath = `/plans/${planId}/modules/${moduleId}`;
         return redirect(
-          `/sign-in?redirect_url=/plans/${planId}/modules/${moduleId}`
+          `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(redirectPath)}`
         );
+      }
 
       case 'NOT_FOUND':
         // Module doesn't exist or user doesn't have access

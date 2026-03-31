@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
-import { getCachedPlanForPage } from '@/app/plans/[id]/data';
+import { loadPlanForPage } from '@/app/plans/[id]/data';
 import { getPlanError, isPlanSuccess } from '@/app/plans/[id]/helpers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ROUTES } from '@/features/navigation/routes';
 import { mapDetailToClient } from '@/features/plans/detail-mapper';
 import { logger } from '@/lib/logging/logger';
 
@@ -19,7 +20,7 @@ interface PlanDetailContentProps {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
-  const planResult = await getCachedPlanForPage(planId);
+  const planResult = await loadPlanForPage(planId);
 
   if (!isPlanSuccess(planResult)) {
     const error = getPlanError(planResult);
@@ -29,10 +30,12 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
     logger.warn({ planId, errorCode: code }, `Plan access denied: ${message}`);
 
     switch (code) {
-      case 'UNAUTHORIZED':
+      case 'UNAUTHORIZED': {
+        const redirectPath = `/plans/${planId}`;
         return redirect(
-          `/sign-in?redirect_url=/plans/${encodeURIComponent(planId)}`
+          `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(redirectPath)}`
         );
+      }
 
       case 'NOT_FOUND':
         return (

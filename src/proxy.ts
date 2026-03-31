@@ -26,7 +26,14 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-const PROTECTED_PREFIXES = ['/dashboard', '/api', '/plans', '/account'];
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/api',
+  '/plans',
+  '/account',
+  '/settings',
+  '/analytics',
+];
 
 function isProtectedRoute(pathname: string): boolean {
   // Auth API routes must NOT be protected (they handle sign-in/sign-up)
