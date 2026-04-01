@@ -5,7 +5,7 @@ import type { PdfContext } from '@/features/pdf/context.types';
 import { verifyAndConsumePdfExtractionProof } from '@/features/pdf/security/pdf-extraction-proof';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { AppError, ForbiddenError } from '@/lib/api/errors';
-import type { getDb } from '@/lib/db/runtime';
+import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 
 export type PdfProvenance = {
@@ -23,8 +23,6 @@ export type PreparedPlanInput = {
   pdfUsageReserved: boolean;
   pdfProvenance: PdfProvenance | null;
 };
-
-type DbClient = ReturnType<typeof getDb>;
 
 type PreparePdfOriginParams = {
   body: CreateLearningPlanInput;
