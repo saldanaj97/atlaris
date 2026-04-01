@@ -14,7 +14,7 @@ import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionBut
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
-import { getCurrentUserRecordSafe } from '@/lib/api/auth';
+import { withServerComponentContext } from '@/lib/api/auth';
 import { logger } from '@/lib/logging/logger';
 
 export const metadata: Metadata = {
@@ -81,7 +81,7 @@ async function loadStripeTierData(
 }
 
 export default async function PricingPage(): Promise<ReactElement> {
-  const user = await getCurrentUserRecordSafe();
+  const user = await withServerComponentContext((currentUser) => currentUser);
   const canOpenBillingPortal = canOpenBillingPortalForUser(user);
   const monthlyPriceIds = getPaidTierPriceIds(MONTHLY_TIER_CONFIGS);
   const yearlyPriceIds = getPaidTierPriceIds(YEARLY_TIER_CONFIGS);
