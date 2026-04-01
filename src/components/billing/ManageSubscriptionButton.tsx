@@ -10,6 +10,13 @@ import { clientLogger } from '@/lib/logging/client';
 
 const PORTAL_TIMEOUT_MS = 15_000;
 
+type ManageSubscriptionButtonProps = {
+  label?: string;
+  className?: string;
+  returnUrl?: string;
+  canOpenBillingPortal: boolean;
+};
+
 type PortalRequestResult =
   | { kind: 'success'; portalUrl: string }
   | {
@@ -190,22 +197,17 @@ async function requestBillingPortal(params: {
   };
 }
 
-interface ManageSubscriptionButtonProps {
-  label?: string;
-  className?: string;
-  returnUrl?: string;
-}
-
 export default function ManageSubscriptionButton({
   label = 'Manage Subscription',
   className,
   returnUrl,
+  canOpenBillingPortal,
 }: ManageSubscriptionButtonProps): ReactElement {
   const [loading, setLoading] = useState(false);
   const pendingRef = useRef(false);
 
   async function handleClick() {
-    if (pendingRef.current) {
+    if (!canOpenBillingPortal || pendingRef.current) {
       return;
     }
 
@@ -260,7 +262,7 @@ export default function ManageSubscriptionButton({
   return (
     <Button
       className={className}
-      disabled={loading}
+      disabled={loading || !canOpenBillingPortal}
       onClick={() => {
         void handleClick();
       }}

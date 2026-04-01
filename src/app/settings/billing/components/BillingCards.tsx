@@ -4,6 +4,7 @@ import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionBut
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import { getSubscriptionTier } from '@/features/billing/subscriptions';
 import { getUsageSummary } from '@/features/billing/usage-metrics';
 import { withServerComponentContext } from '@/lib/api/auth';
@@ -20,12 +21,13 @@ export async function BillingCards(): Promise<JSX.Element> {
       getUsageSummary(user.id, db),
       getSubscriptionTier(user.id, db),
     ]);
-    return { usage, sub };
+    return { usage, sub, user };
   });
 
   if (!result) redirect('/auth/sign-in');
 
-  const { usage, sub } = result;
+  const { usage, sub, user } = result;
+  const canOpenBillingPortal = canOpenBillingPortalForUser(user);
 
   const nextBilling = sub.subscriptionPeriodEnd
     ? new Date(sub.subscriptionPeriodEnd).toLocaleDateString('en-US', {
@@ -79,7 +81,15 @@ export async function BillingCards(): Promise<JSX.Element> {
         </div>
 
         <div className="mt-4">
-          <ManageSubscriptionButton className="w-full" />
+          <ManageSubscriptionButton
+            className="w-full"
+            canOpenBillingPortal={canOpenBillingPortal}
+          />
+          {!canOpenBillingPortal && (
+            <p className="text-muted-foreground mt-2 text-center text-sm">
+              Billing features are unavailable.
+            </p>
+          )}
         </div>
       </Card>
 

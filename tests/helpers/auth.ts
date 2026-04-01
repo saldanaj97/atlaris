@@ -1,3 +1,8 @@
+import {
+  clearDevAuthUserIdForTests,
+  setDevAuthUserIdForTests,
+} from '@/lib/config/env';
+
 /**
  * Sets the test user for API route and business logic testing.
  *
@@ -15,7 +20,7 @@
  * For RLS policy testing, use helpers in tests/helpers/rls.ts instead.
  */
 export function setTestUser(authUserId: string) {
-  process.env.DEV_AUTH_USER_ID = authUserId;
+  setDevAuthUserIdForTests(authUserId);
 }
 
 /**
@@ -23,5 +28,5 @@ export function setTestUser(authUserId: string) {
  * Use this in tests that need to verify unauthenticated behavior.
  */
 export function clearTestUser() {
-  delete process.env.DEV_AUTH_USER_ID;
+  clearDevAuthUserIdForTests();
 }

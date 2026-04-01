@@ -219,6 +219,7 @@ export function UnifiedPlanInput({
           <span className="text-sm">I&apos;m a</span>
           <InlineDropdown
             id={`${baseId}-skill-level`}
+            ariaLabel="Skill level"
             options={SKILL_LEVEL_OPTIONS}
             value={state.skillLevel}
             onChange={(value) => dispatch({ type: 'set-skill-level', value })}
@@ -227,6 +228,7 @@ export function UnifiedPlanInput({
           <span className="text-sm">with</span>
           <InlineDropdown
             id={`${baseId}-weekly-hours`}
+            ariaLabel="Weekly hours"
             options={WEEKLY_HOURS_OPTIONS}
             value={state.weeklyHours}
             onChange={(value) => dispatch({ type: 'set-weekly-hours', value })}
@@ -241,6 +243,7 @@ export function UnifiedPlanInput({
           <span className="text-sm">I prefer</span>
           <InlineDropdown
             id={`${baseId}-learning-style`}
+            ariaLabel="Learning style"
             options={LEARNING_STYLE_OPTIONS}
             value={state.learningStyle}
             onChange={(value) =>
@@ -251,6 +254,7 @@ export function UnifiedPlanInput({
           <span className="text-sm">and want to finish in</span>
           <InlineDropdown
             id={`${baseId}-deadline`}
+            ariaLabel="Deadline"
             options={DEADLINE_OPTIONS}
             value={state.deadlineWeeks}
             onChange={(value) =>

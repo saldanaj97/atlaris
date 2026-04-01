@@ -1,10 +1,11 @@
 // IMPORTANT: Mock imports must come first, before any component imports
 // that use the mocked modules (sonner, client-logger, next/navigation).
-import '../../../../mocks/unit/client-logger.unit';
-import '../../../../mocks/unit/sonner.unit';
+import '@tests/mocks/unit/client-logger.unit';
+import '@tests/mocks/unit/sonner.unit';
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
@@ -14,7 +15,6 @@ import type {
   UseStreamingPlanGenerationResult,
 } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
-import { createDeferredPromise } from '../../../../helpers/deferred-promise';
 
 const pushMock = vi.fn<(href: string) => void>();
 
@@ -95,6 +95,15 @@ describe('ManualCreatePanel', () => {
   async function submitForm(): Promise<void> {
     await user.click(screen.getByRole('button', { name: /generate my plan/i }));
   }
+
+  describe('defaults', () => {
+    it('defaults the deadline dropdown to 1 month', async () => {
+      render(<ManualCreatePanel />);
+
+      const deadline = screen.getByRole('combobox', { name: /^deadline$/i });
+      expect(deadline).toHaveTextContent('1 month');
+    });
+  });
 
   describe('handleSubmit - successful generation', () => {
     it('starts generation from the real form and redirects when the plan id is ready', async () => {

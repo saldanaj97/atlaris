@@ -51,10 +51,15 @@ describe('Subscription Management', () => {
       );
 
       expect(customerId).toBe(expectedCustomerId);
-      expect(createStripeCustomer).toHaveBeenCalledWith({
-        email: 'create.customer@example.com',
-        metadata: { userId },
-      });
+      expect(createStripeCustomer).toHaveBeenCalledWith(
+        {
+          email: 'create.customer@example.com',
+          metadata: { userId },
+        },
+        {
+          timeout: 10_000,
+        }
+      );
 
       // Verify DB updated
       const [user] = await db.select().from(users).where(sql`id = ${userId}`);
@@ -360,6 +365,61 @@ describe('Subscription Management', () => {
       await expect(
         syncSubscriptionToDb(mockSubscription, mockStripe)
       ).resolves.toBeUndefined();
+    });
+
+    it('throws when Stripe price lookup fails so the webhook can retry', async () => {
+      const userId = await createUniqueUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
+      });
+
+      const originalPeriodEnd = new Date('2026-01-01T00:00:00.000Z');
+      await db
+        .update(users)
+        .set({
+          subscriptionPeriodEnd: originalPeriodEnd,
+          stripeSubscriptionId: buildStripeSubscriptionId(userId, 'original'),
+        })
+        .where(sql`id = ${userId}`);
+
+      const mockSubscription = {
+        id: buildStripeSubscriptionId(userId, 'price-lookup-failure'),
+        customer: stripeCustomerId,
+        status: 'active',
+        cancel_at_period_end: false,
+        items: {
+          data: [
+            {
+              price: {
+                id: 'price_unreachable',
+              },
+            },
+          ],
+        },
+        current_period_end: 1735689600,
+      } as unknown as Stripe.Subscription;
+
+      const mockStripe = {
+        prices: {
+          retrieve: vi
+            .fn()
+            .mockRejectedValue(new Error('Stripe price lookup failed')),
+        },
+      } as unknown as Stripe;
+
+      await expect(
+        syncSubscriptionToDb(mockSubscription, mockStripe)
+      ).rejects.toThrow(
+        'Unable to determine subscription tier for Stripe price price_unreachable'
+      );
+
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
+      expect(user?.subscriptionTier).toBe('starter');
+      expect(user?.stripeSubscriptionId).toBe(
+        buildStripeSubscriptionId(userId, 'original')
+      );
+      expect(user?.subscriptionPeriodEnd).toEqual(originalPeriodEnd);
     });
   });
 

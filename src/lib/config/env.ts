@@ -665,6 +665,19 @@ export const devAuthEnv = {
   },
 } as const;
 
+/**
+ * Test-only helper for exercising the DEV_AUTH_USER_ID config path without
+ * mutating process.env directly in tests.
+ */
+export function setDevAuthUserIdForTests(userId: string) {
+  process.env.DEV_AUTH_USER_ID = userId;
+}
+
+/** Test-only companion to {@link setDevAuthUserIdForTests}. */
+export function clearDevAuthUserIdForTests() {
+  delete process.env.DEV_AUTH_USER_ID;
+}
+
 export const attemptsEnv = {
   get cap() {
     return parseEnvNumber(

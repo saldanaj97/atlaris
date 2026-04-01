@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
@@ -7,6 +7,9 @@ import { logger } from '@/lib/logging/logger';
 import { getStripe } from './client';
 
 type DbClient = ReturnType<typeof getDb>;
+const CUSTOMER_PROVISION_LOCK_KEY = 2;
+const CUSTOMER_PROVISION_REQUEST_TIMEOUT_MS = 10_000;
+const CUSTOMER_PROVISION_WARN_THRESHOLD_MS = 500;
 
 interface SyncSubscriptionToDbOptions {
   signal?: AbortSignal;
@@ -177,6 +180,10 @@ export async function syncSubscriptionToDb(
           'Error retrieving Stripe price/product during subscription sync'
         );
       }
+
+      throw new Error(
+        `Unable to determine subscription tier for Stripe price ${priceId}`
+      );
     }
   }
 
@@ -224,33 +231,58 @@ export async function createCustomer(
   stripeInstance?: Stripe
 ): Promise<string> {
   const stripe = stripeInstance ?? getStripe();
+  return db.transaction(async (tx) => {
+    // Serialize customer provisioning per user to avoid duplicate Stripe
+    // customers when checkout is triggered concurrently.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(${CUSTOMER_PROVISION_LOCK_KEY}, hashtext(${userId}))`
+    );
 
-  const [existingUser] = await db
-    .select({ stripeCustomerId: users.stripeCustomerId })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+    const [existingUser] = await tx
+      .select({ stripeCustomerId: users.stripeCustomerId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-  if (existingUser?.stripeCustomerId) {
-    return existingUser.stripeCustomerId;
-  }
+    if (existingUser?.stripeCustomerId) {
+      return existingUser.stripeCustomerId;
+    }
 
-  const customer = await stripe.customers.create({
-    email,
-    metadata: {
-      userId,
-    },
+    const stripeCallStartedAt = Date.now();
+    const customer = await stripe.customers.create(
+      {
+        email,
+        metadata: {
+          userId,
+        },
+      },
+      {
+        timeout: CUSTOMER_PROVISION_REQUEST_TIMEOUT_MS,
+      }
+    );
+    const stripeCallDurationMs = Date.now() - stripeCallStartedAt;
+
+    if (stripeCallDurationMs > CUSTOMER_PROVISION_WARN_THRESHOLD_MS) {
+      logger.warn(
+        {
+          userId,
+          stripeCallDurationMs,
+          timeoutMs: CUSTOMER_PROVISION_REQUEST_TIMEOUT_MS,
+        },
+        'Stripe customer creation inside advisory lock exceeded warning threshold'
+      );
+    }
+
+    await tx
+      .update(users)
+      .set({
+        stripeCustomerId: customer.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    return customer.id;
   });
-
-  await db
-    .update(users)
-    .set({
-      stripeCustomerId: customer.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, userId));
-
-  return customer.id;
 }
 
 /**

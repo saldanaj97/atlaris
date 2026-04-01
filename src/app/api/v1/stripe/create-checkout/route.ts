@@ -6,6 +6,7 @@ import {
 } from '@/app/api/v1/stripe/_shared/redirect';
 import { getStripe } from '@/features/billing/client';
 import { isLocalPriceId } from '@/features/billing/local-catalog';
+import { isAllowedCheckoutPriceId } from '@/features/billing/price-catalog';
 import { createCustomer } from '@/features/billing/subscriptions';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
@@ -52,6 +53,12 @@ export function createCreateCheckoutHandler(
       if (stripeEnv.localMode && !isLocalPriceId(priceId)) {
         throw new ValidationError(
           'priceId must be a canonical local catalog id when STRIPE_LOCAL_MODE is enabled'
+        );
+      }
+
+      if (!stripeEnv.localMode && !isAllowedCheckoutPriceId(priceId)) {
+        throw new ValidationError(
+          'priceId must match an approved billing plan'
         );
       }
 

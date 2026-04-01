@@ -5,7 +5,7 @@ import type {
 } from '@/lib/api/types/auth.types';
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
+import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import type { RlsClient } from '@/lib/db/rls';
 import { AuthError } from './errors';
@@ -66,8 +66,11 @@ export async function requireUser(): Promise<string> {
   return userId;
 }
 
-async function ensureUserRecord(authUserId: string): Promise<DbUser> {
-  const existing = await getUserByAuthId(authUserId);
+async function ensureUserRecord(
+  authUserId: string,
+  dbClient?: UsersDbClient
+): Promise<DbUser> {
+  const existing = await getUserByAuthId(authUserId, dbClient);
   if (existing) {
     return existing;
   }
@@ -89,11 +92,14 @@ async function ensureUserRecord(authUserId: string): Promise<DbUser> {
     throw new AuthError('Auth user must have an email address.');
   }
 
-  const created = await createUser({
-    authUserId,
-    email,
-    name: session.user.name || undefined,
-  });
+  const created = await createUser(
+    {
+      authUserId,
+      email,
+      name: session.user.name || undefined,
+    },
+    dbClient
+  );
 
   if (!created) {
     throw new AuthError('Failed to provision user record.');
@@ -105,6 +111,33 @@ async function ensureUserRecord(authUserId: string): Promise<DbUser> {
 export async function requireCurrentUserRecord(): Promise<DbUser> {
   const userId = await requireUser();
   return ensureUserRecord(userId);
+}
+
+/**
+ * Returns the current user's DB record or null when unauthenticated.
+ *
+ * Unlike withServerComponentContext(), this only resolves the user row and
+ * does not create a request-scoped context. Use it in server components that
+ * need one lightweight read from the current user record.
+ */
+export async function getCurrentUserRecordSafe(): Promise<DbUser | null> {
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) {
+    return null;
+  }
+
+  if (appEnv.isTest) {
+    return ensureUserRecord(authUserId);
+  }
+
+  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
+
+  try {
+    return ensureUserRecord(authUserId, rlsDb);
+  } finally {
+    await cleanup();
+  }
 }
 
 /**
@@ -127,7 +160,7 @@ async function runWithAuthenticatedContext<T>(
 
   try {
     return await withRequestContext(requestContext, async () => {
-      const user = await ensureUserRecord(authUserId);
+      const user = await ensureUserRecord(authUserId, rlsDb);
       requestContext.user = { id: user.id, authUserId: user.authUserId };
       return fn(user, rlsDb);
     });

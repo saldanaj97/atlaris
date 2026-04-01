@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { requireCurrentUserRecord } from '@/lib/api/auth';
+import {
+  getCurrentUserRecordSafe,
+  requireCurrentUserRecord,
+} from '@/lib/api/auth';
 import { AuthError } from '@/lib/api/errors';
-import { clearTestUser } from '../../helpers/auth';
+import { buildUserFixture } from '../../fixtures/users';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 
 const mocks = vi.hoisted(() => ({
   getUserByAuthId: vi.fn(),
@@ -39,5 +43,23 @@ describe('auth helpers', () => {
 
   it('requireCurrentUserRecord throws if authentication is missing', async () => {
     await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
+  });
+
+  it('getCurrentUserRecordSafe returns null when authentication is missing', async () => {
+    await expect(getCurrentUserRecordSafe()).resolves.toBeNull();
+  });
+
+  it('getCurrentUserRecordSafe returns the user when present in test mode', async () => {
+    const user = buildUserFixture({
+      id: 'user_1',
+      authUserId: 'auth_1',
+      email: 'test@example.com',
+      name: 'Test User',
+    });
+
+    setTestUser('auth_1');
+    mockGetUserByAuthId.mockResolvedValue(user);
+
+    await expect(getCurrentUserRecordSafe()).resolves.toEqual(user);
   });
 });

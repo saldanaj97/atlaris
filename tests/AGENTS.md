@@ -30,6 +30,15 @@ tests/
 └── setup.ts           # Global setup (integration/e2e/security)
 ```
 
+## Import paths
+
+Use the same path aliases as the rest of the repo instead of long `../../../../` chains:
+
+- **`@/`** — application code under `src/` (e.g. components under test, shared modules). Matches production import style.
+- **`@tests/`** — anything under `tests/` (fixtures, `helpers/`, `mocks/`, shared test utilities). Example: `@tests/helpers/deferred-promise`, `@tests/mocks/unit/client-logger.unit`, `@tests/fixtures/plans`.
+
+Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases` (`vitest.config.ts`) so unit tests resolve them reliably. When a file must load side-effect mocks **before** other imports, keep that order; if Biome’s `organizeImports` would break it, use a targeted `biome-ignore` (see root `docs/agent-context/learnings.md`).
+
 ## Test Types
 
 | Type        | Setup                 | Concurrency | DB  | Timeout |

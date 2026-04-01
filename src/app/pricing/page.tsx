@@ -13,6 +13,8 @@ import { fetchStripeTierData } from '@/app/pricing/components/stripe-pricing';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
+import { getCurrentUserRecordSafe } from '@/lib/api/auth';
 import { logger } from '@/lib/logging/logger';
 
 export const metadata: Metadata = {
@@ -79,6 +81,8 @@ async function loadStripeTierData(
 }
 
 export default async function PricingPage(): Promise<ReactElement> {
+  const user = await getCurrentUserRecordSafe();
+  const canOpenBillingPortal = canOpenBillingPortalForUser(user);
   const monthlyPriceIds = getPaidTierPriceIds(MONTHLY_TIER_CONFIGS);
   const yearlyPriceIds = getPaidTierPriceIds(YEARLY_TIER_CONFIGS);
   const [monthlyStripeData, yearlyStripeData] = await Promise.all([
@@ -177,7 +181,15 @@ export default async function PricingPage(): Promise<ReactElement> {
         <p className="text-muted-foreground mb-3 text-sm">
           Already subscribed?
         </p>
-        <ManageSubscriptionButton className="rounded-lg" />
+        <ManageSubscriptionButton
+          className="rounded-lg"
+          canOpenBillingPortal={canOpenBillingPortal}
+        />
+        {!canOpenBillingPortal ? (
+          <p className="text-muted-foreground mt-2 text-sm">
+            Billing portal is available after your first subscription checkout.
+          </p>
+        ) : null}
       </div>
     </div>
   );

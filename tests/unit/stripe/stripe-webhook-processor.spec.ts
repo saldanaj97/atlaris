@@ -19,7 +19,10 @@ function makeSubscription(fields: {
   id: string;
   customer: string;
 }): Stripe.Subscription {
-  return fields as unknown as Stripe.Subscription;
+  return {
+    items: { data: [] },
+    ...fields,
+  } as unknown as Stripe.Subscription;
 }
 
 function makeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {

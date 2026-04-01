@@ -4,6 +4,7 @@ import {
   isValidRedirectUrl,
   resolveRedirectUrl,
 } from '@/app/api/v1/stripe/_shared/redirect';
+import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import { getCustomerPortalUrl } from '@/features/billing/subscriptions';
 import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
@@ -32,8 +33,10 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
         'billing portal attempt'
       );
 
-      if (!user.stripeCustomerId) {
-        throw new ValidationError('No Stripe customer found for user');
+      if (!canOpenBillingPortalForUser(user)) {
+        throw new ValidationError(
+          'Billing portal is available after your first subscription checkout'
+        );
       }
 
       let body: unknown = {};
