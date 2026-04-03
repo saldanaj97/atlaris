@@ -22,13 +22,21 @@ export function PdfPlanSettingsEditor({
   settings,
   onSettingChange,
 }: PdfPlanSettingsEditorProps): JSX.Element {
+  const headingId = `${baseId}-plan-settings-heading`;
+
   return (
-    <div className="border-border mt-4 border-t pt-4">
-      <p className="text-foreground mb-3 text-sm font-medium">Plan Settings</p>
+    <section
+      aria-labelledby={headingId}
+      className="border-border mt-4 border-t pt-4"
+    >
+      <h2 id={headingId} className="text-foreground mb-3 text-sm font-medium">
+        Plan Settings
+      </h2>
       <div className="text-foreground mb-3 flex flex-wrap items-center gap-2">
         <span className="text-sm">I&apos;m a</span>
         <InlineDropdown
           id={`${baseId}-skill-level`}
+          ariaLabel="Skill level"
           options={SKILL_LEVEL_OPTIONS}
           value={settings.skillLevel}
           onChange={(value) => onSettingChange('skillLevel', value)}
@@ -37,6 +45,7 @@ export function PdfPlanSettingsEditor({
         <span className="text-sm">with</span>
         <InlineDropdown
           id={`${baseId}-weekly-hours`}
+          ariaLabel="Weekly hours"
           options={WEEKLY_HOURS_OPTIONS}
           value={settings.weeklyHours}
           onChange={(value) => onSettingChange('weeklyHours', value)}
@@ -50,6 +59,7 @@ export function PdfPlanSettingsEditor({
         <span className="text-sm">I prefer</span>
         <InlineDropdown
           id={`${baseId}-learning-style`}
+          ariaLabel="Learning style"
           options={LEARNING_STYLE_OPTIONS}
           value={settings.learningStyle}
           onChange={(value) => onSettingChange('learningStyle', value)}
@@ -58,6 +68,7 @@ export function PdfPlanSettingsEditor({
         <span className="text-sm">and want to finish in</span>
         <InlineDropdown
           id={`${baseId}-deadline`}
+          ariaLabel="Deadline"
           options={DEADLINE_OPTIONS}
           value={settings.deadlineWeeks}
           onChange={(value) => onSettingChange('deadlineWeeks', value)}
@@ -65,6 +76,6 @@ export function PdfPlanSettingsEditor({
           variant="primary"
         />
       </div>
-    </div>
+    </section>
   );
 }

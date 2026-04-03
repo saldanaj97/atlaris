@@ -52,20 +52,6 @@ export default defineConfig({
       },
     },
     projects: [
-      {
-        test: {
-          name: 'smoke',
-          globals: true,
-          environment: 'node',
-          isolate: true,
-          sequence: { concurrent: false },
-          pool: 'threads',
-          maxWorkers: 1,
-          testTimeout: 90_000,
-          include: ['tests/smoke/**/*.smoke.spec.{ts,tsx}'],
-          alias: testAliases,
-        },
-      },
        {
          test: {
            name: 'integration',

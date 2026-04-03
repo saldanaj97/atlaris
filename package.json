@@ -22,6 +22,7 @@
     "start": "next start",
     "test": "./scripts/test-unit.sh",
     "test:changed": "./scripts/test-unit.sh --changed",
+    "test:smoke": "tsx scripts/smoke/run.ts",
     "test:watch": "./scripts/test-unit.sh --watch",
     "test:integration": "./scripts/test-integration.sh tests/integration --changed",
     "test:security": "./scripts/test-integration.sh tests/security",
@@ -83,6 +84,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.8",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@testcontainers/postgresql": "^11.12.0",
     "@testing-library/jest-dom": "^6.4.8",

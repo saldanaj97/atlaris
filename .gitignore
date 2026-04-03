@@ -13,9 +13,12 @@
 # testing
 /coverage
 .testcontainers-env.json
+/playwright-report
+/test-results
 
 # next.js
 /.next/
+/.next-smoke-*/
 /out/
 
 # production
@@ -58,5 +61,6 @@ jscpd-report/
 
 # plan files
 plans/*
+
 # CocoIndex Code (ccc)
 /.cocoindex_code/

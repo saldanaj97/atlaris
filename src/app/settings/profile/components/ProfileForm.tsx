@@ -399,6 +399,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               <Button
                 type="button"
                 variant="outline"
+                aria-label="Edit profile name"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal"
                 onClick={() => {
                   dispatch({ type: 'start-editing' });

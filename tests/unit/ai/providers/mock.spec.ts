@@ -148,60 +148,6 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
   });
 
-  // Skip timing tests in CI/fast unit test runs - these test delay simulation
-  // behavior which isn't critical for unit test validation and adds ~20+ seconds
-  describe.skip('T022: Delay simulation test', () => {
-    it('completes within expected time range with configured delay', async () => {
-      const delayMs = 2000; // 2 seconds
-      const provider = new MockGenerationProvider({ delayMs, failureRate: 0 });
-
-      const startTime = Date.now();
-      const result = await provider.generate(SAMPLE_INPUT);
-      await collectStream(result.stream); // Consume stream
-      const endTime = Date.now();
-
-      const elapsed = endTime - startTime;
-
-      // Should be at least the base delay (with variance it can be -2s to +2s)
-      // So minimum is delayMs - 2000 but we make sure it's at least 1000ms
-      expect(elapsed).toBeGreaterThanOrEqual(Math.max(1000, delayMs - 2500));
-    }, 10000); // 10 second timeout
-
-    it('respects MOCK_GENERATION_DELAY_MS environment variable', async () => {
-      process.env.MOCK_GENERATION_DELAY_MS = '1500';
-      const provider = new MockGenerationProvider({ failureRate: 0 });
-
-      const startTime = Date.now();
-      const result = await provider.generate(SAMPLE_INPUT);
-      await collectStream(result.stream);
-      const endTime = Date.now();
-
-      const elapsed = endTime - startTime;
-
-      // Should take at least 500ms (with variance)
-      expect(elapsed).toBeGreaterThanOrEqual(500);
-    }, 10000); // 10 second timeout
-
-    it('uses default delay when env var not set', async () => {
-      delete process.env.MOCK_GENERATION_DELAY_MS;
-      // Explicitly force failureRate=0 to avoid random flakes from env defaults
-      // The previous implementation relied on process.env which may introduce
-      // probabilistic failures (observed in CI). Passing failureRate:0 makes
-      // this timing test deterministic.
-      const provider = new MockGenerationProvider({ failureRate: 0 });
-
-      const startTime = Date.now();
-      const result = await provider.generate(SAMPLE_INPUT);
-      await collectStream(result.stream);
-      const endTime = Date.now();
-
-      const elapsed = endTime - startTime;
-
-      // Default is 7000ms, with variance should be at least 3000ms
-      expect(elapsed).toBeGreaterThanOrEqual(3000);
-    }, 15000);
-  });
-
   describe('T023: Failure rate toggle test', () => {
     it('always fails when MOCK_GENERATION_FAILURE_RATE=1', async () => {
       const provider = new MockGenerationProvider({

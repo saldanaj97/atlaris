@@ -7,13 +7,15 @@
 - Make sure to always update the test suite when making changes to the codebase, especially for critical paths like plan generation and billing.
 - Make sure to update the docs when making changes to the test suite, especially if you add new patterns or change existing ones.
 - Always run the relevant tests locally before marking any task as done, and use `pnpm test:changed` to verify that you are running the right tests.
+- After running the tests, update the `tests/results/<test-category>/<date>-results.md` file with the results of the tests.
 
 ### Docs
 
-ALWAYS refer to these docs for testing standards and patterns when writing, auditing, or editing tests(this is non-negotiable):
+ALWAYS refer to these docs for testing standards and patterns when writing, auditing, or editing tests (this is non-negotiable):
 
 - [Test standards & principles](../docs/testing/test-standards.md) — test pyramid, RTL guidelines, PR checklist
 - [DB test patterns](../docs/testing/db-test-patterns.md) — Drizzle mocking, SQL capture, fixtures
+- [Playwright local smoke](../docs/testing/playwright-local-smoke.md) — disposable DB browser smoke architecture and ownership
 
 ## Structure
 
@@ -22,6 +24,7 @@ tests/
 ├── unit/              # Pure logic, no IO (fast, parallel)
 ├── integration/       # DB + service (sequential, isolated)
 ├── e2e/               # User journeys (sequential)
+├── playwright/        # Browser smoke tests (Playwright + disposable DB)
 ├── security/          # RLS policy verification (sequential)
 ├── fixtures/          # Test data factories (users, plans, ids)
 ├── helpers/           # DB reset, test utilities
@@ -47,7 +50,7 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 | Integration | `tests/setup.ts`      | Sequential  | Yes | 90s     |
 | E2E         | `tests/setup.ts`      | Sequential  | Yes | 90s     |
 | Security    | `tests/setup.ts`      | Sequential  | Yes | 90s     |
-| Smoke       | —                     | Sequential  | No  | 90s     |
+| Smoke       | Playwright            | Serial local runner; auth spec serial | Disposable Postgres | 180s     |
 
 ## Commands
 
@@ -58,9 +61,25 @@ pnpm test:changed                      # Changed files
 ./scripts/test-integration.sh path     # Single integration file (Testcontainers)
 pnpm test:integration                  # Full integration suite
 pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
+pnpm test:smoke                        # Playwright smoke: ephemeral DB + anon/auth app servers
+pnpm test:smoke -- --project smoke-anon  # Anon-only smoke iteration
+pnpm test:smoke -- --project smoke-auth  # Auth-only smoke iteration
+pnpm exec tsx scripts/smoke/run.ts --smoke-step=db  # DB-only smoke infra validation
 ```
 
 **Prerequisite for integration and security tests:** Docker must be running (Testcontainers spins up an ephemeral Postgres automatically).
+**Prerequisite for smoke tests:** Docker must be running and Playwright Chromium must be installed (`pnpm exec playwright install chromium`).
+
+## Browser Smoke Ownership
+
+- `pnpm test:smoke` is the only supported entrypoint for committed browser smoke coverage.
+- `scripts/smoke/run.ts` owns the disposable Postgres lifecycle and passes `SMOKE_STATE_FILE` to Playwright.
+- Playwright owns both app servers; do not start smoke servers manually for normal runs.
+- `scripts/smoke/start-app.ts` is the only supported launcher for anon/auth smoke modes.
+- Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/smoke/` limited to entrypoints.
+- Do not touch `.env.local` for smoke runs. Mode selection comes from launcher-owned process env only.
+- Use Playwright `request` for redirect/proxy assertions and `page` for user journeys.
+- Keep the auth browser lane deterministic. The current local runner stays serial for stability; do not re-enable project-level parallelism casually.
 
 To skip Testcontainers and use an existing database (e.g. CI):
 

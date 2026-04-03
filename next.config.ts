@@ -12,7 +12,12 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
 ];
 
+const smokeDistDir = process.env.SMOKE_NEXT_DIST_DIR?.trim();
+const allowedDevOrigins = ['127.0.0.1', 'localhost'];
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins,
+  distDir: smokeDistDir && smokeDistDir.length > 0 ? smokeDistDir : undefined,
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns'],
