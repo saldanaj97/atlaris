@@ -8,7 +8,7 @@ We will primarily be utilizing the `.plans/` directory to organize prds, plans, 
 
 ## 1. Plan Mode Default
 
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- Enter plan mode or invoke planning agent for ANY non-trivial task (3+ steps or architectural decisions)
 - If something goes sideways, STOP and re-plan immediately
 - Use plan mode for verification steps, not just building
 - Write detailed specs upfront to reduce ambiguity
@@ -22,11 +22,10 @@ We will primarily be utilizing the `.plans/` directory to organize prds, plans, 
 
 ## 3. Self-Improvement Loop
 
-- After ANY correction from the user: update `docs/agent-context/learnings.md` with the pattern
-- Merge durable, reusable preferences and workspace facts into `docs/agent-context/learnings.md` when using the continual-learning skill or when the user asks
-- Write rules and learnings for yourself that prevent the same mistake
-- Ruthlessly iterate on these learnings until mistake rate drops
-- Review learnings at session start for relevant project
+- After ANY corrections whether from our agent or the user: update `.plans/lessons.md` with the pattern
+- Write rules and lessons for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
 
 ## 5. Demand Elegance (Balanced)
 
@@ -78,7 +77,7 @@ Make sure to use the general format for each step/phase/slice in a plan:
 
 7. Document Results: Add review section to the relevant `.plans/<nextTaskNumber-taskName>/todos.md`
 
-8. Capture Learnings: Update `docs/agent-context/learnings.md` if corrections or learnings are discovered.
+8. Capture Lessons: Update `docs/agent-context/lessons.md` if corrections or learnings are discovered.
 
 # Core Principles
 
