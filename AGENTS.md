@@ -4,7 +4,7 @@
 
 **Agent memory:** Recurring preferences and durable workspace facts live in [`docs/agent-context/learnings.md`](docs/agent-context/learnings.md). Read that file whenever you read or apply this file.
 
-We will primarily be utilizing the `prds/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
+We will primarily be utilizing the `.plans/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
 
 ## 1. Plan Mode Default
 
@@ -51,16 +51,16 @@ We will primarily be utilizing the `prds/` directory to organize prds, plans, to
 
 # Task Management
 
-1. PRD Creation: For any non-trivial task or new feature implementation, first create a PRD in `prds/<prd-name>/todos.md` outlining the plan with checkable items using the `prd-to-issue` skill.
+1. PRD Creation: For any non-trivial task or new feature implementation, first create a PRD in `.plans/<nextTaskNumber-taskName>/todos.md` outlining the plan with checkable items using the `prd-to-issue` skill.
 
-2. Task Creation: Create a `prds/<prd-name>/todos.md` file with checkable items using any of the following (in order of preference):
-   - `prds/<prd-name>/prd.md`file
+2. Task Creation: Create a `.plans/<nextTaskNumber-taskName>/todos.md` file with checkable items using any of the following (in order of preference):
+   - `.plans/<nextTaskNumber-taskName>/prd.md`file
    - `gh issue view <issue-number>`
    - `prd-to-issue` skill.
 
    This task list should be detailed enough to guide the planning process without ambiguity, but not so detailed that it is overwhelming.
 
-3. Plan Creation: Create a plan file `prds/<prd-name>/plan.md` outlining the plan using the high level tasks from the `prds/<prd-name>/todos.md` file. This is where we want plenty of detail to reduce ambiguity and room for error by properly guiding the implementation.
+3. Plan Creation: Create a plan file `.plans/<nextTaskNumber-taskName>/plan.md` outlining the plan using the high level tasks from the `.plans/<nextTaskNumber-taskName>/todos.md` file. This is where we want plenty of detail to reduce ambiguity and room for error by properly guiding the implementation.
 Make sure to use the general format for each step/phase/slice in a plan: 
    1. Step X.0 — Fetch issue, confirm/add ACs
    2. Steps X.1–X.N — Implementation
@@ -76,7 +76,7 @@ Make sure to use the general format for each step/phase/slice in a plan:
 
 6. Explain Changes: High-level summary at each step
 
-7. Document Results: Add review section to the relevant `prds/<prd-name>/todos.md`
+7. Document Results: Add review section to the relevant `.plans/<nextTaskNumber-taskName>/todos.md`
 
 8. Capture Learnings: Update `docs/agent-context/learnings.md` if corrections or learnings are discovered.
 
