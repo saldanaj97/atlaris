@@ -13,8 +13,7 @@
 # testing
 /coverage
 .testcontainers-env.json
-/playwright-report
-/test-results
+/tests/test-results/*
 
 # next.js
 /.next/
