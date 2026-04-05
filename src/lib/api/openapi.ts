@@ -69,13 +69,6 @@ const lightweightPlanSummarySchema = z
   })
   .openapi('LightweightPlanSummary');
 
-const createPlanResponseSchema = z
-  .object({
-    ...learningPlanBaseFields,
-    status: z.literal('generating'),
-  })
-  .openapi('CreatePlanResponse');
-
 const subscriptionUsageSchema = z.object({
   activePlans: z.number().int(),
   regenerations: z.number().int(),
@@ -92,51 +85,8 @@ const subscriptionResponseSchema = z
   })
   .openapi('SubscriptionResponse');
 
-async function buildCreatePlanRequestSchema() {
-  const { createLearningPlanObject } = await import(
-    '@/shared/schemas/learning-plans.schemas'
-  );
-
-  const createLearningPlanShape = createLearningPlanObject.shape;
-
-  return z
-    .object({
-      ...createLearningPlanShape,
-      topic: createLearningPlanShape.topic.openapi({
-        description:
-          'Plan topic. Required for non-PDF plans (min 3 characters). Optional for PDF plans - derived from extractedContent.mainTopic if omitted.',
-      }),
-      origin: createLearningPlanShape.origin.openapi({
-        description:
-          'Plan origin. Determines conditional field requirements: "pdf" requires PDF proof fields; "ai", "manual", or "template" require topic.',
-      }),
-      extractedContent: createLearningPlanShape.extractedContent.openapi({
-        description:
-          'Parsed PDF content. Required when origin is "pdf"; must not be present otherwise.',
-      }),
-      pdfProofToken: createLearningPlanShape.pdfProofToken.openapi({
-        description:
-          'Upload proof token. Required when origin is "pdf"; must not be present otherwise.',
-      }),
-      pdfExtractionHash: createLearningPlanShape.pdfExtractionHash.openapi({
-        description:
-          'SHA-256 hex digest of the PDF extraction. Required when origin is "pdf"; must not be present otherwise.',
-      }),
-      pdfProofVersion: createLearningPlanShape.pdfProofVersion.openapi({
-        description:
-          'Proof version (must be 1). Required when origin is "pdf"; must not be present otherwise.',
-      }),
-    })
-    .strict()
-    .openapi('CreateLearningPlanRequest', {
-      description:
-        'Plan creation payload. Field requirements are conditional on origin - see individual field descriptions for PDF vs non-PDF rules.',
-    });
-}
-
 export async function getOpenApiDocument() {
   const registry = new OpenAPIRegistry();
-  const createPlanRequestSchema = await buildCreatePlanRequestSchema();
 
   registry.register('LearningPlan', learningPlanSchema);
 
@@ -157,60 +107,6 @@ export async function getOpenApiDocument() {
       },
       401: {
         description: 'Authentication required.',
-        content: {
-          'application/json': {
-            schema: errorResponseSchema,
-          },
-        },
-      },
-    },
-  });
-
-  registry.registerPath({
-    method: 'post',
-    path: '/api/v1/plans',
-    summary: 'Create learning plan shell',
-    description:
-      'Creates a new learning plan shell for the authenticated user and returns it in the initial generating state. PDF-origin requests must include extraction proof fields, including pdfProofVersion.',
-    request: {
-      body: {
-        description:
-          'Plan creation payload. Field requirements are conditional on the origin field - see the CreateLearningPlanRequest schema for details.',
-        required: true,
-        content: {
-          'application/json': {
-            schema: createPlanRequestSchema,
-          },
-        },
-      },
-    },
-    responses: {
-      201: {
-        description: 'Learning plan shell created.',
-        content: {
-          'application/json': {
-            schema: createPlanResponseSchema,
-          },
-        },
-      },
-      400: {
-        description: 'Validation error.',
-        content: {
-          'application/json': {
-            schema: errorResponseSchema,
-          },
-        },
-      },
-      401: {
-        description: 'Authentication required.',
-        content: {
-          'application/json': {
-            schema: errorResponseSchema,
-          },
-        },
-      },
-      403: {
-        description: 'Plan caps or limits exceeded.',
         content: {
           'application/json': {
             schema: errorResponseSchema,

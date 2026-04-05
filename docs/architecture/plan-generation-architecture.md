@@ -5,12 +5,9 @@
 
 ## Overview
 
-Plan generation is intentionally split into two request phases:
+Plan generation now begins with `POST /api/v1/plans/stream`.
 
-1. create a plan shell with `POST /api/v1/plans`
-2. generate the plan content with `POST /api/v1/plans/stream`
-
-That separation matters. It lets the UI persist a user-owned plan record immediately, then attach a long-running streamed generation attempt to it without losing state if the client navigates.
+The stream route creates the plan record, runs generation, and emits SSE events in one request so the client can redirect as soon as the plan id exists without maintaining a separate shell-creation phase.
 
 At runtime, the pipeline combines:
 
@@ -24,14 +21,11 @@ At runtime, the pipeline combines:
 
 ```text
 User submits create form
-  → POST /api/v1/plans
+  → POST /api/v1/plans/stream
+  → auth + rate limit + durable generation-window checks
   → validate and normalize input
   → create learning_plans row
   → return planId
-
-Client starts stream
-  → POST /api/v1/plans/stream
-  → auth + rate limit + durable generation-window checks
   → reserve attempt slot
   → call AI provider
   → parse streamed output
@@ -55,7 +49,6 @@ This separation between external auth identity and internal app user row is not 
 
 | File                                                | Responsibility                             |
 | --------------------------------------------------- | ------------------------------------------ |
-| `src/app/api/v1/plans/route.ts`                     | Create the initial plan shell              |
 | `src/app/api/v1/plans/stream/route.ts`              | Start streamed plan generation             |
 | `src/app/api/v1/plans/stream/helpers.ts`            | Stream-side success/failure handling       |
 | `src/app/api/v1/plans/[planId]/status/route.ts`     | Return plan generation status              |
@@ -90,32 +83,22 @@ This separation between external auth identity and internal app user row is not 
 
 ## Lifecycle
 
-### 1) Create the plan shell
-
-`POST /api/v1/plans` performs:
-
-1. authenticated user resolution through the shared auth layer
-2. user-based rate limiting for mutations
-3. request validation and normalization
-4. plan-row creation with initial generation metadata
-5. response with the new `planId`
-
-The plan record exists before generation begins, which gives the client something durable to poll, stream, retry, or regenerate against.
-
-### 2) Start the stream
+### 1) Start the stream
 
 `POST /api/v1/plans/stream` performs:
 
 1. plan ownership verification
 2. authenticated user rate limiting for `aiGeneration`
 3. durable generation-window checks from `generation-policy.ts`
-4. attempt-cap and status validation
-5. SSE response initialization
-6. orchestration of provider execution and persistence
+4. request validation and normalization
+5. attempt-cap and status validation
+6. plan-row creation
+7. SSE response initialization
+8. orchestration of provider execution and persistence
 
 The stream route must not couple the plan’s lifecycle to a fragile client connection. Early navigation is common; silent partial failure is worse.
 
-### 3) Run the orchestrator
+### 2) Run the orchestrator
 
 `runGenerationAttempt(...)` in `src/lib/ai/orchestrator.ts` is the core pipeline:
 
@@ -127,7 +110,7 @@ The stream route must not couple the plan’s lifecycle to a fragile client conn
 6. pace modules/tasks to fit available hours
 7. finalize success or failure in the database
 
-### 4) Finalize atomically
+### 3) Finalize atomically
 
 Successful attempt finalization writes, in one transactional flow:
 

@@ -397,21 +397,6 @@ export async function safeMarkPlanFailed(
   }
 }
 
-interface ExecuteGenerationStreamParams {
-  reqSignal: AbortSignal;
-  streamSignal: AbortSignal;
-  planId: string;
-  userId: string;
-  dbClient: AttemptsDbClient;
-  emit: EmitFn;
-  runGeneration: () => Promise<GenerationResult>;
-  onUnhandledError: (error: unknown, startedAt: number) => Promise<void>;
-  mapUnhandledErrorToClientError?: (
-    error: unknown
-  ) => GenerationError | ErrorLike;
-  fallbackClassification?: FailureClassification | 'unknown';
-}
-
 function omitCircularFields(
   value: unknown,
   seen: WeakSet<object> = new WeakSet<object>()
@@ -516,85 +501,6 @@ function toFallbackErrorLike(error: unknown): ErrorLike {
     name: 'UnknownGenerationError',
     message: String(error),
   };
-}
-
-export async function executeGenerationStream({
-  reqSignal,
-  streamSignal,
-  planId,
-  userId,
-  dbClient,
-  emit,
-  runGeneration,
-  onUnhandledError,
-  mapUnhandledErrorToClientError,
-  fallbackClassification = 'provider_error',
-}: ExecuteGenerationStreamParams): Promise<void> {
-  const startedAt = Date.now();
-
-  // Generation runs to completion regardless of client connection state.
-  // reqSignal/streamSignal are NOT forwarded to runGeneration so that page
-  // refreshes or early navigation don't kill in-progress work. The
-  // orchestrator still enforces its own adaptive timeout/cancellation.
-
-  try {
-    const result = await runGeneration();
-
-    if (result.status === 'success') {
-      await handleSuccessfulGeneration(result, {
-        planId,
-        userId,
-        dbClient,
-        startedAt,
-        emit,
-      });
-      return;
-    }
-
-    await handleFailedGeneration(result, {
-      planId,
-      userId,
-      dbClient,
-      emit,
-    });
-  } catch (error: unknown) {
-    const clientDisconnected = reqSignal.aborted || streamSignal.aborted;
-
-    const clientError = mapUnhandledErrorToClientError
-      ? mapUnhandledErrorToClientError(error)
-      : toFallbackErrorLike(error);
-
-    try {
-      await onUnhandledError(error, startedAt);
-    } catch (cleanupError) {
-      logger.error(
-        {
-          cleanupError,
-          planId,
-          userId,
-          sourceError: error,
-          clientDisconnected,
-        },
-        'Failed cleanup after generation stream error'
-      );
-    }
-
-    if (clientDisconnected) {
-      logger.info(
-        { planId, userId },
-        'Client disconnected during generation; result saved to DB'
-      );
-      return;
-    }
-
-    emitSanitizedFailureEvent({
-      emit,
-      error: clientError,
-      classification: fallbackClassification,
-      planId,
-      userId,
-    });
-  }
 }
 
 // ─── Lifecycle-based generation stream ───────────────────────────

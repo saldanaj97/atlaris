@@ -1,16 +1,33 @@
 import { eq } from 'drizzle-orm';
-import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createStreamHandler } from '@/app/api/v1/plans/stream/route';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
+
+const streamPost = createStreamHandler({
+  overrides: {
+    processGenerationAttempt: async () => ({
+      status: 'generation_success',
+      data: {
+        modules: [],
+        metadata: {
+          provider: 'mock',
+          model: 'mock-model',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        },
+        durationMs: 1,
+      },
+    }),
+  },
+});
 
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
 
-describe('POST /api/v1/plans user provisioning', () => {
+describe('POST /api/v1/plans/stream user provisioning', () => {
   const authUserId = 'auth_provisioning_flow';
   const authEmail = 'provisioning@example.com';
 
@@ -41,11 +58,12 @@ describe('POST /api/v1/plans user provisioning', () => {
       weeklyHours: 5,
       learningStyle: 'reading',
       deadlineDate: new Date(Date.now() + 86400000).toISOString(),
+      visibility: 'private',
+      origin: 'ai',
     };
 
-    const { POST } = await import('@/app/api/v1/plans/route');
-    const response = await POST(
-      new NextRequest('http://localhost/api/v1/plans', {
+    const response = await streamPost(
+      new Request('http://localhost/api/v1/plans/stream', {
         method: 'POST',
         body: JSON.stringify(planPayload),
         headers: {

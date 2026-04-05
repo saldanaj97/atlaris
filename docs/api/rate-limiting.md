@@ -151,7 +151,6 @@ All error payloads must follow the canonical API error contract in `docs/rules/a
 
 ### Mutation (`mutation`)
 
-- `POST /api/v1/plans` (create)
 - `DELETE /api/v1/plans/[planId]`
 - `PATCH /api/v1/user/preferences`
 - `PUT /api/v1/user/profile`

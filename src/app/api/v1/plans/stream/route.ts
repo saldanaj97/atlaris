@@ -1,21 +1,17 @@
 import { ZodError } from 'zod';
 import { throwPlanCreationFailureError } from '@/app/api/v1/plans/plan-creation-failure';
-import {
-  buildPlanStartEvent,
-  executeLifecycleGenerationStream,
-  safeMarkPlanFailed,
-} from '@/app/api/v1/plans/stream/helpers';
+import { safeMarkPlanFailed } from '@/app/api/v1/plans/stream/helpers';
 import { resolveStreamModelResolution } from '@/app/api/v1/plans/stream/model-resolution';
-import {
-  createEventStream,
-  streamHeaders,
-} from '@/features/ai/streaming/events';
 import type { JobQueuePort } from '@/features/plans/lifecycle';
 import {
   createPlanLifecycleService,
   type GenerationAttemptResult,
   type ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
+import {
+  createPlanGenerationSessionResponse,
+  createStreamDbClient,
+} from '@/features/plans/session/server-session';
 import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
@@ -30,7 +26,7 @@ import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
-import { appEnv } from '@/lib/config/env';
+import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 
@@ -305,55 +301,35 @@ export function createStreamHandler(deps?: {
           deps?.overrides?.processGenerationAttempt ??
           lifecycleService.processGenerationAttempt.bind(lifecycleService);
 
-        // ─── SSE stream ──────────────────────────────────────────
-        const stream = createEventStream(
-          async (emit, _controller, streamContext) => {
-            try {
-              const planStartEvent = buildPlanStartEvent({
-                planId,
-                input: normalizedInputForEvent,
-              });
-              emit(planStartEvent);
-
-              await executeLifecycleGenerationStream({
-                reqSignal: req.signal,
-                streamSignal: streamContext.signal,
+        return await createPlanGenerationSessionResponse({
+          req,
+          authUserId: userId,
+          dbClient: streamDb,
+          cleanup: closeStreamDb,
+          planId,
+          planStartInput: normalizedInputForEvent,
+          generationInput,
+          processGeneration,
+          onUnhandledError: async (
+            error: unknown,
+            startedAt: number,
+            dbClient: AttemptsDbClient
+          ) => {
+            logger.error(
+              {
                 planId,
                 userId: internalUserId,
-                emit,
-                processGeneration: () => processGeneration(generationInput),
-                onUnhandledError: async (error, startedAt) => {
-                  logger.error(
-                    {
-                      planId,
-                      userId: internalUserId,
-                      classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
-                      durationMs: Math.max(0, Date.now() - startedAt),
-                      error: serializeError(error),
-                    },
-                    'Unhandled exception during stream generation; marking plan failed'
-                  );
+                classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
+                durationMs: Math.max(0, Date.now() - startedAt),
+                error: serializeError(error),
+              },
+              'Unhandled exception during stream generation; marking plan failed'
+            );
 
-                  await safeMarkPlanFailed(planId, internalUserId, streamDb);
-                },
-                fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
-              });
-              logger.info(
-                { planId, userId: internalUserId },
-                'executeLifecycleGenerationStream completed'
-              );
-            } finally {
-              await closeStreamDb();
-            }
-          }
-        );
-
-        return new Response(stream, {
-          status: 200,
-          headers: {
-            ...streamHeaders,
-            ...generationRateLimitHeaders,
+            await safeMarkPlanFailed(planId, internalUserId, dbClient);
           },
+          fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
+          headers: generationRateLimitHeaders,
         });
       }
     )
@@ -361,27 +337,6 @@ export function createStreamHandler(deps?: {
 }
 
 export const POST = createStreamHandler();
-
-async function createStreamDbClient(authUserId: string): Promise<{
-  dbClient: ReturnType<typeof getDb>;
-  cleanup: () => Promise<void>;
-}> {
-  if (appEnv.isTest) {
-    return {
-      dbClient: getDb(),
-      cleanup: async () => {},
-    };
-  }
-
-  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-  const { db, cleanup } = await createAuthenticatedRlsClient(authUserId, {
-    idleTimeout: 180,
-  });
-  return {
-    dbClient: db,
-    cleanup,
-  };
-}
 
 function toPayloadLog(payload: unknown): Record<string, unknown> {
   if (!payload || typeof payload !== 'object') {

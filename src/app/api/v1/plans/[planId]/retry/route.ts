@@ -1,12 +1,4 @@
-import {
-  buildPlanStartEvent,
-  executeLifecycleGenerationStream,
-  safeMarkPlanFailed,
-} from '@/app/api/v1/plans/stream/helpers';
-import {
-  createEventStream,
-  streamHeaders,
-} from '@/features/ai/streaming/events';
+import { safeMarkPlanFailed } from '@/app/api/v1/plans/stream/helpers';
 import type { IsoDateString } from '@/features/ai/types/provider.types';
 import { resolveUserTier } from '@/features/billing/tier';
 import { parsePersistedPdfContext } from '@/features/pdf/context';
@@ -20,6 +12,10 @@ import type {
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle';
+import {
+  createPlanGenerationSessionResponse,
+  createStreamDbClient,
+} from '@/features/plans/session/server-session';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
@@ -121,8 +117,24 @@ export function createRetryHandler(deps?: {
         // Resolve tier for ProcessGenerationInput (lifecycle service handles model selection internally)
         const tier = await resolveUserTier(user.id, db);
 
+        const { dbClient: streamDb, cleanup: cleanupStreamDb } =
+          await createStreamDbClient(user.id);
+        let streamDbClosed = false;
+        const closeStreamDb = async (): Promise<void> => {
+          if (streamDbClosed) return;
+          streamDbClosed = true;
+          try {
+            await cleanupStreamDb();
+          } catch (error) {
+            logger.error(
+              { userId: user.id, error },
+              'Failed to close stream DB client'
+            );
+          }
+        };
+
         const lifecycleService = createPlanLifecycleService({
-          dbClient: db,
+          dbClient: streamDb,
           jobQueue: noopJobQueue,
         });
 
@@ -153,66 +165,53 @@ export function createRetryHandler(deps?: {
           deps?.overrides?.processGenerationAttempt ??
           lifecycleService.processGenerationAttempt.bind(lifecycleService);
 
-        // ─── SSE stream (lifecycle service owns attempt management) ───
-        const stream = createEventStream(
-          async (emit, _controller, streamContext) => {
-            emit(
-              buildPlanStartEvent({
-                planId,
-                input: {
-                  topic: plan.topic,
-                  skillLevel: plan.skillLevel,
-                  weeklyHours: plan.weeklyHours,
-                  learningStyle: plan.learningStyle,
-                  notes: undefined,
-                  startDate: toIsoDateString(plan.startDate),
-                  deadlineDate: toIsoDateString(plan.deadlineDate),
-                  visibility: 'private',
-                  origin: plan.origin ?? 'ai',
-                },
-              })
+        return await createPlanGenerationSessionResponse({
+          req,
+          authUserId: user.id,
+          dbClient: streamDb,
+          cleanup: closeStreamDb,
+          planId,
+          planStartInput: {
+            topic: plan.topic,
+            skillLevel: plan.skillLevel,
+            weeklyHours: plan.weeklyHours,
+            learningStyle: plan.learningStyle,
+            notes: undefined,
+            startDate: toIsoDateString(plan.startDate),
+            deadlineDate: toIsoDateString(plan.deadlineDate),
+            visibility: 'private',
+            origin: plan.origin ?? 'ai',
+          },
+          generationInput,
+          processGeneration,
+          onUnhandledError: async (
+            error: unknown,
+            startedAt: number,
+            dbClient
+          ) => {
+            const classification = classifyError(error);
+            logger.error(
+              {
+                planId: plan.id,
+                userId: user.id,
+                classification,
+                durationMs: Math.max(0, Date.now() - startedAt),
+                error:
+                  error instanceof Error
+                    ? {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack,
+                      }
+                    : { value: String(error) },
+              },
+              'Unhandled exception during retry generation; marking plan failed'
             );
 
-            await executeLifecycleGenerationStream({
-              reqSignal: req.signal,
-              streamSignal: streamContext.signal,
-              planId: plan.id,
-              userId: user.id,
-              emit,
-              processGeneration: () => processGeneration(generationInput),
-              onUnhandledError: async (error, startedAt) => {
-                const classification = classifyError(error);
-                logger.error(
-                  {
-                    planId: plan.id,
-                    userId: user.id,
-                    classification,
-                    durationMs: Math.max(0, Date.now() - startedAt),
-                    error:
-                      error instanceof Error
-                        ? {
-                            name: error.name,
-                            message: error.message,
-                            stack: error.stack,
-                          }
-                        : { value: String(error) },
-                  },
-                  'Unhandled exception during retry generation; marking plan failed'
-                );
-
-                await safeMarkPlanFailed(plan.id, user.id, db);
-              },
-              fallbackClassification: 'provider_error',
-            });
-          }
-        );
-
-        return new Response(stream, {
-          status: 200,
-          headers: {
-            ...streamHeaders,
-            ...generationRateLimitHeaders,
+            await safeMarkPlanFailed(plan.id, user.id, dbClient);
           },
+          fallbackClassification: 'provider_error',
+          headers: generationRateLimitHeaders,
         });
       }
     )
