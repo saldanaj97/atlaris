@@ -65,7 +65,7 @@ export function buildAnonModeLayer(
     PORT: String(SMOKE_ANON_PORT),
     APP_URL: smokeAnonAppUrl(),
     NODE_ENV: 'development',
-    SMOKE_NEXT_DIST_DIR: '.next-smoke-anon',
+    SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-anon',
   };
 }
 
@@ -92,7 +92,7 @@ export function buildAuthModeLayer(
     PORT: String(SMOKE_AUTH_PORT),
     APP_URL: smokeAuthAppUrl(),
     NODE_ENV: 'development',
-    SMOKE_NEXT_DIST_DIR: '.next-smoke-auth',
+    SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-auth',
   };
 }
 
