@@ -1,8 +1,9 @@
 import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { resourceType } from '@/lib/db/enums';
 import { getDb } from '@/lib/db/runtime';

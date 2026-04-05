@@ -1,5 +1,7 @@
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import type {
+  AuthHandler,
+  AuthHandlerContext,
   PlainHandler,
   RouteHandlerContext,
 } from '@/lib/api/types/auth.types';
@@ -8,9 +10,10 @@ import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import type { RlsClient } from '@/lib/db/rls';
+import type { DbClient } from '@/lib/db/types';
 import { AuthError } from './errors';
+import { withRateLimit } from './middleware';
 import type { UserRateLimitCategory } from './user-rate-limit';
-import { checkUserRateLimit, getUserRateLimitHeaders } from './user-rate-limit';
 
 export type {
   PlainHandler,
@@ -114,33 +117,6 @@ export async function requireCurrentUserRecord(): Promise<DbUser> {
 }
 
 /**
- * Returns the current user's DB record or null when unauthenticated.
- *
- * Unlike withServerComponentContext(), this only resolves the user row and
- * does not create a request-scoped context. Use it in server components that
- * need one lightweight read from the current user record.
- */
-export async function getCurrentUserRecordSafe(): Promise<DbUser | null> {
-  const authUserId = await getEffectiveAuthUserId();
-  if (!authUserId) {
-    return null;
-  }
-
-  if (appEnv.isTest) {
-    return ensureUserRecord(authUserId);
-  }
-
-  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
-
-  try {
-    return ensureUserRecord(authUserId, rlsDb);
-  } finally {
-    await cleanup();
-  }
-}
-
-/**
  * Private helper encapsulating shared auth + RLS + context + cleanup logic
  * used by withAuth, withServerComponentContext, and withServerActionContext.
  */
@@ -169,30 +145,38 @@ async function runWithAuthenticatedContext<T>(
   }
 }
 
-type RouteHandlerParams = Record<string, string | undefined>;
+async function runWithTestContext<T>(
+  authUserId: string,
+  fn: (user: DbUser, db: DbClient) => MaybePromise<T>,
+  req?: Request
+): Promise<T> {
+  const user = await ensureUserRecord(authUserId);
+  const { db: serviceDb } = await import('@/lib/db/service-role');
+  const requestContext = createRequestContext(req, {
+    userId: authUserId,
+    user: { id: user.id, authUserId: user.authUserId },
+    db: serviceDb,
+    cleanup: async () => {},
+  });
 
-type HandlerCtx = {
-  req: Request;
-  userId: string;
-  user: DbUser;
-  params: RouteHandlerParams;
-};
+  return withRequestContext(requestContext, () => fn(user, serviceDb));
+}
 
-type Handler = (ctx: HandlerCtx) => Promise<Response>;
+type RouteHandlerParams = AuthHandlerContext['params'];
 
-export function withAuth(handler: Handler): PlainHandler {
+export function withAuth(handler: AuthHandler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
     const params: RouteHandlerParams = routeContext?.params
       ? await routeContext.params
       : {};
 
     if (appEnv.isTest) {
-      const user = await requireCurrentUserRecord();
-      const userId = user.authUserId;
-      const requestContext = createRequestContext(req, { userId, user });
+      const authUserId = await requireUser();
 
-      return await withRequestContext(requestContext, () =>
-        handler({ req, userId, user, params })
+      return runWithTestContext(
+        authUserId,
+        (user) => handler({ req, userId: authUserId, user, params }),
+        req
       );
     }
 
@@ -203,17 +187,6 @@ export function withAuth(handler: Handler): PlainHandler {
       (user) => handler({ req, userId: authUserId, user, params }),
       req
     );
-  };
-}
-
-export function withErrorBoundary(fn: PlainHandler): PlainHandler {
-  return async (req, context) => {
-    try {
-      return await fn(req, context);
-    } catch (e) {
-      const { toErrorResponse } = await import('./errors');
-      return toErrorResponse(e);
-    }
   };
 }
 
@@ -230,13 +203,7 @@ export async function withServerComponentContext<T>(
   if (!authUserId) return null;
 
   if (appEnv.isTest) {
-    // In test mode, withServerComponentContext intentionally skips full request
-    // context setup (correlationId, RLS client, cleanup) because Server Components
-    // don't have a Request object and tests calling this path only need the user
-    // record. withAuth and withServerActionContext set up request context because
-    // they operate within a request/action lifecycle.
-    const user = await ensureUserRecord(authUserId);
-    return fn(user);
+    return runWithTestContext(authUserId, (user) => fn(user));
   }
 
   return runWithAuthenticatedContext(authUserId, (user) => fn(user));
@@ -258,36 +225,16 @@ export async function withServerActionContext<T>(
   const authUserId = await getEffectiveAuthUserId({ strict: true });
   if (!authUserId) return null;
 
+  if (appEnv.isTest) {
+    return runWithTestContext(authUserId, fn);
+  }
+
   return runWithAuthenticatedContext(authUserId, fn);
-}
-
-export function withRateLimit(
-  category: UserRateLimitCategory
-): (handler: Handler) => Handler {
-  return (handler: Handler) => {
-    return async (ctx: HandlerCtx) => {
-      checkUserRateLimit(ctx.userId, category);
-      const response = await handler(ctx);
-
-      const rateLimitHeaders = getUserRateLimitHeaders(ctx.userId, category);
-      const headers = new Headers(response.headers);
-      for (const [name, value] of Object.entries(rateLimitHeaders)) {
-        // Use set() so existing values are replaced case-insensitively.
-        headers.set(name, value);
-      }
-
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
-    };
-  };
 }
 
 export function withAuthAndRateLimit(
   category: UserRateLimitCategory,
-  handler: Handler
+  handler: AuthHandler
 ): PlainHandler {
   return withAuth(withRateLimit(category)(handler));
 }

@@ -21,8 +21,9 @@ import type {
 } from '@/features/plans/lifecycle';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,

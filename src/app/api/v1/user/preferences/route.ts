@@ -2,8 +2,9 @@ import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validatio
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { updateUserPreferredAiModel } from '@/lib/db/queries/users';
 import {

@@ -1,9 +1,6 @@
 import { getUsageSummary } from '@/features/billing/usage-metrics';
-import {
-  type PlainHandler,
-  withAuthAndRateLimit,
-  withErrorBoundary,
-} from '@/lib/api/auth';
+import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 

@@ -6,8 +6,9 @@ import {
 } from '@/app/api/v1/stripe/_shared/redirect';
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import { getCustomerPortalUrl } from '@/features/billing/subscriptions';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 

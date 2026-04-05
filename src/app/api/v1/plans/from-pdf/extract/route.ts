@@ -15,11 +15,8 @@ import {
 } from '@/features/pdf/structure';
 import type { ExtractedSection } from '@/features/pdf/types';
 import { pdfExtractionFormDataSchema } from '@/features/pdf/validation/pdf';
-import {
-  type PlainHandler,
-  withAuthAndRateLimit,
-  withErrorBoundary,
-} from '@/lib/api/auth';
+import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import {
   acquireGlobalPdfExtractionSlot,
   acquirePdfExtractionSlot,

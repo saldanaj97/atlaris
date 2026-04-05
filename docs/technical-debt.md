@@ -17,6 +17,13 @@ imports throughout worker and route code.
 This should only be refactored if a richer queue domain layer emerges. Until
 then, the wrapper stays as a narrow composition boundary.
 
+## ~~Dead `getCurrentUserRecordSafe()` cleanup in `src/lib/api/auth.ts`~~ *(resolved)*
+
+Resolved by removing `getCurrentUserRecordSafe()` from `src/lib/api/auth.ts`,
+deleting its dedicated unit coverage from `tests/unit/api/auth.spec.ts`, and
+updating the auth guidance/docs so `withServerComponentContext()` is the only
+recommended server-component wrapper for authenticated DB work.
+
 ## ~~Remaining `generationStatus = 'generating'` write in attempt reservation~~ *(resolved)*
 
 Resolved by extracting `setLearningPlanGenerating()` and

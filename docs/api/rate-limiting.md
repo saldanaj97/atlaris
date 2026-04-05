@@ -51,7 +51,8 @@ Located in `src/lib/api/rate-limit.ts`.
 For most endpoints, use the combined middleware:
 
 ```typescript
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
+import { withErrorBoundary } from '@/lib/api/middleware';
 
 // Single handler
 export const GET = withErrorBoundary(

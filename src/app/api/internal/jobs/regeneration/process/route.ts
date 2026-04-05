@@ -1,9 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withErrorBoundary } from '@/lib/api/auth';
 import { AppError, AuthError, ServiceUnavailableError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
 import getRequestContext from '@/lib/logging/request-context';

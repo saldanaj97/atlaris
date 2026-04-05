@@ -7,7 +7,8 @@ import {
   requirePlanIdFromRequest,
 } from '@/features/plans/api/route-context';
 import { derivePlanStatus } from '@/features/plans/status';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { generationAttempts, modules } from '@/lib/db/schema';

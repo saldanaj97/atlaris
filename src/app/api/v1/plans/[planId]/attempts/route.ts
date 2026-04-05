@@ -1,7 +1,8 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { mapAttemptsToClient } from '@/features/plans/detail-mapper';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
 

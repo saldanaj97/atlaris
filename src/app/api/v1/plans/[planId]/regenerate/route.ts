@@ -16,12 +16,9 @@ import {
 } from '@/features/plans/api/route-context';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
-import {
-  type PlainHandler,
-  withAuthAndRateLimit,
-  withErrorBoundary,
-} from '@/lib/api/auth';
+import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, RateLimitError, ValidationError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,

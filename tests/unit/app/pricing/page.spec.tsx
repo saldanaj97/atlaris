@@ -9,7 +9,6 @@ type PricingPageUser = ReturnType<typeof buildUserFixture>;
 
 const mocks = vi.hoisted(() => ({
   withServerComponentContextMock: vi.fn(),
-  getCurrentUserRecordSafeMock: vi.fn(),
   fetchStripeTierDataMock: vi.fn(),
   pricingGridMock: vi.fn(),
   pricingMissingStripeNoticeMock: vi.fn(),
@@ -22,7 +21,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/api/auth', () => ({
   withServerComponentContext: mocks.withServerComponentContextMock,
-  getCurrentUserRecordSafe: mocks.getCurrentUserRecordSafeMock,
 }));
 
 vi.mock('@/app/pricing/components/stripe-pricing', () => ({
@@ -112,9 +110,6 @@ function mockStripeTierData(
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getCurrentUserRecordSafeMock.mockImplementation(() => {
-      throw new Error('PricingPage should not call getCurrentUserRecordSafe');
-    });
   });
   it('uses withServerComponentContext to render an authenticated pricing page', async () => {
     const user = buildUserFixture({
@@ -130,7 +125,6 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(mocks.withServerComponentContextMock).toHaveBeenCalledTimes(1);
-    expect(mocks.getCurrentUserRecordSafeMock).not.toHaveBeenCalled();
     expect(mocks.fetchStripeTierDataMock).toHaveBeenCalledTimes(2);
     expect(mocks.fetchStripeTierDataMock).toHaveBeenNthCalledWith(1, {
       proId: 'price_pro_monthly',

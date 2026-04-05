@@ -6,16 +6,13 @@ import {
 } from '@/features/plans/lifecycle';
 import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import {
-  type PlainHandler,
-  withAuthAndRateLimit,
-  withErrorBoundary,
-} from '@/lib/api/auth';
+import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
 import {
   AppError,
   AttemptCapExceededError,
   ValidationError,
 } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,

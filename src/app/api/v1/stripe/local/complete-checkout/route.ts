@@ -10,8 +10,9 @@ import {
 import { handleStripeWebhookDedupeAndApply } from '@/features/billing/stripe-webhook-processor';
 import { createCustomer } from '@/features/billing/subscriptions';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withAuth, withErrorBoundary } from '@/lib/api/auth';
+import { withAuth } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { appEnv, localProductTestingEnv, stripeEnv } from '@/lib/config/env';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
