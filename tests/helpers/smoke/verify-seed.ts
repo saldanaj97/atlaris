@@ -8,7 +8,7 @@ import { LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID } from '@/lib/config/local-produ
 export async function assertSeededSmokeUserPresent(
   connectionUrl: string
 ): Promise<void> {
-  const sql = postgres(connectionUrl, { max: 1 });
+  const sql = postgres(connectionUrl, { max: 1, connect_timeout: 10 });
   try {
     const rows = await sql<{ id: string }[]>`
       SELECT id::text FROM users

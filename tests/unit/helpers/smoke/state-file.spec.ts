@@ -2,8 +2,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { buildIncompleteSmokeState } from '@tests/fixtures/smoke-state';
-import { afterEach, describe, expect, it } from 'vitest';
-
 import {
   buildSmokeStatePayload,
   cleanupSmokeStateFile,
@@ -11,7 +9,8 @@ import {
   readSmokeStateFromPath,
   type SmokeStateFileDeps,
   writeSmokeStateFile,
-} from '../../../helpers/smoke/state-file';
+} from '@tests/helpers/smoke/state-file';
+import { afterEach, describe, expect, it } from 'vitest';
 
 class InMemorySmokeFs {
   private fileContents = new Map<string, string>();
@@ -127,6 +126,7 @@ describe('smoke state-file', () => {
       buildSmokeStatePayload('postgresql://localhost/db'),
       deps
     );
+    createdPaths.push(path);
     expect(() => readSmokeStateFromPath(path, deps)).not.toThrow();
     cleanupSmokeStateFile(path, deps);
     expect(() => readSmokeStateFromPath(path, deps)).toThrow(/cannot read/);

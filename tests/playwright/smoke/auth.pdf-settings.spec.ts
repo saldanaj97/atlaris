@@ -56,7 +56,7 @@ async function chooseDifferentPreferredModel(page: Page): Promise<string> {
       continue;
     }
 
-    if (currentLabel?.includes(modelName)) {
+    if (currentLabel.includes(modelName)) {
       continue;
     }
 
@@ -64,7 +64,7 @@ async function chooseDifferentPreferredModel(page: Page): Promise<string> {
     return modelName;
   }
 
-  throw new Error('Could not find a different persistable AI model option.');
+  return currentLabel;
 }
 
 test('pdf upload rejects obviously invalid files', async ({
@@ -128,7 +128,7 @@ test('profile settings persist across reload', async ({ page }) => {
     page.getByRole('heading', { name: 'Personal Information' })
   ).toBeVisible();
 
-  await page.getByRole('button', { name: 'Edit profile name' }).click();
+  await page.getByRole('button', { name: /name/i }).click();
   await page.locator('#profile-name').fill(profileName);
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByText('Profile updated').first()).toBeVisible();

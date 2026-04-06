@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { createStripeTierMap } from '@tests/fixtures/pricing';
 import { buildUserFixture } from '@tests/fixtures/users';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { fetchStripeTierData } from '@/app/pricing/components/stripe-pricing';
 
 type FetchStripeTierDataArgs = Parameters<typeof fetchStripeTierData>[0];
@@ -18,6 +18,9 @@ const mocks = vi.hoisted(() => ({
     warn: vi.fn(),
   },
 }));
+
+// This server-component spec intentionally uses module-level `vi.mock` because the
+// component under test resolves framework/server dependencies at import time.
 
 vi.mock('@/lib/api/auth', () => ({
   withServerComponentContext: mocks.withServerComponentContextMock,
@@ -97,19 +100,22 @@ function mockStripeTierData(
   monthlyStripeData = createStripeTierMap(['starter', 'pro']),
   yearlyStripeData = createStripeTierMap(['starter', 'pro'])
 ): void {
-  mocks.fetchStripeTierDataMock.mockImplementation(
-    async (priceIds: FetchStripeTierDataArgs) => {
-      const starterId = priceIds?.starterId;
-      return typeof starterId === 'string' && starterId.includes('monthly')
-        ? monthlyStripeData
-        : yearlyStripeData;
-    }
-  );
+  mocks.fetchStripeTierDataMock
+    .mockImplementationOnce(async (_priceIds: FetchStripeTierDataArgs) => {
+      return monthlyStripeData;
+    })
+    .mockImplementationOnce(async (_priceIds: FetchStripeTierDataArgs) => {
+      return yearlyStripeData;
+    });
 }
 
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
   });
   it('uses withServerComponentContext to render an authenticated pricing page', async () => {
     const user = buildUserFixture({

@@ -16,6 +16,7 @@ describe('derived plan status mapping', () => {
       plan: buildPlan({ generationStatus: 'ready', modules: [] }),
     });
     const client = toClientPlanDetail(detail);
+    expect(client).toBeDefined();
     expect(client?.status).toBe('pending');
   });
 
@@ -36,6 +37,7 @@ describe('derived plan status mapping', () => {
       }),
     });
     const client = toClientPlanDetail(detail);
+    expect(client).toBeDefined();
     expect(client?.status).toBe('ready');
     expect(client?.modules).toHaveLength(1);
     expect(client?.latestAttempt?.classification).toBeNull();
@@ -54,6 +56,7 @@ describe('derived plan status mapping', () => {
       }),
     });
     const client = toClientPlanDetail(detail);
+    expect(client).toBeDefined();
     expect(client?.status).toBe('failed');
   });
 
@@ -71,6 +74,7 @@ describe('derived plan status mapping', () => {
       }),
     });
     const client = toClientPlanDetail(detail);
+    expect(client).toBeDefined();
     expect(client?.status).toBe('failed');
   });
 });

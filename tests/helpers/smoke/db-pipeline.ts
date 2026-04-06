@@ -14,7 +14,6 @@ export function applySmokeMigrations(connectionUrl: string): void {
   execSync('pnpm db:migrate', {
     stdio: 'inherit',
     env: {
-      ...process.env,
       DATABASE_URL: connectionUrl,
       DATABASE_URL_NON_POOLING: connectionUrl,
       DATABASE_URL_UNPOOLED: connectionUrl,

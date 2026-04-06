@@ -1,26 +1,12 @@
+import { createTestPlanDetail } from '@tests/fixtures/plans';
 import { describe, expect, it } from 'vitest';
 import {
   computeDetailsCardStats,
   computeOverviewStats,
 } from '@/app/plans/[id]/helpers';
-import type { ClientPlanDetail } from '@/shared/types/client.types';
 
-const plan: ClientPlanDetail = {
-  id: 'plan-1',
-  topic: 'TypeScript',
-  skillLevel: 'beginner',
-  weeklyHours: 5,
-  learningStyle: 'mixed',
-  visibility: 'private',
-  origin: 'ai',
-  createdAt: '2025-01-01T00:00:00.000Z',
-  totalTasks: 2,
-  completedTasks: 1,
-  totalMinutes: 90,
-  completedMinutes: 45,
+const plan = createTestPlanDetail({
   completedModules: 1,
-  status: 'ready',
-  latestAttempt: null,
   modules: [
     {
       id: 'module-1',
@@ -50,7 +36,7 @@ const plan: ClientPlanDetail = {
       ],
     },
   ],
-};
+});
 
 describe('plan helper stats', () => {
   it('ignores orphaned status entries in overview stats', () => {

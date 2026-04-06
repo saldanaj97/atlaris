@@ -4,9 +4,11 @@
  */
 
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 
 import { learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 type LearningPlanRow = InferSelectModel<typeof learningPlans>;
 type LearningPlanInsert = InferInsertModel<typeof learningPlans>;
@@ -132,4 +134,60 @@ export async function createTestPlan(
     learningStyle: 'mixed',
     ...overrides,
   });
+}
+
+export function createTestPlanDetail(
+  overrides: Partial<ClientPlanDetail> = {}
+): ClientPlanDetail {
+  const moduleId = nanoid();
+  const taskOneId = nanoid();
+  const taskTwoId = nanoid();
+
+  return {
+    id: nanoid(),
+    topic: 'TypeScript',
+    skillLevel: 'beginner',
+    weeklyHours: 5,
+    learningStyle: 'mixed',
+    visibility: 'private',
+    origin: 'ai',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    totalTasks: 2,
+    completedTasks: 1,
+    totalMinutes: 90,
+    completedMinutes: 45,
+    completedModules: 0,
+    status: 'ready',
+    latestAttempt: null,
+    modules: [
+      {
+        id: moduleId,
+        order: 1,
+        title: 'Basics',
+        description: null,
+        estimatedMinutes: 90,
+        tasks: [
+          {
+            id: taskOneId,
+            order: 1,
+            title: 'Intro',
+            description: null,
+            estimatedMinutes: 45,
+            status: 'completed',
+            resources: [],
+          },
+          {
+            id: taskTwoId,
+            order: 2,
+            title: 'Practice',
+            description: null,
+            estimatedMinutes: 45,
+            status: 'not_started',
+            resources: [],
+          },
+        ],
+      },
+    ],
+    ...overrides,
+  };
 }

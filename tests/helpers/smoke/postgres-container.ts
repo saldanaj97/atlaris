@@ -9,7 +9,7 @@ import {
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
 
-const testDbPassword = randomUUID();
+const TEST_DB_PASSWORD = randomUUID();
 
 export async function startSmokePostgresContainer(): Promise<StartedPostgreSqlContainer> {
   console.log('[smoke] Starting PostgreSQL 17 container…');
@@ -17,7 +17,7 @@ export async function startSmokePostgresContainer(): Promise<StartedPostgreSqlCo
   const container = await new PostgreSqlContainer('postgres:17-alpine')
     .withDatabase('atlaris_test')
     .withUsername('postgres')
-    .withPassword(testDbPassword)
+    .withPassword(TEST_DB_PASSWORD)
     .withExposedPorts(5432)
     .start();
 

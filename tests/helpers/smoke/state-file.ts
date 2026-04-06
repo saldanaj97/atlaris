@@ -9,6 +9,8 @@ import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { z } from 'zod';
+import { getSmokeStateFileEnv } from '@/lib/config/env';
 
 export const SMOKE_STATE_FILE_ENV = 'SMOKE_STATE_FILE' as const;
 
@@ -18,11 +20,11 @@ export type SmokeStatePayload = {
   DATABASE_URL_UNPOOLED: string;
 };
 
-const REQUIRED_KEYS: readonly (keyof SmokeStatePayload)[] = [
-  'DATABASE_URL',
-  'DATABASE_URL_NON_POOLING',
-  'DATABASE_URL_UNPOOLED',
-];
+const SmokeStatePayloadSchema = z.object({
+  DATABASE_URL: z.string().min(1),
+  DATABASE_URL_NON_POOLING: z.string().min(1),
+  DATABASE_URL_UNPOOLED: z.string().min(1),
+});
 
 export interface SmokeStateFileDeps {
   fs: {
@@ -64,26 +66,11 @@ function resolveDeps(
 }
 
 function validatePayload(raw: unknown): SmokeStatePayload {
-  if (raw === null || typeof raw !== 'object') {
-    throw new Error('Smoke state file: expected a JSON object');
-  }
-  const record = raw as Record<string, unknown>;
-  for (const key of REQUIRED_KEYS) {
-    const value = record[key];
-    if (typeof value !== 'string' || value.length === 0) {
-      throw new Error(`Smoke state file: missing or invalid "${key}"`);
-    }
-  }
-  return {
-    DATABASE_URL: record.DATABASE_URL as string,
-    DATABASE_URL_NON_POOLING: record.DATABASE_URL_NON_POOLING as string,
-    DATABASE_URL_UNPOOLED: record.DATABASE_URL_UNPOOLED as string,
-  };
+  return SmokeStatePayloadSchema.parse(raw);
 }
 
 export function buildSmokeStatePayload(
-  connectionUrl: string,
-  _deps?: Partial<SmokeStateFileDeps>
+  connectionUrl: string
 ): SmokeStatePayload {
   return {
     DATABASE_URL: connectionUrl,
@@ -128,7 +115,7 @@ export function readSmokeStateFromPath(
 }
 
 export function readSmokeStateFromEnv(): SmokeStatePayload {
-  const filePath = process.env[SMOKE_STATE_FILE_ENV];
+  const filePath = getSmokeStateFileEnv();
   if (filePath === undefined || filePath.trim() === '') {
     throw new Error(
       `Smoke state: ${SMOKE_STATE_FILE_ENV} is not set or is empty`
@@ -153,7 +140,8 @@ export function cleanupSmokeStateFile(
   const resolvedDeps = resolveDeps(deps);
   try {
     resolvedDeps.fs.unlinkSync(filePath);
-  } catch {
+  } catch (error) {
+    console.debug('Smoke state cleanup skipped', { error, filePath });
     // File may already be gone
   }
 }

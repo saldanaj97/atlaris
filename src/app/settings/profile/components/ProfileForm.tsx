@@ -375,6 +375,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
         <div className="space-y-4">
           <div>
             <Label
+              id="profile-name-label"
               htmlFor="profile-name"
               className="text-muted-foreground mb-1"
             >
@@ -399,13 +400,16 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               <Button
                 type="button"
                 variant="outline"
-                aria-label="Edit profile name"
+                aria-labelledby="profile-name-label profile-name-value"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal"
                 onClick={() => {
                   dispatch({ type: 'start-editing' });
                 }}
               >
-                <span className={state.name ? '' : 'text-muted-foreground'}>
+                <span
+                  id="profile-name-value"
+                  className={state.name ? '' : 'text-muted-foreground'}
+                >
                   {state.name || 'No name set'}
                 </span>
                 <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />

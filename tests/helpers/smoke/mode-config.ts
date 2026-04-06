@@ -41,6 +41,19 @@ export function smokeAuthAppUrl(): string {
   return `http://127.0.0.1:${SMOKE_AUTH_PORT}`;
 }
 
+function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
+  return {
+    DATABASE_URL: state.DATABASE_URL,
+    DATABASE_URL_NON_POOLING: state.DATABASE_URL_NON_POOLING,
+    DATABASE_URL_UNPOOLED: state.DATABASE_URL_UNPOOLED,
+    ENABLE_SENTRY: 'false',
+    NEXT_PUBLIC_ENABLE_SENTRY: 'false',
+    MOCK_AI_SCENARIO: 'success',
+    AV_MOCK_SCENARIO: 'clean',
+    NODE_ENV: 'development',
+  };
+}
+
 /**
  * Env layer for anon smoke: unauthenticated browser, protected routes redirect to sign-in.
  * All values are strings suitable for `process.env`.
@@ -49,22 +62,15 @@ export function buildAnonModeLayer(
   state: SmokeStatePayload
 ): Record<string, string> {
   return {
-    DATABASE_URL: state.DATABASE_URL,
-    DATABASE_URL_NON_POOLING: state.DATABASE_URL_NON_POOLING,
-    DATABASE_URL_UNPOOLED: state.DATABASE_URL_UNPOOLED,
+    ...baseSmokeLayer(state),
     DEV_AUTH_USER_ID: '',
     LOCAL_PRODUCT_TESTING: 'false',
-    ENABLE_SENTRY: 'false',
-    NEXT_PUBLIC_ENABLE_SENTRY: 'false',
     STRIPE_LOCAL_MODE: 'false',
     AI_PROVIDER: '',
     AI_USE_MOCK: 'false',
-    MOCK_AI_SCENARIO: 'success',
     AV_PROVIDER: 'none',
-    AV_MOCK_SCENARIO: 'clean',
     PORT: String(SMOKE_ANON_PORT),
     APP_URL: smokeAnonAppUrl(),
-    NODE_ENV: 'development',
     SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-anon',
   };
 }
@@ -76,22 +82,15 @@ export function buildAuthModeLayer(
   state: SmokeStatePayload
 ): Record<string, string> {
   return {
-    DATABASE_URL: state.DATABASE_URL,
-    DATABASE_URL_NON_POOLING: state.DATABASE_URL_NON_POOLING,
-    DATABASE_URL_UNPOOLED: state.DATABASE_URL_UNPOOLED,
+    ...baseSmokeLayer(state),
     DEV_AUTH_USER_ID: LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
     LOCAL_PRODUCT_TESTING: 'true',
-    ENABLE_SENTRY: 'false',
-    NEXT_PUBLIC_ENABLE_SENTRY: 'false',
     STRIPE_LOCAL_MODE: 'true',
     AI_PROVIDER: '',
     AI_USE_MOCK: 'true',
-    MOCK_AI_SCENARIO: 'success',
     AV_PROVIDER: 'mock',
-    AV_MOCK_SCENARIO: 'clean',
     PORT: String(SMOKE_AUTH_PORT),
     APP_URL: smokeAuthAppUrl(),
-    NODE_ENV: 'development',
     SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-auth',
   };
 }
@@ -101,6 +100,7 @@ export function buildAuthModeLayer(
  * Playwright and other parents often set FORCE_COLOR; shells or CI may set NO_COLOR.
  * Drop `NO_COLOR` in that case so the Next dev child process does not spam stderr.
  */
+/** Mutates `env` in place. Caller should pass a copy if original must be preserved. */
 function stripConflictingNoColor(
   env: Record<string, string | undefined>
 ): void {

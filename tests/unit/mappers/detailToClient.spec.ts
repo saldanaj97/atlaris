@@ -134,7 +134,7 @@ describe('mapDetailToClient', () => {
     expect(result).toBeUndefined();
   });
 
-  it('should return undefined if plan is missing', () => {
+  it('should throw if plan is missing', () => {
     // Intentionally pass invalid input to test defensive handling (plan is null at runtime).
     const detailWithNullPlan = {
       plan: null,
@@ -144,8 +144,9 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     } as unknown as LearningPlanDetail;
 
-    const result = toClientPlanDetail(detailWithNullPlan);
-    expect(result).toBeUndefined();
+    expect(() => toClientPlanDetail(detailWithNullPlan)).toThrow(
+      'LearningPlanDetail.plan is required.'
+    );
   });
 
   it('should handle null descriptions', () => {
@@ -200,7 +201,7 @@ describe('mapDetailToClient', () => {
     expect(result?.modules[0].tasks[0].status).toBe('not_started');
   });
 
-  it('should sort modules and tasks by order', () => {
+  it('should preserve module and task order from the read model', () => {
     const modules: ModuleWithTasks[] = [
       buildModule({
         id: 'module-2',
@@ -266,10 +267,10 @@ describe('mapDetailToClient', () => {
     const result = toClientPlanDetail(detail);
 
     expect(result).toBeDefined();
-    expect(result?.modules[0].title).toBe('First');
-    expect(result?.modules[1].title).toBe('Second');
-    expect(result?.modules[0].tasks[0].title).toBe('First Task');
-    expect(result?.modules[0].tasks[1].title).toBe('Second Task');
+    expect(result?.modules[0].title).toBe('Second');
+    expect(result?.modules[1].title).toBe('First');
+    expect(result?.modules[1].tasks[0].title).toBe('Second Task');
+    expect(result?.modules[1].tasks[1].title).toBe('First Task');
   });
 
   it('should derive status as "ready" when modules exist', () => {
@@ -325,7 +326,7 @@ describe('mapDetailToClient', () => {
     expect(result?.status).toBe('processing');
   });
 
-  it('should sort resources within tasks by order', () => {
+  it('should preserve resource order from the read model', () => {
     const task = buildTask({
       id: 'task-1',
       moduleId: 'module-1',
@@ -354,7 +355,7 @@ describe('mapDetailToClient', () => {
 
     const result = toClientPlanDetail(detail);
     expect(result?.modules[0].tasks[0].resources.map((r) => r.order)).toEqual([
-      1, 2,
+      2, 1,
     ]);
   });
 

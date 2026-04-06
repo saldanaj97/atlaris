@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
+  PlanGenerationResult,
   StreamingPlanState,
   UseStreamingPlanGenerationResult,
 } from '@/hooks/useStreamingPlanGeneration';
@@ -27,7 +28,7 @@ const mockStartGeneration =
     (
       input: CreateLearningPlanInput,
       options?: { onPlanIdReady?: (planId: string) => void }
-    ) => Promise<string>
+    ) => Promise<PlanGenerationResult>
   >();
 const mockCancel = vi.fn<() => void>();
 const mockUseStreamingPlanGeneration =
@@ -110,7 +111,7 @@ describe('ManualCreatePanel', () => {
       const planId = 'plan-123';
       mockStartGeneration.mockImplementation(async (_input, options) => {
         options?.onPlanIdReady?.(planId);
-        return planId;
+        return { status: 'completed', planId, result: planId };
       });
 
       render(<ManualCreatePanel />);
@@ -146,7 +147,11 @@ describe('ManualCreatePanel', () => {
     });
 
     it('uses the real form values instead of a mocked mapper payload', async () => {
-      mockStartGeneration.mockResolvedValue('plan-456');
+      mockStartGeneration.mockResolvedValue({
+        status: 'completed',
+        planId: 'plan-456',
+        result: 'plan-456',
+      });
 
       render(<ManualCreatePanel />);
 
@@ -326,7 +331,7 @@ describe('ManualCreatePanel', () => {
 
   describe('UnifiedPlanInput integration', () => {
     it('shows the real submitting state while generation is in flight', async () => {
-      const deferredGeneration = createDeferredPromise<string>();
+      const deferredGeneration = createDeferredPromise<PlanGenerationResult>();
       mockStartGeneration.mockImplementation(() => deferredGeneration.promise);
 
       render(<ManualCreatePanel />);
@@ -340,7 +345,11 @@ describe('ManualCreatePanel', () => {
         ).toBeDisabled();
       });
 
-      deferredGeneration.resolve('plan-999');
+      deferredGeneration.resolve({
+        status: 'completed',
+        planId: 'plan-999',
+        result: 'plan-999',
+      });
 
       await waitFor(() => {
         expect(

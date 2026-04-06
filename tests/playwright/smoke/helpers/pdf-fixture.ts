@@ -3,12 +3,32 @@ import { writeFile } from 'node:fs/promises';
 import type { TestInfo } from '@playwright/test';
 
 function escapePdfString(text: string): string {
-  return text
+  let escaped = text
     .replaceAll('\\', '\\\\')
     .replaceAll('\n', '\\n')
     .replaceAll('\r', '\\r')
+    .replaceAll('\t', '\\t')
+    .replaceAll('\b', '\\b')
+    .replaceAll('\f', '\\f')
     .replaceAll('(', '\\(')
     .replaceAll(')', '\\)');
+
+  escaped = Array.from(escaped, (character) => {
+    switch (character) {
+      case '\n':
+      case '\r':
+      case '\t':
+      case '\b':
+      case '\f':
+        return character;
+      default:
+        return character.charCodeAt(0) < 0x20
+          ? `\\${character.charCodeAt(0).toString(8).padStart(3, '0')}`
+          : character;
+    }
+  }).join('');
+
+  return escaped;
 }
 
 export function buildMinimalPdfBuffer(text: string, pageCount = 1): Buffer {

@@ -90,7 +90,7 @@ async function hasPdfQuota(
   userId: string,
   now: () => Date = e2eNow
 ): Promise<boolean> {
-  const tier = await resolveUserTier(userId);
+  const tier = await resolveUserTier(userId, db);
   const limit = TIER_LIMITS[tier].monthlyPdfPlans;
   if (limit === Infinity) return true;
 
@@ -138,9 +138,15 @@ describe('PDF to Plan E2E Flow', () => {
       expect(hasQuota).toBe(true);
 
       const pdfBuffer = buildPdfBuffer('Learning TypeScript');
-      const validation = await validatePdfUpload(userId, pdfBuffer.length, 1, {
-        resolveTier: resolveUserTier,
-      });
+      const validation = await validatePdfUpload(
+        userId,
+        pdfBuffer.length,
+        1,
+        db,
+        {
+          resolveTier: resolveUserTier,
+        }
+      );
 
       expect(validation.allowed).toBe(true);
       if (validation.allowed) {
@@ -223,9 +229,15 @@ describe('PDF to Plan E2E Flow', () => {
       const freeTierLimit = TIER_LIMITS.free.maxPdfSizeMb;
       const oversizedBytes = (freeTierLimit + 1) * 1024 * 1024;
 
-      const validation = await validatePdfUpload(userId, oversizedBytes, 1, {
-        resolveTier: resolveUserTier,
-      });
+      const validation = await validatePdfUpload(
+        userId,
+        oversizedBytes,
+        1,
+        db,
+        {
+          resolveTier: resolveUserTier,
+        }
+      );
 
       expect(validation.allowed).toBe(false);
       if (!validation.allowed) {
@@ -238,9 +250,15 @@ describe('PDF to Plan E2E Flow', () => {
       const freeTierPageLimit = TIER_LIMITS.free.maxPdfPages;
       const tooManyPages = freeTierPageLimit + 10;
 
-      const validation = await validatePdfUpload(userId, 1024, tooManyPages, {
-        resolveTier: resolveUserTier,
-      });
+      const validation = await validatePdfUpload(
+        userId,
+        1024,
+        tooManyPages,
+        db,
+        {
+          resolveTier: resolveUserTier,
+        }
+      );
 
       expect(validation.allowed).toBe(false);
       if (!validation.allowed) {
@@ -288,9 +306,15 @@ describe('PDF to Plan E2E Flow', () => {
       const proPagesLimit = TIER_LIMITS.pro.maxPdfPages;
 
       const largeSizeBytes = (TIER_LIMITS.free.maxPdfSizeMb + 5) * 1024 * 1024;
-      const validation = await validatePdfUpload(userId, largeSizeBytes, 100, {
-        resolveTier: resolveUserTier,
-      });
+      const validation = await validatePdfUpload(
+        userId,
+        largeSizeBytes,
+        100,
+        db,
+        {
+          resolveTier: resolveUserTier,
+        }
+      );
 
       expect(validation.allowed).toBe(true);
       if (validation.allowed) {

@@ -128,6 +128,7 @@ describe('End-to-End Schedule Flow', () => {
     const schedule = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     // Verify schedule structure
@@ -156,6 +157,7 @@ describe('End-to-End Schedule Flow', () => {
     const schedule = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     // Calculate total scheduled minutes

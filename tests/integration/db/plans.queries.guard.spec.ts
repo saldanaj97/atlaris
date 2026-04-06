@@ -10,7 +10,7 @@ import {
 
 type Expect<T extends true> = T;
 type HasRequiredLeadingArgs<
-  Fn extends (...args: any[]) => unknown,
+  Fn extends (...args: never[]) => unknown,
   Leading extends unknown[],
 > = Parameters<Fn> extends [...Leading, ...infer _Rest] ? true : false;
 
@@ -35,7 +35,7 @@ describe('Plan Queries - Tenant Scoping Guard', () => {
       HasRequiredLeadingArgs<typeof getModuleDetail, [string, string]>
     >;
 
-    expect(true).toBe(true);
+    // Compile-time type assertions above are the primary guard here.
     expect(typeof getPlanSummariesForUser).toBe('function');
     expect(typeof getLightweightPlanSummaries).toBe('function');
     expect(typeof getLearningPlanDetail).toBe('function');

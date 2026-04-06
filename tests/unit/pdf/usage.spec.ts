@@ -4,13 +4,14 @@ import { validatePdfUpload } from '@/lib/api/pdf-rate-limit';
 
 const KB = 1024;
 const MB = KB * 1024;
+const fakeDb = {} as never;
 
 describe('validatePdfUpload', () => {
   const TIER_FREE_MAX_SIZE_MB = 5;
   const TIER_FREE_MAX_PAGES = 50;
 
   it('allows valid files within limits', async () => {
-    const result = await validatePdfUpload('user_1', 1 * MB, 10, {
+    const result = await validatePdfUpload('user_1', 1 * MB, 10, fakeDb, {
       resolveTier: async () => 'free',
     });
 
@@ -22,6 +23,7 @@ describe('validatePdfUpload', () => {
       'user_1',
       (TIER_FREE_MAX_SIZE_MB + 1) * MB,
       10,
+      fakeDb,
       {
         resolveTier: async () => 'free',
       }
@@ -38,6 +40,7 @@ describe('validatePdfUpload', () => {
       'user_1',
       1 * MB,
       TIER_FREE_MAX_PAGES + 1,
+      fakeDb,
       {
         resolveTier: async () => 'free',
       }

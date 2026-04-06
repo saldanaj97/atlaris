@@ -1,7 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
-import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '@/lib/config/local-product-testing';
-
 import {
   buildAnonModeLayer,
   buildAuthModeLayer,
@@ -11,8 +7,13 @@ import {
   SMOKE_AUTH_PORT,
   smokeAnonAppUrl,
   smokeAuthAppUrl,
-} from '../../../helpers/smoke/mode-config';
-import type { SmokeStatePayload } from '../../../helpers/smoke/state-file';
+} from '@tests/helpers/smoke/mode-config';
+import type { SmokeStatePayload } from '@tests/helpers/smoke/state-file';
+import { describe, expect, it } from 'vitest';
+import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '@/lib/config/local-product-testing';
+
+const INVALID_MODE_ERROR =
+  'Missing or invalid --mode. Use --mode=anon or --mode=auth.';
 
 const FAKE_STATE: SmokeStatePayload = {
   DATABASE_URL: 'postgresql://postgres:pw@127.0.0.1:54399/atlaris_test',
@@ -110,10 +111,32 @@ describe('smoke mode-config', () => {
   });
 
   it('parseSmokeAppMode throws when mode is invalid', () => {
-    expect(() => parseSmokeAppMode(['--mode=invalid'])).toThrow(/mode/);
+    expect(() => parseSmokeAppMode(['--mode=invalid'])).toThrow(
+      INVALID_MODE_ERROR
+    );
   });
 
   it('parseSmokeAppMode throws when mode is missing', () => {
-    expect(() => parseSmokeAppMode([])).toThrow(/mode/);
+    expect(() => parseSmokeAppMode([])).toThrow(INVALID_MODE_ERROR);
+  });
+
+  it('parseSmokeAppMode rejects an empty mode value', () => {
+    expect(() => parseSmokeAppMode(['--mode='])).toThrow(INVALID_MODE_ERROR);
+  });
+
+  it('parseSmokeAppMode rejects space-separated mode flags', () => {
+    expect(() => parseSmokeAppMode(['--mode', 'anon'])).toThrow(
+      INVALID_MODE_ERROR
+    );
+  });
+
+  it('parseSmokeAppMode treats flag names as case-sensitive', () => {
+    expect(() => parseSmokeAppMode(['--MODE=anon'])).toThrow(
+      INVALID_MODE_ERROR
+    );
+  });
+
+  it('parseSmokeAppMode uses the first duplicate mode flag', () => {
+    expect(parseSmokeAppMode(['--mode=anon', '--mode=auth'])).toBe('anon');
   });
 });

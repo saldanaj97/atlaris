@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { findActivePlan } from '@/app/dashboard/components/activity-utils';
 import {
+  ALL_TASKS_COMPLETED_LABEL,
   getNextTaskName,
   getPlanStatus,
 } from '@/app/plans/components/plan-utils';
@@ -14,6 +15,7 @@ describe('plan summary boundaries', () => {
       modules: [],
       completion: 0,
     });
+    // Failed plans can still retain partial completion from modules/tasks produced before the failure.
     const failed = buildPlanSummary({
       plan: buildPlan({ generationStatus: 'failed' }),
       modules: [],
@@ -27,11 +29,17 @@ describe('plan summary boundaries', () => {
       plan: buildPlan({ generationStatus: 'ready' }),
       completion: 0.4,
     });
+    const readyButEmpty = buildPlanSummary({
+      plan: buildPlan({ generationStatus: 'ready' }),
+      modules: [],
+      completion: 0,
+    });
 
     expect(deriveCanonicalPlanSummaryStatus(generating)).toBe('generating');
     expect(deriveCanonicalPlanSummaryStatus(failed)).toBe('failed');
     expect(deriveCanonicalPlanSummaryStatus(completed)).toBe('completed');
     expect(deriveCanonicalPlanSummaryStatus(active)).toBe('active');
+    expect(deriveCanonicalPlanSummaryStatus(readyButEmpty)).toBe('active');
   });
 
   it('adds paused status in the page adapter on top of canonical active', () => {
@@ -55,6 +63,18 @@ describe('plan summary boundaries', () => {
         generationStatus: 'pending_retry',
         updatedAt: new Date('2024-02-10T00:00:00.000Z'),
       }),
+      modules: [
+        {
+          id: 'module-retained',
+          planId: 'plan-retained',
+          order: 1,
+          title: 'Retained module',
+          description: null,
+          estimatedMinutes: 60,
+          createdAt: new Date('2024-02-10T00:00:00.000Z'),
+          updatedAt: new Date('2024-02-10T00:00:00.000Z'),
+        },
+      ],
       completion: 0.3,
     });
 
@@ -139,10 +159,15 @@ describe('plan summary boundaries', () => {
 
   it('returns completed copy for fully completed summaries', () => {
     const completed = buildPlanSummary({
+      plan: buildPlan({ generationStatus: 'ready' }),
       completion: 1,
       completedTasks: 3,
     });
 
-    expect(getNextTaskName(completed)).toBe('All tasks completed');
+    expect(getNextTaskName(completed)).toBe(ALL_TASKS_COMPLETED_LABEL);
+  });
+
+  it('returns undefined when given an empty array', () => {
+    expect(findActivePlan([])).toBeUndefined();
   });
 });

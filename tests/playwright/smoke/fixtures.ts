@@ -80,10 +80,7 @@ const PLAN_GENERATION_TIMEOUT_MS = 60_000;
 const MODULE_LINK_VISIBLE_TIMEOUT_MS = 500;
 const PLAN_RELOAD_INTERVAL_MS = 2_000;
 
-export async function waitForGeneratedModules(
-  page: Page,
-  timeoutMs = PLAN_GENERATION_TIMEOUT_MS
-): Promise<void> {
+async function checkGeneratedModules(page: Page): Promise<void> {
   const firstModuleLink = page
     .getByRole('link', { name: /view full module/i })
     .first();
@@ -91,42 +88,58 @@ export async function waitForGeneratedModules(
   const pendingErrorAlert = page
     .getByText(/generation failed|connection issue/i)
     .first();
+
   try {
-    await expect(async () => {
-      try {
-        await firstModuleLink.waitFor({
-          state: 'visible',
-          timeout: MODULE_LINK_VISIBLE_TIMEOUT_MS,
-        });
-        return;
-      } catch {
-        // Fall through to error/empty-state checks before the next retry.
-      }
+    await firstModuleLink.waitFor({
+      state: 'visible',
+      timeout: MODULE_LINK_VISIBLE_TIMEOUT_MS,
+    });
+    return;
+  } catch (_error) {
+    // Fall through to error and empty-state checks before retrying.
+  }
 
-      if (await pendingErrorAlert.isVisible()) {
-        throw new Error(
-          `Plan generation surfaced an error before modules became available: "${await pendingErrorAlert.innerText()}"`
-        );
-      }
+  if (await pendingErrorAlert.isVisible()) {
+    throw new Error(
+      `Plan generation surfaced an error before modules became available: "${await pendingErrorAlert.innerText()}"`
+    );
+  }
 
-      if (await emptyState.isVisible()) {
-        await page.reload({ waitUntil: 'domcontentloaded' });
-      }
+  if (await emptyState.isVisible()) {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
 
-      throw new Error('Generated modules are not visible yet.');
-    }).toPass({
+  throw new Error('Generated modules are not visible yet.');
+}
+
+export async function waitForGeneratedModules(
+  page: Page,
+  timeoutMs = PLAN_GENERATION_TIMEOUT_MS
+): Promise<void> {
+  const emptyState = page.getByText('No modules available yet.');
+  try {
+    await expect(async () => checkGeneratedModules(page)).toPass({
       intervals: [PLAN_RELOAD_INTERVAL_MS],
       timeout: timeoutMs,
     });
-  } catch {
+  } catch (error) {
+    const isTimeoutError =
+      error instanceof Error && error.name === 'TimeoutError';
+
+    if (!isTimeoutError && error instanceof Error) {
+      throw error;
+    }
+
     if (await emptyState.isVisible()) {
       throw new Error(
-        'Timed out waiting for generated modules; plan page remained in the empty "No modules available yet." state.'
+        'Timed out waiting for generated modules; plan page remained in the empty "No modules available yet." state.',
+        { cause: error }
       );
     }
 
     throw new Error(
-      'Timed out waiting for generated modules; no module link appeared on the plan page.'
+      'Timed out waiting for generated modules; no module link appeared on the plan page.',
+      { cause: error }
     );
   }
 }

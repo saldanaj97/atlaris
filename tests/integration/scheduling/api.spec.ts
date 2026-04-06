@@ -74,6 +74,7 @@ describe('getPlanSchedule API', () => {
     const schedule = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     expect(schedule).not.toBeNull();
@@ -86,12 +87,14 @@ describe('getPlanSchedule API', () => {
     const schedule1 = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     // Second call - returns cache
     const schedule2 = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     expect(schedule2).toEqual(schedule1);
@@ -102,6 +105,7 @@ describe('getPlanSchedule API', () => {
     const schedule1 = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     const initialTotalMinutes = schedule1.weeks.reduce(
@@ -136,6 +140,7 @@ describe('getPlanSchedule API', () => {
     const schedule2 = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     const newTotalMinutes = schedule2.weeks.reduce(
