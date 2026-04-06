@@ -65,6 +65,7 @@ describe('smoke mode-config', () => {
 
   it('mergeSmokeProcessEnv drops NO_COLOR when FORCE_COLOR is also set (Node warning)', () => {
     const base: NodeJS.ProcessEnv = {
+      NODE_ENV: 'test',
       FORCE_COLOR: '1',
       NO_COLOR: '1',
       SOME_OTHER_VAR: 'keep-me',
