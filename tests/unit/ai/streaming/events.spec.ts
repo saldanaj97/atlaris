@@ -11,6 +11,7 @@ describe('streaming events', () => {
       type: 'plan_start',
       data: {
         planId: 'plan-123',
+        attemptNumber: 1,
         topic: 'TypeScript',
         skillLevel: 'beginner',
         learningStyle: 'mixed',
@@ -31,7 +32,7 @@ describe('streaming events', () => {
         planId: 'plan-123',
         modulesCount: 2,
         tasksCount: 6,
-        durationMs: 1234,
+        totalMinutes: 180,
       },
     } as const;
 

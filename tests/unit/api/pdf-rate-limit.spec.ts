@@ -8,6 +8,8 @@ import {
   withGlobalPdfSlot,
 } from '@/lib/api/pdf-rate-limit';
 
+const fakeDb = {} as never;
+
 describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
   describe('Extraction throttling', () => {
     it('allows first extraction', () => {
@@ -245,13 +247,13 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
   describe('Size limit validation', () => {
     it('allows files at exact tier limit (size === maxPdfSizeMb)', async () => {
-      const probe = await checkPdfSizeLimit('user-123', 1, {
+      const probe = await checkPdfSizeLimit('user-123', 1, fakeDb, {
         resolveTier: async () => 'free',
       });
       const maxPdfSizeMb = probe.limits.maxPdfSizeMb;
       const sizeAtLimit = maxPdfSizeMb * 1024 * 1024;
 
-      const result = await checkPdfSizeLimit('user-123', sizeAtLimit, {
+      const result = await checkPdfSizeLimit('user-123', sizeAtLimit, fakeDb, {
         resolveTier: async () => 'free',
       });
 
@@ -260,15 +262,20 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
     });
 
     it('rejects files one MB over tier limit (size === maxPdfSizeMb + 1)', async () => {
-      const probe = await checkPdfSizeLimit('user-123', 1, {
+      const probe = await checkPdfSizeLimit('user-123', 1, fakeDb, {
         resolveTier: async () => 'free',
       });
       const maxPdfSizeMb = probe.limits.maxPdfSizeMb;
       const sizeOverLimit = (maxPdfSizeMb + 1) * 1024 * 1024;
 
-      const result = await checkPdfSizeLimit('user-123', sizeOverLimit, {
-        resolveTier: async () => 'free',
-      });
+      const result = await checkPdfSizeLimit(
+        'user-123',
+        sizeOverLimit,
+        fakeDb,
+        {
+          resolveTier: async () => 'free',
+        }
+      );
 
       expect(result.allowed).toBe(false);
       if (!result.allowed) {
@@ -277,9 +284,14 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
     });
 
     it('rejects oversized files', async () => {
-      const result = await checkPdfSizeLimit('user-123', 100 * 1024 * 1024, {
-        resolveTier: async () => 'free',
-      });
+      const result = await checkPdfSizeLimit(
+        'user-123',
+        100 * 1024 * 1024,
+        fakeDb,
+        {
+          resolveTier: async () => 'free',
+        }
+      );
 
       expect(result.allowed).toBe(false);
       if (!result.allowed) {
@@ -291,11 +303,16 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
     it('enforces different limits per tier', async () => {
       const largeFile = 15 * 1024 * 1024; // 15MB
 
-      const freeResult = await checkPdfSizeLimit('user-free', largeFile, {
-        resolveTier: async () => 'free',
-      });
+      const freeResult = await checkPdfSizeLimit(
+        'user-free',
+        largeFile,
+        fakeDb,
+        {
+          resolveTier: async () => 'free',
+        }
+      );
 
-      const proResult = await checkPdfSizeLimit('user-pro', largeFile, {
+      const proResult = await checkPdfSizeLimit('user-pro', largeFile, fakeDb, {
         resolveTier: async () => 'pro',
       });
 
@@ -306,9 +323,15 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
   describe('Page count validation', () => {
     it('validates both size and page count', async () => {
-      const result = await validatePdfUpload('user-123', 5 * 1024 * 1024, 50, {
-        resolveTier: async () => 'free',
-      });
+      const result = await validatePdfUpload(
+        'user-123',
+        5 * 1024 * 1024,
+        50,
+        fakeDb,
+        {
+          resolveTier: async () => 'free',
+        }
+      );
 
       expect(result.allowed).toBe(true);
     });
@@ -318,6 +341,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
         'user-123',
         5 * 1024 * 1024,
         10000,
+        fakeDb,
         {
           resolveTier: async () => 'free',
         }
@@ -332,7 +356,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
     it('rejects negative values', async () => {
       await expect(() =>
-        validatePdfUpload('user-123', -100, 10, {
+        validatePdfUpload('user-123', -100, 10, fakeDb, {
           resolveTier: async () => 'free',
         })
       ).rejects.toThrow('positive');
@@ -340,7 +364,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
     it('rejects negative page count', async () => {
       await expect(() =>
-        validatePdfUpload('user-123', 1024, -10, {
+        validatePdfUpload('user-123', 1024, -10, fakeDb, {
           resolveTier: async () => 'free',
         })
       ).rejects.toThrow('positive');
@@ -348,7 +372,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
     it('rejects zero values', async () => {
       await expect(() =>
-        validatePdfUpload('user-123', 0, 0, {
+        validatePdfUpload('user-123', 0, 0, fakeDb, {
           resolveTier: async () => 'free',
         })
       ).rejects.toThrow('positive');
@@ -359,6 +383,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
         'user-123',
         100 * 1024 * 1024,
         10000,
+        fakeDb,
         {
           resolveTier: async () => 'free',
         }

@@ -645,6 +645,7 @@ describe('POST /api/v1/plans/stream', () => {
     const { token } = await issuePdfExtractionProof({
       authUserId,
       extractionHash: validHash,
+      dbClient: db,
     });
 
     const forgedHash =
@@ -702,6 +703,7 @@ describe('POST /api/v1/plans/stream', () => {
     const { token } = await issuePdfExtractionProof({
       authUserId,
       extractionHash,
+      dbClient: db,
     });
 
     const payload = {
@@ -776,6 +778,7 @@ describe('POST /api/v1/plans/stream', () => {
     const { token } = await issuePdfExtractionProof({
       authUserId: ownerAuthUserId,
       extractionHash,
+      dbClient: db,
     });
 
     setTestUser(attackerAuthUserId);
@@ -833,6 +836,7 @@ describe('POST /api/v1/plans/stream', () => {
     const { token } = await issuePdfExtractionProof({
       authUserId,
       extractionHash,
+      dbClient: db,
       now: () => new Date(0),
     });
 
@@ -891,6 +895,7 @@ describe('POST /api/v1/plans/stream', () => {
     const { token } = await issuePdfExtractionProof({
       authUserId,
       extractionHash,
+      dbClient: db,
     });
 
     const capturedInputs: ProcessGenerationInput[] = [];

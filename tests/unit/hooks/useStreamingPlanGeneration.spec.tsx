@@ -34,10 +34,10 @@ describe('useStreamingPlanGeneration', () => {
 
   it('streams events and resolves with plan id', async () => {
     const chunks = [
-      'data: {"type":"plan_start","data":{"planId":"plan-1","topic":"TypeScript","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
+      'data: {"type":"plan_start","data":{"planId":"plan-1","attemptNumber":1,"topic":"TypeScript","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
       'data: {"type":"module_summary","data":{"planId":"plan-1","index":0,"title":"Module 1","description":"Intro","estimatedMinutes":120,"tasksCount":3}}\n\n',
-      'data: {"type":"progress","data":{"planId":"plan-1","modulesParsed":1,"modulesTotalHint":2}}\n\n',
-      'data: {"type":"complete","data":{"planId":"plan-1","modulesCount":2,"tasksCount":6,"durationMs":1000}}\n\n',
+      'data: {"type":"progress","data":{"planId":"plan-1","modulesParsed":1,"modulesTotalHint":2,"percent":50}}\n\n',
+      'data: {"type":"complete","data":{"planId":"plan-1","modulesCount":2,"tasksCount":6,"totalMinutes":240}}\n\n',
     ];
 
     vi.stubGlobal(
@@ -52,26 +52,33 @@ describe('useStreamingPlanGeneration', () => {
 
     const { result } = renderHook(() => useStreamingPlanGeneration());
 
-    let planId: string | undefined;
+    let sessionResult:
+      | Awaited<ReturnType<typeof result.current.startGeneration>>
+      | undefined;
     let notifiedPlanId: string | undefined;
     await act(async () => {
-      planId = await result.current.startGeneration(basePayload, {
+      sessionResult = await result.current.startGeneration(basePayload, {
         onPlanIdReady: (id) => {
           notifiedPlanId = id;
         },
       });
     });
 
-    expect(planId).toBe('plan-1');
-    expect(notifiedPlanId).toBe(planId);
+    expect(sessionResult).toEqual({
+      status: 'completed',
+      planId: 'plan-1',
+      result: 'plan-1',
+    });
+    expect(notifiedPlanId).toBe('plan-1');
     expect(result.current.state.status).toBe('complete');
     expect(result.current.state.modules).toHaveLength(1);
     expect(result.current.state.progress?.modulesParsed).toBe(1);
+    expect(result.current.state.progress?.percent).toBe(50);
   });
 
   it('sets error state on error event', async () => {
     const chunks = [
-      'data: {"type":"plan_start","data":{"planId":"plan-err","topic":"TS","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
+      'data: {"type":"plan_start","data":{"planId":"plan-err","attemptNumber":1,"topic":"TS","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
       'data: {"type":"error","data":{"planId":"plan-err","code":"VALIDATION_ERROR","message":"boom","classification":"validation","retryable":false}}\n\n',
     ];
 
