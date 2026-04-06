@@ -8,6 +8,9 @@ import type { PlanStatus } from '@/app/plans/types';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
 import type { PlanSummary } from '@/shared/types/db.types';
 
+export const ALL_TASKS_COMPLETED_LABEL = 'All tasks completed';
+export const CONTINUE_LEARNING_LABEL = 'Continue learning';
+
 type DateInput = Date | string | null | undefined;
 
 function toValidDate(value: DateInput): Date | null {
@@ -175,15 +178,8 @@ export function getNextTaskName(summary: PlanSummary): string {
   }
 
   if (deriveCanonicalPlanSummaryStatus(summary) === 'completed') {
-    return 'All tasks completed';
+    return ALL_TASKS_COMPLETED_LABEL;
   }
 
-  const firstModule = summary.modules[0];
-  if (firstModule) {
-    return firstModule.title
-      ? `Next: ${firstModule.title}`
-      : 'Continue learning';
-  }
-
-  return 'All tasks completed';
+  return CONTINUE_LEARNING_LABEL;
 }

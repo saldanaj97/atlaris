@@ -42,8 +42,6 @@ export type PlanSummaryReadStatus =
   | 'failed'
   | 'generating';
 
-const COMPLETION_EPSILON = 1e-6;
-
 type LightweightPlanMetrics = Pick<
   LightweightPlanSummary,
   | 'completedTasks'
@@ -140,7 +138,7 @@ export function deriveCanonicalPlanSummaryStatus(
   const generationStatus = summary.plan.generationStatus;
 
   if (summary.modules.length > 0) {
-    if (summary.completion >= 1 - COMPLETION_EPSILON) {
+    if (summary.completion >= 1) {
       return 'completed';
     }
 
@@ -156,10 +154,6 @@ export function deriveCanonicalPlanSummaryStatus(
 
   if (generationStatus === 'failed') {
     return 'failed';
-  }
-
-  if (summary.completion >= 1 - COMPLETION_EPSILON) {
-    return 'completed';
   }
 
   return 'active';

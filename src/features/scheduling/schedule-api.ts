@@ -7,13 +7,13 @@ import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
 } from '@/lib/db/queries/schedules';
-import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 
 interface GetPlanScheduleParams {
   planId: string;
   userId: string;
+  dbClient: DbClient;
 }
 
 /** Default timezone for schedule generation when no user timezone is available (e.g. not set in profile or preferences). */
@@ -68,8 +68,7 @@ export class ScheduleFetchError extends Error {
 export async function getPlanSchedule(
   params: GetPlanScheduleParams
 ): Promise<ScheduleJson> {
-  const { planId, userId } = params;
-  const db = getDb();
+  const { planId, userId, dbClient: db } = params;
 
   // Load plan with ownership check in WHERE clause (RLS-enforced)
   const [plan] = await db

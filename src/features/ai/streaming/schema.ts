@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const planStartDataSchema = z.object({
   planId: z.string(),
+  attemptNumber: z.number(),
   topic: z.string(),
   skillLevel: z.enum(['beginner', 'intermediate', 'advanced']),
   learningStyle: z.enum(['reading', 'video', 'practice', 'mixed']),
@@ -24,13 +25,14 @@ const progressDataSchema = z.object({
   planId: z.string(),
   modulesParsed: z.number(),
   modulesTotalHint: z.number().optional(),
+  percent: z.number(),
 });
 
 const completeDataSchema = z.object({
   planId: z.string(),
   modulesCount: z.number(),
   tasksCount: z.number(),
-  durationMs: z.number(),
+  totalMinutes: z.number(),
 });
 
 const errorDataSchema = z.object({
@@ -45,8 +47,8 @@ const errorDataSchema = z.object({
 const cancelledDataSchema = z.object({
   planId: z.string(),
   message: z.string(),
-  classification: z.literal('cancelled'),
-  retryable: z.literal(true),
+  classification: z.string(),
+  retryable: z.boolean(),
   requestId: z.string().optional(),
 });
 

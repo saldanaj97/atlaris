@@ -27,6 +27,16 @@ export const GET = withErrorBoundary(
       throw new NotFoundError('Learning plan not found.');
     }
 
+    logger.debug(
+      {
+        planId,
+        userId: user.id,
+        status: statusSnapshot.status,
+        attempts: statusSnapshot.attempts,
+      },
+      'Plan status response'
+    );
+
     let latestError: string | null = null;
     if (statusSnapshot.status === 'failed') {
       latestError = classificationToUserMessage(

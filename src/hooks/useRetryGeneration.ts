@@ -39,14 +39,19 @@ export function useRetryGeneration(
     };
   }, [cancel]);
 
-  const status: RetryStatus =
-    state.status === 'connecting' || state.status === 'generating'
-      ? 'retrying'
-      : state.status === 'complete'
-        ? 'success'
-        : state.status === 'error'
-          ? 'error'
-          : 'idle';
+  const status: RetryStatus = (() => {
+    switch (state.status) {
+      case 'connecting':
+      case 'generating':
+        return 'retrying';
+      case 'complete':
+        return 'success';
+      case 'error':
+        return 'error';
+      default:
+        return 'idle';
+    }
+  })();
 
   const isDisabled =
     status === 'retrying' || currentAttempts >= maxAttempts || cooldownActive;
@@ -69,8 +74,8 @@ export function useRetryGeneration(
     }, RETRY_COOLDOWN_MS);
 
     try {
-      const completedPlanId = await startSession({ kind: 'retry', planId });
-      if (completedPlanId) {
+      const result = await startSession({ kind: 'retry', planId });
+      if (result.status === 'completed') {
         router.refresh();
       }
     } catch (error) {

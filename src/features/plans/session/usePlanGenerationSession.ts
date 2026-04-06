@@ -12,6 +12,7 @@ type SessionStatus =
   | 'idle'
   | 'connecting'
   | 'generating'
+  | 'cancelled'
   | 'complete'
   | 'error';
 
@@ -32,7 +33,41 @@ export type SessionError = {
 export type SessionProgress = {
   modulesParsed: number;
   modulesTotalHint?: number;
+  percent: number;
 };
+
+export type PlanGenerationResult =
+  | { status: 'cancelled'; planId?: string }
+  | { status: 'completed'; planId: string; result: string };
+
+export class StreamingError extends Error {
+  status?: number;
+  planId?: string;
+  data?: { planId?: string };
+  code?: string;
+  classification?: string;
+  retryable?: boolean;
+
+  constructor(params: {
+    message: string;
+    status?: number;
+    planId?: string;
+    code?: string;
+    classification?: string;
+    retryable?: boolean;
+  }) {
+    super(params.message);
+    this.name = 'StreamingError';
+    this.status = params.status;
+    this.planId = params.planId;
+    this.code = params.code;
+    this.classification = params.classification;
+    this.retryable = params.retryable;
+    if (params.planId) {
+      this.data = { planId: params.planId };
+    }
+  }
+}
 
 export type PlanGenerationSessionState = {
   status: SessionStatus;
@@ -61,7 +96,7 @@ export type UsePlanGenerationSessionResult = {
   startSession: (
     request: StartPlanGenerationSessionRequest,
     options?: StartPlanGenerationSessionOptions
-  ) => Promise<string>;
+  ) => Promise<PlanGenerationResult>;
   cancel: () => void;
 };
 
@@ -77,25 +112,8 @@ function createStreamingError(params: {
   code?: string;
   classification?: string;
   retryable?: boolean;
-}): Error {
-  const error = new Error(params.message) as Error & {
-    status?: number;
-    planId?: string;
-    data?: { planId?: string };
-    code?: string;
-    classification?: string;
-    retryable?: boolean;
-  };
-
-  error.status = params.status;
-  error.planId = params.planId;
-  error.code = params.code;
-  error.classification = params.classification;
-  error.retryable = params.retryable;
-  if (params.planId) {
-    error.data = { planId: params.planId };
-  }
-  return error;
+}): StreamingError {
+  return new StreamingError(params);
 }
 
 const parseEventLine = (line: string): PlanGenerationSessionEvent | null =>
@@ -120,7 +138,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
     async (
       request: StartPlanGenerationSessionRequest,
       options?: StartPlanGenerationSessionOptions
-    ): Promise<string> => {
+    ): Promise<PlanGenerationResult> => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -133,24 +151,49 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
         planId: undefined,
       });
 
-      const response = await fetch(
-        request.kind === 'create'
-          ? '/api/v1/plans/stream'
-          : `/api/v1/plans/${request.planId}/retry`,
-        {
-          method: 'POST',
-          headers:
-            request.kind === 'create'
-              ? { 'Content-Type': 'application/json' }
-              : undefined,
-          body:
-            request.kind === 'create'
-              ? JSON.stringify(request.input)
-              : undefined,
-          signal: controller.signal,
-          credentials: 'include',
+      let response: Response;
+      try {
+        response = await fetch(
+          request.kind === 'create'
+            ? '/api/v1/plans/stream'
+            : `/api/v1/plans/${request.planId}/retry`,
+          {
+            method: 'POST',
+            headers:
+              request.kind === 'create'
+                ? { 'Content-Type': 'application/json' }
+                : undefined,
+            body:
+              request.kind === 'create'
+                ? JSON.stringify(request.input)
+                : undefined,
+            signal: controller.signal,
+            credentials: 'include',
+          }
+        );
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          setState((prev) => ({
+            ...prev,
+            status: 'cancelled',
+          }));
+          return {
+            status: 'cancelled',
+            planId: request.kind === 'retry' ? request.planId : undefined,
+          };
         }
-      );
+
+        setState((prev) => ({
+          ...prev,
+          status: 'error',
+          error: {
+            message: 'Unable to start plan generation. Please try again.',
+            classification: 'provider_error',
+            retryable: true,
+          },
+        }));
+        throw error;
+      }
 
       if (!response.ok || !response.body) {
         const fallbackMessage =
@@ -234,7 +277,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
       const decoder = new TextDecoder();
       let buffer = '';
 
-      return await new Promise<string>((resolve, reject) => {
+      return await new Promise<PlanGenerationResult>((resolve, reject) => {
         let completed = false;
         let errored = false;
         let planIdNotified = false;
@@ -256,11 +299,14 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
           if (request.kind === 'retry') {
             setState((prev) => ({
               ...prev,
-              status: 'idle',
+              status: 'cancelled',
               planId: prev.planId ?? latestPlanId,
               error: undefined,
             }));
-            resolve('');
+            resolve({
+              status: 'cancelled',
+              planId: latestPlanId,
+            });
             return;
           }
 
@@ -320,6 +366,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
                 progress: {
                   modulesParsed: event.data.modulesParsed,
                   modulesTotalHint: event.data.modulesTotalHint,
+                  percent: event.data.percent,
                 },
               }));
               break;
@@ -333,7 +380,11 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
                 planId: prev.planId ?? latestPlanId,
               }));
               if (latestPlanId) {
-                resolve(latestPlanId);
+                resolve({
+                  status: 'completed',
+                  planId: latestPlanId,
+                  result: latestPlanId,
+                });
               } else {
                 reject(
                   new Error(
@@ -398,6 +449,12 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
                     prev.status === 'complete' || prev.status === 'error'
                       ? prev.status
                       : 'error',
+                  error: prev.error ?? {
+                    message:
+                      'Plan generation ended unexpectedly. Please try again.',
+                    classification: 'provider_error',
+                    retryable: true,
+                  },
                 }));
                 if (!completed && !errored) {
                   reject(
@@ -425,6 +482,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
               }
             }
           } catch (error) {
+            await reader.cancel(error instanceof Error ? error : undefined);
             reject(
               error instanceof Error
                 ? error

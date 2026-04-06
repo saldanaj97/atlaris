@@ -2,6 +2,7 @@ export type PlanStartEvent = {
   type: 'plan_start';
   data: {
     planId: string;
+    attemptNumber: number;
     topic: string;
     skillLevel: 'beginner' | 'intermediate' | 'advanced';
     learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
@@ -30,6 +31,7 @@ export type ProgressEvent = {
     planId: string;
     modulesParsed: number;
     modulesTotalHint?: number;
+    percent: number;
   };
 };
 
@@ -39,7 +41,7 @@ export type CompleteEvent = {
     planId: string;
     modulesCount: number;
     tasksCount: number;
-    durationMs: number;
+    totalMinutes: number;
   };
 };
 
@@ -60,8 +62,8 @@ export type CancelledEvent = {
   data: {
     planId: string;
     message: string;
-    classification: 'cancelled';
-    retryable: true;
+    classification: string;
+    retryable: boolean;
     requestId?: string;
   };
 };

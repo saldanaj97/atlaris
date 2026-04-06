@@ -219,9 +219,13 @@ export async function getPlanForPage(
 export async function getPlanScheduleForPage(
   planId: string
 ): Promise<ScheduleAccessResult> {
-  const result = await withServerActionContext(async (user) => {
+  const result = await withServerActionContext(async (user, rlsDb) => {
     try {
-      const schedule = await getPlanSchedule({ planId, userId: user.id });
+      const schedule = await getPlanSchedule({
+        planId,
+        userId: user.id,
+        dbClient: rlsDb,
+      });
       return scheduleSuccess(schedule);
     } catch (error) {
       if (error instanceof ScheduleFetchError) {

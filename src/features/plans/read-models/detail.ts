@@ -253,41 +253,43 @@ export function buildLearningPlanDetail(params: {
 export function toClientPlanDetail(
   detail: LearningPlanDetail | null | undefined
 ): ClientPlanDetail | undefined {
-  if (!detail?.plan) return undefined;
+  if (!detail) return undefined;
 
-  const modules = (detail.plan.modules ?? [])
-    .toSorted((a, b) => a.order - b.order)
-    .map((planModule) => {
-      const tasks = (planModule.tasks ?? [])
-        .toSorted((a, b) => a.order - b.order)
-        .map((task) => ({
-          id: task.id,
-          order: task.order,
-          title: task.title,
-          description: task.description ?? null,
-          estimatedMinutes: task.estimatedMinutes ?? 0,
-          status: task.progress?.status ?? 'not_started',
-          resources: (task.resources ?? [])
-            .toSorted((a, b) => a.order - b.order)
-            .map((resource) => ({
-              id: resource.id,
-              order: resource.order,
-              type: resource.resource.type,
-              title: resource.resource.title,
-              url: resource.resource.url,
-              durationMinutes: resource.resource.durationMinutes ?? null,
-            })),
-        }));
+  if (!detail.plan) {
+    logger.error(
+      { detail },
+      'LearningPlanDetail missing required plan payload'
+    );
+    throw new Error('LearningPlanDetail.plan is required.');
+  }
 
-      return {
-        id: planModule.id,
-        order: planModule.order,
-        title: planModule.title,
-        description: planModule.description ?? null,
-        estimatedMinutes: planModule.estimatedMinutes ?? 0,
-        tasks,
-      };
-    });
+  const modules = (detail.plan.modules ?? []).map((planModule) => {
+    const tasks = (planModule.tasks ?? []).map((task) => ({
+      id: task.id,
+      order: task.order,
+      title: task.title,
+      description: task.description ?? null,
+      estimatedMinutes: task.estimatedMinutes ?? 0,
+      status: task.progress?.status ?? 'not_started',
+      resources: (task.resources ?? []).map((resource) => ({
+        id: resource.id,
+        order: resource.order,
+        type: resource.resource.type,
+        title: resource.resource.title,
+        url: resource.resource.url,
+        durationMinutes: resource.resource.durationMinutes ?? null,
+      })),
+    }));
+
+    return {
+      id: planModule.id,
+      order: planModule.order,
+      title: planModule.title,
+      description: planModule.description ?? null,
+      estimatedMinutes: planModule.estimatedMinutes ?? 0,
+      tasks,
+    };
+  });
 
   const statusSnapshot = buildPlanDetailStatusSnapshot({
     plan: detail.plan,

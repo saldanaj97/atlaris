@@ -134,6 +134,10 @@ export function optionalEnv(key: string): string | undefined {
   return normalize(process.env[key]);
 }
 
+export function getSmokeStateFileEnv(): string | undefined {
+  return getServerOptional('SMOKE_STATE_FILE');
+}
+
 export function requireEnv(key: string): string {
   const value = optionalEnv(key);
   if (!value) {

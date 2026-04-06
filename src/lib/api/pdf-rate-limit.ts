@@ -1,7 +1,7 @@
 import { LRUCache } from 'lru-cache';
+import type { DbClient } from '@/features/billing/tier';
 import { RateLimitError } from '@/lib/api/errors';
 import { appEnv } from '@/lib/config/env';
-import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
@@ -13,7 +13,7 @@ export type GlobalExtractionState = {
 type PdfUploadValidationDeps = {
   resolveTier: (
     userId: string,
-    dbClient?: ReturnType<typeof getDb>
+    dbClient: DbClient
   ) => Promise<SubscriptionTier>;
 };
 
@@ -54,6 +54,7 @@ const toLimitDetails = (tier: SubscriptionTier): PdfUploadLimitDetails => ({
 export async function checkPdfSizeLimit(
   userId: string,
   sizeBytes: number,
+  dbClient: DbClient,
   deps: PdfUploadValidationDeps
 ): Promise<PdfSizeLimitResult> {
   if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
@@ -62,8 +63,7 @@ export async function checkPdfSizeLimit(
 
   let tier: SubscriptionTier;
   try {
-    const db = getDb();
-    tier = await deps.resolveTier(userId, db);
+    tier = await deps.resolveTier(userId, dbClient);
   } catch (err) {
     throw new Error(
       `resolveTier failed: ${err instanceof Error ? err.message : String(err)}`
@@ -89,6 +89,7 @@ export async function validatePdfUpload(
   userId: string,
   sizeBytes: number,
   pageCount: number,
+  dbClient: DbClient,
   deps: PdfUploadValidationDeps
 ): Promise<PdfUploadValidationResult> {
   if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
@@ -98,7 +99,7 @@ export async function validatePdfUpload(
     throw new Error('pageCount must be a positive finite number');
   }
 
-  const sizeResult = await checkPdfSizeLimit(userId, sizeBytes, deps);
+  const sizeResult = await checkPdfSizeLimit(userId, sizeBytes, dbClient, deps);
   if (!sizeResult.allowed) {
     return sizeResult;
   }

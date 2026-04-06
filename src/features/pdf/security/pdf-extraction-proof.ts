@@ -4,7 +4,7 @@ import { and, eq, gt } from 'drizzle-orm';
 import { pdfPreviewEditSchema } from '@/features/pdf/validation/pdf';
 import type { PdfPreviewEditInput } from '@/features/pdf/validation/pdf.types';
 import { hashSha256 } from '@/lib/crypto/hash';
-import { getDb } from '@/lib/db/runtime';
+import type { getDb } from '@/lib/db/runtime';
 import { oauthStateTokens } from '@/lib/db/schema';
 
 const PDF_PROOF_PROVIDER = 'pdf_extraction_proof_v1';
@@ -97,17 +97,16 @@ export function computePdfExtractionHash(
 export async function issuePdfExtractionProof(params: {
   authUserId: string;
   extractionHash: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   now?: () => Date;
 }): Promise<{ token: string; expiresAt: Date }> {
-  const dbClient = params.dbClient ?? getDb();
   const now = params.now ?? (() => new Date());
 
   const token = generateProofToken();
   const expiresAt = new Date(now().getTime() + PDF_PROOF_TTL_MS);
   const stateTokenHash = buildStoredTokenHash(token, params.extractionHash);
 
-  await dbClient.insert(oauthStateTokens).values({
+  await params.dbClient.insert(oauthStateTokens).values({
     stateTokenHash,
     authUserId: params.authUserId,
     provider: PDF_PROOF_PROVIDER,
@@ -121,17 +120,16 @@ export async function consumePdfExtractionProof(params: {
   authUserId: string;
   token: string;
   extractionHash: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   now?: () => Date;
 }): Promise<boolean> {
-  const dbClient = params.dbClient ?? getDb();
   const now = params.now ?? (() => new Date());
   const stateTokenHash = buildStoredTokenHash(
     params.token,
     params.extractionHash
   );
 
-  const [deleted] = await dbClient
+  const [deleted] = await params.dbClient
     .delete(oauthStateTokens)
     .where(
       and(
@@ -151,7 +149,7 @@ export async function verifyAndConsumePdfExtractionProof(params: {
   extractedContent: Pick<PdfPreviewEditInput, 'mainTopic' | 'sections'>;
   extractionHash: string;
   token: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   now?: () => Date;
 }): Promise<boolean> {
   const computedHash = computePdfExtractionHash(params.extractedContent);

@@ -18,10 +18,12 @@ export async function register() {
   }
 }
 
-export const onRequestError: typeof Sentry.captureRequestError = (...args) => {
+export const onRequestError = (
+  ...args: Parameters<typeof Sentry.captureRequestError>
+): void => {
   if (!isSentryEnabled()) {
     return;
   }
 
-  return Sentry.captureRequestError(...args);
+  void Sentry.captureRequestError(...args);
 };

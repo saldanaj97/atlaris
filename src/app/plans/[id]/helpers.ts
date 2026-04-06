@@ -116,7 +116,7 @@ function computeSharedPlanStats(
 
         return nextStatus === 'completed' ? taskCount + 1 : taskCount;
       }, 0),
-    plan.completedTasks
+    plan.completedTasks ?? 0
   );
   const totalTasks = plan.totalTasks;
   const totalMinutes = plan.totalMinutes;

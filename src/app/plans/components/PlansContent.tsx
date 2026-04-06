@@ -93,12 +93,16 @@ export async function PlansContent(): Promise<JSX.Element> {
     <PlansList
       summaries={summaries}
       referenceTimestamp={referenceTimestamp}
-      usage={{
-        tier: snapshot.usage.tier,
-        activePlans: snapshot.usage.activePlans,
-        regenerations: snapshot.usage.regenerations,
-        exports: snapshot.usage.exports,
-      }}
+      usage={
+        snapshot
+          ? {
+              tier: snapshot.usage.tier,
+              activePlans: snapshot.usage.activePlans,
+              regenerations: snapshot.usage.regenerations,
+              exports: snapshot.usage.exports,
+            }
+          : undefined
+      }
     />
   );
 }

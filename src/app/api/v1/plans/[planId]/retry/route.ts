@@ -24,6 +24,7 @@ import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
+import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/client.types';
@@ -100,6 +101,12 @@ export function createRetryHandler(deps?: {
           ownerUserId: user.id,
           dbClient: db,
         });
+        const attemptsSnapshot = await getPlanAttemptsForUser(
+          plan.id,
+          user.id,
+          db
+        );
+        const attemptNumber = (attemptsSnapshot?.attempts.length ?? 0) + 1;
 
         // Pre-flight: reject non-retryable plan statuses with a clear HTTP error
         if (!RETRYABLE_STATUSES.has(plan.generationStatus ?? '')) {
@@ -171,6 +178,7 @@ export function createRetryHandler(deps?: {
           dbClient: streamDb,
           cleanup: closeStreamDb,
           planId,
+          attemptNumber,
           planStartInput: {
             topic: plan.topic,
             skillLevel: plan.skillLevel,

@@ -15,23 +15,29 @@ interface PdfPlanSettingsEditorProps {
   baseId: string;
   settings: PdfPlanSettings;
   onSettingChange: (field: keyof PdfPlanSettings, value: string) => void;
+  headingLevel?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 }
 
 export function PdfPlanSettingsEditor({
   baseId,
   settings,
   onSettingChange,
+  headingLevel = 'h2',
 }: PdfPlanSettingsEditorProps): JSX.Element {
   const headingId = `${baseId}-plan-settings-heading`;
+  const Heading = headingLevel;
 
   return (
     <section
       aria-labelledby={headingId}
       className="border-border mt-4 border-t pt-4"
     >
-      <h2 id={headingId} className="text-foreground mb-3 text-sm font-medium">
+      <Heading
+        id={headingId}
+        className="text-foreground mb-3 text-sm font-medium"
+      >
         Plan Settings
-      </h2>
+      </Heading>
       <div className="text-foreground mb-3 flex flex-wrap items-center gap-2">
         <span className="text-sm">I&apos;m a</span>
         <InlineDropdown

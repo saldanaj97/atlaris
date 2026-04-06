@@ -10,6 +10,7 @@ import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import type { RlsClient } from '@/lib/db/rls';
+import { getDb } from '@/lib/db/runtime';
 import type { DbClient } from '@/lib/db/types';
 import { AuthError } from './errors';
 import { withRateLimit } from './middleware';
@@ -150,16 +151,16 @@ async function runWithTestContext<T>(
   fn: (user: DbUser, db: DbClient) => MaybePromise<T>,
   req?: Request
 ): Promise<T> {
-  const user = await ensureUserRecord(authUserId);
-  const { db: serviceDb } = await import('@/lib/db/service-role');
+  const requestDb = getDb();
+  const user = await ensureUserRecord(authUserId, requestDb);
   const requestContext = createRequestContext(req, {
     userId: authUserId,
     user: { id: user.id, authUserId: user.authUserId },
-    db: serviceDb,
+    db: requestDb,
     cleanup: async () => {},
   });
 
-  return withRequestContext(requestContext, () => fn(user, serviceDb));
+  return withRequestContext(requestContext, () => fn(user, requestDb));
 }
 
 type RouteHandlerParams = AuthHandlerContext['params'];

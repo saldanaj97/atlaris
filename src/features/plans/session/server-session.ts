@@ -17,6 +17,10 @@ import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/client.types';
 
+// Streamed plan generation can legitimately hold the dedicated RLS connection
+// open for a few minutes while AI output is produced and persisted.
+const RLS_IDLE_TIMEOUT_SECONDS = 180;
+
 export async function createStreamDbClient(authUserId: string): Promise<{
   dbClient: AttemptsDbClient;
   cleanup: () => Promise<void>;
@@ -30,7 +34,7 @@ export async function createStreamDbClient(authUserId: string): Promise<{
 
   const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
   const { db, cleanup } = await createAuthenticatedRlsClient(authUserId, {
-    idleTimeout: 180,
+    idleTimeout: RLS_IDLE_TIMEOUT_SECONDS,
   });
 
   return {
@@ -45,6 +49,7 @@ export interface CreatePlanGenerationSessionResponseParams {
   dbClient: AttemptsDbClient;
   cleanup: () => Promise<void>;
   planId: string;
+  attemptNumber?: number;
   planStartInput: CreateLearningPlanInput;
   generationInput: ProcessGenerationInput;
   processGeneration: (
@@ -65,6 +70,7 @@ export async function createPlanGenerationSessionResponse({
   dbClient,
   cleanup,
   planId,
+  attemptNumber = 1,
   planStartInput,
   generationInput,
   processGeneration,
@@ -87,7 +93,13 @@ export async function createPlanGenerationSessionResponse({
     const stream = createEventStream(
       async (emit, _controller, streamContext) => {
         try {
-          emit(buildPlanStartEvent({ planId, input: planStartInput }));
+          emit(
+            buildPlanStartEvent({
+              planId,
+              attemptNumber,
+              input: planStartInput,
+            })
+          );
 
           await executeLifecycleGenerationStream({
             reqSignal: req.signal,

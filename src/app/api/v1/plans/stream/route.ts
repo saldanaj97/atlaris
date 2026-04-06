@@ -307,6 +307,7 @@ export function createStreamHandler(deps?: {
           dbClient: streamDb,
           cleanup: closeStreamDb,
           planId,
+          attemptNumber: 1,
           planStartInput: normalizedInputForEvent,
           generationInput,
           processGeneration,

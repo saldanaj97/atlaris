@@ -25,6 +25,7 @@ import {
 } from '@/lib/api/pdf-rate-limit';
 import { json } from '@/lib/api/response';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
+import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -222,13 +223,14 @@ async function postHandlerImpl(
   }
 
   const { file } = parseResult.data;
+  const db = getDb();
 
   let cachedTier: SubscriptionTier | undefined;
   let tierResolved = false;
   const validationDeps = {
     resolveTier: async (
       tierUserId: string,
-      dbClient?: Parameters<typeof resolveUserTier>[1]
+      dbClient: Parameters<typeof resolveUserTier>[1]
     ): Promise<SubscriptionTier> => {
       if (tierResolved) return cachedTier as SubscriptionTier;
       cachedTier = await resolveUserTier(tierUserId, dbClient);
@@ -240,6 +242,7 @@ async function postHandlerImpl(
   const tierSizeCheck = await checkPdfSizeLimit(
     user.id,
     file.size,
+    db,
     validationDeps
   );
   if (!tierSizeCheck.allowed) {
@@ -304,6 +307,7 @@ async function postHandlerImpl(
       user.id,
       file.size,
       pageCountForValidation,
+      db,
       validationDeps
     );
     if (!tierValidation.allowed) {
@@ -366,6 +370,7 @@ async function postHandlerImpl(
       issuedProof = await issuePdfExtractionProof({
         authUserId: userId,
         extractionHash,
+        dbClient: db,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

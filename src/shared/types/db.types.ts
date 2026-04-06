@@ -67,14 +67,7 @@ export type LightweightPlanSummary = LightweightPlanListFields &
     moduleCount: number;
   };
 
-export type LearningPlanDetail = Pick<
-  ProgressMetrics,
-  | 'completedTasks'
-  | 'totalTasks'
-  | 'totalMinutes'
-  | 'completedMinutes'
-  | 'completedModules'
-> & {
+export type LearningPlanDetail = Omit<ProgressMetrics, 'completion'> & {
   plan: LearningPlanWithModules;
   latestAttempt: GenerationAttempt | null;
   attemptsCount: number;

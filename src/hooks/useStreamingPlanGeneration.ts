@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 
 import {
+  type PlanGenerationResult,
   type PlanGenerationSessionState,
   usePlanGenerationSession,
 } from '@/features/plans/session/usePlanGenerationSession';
@@ -37,6 +38,8 @@ export type StreamingError = Error & {
   retryable?: boolean;
 };
 
+export type { PlanGenerationResult };
+
 export function isStreamingError(error: unknown): error is StreamingError {
   if (error instanceof Error) {
     return true;
@@ -59,7 +62,7 @@ export type StartGenerationOptions = {
 type StartGeneration = (
   input: CreateLearningPlanInput,
   options?: StartGenerationOptions
-) => Promise<string>;
+) => Promise<PlanGenerationResult>;
 
 export interface UseStreamingPlanGenerationResult {
   state: StreamingPlanState;

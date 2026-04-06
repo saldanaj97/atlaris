@@ -146,12 +146,16 @@ export async function handleSuccessfulGeneration(
   result: Extract<GenerationResult, { status: 'success' }>,
   ctx: SuccessContext
 ): Promise<void> {
-  const { planId, userId, startedAt, emit, dbClient } = ctx;
+  const { planId, userId, emit, dbClient } = ctx;
   const markSuccess =
     ctx.markPlanGenerationSuccess ?? markPlanGenerationSuccess;
   const modules = result.modules;
   const modulesCount = modules.length;
   const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
+  const totalMinutes = modules.reduce(
+    (sum, module) => sum + module.estimatedMinutes,
+    0
+  );
 
   emitModuleSummaries(modules, planId, emit);
 
@@ -168,7 +172,7 @@ export async function handleSuccessfulGeneration(
       planId,
       modulesCount,
       tasksCount,
-      durationMs: Math.max(0, Date.now() - startedAt),
+      totalMinutes,
     },
   });
 }
@@ -227,6 +231,7 @@ export function emitModuleSummaries(
   const modulesCount = modules.length;
 
   modules.forEach((module, index) => {
+    const modulesParsed = index + 1;
     emit({
       type: 'module_summary',
       data: {
@@ -243,8 +248,12 @@ export function emitModuleSummaries(
       type: 'progress',
       data: {
         planId,
-        modulesParsed: index + 1,
+        modulesParsed,
         modulesTotalHint: modulesCount,
+        percent:
+          modulesCount > 0
+            ? Math.round((modulesParsed / modulesCount) * 100)
+            : 0,
       },
     });
   });
@@ -258,15 +267,18 @@ export function emitModuleSummaries(
  */
 export function buildPlanStartEvent({
   planId,
+  attemptNumber,
   input,
 }: {
   planId: string;
+  attemptNumber: number;
   input: CreateLearningPlanInput;
 }): StreamingEvent {
   return {
     type: 'plan_start',
     data: {
       planId,
+      attemptNumber,
       topic: input.topic,
       skillLevel: input.skillLevel,
       learningStyle: input.learningStyle,
@@ -544,6 +556,10 @@ export async function executeLifecycleGenerationStream({
         const modules = result.data.modules;
         const modulesCount = modules.length;
         const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
+        const totalMinutes = modules.reduce(
+          (sum, module) => sum + module.estimatedMinutes,
+          0
+        );
 
         emitModuleSummaries(modules, planId, emit);
 
@@ -553,7 +569,7 @@ export async function executeLifecycleGenerationStream({
             planId,
             modulesCount,
             tasksCount,
-            durationMs: Math.max(0, Date.now() - startedAt),
+            totalMinutes,
           },
         });
         return;
