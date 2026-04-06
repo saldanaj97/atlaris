@@ -4,16 +4,17 @@
  */
 
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
+import { buildPlanDetailStatusSnapshot } from '@/features/plans/read-models/detail';
+import {
+  buildLightweightPlanSummaries,
+  buildPlanSummaries,
+} from '@/features/plans/read-models/summary';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   fetchTaskProgressRows,
   fetchTaskResourceRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
-import {
-  mapLearningPlanDetail,
-  mapLightweightPlanSummaries,
-  mapPlanSummaries,
-} from '@/lib/db/queries/mappers';
+import { mapLearningPlanDetail } from '@/lib/db/queries/mappers';
 import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
 import {
@@ -146,7 +147,7 @@ export async function getPlanSummariesForUser(
     dbClient: client,
   });
 
-  return mapPlanSummaries({
+  return buildPlanSummaries({
     planRows,
     moduleRows,
     taskRows,
@@ -200,7 +201,6 @@ export async function getLightweightPlanSummaries(
   const moduleMetricsRows = await client
     .select({
       planId: modules.planId,
-      moduleId: modules.id,
       totalTasks: sql<number>`count(${tasks.id})::int`,
       completedTasks: sql<number>`
         count(${taskProgress.id}) filter (
@@ -229,7 +229,7 @@ export async function getLightweightPlanSummaries(
     .where(inArray(modules.planId, planIds))
     .groupBy(modules.planId, modules.id);
 
-  return mapLightweightPlanSummaries({
+  return buildLightweightPlanSummaries({
     planRows,
     moduleMetricsRows,
   });
@@ -362,6 +362,50 @@ export async function getPlanAttemptsForUser(
   };
 
   return { plan: planMeta, attempts };
+}
+
+export async function getPlanStatusForUser(
+  planId: string,
+  userId: string,
+  dbClient?: DbClient
+) {
+  const client = dbClient ?? getDb();
+
+  const plan = await selectOwnedPlanById({
+    planId,
+    ownerUserId: userId,
+    dbClient: client,
+  });
+
+  if (!plan) {
+    return null;
+  }
+
+  const [moduleRows, attemptMetaRows] = await Promise.all([
+    client
+      .select({ id: modules.id })
+      .from(modules)
+      .where(eq(modules.planId, planId))
+      .limit(1),
+    client
+      .select({
+        classification: generationAttempts.classification,
+        attemptsCount: sql<number>`count(*) over ()`,
+      })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId))
+      .orderBy(desc(generationAttempts.createdAt))
+      .limit(1),
+  ]);
+
+  return buildPlanDetailStatusSnapshot({
+    plan,
+    hasModules: moduleRows.length > 0,
+    attemptsCount: Number(attemptMetaRows[0]?.attemptsCount ?? 0),
+    latestAttempt: attemptMetaRows[0]
+      ? { classification: attemptMetaRows[0].classification }
+      : null,
+  });
 }
 
 /** Explicit failure reasons returned by deletePlan. */

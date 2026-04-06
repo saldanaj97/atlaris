@@ -1,100 +1,148 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-/**
- * Guard test to ensure all plan-fetching functions in queries/plans.ts
- * require userId parameter for tenant scoping.
- *
- * This test prevents regressions where unsafe plan loaders are added
- * that bypass tenant isolation.
- */
-describe('Plan Queries - Tenant Scoping Guard', () => {
-  it('ensures all exported plan-fetching functions require userId parameter', () => {
-    const plansQueryPath = join(process.cwd(), 'src/lib/db/queries/plans.ts');
-    const fileContent = readFileSync(plansQueryPath, 'utf-8');
+const ROOT_DIR = process.cwd();
+const VIRTUAL_FILE_PATH = join(
+  ROOT_DIR,
+  'tests/__contracts__/plan-query-userid.contract.ts'
+);
 
-    // Pattern to match exported async functions that directly fetch learning plans
-    // Matches functions like: getLearningPlan*, getPlanSummaries*, getPlanAttempts*
-    // Excludes utility functions like: getPlanSchedule*, getPlanCache*, getPlanStatus*
-    // Expected naming convention: Functions that fetch plan entities should use:
-    //   - getLearningPlan* (e.g., getLearningPlanDetail)
-    //   - getPlanSummaries* (e.g., getPlanSummariesForUser)
-    //   - getPlanAttempts* (e.g., getPlanAttemptsForUser)
-    const planFetchingFunctionPattern =
-      /export\s+async\s+function\s+(get(?:User)?LearningPlan\w*|getPlan(?:Summaries|Attempts)\w*)\s*\([^)]*\)/g;
+function readCompilerOptions() {
+  const configPath = ts.findConfigFile(
+    ROOT_DIR,
+    ts.sys.fileExists,
+    'tsconfig.json'
+  );
 
-    const matches = Array.from(
-      fileContent.matchAll(planFetchingFunctionPattern)
+  if (!configPath) {
+    throw new Error('Could not find tsconfig.json');
+  }
+
+  const config = ts.readConfigFile(configPath, ts.sys.readFile);
+
+  if (config.error) {
+    throw new Error(
+      ts.flattenDiagnosticMessageText(config.error.messageText, '\n')
     );
+  }
 
-    // List of functions that are missing userId parameter
-    const functionsRequiringUserId: string[] = [];
+  return ts.parseJsonConfigFileContent(
+    config.config,
+    ts.sys,
+    dirname(configPath),
+    { noEmit: true },
+    configPath
+  ).options;
+}
 
-    for (const match of matches) {
-      const functionName = match[1];
-      const functionSignature = match[0];
+function compileSnippet(source: string): string[] {
+  const compilerOptions = readCompilerOptions();
+  const host = ts.createCompilerHost(compilerOptions, true);
+  const originalGetSourceFile = host.getSourceFile.bind(host);
+  const originalReadFile = host.readFile.bind(host);
+  const originalFileExists = host.fileExists.bind(host);
 
-      // Check if function signature includes userId parameter
-      const hasUserId = /userId\s*:\s*string/.test(functionSignature);
-
-      if (!hasUserId) {
-        functionsRequiringUserId.push(functionName);
-      }
+  host.getSourceFile = (
+    fileName,
+    languageVersion,
+    onError,
+    shouldCreateNewSourceFile
+  ) => {
+    if (fileName === VIRTUAL_FILE_PATH) {
+      return ts.createSourceFile(fileName, source, languageVersion, true);
     }
 
-    if (functionsRequiringUserId.length > 0) {
-      throw new Error(
-        `Security violation: The following plan-fetching functions are missing userId parameter for tenant scoping:\n` +
-          `${functionsRequiringUserId.join(', ')}\n\n` +
-          `All functions that fetch learning plans MUST accept userId: string and enforce ownership ` +
-          `in the query WHERE clause to prevent cross-tenant data access.\n\n` +
-          `Example safe pattern:\n` +
-          `export async function getXxx(planId: string, userId: string) {\n` +
-          `  return await db.select().from(learningPlans)\n` +
-          `    .where(and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)));\n` +
-          `}`
-      );
+    return originalGetSourceFile(
+      fileName,
+      languageVersion,
+      onError,
+      shouldCreateNewSourceFile
+    );
+  };
+
+  host.readFile = (fileName) => {
+    if (fileName === VIRTUAL_FILE_PATH) {
+      return source;
     }
 
-    // If we get here, all plan-fetching functions have userId
-    expect(functionsRequiringUserId).toHaveLength(0);
+    return originalReadFile(fileName);
+  };
+
+  host.fileExists = (fileName) => {
+    if (fileName === VIRTUAL_FILE_PATH) {
+      return true;
+    }
+
+    return originalFileExists(fileName);
+  };
+
+  const program = ts.createProgram([VIRTUAL_FILE_PATH], compilerOptions, host);
+
+  return ts
+    .getPreEmitDiagnostics(program)
+    .filter((diagnostic) => diagnostic.file?.fileName === VIRTUAL_FILE_PATH)
+    .map((diagnostic) =>
+      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')
+    );
+}
+
+const VALID_CALLS = `
+  import {
+    getLearningPlanDetail,
+    getLightweightPlanSummaries,
+    getPlanAttemptsForUser,
+    getPlanStatusForUser,
+    getPlanSummariesForUser,
+  } from '@/lib/db/queries/plans';
+  import { getModuleDetail } from '@/lib/db/queries/modules';
+
+  async function probe() {
+    const userId = 'user-id';
+    await getPlanSummariesForUser(userId);
+    await getLightweightPlanSummaries(userId);
+    await getLearningPlanDetail('plan-id', userId);
+    await getPlanAttemptsForUser('plan-id', userId);
+    await getPlanStatusForUser('plan-id', userId);
+    await getModuleDetail('module-id', userId);
+  }
+`;
+
+const MISSING_USER_ID_CALLS = `
+  import {
+    getLearningPlanDetail,
+    getLightweightPlanSummaries,
+    getPlanAttemptsForUser,
+    getPlanStatusForUser,
+    getPlanSummariesForUser,
+  } from '@/lib/db/queries/plans';
+  import { getModuleDetail } from '@/lib/db/queries/modules';
+
+  async function probe() {
+    await getPlanSummariesForUser();
+    await getLightweightPlanSummaries();
+    await getLearningPlanDetail('plan-id');
+    await getPlanAttemptsForUser('plan-id');
+    await getPlanStatusForUser('plan-id');
+    await getModuleDetail('module-id');
+  }
+`;
+
+function countMissingArgumentDiagnostics(diagnostics: string[]) {
+  return diagnostics.filter(
+    (message) =>
+      message.includes('Expected') && message.includes('arguments, but got')
+  ).length;
+}
+
+describe('Plan Queries - Tenant Scoping Guard', () => {
+  it('allows calling plan and module read queries when userId is provided', () => {
+    expect(compileSnippet(VALID_CALLS)).toHaveLength(0);
   });
 
-  it('ensures no plan-fetching functions use only planId without userId', () => {
-    const plansQueryPath = join(process.cwd(), 'src/lib/db/queries/plans.ts');
-    const fileContent = readFileSync(plansQueryPath, 'utf-8');
+  it('rejects plan and module read queries when userId is omitted', () => {
+    const diagnostics = compileSnippet(MISSING_USER_ID_CALLS);
 
-    // Pattern to match functions that take only planId (or planId first) without userId
-    // This catches cases like: function getXxx(planId: string) without userId
-    // Uses the same specific pattern as above to avoid false positives
-    const unsafePattern =
-      /export\s+async\s+function\s+(get(?:User)?LearningPlan\w*|getPlan(?:Summaries|Attempts)\w*)\s*\(\s*planId\s*:\s*string\s*(?:,\s*[^)]*)?\)/g;
-
-    const matches = Array.from(fileContent.matchAll(unsafePattern));
-
-    const unsafeFunctions: string[] = [];
-
-    for (const match of matches) {
-      const functionSignature = match[0];
-      const functionName = match[1];
-
-      // Check if userId appears in the signature
-      const hasUserId = functionSignature.includes('userId');
-
-      if (!hasUserId) {
-        unsafeFunctions.push(functionName);
-      }
-    }
-
-    if (unsafeFunctions.length > 0) {
-      throw new Error(
-        `Security violation: The following functions fetch plans using only planId without userId:\n` +
-          `${unsafeFunctions.join(', ')}\n\n` +
-          `These functions violate tenant isolation and must be removed or updated to require userId.`
-      );
-    }
-
-    expect(unsafeFunctions).toHaveLength(0);
+    expect(countMissingArgumentDiagnostics(diagnostics)).toBe(6);
   });
 });

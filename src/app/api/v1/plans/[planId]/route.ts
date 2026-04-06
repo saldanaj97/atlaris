@@ -1,5 +1,5 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
-import { mapDetailToClient } from '@/features/plans/detail-mapper';
+import { toClientPlanDetail } from '@/features/plans/read-models/detail';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ConflictError, NotFoundError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
@@ -34,7 +34,7 @@ export const GET = withErrorBoundary(
       });
     }
 
-    const clientDetail = mapDetailToClient(detail);
+    const clientDetail = toClientPlanDetail(detail);
     if (!clientDetail) {
       throw new NotFoundError('Learning plan not found.', undefined, {
         planId,

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { loadModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/data';
+import { getModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/actions';
 import {
   getModuleError,
   isModuleSuccess,
@@ -24,7 +24,7 @@ export async function ModuleDetailContent({
   planId,
   moduleId,
 }: ModuleDetailContentProps) {
-  const moduleResult = await loadModuleForPage(moduleId);
+  const moduleResult = await getModuleForPage(moduleId);
 
   // Handle module access errors with explicit error codes
   if (!isModuleSuccess(moduleResult)) {

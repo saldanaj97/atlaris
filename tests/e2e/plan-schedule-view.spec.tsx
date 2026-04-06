@@ -41,6 +41,12 @@ async function renderPlanDetails(plan: ClientPlanDetail) {
 }
 
 function createMockPlan(): ClientPlanDetail {
+  const totalTasks = 4;
+  const completedTasks = 1;
+  const totalMinutes = 300;
+  const completedMinutes = 60;
+  const completedModules = 0;
+
   return {
     id: 'test-plan-id',
     topic: 'Test Learning Topic',
@@ -50,6 +56,11 @@ function createMockPlan(): ClientPlanDetail {
     visibility: 'private',
     origin: 'ai',
     status: 'ready',
+    totalTasks,
+    completedTasks,
+    totalMinutes,
+    completedMinutes,
+    completedModules,
     modules: [
       {
         id: 'module-1',

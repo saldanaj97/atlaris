@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
-import { mapDetailToClient } from '@/features/plans/detail-mapper';
+import { toClientPlanDetail } from '@/features/plans/read-models/detail';
 import {
   buildGenerationAttempt,
   buildModule,
@@ -15,7 +15,7 @@ describe('derived plan status mapping', () => {
       attemptsCount: ATTEMPT_CAP - 1,
       plan: buildPlan({ generationStatus: 'ready', modules: [] }),
     });
-    const client = mapDetailToClient(detail);
+    const client = toClientPlanDetail(detail);
     expect(client?.status).toBe('pending');
   });
 
@@ -35,7 +35,7 @@ describe('derived plan status mapping', () => {
         tasksCount: 3,
       }),
     });
-    const client = mapDetailToClient(detail);
+    const client = toClientPlanDetail(detail);
     expect(client?.status).toBe('ready');
     expect(client?.modules).toHaveLength(1);
     expect(client?.latestAttempt?.classification).toBeNull();
@@ -53,7 +53,7 @@ describe('derived plan status mapping', () => {
         status: 'failure',
       }),
     });
-    const client = mapDetailToClient(detail);
+    const client = toClientPlanDetail(detail);
     expect(client?.status).toBe('failed');
   });
 
@@ -70,7 +70,7 @@ describe('derived plan status mapping', () => {
         status: 'failure',
       }),
     });
-    const client = mapDetailToClient(detail);
+    const client = toClientPlanDetail(detail);
     expect(client?.status).toBe('failed');
   });
 });

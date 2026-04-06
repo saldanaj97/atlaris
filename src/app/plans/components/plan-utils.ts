@@ -5,6 +5,7 @@ import {
   parseISO,
 } from 'date-fns';
 import type { PlanStatus } from '@/app/plans/types';
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 type DateInput = Date | string | null | undefined;
@@ -110,20 +111,11 @@ export function getPlanStatus(
   summary: PlanSummary,
   referenceDate: DateInput
 ): PlanStatus {
-  // Check generation status first
-  const generationStatus = summary.plan.generationStatus;
-  if (
-    generationStatus === 'generating' ||
-    generationStatus === 'pending_retry'
-  ) {
-    return 'generating';
-  }
-  if (generationStatus === 'failed') {
-    return 'failed';
-  }
+  const canonicalStatus = deriveCanonicalPlanSummaryStatus(summary);
 
-  const progressPercent = Math.round(summary.completion * 100);
-  if (progressPercent >= 100) return 'completed';
+  if (canonicalStatus !== 'active') {
+    return canonicalStatus;
+  }
 
   // Check if plan is inactive/paused (not updated in 30+ days)
   const updatedAt = toValidDate(summary.plan.updatedAt);
@@ -184,11 +176,14 @@ export function getNextTaskName(summary: PlanSummary): string {
     return 'Not started';
   }
 
-  // Find the first incomplete module and its first incomplete task
-  for (const planModule of summary.modules) {
-    // Since we don't have task-level data here, return module title with "Next: " prefix
-    // In a full implementation, this would come from the API
-    return planModule.title ? `Next: ${planModule.title}` : 'Continue learning';
+  // Summary models do not include task-level progress yet, so this remains a
+  // first-incomplete-module fallback rather than a true next-task label.
+  const firstModule = summary.modules[0];
+  if (firstModule) {
+    return firstModule.title
+      ? `Next: ${firstModule.title}`
+      : 'Continue learning';
   }
+
   return 'All tasks completed';
 }

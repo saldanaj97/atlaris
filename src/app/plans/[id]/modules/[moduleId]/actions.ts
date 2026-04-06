@@ -89,11 +89,11 @@ function assertNonEmpty(value: string | undefined, message: string) {
 export async function getModuleForPage(
   moduleId: string
 ): Promise<ModuleAccessResult> {
-  const result = await withServerActionContext(async (_user, rlsDb) => {
-    const moduleData = await getModuleDetail(moduleId, rlsDb);
+  const result = await withServerActionContext(async (user, rlsDb) => {
+    const moduleData = await getModuleDetail(moduleId, user.id, rlsDb);
     if (!moduleData) {
       logger.debug(
-        { moduleId },
+        { moduleId, userId: user.id },
         'Module not found or user does not have access'
       );
       return moduleError(

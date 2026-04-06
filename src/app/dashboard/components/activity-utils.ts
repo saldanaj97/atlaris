@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock, FileText, Video, Zap } from 'lucide-react';
 import { formatMinutes } from '@/features/plans/formatters';
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
 import type { PlanSummary } from '@/shared/types/db.types';
 import type { ActivityItem, ScheduledEvent } from '../types';
 
@@ -100,13 +101,30 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
 export function findActivePlan(
   summaries: PlanSummary[]
 ): PlanSummary | undefined {
-  return summaries
-    .filter((s) => s.completion < 1 - 1e-6)
+  const rankedSummaries = summaries
+    .map((summary) => ({
+      summary,
+      status: deriveCanonicalPlanSummaryStatus(summary),
+    }))
+    .filter(({ status }) => status === 'active' || status === 'generating')
     .toSorted((a, b) => {
-      const aTime = a.plan.updatedAt ? new Date(a.plan.updatedAt).getTime() : 0;
-      const bTime = b.plan.updatedAt ? new Date(b.plan.updatedAt).getTime() : 0;
+      const aStatus = a.status;
+      const bStatus = b.status;
+
+      if (aStatus !== bStatus) {
+        return aStatus === 'active' ? -1 : 1;
+      }
+
+      const aTime = a.summary.plan.updatedAt
+        ? new Date(a.summary.plan.updatedAt).getTime()
+        : 0;
+      const bTime = b.summary.plan.updatedAt
+        ? new Date(b.summary.plan.updatedAt).getTime()
+        : 0;
       return bTime - aTime;
-    })[0];
+    });
+
+  return rankedSummaries[0]?.summary;
 }
 
 export function getRelativeTime(date: Date): string {

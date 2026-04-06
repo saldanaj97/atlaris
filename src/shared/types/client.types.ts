@@ -70,6 +70,11 @@ export type ClientPlanDetail = Pick<
 > & {
   createdAt?: string;
   modules: ClientModule[];
+  totalTasks: number;
+  completedTasks: number;
+  totalMinutes: number;
+  completedMinutes: number;
+  completedModules: number;
   status?: PlanStatus;
   latestAttempt?: ClientGenerationAttempt | null;
 };

@@ -1,5 +1,5 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
-import { mapAttemptsToClient } from '@/features/plans/detail-mapper';
+import { toClientGenerationAttempts } from '@/features/plans/read-models/detail';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
@@ -15,7 +15,7 @@ export const GET = withErrorBoundary(
       throw new NotFoundError('Learning plan not found.');
     }
 
-    const attempts = mapAttemptsToClient(result.attempts);
+    const attempts = toClientGenerationAttempts(result.attempts);
     return json(attempts);
   })
 );

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  mapAttemptsToClient,
-  mapDetailToClient,
-} from '@/features/plans/detail-mapper';
+  toClientGenerationAttempts,
+  toClientPlanDetail,
+} from '@/features/plans/read-models/detail';
 import type {
   ModuleWithTasks,
   TaskWithRelations,
@@ -107,7 +107,7 @@ describe('mapDetailToClient', () => {
       attemptsCount: 1,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
 
     expect(result).toBeDefined();
     expect(result?.id).toBe('plan-1');
@@ -125,12 +125,12 @@ describe('mapDetailToClient', () => {
   });
 
   it('should return undefined for null detail', () => {
-    const result = mapDetailToClient(null);
+    const result = toClientPlanDetail(null);
     expect(result).toBeUndefined();
   });
 
   it('should return undefined for undefined detail', () => {
-    const result = mapDetailToClient(undefined);
+    const result = toClientPlanDetail(undefined);
     expect(result).toBeUndefined();
   });
 
@@ -144,7 +144,7 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     } as unknown as LearningPlanDetail;
 
-    const result = mapDetailToClient(detailWithNullPlan);
+    const result = toClientPlanDetail(detailWithNullPlan);
     expect(result).toBeUndefined();
   });
 
@@ -190,7 +190,7 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
 
     expect(result).toBeDefined();
     expect(result?.modules[0].description).toBeNull();
@@ -263,7 +263,7 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
 
     expect(result).toBeDefined();
     expect(result?.modules[0].title).toBe('First');
@@ -303,7 +303,7 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
     expect(result?.status).toBe('ready');
   });
 
@@ -312,7 +312,7 @@ describe('mapDetailToClient', () => {
       plan: buildPlan({ generationStatus: 'failed', modules: [] }),
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
     expect(result?.status).toBe('failed');
   });
 
@@ -321,7 +321,7 @@ describe('mapDetailToClient', () => {
       plan: buildPlan({ generationStatus: 'generating', modules: [] }),
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
     expect(result?.status).toBe('processing');
   });
 
@@ -352,7 +352,7 @@ describe('mapDetailToClient', () => {
       }),
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
     expect(result?.modules[0].tasks[0].resources.map((r) => r.order)).toEqual([
       1, 2,
     ]);
@@ -371,7 +371,7 @@ describe('mapDetailToClient', () => {
       attemptsCount: 1,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
     expect(result?.latestAttempt?.status).toBe('success');
     expect(result?.latestAttempt?.classification).toBeNull();
     expect(result?.latestAttempt?.model).toBe('gpt-4o-mini');
@@ -399,7 +399,7 @@ describe('mapDetailToClient', () => {
       attemptsCount: 1,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
     expect(result?.status).toBe('pending');
   });
 
@@ -411,7 +411,7 @@ describe('mapDetailToClient', () => {
       }),
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
     expect(result?.status).toBe('pending');
   });
 
@@ -436,7 +436,7 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
     expect(result?.latestAttempt).toBeNull();
   });
 });
@@ -468,7 +468,7 @@ describe('mapAttemptsToClient', () => {
       }),
     ];
 
-    const result = mapAttemptsToClient(attempts);
+    const result = toClientGenerationAttempts(attempts);
 
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('attempt-1');
@@ -481,7 +481,7 @@ describe('mapAttemptsToClient', () => {
   });
 
   it('should handle empty array', () => {
-    const result = mapAttemptsToClient([]);
+    const result = toClientGenerationAttempts([]);
     expect(result).toHaveLength(0);
   });
 
@@ -502,7 +502,10 @@ describe('mapAttemptsToClient', () => {
       createdAt: new Date('2025-01-02T00:00:00.000Z'),
     });
 
-    const attempts = mapAttemptsToClient([successAttempt, failureAttempt]);
+    const attempts = toClientGenerationAttempts([
+      successAttempt,
+      failureAttempt,
+    ]);
 
     expect(attempts).toHaveLength(2);
     expect(attempts[0]).toMatchObject({
@@ -553,7 +556,7 @@ describe('mapAttemptsToClient', () => {
       }),
     ];
 
-    const result = mapAttemptsToClient(attempts);
+    const result = toClientGenerationAttempts(attempts);
 
     expect(result[0].metadata).toBeNull();
     expect(result[0].model).toBeNull();

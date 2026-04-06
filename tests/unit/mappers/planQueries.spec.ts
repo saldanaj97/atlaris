@@ -5,6 +5,7 @@ import type {
 } from '@/lib/db/queries/mappers';
 import {
   mapLearningPlanDetail,
+  mapLightweightPlanSummaries,
   mapPlanSummaries,
 } from '@/lib/db/queries/mappers';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
@@ -400,6 +401,57 @@ describe('mapPlanSummaries', () => {
     expect(result[0].totalTasks).toBe(1);
     expect(result[1].plan.id).toBe(planId2);
     expect(result[1].totalTasks).toBe(1);
+  });
+});
+
+describe('mapLightweightPlanSummaries', () => {
+  it('aggregates module metrics without requiring full task trees', () => {
+    const planId = createId('plan');
+    const planRows = [
+      {
+        id: planId,
+        topic: 'Lightweight Plan',
+        skillLevel: 'beginner' as const,
+        learningStyle: 'mixed' as const,
+        visibility: 'private' as const,
+        origin: 'ai' as const,
+        generationStatus: 'ready' as const,
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-02'),
+      },
+    ];
+
+    const result = mapLightweightPlanSummaries({
+      planRows,
+      moduleMetricsRows: [
+        {
+          planId,
+          totalTasks: 2,
+          completedTasks: 1,
+          totalMinutes: 60,
+          completedMinutes: 30,
+        },
+        {
+          planId,
+          totalTasks: 1,
+          completedTasks: 1,
+          totalMinutes: 45,
+          completedMinutes: 45,
+        },
+      ],
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: planId,
+      totalTasks: 3,
+      completedTasks: 2,
+      totalMinutes: 105,
+      completedMinutes: 75,
+      moduleCount: 2,
+      completedModules: 1,
+    });
+    expect(result[0].completion).toBeCloseTo(2 / 3);
   });
 });
 

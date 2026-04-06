@@ -1,4 +1,5 @@
 import { and, asc, countDistinct, eq } from 'drizzle-orm';
+import { normalizeModuleDetail } from '@/features/plans/read-models/module-detail';
 import {
   buildResourcesByTask,
   computeModuleNavItemsFromCounts,
@@ -31,11 +32,11 @@ type ModulesDbClient = ReturnType<typeof getDb>;
  */
 export async function getModuleDetail(
   moduleId: string,
+  userId: string,
   dbClient?: ModulesDbClient
 ): Promise<ModuleDetail | null> {
   const client = dbClient ?? getDb();
 
-  // RLS enforces ownership. If unauthorized, this query returns no rows.
   const [moduleRow] = await client
     .select({
       module: modules,
@@ -44,7 +45,7 @@ export async function getModuleDetail(
     })
     .from(modules)
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(eq(modules.id, moduleId))
+    .where(and(eq(modules.id, moduleId), eq(learningPlans.userId, userId)))
     .limit(1);
 
   if (!moduleRow) {
@@ -68,6 +69,7 @@ export async function getModuleDetail(
         taskProgress,
         and(
           eq(taskProgress.taskId, tasks.id),
+          eq(taskProgress.userId, userId),
           eq(taskProgress.status, 'completed')
         )
       )
@@ -104,6 +106,8 @@ export async function getModuleDetail(
     return null;
   }
 
+  const currentModule = allModules[currentIndex];
+
   const previousModuleId =
     currentIndex > 0 ? allModules[currentIndex - 1].id : null;
   const nextModuleId =
@@ -112,12 +116,12 @@ export async function getModuleDetail(
       : null;
 
   // previousModulesComplete is the inverse of isLocked for the current module
-  const previousModulesComplete = !allModules[currentIndex].isLocked;
+  const previousModulesComplete = !currentModule.isLocked;
 
   const taskIds = taskRows.map((task) => task.id);
 
   const [progressRows, resourceRows] = await Promise.all([
-    fetchTaskProgressRows({ taskIds, dbClient: client }),
+    fetchTaskProgressRows({ taskIds, userId, dbClient: client }),
     fetchTaskResourceRows({ taskIds, dbClient: client }),
   ]);
 
@@ -135,7 +139,7 @@ export async function getModuleDetail(
     })),
   };
 
-  return {
+  return normalizeModuleDetail({
     module: moduleWithTasks,
     planId,
     planTopic: moduleRow.planTopic,
@@ -144,5 +148,5 @@ export async function getModuleDetail(
     nextModuleId,
     previousModulesComplete,
     allModules,
-  };
+  });
 }

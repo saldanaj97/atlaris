@@ -49,24 +49,7 @@ export function computeOverviewStats(
   statuses: Record<string, ProgressStatus>
 ): PlanOverviewStats {
   const modules = plan.modules ?? [];
-  const tasks = modules.flatMap((m) => m.tasks ?? []);
-
-  const totalTasks = tasks.length;
-  // Only count statuses for task IDs that exist in the current task list
-  // This prevents orphaned status entries from inflating the completion count
-  const taskIdSet = new Set(tasks.map((t) => t.id));
-  const completedTasks = Object.entries(statuses).filter(
-    ([id, status]) => taskIdSet.has(id) && status === 'completed'
-  ).length;
-  const totalMinutes = tasks.reduce(
-    (sum, t) => sum + (t.estimatedMinutes ?? 0),
-    0
-  );
-  const estimatedWeeks = plan.weeklyHours
-    ? Math.ceil(totalMinutes / (plan.weeklyHours * 60))
-    : null;
-  const completionPercentage =
-    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const sharedStats = computeSharedPlanStats(plan, statuses);
 
   const completedModules = modules.filter((mod) => {
     const moduleTasks = mod.tasks ?? [];
@@ -74,16 +57,17 @@ export function computeOverviewStats(
     return moduleTasks.every((task) => statuses[task.id] === 'completed');
   }).length;
 
-  const estimatedCompletionDate =
-    computeEstimatedCompletionDate(estimatedWeeks);
+  const estimatedCompletionDate = computeEstimatedCompletionDate(
+    sharedStats.estimatedWeeks
+  );
   const tags = computeTags(plan, modules);
 
   return {
-    completedTasks,
-    totalTasks,
-    completionPercentage,
-    totalMinutes,
-    estimatedWeeks,
+    completedTasks: sharedStats.completedTasks,
+    totalTasks: sharedStats.totalTasks,
+    completionPercentage: sharedStats.completionPercentage,
+    totalMinutes: sharedStats.totalMinutes,
+    estimatedWeeks: sharedStats.estimatedWeeks,
     completedModules,
     totalModules: modules.length,
     estimatedCompletionDate,
@@ -99,41 +83,54 @@ export function computeDetailsCardStats(
   plan: ClientPlanDetail,
   statuses: Record<string, ProgressStatus>
 ): PlanDetailsCardStats {
-  const modules = plan.modules ?? [];
+  const sharedStats = computeSharedPlanStats(plan, statuses);
 
-  const completedTasks = Object.values(statuses).filter(
-    (status) => status === 'completed'
-  ).length;
+  return {
+    completedTasks: sharedStats.completedTasks,
+    totalTasks: sharedStats.totalTasks,
+    totalMinutes: sharedStats.totalMinutes,
+    completionPercentage: sharedStats.completionPercentage,
+    estimatedWeeks: sharedStats.estimatedWeeks,
+  };
+}
 
-  const totalTasks = modules.reduce(
-    (count, module) => count + (module.tasks?.length ?? 0),
-    0
+function computeSharedPlanStats(
+  plan: ClientPlanDetail,
+  statuses: Record<string, ProgressStatus>
+) {
+  const completedTasks = (plan.modules ?? []).reduce(
+    (count, module) =>
+      count +
+      (module.tasks ?? []).reduce((taskCount, task) => {
+        const nextStatus = statuses[task.id] ?? task.status;
+
+        if (task.status === nextStatus) {
+          return taskCount;
+        }
+
+        if (task.status === 'completed') {
+          return taskCount - 1;
+        }
+
+        return nextStatus === 'completed' ? taskCount + 1 : taskCount;
+      }, 0),
+    plan.completedTasks
   );
-
-  const totalMinutes = modules.reduce(
-    (sum, module) =>
-      sum +
-      (module.tasks ?? []).reduce(
-        (moduleSum, task) => moduleSum + (task.estimatedMinutes ?? 0),
-        0
-      ),
-    0
-  );
-
-  const completionPercentage = totalTasks
-    ? Math.round((completedTasks / totalTasks) * 100)
-    : 0;
-
+  const totalTasks = plan.totalTasks;
+  const totalMinutes = plan.totalMinutes;
   const estimatedWeeks = plan.weeklyHours
     ? Math.ceil(totalMinutes / (plan.weeklyHours * 60))
     : null;
+  const completionPercentage = totalTasks
+    ? Math.round((completedTasks / totalTasks) * 100)
+    : 0;
 
   return {
     completedTasks,
     totalTasks,
     totalMinutes,
-    completionPercentage,
     estimatedWeeks,
+    completionPercentage,
   };
 }
 

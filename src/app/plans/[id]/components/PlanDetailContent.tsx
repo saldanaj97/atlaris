@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
-import { loadPlanForPage } from '@/app/plans/[id]/data';
+import { getPlanForPage } from '@/app/plans/[id]/actions';
 import { getPlanError, isPlanSuccess } from '@/app/plans/[id]/helpers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
-import { mapDetailToClient } from '@/features/plans/detail-mapper';
+import { toClientPlanDetail } from '@/features/plans/read-models/detail';
 import { logger } from '@/lib/logging/logger';
 
 import { PlanDetailPageError } from './Error';
@@ -20,7 +20,7 @@ interface PlanDetailContentProps {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
-  const planResult = await loadPlanForPage(planId);
+  const planResult = await getPlanForPage(planId);
 
   if (!isPlanSuccess(planResult)) {
     const error = getPlanError(planResult);
@@ -54,7 +54,7 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
   }
 
   const planData = planResult.data;
-  const formattedPlanDetails = mapDetailToClient(planData);
+  const formattedPlanDetails = toClientPlanDetail(planData);
   if (!formattedPlanDetails) {
     logger.error(
       {
