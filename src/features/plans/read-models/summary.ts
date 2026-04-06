@@ -165,32 +165,6 @@ export function deriveCanonicalPlanSummaryStatus(
   return 'active';
 }
 
-export function toLightweightPlanSummaries(
-  summaries: PlanSummary[]
-): LightweightPlanSummary[] {
-  return summaries.map(
-    (summary) =>
-      ({
-        id: summary.plan.id,
-        topic: summary.plan.topic,
-        skillLevel: summary.plan.skillLevel,
-        learningStyle: summary.plan.learningStyle,
-        visibility: summary.plan.visibility,
-        origin: summary.plan.origin,
-        generationStatus: summary.plan.generationStatus,
-        createdAt: summary.plan.createdAt,
-        updatedAt: summary.plan.updatedAt,
-        completion: summary.completion,
-        completedTasks: summary.completedTasks,
-        totalTasks: summary.totalTasks,
-        totalMinutes: summary.totalMinutes,
-        completedMinutes: summary.completedMinutes,
-        moduleCount: summary.modules.length,
-        completedModules: summary.completedModules,
-      }) satisfies LightweightPlanSummary
-  );
-}
-
 export function buildLightweightPlanSummaries(params: {
   planRows: LightweightPlanRow[];
   moduleMetricsRows: LightweightModuleMetricsRow[];

@@ -59,7 +59,7 @@ Create a real read-model boundary for signed-in plan experiences so pages and AP
   - AC: Replace the regex guard with a concrete behavioral protection for explicit ownership.
   - AC: Keep and update status/classification-masking tests.
   - AC: Add summary/detail boundary tests and keep security/tenant-isolation coverage intact.
-- [ ] Update transport/docs fallout and validate the slice.
+- [x] Update transport/docs fallout and validate the slice.
   - AC: Update `LightweightPlanSummary` OpenAPI schema if list API shape changes.
   - AC: Run `pnpm lint:changed`, `pnpm test:changed`, and `pnpm type-check`.
   - AC: Verify the implementation still reads as two explicit read-model families, not a generic architecture cleanup.
@@ -104,3 +104,9 @@ Create a real read-model boundary for signed-in plan experiences so pages and AP
   - Tightened `src/app/plans/[id]/helpers.ts` so optimistic status maps layer on top of canonical `completedTasks` instead of re-counting stray status entries as source of truth.
   - Additional focused validation passed: `tests/unit/app/plans/helpers.spec.ts`, `tests/unit/mappers/detailToClient.spec.ts`, `tests/unit/mappers/derivation.spec.ts`, `tests/integration/db/plans.queries.guard.spec.ts`, and `pnpm test:changed`.
   - Validation status is unchanged outside this slice: `pnpm lint:changed` still fails only on unrelated import ordering in `src/app/api/v1/plans/[planId]/retry/route.ts`, `src/app/api/v1/plans/stream/route.ts`, and `src/hooks/useStreamingPlanGeneration.ts`; `pnpm type-check` still fails only on `tests/unit/helpers/smoke/mode-config.spec.ts` missing `NODE_ENV` in a `ProcessEnv` fixture.
+- 2026-04-05: Self-review cleanup pass completed for the remaining plan-read-models findings:
+  - Moved `totalMinutes`, `completedMinutes`, and `completedModules` into the canonical `LearningPlanDetail` builder so `toClientPlanDetail()` no longer recomputes them.
+  - Removed the last transitional seams by deleting `src/lib/db/queries/mappers.ts`, deleting the thin `src/features/plans/read-models/module-detail.ts`, and updating callers/tests to import canonical read-model builders directly.
+  - Simplified the query guard to a direct type-contract assertion that keeps the required `userId` boundary without executing invalid runtime queries.
+  - Tightened the overview helper/module-completion fallback and fixed `getNextTaskName()` so completed summaries no longer show misleading `Next:` copy.
+  - Final scoped validation passed: `pnpm lint:changed`, `pnpm type-check`, `./scripts/test-unit.sh tests/unit/app/plans/helpers.spec.ts`, `./scripts/test-unit.sh tests/unit/mappers/planQueries.spec.ts`, `./scripts/test-unit.sh tests/unit/plans/summary-boundaries.spec.ts`, and `./scripts/test-integration.sh tests/integration/db/plans.queries.guard.spec.ts`.

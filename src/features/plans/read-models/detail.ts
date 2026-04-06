@@ -207,6 +207,33 @@ export function buildLearningPlanDetail(params: {
         .length,
     0
   );
+  const totalMinutes = modules.reduce(
+    (sum, planModule) =>
+      sum +
+      planModule.tasks.reduce(
+        (taskSum, task) => taskSum + (task.estimatedMinutes ?? 0),
+        0
+      ),
+    0
+  );
+  const completedMinutes = modules.reduce(
+    (sum, planModule) =>
+      sum +
+      planModule.tasks.reduce(
+        (taskSum, task) =>
+          task.progress?.status === 'completed'
+            ? taskSum + (task.estimatedMinutes ?? 0)
+            : taskSum,
+        0
+      ),
+    0
+  );
+  const completedModules = modules.filter((planModule) => {
+    return (
+      planModule.tasks.length > 0 &&
+      planModule.tasks.every((task) => task.progress?.status === 'completed')
+    );
+  }).length;
 
   return {
     plan: {
@@ -215,6 +242,9 @@ export function buildLearningPlanDetail(params: {
     },
     totalTasks,
     completedTasks,
+    totalMinutes,
+    completedMinutes,
+    completedModules,
     latestAttempt,
     attemptsCount,
   } satisfies LearningPlanDetail;
@@ -259,34 +289,6 @@ export function toClientPlanDetail(
       };
     });
 
-  const totalMinutes = modules.reduce(
-    (sum, planModule) =>
-      sum +
-      planModule.tasks.reduce(
-        (taskSum, task) => taskSum + (task.estimatedMinutes ?? 0),
-        0
-      ),
-    0
-  );
-  const completedMinutes = modules.reduce(
-    (sum, planModule) =>
-      sum +
-      planModule.tasks.reduce(
-        (taskSum, task) =>
-          task.status === 'completed'
-            ? taskSum + (task.estimatedMinutes ?? 0)
-            : taskSum,
-        0
-      ),
-    0
-  );
-  const completedModules = modules.filter((planModule) => {
-    const tasks = planModule.tasks ?? [];
-    return (
-      tasks.length > 0 && tasks.every((task) => task.status === 'completed')
-    );
-  }).length;
-
   const statusSnapshot = buildPlanDetailStatusSnapshot({
     plan: detail.plan,
     hasModules: modules.length > 0,
@@ -306,9 +308,9 @@ export function toClientPlanDetail(
     modules,
     totalTasks: detail.totalTasks,
     completedTasks: detail.completedTasks,
-    totalMinutes,
-    completedMinutes,
-    completedModules,
+    totalMinutes: detail.totalMinutes,
+    completedMinutes: detail.completedMinutes,
+    completedModules: detail.completedModules,
     status: statusSnapshot.status,
     latestAttempt: detail.latestAttempt
       ? toClientAttempt(detail.latestAttempt)

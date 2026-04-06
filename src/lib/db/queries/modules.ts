@@ -1,5 +1,4 @@
 import { and, asc, countDistinct, eq } from 'drizzle-orm';
-import { normalizeModuleDetail } from '@/features/plans/read-models/module-detail';
 import {
   buildResourcesByTask,
   computeModuleNavItemsFromCounts,
@@ -139,7 +138,7 @@ export async function getModuleDetail(
     })),
   };
 
-  return normalizeModuleDetail({
+  return {
     module: moduleWithTasks,
     planId,
     planTopic: moduleRow.planTopic,
@@ -148,5 +147,5 @@ export async function getModuleDetail(
     nextModuleId,
     previousModulesComplete,
     allModules,
-  });
+  };
 }

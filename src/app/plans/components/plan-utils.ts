@@ -131,15 +131,14 @@ export function getPlanStatus(
 }
 
 /**
- * Retrieves the name of the next task to work on from a plan summary.
+ * Retrieves a best-effort next-step label from a plan summary.
  *
- * This function finds the first incomplete module in the plan and returns its title.
- * Since task-level data is not available in the summary, it returns the module title
- * as a fallback. In a full implementation, this would fetch task details from the API.
+ * Summary data does not include task-level progress, so this helper only returns a
+ * coarse fallback label based on the first available module title.
  *
  * @param summary - The plan summary object containing modules and their completion status.
- * @returns "Not started" if the plan hasn't been started yet, "Next: [Module Title]" for the first incomplete module,
- *          "Continue learning" if no title is available, or "All tasks completed" if all modules are complete.
+ * @returns "Not started" if the plan hasn't been started yet, "Next: [Module Title]" for an in-progress plan,
+ *          "Continue learning" if no title is available, or "All tasks completed" if the summary is complete.
  *
  * @example
  * ```ts
@@ -171,13 +170,14 @@ export function getPlanStatus(
  * ```
  */
 export function getNextTaskName(summary: PlanSummary): string {
-  // Check if plan hasn't been started yet
   if (summary.completedTasks === 0) {
     return 'Not started';
   }
 
-  // Summary models do not include task-level progress yet, so this remains a
-  // first-incomplete-module fallback rather than a true next-task label.
+  if (deriveCanonicalPlanSummaryStatus(summary) === 'completed') {
+    return 'All tasks completed';
+  }
+
   const firstModule = summary.modules[0];
   if (firstModule) {
     return firstModule.title

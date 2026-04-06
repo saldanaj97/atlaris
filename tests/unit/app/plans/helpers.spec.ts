@@ -76,6 +76,16 @@ describe('plan helper stats', () => {
     expect(stats.completionPercentage).toBe(50);
   });
 
+  it('uses fallback task statuses when computing completed modules', () => {
+    const stats = computeOverviewStats(plan, {
+      'task-2': 'completed',
+    });
+
+    expect(stats.completedTasks).toBe(2);
+    expect(stats.completedModules).toBe(1);
+    expect(stats.completionPercentage).toBe(100);
+  });
+
   it('ignores orphaned status entries in detail card stats', () => {
     const stats = computeDetailsCardStats(plan, {
       'task-1': 'completed',

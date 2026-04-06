@@ -43,8 +43,6 @@ export type ProgressMetrics = {
   completedModules: number;
 };
 
-type TaskCountMetrics = Pick<ProgressMetrics, 'completedTasks' | 'totalTasks'>;
-
 export type PlanSummary = ProgressMetrics & {
   plan: LearningPlan;
   modules: Module[];
@@ -69,7 +67,14 @@ export type LightweightPlanSummary = LightweightPlanListFields &
     moduleCount: number;
   };
 
-export type LearningPlanDetail = TaskCountMetrics & {
+export type LearningPlanDetail = Pick<
+  ProgressMetrics,
+  | 'completedTasks'
+  | 'totalTasks'
+  | 'totalMinutes'
+  | 'completedMinutes'
+  | 'completedModules'
+> & {
   plan: LearningPlanWithModules;
   latestAttempt: GenerationAttempt | null;
   attemptsCount: number;

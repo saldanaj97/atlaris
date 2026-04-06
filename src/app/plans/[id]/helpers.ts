@@ -54,7 +54,9 @@ export function computeOverviewStats(
   const completedModules = modules.filter((mod) => {
     const moduleTasks = mod.tasks ?? [];
     if (moduleTasks.length === 0) return false;
-    return moduleTasks.every((task) => statuses[task.id] === 'completed');
+    return moduleTasks.every(
+      (task) => (statuses[task.id] ?? task.status) === 'completed'
+    );
   }).length;
 
   const estimatedCompletionDate = computeEstimatedCompletionDate(

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { findActivePlan } from '@/app/dashboard/components/activity-utils';
-import { getPlanStatus } from '@/app/plans/components/plan-utils';
+import {
+  getNextTaskName,
+  getPlanStatus,
+} from '@/app/plans/components/plan-utils';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
 import { buildPlan, buildPlanSummary } from '../../fixtures/plan-detail';
 
@@ -132,5 +135,14 @@ describe('plan summary boundaries', () => {
     expect(
       findActivePlan([failed, olderGenerating, newerGenerating])?.plan.id
     ).toBe('plan-generating-newer');
+  });
+
+  it('returns completed copy for fully completed summaries', () => {
+    const completed = buildPlanSummary({
+      completion: 1,
+      completedTasks: 3,
+    });
+
+    expect(getNextTaskName(completed)).toBe('All tasks completed');
   });
 });

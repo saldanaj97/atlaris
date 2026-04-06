@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  ProgressStatusRow,
-  SummaryTaskRow,
-} from '@/lib/db/queries/mappers';
+import { buildLearningPlanDetail } from '@/features/plans/read-models/detail';
 import {
-  mapLearningPlanDetail,
-  mapLightweightPlanSummaries,
-  mapPlanSummaries,
-} from '@/lib/db/queries/mappers';
+  buildLightweightPlanSummaries,
+  buildPlanSummaries,
+  type ProgressStatusRow,
+  type SummaryTaskRow,
+} from '@/features/plans/read-models/summary';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
   GenerationAttempt,
@@ -149,7 +147,7 @@ function createGenerationAttempt(
   };
 }
 
-describe('mapPlanSummaries', () => {
+describe('buildPlanSummaries', () => {
   it('should map plans with modules and tasks to summaries', () => {
     const planId = createId('plan');
     const userId = createId('user');
@@ -212,7 +210,7 @@ describe('mapPlanSummaries', () => {
       { taskId: taskId2, status: 'in_progress' },
     ];
 
-    const result = mapPlanSummaries({
+    const result = buildPlanSummaries({
       planRows,
       moduleRows,
       taskRows,
@@ -237,7 +235,7 @@ describe('mapPlanSummaries', () => {
       createLearningPlan({ id: planId, userId, topic: 'Empty Plan' }),
     ];
 
-    const result = mapPlanSummaries({
+    const result = buildPlanSummaries({
       planRows,
       moduleRows: [],
       taskRows: [],
@@ -272,7 +270,7 @@ describe('mapPlanSummaries', () => {
       }),
     ];
 
-    const result = mapPlanSummaries({
+    const result = buildPlanSummaries({
       planRows,
       moduleRows: [],
       taskRows,
@@ -337,7 +335,7 @@ describe('mapPlanSummaries', () => {
       { taskId: taskId3, status: 'in_progress' },
     ];
 
-    const result = mapPlanSummaries({
+    const result = buildPlanSummaries({
       planRows,
       moduleRows,
       taskRows,
@@ -389,7 +387,7 @@ describe('mapPlanSummaries', () => {
       }),
     ];
 
-    const result = mapPlanSummaries({
+    const result = buildPlanSummaries({
       planRows,
       moduleRows: [],
       taskRows,
@@ -404,7 +402,7 @@ describe('mapPlanSummaries', () => {
   });
 });
 
-describe('mapLightweightPlanSummaries', () => {
+describe('buildLightweightPlanSummaries', () => {
   it('aggregates module metrics without requiring full task trees', () => {
     const planId = createId('plan');
     const planRows = [
@@ -421,7 +419,7 @@ describe('mapLightweightPlanSummaries', () => {
       },
     ];
 
-    const result = mapLightweightPlanSummaries({
+    const result = buildLightweightPlanSummaries({
       planRows,
       moduleMetricsRows: [
         {
@@ -455,7 +453,7 @@ describe('mapLightweightPlanSummaries', () => {
   });
 });
 
-describe('mapLearningPlanDetail', () => {
+describe('buildLearningPlanDetail', () => {
   it('should map complete plan detail with all relationships', () => {
     const planId = createId('plan');
     const userId = createId('user');
@@ -534,7 +532,7 @@ describe('mapLearningPlanDetail', () => {
       promptHash: 'hash123',
     });
 
-    const result = mapLearningPlanDetail({
+    const result = buildLearningPlanDetail({
       plan,
       moduleRows,
       taskRows,
@@ -551,6 +549,9 @@ describe('mapLearningPlanDetail', () => {
     expect(result.plan.modules[0].tasks[0].progress?.status).toBe('completed');
     expect(result.totalTasks).toBe(1);
     expect(result.completedTasks).toBe(1);
+    expect(result.totalMinutes).toBe(60);
+    expect(result.completedMinutes).toBe(60);
+    expect(result.completedModules).toBe(1);
     expect(result.latestAttempt).toEqual(latestAttempt);
     expect(result.attemptsCount).toBe(1);
   });
@@ -582,7 +583,7 @@ describe('mapLearningPlanDetail', () => {
       }),
     ];
 
-    const result = mapLearningPlanDetail({
+    const result = buildLearningPlanDetail({
       plan,
       moduleRows,
       taskRows,
@@ -595,6 +596,9 @@ describe('mapLearningPlanDetail', () => {
     expect(result.plan.modules[0].tasks[0].progress).toBeNull();
     expect(result.totalTasks).toBe(1);
     expect(result.completedTasks).toBe(0);
+    expect(result.totalMinutes).toBe(60);
+    expect(result.completedMinutes).toBe(0);
+    expect(result.completedModules).toBe(0);
   });
 
   it('should handle empty modules and tasks', () => {
@@ -606,7 +610,7 @@ describe('mapLearningPlanDetail', () => {
       topic: 'Empty Plan',
     });
 
-    const result = mapLearningPlanDetail({
+    const result = buildLearningPlanDetail({
       plan,
       moduleRows: [],
       taskRows: [],
@@ -620,6 +624,9 @@ describe('mapLearningPlanDetail', () => {
     expect(result.plan.modules).toHaveLength(0);
     expect(result.totalTasks).toBe(0);
     expect(result.completedTasks).toBe(0);
+    expect(result.totalMinutes).toBe(0);
+    expect(result.completedMinutes).toBe(0);
+    expect(result.completedModules).toBe(0);
   });
 
   it('should handle multiple modules with multiple tasks each', () => {
@@ -692,7 +699,7 @@ describe('mapLearningPlanDetail', () => {
       }),
     ];
 
-    const result = mapLearningPlanDetail({
+    const result = buildLearningPlanDetail({
       plan,
       moduleRows,
       taskRows,
@@ -708,6 +715,9 @@ describe('mapLearningPlanDetail', () => {
     expect(result.plan.modules[1].tasks).toHaveLength(1);
     expect(result.totalTasks).toBe(3);
     expect(result.completedTasks).toBe(1);
+    expect(result.totalMinutes).toBe(210);
+    expect(result.completedMinutes).toBe(60);
+    expect(result.completedModules).toBe(0);
   });
 
   it('should preserve attempt information when no modules exist', () => {
@@ -719,7 +729,7 @@ describe('mapLearningPlanDetail', () => {
       topic: 'Failed Plan',
     });
 
-    const result = mapLearningPlanDetail({
+    const result = buildLearningPlanDetail({
       plan,
       moduleRows: [],
       taskRows: [],

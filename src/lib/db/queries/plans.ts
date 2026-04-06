@@ -4,7 +4,11 @@
  */
 
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
-import { buildPlanDetailStatusSnapshot } from '@/features/plans/read-models/detail';
+import {
+  buildLearningPlanDetail,
+  buildPlanDetailStatusSnapshot,
+  type PlanDetailStatusSnapshot,
+} from '@/features/plans/read-models/detail';
 import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
@@ -14,7 +18,6 @@ import {
   fetchTaskProgressRows,
   fetchTaskResourceRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
-import { mapLearningPlanDetail } from '@/lib/db/queries/mappers';
 import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
 import {
@@ -235,6 +238,29 @@ export async function getLightweightPlanSummaries(
   });
 }
 
+async function getLatestPlanAttemptMeta(
+  client: DbClient,
+  planId: string
+): Promise<{
+  attemptsCount: number;
+  latestAttempt: GenerationAttempt | null;
+}> {
+  const rows = await client
+    .select({
+      attempt: generationAttempts,
+      attemptsCount: sql<number>`count(*) over ()`,
+    })
+    .from(generationAttempts)
+    .where(eq(generationAttempts.planId, planId))
+    .orderBy(desc(generationAttempts.createdAt))
+    .limit(1);
+
+  return {
+    attemptsCount: Number(rows[0]?.attemptsCount ?? 0),
+    latestAttempt: rows[0]?.attempt ?? null,
+  };
+}
+
 /**
  * Fetches full plan detail for a single plan: modules, tasks, resources, progress,
  * and generation attempt metadata. Used for plan detail pages.
@@ -262,21 +288,13 @@ export async function getLearningPlanDetail(
   }
 
   // Fire plan-level queries in parallel: modules + generation attempt metadata
-  const [moduleRows, attemptMetaRows] = await Promise.all([
+  const [moduleRows, attemptMeta] = await Promise.all([
     client
       .select()
       .from(modules)
       .where(eq(modules.planId, planId))
       .orderBy(asc(modules.order)),
-    client
-      .select({
-        attempt: generationAttempts,
-        attemptsCount: sql<number>`count(*) over ()`,
-      })
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId))
-      .orderBy(desc(generationAttempts.createdAt))
-      .limit(1),
+    getLatestPlanAttemptMeta(client, planId),
   ]);
 
   const moduleIds = moduleRows.map((module) => module.id);
@@ -301,18 +319,14 @@ export async function getLearningPlanDetail(
     fetchTaskResourceRows({ taskIds, dbClient: client }),
   ]);
 
-  const attemptsCount = Number(attemptMetaRows[0]?.attemptsCount ?? 0);
-  const latestAttemptOrNull: GenerationAttempt | null =
-    attemptMetaRows[0]?.attempt ?? null;
-
-  return mapLearningPlanDetail({
+  return buildLearningPlanDetail({
     plan,
     moduleRows,
     taskRows,
     progressRows,
     resourceRows,
-    latestAttempt: latestAttemptOrNull,
-    attemptsCount,
+    latestAttempt: attemptMeta.latestAttempt,
+    attemptsCount: attemptMeta.attemptsCount,
   });
 }
 
@@ -368,7 +382,7 @@ export async function getPlanStatusForUser(
   planId: string,
   userId: string,
   dbClient?: DbClient
-) {
+): Promise<PlanDetailStatusSnapshot | null> {
   const client = dbClient ?? getDb();
 
   const plan = await selectOwnedPlanById({
@@ -381,30 +395,20 @@ export async function getPlanStatusForUser(
     return null;
   }
 
-  const [moduleRows, attemptMetaRows] = await Promise.all([
+  const [moduleRows, attemptMeta] = await Promise.all([
     client
       .select({ id: modules.id })
       .from(modules)
       .where(eq(modules.planId, planId))
       .limit(1),
-    client
-      .select({
-        classification: generationAttempts.classification,
-        attemptsCount: sql<number>`count(*) over ()`,
-      })
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId))
-      .orderBy(desc(generationAttempts.createdAt))
-      .limit(1),
+    getLatestPlanAttemptMeta(client, planId),
   ]);
 
   return buildPlanDetailStatusSnapshot({
     plan,
     hasModules: moduleRows.length > 0,
-    attemptsCount: Number(attemptMetaRows[0]?.attemptsCount ?? 0),
-    latestAttempt: attemptMetaRows[0]
-      ? { classification: attemptMetaRows[0].classification }
-      : null,
+    attemptsCount: attemptMeta.attemptsCount,
+    latestAttempt: attemptMeta.latestAttempt,
   });
 }
 
