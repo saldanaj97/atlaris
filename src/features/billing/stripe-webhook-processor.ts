@@ -1,8 +1,12 @@
 import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
-import { syncSubscriptionToDb } from '@/features/billing/subscriptions';
 import { stripeWebhookEvents } from '@/lib/db/schema';
 import type { createLogger } from '@/lib/logging/logger';
+import {
+  applyPaymentFailed,
+  applySubscriptionDeleted,
+  applySubscriptionSync,
+} from './account-transitions';
 
 type Logger = ReturnType<typeof createLogger>;
 const STRIPE_SYNC_TIMEOUT_MS = 10_000;
@@ -71,24 +75,7 @@ export async function applyStripeWebhookEvent(
   event: Stripe.Event,
   deps: StripeWebhookSideEffectDeps
 ): Promise<void> {
-  const { stripe: stripeInstance, logger, db, users } = deps;
-
-  const updateUsersByStripeCustomerId = async (
-    customerId: string,
-    set: {
-      subscriptionTier?: 'free';
-      subscriptionStatus?: 'canceled' | 'past_due';
-      stripeSubscriptionId?: null;
-      subscriptionPeriodEnd?: null;
-      cancelAtPeriodEnd?: boolean;
-      updatedAt: Date;
-    }
-  ) =>
-    db
-      .update(users)
-      .set(set)
-      .where(eq(users.stripeCustomerId, customerId))
-      .returning({ userId: users.id });
+  const { stripe: stripeInstance, logger } = deps;
 
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -100,7 +87,7 @@ export async function applyStripeWebhookEvent(
     case 'customer.subscription.updated': {
       const subscription = event.data.object as Stripe.Subscription;
       await withTimeout(STRIPE_SYNC_TIMEOUT_MS, async (signal) =>
-        syncSubscriptionToDb(subscription, stripeInstance, {
+        applySubscriptionSync(subscription, deps, {
           signal,
           timeoutMs: STRIPE_SYNC_TIMEOUT_MS,
         })
@@ -116,73 +103,13 @@ export async function applyStripeWebhookEvent(
 
     case 'customer.subscription.deleted': {
       const subscription = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof subscription.customer === 'string'
-          ? subscription.customer
-          : subscription.customer.id;
-
-      const updatedUsers = await updateUsersByStripeCustomerId(customerId, {
-        subscriptionTier: 'free',
-        subscriptionStatus: 'canceled',
-        stripeSubscriptionId: null,
-        subscriptionPeriodEnd: null,
-        cancelAtPeriodEnd: false,
-        updatedAt: new Date(),
-      });
-
-      if (updatedUsers.length === 0) {
-        logger.warn(
-          {
-            eventId: event.id,
-            customerId,
-            stripeSubscriptionId: subscription.id,
-          },
-          'No user mapping found for customer.subscription.deleted'
-        );
-      } else {
-        logger.info('Stripe subscription deletion webhook processed');
-      }
+      await applySubscriptionDeleted(subscription, deps);
       break;
     }
 
     case 'invoice.payment_failed': {
       const invoice = event.data.object as Stripe.Invoice;
-      const customerId =
-        typeof invoice.customer === 'string'
-          ? invoice.customer
-          : invoice.customer?.id;
-
-      if (customerId) {
-        const updatedUsers = await updateUsersByStripeCustomerId(customerId, {
-          subscriptionStatus: 'past_due',
-          updatedAt: new Date(),
-        });
-
-        if (updatedUsers.length === 0) {
-          logger.warn(
-            {
-              eventId: event.id,
-              customerId,
-              invoiceId: invoice.id,
-            },
-            'No user mapping found for invoice.payment_failed'
-          );
-        } else {
-          logger.info(
-            { customerId },
-            'Stripe invoice.payment_failed webhook processed'
-          );
-        }
-      } else {
-        logger.warn(
-          {
-            eventId: event.id,
-            invoiceId: invoice.id,
-            invoiceCustomer: invoice.customer ?? null,
-          },
-          'No stripeCustomerId available for invoice.payment_failed'
-        );
-      }
+      await applyPaymentFailed(invoice, deps);
       break;
     }
 
@@ -230,7 +157,7 @@ export async function applyStripeWebhookEvent(
 
       try {
         await withTimeout(STRIPE_SYNC_TIMEOUT_MS, async (signal) =>
-          syncSubscriptionToDb(subscription, stripeInstance, {
+          applySubscriptionSync(subscription, deps, {
             signal,
             timeoutMs: STRIPE_SYNC_TIMEOUT_MS,
           })

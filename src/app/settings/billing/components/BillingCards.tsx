@@ -4,9 +4,7 @@ import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionBut
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
-import { getSubscriptionTier } from '@/features/billing/subscriptions';
-import { getUsageSummary } from '@/features/billing/usage-metrics';
+import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { getDb } from '@/lib/db/runtime';
 
@@ -15,22 +13,14 @@ import { getDb } from '@/lib/db/runtime';
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function BillingCards(): Promise<JSX.Element> {
-  const result = await withServerComponentContext(async (user) => {
-    const db = getDb();
-    const [usage, sub] = await Promise.all([
-      getUsageSummary(user.id, db),
-      getSubscriptionTier(user.id, db),
-    ]);
-    return { usage, sub, user };
-  });
+  const snapshot = await withServerComponentContext(async (user) =>
+    getBillingAccountSnapshot(user.id, getDb())
+  );
 
-  if (!result) redirect('/auth/sign-in');
+  if (!snapshot) redirect('/auth/sign-in');
 
-  const { usage, sub, user } = result;
-  const canOpenBillingPortal = canOpenBillingPortalForUser(user);
-
-  const nextBilling = sub.subscriptionPeriodEnd
-    ? new Date(sub.subscriptionPeriodEnd).toLocaleDateString('en-US', {
+  const nextBilling = snapshot.subscriptionPeriodEnd
+    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -45,14 +35,17 @@ export async function BillingCards(): Promise<JSX.Element> {
   };
 
   const plansValue = getUsagePercent(
-    usage.activePlans.current,
-    usage.activePlans.limit
+    snapshot.usage.activePlans.current,
+    snapshot.usage.activePlans.limit
   );
   const regenValue = getUsagePercent(
-    usage.regenerations.used,
-    usage.regenerations.limit
+    snapshot.usage.regenerations.used,
+    snapshot.usage.regenerations.limit
   );
-  const exportValue = getUsagePercent(usage.exports.used, usage.exports.limit);
+  const exportValue = getUsagePercent(
+    snapshot.usage.exports.used,
+    snapshot.usage.exports.limit
+  );
 
   return (
     <>
@@ -64,14 +57,14 @@ export async function BillingCards(): Promise<JSX.Element> {
               Manage your subscription
             </p>
           </div>
-          <Badge>{usage.tier.toUpperCase()}</Badge>
+          <Badge>{snapshot.tier.toUpperCase()}</Badge>
         </div>
 
         <div className="space-y-2 text-sm">
           <div className="flex items-center justify-between">
             <span>Status</span>
             <span className="text-muted-foreground">
-              {sub.subscriptionStatus ?? '—'}
+              {snapshot.subscriptionStatus ?? '—'}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -83,9 +76,9 @@ export async function BillingCards(): Promise<JSX.Element> {
         <div className="mt-4">
           <ManageSubscriptionButton
             className="w-full"
-            canOpenBillingPortal={canOpenBillingPortal}
+            canOpenBillingPortal={snapshot.canOpenBillingPortal}
           />
-          {!canOpenBillingPortal && (
+          {!snapshot.canOpenBillingPortal && (
             <p className="text-muted-foreground mt-2 text-center text-sm">
               Billing features are unavailable.
             </p>
@@ -101,15 +94,15 @@ export async function BillingCards(): Promise<JSX.Element> {
             <div className="mb-1 flex items-center justify-between text-sm">
               <span>Active plans</span>
               <span className="text-muted-foreground">
-                {usage.activePlans.current}/
-                {usage.activePlans.limit === Infinity
+                {snapshot.usage.activePlans.current}/
+                {snapshot.usage.activePlans.limit === Infinity
                   ? '∞'
-                  : usage.activePlans.limit}
+                  : snapshot.usage.activePlans.limit}
               </span>
             </div>
             <Progress
               value={plansValue}
-              aria-label={`Active plans: ${usage.activePlans.current} of ${usage.activePlans.limit === Infinity ? 'unlimited' : usage.activePlans.limit}`}
+              aria-label={`Active plans: ${snapshot.usage.activePlans.current} of ${snapshot.usage.activePlans.limit === Infinity ? 'unlimited' : snapshot.usage.activePlans.limit}`}
             />
           </div>
 
@@ -117,15 +110,15 @@ export async function BillingCards(): Promise<JSX.Element> {
             <div className="mb-1 flex items-center justify-between text-sm">
               <span>Regenerations (monthly)</span>
               <span className="text-muted-foreground">
-                {usage.regenerations.used}/
-                {usage.regenerations.limit === Infinity
+                {snapshot.usage.regenerations.used}/
+                {snapshot.usage.regenerations.limit === Infinity
                   ? '∞'
-                  : usage.regenerations.limit}
+                  : snapshot.usage.regenerations.limit}
               </span>
             </div>
             <Progress
               value={regenValue}
-              aria-label={`Monthly regenerations: ${usage.regenerations.used} of ${usage.regenerations.limit === Infinity ? 'unlimited' : usage.regenerations.limit}`}
+              aria-label={`Monthly regenerations: ${snapshot.usage.regenerations.used} of ${snapshot.usage.regenerations.limit === Infinity ? 'unlimited' : snapshot.usage.regenerations.limit}`}
             />
           </div>
 
@@ -133,13 +126,15 @@ export async function BillingCards(): Promise<JSX.Element> {
             <div className="mb-1 flex items-center justify-between text-sm">
               <span>Exports (monthly)</span>
               <span className="text-muted-foreground">
-                {usage.exports.used}/
-                {usage.exports.limit === Infinity ? '∞' : usage.exports.limit}
+                {snapshot.usage.exports.used}/
+                {snapshot.usage.exports.limit === Infinity
+                  ? '∞'
+                  : snapshot.usage.exports.limit}
               </span>
             </div>
             <Progress
               value={exportValue}
-              aria-label={`Monthly exports: ${usage.exports.used} of ${usage.exports.limit === Infinity ? 'unlimited' : usage.exports.limit}`}
+              aria-label={`Monthly exports: ${snapshot.usage.exports.used} of ${snapshot.usage.exports.limit === Infinity ? 'unlimited' : snapshot.usage.exports.limit}`}
             />
           </div>
         </div>

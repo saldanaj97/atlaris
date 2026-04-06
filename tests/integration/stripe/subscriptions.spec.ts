@@ -2,14 +2,19 @@ import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  applyPaymentFailed,
+  applySubscriptionDeleted,
+  applySubscriptionSync,
+} from '@/features/billing/account-transitions';
+import {
   cancelSubscription,
   createCustomer,
   getCustomerPortalUrl,
   getSubscriptionTier,
-  syncSubscriptionToDb,
 } from '@/features/billing/subscriptions';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import type { Logger } from '@/lib/logging/logger';
 import { ensureUser } from '../../helpers/db';
 import {
   buildStripeCustomerId,
@@ -22,6 +27,20 @@ async function createUniqueUser() {
   const authUserId = buildTestAuthUserId('stripe-subscriptions');
   const email = buildTestEmail(authUserId);
   return ensureUser({ authUserId, email });
+}
+
+function makeTransitionDeps(stripe?: Stripe) {
+  return {
+    stripe,
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    } as unknown as Logger,
+    db,
+    users,
+  };
 }
 
 describe('Subscription Management', () => {
@@ -125,7 +144,7 @@ describe('Subscription Management', () => {
     });
   });
 
-  describe('syncSubscriptionToDb', () => {
+  describe('applySubscriptionSync', () => {
     it('syncs active subscription with starter tier to DB', async () => {
       const userId = await createUniqueUser();
       const { stripeCustomerId } = await markUserAsSubscribed(userId, {
@@ -171,7 +190,10 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      await syncSubscriptionToDb(mockSubscription, mockStripe);
+      await applySubscriptionSync(
+        mockSubscription,
+        makeTransitionDeps(mockStripe)
+      );
 
       // Verify DB updated
       const [user] = await db.select().from(users).where(sql`id = ${userId}`);
@@ -227,7 +249,10 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      await syncSubscriptionToDb(mockSubscription, mockStripe);
+      await applySubscriptionSync(
+        mockSubscription,
+        makeTransitionDeps(mockStripe)
+      );
 
       // Verify DB updated
       const [user] = await db.select().from(users).where(sql`id = ${userId}`);
@@ -281,7 +306,10 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      await syncSubscriptionToDb(mockSubscription, mockStripe);
+      await applySubscriptionSync(
+        mockSubscription,
+        makeTransitionDeps(mockStripe)
+      );
 
       const [user] = await db.select().from(users).where(sql`id = ${userId}`);
 
@@ -331,7 +359,10 @@ describe('Subscription Management', () => {
         },
       } as unknown as Stripe;
 
-      await syncSubscriptionToDb(mockSubscription, mockStripe);
+      await applySubscriptionSync(
+        mockSubscription,
+        makeTransitionDeps(mockStripe)
+      );
 
       const [user] = await db.select().from(users).where(sql`id = ${userId}`);
 
@@ -363,7 +394,7 @@ describe('Subscription Management', () => {
 
       // Should log error but not throw
       await expect(
-        syncSubscriptionToDb(mockSubscription, mockStripe)
+        applySubscriptionSync(mockSubscription, makeTransitionDeps(mockStripe))
       ).resolves.toBeUndefined();
     });
 
@@ -409,7 +440,7 @@ describe('Subscription Management', () => {
       } as unknown as Stripe;
 
       await expect(
-        syncSubscriptionToDb(mockSubscription, mockStripe)
+        applySubscriptionSync(mockSubscription, makeTransitionDeps(mockStripe))
       ).rejects.toThrow(
         'Unable to determine subscription tier for Stripe price price_unreachable'
       );
@@ -420,6 +451,53 @@ describe('Subscription Management', () => {
         buildStripeSubscriptionId(userId, 'original')
       );
       expect(user?.subscriptionPeriodEnd).toEqual(originalPeriodEnd);
+    });
+  });
+
+  describe('extracted transition handlers', () => {
+    it('applySubscriptionDeleted downgrades the mapped user to free', async () => {
+      const userId = await createUniqueUser();
+      const { stripeCustomerId, stripeSubscriptionId } =
+        await markUserAsSubscribed(userId, {
+          subscriptionTier: 'pro',
+          subscriptionStatus: 'active',
+          subscriptionPeriodEnd: new Date('2026-06-01T00:00:00.000Z'),
+        });
+
+      const subscription = {
+        id: stripeSubscriptionId,
+        customer: stripeCustomerId,
+      } as unknown as Stripe.Subscription;
+
+      await applySubscriptionDeleted(subscription, makeTransitionDeps());
+
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
+
+      expect(user?.subscriptionTier).toBe('free');
+      expect(user?.subscriptionStatus).toBe('canceled');
+      expect(user?.stripeSubscriptionId).toBeNull();
+      expect(user?.subscriptionPeriodEnd).toBeNull();
+      expect(user?.cancelAtPeriodEnd).toBe(false);
+    });
+
+    it('applyPaymentFailed marks the mapped user as past_due', async () => {
+      const userId = await createUniqueUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
+      });
+
+      const invoice = {
+        id: 'in_payment_failed',
+        customer: stripeCustomerId,
+      } as unknown as Stripe.Invoice;
+
+      await applyPaymentFailed(invoice, makeTransitionDeps());
+
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
+
+      expect(user?.subscriptionStatus).toBe('past_due');
+      expect(user?.subscriptionTier).toBe('starter');
     });
   });
 
