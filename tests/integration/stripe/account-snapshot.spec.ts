@@ -1,9 +1,14 @@
+import { createTestPlan } from '@tests/fixtures/plans';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
-import { learningPlans, users } from '@/lib/db/schema';
+import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { ensureUser } from '../../helpers/db';
+import {
+  ensureStripeWebhookEvents,
+  ensureUser,
+  resetDbForIntegrationTestFile,
+} from '../../helpers/db';
 import { markUserAsSubscribed } from '../../helpers/subscription';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
@@ -14,8 +19,10 @@ async function createUniqueUser(subscriptionTier?: 'free' | 'starter' | 'pro') {
 }
 
 describe('getBillingAccountSnapshot', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    await resetDbForIntegrationTestFile();
+    await ensureStripeWebhookEvents();
   });
 
   it('returns a canonical snapshot for a free user without billing portal access', async () => {
@@ -43,32 +50,30 @@ describe('getBillingAccountSnapshot', () => {
       subscriptionPeriodEnd: periodEnd,
     });
 
-    await db.insert(learningPlans).values([
-      {
-        userId,
-        topic: 'TypeScript',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-        finalizedAt: new Date(),
-      },
-      {
-        userId,
-        topic: 'React',
-        skillLevel: 'intermediate',
-        weeklyHours: 6,
-        learningStyle: 'practice',
-        visibility: 'private',
-        origin: 'ai',
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-        finalizedAt: new Date(),
-      },
-    ]);
+    await createTestPlan({
+      userId,
+      topic: 'TypeScript',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      visibility: 'private',
+      origin: 'ai',
+      generationStatus: 'ready',
+      isQuotaEligible: true,
+      finalizedAt: new Date(),
+    });
+    await createTestPlan({
+      userId,
+      topic: 'React',
+      skillLevel: 'intermediate',
+      weeklyHours: 6,
+      learningStyle: 'practice',
+      visibility: 'private',
+      origin: 'ai',
+      generationStatus: 'ready',
+      isQuotaEligible: true,
+      finalizedAt: new Date(),
+    });
 
     const snapshot = await getBillingAccountSnapshot(userId, db);
 

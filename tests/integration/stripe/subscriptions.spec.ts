@@ -5,6 +5,7 @@ import {
   applyPaymentFailed,
   applySubscriptionDeleted,
   applySubscriptionSync,
+  type TransitionDeps,
 } from '@/features/billing/account-transitions';
 import {
   cancelSubscription,
@@ -14,7 +15,6 @@ import {
 } from '@/features/billing/subscriptions';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import type { Logger } from '@/lib/logging/logger';
 import { ensureUser } from '../../helpers/db';
 import {
   buildStripeCustomerId,
@@ -29,15 +29,17 @@ async function createUniqueUser() {
   return ensureUser({ authUserId, email });
 }
 
-function makeTransitionDeps(stripe?: Stripe) {
+function makeTransitionDeps(stripe?: Stripe): TransitionDeps {
+  const logger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  } as unknown as TransitionDeps['logger'];
+
   return {
     stripe,
-    logger: {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-    } as unknown as Logger,
+    logger,
     db,
     users,
   };
@@ -498,6 +500,28 @@ describe('Subscription Management', () => {
 
       expect(user?.subscriptionStatus).toBe('past_due');
       expect(user?.subscriptionTier).toBe('starter');
+    });
+
+    it('applySubscriptionDeleted resolves when no mapped user exists', async () => {
+      const subscription = {
+        id: 'sub_no_user',
+        customer: 'cus_nonexistent',
+      } as unknown as Stripe.Subscription;
+
+      await expect(
+        applySubscriptionDeleted(subscription, makeTransitionDeps())
+      ).resolves.toBeUndefined();
+    });
+
+    it('applyPaymentFailed resolves when no mapped user exists', async () => {
+      const invoice = {
+        id: 'in_no_user',
+        customer: 'cus_nonexistent',
+      } as unknown as Stripe.Invoice;
+
+      await expect(
+        applyPaymentFailed(invoice, makeTransitionDeps())
+      ).resolves.toBeUndefined();
     });
   });
 

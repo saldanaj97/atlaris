@@ -15,7 +15,6 @@ import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { appEnv, localProductTestingEnv, stripeEnv } from '@/lib/config/env';
 import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 
 export const runtime = 'nodejs';
@@ -79,7 +78,6 @@ export const GET: PlainHandler = withErrorBoundary(
     await handleStripeWebhookDedupeAndApply(event, {
       stripe,
       logger,
-      db,
       users,
     });
 

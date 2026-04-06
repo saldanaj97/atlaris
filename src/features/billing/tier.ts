@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { getDb } from '@/lib/db/runtime';
+import type { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 
 import { UserNotFoundError } from './errors';
@@ -13,7 +13,7 @@ export type DbClient = ReturnType<typeof getDb>;
  */
 export async function resolveUserTier(
   userId: string,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient
 ): Promise<SubscriptionTier> {
   const [user] = await dbClient
     .select({ subscriptionTier: users.subscriptionTier })

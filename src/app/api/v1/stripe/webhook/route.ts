@@ -7,7 +7,6 @@ import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { appEnv, stripeEnv } from '@/lib/config/env';
 import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import {
   attachRequestIdHeader,
   createRequestContext,
@@ -157,7 +156,6 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
     await handleStripeWebhookDedupeAndApply(event, {
       stripe: stripeInstance,
       logger,
-      db,
       users,
     });
 

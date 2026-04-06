@@ -228,10 +228,11 @@ export async function syncSubscriptionToDb(
 export async function createCustomer(
   userId: string,
   email: string,
-  stripeInstance?: Stripe
+  stripeInstance?: Stripe,
+  dbClient: DbClient = getDb()
 ): Promise<string> {
   const stripe = stripeInstance ?? getStripe();
-  return db.transaction(async (tx) => {
+  return dbClient.transaction(async (tx) => {
     // Serialize customer provisioning per user to avoid duplicate Stripe
     // customers when checkout is triggered concurrently.
     await tx.execute(
@@ -313,9 +314,10 @@ export async function getCustomerPortalUrl(
  */
 export async function cancelSubscription(
   userId: string,
-  stripeInstance?: Stripe
+  stripeInstance?: Stripe,
+  dbClient: DbClient = getDb()
 ): Promise<void> {
-  const [user] = await db
+  const [user] = await dbClient
     .select({ stripeSubscriptionId: users.stripeSubscriptionId })
     .from(users)
     .where(eq(users.id, userId))

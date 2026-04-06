@@ -1,12 +1,13 @@
 import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
-import { stripeWebhookEvents } from '@/lib/db/schema';
-import type { createLogger } from '@/lib/logging/logger';
 import {
   applyPaymentFailed,
   applySubscriptionDeleted,
   applySubscriptionSync,
-} from './account-transitions';
+} from '@/features/billing/account-transitions';
+import { stripeWebhookEvents } from '@/lib/db/schema';
+import { db as serviceRoleDb } from '@/lib/db/service-role';
+import type { createLogger } from '@/lib/logging/logger';
 
 type Logger = ReturnType<typeof createLogger>;
 const STRIPE_SYNC_TIMEOUT_MS = 10_000;
@@ -14,7 +15,7 @@ const STRIPE_SYNC_TIMEOUT_MS = 10_000;
 export type StripeWebhookSideEffectDeps = {
   stripe?: Stripe;
   logger: Logger;
-  db: typeof import('@/lib/db/service-role').db;
+  db?: typeof import('@/lib/db/service-role').db;
   users: typeof import('@/lib/db/schema').users;
 };
 
@@ -76,6 +77,7 @@ export async function applyStripeWebhookEvent(
   deps: StripeWebhookSideEffectDeps
 ): Promise<void> {
   const { stripe: stripeInstance, logger } = deps;
+  const transitionDeps = { ...deps, db: deps.db ?? serviceRoleDb };
 
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -87,7 +89,7 @@ export async function applyStripeWebhookEvent(
     case 'customer.subscription.updated': {
       const subscription = event.data.object as Stripe.Subscription;
       await withTimeout(STRIPE_SYNC_TIMEOUT_MS, async (signal) =>
-        applySubscriptionSync(subscription, deps, {
+        applySubscriptionSync(subscription, transitionDeps, {
           signal,
           timeoutMs: STRIPE_SYNC_TIMEOUT_MS,
         })
@@ -103,13 +105,17 @@ export async function applyStripeWebhookEvent(
 
     case 'customer.subscription.deleted': {
       const subscription = event.data.object as Stripe.Subscription;
-      await applySubscriptionDeleted(subscription, deps);
+      await withTimeout(STRIPE_SYNC_TIMEOUT_MS, async () =>
+        applySubscriptionDeleted(subscription, transitionDeps)
+      );
       break;
     }
 
     case 'invoice.payment_failed': {
       const invoice = event.data.object as Stripe.Invoice;
-      await applyPaymentFailed(invoice, deps);
+      await withTimeout(STRIPE_SYNC_TIMEOUT_MS, async () =>
+        applyPaymentFailed(invoice, transitionDeps)
+      );
       break;
     }
 
@@ -157,7 +163,7 @@ export async function applyStripeWebhookEvent(
 
       try {
         await withTimeout(STRIPE_SYNC_TIMEOUT_MS, async (signal) =>
-          applySubscriptionSync(subscription, deps, {
+          applySubscriptionSync(subscription, transitionDeps, {
             signal,
             timeoutMs: STRIPE_SYNC_TIMEOUT_MS,
           })
@@ -198,7 +204,9 @@ export async function handleStripeWebhookDedupeAndApply(
   event: Stripe.Event,
   deps: StripeWebhookSideEffectDeps
 ): Promise<'inserted' | 'duplicate'> {
-  const [insertedRow] = await deps.db
+  const db = deps.db ?? serviceRoleDb;
+
+  const [insertedRow] = await db
     .insert(stripeWebhookEvents)
     .values({
       eventId: event.id,
@@ -220,7 +228,7 @@ export async function handleStripeWebhookDedupeAndApply(
     await applyStripeWebhookEvent(event, deps);
   } catch (error) {
     try {
-      await deps.db
+      await db
         .delete(stripeWebhookEvents)
         .where(eq(stripeWebhookEvents.eventId, event.id));
     } catch (cleanupError) {
