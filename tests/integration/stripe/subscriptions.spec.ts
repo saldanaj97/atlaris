@@ -482,6 +482,37 @@ describe('Subscription Management', () => {
       expect(user?.cancelAtPeriodEnd).toBe(false);
     });
 
+    it('applySubscriptionDeleted clears stripeSubscriptionId when retaining entitlements', async () => {
+      const userId = await createUniqueUser();
+      const retainedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const currentPeriodEnd = Math.floor(retainedUntil.getTime() / 1000);
+      const { stripeCustomerId, stripeSubscriptionId } =
+        await markUserAsSubscribed(userId, {
+          subscriptionTier: 'pro',
+          subscriptionStatus: 'active',
+          subscriptionPeriodEnd: retainedUntil,
+        });
+
+      const subscription = {
+        id: stripeSubscriptionId,
+        customer: stripeCustomerId,
+        cancel_at_period_end: true,
+        current_period_end: currentPeriodEnd,
+      } as unknown as Stripe.Subscription;
+
+      await applySubscriptionDeleted(subscription, makeTransitionDeps());
+
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
+
+      expect(user?.subscriptionTier).toBe('pro');
+      expect(user?.subscriptionStatus).toBe('canceled');
+      expect(user?.stripeSubscriptionId).toBeNull();
+      expect(user?.subscriptionPeriodEnd).toEqual(
+        new Date(currentPeriodEnd * 1000)
+      );
+      expect(user?.cancelAtPeriodEnd).toBe(true);
+    });
+
     it('applyPaymentFailed marks the mapped user as past_due', async () => {
       const userId = await createUniqueUser();
       const { stripeCustomerId } = await markUserAsSubscribed(userId, {
@@ -500,6 +531,27 @@ describe('Subscription Management', () => {
 
       expect(user?.subscriptionStatus).toBe('past_due');
       expect(user?.subscriptionTier).toBe('starter');
+    });
+
+    it('applyPaymentFailed marks subscribed free-tier users as past_due', async () => {
+      const userId = await createUniqueUser();
+      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+        subscriptionTier: 'free',
+        subscriptionStatus: 'active',
+      });
+
+      const invoice = {
+        id: 'in_payment_failed_free_tier',
+        customer: stripeCustomerId,
+      } as unknown as Stripe.Invoice;
+
+      await applyPaymentFailed(invoice, makeTransitionDeps());
+
+      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
+
+      expect(user?.subscriptionStatus).toBe('past_due');
+      expect(user?.subscriptionTier).toBe('free');
+      expect(user?.stripeSubscriptionId).not.toBeNull();
     });
 
     it('applySubscriptionDeleted resolves when no mapped user exists', async () => {

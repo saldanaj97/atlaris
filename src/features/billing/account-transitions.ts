@@ -26,6 +26,7 @@ type StripeMappedUser = {
   userId: string;
   subscriptionTier: 'free' | 'starter' | 'pro';
   subscriptionStatus: 'active' | 'canceled' | 'past_due' | 'trialing' | null;
+  stripeSubscriptionId: string | null;
 };
 
 async function updateUsersByStripeCustomerId(
@@ -49,6 +50,7 @@ async function getUsersByStripeCustomerId(
       userId: deps.users.id,
       subscriptionTier: deps.users.subscriptionTier,
       subscriptionStatus: deps.users.subscriptionStatus,
+      stripeSubscriptionId: deps.users.stripeSubscriptionId,
     })
     .from(deps.users)
     .where(eq(deps.users.stripeCustomerId, customerId));
@@ -107,6 +109,7 @@ export async function applySubscriptionDeleted(
     shouldRetainEntitlements
       ? {
           subscriptionStatus: 'canceled',
+          stripeSubscriptionId: null,
           subscriptionPeriodEnd: currentPeriodEnd,
           cancelAtPeriodEnd: true,
           updatedAt: new Date(),
@@ -180,7 +183,7 @@ export async function applyPaymentFailed(
 
   const eligibleUsers = mappedUsers.filter(
     (user) =>
-      user.subscriptionTier !== 'free' &&
+      user.stripeSubscriptionId !== null &&
       (user.subscriptionStatus === 'trialing' ||
         user.subscriptionStatus === 'active' ||
         user.subscriptionStatus === 'past_due')
