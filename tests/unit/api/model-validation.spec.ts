@@ -88,11 +88,28 @@ describe('Model Validation (API Layer)', () => {
       });
     });
 
-    it('returns query_override_invalid when query override fails validation', () => {
+    it('falls back to saved preference when query override fails validation', () => {
       const resolution = resolveStreamModelResolution({
         searchParams: new URLSearchParams({ model: 'invalid/model-id' }),
         tier: 'free',
         savedPreferredAiModel: FREE_PERSISTABLE_MODEL,
+      });
+
+      expect(resolution).toEqual({
+        modelOverride: FREE_PERSISTABLE_MODEL,
+        resolutionSource: 'saved_preference',
+        suppliedModel: 'invalid/model-id',
+        validationError: {
+          reason: expect.stringMatching(/invalid_model|tier_denied/),
+        },
+      });
+    });
+
+    it('returns query_override_invalid when override fails and no saved preference exists', () => {
+      const resolution = resolveStreamModelResolution({
+        searchParams: new URLSearchParams({ model: 'invalid/model-id' }),
+        tier: 'free',
+        savedPreferredAiModel: null,
       });
 
       expect(resolution).toEqual({

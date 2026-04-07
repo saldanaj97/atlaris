@@ -6,7 +6,7 @@
 
 - Make sure to always update the test suite when making changes to the codebase, especially for critical paths like plan generation and billing.
 - Make sure to update the docs when making changes to the test suite, especially if you add new patterns or change existing ones.
-- Always run the relevant tests locally before marking any task as done, and use `pnpm test:changed` to verify that you are running the right tests.
+- Always run the relevant tests locally before marking any task as done, and use explicit scoped commands such as `pnpm test:unit:changed` or `pnpm test:integration:changed` to verify you are running the right tests.
 - After running the tests, update the `tests/results/<test-category>/<date>-results.md` file with the results of the tests.
 
 ### Docs
@@ -55,16 +55,20 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 ## Commands
 
 ```bash
-pnpm test                              # Unit tests only
-pnpm test:changed                      # Changed files
-./scripts/test-unit.sh path/to/file    # Single unit test file
-./scripts/test-integration.sh path     # Single integration file (Testcontainers)
+pnpm test                              # Changed unit + integration bundle
+pnpm test:changed                      # Explicit alias for changed unit + integration bundle
+pnpm test:unit                         # Unit tests only
+pnpm test:unit:changed                 # Changed unit tests
+pnpm test:unit:watch                   # Watch unit tests
+pnpm exec tsx scripts/tests/run.ts unit path/to/file    # Single unit test file
+pnpm exec tsx scripts/tests/run.ts integration path     # Single integration file (Testcontainers)
+pnpm test:integration:changed          # Changed integration tests
 pnpm test:integration                  # Full integration suite
 pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
 pnpm test:smoke                        # Playwright smoke: ephemeral DB + anon/auth app servers
 pnpm test:smoke -- --project smoke-anon  # Anon-only smoke iteration
 pnpm test:smoke -- --project smoke-auth  # Auth-only smoke iteration
-pnpm exec tsx scripts/smoke/run.ts --smoke-step=db  # DB-only smoke infra validation
+pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra validation
 ```
 
 **Prerequisite for integration and security tests:** Docker must be running (Testcontainers spins up an ephemeral Postgres automatically).
@@ -73,10 +77,10 @@ pnpm exec tsx scripts/smoke/run.ts --smoke-step=db  # DB-only smoke infra valida
 ## Browser Smoke Ownership
 
 - `pnpm test:smoke` is the only supported entrypoint for committed browser smoke coverage.
-- `scripts/smoke/run.ts` owns the disposable Postgres lifecycle and passes `SMOKE_STATE_FILE` to Playwright.
+- `scripts/tests/smoke/run.ts` owns the disposable Postgres lifecycle and passes `SMOKE_STATE_FILE` to Playwright.
 - Playwright owns both app servers; do not start smoke servers manually for normal runs.
-- `scripts/smoke/start-app.ts` is the only supported launcher for anon/auth smoke modes.
-- Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/smoke/` limited to entrypoints.
+- `scripts/tests/smoke/start-app.ts` is the only supported launcher for anon/auth smoke modes.
+- Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/tests/smoke/` limited to entrypoints.
 - Do not touch `.env.local` for smoke runs. Mode selection comes from launcher-owned process env only.
 - Use Playwright `request` for redirect/proxy assertions and `page` for user journeys.
 - Keep the auth browser lane deterministic. The current local runner stays serial for stability; do not re-enable project-level parallelism casually.
@@ -103,13 +107,13 @@ SKIP_TESTCONTAINERS=true DATABASE_URL="..." pnpm vitest run --project integratio
 - **Use `findBy*` for async UI** — not `waitFor` unless no specific element to wait on
 - **Use `it.each` for many cases** — table-driven tests keep branching logic coverage clean
 - **Make time/randomness injectable** — pass `now`/`clock`/`idGenerator` into functions
-- **Run only what you changed** — `pnpm test:changed` or `./scripts/test-unit.sh path/to/file`
-- **Verify after changes** — run `pnpm test:changed` before marking any task done
+- **Run only what you changed** — `pnpm test:unit:changed`, `pnpm test:integration:changed`, or a targeted script file
+- **Verify after changes** — run the most specific changed-scope command before marking any task done
 - **Use `seedFailedAttemptsForDurableWindow()`** for durable generation-window tests (from `tests/fixtures/attempts.ts`)
 
 ### Don't
 
-- **Don't run `pnpm test:all` or full integration suite locally** — target specific files
+- **Don't run `pnpm test:all` or the full integration suite locally** — target specific files
 - **Don't use `vi.mock()` when you can inject** — frequent module mocking signals bad boundaries
 - **Don't hardcode IDs** — always use factories or `createId()`
 - **Don't assert on CSS classes** — no `toHaveClass('flex')`, use roles/labels/attributes instead

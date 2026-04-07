@@ -1,6 +1,7 @@
 /**
- * Ephemeral smoke DB connection state passed from `scripts/smoke/run.ts` to child
- * processes (launchers, later Playwright). Stored outside the repo under `os.tmpdir()`.
+ * Ephemeral smoke DB connection state passed from `scripts/tests/smoke/run.ts`
+ * to child processes (launchers, later Playwright). Stored outside the repo
+ * under `os.tmpdir()`.
  *
  * We do **not** include `ALLOW_DB_TRUNCATE` here: that flag is for Vitest integration
  * helpers that truncate tables. Browser smoke does not use those helpers.

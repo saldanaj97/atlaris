@@ -8,6 +8,7 @@ Quick reference for all common development commands.
 
 ```bash
 pnpm dev              # Next.js dev server (Turbopack enabled)
+pnpm dev:full         # Start local dev Postgres, then run the Next.js dev server
 pnpm dev:stripe       # Stripe webhook listener for local testing
 ```
 
@@ -23,12 +24,12 @@ pnpm start            # Start production server
 ### Linting & Formatting
 
 ```bash
-pnpm lint             # Biome: format + lint + import assist (check only)
-pnpm lint:fix         # Biome: apply safe fixes (format + lint + organize imports)
-pnpm lint:changed     # Biome check only files changed vs base branch (see scripts/biome-changed.sh)
-pnpm format           # Biome formatter only
-pnpm format:changed   # Format only files changed vs base branch
-pnpm type-check       # TypeScript type checking only
+pnpm check:full         # Run repo-wide read-only quality checks in parallel (lint + type)
+pnpm check:lint         # Biome: format + lint + import assist (check only)
+pnpm check:lint:fix     # Biome: apply safe fixes (format + lint + organize imports)
+pnpm check:lint:changed # Biome check only files changed vs base branch (see scripts/biome-changed.sh)
+pnpm check:format       # Biome formatter only (writes files)
+pnpm check:type         # TypeScript type checking only
 ```
 
 ## Database (Drizzle)
@@ -44,8 +45,8 @@ pnpm db:push          # Push schema directly to database
 See [local-database.md](./local-database.md) for ports, env vars, and Neon vs local.
 
 ```bash
-pnpm db:dev:up        # Start Postgres 17 (atlaris_dev on localhost:54331)
-pnpm db:dev:down      # Stop container
+pnpm db:dev:start     # Start Postgres 17 (atlaris_dev on localhost:54331)
+pnpm db:dev:stop      # Stop container
 pnpm db:dev:reset     # Remove volume and recreate container
 pnpm db:dev:bootstrap # Extensions, roles, migrations, RLS grants (localhost only)
 ```
@@ -57,23 +58,29 @@ See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehen
 ### Quick Reference
 
 ```bash
-pnpm test                # Run unit tests
-pnpm test:changed        # Run unit tests for changed files only
-pnpm test:watch          # Run unit tests in watch mode
-pnpm test:integration    # Run integration tests for changed files
-pnpm test:all            # Run full suite (rare; avoid unless explicitly needed)
+pnpm test                     # Run changed unit + integration tests
+pnpm test:changed             # Explicit alias for the changed unit + integration bundle
+pnpm test:unit                # Run all unit tests
+pnpm test:unit:changed        # Run unit tests for changed files only
+pnpm test:unit:watch          # Run unit tests in watch mode
+pnpm test:integration:changed # Run integration tests for changed files
+pnpm test:integration         # Run the full integration suite (heavier; use sparingly)
+pnpm test:security            # Run RLS policy tests
+pnpm test:smoke               # Run Playwright smoke coverage
+pnpm test:all                 # Run lint, typecheck, unit, integration, and security suites
 ```
 
 ### Direct Script Usage
 
-The test scripts can also be invoked directly with additional options:
+The unified test runner can also be invoked directly with additional options:
 
 ```bash
-./scripts/test-unit.sh              # Run all unit tests
-./scripts/test-unit.sh --changed    # Run tests for changed files
-./scripts/test-unit.sh --watch      # Watch mode
-./scripts/test-integration.sh tests/integration/path/to/file.spec.ts  # Targeted integration file
-./scripts/full-test-suite.sh        # Full test suite
+pnpm exec tsx scripts/tests/run.ts changed                                # Changed unit + integration bundle
+pnpm exec tsx scripts/tests/run.ts unit                                   # Run all unit tests
+pnpm exec tsx scripts/tests/run.ts unit --changed                         # Run tests for changed files
+pnpm exec tsx scripts/tests/run.ts unit --watch                           # Watch mode
+pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts  # Targeted integration file
+pnpm exec tsx scripts/tests/run.ts all --with-e2e                         # Full suite (+ optional E2E)
 ```
 
 ## Local API Testing Guidance

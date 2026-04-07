@@ -79,10 +79,8 @@ jobs:
             git status --short src/lib/db/migrations/
             exit 1
           fi
-      - name: Run Biome check
-        run: pnpm lint
-      - name: Run TypeScript type check
-        run: pnpm type-check
+      - name: Run full lint and type check
+        run: pnpm check:full
 
   vulnerability-scan:
     name: Security Audit

@@ -24,14 +24,14 @@ export default defineConfig({
   fullyParallel: false,
   webServer: [
     {
-      command: 'pnpm exec tsx scripts/smoke/start-app.ts --mode=anon',
+      command: 'pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=anon',
       gracefulShutdown: SMOKE_SERVER_SHUTDOWN,
       reuseExistingServer: false,
       timeout: SMOKE_SERVER_TIMEOUT_MS,
       url: SMOKE_ANON_BASE_URL,
     },
     {
-      command: 'pnpm exec tsx scripts/smoke/start-app.ts --mode=auth',
+      command: 'pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=auth',
       gracefulShutdown: SMOKE_SERVER_SHUTDOWN,
       reuseExistingServer: false,
       timeout: SMOKE_SERVER_TIMEOUT_MS,

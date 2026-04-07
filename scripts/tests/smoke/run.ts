@@ -2,7 +2,7 @@
  * Top-level smoke orchestration: one ephemeral Postgres per invocation,
  * migrations + seed, temp state file, guaranteed teardown.
  *
- * Infra-only: `SMOKE_INFRA_ONLY=1` or `pnpm exec tsx scripts/smoke/run.ts --smoke-step=db`
+ * Infra-only: `SMOKE_INFRA_ONLY=1` or `pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db`
  * Full: run DB lifecycle, then invoke Playwright with launcher-owned app servers.
  */
 import type { ChildProcess } from 'node:child_process';

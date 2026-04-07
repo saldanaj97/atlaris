@@ -8,10 +8,10 @@
 # Setup:
 #   1. Start the app locally with DEV_AUTH_USER_ID set in .env.local
 #   2. Make sure that auth user has a corresponding users row in the database
-#   3. Run: ./scripts/test-plan-generation.sh
+#   3. Run: ./scripts/tests/plan-generation/run.sh
 #
 # Usage:
-#   ./scripts/test-plan-generation.sh [command] [options]
+#   ./scripts/tests/plan-generation/run.sh [command] [options]
 #
 # Commands:
 #   stream    - Stream generate a plan (default)
@@ -28,10 +28,10 @@
 #   --plan-id UUID       - Plan ID (required for status command)
 #
 # Examples:
-#   ./scripts/test-plan-generation.sh stream --topic "Learn React hooks"
-#   ./scripts/test-plan-generation.sh stream --topic "Python basics" --skill beginner --hours 5
-#   ./scripts/test-plan-generation.sh status --plan-id "abc-123-def"
-#   ./scripts/test-plan-generation.sh list
+#   ./scripts/tests/plan-generation/run.sh stream --topic "Learn React hooks"
+#   ./scripts/tests/plan-generation/run.sh stream --topic "Python basics" --skill beginner --hours 5
+#   ./scripts/tests/plan-generation/run.sh status --plan-id "abc-123-def"
+#   ./scripts/tests/plan-generation/run.sh list
 # =============================================================================
 
 set -e
@@ -45,7 +45,7 @@ NC='\033[0m' # No Color
 
 # Get script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 
 # Configuration
 BASE_URL="${BASE_URL:-http://localhost:3000}"

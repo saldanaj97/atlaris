@@ -20,7 +20,7 @@ Historical references that still matter:
 - For committed browser smoke: run `pnpm test:smoke`
 - For anonymous-only smoke iteration: run `pnpm test:smoke -- --project smoke-anon`
 - For authenticated-only smoke iteration: run `pnpm test:smoke -- --project smoke-auth`
-- For disposable DB smoke infra only: run `pnpm exec tsx scripts/smoke/run.ts --smoke-step=db`
+- For disposable DB smoke infra only: run `pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db`
 - For legacy manual comparison or ad hoc investigation: use the historical notes here only as background, not as the current testing standard
 
 Older revisions of this file contained the pre-Playwright manual checklist. That content is intentionally no longer maintained here. If you need it, inspect git history instead of treating this file as active guidance.

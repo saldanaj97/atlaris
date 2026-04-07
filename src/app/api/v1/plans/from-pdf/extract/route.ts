@@ -90,65 +90,6 @@ function parseFormDataToObject(formData: FormData): Record<string, unknown> {
   return result;
 }
 
-type StreamSizeCheckResult =
-  | { ok: true; body: ArrayBuffer }
-  | { ok: false; code: 'FILE_TOO_LARGE'; status: 413 }
-  | { ok: false; code: 'MISSING_CONTENT_LENGTH'; status: 411 }
-  | { ok: false; code: 'INVALID_FILE'; status: 400 };
-
-/**
- * Streams the request body and counts bytes against maxBytes.
- * Aborts and returns error as soon as limit is exceeded.
- * Never buffers more than maxBytes; prevents memory exhaustion from oversized uploads.
- */
-async function streamedSizeCheck(
-  req: Request,
-  maxBytes: number
-): Promise<StreamSizeCheckResult> {
-  const contentType = req.headers.get('content-type');
-  if (!contentType?.toLowerCase().includes('multipart/form-data')) {
-    return { ok: false, code: 'INVALID_FILE', status: 400 };
-  }
-
-  const reader = req.body?.getReader();
-  if (!reader) {
-    return { ok: false, code: 'MISSING_CONTENT_LENGTH', status: 411 };
-  }
-
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.length;
-      if (total > maxBytes) {
-        await reader.cancel();
-        return { ok: false, code: 'FILE_TOO_LARGE', status: 413 };
-      }
-      chunks.push(value);
-    }
-  } catch (err) {
-    logger.error(
-      {
-        error: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack : undefined,
-      },
-      'extract route: invalid request body'
-    );
-    return { ok: false, code: 'INVALID_FILE', status: 400 };
-  }
-
-  const merged = new Uint8Array(total);
-  let offset = 0;
-  for (const c of chunks) {
-    merged.set(c, offset);
-    offset += c.length;
-  }
-  return { ok: true, body: merged.buffer };
-}
-
 type PdfExtractHandlerCtx = { req: Request; userId: string; user: DbUser };
 
 async function postHandlerImpl(
@@ -160,23 +101,38 @@ async function postHandlerImpl(
   // The rest of the handler uses user.id for throttling, tier checks, and logging.
   const { req, userId, user } = ctx;
 
-  // Streamed body size check before any form parsing.
-  // Counts bytes as they arrive; aborts and returns 413 as soon as limit exceeded.
-  // Prevents memory exhaustion from oversized or forged Content-Length uploads.
-  const streamSizeResult = await streamedSizeCheck(req, ABSOLUTE_MAX_PDF_BYTES);
-  if (!streamSizeResult.ok) {
+  const contentType = req.headers.get('content-type');
+  if (!contentType?.toLowerCase().includes('multipart/form-data')) {
+    return toExtractionError('Invalid request body.', 400);
+  }
+
+  if (!req.body) {
     const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
-    const message =
-      streamSizeResult.code === 'FILE_TOO_LARGE'
-        ? `Request body exceeds absolute maximum of ${maxMb}MB.`
-        : streamSizeResult.code === 'MISSING_CONTENT_LENGTH'
-          ? `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`
-          : 'Invalid request body.';
     return errorResponse(
-      message,
-      streamSizeResult.code,
-      streamSizeResult.status
+      `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`,
+      'MISSING_CONTENT_LENGTH',
+      411
     );
+  }
+
+  // When Content-Length is present (typical for browser multipart uploads), reject
+  // oversized bodies before buffering the full multipart parse. Clients without a
+  // length (e.g. some fetch/FormData implementations) skip this gate; file.size is
+  // still enforced below via checkPdfSizeLimit and tier limits (≤ absolute cap).
+  const contentLengthHeader = req.headers.get('content-length')?.trim();
+  if (contentLengthHeader) {
+    const contentLength = Number.parseInt(contentLengthHeader, 10);
+    if (!Number.isFinite(contentLength) || contentLength < 0) {
+      return toExtractionError('Invalid Content-Length header.', 400);
+    }
+    if (contentLength > ABSOLUTE_MAX_PDF_BYTES) {
+      const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
+      return errorResponse(
+        `Request body exceeds absolute maximum of ${maxMb}MB.`,
+        'FILE_TOO_LARGE',
+        413
+      );
+    }
   }
 
   const throttle = acquirePdfExtractionSlot(user.id);
@@ -198,11 +154,7 @@ async function postHandlerImpl(
 
   let formData: FormData;
   try {
-    formData = await new Request(req.url, {
-      method: req.method,
-      headers: { 'content-type': req.headers.get('content-type') ?? '' },
-      body: streamSizeResult.body,
-    }).formData();
+    formData = await req.formData();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
@@ -212,8 +164,15 @@ async function postHandlerImpl(
     );
     return toExtractionError('Invalid multipart form data.', 400);
   }
-  const formObject = parseFormDataToObject(formData);
+  const rawFile = formData.get('file');
+  if (rawFile instanceof File && rawFile.type === '') {
+    logger.warn(
+      { fileName: rawFile.name },
+      'PDF upload with empty Content-Type (client omitted MIME type)'
+    );
+  }
 
+  const formObject = parseFormDataToObject(formData);
   const parseResult = pdfExtractionFormDataSchema.safeParse(formObject);
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0];
@@ -250,7 +209,6 @@ async function postHandlerImpl(
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-
   if (!isPdfMagicBytes(buffer)) {
     return toExtractionError('Invalid PDF file format.', 415);
   }

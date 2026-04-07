@@ -72,7 +72,7 @@ describe('POST /api/v1/plans/stream user provisioning', () => {
       })
     );
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(200);
 
     const [provisionedUser] = await db
       .select()

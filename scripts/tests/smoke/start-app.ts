@@ -1,10 +1,10 @@
 /**
  * Start `next dev --turbopack` with launcher-owned env (anon or auth).
- * Requires `SMOKE_STATE_FILE` pointing at JSON from `scripts/smoke/run.ts`.
+ * Requires `SMOKE_STATE_FILE` pointing at JSON from `scripts/tests/smoke/run.ts`.
  *
  * Usage:
- *   SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/smoke/start-app.ts --mode=anon
- *   SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/smoke/start-app.ts --mode=auth
+ *   SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=anon
+ *   SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=auth
  */
 import { spawn } from 'node:child_process';
 

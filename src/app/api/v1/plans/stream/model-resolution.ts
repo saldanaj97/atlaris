@@ -26,6 +26,7 @@ export function resolveStreamModelResolution({
   savedPreferredAiModel,
 }: ResolveStreamModelResolutionInput): StreamModelResolution {
   const suppliedModel = searchParams.get('model') ?? undefined;
+  let validationError: { reason: string } | undefined;
 
   if (suppliedModel !== undefined) {
     const validation = validateModelForTier(tier, suppliedModel);
@@ -41,11 +42,8 @@ export function resolveStreamModelResolution({
       { tier, suppliedModel, reason: validation.reason },
       'Invalid or tier-denied model override supplied; ignoring query override'
     );
-    return {
-      resolutionSource: 'query_override_invalid',
-      suppliedModel,
-      validationError: { reason: validation.reason },
-    };
+
+    validationError = { reason: validation.reason };
   }
 
   const savedModel = resolveSavedPreferenceForSettings(
@@ -57,11 +55,14 @@ export function resolveStreamModelResolution({
       modelOverride: savedModel,
       resolutionSource: 'saved_preference',
       suppliedModel,
+      validationError,
     };
   }
 
   return {
-    resolutionSource: 'tier_default',
+    resolutionSource:
+      validationError !== undefined ? 'query_override_invalid' : 'tier_default',
     suppliedModel,
+    validationError,
   };
 }

@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-# Read-only: same scope as pnpm lint:changed (branch-aware --since in scripts/biome-changed.sh).
-# Pre-commit already applies fixes on staged files; this catches drift vs base (rebases, partial commits).
-echo "Running Biome check on files changed vs base branch..."
-./scripts/biome-changed.sh check --no-errors-on-unmatched
+# Read-only double check before push.
+# This hook must fail on lint/type issues and should never rewrite files.
+# Any auto-fix behavior belongs in pre-commit, not pre-push.
+echo "Running full lint + typecheck before push..."
+pnpm check:full

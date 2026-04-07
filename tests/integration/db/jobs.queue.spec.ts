@@ -1,6 +1,6 @@
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser, resetDbForIntegrationTestFile } from '@tests/helpers/db';
 import { and, eq, lt } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import {
   completeJob,
@@ -50,6 +50,15 @@ async function createPlanFixture(key: string): Promise<PlanFixture> {
   const email = `${authUserId}@example.com`;
   const userId = await ensureUser({ authUserId, email });
 
+  const plan = await createPlanForUser(userId, key);
+
+  return { plan, userId, authUserId };
+}
+
+async function createPlanForUser(
+  userId: string,
+  key: string
+): Promise<InsertedPlan> {
   const [plan] = await db
     .insert(learningPlans)
     .values({
@@ -67,10 +76,14 @@ async function createPlanFixture(key: string): Promise<PlanFixture> {
     throw new Error('Failed to insert plan fixture');
   }
 
-  return { plan, userId, authUserId };
+  return plan;
 }
 
 describe('Job queue service', () => {
+  beforeEach(async () => {
+    await resetDbForIntegrationTestFile();
+  });
+
   it('enqueues a job with expected defaults', async () => {
     const { plan, userId } = await createPlanFixture('defaults');
     const payload = buildPlanRegenerationPayload(plan, {
@@ -97,20 +110,27 @@ describe('Job queue service', () => {
   });
 
   it('locks a single pending job per worker request', async () => {
-    const { plan, userId } = await createPlanFixture('lock');
+    const { plan: firstPlan, userId: firstUserId } =
+      await createPlanFixture('lock-a');
+    const { plan: secondPlan, userId: secondUserId } =
+      await createPlanFixture('lock-b');
 
     const jobIds = await Promise.all([
       enqueueJob(
         JOB_TYPE,
-        plan.id,
-        userId,
-        buildPlanRegenerationPayload(plan, { overrides: { topic: 'job-1' } })
+        firstPlan.id,
+        firstUserId,
+        buildPlanRegenerationPayload(firstPlan, {
+          overrides: { topic: 'job-1' },
+        })
       ),
       enqueueJob(
         JOB_TYPE,
-        plan.id,
-        userId,
-        buildPlanRegenerationPayload(plan, { overrides: { topic: 'job-2' } })
+        secondPlan.id,
+        secondUserId,
+        buildPlanRegenerationPayload(secondPlan, {
+          overrides: { topic: 'job-2' },
+        })
       ),
     ]);
 
@@ -143,38 +163,47 @@ describe('Job queue service', () => {
   });
 
   it('respects priority then FIFO ordering for getNextJob', async () => {
-    const { plan, userId } = await createPlanFixture('priority');
+    const { plan: lowPlan, userId: lowUserId } =
+      await createPlanFixture('priority-low');
+    const { plan: midAPlan, userId: midAUserId } =
+      await createPlanFixture('priority-mid-a');
+    const { plan: midBPlan, userId: midBUserId } =
+      await createPlanFixture('priority-mid-b');
+    const { plan: highPlan, userId: highUserId } =
+      await createPlanFixture('priority-high');
 
     const low = await enqueueJob(
       JOB_TYPE,
-      plan.id,
-      userId,
-      buildPlanRegenerationPayload(plan, { overrides: { topic: 'low-order' } }),
+      lowPlan.id,
+      lowUserId,
+      buildPlanRegenerationPayload(lowPlan, {
+        overrides: { topic: 'low-order' },
+      }),
       0
     );
     const midA = await enqueueJob(
       JOB_TYPE,
-      plan.id,
-      userId,
-      buildPlanRegenerationPayload(plan, {
+      midAPlan.id,
+      midAUserId,
+      buildPlanRegenerationPayload(midAPlan, {
         overrides: { topic: 'mid-a-order' },
       }),
       5
     );
     const midB = await enqueueJob(
       JOB_TYPE,
-      plan.id,
-      userId,
-      buildPlanRegenerationPayload(plan, {
+      midBPlan.id,
+      midBUserId,
+      buildPlanRegenerationPayload(midBPlan, {
         overrides: { topic: 'mid-b-order' },
       }),
       5
     );
     const high = await enqueueJob(
       JOB_TYPE,
-      plan.id,
-      userId,
-      buildPlanRegenerationPayload(plan, {
+      highPlan.id,
+      highUserId,
+      buildPlanRegenerationPayload(highPlan, {
         overrides: { topic: 'high-order' },
       }),
       10
@@ -381,6 +410,8 @@ describe('Job queue service', () => {
 
   it('counts user jobs within the provided window', async () => {
     const { plan, userId } = await createPlanFixture('rate');
+    const olderPlan = await createPlanForUser(userId, 'rate-older');
+    const oldestPlan = await createPlanForUser(userId, 'rate-oldest');
 
     const jobRecent = await enqueueJob(
       JOB_TYPE,
@@ -390,15 +421,19 @@ describe('Job queue service', () => {
     );
     const jobOlder = await enqueueJob(
       JOB_TYPE,
-      plan.id,
+      olderPlan.id,
       userId,
-      buildPlanRegenerationPayload(plan, { overrides: { topic: 'window-2' } })
+      buildPlanRegenerationPayload(olderPlan, {
+        overrides: { topic: 'window-2' },
+      })
     );
     const jobOldest = await enqueueJob(
       JOB_TYPE,
-      plan.id,
+      oldestPlan.id,
       userId,
-      buildPlanRegenerationPayload(plan, { overrides: { topic: 'window-3' } })
+      buildPlanRegenerationPayload(oldestPlan, {
+        overrides: { topic: 'window-3' },
+      })
     );
 
     const now = new Date();

@@ -22,19 +22,19 @@ pnpm test:smoke -- --project smoke-auth
 Low-level smoke debugging stays available without extra package scripts:
 
 ```bash
-pnpm exec tsx scripts/smoke/run.ts --smoke-step=db
-SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/smoke/start-app.ts --mode=anon
-SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/smoke/start-app.ts --mode=auth
+pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db
+SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=anon
+SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=auth
 ```
 
 ## Ownership
 
-- `scripts/smoke/run.ts`
+- `scripts/tests/smoke/run.ts`
   - starts and tears down the disposable Postgres container
   - runs migrations, grants, and local smoke seeding
   - writes `SMOKE_STATE_FILE`
   - invokes Playwright
-- `scripts/smoke/start-app.ts`
+- `scripts/tests/smoke/start-app.ts`
   - starts `next dev --turbopack` in `anon` or `auth` mode
   - injects the smoke-owned env layer
 - `tests/helpers/smoke/`
@@ -99,9 +99,9 @@ Do not start smoke servers manually for normal runs. Let Playwright own them.
 
 - Use `pnpm test:smoke -- --project smoke-auth` when iterating on authenticated flows.
 - Use `pnpm test:smoke -- --project smoke-anon` when iterating on redirect and anonymous-access coverage.
-- Use `pnpm exec tsx scripts/smoke/run.ts --smoke-step=db` when you only need to prove the disposable Postgres lifecycle, migrations, grants, and smoke seeding.
+- Use `pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db` when you only need to prove the disposable Postgres lifecycle, migrations, grants, and smoke seeding.
 - Use Playwright traces and failure screenshots before touching selectors.
-- Use `scripts/smoke/start-app.ts` directly only when debugging launcher behavior and only with a valid `SMOKE_STATE_FILE` from the smoke wrapper.
+- Use `scripts/tests/smoke/start-app.ts` directly only when debugging launcher behavior and only with a valid `SMOKE_STATE_FILE` from the smoke wrapper.
 - If startup fails, verify Docker is running and Playwright Chromium is installed:
 
 ```bash

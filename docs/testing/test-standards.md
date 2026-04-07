@@ -252,13 +252,13 @@ E2E tests are expensive and flaky by default. Keep them few and meaningful.
 
 ### Repo-specific local smoke rules
 
-This repo’s committed browser smoke lane uses Playwright plus a disposable Postgres owned by `scripts/smoke/run.ts`.
+This repo’s committed browser smoke lane uses Playwright plus a disposable Postgres owned by `scripts/tests/smoke/run.ts`.
 
 Canonical reference: [playwright-local-smoke.md](/Users/juansaldana/Dev/Projects/atlaris/docs/testing/playwright-local-smoke.md)
 
 - Run browser smoke through `pnpm test:smoke`, not raw `playwright test`, unless you are intentionally debugging with a valid `SMOKE_STATE_FILE`.
-- Do not mutate `.env.local` for smoke tests. Anon/auth mode comes from `scripts/smoke/start-app.ts`.
-- Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/smoke/` reserved for executable entrypoints.
+- Do not mutate `.env.local` for smoke tests. Anon/auth mode comes from `scripts/tests/smoke/start-app.ts`.
+- Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/tests/smoke/` reserved for executable entrypoints.
 - Keep smoke coverage narrow and launch-blocker focused. Browser smoke is not the place for broad matrix coverage.
 - Use Playwright `request` for proxy/redirect assertions and `page` for user flows.
 - The current local smoke runner stays serial for stability. Within the shared authenticated journey, keep execution serial and deterministic.

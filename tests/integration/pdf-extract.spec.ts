@@ -1,3 +1,5 @@
+// @vitest-environment node
+import { File as NodeFile } from 'node:buffer';
 import {
   afterEach,
   beforeEach,
@@ -32,49 +34,16 @@ let mockGetPdfPageCountFromBuffer: Mock<
 let mockScanBufferForMalware: Mock<PdfExtractRouteDeps['scanBufferForMalware']>;
 let postHandler: ReturnType<typeof createPostHandler>;
 
-const createMultipartPdfBody = (
-  fileBytes: Buffer,
-  fileName: string
-): { body: ArrayBuffer; boundary: string } => {
-  const boundary = '----vitest-pdf-boundary';
-
-  const prefix = [
-    `--${boundary}`,
-    `Content-Disposition: form-data; name="file"; filename="${fileName}"`,
-    'Content-Type: application/pdf',
-    '',
-    '',
-  ].join('\r\n');
-
-  const suffix = `\r\n--${boundary}--\r\n`;
-
-  const bytes = Buffer.concat([
-    Buffer.from(prefix, 'utf8'),
-    fileBytes,
-    Buffer.from(suffix, 'utf8'),
-  ]);
-
-  const body = bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength
-  );
-
-  return {
-    body,
-    boundary,
-  };
-};
-
 const createPdfRequest = (): Request => {
-  const { body, boundary } = createMultipartPdfBody(PDF_BYTES, PDF_FILE_NAME);
+  const formData = new FormData();
+  formData.set(
+    'file',
+    new NodeFile([PDF_BYTES], PDF_FILE_NAME, { type: 'application/pdf' })
+  );
 
   return new Request(BASE_URL, {
     method: 'POST',
-    headers: {
-      'content-type': `multipart/form-data; boundary=${boundary}`,
-      'content-length': String(body.byteLength),
-    },
-    body,
+    body: formData,
   });
 };
 

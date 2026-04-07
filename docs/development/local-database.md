@@ -10,7 +10,7 @@ After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODU
 
 ### Manual smoke checklist (local product testing)
 
-1. `pnpm db:dev:up` then `pnpm db:dev:bootstrap`.
+1. `pnpm db:dev:start` then `pnpm db:dev:bootstrap`.
 2. `.env.local`: `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seed auth id, optional `STRIPE_LOCAL_MODE=true`, `STRIPE_SECRET_KEY` optional when local Stripe mode is on.
 3. `pnpm dev` — open protected routes (e.g. dashboard); header should show authenticated nav for the seeded user.
 4. Pricing / checkout: with `STRIPE_LOCAL_MODE`, complete checkout redirects through `/api/v1/stripe/local/complete-checkout` and subscription state updates via webhook processor.
@@ -31,7 +31,7 @@ After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODU
 1. Start Postgres:
 
    ```bash
-   pnpm db:dev:up
+   pnpm db:dev:start
    ```
 
 2. Bootstrap once (extensions, roles, `auth.jwt`, migrations, RLS grants):
@@ -71,8 +71,8 @@ For local dev, set all three to the **same** string.
 
 | Script               | Command                                                                 |
 | -------------------- | ----------------------------------------------------------------------- |
-| Start dev DB         | `pnpm db:dev:up`                                                        |
-| Stop dev DB          | `pnpm db:dev:down`                                                      |
+| Start dev DB         | `pnpm db:dev:start`                                                     |
+| Stop dev DB          | `pnpm db:dev:stop`                                                      |
 | Reset volume + start | `pnpm db:dev:reset`                                                     |
 | First-time bootstrap | `pnpm db:dev:bootstrap`                                                 |
 
@@ -98,7 +98,7 @@ If you force integration tests against a non-test database, truncation will fail
 
 ## Troubleshooting
 
-- **Connection refused** — Run `pnpm db:dev:up` and wait for the healthcheck; ensure port **54331** is free.
+- **Connection refused** — Run `pnpm db:dev:start` and wait for the healthcheck; ensure port **54331** is free.
 - **Port conflict** — Stop another Postgres on 54331 or change the host port in `docker-compose.dev.yml`.
 - **`pnpm db:dev:bootstrap` rejects host** — `DATABASE_URL` points at a non-localhost host; use a local URL or unset `DATABASE_URL` to use the default.
 

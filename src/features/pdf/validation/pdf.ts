@@ -64,6 +64,10 @@ export const pdfUploadFileSchema = z
   })
   .refine((file) => file.size > 0, 'PDF file is empty.')
   .refine(
+    (file) => file.type.length > 0,
+    'PDF Content-Type is required (expected application/pdf).'
+  )
+  .refine(
     (file) => file.type === 'application/pdf',
     'Only PDF files are supported.'
   );
