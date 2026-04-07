@@ -1,5 +1,4 @@
 // @vitest-environment node
-import { File as NodeFile } from 'node:buffer';
 import {
   afterEach,
   beforeEach,
@@ -38,7 +37,8 @@ const createPdfRequest = (): Request => {
   const formData = new FormData();
   formData.set(
     'file',
-    new NodeFile([PDF_BYTES], PDF_FILE_NAME, { type: 'application/pdf' })
+    new Blob([PDF_BYTES], { type: 'application/pdf' }),
+    PDF_FILE_NAME
   );
 
   return new Request(BASE_URL, {
