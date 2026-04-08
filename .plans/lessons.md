@@ -23,3 +23,11 @@
 **Rule:** Before turning helper-selection rules into planning assumptions or durable learnings, verify external call sites and classify exports as active, internal-only, escape hatch, or dead code.
 
 **Impact:** This keeps planning artifacts focused on the real migration surface and prevents stale docs from preserving already-rejected usage patterns.
+
+## 2026-04-07: Respect explicit env-file boundaries during infra migrations
+
+**Context:** During the native dev Postgres migration, the user explicitly allowed updates to `.env.example` but said not to touch `.env.local`. The repo still needed env guidance aligned with the real variable names.
+
+**Rule:** When a user sets boundaries around environment files, treat `.env.local` as user-owned unless they explicitly ask for edits. Update shared references like `.env.example` and report exact `.env.local` changes separately at the end.
+
+**Impact:** This preserves local secrets and machine-specific settings while still delivering a complete migration path.

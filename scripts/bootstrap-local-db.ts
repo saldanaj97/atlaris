@@ -52,7 +52,7 @@ async function assertConnection(connectionUrl: string): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `Could not connect to Postgres at the given DATABASE_URL. Is Docker up? (${message})`
+      `Could not connect to Postgres at the given DATABASE_URL. Is Postgres running? (${message})`
     );
   } finally {
     await sql.end();

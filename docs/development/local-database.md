@@ -19,22 +19,51 @@ After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODU
 7. PDF: set `AV_PROVIDER=mock` and `AV_MOCK_SCENARIO` for provider outcomes (heuristic pass still runs first).
 8. Real Neon Auth sessions, real third-party OAuth, and hosted Stripe remain staging; see [environment.md](./environment.md) for boundaries.
 
-## Ports and compose files
+## Ports and local services
 
-| Port  | Compose file              | Database name   | Purpose                          |
+| Port  | Service                   | Database name   | Purpose                          |
 | ----- | ------------------------- | --------------- | -------------------------------- |
 | 54330 | `docker-compose.test.yml` | `atlaris_test`  | Manual / CI-style test Postgres  |
-| 54331 | `docker-compose.dev.yml`  | `atlaris_dev`   | Long-lived local **dev** DB      |
+| 54331 | Homebrew PostgreSQL 17    | `atlaris_dev`   | Long-lived local **dev** DB      |
 
 ## Quick start
 
-1. Start Postgres:
+1. Install and configure PostgreSQL 17 once:
+
+   ```bash
+   brew install postgresql@17
+   brew services start postgresql@17
+
+   PG17_BIN="$(brew --prefix postgresql@17)/bin"
+   "$PG17_BIN"/psql postgres -c "ALTER SYSTEM SET listen_addresses = 'localhost';"
+   "$PG17_BIN"/psql postgres -c "ALTER SYSTEM SET port = '54331';"
+   brew services restart postgresql@17
+
+   "$PG17_BIN"/psql -p 54331 postgres <<'SQL'
+   DO $$
+   BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+       CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres';
+     ELSE
+       ALTER ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres';
+     END IF;
+   END
+   $$;
+
+   SELECT 'CREATE DATABASE atlaris_dev OWNER postgres'
+   WHERE NOT EXISTS (
+     SELECT FROM pg_database WHERE datname = 'atlaris_dev'
+   )\gexec
+   SQL
+   ```
+
+2. Start Postgres for development:
 
    ```bash
    pnpm db:dev:start
    ```
 
-2. Bootstrap once (extensions, roles, `auth.jwt`, migrations, RLS grants):
+3. Bootstrap once (extensions, roles, `auth.jwt`, migrations, RLS grants):
 
    ```bash
    pnpm db:dev:bootstrap
@@ -42,7 +71,7 @@ After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODU
 
    Default URL: `postgresql://postgres:postgres@localhost:54331/atlaris_dev`. Override with `DATABASE_URL` if needed.
 
-3. Point the app at local Postgres (same value for all three — see [Drizzle URL order](#drizzle-migration-url-order)):
+4. Point the app at local Postgres (same value for all three — see [Drizzle URL order](#drizzle-migration-url-order)):
 
    ```env
    DATABASE_URL=postgresql://postgres:postgres@localhost:54331/atlaris_dev
@@ -50,12 +79,12 @@ After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODU
    DATABASE_URL_UNPOOLED=postgresql://postgres:postgres@localhost:54331/atlaris_dev
    ```
 
-4. Run migrations anytime with `pnpm db:migrate` (uses `.env.local` via `drizzle.config.ts`).
+5. Run migrations anytime with `pnpm db:migrate` (uses `.env.local` via `drizzle.config.ts`).
 
 ### Clean slate
 
 ```bash
-pnpm db:dev:reset   # removes volume, recreates container
+pnpm db:dev:reset   # drops and recreates atlaris_dev
 pnpm db:dev:bootstrap
 ```
 
@@ -73,7 +102,7 @@ For local dev, set all three to the **same** string.
 | -------------------- | ----------------------------------------------------------------------- |
 | Start dev DB         | `pnpm db:dev:start`                                                     |
 | Stop dev DB          | `pnpm db:dev:stop`                                                      |
-| Reset volume + start | `pnpm db:dev:reset`                                                     |
+| Reset dev DB         | `pnpm db:dev:reset`                                                     |
 | First-time bootstrap | `pnpm db:dev:bootstrap`                                                 |
 
 `bootstrap-local-db` refuses non-localhost hosts so it cannot accidentally run against Neon if misconfigured.
@@ -84,7 +113,7 @@ If `pnpm db:migrate` against Neon fails with **compute-time quota** errors, that
 
 ## Optional: Neon Local (not the default)
 
-Official **Neon Local** (`neondatabase/neon_local`) still talks to **Neon cloud** and needs API keys; it does **not** replace a fully offline Postgres for migration dry-runs. The default local path is **Postgres-only** (`docker-compose.dev.yml`).
+Official **Neon Local** (`neondatabase/neon_local`) still talks to **Neon cloud** and needs API keys; it does **not** replace a fully offline Postgres for migration dry-runs. The default local path is native Postgres on `localhost:54331`.
 
 ### Future: serverless proxy
 
@@ -98,8 +127,8 @@ If you force integration tests against a non-test database, truncation will fail
 
 ## Troubleshooting
 
-- **Connection refused** — Run `pnpm db:dev:start` and wait for the healthcheck; ensure port **54331** is free.
-- **Port conflict** — Stop another Postgres on 54331 or change the host port in `docker-compose.dev.yml`.
+- **Connection refused** — Run `pnpm db:dev:start` and ensure PostgreSQL 17 is running on port **54331**.
+- **Port conflict** — Stop another Postgres on 54331 or update your local PostgreSQL 17 port configuration.
 - **`pnpm db:dev:bootstrap` rejects host** — `DATABASE_URL` points at a non-localhost host; use a local URL or unset `DATABASE_URL` to use the default.
 
 ---
