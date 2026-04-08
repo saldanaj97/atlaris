@@ -32,11 +32,13 @@ pnpm install
 pnpm dev
 ```
 
-If you want to bring up the local dev database and app together:
+If you want to bring up the native local dev database and app together:
 
 ```bash
 pnpm dev:full
 ```
+
+Use `pnpm db:dev:start` and `pnpm db:dev:stop` to control the local PostgreSQL 17 service directly, and `pnpm db:dev:reset` if you want to recreate `atlaris_dev`.
 
 Open `http://localhost:3000` in your browser.
 
