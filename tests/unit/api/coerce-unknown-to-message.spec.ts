@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { coerceUnknownToMessage } from '@/lib/api/coerce-unknown-to-message';
+import { coerceUnknownToMessage as coerceFromCore } from '@/lib/errors/normalize-unknown';
 
 describe('coerceUnknownToMessage', () => {
+  it('api re-export points at the same implementation as normalize-unknown', () => {
+    expect(coerceUnknownToMessage).toBe(coerceFromCore);
+  });
+
   describe('primitives', () => {
     it('passes through a string unchanged', () => {
       const result = coerceUnknownToMessage('hello');
@@ -95,9 +100,9 @@ describe('coerceUnknownToMessage', () => {
   });
 
   describe('edge cases', () => {
-    it('returns fallback for BigInt (JSON.stringify throws)', () => {
+    it('stringifies BigInt values instead of falling back', () => {
       const result = coerceUnknownToMessage(BigInt(42));
-      expect(result).toBe('Unserializable thrown value');
+      expect(result).toBe('42');
       expect(typeof result).toBe('string');
     });
 

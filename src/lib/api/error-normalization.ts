@@ -84,7 +84,7 @@ export function toAttemptError(error: unknown): AttemptErrorResult {
     return result;
   }
 
-  return { message: 'Unknown retry generation error' };
+  return { message: coerceUnknownToMessage(error) };
 }
 
 export function stringifyThrownValue(value: unknown): string {

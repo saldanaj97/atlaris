@@ -1,3 +1,8 @@
+import {
+  safeStringifyUnknown,
+  unknownThrownCore,
+} from '@/lib/errors/normalize-unknown';
+
 export function isAbortError(error: unknown): boolean {
   if (
     typeof error === 'object' &&
@@ -31,59 +36,65 @@ export function normalizeThrown(
     return value;
   }
 
-  if (
+  const core = unknownThrownCore(value);
+  const hasObjectStringMessage =
     typeof value === 'object' &&
     value !== null &&
     'message' in value &&
-    typeof value.message === 'string'
-  ) {
-    if ('name' in value && typeof value.name === 'string') {
-      return { message: value.message, name: value.name };
-    }
-    return { message: value.message };
+    typeof (value as { message?: unknown }).message === 'string';
+
+  if (hasObjectStringMessage) {
+    return core.name
+      ? { message: core.primaryMessage, name: core.name }
+      : { message: core.primaryMessage };
   }
 
-  return { message: String(value) };
+  return { message: core.primaryMessage };
 }
 
 export function getLoggableErrorDetails(error: unknown): {
   errorMessage: string;
   errorStack?: string;
 } {
-  if (error instanceof Error) {
+  const core = unknownThrownCore(error);
+  const hasObjectStringMessage =
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string';
+
+  if (core.errorInstance || hasObjectStringMessage) {
     return {
-      errorMessage: error.message,
-      ...(error.stack ? { errorStack: error.stack } : {}),
+      errorMessage: core.primaryMessage,
+      ...(core.stack ? { errorStack: core.stack } : {}),
     };
   }
 
   if (typeof error === 'object' && error !== null) {
-    const errorMessage =
-      'message' in error && typeof error.message === 'string'
-        ? error.message
-        : undefined;
-    const errorStack =
-      'stack' in error && typeof error.stack === 'string'
-        ? error.stack
-        : undefined;
+    const hasMessage =
+      'message' in error &&
+      typeof (error as { message?: unknown }).message === 'string';
+    const hasStack =
+      'stack' in error &&
+      typeof (error as { stack?: unknown }).stack === 'string';
 
-    if (errorMessage || errorStack) {
+    if (hasMessage || hasStack) {
+      // Preserve stack-only objects as error-like logs without forcing the
+      // serializer fallback message into observability surfaces.
       return {
-        errorMessage: errorMessage ?? 'Unknown error object',
-        ...(errorStack ? { errorStack } : {}),
+        errorMessage: hasMessage
+          ? (error as { message: string }).message
+          : 'Unknown error object',
+        ...(hasStack ? { errorStack: (error as { stack: string }).stack } : {}),
       };
     }
 
-    try {
-      return {
-        errorMessage: JSON.stringify(error) ?? 'Unknown error object',
-      };
-    } catch {
-      return { errorMessage: 'Unserializable error object' };
-    }
+    return {
+      errorMessage: safeStringifyUnknown(error),
+    };
   }
 
-  return { errorMessage: String(error) };
+  return { errorMessage: core.primaryMessage };
 }
 
 /**
