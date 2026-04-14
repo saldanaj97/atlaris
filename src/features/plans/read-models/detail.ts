@@ -1,4 +1,5 @@
 import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
+import { computeCompletionMetricsFromNestedModules } from '@/features/plans/read-models/completion-metrics';
 import { derivePlanStatus } from '@/features/plans/status';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import { logger } from '@/lib/logging/logger';
@@ -196,44 +197,13 @@ export function buildLearningPlanDetail(params: {
       ),
     }));
 
-  const totalTasks = modules.reduce(
-    (count, planModule) => count + planModule.tasks.length,
-    0
-  );
-  const completedTasks = modules.reduce(
-    (count, planModule) =>
-      count +
-      planModule.tasks.filter((task) => task.progress?.status === 'completed')
-        .length,
-    0
-  );
-  const totalMinutes = modules.reduce(
-    (sum, planModule) =>
-      sum +
-      planModule.tasks.reduce(
-        (taskSum, task) => taskSum + (task.estimatedMinutes ?? 0),
-        0
-      ),
-    0
-  );
-  const completedMinutes = modules.reduce(
-    (sum, planModule) =>
-      sum +
-      planModule.tasks.reduce(
-        (taskSum, task) =>
-          task.progress?.status === 'completed'
-            ? taskSum + (task.estimatedMinutes ?? 0)
-            : taskSum,
-        0
-      ),
-    0
-  );
-  const completedModules = modules.filter((planModule) => {
-    return (
-      planModule.tasks.length > 0 &&
-      planModule.tasks.every((task) => task.progress?.status === 'completed')
-    );
-  }).length;
+  const {
+    totalTasks,
+    completedTasks,
+    totalMinutes,
+    completedMinutes,
+    completedModules,
+  } = computeCompletionMetricsFromNestedModules(modules);
 
   return {
     plan: {

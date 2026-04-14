@@ -1,3 +1,8 @@
+import {
+  accumulateLightweightModuleMetricsRowInPlace,
+  computeTaskRowCompletionMetrics,
+  countCompletedModulesFromFlatTasks,
+} from '@/features/plans/read-models/completion-metrics';
 import type {
   LearningPlan,
   LightweightPlanSummary,
@@ -95,29 +100,17 @@ export function buildPlanSummaries(params: {
     const tasksForPlan = tasksByPlan.get(plan.id) ?? [];
     const modulesForPlan = modulesByPlan.get(plan.id) ?? [];
 
-    const completedTasks = tasksForPlan.filter(
-      (task) => progressByTask.get(task.id)?.status === 'completed'
-    ).length;
-    const totalTasks = tasksForPlan.length;
+    const { totalTasks, completedTasks, totalMinutes, completedMinutes } =
+      computeTaskRowCompletionMetrics({
+        tasks: tasksForPlan,
+        progressByTaskId: progressByTask,
+      });
     const completion = totalTasks ? completedTasks / totalTasks : 0;
-    const totalMinutes = tasksForPlan.reduce(
-      (sum, task) => sum + (task.estimatedMinutes ?? 0),
-      0
-    );
-    const completedMinutes = tasksForPlan.reduce((sum, task) => {
-      const status = progressByTask.get(task.id)?.status;
-      return status === 'completed' ? sum + (task.estimatedMinutes ?? 0) : sum;
-    }, 0);
-    const completedModules = modulesForPlan.filter((planModule) => {
-      const moduleTasks = tasksByModule.get(planModule.id) ?? [];
-
-      return (
-        moduleTasks.length > 0 &&
-        moduleTasks.every(
-          (task) => progressByTask.get(task.id)?.status === 'completed'
-        )
-      );
-    }).length;
+    const completedModules = countCompletedModulesFromFlatTasks({
+      modules: modulesForPlan,
+      tasksByModuleId: tasksByModule,
+      progressByTaskId: progressByTask,
+    });
 
     return {
       plan,
@@ -170,15 +163,7 @@ export function buildLightweightPlanSummaries(params: {
       ...DEFAULT_LIGHTWEIGHT_PLAN_METRICS,
     };
 
-    current.completedTasks += row.completedTasks;
-    current.totalTasks += row.totalTasks;
-    current.totalMinutes += row.totalMinutes;
-    current.completedMinutes += row.completedMinutes;
-    current.moduleCount += 1;
-
-    if (row.totalTasks > 0 && row.totalTasks === row.completedTasks) {
-      current.completedModules += 1;
-    }
+    accumulateLightweightModuleMetricsRowInPlace(current, row);
 
     acc.set(row.planId, current);
     return acc;

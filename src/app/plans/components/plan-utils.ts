@@ -1,23 +1,13 @@
-import {
-  differenceInDays,
-  differenceInHours,
-  differenceInMinutes,
-  parseISO,
-} from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import type { PlanStatus } from '@/app/plans/types';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
+import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 export const ALL_TASKS_COMPLETED_LABEL = 'All tasks completed';
 export const CONTINUE_LEARNING_LABEL = 'Continue learning';
 
 type DateInput = Date | string | null | undefined;
-
-function toValidDate(value: DateInput): Date | null {
-  if (!value) return null;
-  const parsed = value instanceof Date ? value : parseISO(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
 
 /**
  * Converts a date to a human-readable relative time string.
@@ -47,30 +37,14 @@ export function getRelativeTime(
   date: DateInput,
   referenceDate: DateInput
 ): string {
-  const targetDate = toValidDate(date);
+  const target = toValidDate(date);
   const reference = toValidDate(referenceDate);
-
-  if (!targetDate || !reference) return 'Recently';
-
-  const rawMinutes = differenceInMinutes(reference, targetDate);
-  const rawHours = differenceInHours(reference, targetDate);
-  const rawDays = differenceInDays(reference, targetDate);
-
-  // Clamp to non-negative so future dates degrade to "Just now"
-  const diffMinutes = Math.max(0, rawMinutes);
-  const diffHours = Math.max(0, rawHours);
-  const diffDays = Math.max(0, rawDays);
-
-  if (diffMinutes < 60) {
-    return diffMinutes <= 1 ? 'Just now' : `${diffMinutes}m ago`;
-  }
-  if (diffHours < 24) {
-    return diffHours === 1 ? '1 hour ago' : `${diffHours}h ago`;
-  }
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
+  if (!target || !reference) return 'Recently';
+  return formatRelativePast(target, {
+    referenceDate: reference,
+    style: 'compact',
+    invalidLabel: 'Recently',
+  });
 }
 
 /**

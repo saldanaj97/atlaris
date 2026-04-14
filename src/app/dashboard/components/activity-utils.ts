@@ -1,32 +1,18 @@
 import { CheckCircle2, Clock, FileText, Video, Zap } from 'lucide-react';
 import { formatMinutes } from '@/features/plans/formatters';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
+import {
+  formatRelativePast,
+  formatScheduledEventRelative,
+} from '@/lib/date/relative-time';
 import type { PlanSummary } from '@/shared/types/db.types';
 import type { ActivityItem, ScheduledEvent } from '../types';
 
 /**
  * Formats a Date object into a human-readable "time ago" string.
  */
-export function formatTimeAgo(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60)
-    return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
-  if (diffHours < 24)
-    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
-  }
-  const months = Math.floor(diffDays / 30);
-  return `${months} month${months === 1 ? '' : 's'} ago`;
+export function formatTimeAgo(date: Date, now: Date = new Date()): string {
+  return formatRelativePast(date, { referenceDate: now, style: 'verbose' });
 }
 
 /**
@@ -127,30 +113,8 @@ export function findActivePlan(
   return rankedSummaries[0]?.summary;
 }
 
-export function getRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = date.getTime() - now.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffHours < 1) {
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    return `In ${diffMinutes} min`;
-  }
-
-  if (diffHours < 24) {
-    return `In ${diffHours}h`;
-  }
-
-  if (diffDays === 1) {
-    return `Tomorrow at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
-  }
-
-  if (diffDays < 7) {
-    return `In ${diffDays} days`;
-  }
-
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+export function getRelativeTime(date: Date, now?: Date): string {
+  return formatScheduledEventRelative(date, now ?? new Date());
 }
 
 export function getEventTypeConfig(type: ScheduledEvent['type']) {
