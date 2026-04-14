@@ -2,6 +2,7 @@ import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { RouterGenerationProvider } from '@/features/ai/providers/router';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
+import { getServerOptional } from '@/lib/config/env/shared';
 import { logger } from '@/lib/logging/logger';
 
 function parseMockSeed(): number | undefined {
@@ -17,7 +18,11 @@ function shouldUseMock(): boolean {
   // Explicit non-mock provider always overrides mock defaults
   if (provider) return false;
   // No explicit provider — fall back to environment defaults
-  if (appEnv.isTest) return aiEnv.useMock !== 'false';
+  if (appEnv.isTest) {
+    return getServerOptional('AI_USE_MOCK') === undefined
+      ? true
+      : aiEnv.useMock;
+  }
   if (appEnv.isDevelopment) return true;
   return false;
 }
@@ -54,7 +59,7 @@ export function getGenerationProviderWithModel(
  * Uses the default model when no specific model is requested.
  *
  * Prioritizes an explicit `AI_PROVIDER`, prefers mock providers in development and most test scenarios
- * (unless `AI_USE_MOCK` is explicitly `"false"`), and defaults to a router-based provider for production.
+ * (unless `AI_USE_MOCK` is explicitly false), and defaults to a router-based provider for production.
  * If `MOCK_GENERATION_SEED` contains a valid integer, that value is passed as `deterministicSeed` to the mock provider.
  *
  * @returns An instance implementing `AiPlanGenerationProvider` — either a `MockGenerationProvider` (possibly configured with a deterministic seed) or a `RouterGenerationProvider`

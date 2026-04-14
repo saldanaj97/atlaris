@@ -268,12 +268,12 @@ describe('Environment Configuration', () => {
     describe('useMock', () => {
       it('should return value when AI_USE_MOCK is set', () => {
         process.env.AI_USE_MOCK = 'true';
-        expect(aiEnv.useMock).toBe('true');
+        expect(aiEnv.useMock).toBe(true);
       });
 
-      it('should return undefined when not set', () => {
+      it('should return false when not set', () => {
         delete process.env.AI_USE_MOCK;
-        expect(aiEnv.useMock).toBeUndefined();
+        expect(aiEnv.useMock).toBe(false);
       });
     });
   });
@@ -334,6 +334,19 @@ describe('Environment Configuration', () => {
     it('treats empty strings as missing and falls back', () => {
       expect(toBoolean('', true)).toBe(true);
       expect(toBoolean('   ', false)).toBe(false);
+    });
+  });
+
+  describe('barrel surface', () => {
+    it('re-exports core config symbols from @/lib/config/env', async () => {
+      const env = await import('@/lib/config/env');
+      expect(env.appEnv).toBeDefined();
+      expect(env.databaseEnv).toBeDefined();
+      expect(env.stripeEnv).toBeDefined();
+      expect(env.aiEnv).toBeDefined();
+      expect(env.ATTEMPT_CAP).toBeDefined();
+      expect(env.setDevAuthUserIdForTests).toBeTypeOf('function');
+      expect(env.clearDevAuthUserIdForTests).toBeTypeOf('function');
     });
   });
 });

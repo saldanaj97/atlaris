@@ -57,7 +57,7 @@ describe('scanner-factory', () => {
 
     expect(() => createScanProvider()).toThrow(EnvValidationError);
     expect(() => createScanProvider()).toThrow(
-      'Unsupported AV_PROVIDER: unknown-provider'
+      'AV_PROVIDER must be one of: none, metadefender, mock'
     );
   });
 

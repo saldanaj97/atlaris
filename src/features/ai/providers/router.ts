@@ -117,7 +117,7 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     }
 
     // Fall back to environment-based mock behavior (only in non-production)
-    const useMock = aiEnv.useMock === 'true' && !appEnv.isProduction;
+    const useMock = aiEnv.useMock && !appEnv.isProduction;
 
     if (useMock) {
       this.providers = [() => new MockGenerationProvider()];
