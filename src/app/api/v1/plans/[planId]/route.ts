@@ -1,5 +1,4 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
-import { toClientPlanDetail } from '@/features/plans/read-models/detail';
 import { getPlanDetailForRead } from '@/features/plans/read-service';
 import { removePlanForWrite } from '@/features/plans/write-service';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
@@ -41,17 +40,9 @@ export const GET = withErrorBoundary(
       });
     }
 
-    const clientDetail = toClientPlanDetail(detail);
-    if (!clientDetail) {
-      throw new NotFoundError('Learning plan not found.', undefined, {
-        planId,
-        userId: user.id,
-      });
-    }
-
     logger.debug({ planId, userId: user.id }, 'Fetched learning plan detail');
 
-    return json(clientDetail);
+    return json(detail);
   })
 );
 

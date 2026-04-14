@@ -11,10 +11,10 @@ const APP_ROOT = join(SRC_ROOT, 'app');
 const PLANS_QUERIES_MODULE = '@/lib/db/queries/plans';
 
 const BLOCKED_PLAN_READ_EXPORTS = new Set([
-  'getLearningPlanDetail',
-  'getLightweightPlanSummaries',
-  'getPlanStatusForUser',
-  'getPlanSummariesForUser',
+  'getLearningPlanDetailRows',
+  'getLightweightPlanSummaryRowsForUser',
+  'getPlanStatusRowsForUser',
+  'getPlanSummaryRowsForUser',
   'getPlanSummaryCount',
 ]);
 
@@ -163,13 +163,13 @@ describe('import boundary helpers', () => {
   it('captures re-export declarations', () => {
     expect(
       parseImports(
-        "export { getLearningPlanDetail } from '@/lib/db/queries/plans';",
+        "export { getLearningPlanDetailRows } from '@/lib/db/queries/plans';",
         join(APP_ROOT, 'plans/reexports.ts')
       )
     ).toEqual([
       {
         specifier: '@/lib/db/queries/plans',
-        named: new Set(['getLearningPlanDetail']),
+        named: new Set(['getLearningPlanDetailRows']),
         isNamespace: false,
         isExportAll: false,
       },

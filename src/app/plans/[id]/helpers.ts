@@ -12,10 +12,7 @@ import type {
   ClientModule,
   ClientPlanDetail,
 } from '@/shared/types/client.types';
-import type {
-  LearningPlanDetail,
-  ProgressStatus,
-} from '@/shared/types/db.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 import type {
   PlanAccessError,
   PlanAccessErrorCode,
@@ -169,7 +166,7 @@ function computeTags(
 /**
  * Helper to create success result
  */
-export function planSuccess(data: LearningPlanDetail): PlanAccessResult {
+export function planSuccess(data: ClientPlanDetail): PlanAccessResult {
   return { success: true, data };
 }
 
@@ -205,7 +202,7 @@ export function scheduleError(
  */
 export function isPlanSuccess(
   result: PlanAccessResult
-): result is { success: true; data: LearningPlanDetail } {
+): result is { success: true; data: ClientPlanDetail } {
   return result.success === true;
 }
 

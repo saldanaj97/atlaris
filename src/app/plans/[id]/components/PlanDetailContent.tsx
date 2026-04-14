@@ -5,7 +5,6 @@ import { getPlanError, isPlanSuccess } from '@/app/plans/[id]/helpers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
-import { toClientPlanDetail } from '@/features/plans/read-models/detail';
 import { logger } from '@/lib/logging/logger';
 
 import { PlanDetailPageError } from './Error';
@@ -53,21 +52,8 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
     }
   }
 
-  const planData = planResult.data;
-  const formattedPlanDetails = toClientPlanDetail(planData);
-  if (!formattedPlanDetails) {
-    logger.error(
-      {
-        planId,
-        hasPlanData: !!planData,
-        planDataKeys: planData ? Object.keys(planData) : [],
-      },
-      'Failed to map plan details to client format'
-    );
-    return <PlanDetailPageError message="Failed to load plan details." />;
-  }
-
-  return <PlanDetails plan={formattedPlanDetails} />;
+  logger.debug({ planId }, 'Plan detail payload ready for rendering');
+  return <PlanDetails plan={planResult.data} />;
 }
 
 /**

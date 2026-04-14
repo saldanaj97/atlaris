@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLearningPlanDetail } from '@/features/plans/read-models/detail';
+import { buildLearningPlanDetail } from '@/features/plans/read-models/detail-aggregate';
 import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,

@@ -43,9 +43,17 @@ export type ProgressMetrics = {
   completedModules: number;
 };
 
+/**
+ * Summary view of a plan with computed progress metrics.
+ *
+ * `attemptsCount` is populated only when the originating query includes generation
+ * attempt metrics. Callers must handle `undefined` for lightweight paths that skip
+ * those extra reads to avoid additional query cost.
+ */
 export type PlanSummary = ProgressMetrics & {
   plan: LearningPlan;
   modules: Module[];
+  attemptsCount?: number;
 };
 
 type LightweightPlanListFields = Pick<

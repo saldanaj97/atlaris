@@ -18,7 +18,9 @@ import type {
   PlanAccessResult,
   ScheduleAccessResult,
 } from '@/app/plans/[id]/types';
+import { toClientPlanDetail } from '@/features/plans/read-models/detail-dto';
 import type { ScheduleJson } from '@/features/scheduling/types';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { buildPlanDetail } from '../../fixtures/plan-detail';
 
 // Builder function for creating mock schedule data
@@ -31,28 +33,43 @@ function buildSchedule(overrides: Partial<ScheduleJson> = {}): ScheduleJson {
   } satisfies ScheduleJson;
 }
 
+function buildClientPlanDetail(
+  overrides: Parameters<typeof buildPlanDetail>[0] = {}
+): ClientPlanDetail {
+  const detail = buildPlanDetail(overrides);
+  const clientDetail = toClientPlanDetail(detail);
+
+  if (!clientDetail) {
+    throw new Error(
+      `Expected client plan detail to be defined for overrides: ${JSON.stringify(overrides)}`
+    );
+  }
+
+  return clientDetail;
+}
+
 describe('Plan Access Types', () => {
   describe('planSuccess', () => {
     it('should create a success result with plan data', () => {
-      const mockPlanData = buildPlanDetail();
+      const mockPlanData = buildClientPlanDetail();
       const result = planSuccess(mockPlanData);
 
       expect(result.success).toBe(true);
       expect(result).toHaveProperty('data');
       if (result.success) {
-        expect(result.data.plan.id).toBe(mockPlanData.plan.id);
-        expect(result.data.plan.topic).toBe('Machine Learning Fundamentals');
+        expect(result.data.id).toBe(mockPlanData.id);
+        expect(result.data.topic).toBe('Machine Learning Fundamentals');
       }
     });
 
     it('should allow type narrowing via success discriminant', () => {
-      const mockPlanData = buildPlanDetail();
+      const mockPlanData = buildClientPlanDetail();
       const result: PlanAccessResult = planSuccess(mockPlanData);
 
       // TypeScript should narrow the type correctly
       if (result.success) {
         // This should compile without errors - data is accessible
-        expect(result.data.plan.id).toBeDefined();
+        expect(result.data.id).toBeDefined();
         expect(result.data.totalTasks).toBeDefined();
       } else {
         // This branch should have error property
@@ -61,7 +78,7 @@ describe('Plan Access Types', () => {
     });
 
     it('should preserve all plan properties', () => {
-      const mockPlanData = buildPlanDetail({
+      const mockPlanData = buildClientPlanDetail({
         totalTasks: 10,
         completedTasks: 5,
         attemptsCount: 3,
@@ -71,7 +88,7 @@ describe('Plan Access Types', () => {
       if (result.success) {
         expect(result.data.totalTasks).toBe(10);
         expect(result.data.completedTasks).toBe(5);
-        expect(result.data.attemptsCount).toBe(3);
+        expect(result.data.status).toBe(mockPlanData.status);
       }
     });
   });
@@ -115,7 +132,7 @@ describe('Plan Access Types', () => {
         expect(result.error.message).toBeDefined();
       } else {
         // This branch should have data property
-        expect(result.data.plan.id).toBeDefined();
+        expect(result.data.id).toBeDefined();
       }
     });
   });
@@ -271,7 +288,7 @@ describe('Plan Access Types', () => {
 
   describe('Discriminated Union Pattern', () => {
     it('success and error results should be mutually exclusive', () => {
-      const successResult = planSuccess(buildPlanDetail());
+      const successResult = planSuccess(buildClientPlanDetail());
       const errorResult = planError('NOT_FOUND', 'Not found');
 
       // Success result should have data, not error
@@ -287,7 +304,7 @@ describe('Plan Access Types', () => {
 
     it('should support conditional data access patterns', () => {
       const results: PlanAccessResult[] = [
-        planSuccess(buildPlanDetail()),
+        planSuccess(buildClientPlanDetail()),
         planError('UNAUTHORIZED', 'Not authenticated'),
         planError('NOT_FOUND', 'Not found'),
       ];

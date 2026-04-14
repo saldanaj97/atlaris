@@ -4,20 +4,12 @@
  */
 
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
-import {
-  buildLearningPlanDetail,
-  buildPlanDetailStatusSnapshot,
-  type PlanDetailStatusSnapshot,
-} from '@/features/plans/read-models/detail';
-import {
-  buildLightweightPlanSummaries,
-  buildPlanSummaries,
-} from '@/features/plans/read-models/summary';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   fetchTaskProgressRows,
   fetchTaskResourceRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
+import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
 import {
@@ -33,14 +25,78 @@ import {
 } from '@/shared/constants/pagination';
 import type {
   GenerationAttempt,
-  LearningPlanDetail,
-  LightweightPlanSummary,
-  PlanSummary,
+  LearningPlan,
+  Module,
+  Task,
+  TaskProgress,
 } from '@/shared/types/db.types';
 
 /** RLS-enforced database client for plan queries (default: getDb()). */
 type DbClient = ReturnType<typeof getDb>;
 type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
+
+export type PlanSummaryTaskRow = {
+  id: string;
+  moduleId: string;
+  planId: string;
+  estimatedMinutes: number | null;
+};
+
+export type PlanProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
+
+export type LightweightPlanListRow = Pick<
+  LearningPlan,
+  | 'id'
+  | 'topic'
+  | 'skillLevel'
+  | 'learningStyle'
+  | 'visibility'
+  | 'origin'
+  | 'generationStatus'
+  | 'createdAt'
+  | 'updatedAt'
+>;
+
+export type LightweightModuleMetricsRow = {
+  planId: string;
+  totalTasks: number;
+  completedTasks: number;
+  totalMinutes: number;
+  completedMinutes: number;
+};
+
+export type PlanSummaryRows = {
+  planRows: LearningPlan[];
+  moduleRows: Module[];
+  taskRows: PlanSummaryTaskRow[];
+  progressRows: PlanProgressStatusRow[];
+  attemptCountsByPlanId: Map<string, number>;
+};
+
+export type LightweightPlanSummaryRows = {
+  planRows: LightweightPlanListRow[];
+  moduleMetricsRows: LightweightModuleMetricsRow[];
+};
+
+export type LearningPlanDetailRows = {
+  plan: LearningPlan;
+  moduleRows: Module[];
+  taskRows: Task[];
+  progressRows: TaskProgress[];
+  resourceRows: TaskResourceWithResource[];
+  latestAttempt: GenerationAttempt | null;
+  attemptsCount: number;
+};
+
+export type PlanStatusRows = {
+  plan: Pick<
+    LearningPlan,
+    'id' | 'generationStatus' | 'createdAt' | 'updatedAt'
+  >;
+  hasModules: boolean;
+  attemptsCount: number;
+  latestAttempt: Pick<GenerationAttempt, 'classification'> | null;
+};
 
 /** Maximum number of generation attempts to return in attempt history queries. */
 const MAX_ATTEMPTS_HISTORY_LIMIT = 10;
@@ -78,6 +134,26 @@ function userPlanListWhere(userId: string) {
   return eq(learningPlans.userId, userId);
 }
 
+async function getPlanAttemptCounts(
+  client: DbClient,
+  planIds: string[]
+): Promise<Map<string, number>> {
+  if (planIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await client
+    .select({
+      planId: generationAttempts.planId,
+      attemptsCount: sql<number>`count(*)::int`,
+    })
+    .from(generationAttempts)
+    .where(inArray(generationAttempts.planId, planIds))
+    .groupBy(generationAttempts.planId);
+
+  return new Map(rows.map((row) => [row.planId, row.attemptsCount]));
+}
+
 function isDeletablePlanStatus(
   status: PlanGenerationStatus
 ): status is (typeof DELETABLE_PLAN_STATUSES)[number] {
@@ -86,21 +162,11 @@ function isDeletablePlanStatus(
   );
 }
 
-/**
- * Fetches plan summaries with completion metrics for a user.
- * Returns plans with modules, task counts, progress, and aggregated time estimates.
- *
- * @param userId - Authenticated user ID (RLS scopes results)
- * @param dbClient - Optional client; defaults to getDb()
- * @param options - Optional pagination controls for large plan sets. Invalid
- * options throw RangeError so callers do not silently hide programming mistakes.
- * @returns PlanSummary[] - Empty array if user has no plans
- */
-export async function getPlanSummariesForUser(
+export async function getPlanSummaryRowsForUser(
   userId: string,
   dbClient?: DbClient,
   options?: PaginationOptions
-): Promise<PlanSummary[]> {
+): Promise<PlanSummaryRows> {
   const client = dbClient ?? getDb();
   assertValidPaginationOptions(options);
 
@@ -119,12 +185,18 @@ export async function getPlanSummariesForUser(
   const planRows = await planQuery;
 
   if (!planRows.length) {
-    return [];
+    return {
+      planRows: [],
+      moduleRows: [],
+      taskRows: [],
+      progressRows: [],
+      attemptCountsByPlanId: new Map(),
+    };
   }
 
   const planIds = planRows.map((plan) => plan.id);
 
-  const [moduleRows, taskRows] = await Promise.all([
+  const [moduleRows, taskRows, attemptCountsByPlanId] = await Promise.all([
     client
       .select()
       .from(modules)
@@ -140,6 +212,7 @@ export async function getPlanSummariesForUser(
       .from(tasks)
       .innerJoin(modules, eq(tasks.moduleId, modules.id))
       .where(inArray(modules.planId, planIds)),
+    getPlanAttemptCounts(client, planIds),
   ]);
 
   const taskIds = taskRows.map((task) => task.id);
@@ -150,24 +223,20 @@ export async function getPlanSummariesForUser(
     dbClient: client,
   });
 
-  return buildPlanSummaries({
+  return {
     planRows,
     moduleRows,
     taskRows,
     progressRows,
-  });
+    attemptCountsByPlanId,
+  };
 }
 
-/**
- * Fetches lightweight plan summaries for API list views.
- * Invalid pagination options throw RangeError instead of silently clamping.
- * Excludes large plan payload fields and computes completion via grouped counts.
- */
-export async function getLightweightPlanSummaries(
+export async function getLightweightPlanSummaryRowsForUser(
   userId: string,
   dbClient?: DbClient,
   options?: PaginationOptions
-): Promise<LightweightPlanSummary[]> {
+): Promise<LightweightPlanSummaryRows> {
   const client = dbClient ?? getDb();
   assertValidPaginationOptions(options);
 
@@ -196,7 +265,10 @@ export async function getLightweightPlanSummaries(
   const planRows = await planQuery;
 
   if (!planRows.length) {
-    return [];
+    return {
+      planRows: [],
+      moduleMetricsRows: [],
+    };
   }
 
   const planIds = planRows.map((plan) => plan.id);
@@ -232,10 +304,10 @@ export async function getLightweightPlanSummaries(
     .where(inArray(modules.planId, planIds))
     .groupBy(modules.planId, modules.id);
 
-  return buildLightweightPlanSummaries({
+  return {
     planRows,
     moduleMetricsRows,
-  });
+  };
 }
 
 async function getLatestPlanAttemptMeta(
@@ -261,20 +333,11 @@ async function getLatestPlanAttemptMeta(
   };
 }
 
-/**
- * Fetches full plan detail for a single plan: modules, tasks, resources, progress,
- * and generation attempt metadata. Used for plan detail pages.
- *
- * @param planId - Plan ID
- * @param userId - Authenticated user ID (ownership check; returns null if mismatch)
- * @param dbClient - Optional client; defaults to getDb()
- * @returns LearningPlanDetail or null if plan not found or not owned by user
- */
-export async function getLearningPlanDetail(
+export async function getLearningPlanDetailRows(
   planId: string,
   userId: string,
   dbClient?: DbClient
-): Promise<LearningPlanDetail | null> {
+): Promise<LearningPlanDetailRows | null> {
   const client = dbClient ?? getDb();
 
   const plan = await selectOwnedPlanById({
@@ -319,7 +382,7 @@ export async function getLearningPlanDetail(
     fetchTaskResourceRows({ taskIds, dbClient: client }),
   ]);
 
-  return buildLearningPlanDetail({
+  return {
     plan,
     moduleRows,
     taskRows,
@@ -327,7 +390,7 @@ export async function getLearningPlanDetail(
     resourceRows,
     latestAttempt: attemptMeta.latestAttempt,
     attemptsCount: attemptMeta.attemptsCount,
-  });
+  };
 }
 
 /** Return type for getPlanAttemptsForUser. */
@@ -378,11 +441,11 @@ export async function getPlanAttemptsForUser(
   return { plan: planMeta, attempts };
 }
 
-export async function getPlanStatusForUser(
+export async function getPlanStatusRowsForUser(
   planId: string,
   userId: string,
   dbClient?: DbClient
-): Promise<PlanDetailStatusSnapshot | null> {
+): Promise<PlanStatusRows | null> {
   const client = dbClient ?? getDb();
 
   const plan = await selectOwnedPlanById({
@@ -404,12 +467,19 @@ export async function getPlanStatusForUser(
     getLatestPlanAttemptMeta(client, planId),
   ]);
 
-  return buildPlanDetailStatusSnapshot({
-    plan,
+  return {
+    plan: {
+      id: plan.id,
+      generationStatus: plan.generationStatus,
+      createdAt: plan.createdAt,
+      updatedAt: plan.updatedAt,
+    },
     hasModules: moduleRows.length > 0,
     attemptsCount: attemptMeta.attemptsCount,
-    latestAttempt: attemptMeta.latestAttempt,
-  });
+    latestAttempt: attemptMeta.latestAttempt
+      ? { classification: attemptMeta.latestAttempt.classification }
+      : null,
+  };
 }
 
 /** Explicit failure reasons returned by deletePlan. */

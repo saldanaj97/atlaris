@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   toClientGenerationAttempts,
   toClientPlanDetail,
-} from '@/features/plans/read-models/detail';
+} from '@/features/plans/read-models/detail-dto';
 import type {
   ModuleWithTasks,
   TaskWithRelations,
@@ -404,7 +404,7 @@ describe('mapDetailToClient', () => {
     expect(result?.status).toBe('pending');
   });
 
-  it('should derive status as "pending" for unknown generation status fallback', () => {
+  it('should throw for unknown generation status values', () => {
     const detail = buildPlanDetail({
       plan: buildPlan({
         generationStatus: 'unexpected_status' as unknown as GenerationStatus,
@@ -412,8 +412,9 @@ describe('mapDetailToClient', () => {
       }),
     });
 
-    const result = toClientPlanDetail(detail);
-    expect(result?.status).toBe('pending');
+    expect(() => toClientPlanDetail(detail)).toThrow(
+      'Unhandled generation status'
+    );
   });
 
   it('should handle null attempt gracefully', () => {

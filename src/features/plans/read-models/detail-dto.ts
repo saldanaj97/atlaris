@@ -1,22 +1,14 @@
-import { getAttemptCap } from '@/features/ai/generation-policy';
-import { computeCompletionMetricsFromNestedModules } from '@/features/plans/read-models/completion-metrics';
-import { derivePlanStatus } from '@/features/plans/status';
-import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
+import { buildPlanDetailStatusSnapshot } from '@/features/plans/read-models/detail-status';
 import { logger } from '@/lib/logging/logger';
 import type {
   AttemptStatus,
   ClientGenerationAttempt,
   ClientPlanDetail,
-  PlanStatus as ClientPlanStatus,
   FailureClassification,
 } from '@/shared/types/client.types';
 import type {
   GenerationAttempt,
-  LearningPlan,
   LearningPlanDetail,
-  Module,
-  Task,
-  TaskProgress,
 } from '@/shared/types/db.types';
 
 const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set([
@@ -27,6 +19,7 @@ const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set([
 
 const VALID_CLASSIFICATIONS: ReadonlySet<FailureClassification> = new Set([
   'validation',
+  'conflict',
   'provider_error',
   'rate_limit',
   'timeout',
@@ -37,9 +30,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function isValidAttemptStatus(status: string): status is AttemptStatus {
+  return VALID_ATTEMPT_STATUSES.has(status as AttemptStatus);
+}
+
+function isValidFailureClassification(
+  classification: string
+): classification is FailureClassification {
+  return VALID_CLASSIFICATIONS.has(classification as FailureClassification);
+}
+
 function toAttemptStatus(status: string): AttemptStatus {
-  if (VALID_ATTEMPT_STATUSES.has(status as AttemptStatus)) {
-    return status as AttemptStatus;
+  if (isValidAttemptStatus(status)) {
+    return status;
   }
 
   logger.warn(
@@ -53,9 +56,12 @@ function toAttemptStatus(status: string): AttemptStatus {
 function toClassification(
   classification: string | null | undefined
 ): FailureClassification | null {
-  if (!classification) return null;
-  if (VALID_CLASSIFICATIONS.has(classification as FailureClassification)) {
-    return classification as FailureClassification;
+  if (!classification) {
+    return null;
+  }
+
+  if (isValidFailureClassification(classification)) {
+    return classification;
   }
 
   logger.warn(
@@ -64,50 +70,6 @@ function toClassification(
   );
 
   return null;
-}
-
-function toStatusClassification(
-  classification: string | null | undefined
-): FailureClassification | 'unknown' | null {
-  if (!classification) return null;
-
-  const normalized = toClassification(classification);
-  return normalized ?? 'unknown';
-}
-
-export type PlanDetailStatusSnapshot = {
-  planId: string;
-  status: ClientPlanStatus;
-  attempts: number;
-  latestClassification: FailureClassification | 'unknown' | null;
-  createdAt: string | undefined;
-  updatedAt: string | undefined;
-};
-
-export function buildPlanDetailStatusSnapshot(params: {
-  plan: Pick<
-    LearningPlan,
-    'id' | 'generationStatus' | 'createdAt' | 'updatedAt'
-  >;
-  hasModules: boolean;
-  attemptsCount: number;
-  latestAttempt: Pick<GenerationAttempt, 'classification'> | null;
-}): PlanDetailStatusSnapshot {
-  const { plan, hasModules, attemptsCount, latestAttempt } = params;
-
-  return {
-    planId: plan.id,
-    status: derivePlanStatus({
-      generationStatus: plan.generationStatus,
-      hasModules,
-      attemptsCount,
-      attemptCap: getAttemptCap(),
-    }),
-    attempts: attemptsCount,
-    latestClassification: toStatusClassification(latestAttempt?.classification),
-    createdAt: plan.createdAt?.toISOString(),
-    updatedAt: plan.updatedAt?.toISOString(),
-  } satisfies PlanDetailStatusSnapshot;
 }
 
 function toClientAttempt(attempt: GenerationAttempt): ClientGenerationAttempt {
@@ -148,86 +110,19 @@ function toClientAttempt(attempt: GenerationAttempt): ClientGenerationAttempt {
   } satisfies ClientGenerationAttempt;
 }
 
-export function buildLearningPlanDetail(params: {
-  plan: LearningPlan;
-  moduleRows: Module[];
-  taskRows: Task[];
-  progressRows: TaskProgress[];
-  resourceRows: TaskResourceWithResource[];
-  latestAttempt: GenerationAttempt | null;
-  attemptsCount: number;
-}): LearningPlanDetail {
-  const {
-    plan,
-    moduleRows,
-    taskRows,
-    progressRows,
-    resourceRows,
-    latestAttempt,
-    attemptsCount,
-  } = params;
-
-  const progressByTask = new Map(progressRows.map((row) => [row.taskId, row]));
-  const resourcesByTask = resourceRows.reduce((acc, row) => {
-    const existing = acc.get(row.taskId) ?? [];
-    existing.push(row);
-    acc.set(row.taskId, existing);
-    return acc;
-  }, new Map<string, TaskResourceWithResource[]>());
-
-  const tasksByModule = taskRows.reduce((acc, task) => {
-    const existing = acc.get(task.moduleId) ?? [];
-    existing.push({
-      ...task,
-      resources: (resourcesByTask.get(task.id) ?? []).toSorted(
-        (a, b) => a.order - b.order
-      ),
-      progress: progressByTask.get(task.id) ?? null,
-    });
-    acc.set(task.moduleId, existing);
-    return acc;
-  }, new Map<string, LearningPlanDetail['plan']['modules'][number]['tasks']>());
-
-  const modules = moduleRows
-    .toSorted((a, b) => a.order - b.order)
-    .map((planModule) => ({
-      ...planModule,
-      tasks: (tasksByModule.get(planModule.id) ?? []).toSorted(
-        (a, b) => a.order - b.order
-      ),
-    }));
-
-  const {
-    totalTasks,
-    completedTasks,
-    totalMinutes,
-    completedMinutes,
-    completedModules,
-  } = computeCompletionMetricsFromNestedModules(modules);
-
-  return {
-    plan: {
-      ...plan,
-      modules,
-    },
-    totalTasks,
-    completedTasks,
-    totalMinutes,
-    completedMinutes,
-    completedModules,
-    latestAttempt,
-    attemptsCount,
-  } satisfies LearningPlanDetail;
-}
-
 export function toClientPlanDetail(
   detail: LearningPlanDetail | null | undefined
 ): ClientPlanDetail | undefined {
-  if (!detail) return undefined;
+  if (!detail) {
+    return undefined;
+  }
 
   if (!detail.plan) {
     logger.error(
-      { detail },
+      {
+        attemptsCount: detail.attemptsCount,
+        latestAttemptId: detail.latestAttempt?.id,
+      },
       'LearningPlanDetail missing required plan payload'
     );
     throw new Error('LearningPlanDetail.plan is required.');
@@ -276,7 +171,9 @@ export function toClientPlanDetail(
     learningStyle: detail.plan.learningStyle,
     visibility: detail.plan.visibility,
     origin: detail.plan.origin,
-    createdAt: detail.plan.createdAt?.toISOString(),
+    createdAt: detail.plan.createdAt
+      ? detail.plan.createdAt.toISOString()
+      : undefined,
     modules,
     totalTasks: detail.totalTasks,
     completedTasks: detail.completedTasks,

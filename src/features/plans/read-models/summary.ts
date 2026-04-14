@@ -1,8 +1,14 @@
+import { getAttemptCap } from '@/features/ai/generation-policy';
 import {
   accumulateLightweightModuleMetricsRowInPlace,
   computeTaskRowCompletionMetrics,
   countCompletedModulesFromFlatTasks,
 } from '@/features/plans/read-models/completion-metrics';
+import {
+  derivePlanReadStatus,
+  derivePlanSummaryStatus,
+  type PlanSummaryReadStatus,
+} from '@/features/plans/status/read-status';
 import type {
   LearningPlan,
   LightweightPlanSummary,
@@ -41,11 +47,14 @@ export type LightweightModuleMetricsRow = {
   completedMinutes: number;
 };
 
-export type PlanSummaryReadStatus =
-  | 'active'
-  | 'completed'
-  | 'failed'
-  | 'generating';
+export type { PlanSummaryReadStatus } from '@/features/plans/status/read-status';
+
+export type SummaryStatusInput = {
+  plan: Pick<LearningPlan, 'generationStatus'>;
+  completion: number;
+  modules: Array<{ id: string }>;
+  attemptsCount?: number;
+};
 
 type LightweightPlanMetrics = Pick<
   LightweightPlanSummary,
@@ -71,8 +80,15 @@ export function buildPlanSummaries(params: {
   moduleRows: Module[];
   taskRows: SummaryTaskRow[];
   progressRows: ProgressStatusRow[];
+  attemptCountsByPlanId?: ReadonlyMap<string, number>;
 }): PlanSummary[] {
-  const { planRows, moduleRows, taskRows, progressRows } = params;
+  const {
+    planRows,
+    moduleRows,
+    taskRows,
+    progressRows,
+    attemptCountsByPlanId,
+  } = params;
 
   const tasksByPlan = new Map<string, SummaryTaskRow[]>();
   const tasksByModule = new Map<string, SummaryTaskRow[]>();
@@ -121,35 +137,25 @@ export function buildPlanSummaries(params: {
       totalMinutes,
       completedMinutes,
       completedModules,
+      attemptsCount: attemptCountsByPlanId?.get(plan.id),
     } satisfies PlanSummary;
   });
 }
 
 export function deriveCanonicalPlanSummaryStatus(
-  summary: Pick<PlanSummary, 'plan' | 'completion' | 'modules'>
+  summary: SummaryStatusInput
 ): PlanSummaryReadStatus {
-  const generationStatus = summary.plan.generationStatus;
+  const readStatus = derivePlanReadStatus({
+    generationStatus: summary.plan.generationStatus,
+    hasModules: summary.modules.length > 0,
+    attemptsCount: summary.attemptsCount,
+    attemptCap: getAttemptCap(),
+  });
 
-  if (summary.modules.length > 0) {
-    if (summary.completion >= 1) {
-      return 'completed';
-    }
-
-    return 'active';
-  }
-
-  if (
-    generationStatus === 'generating' ||
-    generationStatus === 'pending_retry'
-  ) {
-    return 'generating';
-  }
-
-  if (generationStatus === 'failed') {
-    return 'failed';
-  }
-
-  return 'active';
+  return derivePlanSummaryStatus({
+    readStatus,
+    completion: summary.completion,
+  });
 }
 
 export function buildLightweightPlanSummaries(params: {
