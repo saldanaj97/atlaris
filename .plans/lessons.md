@@ -31,3 +31,11 @@
 **Rule:** When a user sets boundaries around environment files, treat `.env.local` as user-owned unless they explicitly ask for edits. Update shared references like `.env.example` and report exact `.env.local` changes separately at the end.
 
 **Impact:** This preserves local secrets and machine-specific settings while still delivering a complete migration path.
+
+## 2026-04-14: Use `vi.stubEnv()` once env access is typed readonly
+
+**Context:** After the env refactor typed process env access through a readonly `EnvSource`, `tests/unit/ai/provider-factory.spec.ts` still assigned directly to `process.env.NODE_ENV`, which broke `pnpm check:type` with TS2540 even though the runtime tests themselves passed.
+
+**Rule:** In Vitest specs that need to change `NODE_ENV`, `VITEST_WORKER_ID`, or similar env flags, use `vi.stubEnv()` plus `vi.unstubAllEnvs()` instead of direct assignment to `process.env`.
+
+**Impact:** This keeps env-sensitive tests aligned with the repo's existing test helpers and avoids read-only env typing regressions that block CI at type-check time.

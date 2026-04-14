@@ -1,4 +1,4 @@
-import { getServerBoolean } from '@/lib/config/env/shared';
+import { getServerOptional, toBoolean } from '@/lib/config/env/shared';
 import {
   LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
   LOCAL_PRODUCT_TESTING_SEED_EMAIL,
@@ -12,7 +12,7 @@ export const localProductTestingEnv = {
    * mocks per PRD). Always false in production (startup throws if misconfigured).
    */
   get enabled(): boolean {
-    return getServerBoolean('LOCAL_PRODUCT_TESTING', false);
+    return toBoolean(getServerOptional('LOCAL_PRODUCT_TESTING'), false);
   },
   /** Deterministic seed user row identifiers; same values as `pnpm db:dev:bootstrap` inserts. */
   seed: {

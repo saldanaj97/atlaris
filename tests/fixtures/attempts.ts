@@ -6,7 +6,7 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import {
-  ATTEMPT_CAP,
+  getAttemptCap,
   PLAN_GENERATION_LIMIT,
 } from '@/features/ai/generation-policy';
 import { generationAttempts } from '@/lib/db/schema';
@@ -153,7 +153,7 @@ export async function seedMaxAttemptsForPlan(
   planId: string,
   overrides?: Partial<GenerationAttemptInsert>
 ): Promise<GenerationAttemptRow[]> {
-  return createFailedAttemptsInDb(planId, ATTEMPT_CAP, (index) => ({
+  return createFailedAttemptsInDb(planId, getAttemptCap(), (index) => ({
     ...overrides,
     classification: 'validation',
     durationMs: 500 + index,

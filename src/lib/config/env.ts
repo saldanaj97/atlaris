@@ -4,15 +4,27 @@
  */
 
 export {
-  ATTEMPT_CAP,
+  type AiEnvConfig,
+  type AiEnvFacets,
+  type AiMockEnv,
+  type AiTimeoutEnv,
+  type AttemptsEnv,
   aiEnv,
   aiTimeoutEnv,
   attemptsEnv,
+  createAiEnvFacets,
+  getAttemptCap,
+  type OpenRouterEnv,
   openRouterEnv,
 } from '@/lib/config/env/ai';
 
-export { appEnv } from '@/lib/config/env/app';
 export {
+  type AppEnv,
+  appEnv,
+  createAppEnv,
+} from '@/lib/config/env/app';
+export {
+  createNeonAuthEnv,
   devAuthEnv,
   googleOAuthEnv,
   neonAuthEnv,
@@ -22,17 +34,25 @@ export { stripeEnv } from '@/lib/config/env/billing';
 export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv, observabilityEnv } from '@/lib/config/env/observability';
-export { regenerationQueueEnv } from '@/lib/config/env/queue';
+export {
+  type RegenerationQueueEnv,
+  regenerationQueueEnv,
+} from '@/lib/config/env/queue';
 export { avScannerEnv } from '@/lib/config/env/security';
 export {
+  createServerEnvAccess,
+  type EnvSource,
   EnvValidationError,
-  getNodeEnv,
-  getServerBoolean,
+  getProcessEnvSource,
   getSmokeStateFileEnv,
-  nodeEnvSchema,
+  isNonProductionRuntimeEnv,
+  isProdRuntimeEnv,
+  type NodeEnv,
   optionalEnv,
   parseEnvNumber,
+  parseNodeEnv,
   requireEnv,
+  type ServerEnvAccess,
   toBoolean,
 } from '@/lib/config/env/shared';
 export {

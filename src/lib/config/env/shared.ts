@@ -22,17 +22,69 @@ const normalize = (value: string | undefined | null): string | undefined => {
   return trimmed === '' ? undefined : trimmed;
 };
 
-const booleanEnvValues = ['true', 'false', '1', '0'] as const;
+/**
+ * Read-only view of environment variables (e.g. `process.env` or a test fixture).
+ */
+export type EnvSource = Readonly<Record<string, string | undefined>>;
 
-export const nodeEnvSchema = z.enum(['development', 'production', 'test']);
-export type NodeEnv = z.infer<typeof nodeEnvSchema>;
+/**
+ * Live Node `process.env` as {@link EnvSource}. Use only at process-bound edges
+ * (default singletons). Prefer an explicit object in factories and tests, and pass it to
+ * {@link isProdRuntimeEnv} / {@link isNonProductionRuntimeEnv} / parsers.
+ */
+export function getProcessEnvSource(): EnvSource {
+  return process.env as EnvSource;
+}
 
-const booleanEnvSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .pipe(z.enum(booleanEnvValues))
-  .transform((value) => value === 'true' || value === '1');
+export type NodeEnv = 'development' | 'production' | 'test';
+
+const NodeEnvSchema = z.enum(['development', 'production', 'test']);
+
+export function optionalEnvFrom(
+  env: EnvSource,
+  key: string
+): string | undefined {
+  return normalize(env[key]);
+}
+
+export function requireEnvFrom(env: EnvSource, key: string): string {
+  const value = optionalEnvFrom(env, key);
+  if (!value) {
+    throw new EnvValidationError(
+      `Missing required environment variable: ${key}`,
+      key
+    );
+  }
+  return value;
+}
+
+/**
+ * Parses `NODE_ENV` strictly. Missing or empty treats as `development`.
+ * Invalid values throw {@link EnvValidationError}.
+ */
+export function parseNodeEnv(env: EnvSource): NodeEnv {
+  const raw = optionalEnvFrom(env, 'NODE_ENV');
+  if (raw === undefined) {
+    return 'development';
+  }
+  const parsed = NodeEnvSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new EnvValidationError(
+      `NODE_ENV must be one of: development, production, test. Received: ${raw}`,
+      'NODE_ENV'
+    );
+  }
+  return parsed.data;
+}
+
+export function isProdRuntimeEnv(env: EnvSource): boolean {
+  return parseNodeEnv(env) === 'production';
+}
+
+/** True for development and test runtimes (not production). */
+export function isNonProductionRuntimeEnv(env: EnvSource): boolean {
+  return !isProdRuntimeEnv(env);
+}
 
 /**
  * Zod schema: string that parses to a finite number via `Number()`; `NaN` and
@@ -94,61 +146,23 @@ export function toBoolean(
 }
 
 export function optionalEnv(key: string): string | undefined {
-  return normalize(process.env[key]);
-}
-
-function parseBooleanEnvValue(
-  value: string | undefined,
-  key: string
-): boolean | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const parsed = booleanEnvSchema.safeParse(value);
-  if (!parsed.success) {
-    throw new EnvValidationError(
-      `${key} must be one of: ${booleanEnvValues.join(', ')}`,
-      key
-    );
-  }
-
-  return parsed.data;
+  return optionalEnvFrom(getProcessEnvSource(), key);
 }
 
 export function requireEnv(key: string): string {
-  const value = optionalEnv(key);
-  if (!value) {
-    throw new EnvValidationError(
-      `Missing required environment variable: ${key}`,
-      key
-    );
-  }
-  return value;
+  return requireEnvFrom(getProcessEnvSource(), key);
 }
 
-const ensureServerRuntime = (): void => {
-  const isVitestRuntime =
-    typeof process !== 'undefined' &&
-    process.env?.VITEST_WORKER_ID !== undefined;
-
-  if (typeof window !== 'undefined') {
-    if (!isVitestRuntime) {
-      throw new EnvValidationError(
-        'Attempted to access a server-only environment variable in the browser bundle.'
-      );
-    }
-  }
-
-  const isNonProduction =
-    typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+function ensureServerRuntime(isNonProduction: boolean): void {
   if (isNonProduction) {
     return;
   }
-};
-
-const serverRequiredCache = new Map<string, string>();
-export const serverOptionalCache = new Map<string, string | undefined>();
+  if (typeof window !== 'undefined') {
+    throw new EnvValidationError(
+      'Attempted to access a server-only environment variable in the browser bundle.'
+    );
+  }
+}
 
 function getCachedServerRequired(
   cache: Map<string, string>,
@@ -160,105 +174,125 @@ function getCachedServerRequired(
   }
   const cached = cache.get(key);
   if (cached === undefined) {
-    throw new Error(
-      `Invariant: required env cache entry for "${key}" is missing after initialization.`
-    );
+    throw new Error(`Invariant: env cache missing key "${key}"`);
   }
   return cached;
 }
 
-// In test runtime, environment values may change between tests; avoid caching.
-// Treat non-production runtimes (development, test) as mutable envs; avoid caching to
-// ensure tests and dev server reflect env changes without process restarts.
-export const IS_TEST_RUNTIME =
-  typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
-
-export const IS_PROD_RUNTIME =
-  typeof process !== 'undefined' && process.env?.NODE_ENV === 'production';
-
-export function getNodeEnv(): NodeEnv {
-  const raw = optionalEnv('NODE_ENV');
-  if (raw === undefined) {
-    return 'development';
-  }
-
-  const parsed = nodeEnvSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new EnvValidationError(
-      'NODE_ENV must be one of: development, production, test',
-      'NODE_ENV'
-    );
-  }
-
-  return parsed.data;
+export interface ServerEnvAccess {
+  getServerRequired(key: string): string;
+  getServerOptional(key: string): string | undefined;
+  getServerRequiredProdOnly(key: string): string | undefined;
+  getProductionCached<T>(key: string, loader: () => T): T;
 }
 
+/**
+ * Server env reads bound to a live env source (typically {@link getProcessEnvSource}).
+ * Caches required/optional reads in production only; non-production re-reads each time.
+ */
+export function createServerEnvAccess(
+  getEnv: () => EnvSource
+): ServerEnvAccess {
+  const requiredCache = new Map<string, string>();
+  const optionalCache = new Map<string, string | undefined>();
+  const productionCache = new Map<string, unknown>();
+
+  const getServerState = (): {
+    env: EnvSource;
+    isNonProduction: boolean;
+  } => {
+    const env = getEnv();
+    const isNonProduction = isNonProductionRuntimeEnv(env);
+    ensureServerRuntime(isNonProduction);
+    return { env, isNonProduction };
+  };
+
+  return {
+    getServerRequired(key: string): string {
+      const { env, isNonProduction } = getServerState();
+      if (isNonProduction) {
+        return requireEnvFrom(env, key);
+      }
+      return getCachedServerRequired(requiredCache, key, () =>
+        requireEnvFrom(env, key)
+      );
+    },
+    getServerOptional(key: string): string | undefined {
+      const { env, isNonProduction } = getServerState();
+      if (isNonProduction) {
+        return optionalEnvFrom(env, key);
+      }
+      if (!optionalCache.has(key)) {
+        optionalCache.set(key, optionalEnvFrom(env, key));
+      }
+      return optionalCache.get(key);
+    },
+    getServerRequiredProdOnly(key: string): string | undefined {
+      const { env, isNonProduction } = getServerState();
+      if (isNonProduction) {
+        return optionalEnvFrom(env, key);
+      }
+      return getCachedServerRequired(requiredCache, key, () =>
+        requireEnvFrom(env, key)
+      );
+    },
+    getProductionCached<T>(key: string, loader: () => T): T {
+      const { isNonProduction } = getServerState();
+      if (isNonProduction) {
+        return loader();
+      }
+      if (!productionCache.has(key)) {
+        productionCache.set(key, loader());
+      }
+      return productionCache.get(key) as T;
+    },
+  };
+}
+
+const defaultServerEnvAccess = createServerEnvAccess(getProcessEnvSource);
+
 export function getServerRequired(key: string): string {
-  ensureServerRuntime();
-  if (IS_TEST_RUNTIME) {
-    return requireEnv(key);
-  }
-  return getCachedServerRequired(serverRequiredCache, key, () =>
-    requireEnv(key)
-  );
+  return defaultServerEnvAccess.getServerRequired(key);
 }
 
 export function getServerOptional(key: string): string | undefined {
-  ensureServerRuntime();
-  if (IS_TEST_RUNTIME) {
-    return optionalEnv(key);
+  return defaultServerEnvAccess.getServerOptional(key);
+}
+
+function assertProdForbiddenFlags(): void {
+  const env = getProcessEnvSource();
+  if (!isProdRuntimeEnv(env)) {
+    return;
   }
-  if (!serverOptionalCache.has(key)) {
-    serverOptionalCache.set(key, optionalEnv(key));
+  const localProductTestingEnvEnabled = toBoolean(
+    optionalEnvFrom(env, 'LOCAL_PRODUCT_TESTING'),
+    false
+  );
+  if (localProductTestingEnvEnabled) {
+    throw new EnvValidationError(
+      'LOCAL_PRODUCT_TESTING cannot be enabled in production',
+      'LOCAL_PRODUCT_TESTING'
+    );
   }
-  return serverOptionalCache.get(key);
-}
-
-export function getServerBoolean(key: string, fallback: boolean): boolean {
-  ensureServerRuntime();
-  const raw = getServerOptional(key);
-  const parsed = parseBooleanEnvValue(raw, key);
-  return parsed ?? fallback;
-}
-
-const localProductTestingEnvEnabled =
-  parseBooleanEnvValue(
-    optionalEnv('LOCAL_PRODUCT_TESTING'),
-    'LOCAL_PRODUCT_TESTING'
-  ) ?? false;
-
-if (IS_PROD_RUNTIME && localProductTestingEnvEnabled) {
-  throw new EnvValidationError(
-    'LOCAL_PRODUCT_TESTING cannot be enabled in production',
-    'LOCAL_PRODUCT_TESTING'
+  const stripeLocalModeEnabled = toBoolean(
+    optionalEnvFrom(env, 'STRIPE_LOCAL_MODE'),
+    false
   );
+  if (stripeLocalModeEnabled) {
+    throw new EnvValidationError(
+      'STRIPE_LOCAL_MODE cannot be enabled in production',
+      'STRIPE_LOCAL_MODE'
+    );
+  }
 }
 
-const stripeLocalModeEnabled = toBoolean(
-  optionalEnv('STRIPE_LOCAL_MODE'),
-  false
-);
-
-if (IS_PROD_RUNTIME && stripeLocalModeEnabled) {
-  throw new EnvValidationError(
-    'STRIPE_LOCAL_MODE cannot be enabled in production',
-    'STRIPE_LOCAL_MODE'
-  );
-}
+assertProdForbiddenFlags();
 
 /**
  * Retrieves an environment variable that is required in production but optional in dev/test.
  */
 export function getServerRequiredProdOnly(key: string): string | undefined {
-  ensureServerRuntime();
-
-  if (!IS_PROD_RUNTIME) {
-    return getServerOptional(key);
-  }
-
-  return getCachedServerRequired(serverRequiredCache, key, () =>
-    requireEnv(key)
-  );
+  return defaultServerEnvAccess.getServerRequiredProdOnly(key);
 }
 
 export function getSmokeStateFileEnv(): string | undefined {

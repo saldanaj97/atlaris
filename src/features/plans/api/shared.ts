@@ -1,6 +1,6 @@
 import { and, count, eq, gte, notExists } from 'drizzle-orm';
 
-import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
+import { getAttemptCap } from '@/features/ai/generation-policy';
 import {
   type SubscriptionTier,
   TIER_LIMITS,
@@ -133,7 +133,7 @@ export async function findCappedPlanWithoutModules(
       )
     )
     .groupBy(generationAttempts.planId)
-    .having(gte(count(generationAttempts.id), ATTEMPT_CAP))
+    .having(gte(count(generationAttempts.id), getAttemptCap()))
     .limit(1);
 
   return row?.planId ?? null;

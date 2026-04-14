@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
+import { getAttemptCap } from '@/features/ai/generation-policy';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -17,6 +17,7 @@ import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
+  const attemptCap = getAttemptCap();
   let userId: string;
   let planId: string;
 
@@ -120,7 +121,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     // across throwaway plans so no single plan reaches ATTEMPT_CAP (reserveAttemptSlot
     // should hit durable-window logic only).
     const slotsToFill = getDurableWindowSeedCount(1);
-    const maxPerPlan = Math.max(1, ATTEMPT_CAP - 1);
+    const maxPerPlan = Math.max(1, attemptCap - 1);
     const numPlans = Math.ceil(slotsToFill / maxPerPlan);
     const throwawayPlans = await Promise.all(
       Array.from({ length: numPlans }, () =>
@@ -189,10 +190,10 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
   });
 
   it('enforces attempt cap', async () => {
-    // Create ATTEMPT_CAP failed attempts
+    // Create attemptCap failed attempts
     const failedAttempts = await createFailedAttemptsInDb(
       planId,
-      ATTEMPT_CAP,
+      attemptCap,
       (i) => ({
         classification: 'timeout',
         durationMs: 1000,
@@ -200,7 +201,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         metadata: {},
       })
     );
-    expect(failedAttempts).toHaveLength(ATTEMPT_CAP);
+    expect(failedAttempts).toHaveLength(attemptCap);
 
     // Try to reserve another
     const result = await reserveAttemptSlot({

@@ -1,17 +1,36 @@
 import {
-  getServerOptional,
-  getServerRequiredProdOnly,
-  IS_PROD_RUNTIME,
+  createServerEnvAccess,
+  getProcessEnvSource,
+  isProdRuntimeEnv,
   parseEnvNumber,
   toBoolean,
 } from '@/lib/config/env/shared';
 
-export const regenerationQueueEnv = {
+/**
+ * Regeneration queue env flags consumed by API routes and worker triggers.
+ */
+export interface RegenerationQueueEnv {
+  readonly enabled: boolean;
+  readonly inlineProcessingEnabled: boolean;
+  readonly maxJobsPerDrain: number;
+  readonly workerToken: string | undefined;
+}
+
+const defaultQueueAccess = createServerEnvAccess(getProcessEnvSource);
+
+function isQueueProductionRuntime(): boolean {
+  return isProdRuntimeEnv(getProcessEnvSource());
+}
+
+export const regenerationQueueEnv: RegenerationQueueEnv = {
   /**
    * Master switch for regeneration queue endpoint availability.
    */
   get enabled(): boolean {
-    return toBoolean(getServerOptional('REGENERATION_QUEUE_ENABLED'), true);
+    return toBoolean(
+      defaultQueueAccess.getServerOptional('REGENERATION_QUEUE_ENABLED'),
+      true
+    );
   },
   /**
    * Optional inline processing mode for local/test environments.
@@ -19,19 +38,17 @@ export const regenerationQueueEnv = {
    */
   get inlineProcessingEnabled(): boolean {
     return toBoolean(
-      getServerOptional('REGENERATION_INLINE_PROCESSING'),
-      !IS_PROD_RUNTIME
+      defaultQueueAccess.getServerOptional('REGENERATION_INLINE_PROCESSING'),
+      !isQueueProductionRuntime()
     );
   },
   /**
    * Maximum jobs to process per worker drain invocation.
    * Explicit 0 means no work per drain (caller can use this to disable processing).
-   * Positive fractional values are rounded down, except values between 0 and 1,
-   * which resolve to 1 so only an explicit 0 disables draining.
    */
   get maxJobsPerDrain(): number {
     const parsed = parseEnvNumber(
-      getServerOptional('REGENERATION_MAX_JOBS_PER_DRAIN')
+      defaultQueueAccess.getServerOptional('REGENERATION_MAX_JOBS_PER_DRAIN')
     );
     if (parsed === undefined || !Number.isFinite(parsed) || parsed < 0) {
       return 1;
@@ -48,6 +65,8 @@ export const regenerationQueueEnv = {
    * a possibly undefined token when using this value outside production.
    */
   get workerToken(): string | undefined {
-    return getServerRequiredProdOnly('REGENERATION_WORKER_TOKEN');
+    return defaultQueueAccess.getServerRequiredProdOnly(
+      'REGENERATION_WORKER_TOKEN'
+    );
   },
-} as const;
+};

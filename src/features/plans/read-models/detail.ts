@@ -1,4 +1,4 @@
-import { ATTEMPT_CAP } from '@/features/ai/generation-policy';
+import { getAttemptCap } from '@/features/ai/generation-policy';
 import { computeCompletionMetricsFromNestedModules } from '@/features/plans/read-models/completion-metrics';
 import { derivePlanStatus } from '@/features/plans/status';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
@@ -101,7 +101,7 @@ export function buildPlanDetailStatusSnapshot(params: {
       generationStatus: plan.generationStatus,
       hasModules,
       attemptsCount,
-      attemptCap: ATTEMPT_CAP,
+      attemptCap: getAttemptCap(),
     }),
     attempts: attemptsCount,
     latestClassification: toStatusClassification(latestAttempt?.classification),
