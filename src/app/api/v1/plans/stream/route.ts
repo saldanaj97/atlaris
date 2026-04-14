@@ -1,6 +1,5 @@
 import { ZodError } from 'zod';
 import { throwPlanCreationFailureError } from '@/app/api/v1/plans/plan-creation-failure';
-import { safeMarkPlanFailed } from '@/app/api/v1/plans/stream/helpers';
 import { resolveStreamModelResolution } from '@/app/api/v1/plans/stream/model-resolution';
 import type { JobQueuePort } from '@/features/plans/lifecycle';
 import {
@@ -12,6 +11,7 @@ import {
   createPlanGenerationSessionResponse,
   createStreamDbClient,
 } from '@/features/plans/session/server-session';
+import { safeMarkPlanFailed } from '@/features/plans/session/stream-session';
 import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';

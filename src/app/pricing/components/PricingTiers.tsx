@@ -1,4 +1,5 @@
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export interface TierConfig {
   name: string;
@@ -17,7 +18,7 @@ function formatSchedulingHorizon(value: number | null): string {
   return value === null ? 'Unlimited' : `${value}-week`;
 }
 
-export const PRICING_TIERS = {
+export const PRICING_TIERS: Record<SubscriptionTier, TierConfig> = {
   free: {
     name: 'Free',
     price: '$0',
@@ -62,7 +63,4 @@ export const PRICING_TIERS = {
     badge: 'Best Value',
     recommended: false,
   },
-} satisfies Record<string, TierConfig>;
-
-export type TierKey = keyof typeof PRICING_TIERS;
-export type PricingTier = (typeof PRICING_TIERS)[TierKey];
+};

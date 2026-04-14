@@ -1,10 +1,12 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { toClientPlanDetail } from '@/features/plans/read-models/detail';
+import { getPlanDetailForRead } from '@/features/plans/read-service';
+import { removePlanForWrite } from '@/features/plans/write-service';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
-import { ConflictError, NotFoundError } from '@/lib/api/errors';
+import { NotFoundError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
-import { deletePlan, getLearningPlanDetail } from '@/lib/db/queries/plans';
+import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 
 /**
@@ -22,10 +24,15 @@ import { logger } from '@/lib/logging/logger';
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req, user }) => {
     const planId = requirePlanIdFromRequest(req, 'last');
+    const dbClient = getDb();
 
     logger.info({ planId, userId: user.id }, 'Fetching learning plan detail');
 
-    const detail = await getLearningPlanDetail(planId, user.id);
+    const detail = await getPlanDetailForRead({
+      planId,
+      userId: user.id,
+      dbClient,
+    });
 
     if (!detail) {
       throw new NotFoundError('Learning plan not found.', undefined, {
@@ -51,24 +58,11 @@ export const GET = withErrorBoundary(
 export const DELETE = withErrorBoundary(
   withAuthAndRateLimit('mutation', async ({ req, user }) => {
     const planId = requirePlanIdFromRequest(req, 'last');
+    const dbClient = getDb();
 
     logger.info({ planId, userId: user.id }, 'Deleting learning plan');
 
-    const result = await deletePlan(planId, user.id);
-
-    if (!result.success) {
-      if (result.reason === 'not_found') {
-        throw new NotFoundError('Learning plan not found.');
-      }
-      if (result.reason === 'currently_generating') {
-        throw new ConflictError(
-          'Cannot delete a plan that is currently generating.'
-        );
-      }
-      throw new ConflictError(
-        'Cannot delete learning plan in its current state.'
-      );
-    }
+    await removePlanForWrite({ planId, userId: user.id, dbClient });
 
     logger.info({ planId, userId: user.id }, 'Learning plan deleted');
 

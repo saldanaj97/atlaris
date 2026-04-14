@@ -1,10 +1,11 @@
 import { classificationToUserMessage } from '@/features/ai/failure-presentation';
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
+import { getPlanGenerationStatusSnapshot } from '@/features/plans/read-service';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
-import { getPlanStatusForUser } from '@/lib/db/queries/plans';
+import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 
 /**
@@ -18,10 +19,15 @@ import { logger } from '@/lib/logging/logger';
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req, user }): Promise<Response> => {
     const planId = requirePlanIdFromRequest(req, 'second-to-last');
+    const dbClient = getDb();
 
     logger.debug({ planId, userId: user.id }, 'Plan status request received');
 
-    const statusSnapshot = await getPlanStatusForUser(planId, user.id);
+    const statusSnapshot = await getPlanGenerationStatusSnapshot({
+      planId,
+      userId: user.id,
+      dbClient,
+    });
 
     if (!statusSnapshot) {
       throw new NotFoundError('Learning plan not found.');

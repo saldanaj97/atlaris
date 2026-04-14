@@ -1,11 +1,9 @@
 import { isRetryableClassification } from '@/features/ai/failures';
-import {
-  type ErrorLike,
-  type GenerationError,
-  sanitizeSseError,
+import type {
+  ErrorLike,
+  GenerationError,
 } from '@/features/ai/streaming/error-sanitizer';
 import type { GenerationResult } from '@/features/ai/types/orchestrator.types';
-import type { ParsedModule } from '@/features/ai/types/parser.types';
 import type { StreamingEvent } from '@/features/ai/types/streaming.types';
 import { safeNormalizeUsage } from '@/features/ai/usage';
 import { incrementUsage } from '@/features/billing/usage-metrics';
@@ -13,14 +11,22 @@ import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/features/plans/lifecycle';
-import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import {
+  emitModuleSummaries,
+  emitSanitizedFailureEvent,
+} from '@/features/plans/session/stream-session';
 import { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
-import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+
+export type { LifecycleGenerationStreamParams } from '@/features/plans/session/stream-session';
+export {
+  buildPlanStartEvent,
+  executeLifecycleGenerationStream,
+  safeMarkPlanFailed,
+  toFallbackErrorLike,
+} from '@/features/plans/session/stream-session';
 
 type EmitFn = (event: StreamingEvent) => void;
 
@@ -44,68 +50,12 @@ interface SuccessContext extends GenerationContext {
   startedAt: number;
 }
 
-interface EmitSanitizedFailureEventParams {
-  emit: EmitFn;
-  error: GenerationError | ErrorLike;
-  classification: FailureClassification | 'unknown';
-  planId: string;
-  userId: string;
-  getCorrelationId?: typeof getCorrelationId;
-}
-
 interface EmitCancelledEventParams {
   emit: EmitFn;
   error: GenerationError | ErrorLike;
   planId: string;
   userId: string;
   getCorrelationId?: typeof getCorrelationId;
-}
-
-/**
- * Sanitizes a generation error and emits a client-safe SSE `error` event.
- *
- * @param params.emit - Event emitter used to push a `StreamingEvent` into the SSE stream
- * @param params.error - Raw generation error (provider, parser, timeout, or domain error shape)
- * @param params.classification - Failure kind used for safe client mapping:
- * - `validation`: model output is invalid (non-retryable)
- * - `provider_error`: upstream provider/API failure (usually retryable)
- * - `rate_limit`: provider throttled request (retryable)
- * - `timeout`: generation timed out (retryable)
- * - `capped`: attempt cap reached (non-retryable)
- * - `in_progress`: generation already running for plan (retryable)
- * - `unknown`: fallback when no specific classification exists
- * @param params.planId - Learning plan id associated with the error
- * @param params.userId - User id associated with the error
- * @param params.getCorrelationId - Optional request-id resolver override for tests
- *
- * @remarks The emitted payload is sanitized via `sanitizeSseError` before calling `emit`,
- * so raw internal/provider details are never sent to the client.
- */
-export function emitSanitizedFailureEvent({
-  emit,
-  error,
-  classification,
-  planId,
-  userId,
-  getCorrelationId: getCorrelationIdOverride,
-}: EmitSanitizedFailureEventParams): void {
-  const sanitized = sanitizeSseError(error, classification, {
-    planId,
-    userId,
-  });
-  const requestId = (getCorrelationIdOverride ?? getCorrelationId)();
-
-  emit({
-    type: 'error',
-    data: {
-      planId,
-      code: sanitized.code,
-      message: sanitized.message,
-      classification,
-      retryable: sanitized.retryable,
-      ...(requestId ? { requestId } : {}),
-    },
-  });
 }
 
 /**
@@ -217,80 +167,6 @@ export async function handleFailedGeneration(
 }
 
 /**
- * Emits module summaries and progress events for each parsed module.
- *
- * @param modules - Parsed modules to emit summaries for
- * @param planId - Associated plan id
- * @param emit - Emit function to send StreamingEvents
- */
-export function emitModuleSummaries(
-  modules: ParsedModule[],
-  planId: string,
-  emit: EmitFn
-): void {
-  const modulesCount = modules.length;
-
-  modules.forEach((module, index) => {
-    const modulesParsed = index + 1;
-    emit({
-      type: 'module_summary',
-      data: {
-        planId,
-        index,
-        title: module.title,
-        description: module.description ?? null,
-        estimatedMinutes: module.estimatedMinutes,
-        tasksCount: module.tasks.length,
-      },
-    });
-
-    emit({
-      type: 'progress',
-      data: {
-        planId,
-        modulesParsed,
-        modulesTotalHint: modulesCount,
-        percent:
-          modulesCount > 0
-            ? Math.round((modulesParsed / modulesCount) * 100)
-            : 0,
-      },
-    });
-  });
-}
-
-/**
- * Build a 'plan_start' StreamingEvent from input and planId.
- *
- * @param param0 - Object containing planId and CreateLearningPlanInput
- * @returns StreamingEvent ready to emit when plan generation starts
- */
-export function buildPlanStartEvent({
-  planId,
-  attemptNumber,
-  input,
-}: {
-  planId: string;
-  attemptNumber: number;
-  input: CreateLearningPlanInput;
-}): StreamingEvent {
-  return {
-    type: 'plan_start',
-    data: {
-      planId,
-      attemptNumber,
-      topic: input.topic,
-      skillLevel: input.skillLevel,
-      learningStyle: input.learningStyle,
-      weeklyHours: input.weeklyHours,
-      startDate: input.startDate ?? null,
-      deadlineDate: input.deadlineDate ?? null,
-      ...(input.origin && { origin: input.origin }),
-    },
-  };
-}
-
-/**
  * Attempts to record usage information from generation metadata.
  * Normalizes raw provider metadata into canonical usage shape.
  * Errors are logged but do not throw.
@@ -381,259 +257,5 @@ export async function withFallbackCleanup(
         context.messageBoth
       );
     }
-  }
-}
-
-/**
- * Safely mark a plan as failed, logging errors if marking fails.
- *
- * @param planId - ID of the plan to mark failed
- * @param userId - ID of the user owning the plan (for logging)
- * @param dbClient - RLS client for database operations
- */
-export async function safeMarkPlanFailed(
-  planId: string,
-  userId: string,
-  dbClient: AttemptsDbClient,
-  deps?: Pick<StreamingHelperDependencies, 'markPlanGenerationFailure'>
-): Promise<void> {
-  try {
-    const markFailure =
-      deps?.markPlanGenerationFailure ?? markPlanGenerationFailure;
-    await markFailure(planId, dbClient);
-  } catch (markErr) {
-    logger.error(
-      { error: markErr, planId, userId },
-      'Failed to mark plan as failed after generation error.'
-    );
-  }
-}
-
-function omitCircularFields(
-  value: unknown,
-  seen: WeakSet<object> = new WeakSet<object>()
-): unknown {
-  if (typeof value === 'bigint') {
-    return value.toString();
-  }
-
-  if (typeof value !== 'object' || value === null) {
-    return value;
-  }
-
-  if (seen.has(value)) {
-    return '[Circular]';
-  }
-
-  seen.add(value);
-
-  if (Array.isArray(value)) {
-    return value.map((item) => omitCircularFields(item, seen));
-  }
-
-  const sanitized: Record<string, unknown> = {};
-  for (const [key, fieldValue] of Object.entries(value)) {
-    sanitized[key] = omitCircularFields(fieldValue, seen);
-  }
-
-  return sanitized;
-}
-
-function toFallbackErrorLike(error: unknown): ErrorLike {
-  if (error instanceof Error) {
-    const errorLike: ErrorLike = {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
-
-    const cause = error.cause;
-    if (
-      cause === null ||
-      typeof cause === 'string' ||
-      cause instanceof Error ||
-      (typeof cause === 'object' && cause !== null)
-    ) {
-      errorLike.cause = cause;
-    }
-
-    return errorLike;
-  }
-
-  if (typeof error === 'object' && error !== null) {
-    const objectError = error as Record<string, unknown>;
-    const errorLike: ErrorLike = {
-      name:
-        typeof objectError.name === 'string' && objectError.name.length > 0
-          ? objectError.name
-          : 'UnknownGenerationError',
-      message:
-        typeof objectError.message === 'string' &&
-        objectError.message.length > 0
-          ? objectError.message
-          : JSON.stringify(omitCircularFields(error)),
-    };
-
-    if (typeof objectError.stack === 'string') {
-      errorLike.stack = objectError.stack;
-    }
-    if (typeof objectError.status === 'number') {
-      errorLike.status = objectError.status;
-    }
-    if (typeof objectError.statusCode === 'number') {
-      errorLike.statusCode = objectError.statusCode;
-    }
-    if ('response' in objectError) {
-      const response = objectError.response;
-      if (response === null) {
-        errorLike.response = null;
-      } else if (typeof response === 'object' && response !== null) {
-        const responseRecord = response as Record<string, unknown>;
-        errorLike.response =
-          typeof responseRecord.status === 'number'
-            ? { status: responseRecord.status }
-            : {};
-      }
-    }
-
-    const cause = objectError.cause;
-    if (
-      cause === null ||
-      typeof cause === 'string' ||
-      cause instanceof Error ||
-      (typeof cause === 'object' && cause !== null)
-    ) {
-      errorLike.cause = cause;
-    }
-
-    return errorLike;
-  }
-
-  return {
-    name: 'UnknownGenerationError',
-    message: String(error),
-  };
-}
-
-// ─── Lifecycle-based generation stream ───────────────────────────
-
-export interface LifecycleGenerationStreamParams {
-  reqSignal: AbortSignal;
-  streamSignal: AbortSignal;
-  planId: string;
-  userId: string;
-  emit: EmitFn;
-  processGeneration: () => Promise<GenerationAttemptResult>;
-  onUnhandledError: (error: unknown, startedAt: number) => Promise<void>;
-  fallbackClassification?: FailureClassification | 'unknown';
-  getCorrelationId?: typeof getCorrelationId;
-}
-
-/**
- * Execute a generation stream backed by PlanLifecycleService.
- *
- * The lifecycle service handles plan marking and usage recording.
- * This function only handles SSE emission based on the result.
- */
-export async function executeLifecycleGenerationStream({
-  reqSignal,
-  streamSignal,
-  planId,
-  userId,
-  emit,
-  processGeneration,
-  onUnhandledError,
-  fallbackClassification = 'provider_error',
-  getCorrelationId: getCorrelationIdOverride,
-}: LifecycleGenerationStreamParams): Promise<void> {
-  const startedAt = Date.now();
-
-  try {
-    const result = await processGeneration();
-
-    switch (result.status) {
-      case 'generation_success': {
-        const modules = result.data.modules;
-        const modulesCount = modules.length;
-        const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
-        const totalMinutes = modules.reduce(
-          (sum, module) => sum + module.estimatedMinutes,
-          0
-        );
-
-        emitModuleSummaries(modules, planId, emit);
-
-        emit({
-          type: 'complete',
-          data: {
-            planId,
-            modulesCount,
-            tasksCount,
-            totalMinutes,
-          },
-        });
-        return;
-      }
-
-      case 'retryable_failure':
-      case 'permanent_failure': {
-        emitSanitizedFailureEvent({
-          emit,
-          error: result.error,
-          classification: result.classification,
-          planId,
-          userId,
-          getCorrelationId: getCorrelationIdOverride,
-        });
-        return;
-      }
-
-      case 'already_finalized': {
-        logger.info(
-          { planId, userId },
-          'Generation attempt skipped: plan already finalized'
-        );
-        return;
-      }
-
-      default:
-        assertNever(result);
-    }
-  } catch (error: unknown) {
-    const clientDisconnected = reqSignal.aborted || streamSignal.aborted;
-
-    const clientError = toFallbackErrorLike(error);
-
-    try {
-      await onUnhandledError(error, startedAt);
-    } catch (cleanupError) {
-      logger.error(
-        {
-          cleanupError,
-          planId,
-          userId,
-          sourceError: error,
-          clientDisconnected,
-        },
-        'Failed cleanup after lifecycle generation stream error'
-      );
-    }
-
-    if (clientDisconnected) {
-      logger.info(
-        { planId, userId },
-        'Client disconnected during generation; result saved to DB'
-      );
-      return;
-    }
-
-    emitSanitizedFailureEvent({
-      emit,
-      error: clientError,
-      classification: fallbackClassification,
-      planId,
-      userId,
-      getCorrelationId: getCorrelationIdOverride,
-    });
   }
 }

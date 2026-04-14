@@ -1,11 +1,11 @@
+import {
+  getPlanListTotalCount,
+  listLightweightPlansForApi,
+} from '@/features/plans/read-service';
 import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
-import {
-  getLightweightPlanSummaries,
-  getPlanSummaryCount,
-} from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import {
@@ -63,8 +63,12 @@ export const GET: PlainHandler = withErrorBoundary(
     );
 
     const [summaries, totalCount] = await Promise.all([
-      getLightweightPlanSummaries(user.id, db, { limit, offset }),
-      getPlanSummaryCount(user.id, db),
+      listLightweightPlansForApi({
+        userId: user.id,
+        dbClient: db,
+        options: { limit, offset },
+      }),
+      getPlanListTotalCount({ userId: user.id, dbClient: db }),
     ]);
 
     logger.info(

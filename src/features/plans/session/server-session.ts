@@ -1,8 +1,4 @@
 import {
-  buildPlanStartEvent,
-  executeLifecycleGenerationStream,
-} from '@/app/api/v1/plans/stream/helpers';
-import {
   createEventStream,
   streamHeaders,
 } from '@/features/ai/streaming/events';
@@ -10,6 +6,10 @@ import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
+import {
+  buildPlanStartEvent,
+  executeLifecycleGenerationStream,
+} from '@/features/plans/session/stream-session';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { appEnv } from '@/lib/config/env';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';

@@ -2,7 +2,7 @@
  * Canonical local billing catalog — price ids, tier mapping, and display strings.
  * Used when STRIPE_LOCAL_MODE is enabled (development/test only).
  */
-import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export const LOCAL_PRICE_IDS = {
   starterMonthly: 'price_local_starter_monthly',
@@ -41,7 +41,7 @@ export const LOCAL_STRIPE_DISPLAY_AMOUNTS: Record<
 };
 
 export function localDisplayAmountForTier(
-  tier: Exclude<TierKey, 'free'>,
+  tier: Exclude<SubscriptionTier, 'free'>,
   interval: 'monthly' | 'yearly'
 ): string {
   return LOCAL_STRIPE_DISPLAY_AMOUNTS[tier][interval];

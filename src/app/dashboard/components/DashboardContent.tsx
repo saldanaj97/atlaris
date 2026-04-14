@@ -8,8 +8,9 @@ import {
 } from '@/app/dashboard/components/activity-utils';
 import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHero';
 import { Skeleton } from '@/components/ui/skeleton';
+import { listDashboardPlanSummaries } from '@/features/plans/read-service';
 import { withServerComponentContext } from '@/lib/api/auth';
-import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
+import { getDb } from '@/lib/db/runtime';
 
 /**
  * Async component that fetches user plan data and renders dashboard content.
@@ -17,7 +18,10 @@ import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
  */
 export async function DashboardContent(): Promise<JSX.Element> {
   const result = await withServerComponentContext(async (user) => {
-    const summaries = await getPlanSummariesForUser(user.id);
+    const summaries = await listDashboardPlanSummaries({
+      userId: user.id,
+      dbClient: getDb(),
+    });
     return { summaries };
   });
 

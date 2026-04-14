@@ -1,5 +1,4 @@
 import type Stripe from 'stripe';
-import type { TierKey } from '@/app/pricing/components/PricingTiers';
 import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
 import { formatAmount } from '@/app/pricing/components/utils';
 import { getStripe } from '@/features/billing/client';
@@ -14,6 +13,7 @@ import {
 } from '@/features/billing/validation/stripe';
 import { stripeEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 export interface StripeTierData {
   name: string;
   amount: string;
@@ -112,9 +112,9 @@ export async function fetchStripeTierData({
 }: {
   starterId: string;
   proId: string;
-}): Promise<Map<TierKey, StripeTierData>> {
+}): Promise<Map<SubscriptionTier, StripeTierData>> {
   if (stripeEnv.localMode) {
-    const map = new Map<TierKey, StripeTierData>();
+    const map = new Map<SubscriptionTier, StripeTierData>();
     const starterInterval = starterId.includes('yearly') ? 'yearly' : 'monthly';
     const proInterval = proId.includes('yearly') ? 'yearly' : 'monthly';
     map.set('starter', {
@@ -147,7 +147,7 @@ export async function fetchStripeTierData({
     stripeProductFieldsSchema.safeParse(rawStarterProduct);
   const proProductResult = stripeProductFieldsSchema.safeParse(rawProProduct);
 
-  const stripeData = new Map<TierKey, StripeTierData>();
+  const stripeData = new Map<SubscriptionTier, StripeTierData>();
 
   if (!starterPriceResult.success || !starterProductResult.success) {
     logger.warn(

@@ -32,12 +32,12 @@ import type {
   PlanAccessResult,
   ScheduleAccessResult,
 } from '@/app/plans/[id]/types';
+import { getPlanDetailForRead } from '@/features/plans/read-service';
 import {
   getPlanSchedule,
   SCHEDULE_FETCH_ERROR_CODE,
   ScheduleFetchError,
 } from '@/features/scheduling/schedule-api';
-import { getLearningPlanDetail } from '@/lib/db/queries/plans';
 import {
   planError,
   planSuccess,
@@ -182,8 +182,12 @@ export async function batchUpdateTaskProgressAction({
 export async function getPlanForPage(
   planId: string
 ): Promise<PlanAccessResult> {
-  const result = await withServerActionContext(async (user) => {
-    const plan = await getLearningPlanDetail(planId, user.id);
+  const result = await withServerActionContext(async (user, rlsDb) => {
+    const plan = await getPlanDetailForRead({
+      planId,
+      userId: user.id,
+      dbClient: rlsDb,
+    });
     if (!plan) {
       logger.debug(
         { planId, userId: user.id },

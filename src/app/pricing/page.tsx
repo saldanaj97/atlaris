@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 import { PricingGrid } from '@/app/pricing/components/PricingGrid';
 import { PricingMissingStripeNotice } from '@/app/pricing/components/PricingMissingStripeNotice';
-import type { TierKey } from '@/app/pricing/components/PricingTiers';
 import type { TierConfig } from '@/app/pricing/components/pricing-config';
 import {
   MONTHLY_TIER_CONFIGS,
@@ -16,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',
@@ -28,12 +28,12 @@ interface PaidTierPriceIds {
   proId: string;
 }
 
-type PaidTierKey = Exclude<TierKey, 'free'>;
+type PaidTierKey = Exclude<SubscriptionTier, 'free'>;
 
 const PAID_TIER_KEYS: readonly PaidTierKey[] = MONTHLY_TIER_CONFIGS.map(
   (c) => c.key
 ).filter((key): key is PaidTierKey => key !== 'free');
-const EMPTY_STRIPE_TIER_DATA = new Map<TierKey, StripeTierData>();
+const EMPTY_STRIPE_TIER_DATA = new Map<SubscriptionTier, StripeTierData>();
 
 function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {
   const starterId = configs.find((config) => config.key === 'starter')?.priceId;
@@ -53,7 +53,7 @@ function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {
 
 function getMissingPaidTierKeys(
   priceIds: PaidTierPriceIds | null,
-  stripeData: ReadonlyMap<TierKey, StripeTierData>
+  stripeData: ReadonlyMap<SubscriptionTier, StripeTierData>
 ): PaidTierKey[] {
   if (priceIds === null || stripeData.size === 0) {
     return [...PAID_TIER_KEYS];
@@ -64,9 +64,9 @@ function getMissingPaidTierKeys(
 
 async function loadStripeTierData(
   priceIds: PaidTierPriceIds | null
-): Promise<Map<TierKey, StripeTierData>> {
+): Promise<Map<SubscriptionTier, StripeTierData>> {
   if (priceIds === null) {
-    return new Map<TierKey, StripeTierData>();
+    return new Map<SubscriptionTier, StripeTierData>();
   }
 
   try {
@@ -76,7 +76,7 @@ async function loadStripeTierData(
       { err: error },
       '[loadStripeTierData] Failed to fetch Stripe tier data; rendering with static fallback pricing'
     );
-    return new Map<TierKey, StripeTierData>();
+    return new Map<SubscriptionTier, StripeTierData>();
   }
 }
 

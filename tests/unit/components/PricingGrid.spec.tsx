@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { PricingGrid } from '@/app/pricing/components/PricingGrid';
-import type { TierKey } from '@/app/pricing/components/PricingTiers';
 import type { TierConfig } from '@/app/pricing/components/pricing-config';
 import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Mock SubscribeButton
 vi.mock('@/app/pricing/components/SubscribeButton', () => ({
@@ -41,7 +41,7 @@ describe('PricingGrid', () => {
     },
   ];
 
-  const mockStripeData = new Map<TierKey, StripeTierData>([
+  const mockStripeData = new Map<SubscriptionTier, StripeTierData>([
     ['free', { name: 'Free', amount: '$0' }],
     ['starter', { name: 'Starter', amount: '$9' }],
     ['pro', { name: 'Pro', amount: '$29' }],
@@ -181,7 +181,7 @@ describe('PricingGrid', () => {
   });
 
   it('should handle empty stripe data gracefully', () => {
-    const emptyStripeData = new Map<TierKey, StripeTierData>();
+    const emptyStripeData = new Map<SubscriptionTier, StripeTierData>();
 
     render(
       <PricingGrid
@@ -314,7 +314,7 @@ describe('PricingGrid', () => {
   });
 
   it('should fall back to default price when Stripe data is missing', () => {
-    const partialStripeData = new Map<TierKey, StripeTierData>([
+    const partialStripeData = new Map<SubscriptionTier, StripeTierData>([
       ['free', { name: 'Free', amount: '$0' }],
       // Missing starter and pro
     ]);

@@ -1,4 +1,3 @@
-import { safeMarkPlanFailed } from '@/app/api/v1/plans/stream/helpers';
 import type { IsoDateString } from '@/features/ai/types/provider.types';
 import { resolveUserTier } from '@/features/billing/tier';
 import { parsePersistedPdfContext } from '@/features/pdf/context';
@@ -16,6 +15,7 @@ import {
   createPlanGenerationSessionResponse,
   createStreamDbClient,
 } from '@/features/plans/session/server-session';
+import { safeMarkPlanFailed } from '@/features/plans/session/stream-session';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';

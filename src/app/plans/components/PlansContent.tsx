@@ -6,8 +6,8 @@ import { PlanCountBadge } from '@/app/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
+import { listPlansPageSummaries } from '@/features/plans/read-service';
 import { withServerComponentContext } from '@/lib/api/auth';
-import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
 
 /**
@@ -41,7 +41,7 @@ export async function PlansContent(): Promise<JSX.Element> {
   const result = await withServerComponentContext(async (user) => {
     const db = getDb();
     const [summaries, snapshot] = await Promise.all([
-      getPlanSummariesForUser(user.id, db),
+      listPlansPageSummaries({ userId: user.id, dbClient: db }),
       getBillingAccountSnapshot(user.id, db),
     ]);
     return { summaries, snapshot };
