@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
@@ -93,21 +93,95 @@ function expectJsonObject(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function expectCompletedPlanId(events: StreamingEvent[]): string {
-  expect(events.some((event) => event.type === 'plan_start')).toBe(true);
-  expect(events.some((event) => event.type === 'complete')).toBe(true);
-  expect(events.some((event) => event.type === 'error')).toBe(false);
+async function expectCompletedPlanId(
+  events: StreamingEvent[]
+): Promise<string> {
+  const start = expectPlanStartEvent(events, 1);
+  const completeEvent = expectTerminalEventAfterStart(events, 'complete');
+  const completeData = expectJsonObject(completeEvent.data);
+  expect(completeData.planId).toBe(start.planId);
+  await expect(getPlanGenerationStatus(start.planId)).resolves.toBe('ready');
+  await expect(listAttempts(start.planId)).resolves.toMatchObject([
+    {
+      status: 'success',
+      classification: null,
+    },
+  ]);
+  return start.planId;
+}
 
-  const completeEvent = events.find((event) => event.type === 'complete');
-  const completeData = expectJsonObject(completeEvent?.data);
-  expect(completeData.planId).toEqual(expect.any(String));
-
-  const planId = completeData.planId;
-  if (typeof planId !== 'string' || planId.length === 0) {
-    throw new Error('Expected complete event to include a planId');
+function expectPlanStartEvent(
+  events: StreamingEvent[],
+  expectedAttemptNumber: number
+): { planId: string } {
+  const startEvent = events.find((event) => event.type === 'plan_start');
+  if (!startEvent) {
+    throw new Error('Expected plan_start event');
   }
 
-  return planId;
+  const startData = expectJsonObject(startEvent.data);
+  expect(startData.planId).toEqual(expect.any(String));
+  expect(startData.attemptNumber).toBe(expectedAttemptNumber);
+
+  const planId = startData.planId;
+  if (typeof planId !== 'string' || planId.length === 0) {
+    throw new Error('Expected plan_start event to include a planId');
+  }
+
+  return { planId };
+}
+
+function expectTerminalEventAfterStart(
+  events: StreamingEvent[],
+  terminalType: 'complete' | 'error' | 'cancelled'
+): StreamingEvent {
+  const eventTypes = events.map((event) => event.type);
+  const startIndex = eventTypes.indexOf('plan_start');
+  const terminalIndex = eventTypes.indexOf(terminalType);
+
+  expect(startIndex).toBeGreaterThanOrEqual(0);
+  expect(terminalIndex).toBeGreaterThan(startIndex);
+  expect(
+    eventTypes
+      .slice(0, terminalIndex)
+      .filter((type) => ['complete', 'error', 'cancelled'].includes(type))
+  ).toEqual([]);
+
+  const terminalEvent = events[terminalIndex];
+  if (!terminalEvent) {
+    throw new Error(`Expected ${terminalType} event`);
+  }
+
+  return terminalEvent;
+}
+
+function expectNoTerminalEvent(events: StreamingEvent[]): void {
+  expect(
+    events.some((event) =>
+      ['complete', 'error', 'cancelled'].includes(event.type)
+    )
+  ).toBe(false);
+}
+
+async function listAttempts(planId: string) {
+  return db
+    .select({
+      status: generationAttempts.status,
+      classification: generationAttempts.classification,
+    })
+    .from(generationAttempts)
+    .where(eq(generationAttempts.planId, planId))
+    .orderBy(desc(generationAttempts.createdAt));
+}
+
+async function getPlanGenerationStatus(planId: string) {
+  const [plan] = await db
+    .select({ generationStatus: learningPlans.generationStatus })
+    .from(learningPlans)
+    .where(eq(learningPlans.id, planId))
+    .limit(1);
+
+  return plan?.generationStatus;
 }
 
 // Stubbing env in beforeAll/afterAll is safe: Vitest runs each file in a separate worker,
@@ -163,7 +237,8 @@ describe('POST /api/v1/plans/stream', () => {
     }
 
     const events = await readStreamingResponse(response);
-    const planId = expectCompletedPlanId(events);
+    const planId = await expectCompletedPlanId(events);
+    const attempts = await listAttempts(planId);
 
     const [plan] = await db
       .select()
@@ -180,9 +255,14 @@ describe('POST /api/v1/plans/stream', () => {
       .where(eq(modules.planId, planId));
 
     expect(moduleRows.length).toBeGreaterThan(0);
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      status: 'success',
+      classification: null,
+    });
   });
 
-  it('marks plan failed on generation error', async () => {
+  it('emits fallback error and preserves reserved attempt on unexpected generation errors', async () => {
     const authUserId = buildTestAuthUserId('stream-failure');
     await ensureUser({
       authUserId,
@@ -193,7 +273,16 @@ describe('POST /api/v1/plans/stream', () => {
 
     const postWithFailingGeneration = createStreamHandler({
       overrides: {
-        processGenerationAttempt: async () => {
+        processGenerationAttempt: async (input: ProcessGenerationInput) => {
+          await db.insert(generationAttempts).values({
+            planId: input.planId,
+            status: 'in_progress',
+            classification: null,
+            durationMs: 0,
+            modulesCount: 0,
+            tasksCount: 0,
+            promptHash: 'stream-unhandled-exception',
+          });
           throw new Error('boom');
         },
       },
@@ -221,20 +310,14 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events: StreamingEvent[] = await readStreamingResponse(response);
-    const errorEvent = events.find((event) => event.type === 'error');
-    expect(errorEvent?.data).toMatchObject({
+    const { planId } = expectPlanStartEvent(events, 1);
+    const errorEvent = expectTerminalEventAfterStart(events, 'error');
+    expect(errorEvent.data).toMatchObject({
       code: 'GENERATION_FAILED',
       classification: 'provider_error',
       retryable: true,
     });
-
-    const startEvent = events.find((e) => e.type === 'plan_start');
-    const startData = expectJsonObject(startEvent?.data);
-    expect(startData.planId).toEqual(expect.any(String));
-    if (typeof startData.planId !== 'string' || startData.planId.length === 0) {
-      throw new Error('Expected plan_start event to include a planId');
-    }
-    const planId = startData.planId;
+    const attempts = await listAttempts(planId);
 
     const [plan] = await db
       .select()
@@ -243,6 +326,11 @@ describe('POST /api/v1/plans/stream', () => {
       .limit(1);
 
     expect(plan?.generationStatus).toBe('failed');
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      status: 'in_progress',
+      classification: null,
+    });
   });
 
   it('returns sanitized SSE error payloads to clients on generation failure', async () => {
@@ -289,21 +377,134 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    const errorEvent = events.find((event) => event.type === 'error');
+    expectPlanStartEvent(events, 1);
+    const errorEvent = expectTerminalEventAfterStart(events, 'error');
 
-    expect(errorEvent?.data).toMatchObject({
+    const errorData = expectJsonObject(errorEvent.data);
+    expect(errorData).toMatchObject({
       code: 'GENERATION_FAILED',
       message: 'Plan generation encountered an error. Please try again.',
       classification: 'provider_error',
       retryable: true,
     });
-    expect(errorEvent?.data?.requestId).toEqual(expect.any(String));
+    expect(errorData.requestId).toEqual(expect.any(String));
     const errorMessage =
-      typeof errorEvent?.data?.message === 'string'
-        ? errorEvent.data.message
-        : '';
+      typeof errorData.message === 'string' ? errorData.message : '';
     expect(errorMessage).not.toContain('api_key');
     expect(errorMessage).not.toContain('sk-live-secret-value');
+  });
+
+  it('emits permanent failure parity for validation-classified stream failures', async () => {
+    const authUserId = buildTestAuthUserId('stream-permanent-failure');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    const postWithPermanentFailure = createStreamHandler({
+      overrides: {
+        processGenerationAttempt: async () => ({
+          status: 'permanent_failure',
+          classification: 'validation',
+          error: new Error('invalid generated payload'),
+        }),
+      },
+    });
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: 'Permanent Failure Plan',
+        skillLevel: 'beginner',
+        weeklyHours: 2,
+        learningStyle: 'mixed',
+        deadlineDate: '2030-01-01',
+        visibility: 'private',
+        origin: 'ai',
+      }),
+    });
+
+    const response = await postWithPermanentFailure(request);
+    expect(response.status).toBe(200);
+
+    const events = await readStreamingResponse(response);
+    expectPlanStartEvent(events, 1);
+    const errorEvent = expectTerminalEventAfterStart(events, 'error');
+    expect(errorEvent.data).toMatchObject({
+      code: 'INVALID_OUTPUT',
+      classification: 'validation',
+      retryable: false,
+    });
+  });
+
+  it('suppresses terminal SSE events on client cancellation but still marks the plan failed', async () => {
+    const authUserId = buildTestAuthUserId('stream-cancelled');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    const controller = new AbortController();
+    const postWithCancellation = createStreamHandler({
+      overrides: {
+        processGenerationAttempt: async (input: ProcessGenerationInput) => {
+          await db.insert(generationAttempts).values({
+            planId: input.planId,
+            status: 'in_progress',
+            classification: null,
+            durationMs: 0,
+            modulesCount: 0,
+            tasksCount: 0,
+            promptHash: 'stream-cancelled-attempt',
+          });
+          controller.abort();
+          throw new DOMException('Client disconnected', 'AbortError');
+        },
+      },
+    });
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: 'Cancelled Plan',
+        skillLevel: 'beginner',
+        weeklyHours: 2,
+        learningStyle: 'mixed',
+        deadlineDate: '2030-01-01',
+        visibility: 'private',
+        origin: 'ai',
+      }),
+    });
+
+    const response = await postWithCancellation(request);
+    expect(response.status).toBe(200);
+
+    const events = await readStreamingResponse(response);
+    const { planId } = expectPlanStartEvent(events, 1);
+    expectNoTerminalEvent(events);
+
+    const [plan] = await db
+      .select({
+        generationStatus: learningPlans.generationStatus,
+      })
+      .from(learningPlans)
+      .where(eq(learningPlans.id, planId))
+      .limit(1);
+
+    const attempts = await listAttempts(planId);
+    expect(plan?.generationStatus).toBe('failed');
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      status: 'in_progress',
+      classification: null,
+    });
   });
 
   it('accepts valid model override via query param', async () => {
@@ -342,7 +543,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    expectCompletedPlanId(events);
+    await expectCompletedPlanId(events);
   });
 
   it('falls back to default model when invalid model override is provided', async () => {
@@ -381,7 +582,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    expectCompletedPlanId(events);
+    await expectCompletedPlanId(events);
   });
 
   it('works without model param (uses default)', async () => {
@@ -416,7 +617,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    expectCompletedPlanId(events);
+    await expectCompletedPlanId(events);
   });
 
   it('uses tier default when DB has no saved preference', async () => {
@@ -950,7 +1151,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    const planId = expectCompletedPlanId(events);
+    const planId = await expectCompletedPlanId(events);
 
     expect(capturedInputs).toHaveLength(1);
     const capturedInput = capturedInputs[0];

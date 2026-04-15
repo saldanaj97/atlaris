@@ -1,6 +1,6 @@
-import { ensureUser, resetDbForIntegrationTestFile } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db';
 import { and, eq, lt } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import {
   completeJob,
@@ -80,10 +80,6 @@ async function createPlanForUser(
 }
 
 describe('Job queue service', () => {
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
-
   it('enqueues a job with expected defaults', async () => {
     const { plan, userId } = await createPlanFixture('defaults');
     const payload = buildPlanRegenerationPayload(plan, {
@@ -359,11 +355,31 @@ describe('Job queue service', () => {
     expect(first?.attempts).toBe(1);
     expect(first?.error).toBeNull();
     expect(first?.completedAt).toBeNull();
+    const firstRetryRow = await db.query.jobQueue.findFirst({
+      where: (fields, operators) => operators.eq(fields.id, jobId),
+    });
+    expect(firstRetryRow).toBeDefined();
+    if (!firstRetryRow) {
+      throw new Error('Expected first retry row');
+    }
+    expect(
+      firstRetryRow.scheduledFor.getTime() - firstRetryRow.updatedAt.getTime()
+    ).toBe(2_000);
 
     await getNextJob([JOB_TYPE]);
     const second = await failJob(jobId, 'still failing');
     expect(second?.status).toBe('pending');
     expect(second?.attempts).toBe(2);
+    const secondRetryRow = await db.query.jobQueue.findFirst({
+      where: (fields, operators) => operators.eq(fields.id, jobId),
+    });
+    expect(secondRetryRow).toBeDefined();
+    if (!secondRetryRow) {
+      throw new Error('Expected second retry row');
+    }
+    expect(
+      secondRetryRow.scheduledFor.getTime() - secondRetryRow.updatedAt.getTime()
+    ).toBe(4_000);
 
     await getNextJob([JOB_TYPE]);
     const terminal = await failJob(jobId, 'fatal error');

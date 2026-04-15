@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { PreparePlanInputSuccess } from '@/features/plans/lifecycle/ports';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
@@ -36,8 +37,7 @@ function createMockPorts(
       rollbackPdfQuota: async () => {},
     },
     pdfOrigin: {
-      preparePlanInput: async () => ({
-        origin: 'pdf' as const,
+      preparePlanInput: async (): Promise<PreparePlanInputSuccess> => ({
         extractedContext: null,
         topic: 'test',
         skillLevel: 'beginner',

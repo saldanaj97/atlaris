@@ -8,9 +8,10 @@
  * Only unexpected errors (bugs) propagate as thrown exceptions.
  */
 
-import { calculateTotalWeeks } from '@/features/plans/api/shared';
 import { logger } from '@/lib/logging/logger';
-
+import { type CreationGatePorts, checkCreationGate } from './creation-pipeline';
+import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
+import { createPdfPlanWithStrategy } from './origin-strategies/create-pdf-plan';
 import type {
   GenerationPort,
   JobQueuePort,
@@ -24,10 +25,7 @@ import type {
   CreatePdfPlanInput,
   CreatePlanResult,
   GenerationAttemptResult,
-  NormalizedDuration,
-  PdfContext,
   ProcessGenerationInput,
-  SubscriptionTier,
 } from './types';
 import { isRetryableClassification } from './types';
 
@@ -47,104 +45,16 @@ export class PlanLifecycleService {
     this.ports = ports;
   }
 
-  /**
-   * Shared tier resolution, duration normalization, duration caps, and
-   * attempt-cap pre-check for both AI and PDF plan creation.
-   */
-  private async checkTierDurationAndAttemptCap(
-    userId: string,
-    weeklyHours: number,
-    startDate: string | null,
-    deadlineDate: string | null,
-    lifecycleLabel: 'create' | 'create_pdf'
-  ): Promise<
-    | { blocked: true; result: CreatePlanResult }
-    | {
-        blocked: false;
-        tier: SubscriptionTier;
-        duration: NormalizedDuration;
-      }
-  > {
-    const logBase =
-      lifecycleLabel === 'create'
-        ? 'plan.lifecycle.create'
-        : 'plan.lifecycle.create_pdf';
-
-    const tier = await this.ports.quota.resolveUserTier(userId);
-    if (lifecycleLabel === 'create') {
-      logger.info({ userId, tier }, `${logBase}: tier resolved`);
-    }
-
-    const requestedWeeks = calculateTotalWeeks({
-      startDate: startDate ?? null,
-      deadlineDate: deadlineDate ?? null,
-    });
-    const requestedCap = this.ports.quota.checkDurationCap({
-      tier,
-      weeklyHours,
-      totalWeeks: requestedWeeks,
-    });
-    if (!requestedCap.allowed) {
-      logger.info(
-        { userId, tier },
-        `${logBase}: quota rejected (requested duration cap)`
-      );
-      return {
-        blocked: true,
-        result: {
-          status: 'quota_rejected',
-          reason: requestedCap.reason ?? 'Plan duration exceeds tier limits',
-          upgradeUrl: requestedCap.upgradeUrl,
-        },
-      };
-    }
-
-    const duration = this.ports.quota.normalizePlanDuration({
-      tier,
-      weeklyHours,
-      startDate,
-      deadlineDate,
-    });
-
-    const durationCap = this.ports.quota.checkDurationCap({
-      tier,
-      weeklyHours,
-      totalWeeks: duration.totalWeeks,
-    });
-
-    if (!durationCap.allowed) {
-      logger.info(
-        { userId, tier },
-        `${logBase}: quota rejected (normalized duration cap)`
-      );
-      return {
-        blocked: true,
-        result: {
-          status: 'quota_rejected',
-          reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
-          upgradeUrl: durationCap.upgradeUrl,
-        },
-      };
-    }
-
-    const cappedPlanId =
-      await this.ports.planPersistence.findCappedPlanWithoutModules(userId);
-    if (cappedPlanId) {
-      logger.info(
-        { userId, cappedPlanId },
-        `${logBase}: attempt cap exceeded (existing capped plan)`
-      );
-      return {
-        blocked: true,
-        result: {
-          status: 'attempt_cap_exceeded',
-          reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
-          cappedPlanId,
-        },
-      };
-    }
-
-    return { blocked: false, tier, duration };
+  private creationGatePorts(): CreationGatePorts {
+    return {
+      findCappedPlanWithoutModules: (userId: string) =>
+        this.ports.planPersistence.findCappedPlanWithoutModules(userId),
+      resolveUserTier: (userId: string) =>
+        this.ports.quota.resolveUserTier(userId),
+      checkDurationCap: (params) => this.ports.quota.checkDurationCap(params),
+      normalizePlanDuration: (params) =>
+        this.ports.quota.normalizePlanDuration(params),
+    };
   }
 
   /**
@@ -156,95 +66,22 @@ export class PlanLifecycleService {
    * @returns A discriminated union result — never throws for lifecycle outcomes.
    */
   async createPlan(input: CreateAiPlanInput): Promise<CreatePlanResult> {
-    // 1. Validate input
-    if (!input.topic || input.topic.trim().length < 3) {
-      logger.warn(
-        { userId: input.userId },
-        'plan.lifecycle.create: validation failed'
-      );
-      return {
-        status: 'permanent_failure',
-        classification: 'validation',
-        error: new Error(
-          'Topic is required and must be at least 3 characters for AI-origin plans.'
-        ),
-      };
-    }
-
-    const gate = await this.checkTierDurationAndAttemptCap(
-      input.userId,
-      input.weeklyHours,
-      input.startDate ?? null,
-      input.deadlineDate ?? null,
-      'create'
-    );
+    const gate = await checkCreationGate(this.creationGatePorts(), {
+      userId: input.userId,
+      weeklyHours: input.weeklyHours,
+      startDate: input.startDate ?? null,
+      deadlineDate: input.deadlineDate ?? null,
+      lifecycleLabel: 'create',
+    });
     if (gate.blocked) {
       return gate.result;
     }
-    const { tier, duration } = gate;
 
-    const normalizedTopic = input.topic.trim();
-
-    // 7. Duplicate detection — return existing plan for idempotent submissions
-    const existingPlanId =
-      await this.ports.planPersistence.findRecentDuplicatePlan(
-        input.userId,
-        normalizedTopic
-      );
-    if (existingPlanId) {
-      logger.info(
-        { userId: input.userId, existingPlanId },
-        'plan.lifecycle.create: duplicate detected'
-      );
-      return {
-        status: 'duplicate_detected',
-        existingPlanId,
-      };
-    }
-
-    // 8. Atomic insert (checks plan limit + inserts within a single transaction)
-    const insertResult = await this.ports.planPersistence.atomicInsertPlan(
-      input.userId,
-      {
-        topic: normalizedTopic,
-        skillLevel: input.skillLevel,
-        weeklyHours: input.weeklyHours,
-        learningStyle: input.learningStyle,
-        visibility: 'private',
-        origin: 'ai',
-        startDate: duration.startDate,
-        deadlineDate: duration.deadlineDate,
-      }
-    );
-
-    if (!insertResult.success) {
-      logger.info(
-        { userId: input.userId },
-        'plan.lifecycle.create: quota rejected (plan limit)'
-      );
-      return {
-        status: 'quota_rejected',
-        reason: insertResult.reason,
-      };
-    }
-
-    logger.info(
-      { userId: input.userId, planId: insertResult.id, tier, origin: 'ai' },
-      'plan.lifecycle.create: plan created'
-    );
-    return {
-      status: 'success',
-      planId: insertResult.id,
-      tier,
-      normalizedInput: {
-        topic: normalizedTopic,
-        skillLevel: input.skillLevel,
-        weeklyHours: input.weeklyHours,
-        learningStyle: input.learningStyle,
-        startDate: duration.startDate,
-        deadlineDate: duration.deadlineDate,
-      },
-    };
+    return createAiPlanWithStrategy(this.ports, {
+      input,
+      tier: gate.tier,
+      duration: gate.duration,
+    });
   }
 
   /**
@@ -259,133 +96,22 @@ export class PlanLifecycleService {
    * @returns A discriminated union result — never throws for lifecycle outcomes.
    */
   async createPdfPlan(input: CreatePdfPlanInput): Promise<CreatePlanResult> {
-    // 1. Validate PDF-specific fields
-    if (
-      !input.extractedContent ||
-      !input.pdfProofToken ||
-      !input.pdfExtractionHash
-    ) {
-      logger.warn(
-        { userId: input.userId },
-        'plan.lifecycle.create_pdf: validation failed'
-      );
-      return {
-        status: 'permanent_failure',
-        classification: 'validation',
-        error: new Error(
-          'PDF extraction proof fields are required for PDF-origin plans.'
-        ),
-      };
-    }
-
-    const pdfGate = await this.checkTierDurationAndAttemptCap(
-      input.userId,
-      input.weeklyHours,
-      input.startDate ?? null,
-      input.deadlineDate ?? null,
-      'create_pdf'
-    );
+    const pdfGate = await checkCreationGate(this.creationGatePorts(), {
+      userId: input.userId,
+      weeklyHours: input.weeklyHours,
+      startDate: input.startDate ?? null,
+      deadlineDate: input.deadlineDate ?? null,
+      lifecycleLabel: 'create_pdf',
+    });
     if (pdfGate.blocked) {
       return pdfGate.result;
     }
-    const { tier, duration } = pdfGate;
 
-    // 7. Reserve PDF quota + verify proof before duplicate detection so replayed
-    // one-time tokens fail with invalid proof (403) instead of duplicate topic (409).
-    const prepared = await this.ports.pdfOrigin.preparePlanInput({
-      body: input.body,
-      authUserId: input.authUserId,
-      internalUserId: input.userId,
+    return createPdfPlanWithStrategy(this.ports, {
+      input,
+      tier: pdfGate.tier,
+      duration: pdfGate.duration,
     });
-    logger.info(
-      { userId: input.userId },
-      'plan.lifecycle.create_pdf: pdf quota reserved'
-    );
-
-    // 8. Duplicate detection — after proof so consumed tokens surface as invalid proof first
-    const existingPlanId =
-      await this.ports.planPersistence.findRecentDuplicatePlan(
-        input.userId,
-        prepared.topic.trim()
-      );
-    if (existingPlanId) {
-      await this.ports.pdfOrigin.rollbackPdfUsage({
-        internalUserId: input.userId,
-        reserved: prepared.pdfUsageReserved,
-      });
-      logger.info(
-        { userId: input.userId, existingPlanId },
-        'plan.lifecycle.create_pdf: duplicate detected after proof'
-      );
-      return {
-        status: 'duplicate_detected',
-        existingPlanId,
-      };
-    }
-
-    // 9. Atomic insert — rollback PDF quota on any failure after reservation
-    let succeeded = false;
-    try {
-      const insertResult = await this.ports.planPersistence.atomicInsertPlan(
-        input.userId,
-        {
-          topic: prepared.topic,
-          skillLevel: prepared.skillLevel as CreatePdfPlanInput['skillLevel'],
-          weeklyHours: prepared.weeklyHours,
-          learningStyle:
-            prepared.learningStyle as CreatePdfPlanInput['learningStyle'],
-          visibility: 'private',
-          origin: 'pdf',
-          extractedContext: prepared.extractedContext as PdfContext | null,
-          startDate: duration.startDate,
-          deadlineDate: duration.deadlineDate,
-        }
-      );
-
-      if (!insertResult.success) {
-        logger.info(
-          { userId: input.userId },
-          'plan.lifecycle.create_pdf: quota rejected (plan limit), rolling back pdf quota'
-        );
-        return {
-          status: 'quota_rejected',
-          reason: insertResult.reason,
-        };
-      }
-
-      succeeded = true;
-      logger.info(
-        { userId: input.userId, planId: insertResult.id, tier, origin: 'pdf' },
-        'plan.lifecycle.create_pdf: plan created'
-      );
-      return {
-        status: 'success',
-        planId: insertResult.id,
-        tier,
-        normalizedInput: {
-          topic: prepared.topic,
-          skillLevel: input.skillLevel,
-          weeklyHours: input.weeklyHours,
-          learningStyle: input.learningStyle,
-          startDate: duration.startDate,
-          deadlineDate: duration.deadlineDate,
-          pdfContext: prepared.extractedContext as PdfContext | null,
-          pdfExtractionHash: prepared.pdfProvenance?.extractionHash,
-          pdfProofVersion: prepared.pdfProvenance?.proofVersion,
-        },
-      };
-    } finally {
-      if (!succeeded) {
-        logger.warn(
-          { userId: input.userId },
-          'plan.lifecycle.create_pdf: rolling back pdf quota after failure'
-        );
-        await this.ports.pdfOrigin.rollbackPdfUsage({
-          internalUserId: input.userId,
-          reserved: prepared.pdfUsageReserved,
-        });
-      }
-    }
   }
 
   /**

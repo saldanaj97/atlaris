@@ -3,18 +3,20 @@ import {
   makeOpenRouterGpt4oProviderMetadata,
 } from '@tests/fixtures/canonical-usage.factory';
 import { describe, expect, it, vi } from 'vitest';
-import { tryRecordUsage } from '@/app/api/v1/plans/stream/helpers';
-import type { GenerationSuccessResult } from '@/features/ai/types/orchestrator.types';
+import {
+  handleFailedGeneration,
+  tryRecordUsage,
+} from '@/app/api/v1/plans/stream/helpers';
+import type {
+  GenerationFailureResult,
+  GenerationSuccessResult,
+} from '@/features/ai/types/orchestrator.types';
 import { safeNormalizeUsage } from '@/features/ai/usage';
 import type {
   AttemptsDbClient,
   GenerationAttemptRecord,
 } from '@/lib/db/queries/types/attempts.types';
 import { canonicalUsageToRecordParams } from '@/lib/db/usage';
-
-vi.mock('@sentry/nextjs', () => ({
-  captureException: vi.fn(),
-}));
 
 const mockDbClient = {} as AttemptsDbClient;
 
@@ -49,6 +51,22 @@ function makeSuccessResult(
     extendedTimeout: false,
     timedOut: false,
     attempt: buildAttemptRecord(),
+  };
+}
+
+function makeFailureResult(
+  classification: GenerationFailureResult['classification'],
+  metadata?: GenerationFailureResult['metadata']
+): GenerationFailureResult {
+  return {
+    status: 'failure',
+    classification,
+    error: new Error(`${classification} failure`),
+    durationMs: 1,
+    extendedTimeout: false,
+    timedOut: classification === 'timeout',
+    attempt: buildAttemptRecord(),
+    ...(metadata !== undefined ? { metadata } : {}),
   };
 }
 
@@ -130,5 +148,170 @@ describe('tryRecordUsage', () => {
       inputTokens: 99,
       outputTokens: 20,
     });
+  });
+
+  it('swallows usage recording failures without incrementing usage', async () => {
+    const mockRecordUsage = vi
+      .fn()
+      .mockRejectedValue(new Error('usage write failed'));
+    const mockIncrementUsage = vi.fn();
+
+    await expect(
+      tryRecordUsage(
+        'user-4',
+        makeSuccessResult(makeOpenRouterGpt4oProviderMetadata()),
+        mockDbClient,
+        {
+          recordUsage: mockRecordUsage,
+          incrementUsage: mockIncrementUsage,
+        }
+      )
+    ).resolves.toBeUndefined();
+
+    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
+    expect(mockIncrementUsage).not.toHaveBeenCalled();
+  });
+
+  it('normalizes missing metadata before building record params', async () => {
+    const mockRecordUsage = vi.fn();
+    const mockIncrementUsage = vi.fn();
+    const mockToRecordParams = vi.fn().mockReturnValue({
+      userId: 'user-5',
+      kind: 'plan',
+    });
+
+    await tryRecordUsage(
+      'user-5',
+      makeFailureResult('validation'),
+      mockDbClient,
+      {
+        recordUsage: mockRecordUsage,
+        incrementUsage: mockIncrementUsage,
+        canonicalUsageToRecordParams: mockToRecordParams,
+      }
+    );
+
+    expect(mockToRecordParams).toHaveBeenCalledWith(
+      safeNormalizeUsage(undefined),
+      'user-5'
+    );
+    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
+    expect(mockIncrementUsage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('handleFailedGeneration usage semantics', () => {
+  it.each([
+    {
+      classification: 'capped' as const,
+      expectedClassification: 'capped' as const,
+      retryable: false,
+    },
+    {
+      classification: 'conflict' as const,
+      expectedClassification: 'conflict' as const,
+      retryable: true,
+    },
+  ])('emits documented classification fallback for $expectedClassification', async ({
+    classification,
+    expectedClassification,
+    retryable,
+  }) => {
+    const emit = vi.fn();
+    const mockMarkPlanGenerationFailure = vi.fn().mockResolvedValue(undefined);
+
+    await handleFailedGeneration(makeFailureResult(classification), {
+      planId: 'plan-classification',
+      userId: 'user-classification',
+      dbClient: mockDbClient,
+      emit,
+      markPlanGenerationFailure: mockMarkPlanGenerationFailure,
+    });
+
+    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
+      'plan-classification',
+      mockDbClient
+    );
+    expect(emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        data: expect.objectContaining({
+          classification: expectedClassification,
+          retryable,
+        }),
+      })
+    );
+  });
+
+  it('marks retryable failures without recording usage', async () => {
+    const emit = vi.fn();
+    const mockMarkPlanGenerationFailure = vi.fn().mockResolvedValue(undefined);
+    const mockRecordUsage = vi.fn();
+    const mockIncrementUsage = vi.fn();
+
+    await handleFailedGeneration(makeFailureResult('timeout'), {
+      planId: 'plan-retryable',
+      userId: 'user-retryable',
+      dbClient: mockDbClient,
+      emit,
+      markPlanGenerationFailure: mockMarkPlanGenerationFailure,
+      recordUsage: mockRecordUsage,
+      incrementUsage: mockIncrementUsage,
+    });
+
+    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
+      'plan-retryable',
+      mockDbClient
+    );
+    expect(mockRecordUsage).not.toHaveBeenCalled();
+    expect(mockIncrementUsage).not.toHaveBeenCalled();
+    expect(emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        data: expect.objectContaining({
+          classification: 'timeout',
+          retryable: true,
+        }),
+      })
+    );
+  });
+
+  it('records usage for permanent failures before emitting the fallback error', async () => {
+    const emit = vi.fn();
+    const mockMarkPlanGenerationFailure = vi.fn().mockResolvedValue(undefined);
+    const mockRecordUsage = vi.fn().mockResolvedValue(undefined);
+    const mockIncrementUsage = vi.fn().mockResolvedValue(undefined);
+
+    await handleFailedGeneration(
+      makeFailureResult('validation', makeOpenRouterGpt4oProviderMetadata()),
+      {
+        planId: 'plan-permanent',
+        userId: 'user-permanent',
+        dbClient: mockDbClient,
+        emit,
+        markPlanGenerationFailure: mockMarkPlanGenerationFailure,
+        recordUsage: mockRecordUsage,
+        incrementUsage: mockIncrementUsage,
+      }
+    );
+
+    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
+      'plan-permanent',
+      mockDbClient
+    );
+    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
+    expect(mockIncrementUsage).toHaveBeenCalledTimes(1);
+    expect(mockRecordUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      emit.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    );
+    expect(emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        data: expect.objectContaining({
+          classification: 'validation',
+          retryable: false,
+        }),
+      })
+    );
   });
 });

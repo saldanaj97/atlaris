@@ -1,5 +1,3 @@
-import type { IsoDateString } from '@/features/ai/types/provider.types';
-import { resolveUserTier } from '@/features/billing/tier';
 import { parsePersistedPdfContext } from '@/features/pdf/context';
 import {
   requireOwnedPlanById,
@@ -7,15 +5,9 @@ import {
 } from '@/features/plans/api/route-context';
 import type {
   GenerationAttemptResult,
-  JobQueuePort,
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle';
-import { createPlanLifecycleService } from '@/features/plans/lifecycle';
-import {
-  createPlanGenerationSessionResponse,
-  createStreamDbClient,
-} from '@/features/plans/session/server-session';
-import { safeMarkPlanFailed } from '@/features/plans/session/stream-session';
+import { retryAndStreamPlanGenerationSession } from '@/features/plans/session/plan-generation-session';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
@@ -26,47 +18,10 @@ import {
 } from '@/lib/api/rate-limit';
 import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
-import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
 
 export const maxDuration = 60;
 
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-const toIsoDateString = (value: string | null): IsoDateString | undefined => {
-  if (!value) {
-    return undefined;
-  }
-
-  return ISO_DATE_PATTERN.test(value) ? (value as IsoDateString) : undefined;
-};
-
 const RETRYABLE_STATUSES = new Set(['failed', 'pending_retry']);
-
-/** Stub JobQueuePort — retry route does not enqueue jobs. */
-const noopJobQueue: JobQueuePort = {
-  async enqueueJob() {
-    return '';
-  },
-  async completeJob() {},
-  async failJob() {},
-};
-
-/**
- * Derives a {@link FailureClassification} from an unknown thrown value.
- * Falls back to `'provider_error'` when the error carries no recognisable classification.
- */
-function classifyError(error: unknown): FailureClassification | 'unknown' {
-  if (error instanceof AppError) {
-    return error.classification() ?? 'provider_error';
-  }
-  if (error instanceof Error) {
-    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
-      return 'timeout';
-    }
-  }
-  return 'provider_error';
-}
 
 /**
  * Dependency injection interface for tests.
@@ -88,22 +43,32 @@ export function createRetryHandler(deps?: {
   return withErrorBoundary(
     withAuthAndRateLimit(
       'aiGeneration',
-      async ({ req, user }): Promise<Response> => {
+      async ({
+        req,
+        userId: authUserId,
+        user: currentUser,
+      }): Promise<Response> => {
         const planId = requirePlanIdFromRequest(req, 'second-to-last');
+        // `authUserId` is the auth-provider subject used for RLS session setup;
+        // `internalUserId` is the application user row used for ownership checks.
+        const internalUserId = currentUser.id;
 
         const db = getDb();
-        const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
+        const rateLimit = await checkPlanGenerationRateLimit(
+          internalUserId,
+          db
+        );
         const generationRateLimitHeaders =
           getPlanGenerationRateLimitHeaders(rateLimit);
 
         const plan = await requireOwnedPlanById({
           planId,
-          ownerUserId: user.id,
+          ownerUserId: internalUserId,
           dbClient: db,
         });
         const attemptsSnapshot = await getPlanAttemptsForUser(
           plan.id,
-          user.id,
+          internalUserId,
           db
         );
         const attemptNumber = (attemptsSnapshot?.attempts.length ?? 0) + 1;
@@ -121,104 +86,27 @@ export function createRetryHandler(deps?: {
           );
         }
 
-        // Resolve tier for ProcessGenerationInput (lifecycle service handles model selection internally)
-        const tier = await resolveUserTier(user.id, db);
-
-        const { dbClient: streamDb, cleanup: cleanupStreamDb } =
-          await createStreamDbClient(user.id);
-        let streamDbClosed = false;
-        const closeStreamDb = async (): Promise<void> => {
-          if (streamDbClosed) return;
-          streamDbClosed = true;
-          try {
-            await cleanupStreamDb();
-          } catch (error) {
-            logger.error(
-              { userId: user.id, error },
-              'Failed to close stream DB client'
-            );
-          }
-        };
-
-        const lifecycleService = createPlanLifecycleService({
-          dbClient: streamDb,
-          jobQueue: noopJobQueue,
-        });
-
-        // Build generation input from existing plan data
-        const pdfContext =
-          plan.origin === 'pdf'
-            ? parsePersistedPdfContext(plan.extractedContext)
-            : null;
-
-        const generationInput: ProcessGenerationInput = {
-          planId: plan.id,
-          userId: user.id,
-          tier,
-          input: {
-            topic: plan.topic,
-            notes: undefined,
-            pdfContext,
-            skillLevel: plan.skillLevel,
-            weeklyHours: plan.weeklyHours,
-            learningStyle: plan.learningStyle,
-            startDate: toIsoDateString(plan.startDate),
-            deadlineDate: toIsoDateString(plan.deadlineDate),
-          },
-        };
-
-        // Resolve the processGeneration function (allow test override)
-        const processGeneration =
-          deps?.overrides?.processGenerationAttempt ??
-          lifecycleService.processGenerationAttempt.bind(lifecycleService);
-
-        return await createPlanGenerationSessionResponse({
+        return await retryAndStreamPlanGenerationSession({
           req,
-          authUserId: user.id,
-          dbClient: streamDb,
-          cleanup: closeStreamDb,
+          authUserId,
+          userId: internalUserId,
           planId,
           attemptNumber,
-          planStartInput: {
+          requestDb: db,
+          plan: {
             topic: plan.topic,
             skillLevel: plan.skillLevel,
             weeklyHours: plan.weeklyHours,
             learningStyle: plan.learningStyle,
-            notes: undefined,
-            startDate: toIsoDateString(plan.startDate),
-            deadlineDate: toIsoDateString(plan.deadlineDate),
-            visibility: 'private',
-            origin: plan.origin ?? 'ai',
+            startDate: plan.startDate,
+            deadlineDate: plan.deadlineDate,
+            origin: plan.origin,
+            pdfContext:
+              plan.origin === 'pdf'
+                ? parsePersistedPdfContext(plan.extractedContext)
+                : null,
           },
-          generationInput,
-          processGeneration,
-          onUnhandledError: async (
-            error: unknown,
-            startedAt: number,
-            dbClient
-          ) => {
-            const classification = classifyError(error);
-            logger.error(
-              {
-                planId: plan.id,
-                userId: user.id,
-                classification,
-                durationMs: Math.max(0, Date.now() - startedAt),
-                error:
-                  error instanceof Error
-                    ? {
-                        name: error.name,
-                        message: error.message,
-                        stack: error.stack,
-                      }
-                    : { value: String(error) },
-              },
-              'Unhandled exception during retry generation; marking plan failed'
-            );
-
-            await safeMarkPlanFailed(plan.id, user.id, dbClient);
-          },
-          fallbackClassification: 'provider_error',
+          processGenerationAttempt: deps?.overrides?.processGenerationAttempt,
           headers: generationRateLimitHeaders,
         });
       }

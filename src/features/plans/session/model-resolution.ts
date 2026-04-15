@@ -11,7 +11,11 @@ export type StreamModelResolution = {
     | 'saved_preference'
     | 'tier_default';
   suppliedModel?: string;
-  validationError?: { reason: string };
+  validationError?: StreamModelValidationError;
+};
+
+export type StreamModelValidationError = {
+  reason: string;
 };
 
 type ResolveStreamModelResolutionInput = {
@@ -26,7 +30,7 @@ export function resolveStreamModelResolution({
   savedPreferredAiModel,
 }: ResolveStreamModelResolutionInput): StreamModelResolution {
   const suppliedModel = searchParams.get('model') ?? undefined;
-  let validationError: { reason: string } | undefined;
+  let validationError: StreamModelValidationError | undefined;
 
   if (suppliedModel !== undefined) {
     const validation = validateModelForTier(tier, suppliedModel);
@@ -60,8 +64,10 @@ export function resolveStreamModelResolution({
   }
 
   return {
+    // `query_override_invalid` means a caller explicitly supplied `?model=...`,
+    // but validation rejected it and no saved preference remained to use instead.
     resolutionSource:
-      suppliedModel !== undefined ? 'query_override_invalid' : 'tier_default',
+      validationError !== undefined ? 'query_override_invalid' : 'tier_default',
     suppliedModel,
     validationError,
   };

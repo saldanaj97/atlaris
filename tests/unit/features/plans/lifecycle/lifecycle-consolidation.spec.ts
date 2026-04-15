@@ -13,6 +13,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { PreparePlanInputSuccess } from '@/features/plans/lifecycle/ports';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
@@ -54,8 +55,7 @@ function createMockPorts(overrides?: PortOverrides): PlanLifecycleServicePorts {
       rollbackPdfQuota: async () => {},
     },
     pdfOrigin: {
-      preparePlanInput: async () => ({
-        origin: 'pdf' as const,
+      preparePlanInput: async (): Promise<PreparePlanInputSuccess> => ({
         extractedContext: null,
         topic: 'test',
         skillLevel: 'beginner',
@@ -502,7 +502,7 @@ describe('Lifecycle Consolidation', () => {
       const result = await service.createPdfPlan({
         userId: 'user-001',
         authUserId: 'auth-001',
-        body: { topic: 'ML', extractedContent: {} },
+        body: { topic: 'ML', extractedContent: {}, pdfProofVersion: 1 },
         topic: 'ML',
         skillLevel: 'beginner',
         weeklyHours: 5,
@@ -510,6 +510,7 @@ describe('Lifecycle Consolidation', () => {
         extractedContent: {},
         pdfProofToken: 'proof-token',
         pdfExtractionHash: 'hash-abc',
+        pdfProofVersion: 1,
       });
 
       expect(result.status).toBe('success');
@@ -536,7 +537,7 @@ describe('Lifecycle Consolidation', () => {
       const pdfResult = await service.createPdfPlan({
         userId: 'user-001',
         authUserId: 'auth-001',
-        body: { topic: 'ML', extractedContent: {} },
+        body: { topic: 'ML', extractedContent: {}, pdfProofVersion: 1 },
         topic: 'ML',
         skillLevel: 'beginner',
         weeklyHours: 5,
@@ -544,6 +545,7 @@ describe('Lifecycle Consolidation', () => {
         extractedContent: {},
         pdfProofToken: 'proof-token',
         pdfExtractionHash: 'hash-abc',
+        pdfProofVersion: 1,
       });
 
       expect(aiResult.status).toBe('attempt_cap_exceeded');
