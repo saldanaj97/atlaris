@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { ZodError } from 'zod';
 import type {
   GenerationAttemptResult,
@@ -16,7 +17,7 @@ import {
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
 import { getDb } from '@/lib/db/runtime';
-import { logger } from '@/lib/logging/logger';
+import { type Logger, logger } from '@/lib/logging/logger';
 
 /**
  * Dependency injection interface for tests.
@@ -28,18 +29,23 @@ export interface StreamDependencyOverrides {
   ) => Promise<GenerationAttemptResult>;
 }
 
+type StreamRouteLogger = Pick<Logger, 'error' | 'info' | 'warn'>;
+
 /**
  * Creates the stream POST handler with optional dependency overrides.
  * Used by integration tests to supply mocks; production uses the default lifecycle service.
  */
 export function createStreamHandler(deps?: {
   overrides?: StreamDependencyOverrides;
+  logger?: StreamRouteLogger;
 }): PlainHandler {
+  const routeLogger = deps?.logger ?? logger;
+
   return withErrorBoundary(
     withAuthAndRateLimit(
       'aiGeneration',
       async ({ req, userId, user: currentUser }) => {
-        logger.info({ authUserId: userId }, 'Plan stream handler entered');
+        routeLogger.info({ authUserId: userId }, 'Plan stream handler entered');
 
         const parsedBody = await parseJsonBody(req, {
           mode: 'required',
@@ -51,13 +57,40 @@ export function createStreamHandler(deps?: {
             ),
         });
 
-        logger.info(
-          {
-            authUserId: userId,
-            payload: toPayloadLog(parsedBody),
-          },
-          'Plan stream request payload received'
-        );
+        let payloadLog: Record<string, unknown> | null = null;
+        try {
+          payloadLog = toPayloadLog(parsedBody);
+        } catch (error) {
+          const payload = toBestEffortPayloadLog(parsedBody);
+          routeLogger.warn(
+            {
+              authUserId: userId,
+              error: serializeError(error),
+              payload,
+            },
+            'Plan stream payload log failed'
+          );
+          Sentry.captureException(
+            error instanceof Error ? error : new Error(String(error)),
+            {
+              level: 'warning',
+              tags: {
+                route: 'plans-stream',
+                source: 'payload-log',
+              },
+              extra: {
+                authUserId: userId,
+                payload,
+              },
+            }
+          );
+        }
+        if (payloadLog) {
+          routeLogger.info(
+            { authUserId: userId, payload: payloadLog },
+            'Plan stream request payload received'
+          );
+        }
 
         let body: CreateLearningPlanInput;
         try {
@@ -88,7 +121,7 @@ export function createStreamHandler(deps?: {
         const generationRateLimitHeaders =
           getPlanGenerationRateLimitHeaders(rateLimit);
 
-        logger.info(
+        routeLogger.info(
           { authUserId: userId },
           'Delegating plan stream request to generation session'
         );
@@ -144,6 +177,12 @@ function toPayloadLog(payload: unknown): Record<string, unknown> {
     hasExtractedContent:
       typeof maybePayload.extractedContent === 'object' &&
       maybePayload.extractedContent !== null,
+  };
+}
+
+function toBestEffortPayloadLog(payload: unknown): Record<string, unknown> {
+  return {
+    payloadType: typeof payload,
   };
 }
 

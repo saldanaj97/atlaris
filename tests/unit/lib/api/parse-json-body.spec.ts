@@ -27,9 +27,9 @@ describe('detectJsonBodyPresence', () => {
     expect(detectJsonBodyPresence(req)).toBe(true);
   });
 
-  it('is true when content-length is set and not zero', () => {
+  it('is true when content-length is a positive finite number string with surrounding whitespace', () => {
     const req = mockRequest({
-      headers: { 'content-length': '12' },
+      headers: { 'content-length': ' 12.5 ' },
       json: () => Promise.resolve({}),
     });
     expect(detectJsonBodyPresence(req)).toBe(true);
@@ -49,6 +49,54 @@ describe('detectJsonBodyPresence', () => {
     });
     expect(detectJsonBodyPresence(req)).toBe(false);
   });
+
+  it('is false when content-length is zero with surrounding whitespace', () => {
+    const req = mockRequest({
+      headers: { 'content-length': '0 ' },
+      json: () => Promise.resolve({}),
+    });
+    expect(detectJsonBodyPresence(req)).toBe(false);
+  });
+
+  it('is false when content-length is duplicate zero', () => {
+    const req = mockRequest({
+      headers: { 'content-length': '00' },
+      json: () => Promise.resolve({}),
+    });
+    expect(detectJsonBodyPresence(req)).toBe(false);
+  });
+
+  it('is false when content-length is negative', () => {
+    const req = mockRequest({
+      headers: { 'content-length': '-1' },
+      json: () => Promise.resolve({}),
+    });
+    expect(detectJsonBodyPresence(req)).toBe(false);
+  });
+
+  it('is false when content-length is not numeric', () => {
+    const req = mockRequest({
+      headers: { 'content-length': 'abc' },
+      json: () => Promise.resolve({}),
+    });
+    expect(detectJsonBodyPresence(req)).toBe(false);
+  });
+
+  it('is false when content-length is whitespace only', () => {
+    const req = mockRequest({
+      headers: { 'content-length': '   ' },
+      json: () => Promise.resolve({}),
+    });
+    expect(detectJsonBodyPresence(req)).toBe(false);
+  });
+
+  it('is true when content-length is a positive integer string', () => {
+    const req = mockRequest({
+      headers: { 'content-length': '10' },
+      json: () => Promise.resolve({}),
+    });
+    expect(detectJsonBodyPresence(req)).toBe(true);
+  });
 });
 
 describe('parseJsonBody', () => {
@@ -62,6 +110,28 @@ describe('parseJsonBody', () => {
         onMalformedJson: () => new Error('should not run'),
       })
     ).resolves.toEqual({ a: 1 });
+  });
+
+  it('required mode: returns undefined when json resolves to undefined', async () => {
+    const req = mockRequest({
+      json: () => Promise.resolve(undefined),
+    });
+    const factory = vi.fn((_err: unknown) => new Error('should not run'));
+    await expect(
+      parseJsonBody(req, { mode: 'required', onMalformedJson: factory })
+    ).resolves.toBeUndefined();
+    expect(factory).not.toHaveBeenCalled();
+  });
+
+  it('required mode: returns null when json resolves to null without invoking factory', async () => {
+    const req = mockRequest({
+      json: () => Promise.resolve(null),
+    });
+    const factory = vi.fn(() => new Error('should not run'));
+    await expect(
+      parseJsonBody(req, { mode: 'required', onMalformedJson: factory })
+    ).resolves.toBeNull();
+    expect(factory).not.toHaveBeenCalled();
   });
 
   it('required mode: invokes onMalformedJson for SyntaxError', async () => {

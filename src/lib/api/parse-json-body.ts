@@ -3,6 +3,8 @@
  * Handles only `req.json()` and route-specific malformed-JSON behavior.
  */
 
+import { isAbortError } from '@/lib/errors';
+
 export type ParseJsonBodyOptions = {
   /**
    * `required`: any non-abort rejection from `req.json()` is passed to `onMalformedJson`.
@@ -17,27 +19,33 @@ export type ParseJsonBodyOptions = {
   detectBody?: (req: Request) => boolean;
 };
 
+function parsePositiveContentLength(value: string | null): number | null {
+  if (value === null) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return null;
+  }
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n <= 0) {
+    return null;
+  }
+  return n;
+}
+
 /**
  * Heuristic matching `create-portal`: treat the request as carrying JSON when
- * `Content-Type` includes `application/json` or `Content-Length` is present and not `'0'`.
+ * `Content-Type` includes `application/json` or `Content-Length` is a positive
+ * finite number (after trim).
  */
 export function detectJsonBodyPresence(req: Request): boolean {
   const contentType = req.headers.get('content-type') ?? '';
   const contentLength = req.headers.get('content-length');
   return (
     contentType.includes('application/json') ||
-    (contentLength !== null && contentLength !== '0')
+    parsePositiveContentLength(contentLength) !== null
   );
-}
-
-function isAbortLike(error: unknown): boolean {
-  if (typeof DOMException !== 'undefined' && error instanceof DOMException) {
-    return error.name === 'AbortError';
-  }
-  if (error instanceof Error && error.name === 'AbortError') {
-    return true;
-  }
-  return false;
 }
 
 export async function parseJsonBody(
@@ -47,9 +55,10 @@ export async function parseJsonBody(
   const detectBody = options.detectBody ?? detectJsonBodyPresence;
 
   try {
-    return await req.json();
+    const body = await req.json();
+    return body;
   } catch (err: unknown) {
-    if (isAbortLike(err)) {
+    if (isAbortError(err)) {
       throw err;
     }
 

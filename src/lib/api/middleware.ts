@@ -5,6 +5,7 @@ import {
   checkUserRateLimit,
   getUserRateLimitHeaders,
 } from '@/lib/api/user-rate-limit';
+import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 
 export function withErrorBoundary(fn: PlainHandler): PlainHandler {
@@ -12,6 +13,16 @@ export function withErrorBoundary(fn: PlainHandler): PlainHandler {
     try {
       return await fn(req, context);
     } catch (e) {
+      if (isAbortError(e)) {
+        logger.debug(
+          { url: req.url, method: req.method },
+          'Request aborted by client'
+        );
+        return new Response(null, {
+          status: 499,
+          headers: { Connection: 'close' },
+        });
+      }
       logger.error({ error: e }, 'Unhandled API route error');
       return toErrorResponse(e);
     }

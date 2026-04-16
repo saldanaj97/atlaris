@@ -223,6 +223,69 @@ describe('POST /api/v1/plans/stream', () => {
     });
   });
 
+  it('warns when payload log fails and still returns an error response', async () => {
+    const authUserId = buildTestAuthUserId('stream-payload-log-throw');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    const base = {
+      topic: 'Learning TypeScript',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      deadlineDate: '2030-01-01',
+      visibility: 'private' as const,
+      origin: 'ai' as const,
+    };
+    const payload = new Proxy(base, {
+      get(_, prop) {
+        // Promise resolution probes `then`; every other access should fail so
+        // the warn-path assertion does not depend on field access order.
+        if (prop === 'then') {
+          return undefined;
+        }
+        throw new Error('payload log boom');
+      },
+    });
+
+    const testLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    const post = createStreamHandler({ logger: testLogger });
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+    });
+    Object.defineProperty(request, 'json', {
+      value: async () => payload,
+    });
+
+    const response = await post(request);
+
+    expect(testLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authUserId,
+        error: expect.objectContaining({
+          message: 'payload log boom',
+        }),
+        payload: expect.objectContaining({
+          payloadType: 'object',
+        }),
+      }),
+      'Plan stream payload log failed'
+    );
+    expect(response.status).toBe(400);
+  });
+
   it('streams generation and persists plan data', async () => {
     const authUserId = buildTestAuthUserId('stream-user');
     await ensureUser({

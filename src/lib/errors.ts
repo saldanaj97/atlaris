@@ -4,6 +4,8 @@ import {
 } from '@/lib/errors/normalize-unknown';
 
 export function isAbortError(error: unknown): boolean {
+  const hasDomException = typeof DOMException !== 'undefined';
+
   if (
     typeof error === 'object' &&
     error !== null &&
@@ -24,7 +26,9 @@ export function isAbortError(error: unknown): boolean {
   }
 
   return (
-    (error instanceof DOMException && error.name === 'AbortError') ||
+    (hasDomException &&
+      error instanceof DOMException &&
+      error.name === 'AbortError') ||
     (error instanceof Error && error.name === 'AbortError')
   );
 }

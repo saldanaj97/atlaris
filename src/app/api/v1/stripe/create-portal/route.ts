@@ -19,11 +19,20 @@ const createPortalBodySchema = z.object({
   returnUrl: z.string().optional(),
 });
 
+type CreatePortalHandlerDeps = {
+  parseJsonBody?: typeof parseJsonBody;
+};
+
 /**
  * Factory for the create-portal POST handler. Accepts an optional Stripe
  * client for tests; production uses getStripe() inside getCustomerPortalUrl when omitted.
  */
-export function createCreatePortalHandler(stripeInstance?: Stripe) {
+export function createCreatePortalHandler(
+  stripeInstance?: Stripe,
+  deps: CreatePortalHandlerDeps = {}
+) {
+  const parseJsonBodyImpl = deps.parseJsonBody ?? parseJsonBody;
+
   return withErrorBoundary(
     withAuthAndRateLimit('billing', async ({ req, user }) => {
       logger.info(
@@ -41,7 +50,7 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
         );
       }
 
-      const body = await parseJsonBody(req, {
+      const body = await parseJsonBodyImpl(req, {
         mode: 'optional',
         fallback: {},
         onMalformedJson: (err) =>
