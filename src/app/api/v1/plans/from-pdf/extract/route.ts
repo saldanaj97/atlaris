@@ -49,7 +49,6 @@ const PDF_EXTRACTION_MAX_CHARS = 500_000;
 export type PdfErrorCode =
   | 'FILE_TOO_LARGE'
   | 'TOO_MANY_PAGES'
-  | 'MISSING_CONTENT_LENGTH'
   | 'NO_TEXT'
   | 'INVALID_FILE'
   | 'PASSWORD_PROTECTED'
@@ -82,14 +81,6 @@ const isPdfMagicBytes = (buffer: Buffer): boolean => {
   return buffer.subarray(0, PDF_SIGNATURE.length).equals(PDF_SIGNATURE);
 };
 
-function parseFormDataToObject(formData: FormData): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of formData.entries()) {
-    result[key] = value;
-  }
-  return result;
-}
-
 type PdfExtractHandlerCtx = { req: Request; userId: string; user: DbUser };
 
 async function postHandlerImpl(
@@ -103,36 +94,19 @@ async function postHandlerImpl(
 
   const contentType = req.headers.get('content-type');
   if (!contentType?.toLowerCase().includes('multipart/form-data')) {
-    return toExtractionError('Invalid request body.', 400);
-  }
-
-  if (!req.body) {
-    const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
     return errorResponse(
-      `Missing or invalid Content-Length header; a numeric Content-Length is required and uploads are limited to ${maxMb} MB.`,
-      'MISSING_CONTENT_LENGTH',
-      411
+      'Content-Type must be multipart/form-data.',
+      'INVALID_FILE',
+      400
     );
   }
 
-  // When Content-Length is present (typical for browser multipart uploads), reject
-  // oversized bodies before buffering the full multipart parse. Clients without a
-  // length (e.g. some fetch/FormData implementations) skip this gate; file.size is
-  // still enforced below via checkPdfSizeLimit and tier limits (≤ absolute cap).
-  const contentLengthHeader = req.headers.get('content-length')?.trim();
-  if (contentLengthHeader) {
-    const contentLength = Number.parseInt(contentLengthHeader, 10);
-    if (!Number.isFinite(contentLength) || contentLength < 0) {
-      return toExtractionError('Invalid Content-Length header.', 400);
-    }
-    if (contentLength > ABSOLUTE_MAX_PDF_BYTES) {
-      const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
-      return errorResponse(
-        `Request body exceeds absolute maximum of ${maxMb}MB.`,
-        'FILE_TOO_LARGE',
-        413
-      );
-    }
+  if (!req.body) {
+    return errorResponse(
+      'Multipart request body is required.',
+      'INVALID_FILE',
+      400
+    );
   }
 
   const throttle = acquirePdfExtractionSlot(user.id);
@@ -164,15 +138,7 @@ async function postHandlerImpl(
     );
     return toExtractionError('Invalid multipart form data.', 400);
   }
-  const rawFile = formData.get('file');
-  if (rawFile instanceof File && rawFile.type === '') {
-    logger.warn(
-      { fileName: rawFile.name },
-      'PDF upload with empty Content-Type (client omitted MIME type)'
-    );
-  }
-
-  const formObject = parseFormDataToObject(formData);
+  const formObject = Object.fromEntries(formData.entries());
   const parseResult = pdfExtractionFormDataSchema.safeParse(formObject);
   if (!parseResult.success) {
     const firstError = parseResult.error.issues[0];
@@ -182,6 +148,16 @@ async function postHandlerImpl(
   }
 
   const { file } = parseResult.data;
+
+  if (file.size > ABSOLUTE_MAX_PDF_BYTES) {
+    const maxMb = ABSOLUTE_MAX_PDF_BYTES / (1024 * 1024);
+    return errorResponse(
+      `Request body exceeds absolute maximum of ${maxMb}MB.`,
+      'FILE_TOO_LARGE',
+      413
+    );
+  }
+
   const db = getDb();
 
   let cachedTier: SubscriptionTier | undefined;

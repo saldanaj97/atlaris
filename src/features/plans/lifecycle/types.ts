@@ -36,6 +36,7 @@ export type CreatePdfPlanInput = CreateAiPlanInput & {
   readonly extractedContent: unknown;
   readonly pdfProofToken: string;
   readonly pdfExtractionHash: string;
+  readonly pdfProofVersion: 1;
 };
 
 /** Data passed to the persistence port for atomic plan insertion. */

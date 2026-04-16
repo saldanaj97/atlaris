@@ -63,10 +63,8 @@ export const pdfUploadFileSchema = z
     message: 'A PDF file is required.',
   })
   .refine((file) => file.size > 0, 'PDF file is empty.')
-  .refine(
-    (file) => file.type.length > 0,
-    'PDF Content-Type is required (expected application/pdf).'
-  )
+  // Require an explicit PDF MIME here; the extract route still validates
+  // PDF magic bytes later to catch mislabeled payloads.
   .refine(
     (file) => file.type === 'application/pdf',
     'Only PDF files are supported.'

@@ -318,7 +318,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         extendedTimeout: false,
         dbClient: db,
       })
-    ).rejects.toThrow('Failed to finalize generation attempt as success.');
+    ).rejects.toThrow(/Failed to finalize successful generation attempt/);
   });
 
   it('requires matching plan to finalize failure', async () => {

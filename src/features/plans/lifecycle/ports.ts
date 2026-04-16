@@ -10,6 +10,7 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 import type {
   AtomicInsertResult,
+  CreatePdfPlanInput,
   DurationCapResult,
   FailureClassification,
   GeneratedModule,
@@ -97,18 +98,24 @@ export interface QuotaPort {
 // ─── PdfOriginPort ───────────────────────────────────────────────
 
 export type PreparePlanInputParams = {
-  body: Record<string, unknown>;
-  authUserId: string;
-  internalUserId: string;
+  authUserId: CreatePdfPlanInput['authUserId'];
+  internalUserId: CreatePdfPlanInput['userId'];
+  topic: CreatePdfPlanInput['topic'];
+  skillLevel: CreatePdfPlanInput['skillLevel'];
+  weeklyHours: CreatePdfPlanInput['weeklyHours'];
+  learningStyle: CreatePdfPlanInput['learningStyle'];
+  extractedContent: CreatePdfPlanInput['extractedContent'];
+  pdfProofToken: CreatePdfPlanInput['pdfProofToken'];
+  pdfExtractionHash: CreatePdfPlanInput['pdfExtractionHash'];
+  pdfProofVersion: CreatePdfPlanInput['pdfProofVersion'];
 };
 
 export type PreparePlanInputSuccess = {
-  origin: 'pdf';
-  extractedContext: unknown;
+  extractedContext: PdfContext | null;
   topic: string;
-  skillLevel: string;
-  weeklyHours: number;
-  learningStyle: string;
+  skillLevel: CreatePdfPlanInput['skillLevel'];
+  weeklyHours: CreatePdfPlanInput['weeklyHours'];
+  learningStyle: CreatePdfPlanInput['learningStyle'];
   pdfUsageReserved: boolean;
   pdfProvenance: { extractionHash: string; proofVersion: 1 } | null;
 };

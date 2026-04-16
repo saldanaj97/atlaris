@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PreparePlanInputSuccess } from '@/features/plans/lifecycle/ports';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type {
@@ -40,8 +41,7 @@ function createMockPorts(
       rollbackPdfQuota: async () => {},
     },
     pdfOrigin: {
-      preparePlanInput: async () => ({
-        origin: 'pdf' as const,
+      preparePlanInput: async (): Promise<PreparePlanInputSuccess> => ({
         extractedContext: null,
         topic: 'test',
         skillLevel: 'beginner',
@@ -191,6 +191,37 @@ describe('PlanLifecycleService', () => {
         expect(result.reason).toContain('exhausted generation attempts');
         expect(result.cappedPlanId).toBe('capped-plan-456');
       }
+    });
+
+    it('short-circuits before tier and duration work when a capped plan exists', async () => {
+      const resolveUserTier = vi.fn().mockResolvedValue('free');
+      const checkDurationCap = vi.fn().mockReturnValue({ allowed: true });
+      const normalizePlanDuration = vi.fn().mockReturnValue({
+        startDate: '2025-01-01',
+        deadlineDate: '2025-01-15',
+        totalWeeks: 2,
+      });
+
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          findCappedPlanWithoutModules: async () => 'capped-plan-456',
+        },
+        quota: {
+          ...createMockPorts().quota,
+          resolveUserTier,
+          checkDurationCap,
+          normalizePlanDuration,
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPlan(validInput);
+
+      expect(result.status).toBe('attempt_cap_exceeded');
+      expect(resolveUserTier).not.toHaveBeenCalled();
+      expect(checkDurationCap).not.toHaveBeenCalled();
+      expect(normalizePlanDuration).not.toHaveBeenCalled();
     });
 
     it('passes normalized dates to atomicInsertPlan', async () => {
@@ -357,15 +388,16 @@ describe('PlanLifecycleService', () => {
         extractedContent: { mainTopic: 'TypeScript Basics' },
         pdfProofToken: 'proof-token-123',
         pdfExtractionHash: 'hash-abc',
+        pdfProofVersion: 1,
       },
       extractedContent: { mainTopic: 'TypeScript Basics' },
       pdfProofToken: 'proof-token-123',
       pdfExtractionHash: 'hash-abc',
+      pdfProofVersion: 1,
     };
 
     it('succeeds for valid PDF-origin input and returns plan ID', async () => {
       const prepareSpy = vi.fn().mockResolvedValue({
-        origin: 'pdf' as const,
         extractedContext: { mainTopic: 'TypeScript Basics' },
         topic: 'TypeScript Basics',
         skillLevel: 'beginner',
@@ -390,9 +422,16 @@ describe('PlanLifecycleService', () => {
         expect(result.tier).toBe('free');
       }
       expect(prepareSpy).toHaveBeenCalledWith({
-        body: validPdfInput.body,
         authUserId: 'auth-abc',
         internalUserId: 'user-abc',
+        topic: 'Learn TypeScript',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        extractedContent: { mainTopic: 'TypeScript Basics' },
+        pdfProofToken: 'proof-token-123',
+        pdfExtractionHash: 'hash-abc',
+        pdfProofVersion: 1,
       });
     });
 
@@ -423,7 +462,6 @@ describe('PlanLifecycleService', () => {
       ports = createMockPorts({
         pdfOrigin: {
           preparePlanInput: vi.fn().mockResolvedValue({
-            origin: 'pdf' as const,
             extractedContext: { mainTopic: 'Test' },
             topic: 'Test Topic',
             skillLevel: 'beginner',
@@ -461,7 +499,41 @@ describe('PlanLifecycleService', () => {
       ports = createMockPorts({
         pdfOrigin: {
           preparePlanInput: vi.fn().mockResolvedValue({
-            origin: 'pdf' as const,
+            extractedContext: null,
+            topic: 'Test',
+            skillLevel: 'beginner',
+            weeklyHours: 5,
+            learningStyle: 'mixed',
+            pdfUsageReserved: true,
+            pdfProvenance: null,
+          }),
+          rollbackPdfUsage: rollbackSpy,
+        },
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          atomicInsertPlan: vi
+            .fn()
+            .mockRejectedValue(new Error('DB connection lost')),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await expect(service.createPdfPlan(validPdfInput)).rejects.toThrow(
+        'DB connection lost'
+      );
+      expect(rollbackSpy).toHaveBeenCalledWith({
+        internalUserId: 'user-abc',
+        reserved: true,
+      });
+    });
+
+    it('preserves the original insert error when rollback also fails', async () => {
+      const rollbackSpy = vi
+        .fn()
+        .mockRejectedValue(new Error('rollback failed unexpectedly'));
+      ports = createMockPorts({
+        pdfOrigin: {
+          preparePlanInput: vi.fn().mockResolvedValue({
             extractedContext: null,
             topic: 'Test',
             skillLevel: 'beginner',
@@ -495,7 +567,6 @@ describe('PlanLifecycleService', () => {
       ports = createMockPorts({
         pdfOrigin: {
           preparePlanInput: vi.fn().mockResolvedValue({
-            origin: 'pdf' as const,
             extractedContext: null,
             topic: 'Test',
             skillLevel: 'beginner',
@@ -529,7 +600,6 @@ describe('PlanLifecycleService', () => {
       ports = createMockPorts({
         pdfOrigin: {
           preparePlanInput: vi.fn().mockResolvedValue({
-            origin: 'pdf' as const,
             extractedContext: { mainTopic: 'TypeScript Basics' },
             topic: 'TypeScript Basics',
             skillLevel: 'beginner',
@@ -550,9 +620,16 @@ describe('PlanLifecycleService', () => {
       const result = await service.createPdfPlan(validPdfInput);
 
       expect(ports.pdfOrigin.preparePlanInput).toHaveBeenCalledWith({
-        body: validPdfInput.body,
         authUserId: 'auth-abc',
         internalUserId: 'user-abc',
+        topic: 'Learn TypeScript',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        extractedContent: { mainTopic: 'TypeScript Basics' },
+        pdfProofToken: 'proof-token-123',
+        pdfExtractionHash: 'hash-abc',
+        pdfProofVersion: 1,
       });
       expect(result.status).toBe('duplicate_detected');
       if (result.status === 'duplicate_detected') {
@@ -571,7 +648,6 @@ describe('PlanLifecycleService', () => {
       ports = createMockPorts({
         pdfOrigin: {
           preparePlanInput: vi.fn().mockResolvedValue({
-            origin: 'pdf' as const,
             extractedContext: null,
             topic: 'Learn TypeScript',
             skillLevel: 'beginner',
@@ -600,7 +676,6 @@ describe('PlanLifecycleService', () => {
       ports = createMockPorts({
         pdfOrigin: {
           preparePlanInput: vi.fn().mockResolvedValue({
-            origin: 'pdf' as const,
             extractedContext: null,
             topic: 'Test',
             skillLevel: 'beginner',
@@ -638,7 +713,6 @@ describe('PlanLifecycleService', () => {
       ports = createMockPorts({
         pdfOrigin: {
           preparePlanInput: vi.fn().mockResolvedValue({
-            origin: 'pdf' as const,
             extractedContext: { mainTopic: 'ML Fundamentals' },
             topic: 'ML Fundamentals',
             skillLevel: 'advanced',

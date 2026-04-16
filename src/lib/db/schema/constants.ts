@@ -19,3 +19,6 @@ export const MAX_TASK_TITLE_LENGTH = MAX_TITLE_LENGTH;
 
 /** Title length cap for resources. Must match the DB CHECK constraint. */
 export const MAX_RESOURCE_TITLE_LENGTH = MAX_TITLE_LENGTH;
+
+/** Shared cap for DB-backed monitoring queries that page recent job rows. */
+export const MAX_JOB_MONITORING_ROWS = 200;

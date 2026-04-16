@@ -33,12 +33,11 @@ let mockGetPdfPageCountFromBuffer: Mock<
 let mockScanBufferForMalware: Mock<PdfExtractRouteDeps['scanBufferForMalware']>;
 let postHandler: ReturnType<typeof createPostHandler>;
 
-const createPdfRequest = (): Request => {
+const createPdfRequest = (fileType = 'application/pdf'): Request => {
   const formData = new FormData();
   formData.set(
     'file',
-    new Blob([PDF_BYTES], { type: 'application/pdf' }),
-    PDF_FILE_NAME
+    new File([PDF_BYTES], PDF_FILE_NAME, { type: fileType })
   );
 
   return new Request(BASE_URL, {
@@ -292,7 +291,7 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
     expect(response.status).toBe(401);
   });
 
-  it('returns 411 when multipart request body is missing', async () => {
+  it('returns 400 when multipart request body is missing', async () => {
     const authUserId = `auth_pdf_missing_body_${Date.now()}`;
     const authEmail = `pdf-missing-body-${Date.now()}@test.local`;
 
@@ -308,10 +307,29 @@ describe('POST /api/v1/plans/from-pdf/extract', () => {
 
     const response = await postHandler(request);
 
-    expect(response.status).toBe(411);
+    expect(response.status).toBe(400);
     const payload = await response.json();
     expect(payload.success).toBe(false);
-    expect(payload.code).toBe('MISSING_CONTENT_LENGTH');
+    expect(payload.code).toBe('INVALID_FILE');
+    expect(payload.error).toBe('Multipart request body is required.');
+  });
+
+  it('returns 415 when uploaded file lacks an explicit PDF MIME type', async () => {
+    const authUserId = `auth_pdf_missing_mime_${Date.now()}`;
+    const authEmail = `pdf-missing-mime-${Date.now()}@test.local`;
+
+    setTestUser(authUserId);
+    await ensureUser({ authUserId, email: authEmail });
+
+    const request = createPdfRequest('');
+    const response = await postHandler(request);
+
+    expect(response.status).toBe(415);
+    const payload = await response.json();
+    expect(payload.success).toBe(false);
+    expect(payload.code).toBe('INVALID_FILE');
+    expect(payload.error).toBe('Only PDF files are supported.');
+    expect(mockExtractTextFromPdf).not.toHaveBeenCalled();
   });
 
   it('returns 400 when request body is invalid JSON (non-multipart)', async () => {
