@@ -302,6 +302,39 @@ describe('usePlanStatus', () => {
     expect(clientLogger.error).not.toHaveBeenCalled();
   });
 
+  it('should stop polling after max consecutive retriable failures', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'Service unavailable' }),
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch)
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SECOND_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+
+    expect(result.current.pollingError).toBe('Service unavailable');
+    expect(result.current.isPolling).toBe(false);
+    expect(clientLogger.error).toHaveBeenCalled();
+  });
+
   it('should handle network errors without stopping polling', async () => {
     vi.useFakeTimers();
 

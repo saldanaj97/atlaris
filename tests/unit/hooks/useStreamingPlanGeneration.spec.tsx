@@ -32,6 +32,68 @@ describe('useStreamingPlanGeneration', () => {
     vi.restoreAllMocks();
   });
 
+  it('invokes onPlanIdReady when plan_start arrives before complete', async () => {
+    const chunks = [
+      'data: {"type":"plan_start","data":{"planId":"plan-early","attemptNumber":1,"topic":"TypeScript","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
+      'data: {"type":"complete","data":{"planId":"plan-early","modulesCount":1,"tasksCount":1,"totalMinutes":60}}\n\n',
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(toStream(chunks), {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        })
+      )
+    );
+
+    const { result } = renderHook(() => useStreamingPlanGeneration());
+
+    const readyOrder: string[] = [];
+    await act(async () => {
+      await result.current.startGeneration(basePayload, {
+        onPlanIdReady: (id) => {
+          readyOrder.push(`ready:${id}`);
+        },
+      });
+      readyOrder.push('resolved');
+    });
+
+    expect(readyOrder).toEqual(['ready:plan-early', 'resolved']);
+  });
+
+  it('ignores SSE events emitted after complete', async () => {
+    const chunks = [
+      'data: {"type":"plan_start","data":{"planId":"plan-late","attemptNumber":1,"topic":"TypeScript","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
+      'data: {"type":"module_summary","data":{"planId":"plan-late","index":0,"title":"Only module","description":"Intro","estimatedMinutes":120,"tasksCount":3}}\n\n',
+      'data: {"type":"complete","data":{"planId":"plan-late","modulesCount":1,"tasksCount":3,"totalMinutes":120}}\n\n',
+      'data: {"type":"module_summary","data":{"planId":"plan-late","index":1,"title":"Should not apply","description":"Late","estimatedMinutes":1,"tasksCount":1}}\n\n',
+      'data: {"type":"progress","data":{"planId":"plan-late","modulesParsed":99,"modulesTotalHint":99,"percent":99}}\n\n',
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(toStream(chunks), {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        })
+      )
+    );
+
+    const { result } = renderHook(() => useStreamingPlanGeneration());
+
+    await act(async () => {
+      await result.current.startGeneration(basePayload);
+    });
+
+    expect(result.current.state.status).toBe('complete');
+    expect(result.current.state.modules).toHaveLength(1);
+    expect(result.current.state.modules[0]?.title).toBe('Only module');
+    expect(result.current.state.progress?.percent).toBeUndefined();
+  });
+
   it('streams events and resolves with plan id', async () => {
     const chunks = [
       'data: {"type":"plan_start","data":{"planId":"plan-1","attemptNumber":1,"topic":"TypeScript","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',

@@ -2,9 +2,10 @@
 
 import { useCallback, useRef, useState } from 'react';
 
+import { parseSsePlanEventLine } from '@/features/plans/session/parse-sse-plan-event';
 import type { PlanGenerationSessionEvent } from '@/features/plans/session/session-events';
+import { consumePlanGenerationSseStream } from '@/features/plans/session/stream-reader';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import { parseSsePlanEventLine } from '@/hooks/streaming/parse-sse-plan-event';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 
@@ -116,8 +117,8 @@ function createStreamingError(params: {
   return new StreamingError(params);
 }
 
-const parseEventLine = (line: string): PlanGenerationSessionEvent | null =>
-  parseSsePlanEventLine(line, {
+const parseEventLine = (line: string): PlanGenerationSessionEvent | null => {
+  const event = parseSsePlanEventLine(line, {
     onValidationFailed: ({ issues, payload }) => {
       clientLogger.warn('Streaming event validation failed', {
         issues,
@@ -125,6 +126,8 @@ const parseEventLine = (line: string): PlanGenerationSessionEvent | null =>
       });
     },
   });
+  return event as PlanGenerationSessionEvent | null;
+};
 
 export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
   const [state, setState] = useState<PlanGenerationSessionState>(INITIAL_STATE);
@@ -273,16 +276,29 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
         });
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
       return await new Promise<PlanGenerationResult>((resolve, reject) => {
         let completed = false;
         let errored = false;
+        let outcomeSettled = false;
         let planIdNotified = false;
         let latestPlanId: string | undefined;
         let terminal = false;
+
+        const resolveOutcome = (result: PlanGenerationResult) => {
+          if (outcomeSettled) {
+            return;
+          }
+          outcomeSettled = true;
+          resolve(result);
+        };
+
+        const rejectOutcome = (error: Error) => {
+          if (outcomeSettled) {
+            return;
+          }
+          outcomeSettled = true;
+          reject(error);
+        };
 
         const notifyPlanId = (planId: string | undefined) => {
           if (planIdNotified || !planId) {
@@ -303,7 +319,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
               planId: prev.planId ?? latestPlanId,
               error: undefined,
             }));
-            resolve({
+            resolveOutcome({
               status: 'cancelled',
               planId: latestPlanId,
             });
@@ -327,10 +343,13 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
             classification: event.data.classification,
             retryable: event.data.retryable,
           });
-          reject(cancelledErr);
+          rejectOutcome(cancelledErr);
         };
 
         const handleEvent = (event: PlanGenerationSessionEvent) => {
+          if (outcomeSettled) {
+            return;
+          }
           switch (event.type) {
             case 'plan_start':
               latestPlanId = event.data.planId;
@@ -372,6 +391,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
               break;
             case 'complete':
               completed = true;
+              terminal = true;
               latestPlanId = latestPlanId ?? event.data.planId;
               notifyPlanId(latestPlanId);
               setState((prev) => ({
@@ -380,13 +400,13 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
                 planId: prev.planId ?? latestPlanId,
               }));
               if (latestPlanId) {
-                resolve({
+                resolveOutcome({
                   status: 'completed',
                   planId: latestPlanId,
                   result: latestPlanId,
                 });
               } else {
-                reject(
+                rejectOutcome(
                   new Error(
                     'Plan generation completed but no plan ID was received.'
                   )
@@ -416,7 +436,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
                 classification: event.data.classification,
                 retryable: event.data.retryable,
               });
-              reject(streamErr);
+              rejectOutcome(streamErr);
               break;
             }
             case 'cancelled':
@@ -426,72 +446,44 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
           }
         };
 
-        const pump = async (): Promise<void> => {
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                const remaining = decoder.decode();
-                if (remaining) {
-                  buffer += remaining;
-                }
-                if (buffer.trim()) {
-                  const event = parseEventLine(buffer);
-                  if (event) {
-                    handleEvent(event);
-                  }
-                  buffer = '';
-                }
-
-                setState((prev) => ({
-                  ...prev,
-                  status:
-                    prev.status === 'complete' || prev.status === 'error'
-                      ? prev.status
-                      : 'error',
-                  error: prev.error ?? {
-                    message:
-                      'Plan generation ended unexpectedly. Please try again.',
-                    classification: 'provider_error',
-                    retryable: true,
-                  },
-                }));
-                if (!completed && !errored) {
-                  reject(
-                    new Error(
-                      'Plan generation ended unexpectedly. Please try again.'
-                    )
-                  );
-                }
-                return;
-              }
-
-              buffer += decoder.decode(value, { stream: true });
-              const lines = buffer.split('\n');
-              buffer = lines.pop() ?? '';
-
-              for (const line of lines) {
-                const event = parseEventLine(line);
-                if (event) {
-                  handleEvent(event);
-                  if (terminal) {
-                    void reader.cancel();
-                    return;
-                  }
-                }
-              }
+        void consumePlanGenerationSseStream({
+          body: response.body as ReadableStream<Uint8Array>,
+          parseLine: parseEventLine,
+          onEvent: handleEvent,
+          shouldStop: () => terminal,
+        })
+          .then(() => {
+            if (outcomeSettled) {
+              return;
             }
-          } catch (error) {
-            await reader.cancel(error instanceof Error ? error : undefined);
-            reject(
+            setState((prev) => ({
+              ...prev,
+              status:
+                prev.status === 'complete' || prev.status === 'error'
+                  ? prev.status
+                  : 'error',
+              error: prev.error ?? {
+                message:
+                  'Plan generation ended unexpectedly. Please try again.',
+                classification: 'provider_error',
+                retryable: true,
+              },
+            }));
+            if (!completed && !errored) {
+              rejectOutcome(
+                new Error(
+                  'Plan generation ended unexpectedly. Please try again.'
+                )
+              );
+            }
+          })
+          .catch((error: unknown) => {
+            rejectOutcome(
               error instanceof Error
                 ? error
                 : new Error('Plan generation stream failed.')
             );
-          }
-        };
-
-        void pump();
+          });
       });
     },
     []

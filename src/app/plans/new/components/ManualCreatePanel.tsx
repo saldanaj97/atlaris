@@ -5,14 +5,9 @@ import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { UnifiedPlanInput } from '@/app/plans/new/components/plan-form';
-import {
-  deadlineWeeksToDate,
-  getTodayDateString,
-} from '@/app/plans/new/components/plan-form/helpers';
 import type { PlanFormData } from '@/app/plans/new/components/plan-form/types';
 import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
-import { mapOnboardingToCreateInput } from '@/features/plans/create-mapper';
-import type { OnboardingFormValues } from '@/features/plans/validation/learningPlans.types';
+import { buildManualCreatePayloadFromPlanForm } from '@/features/plans/manual-plan-form-payload';
 import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
 
@@ -20,34 +15,6 @@ interface ManualCreatePanelProps {
   initialTopic?: string | null;
   topicResetVersion?: number;
   onTopicUsed?: () => void;
-}
-
-type MappingResult =
-  | { ok: true; payload: ReturnType<typeof mapOnboardingToCreateInput> }
-  | { ok: false; error: unknown };
-
-function buildCreatePayload(data: PlanFormData): MappingResult {
-  try {
-    const onboardingValues = convertToOnboardingValues(data);
-    return {
-      ok: true,
-      payload: mapOnboardingToCreateInput(onboardingValues),
-    };
-  } catch (error) {
-    return { ok: false, error };
-  }
-}
-
-function convertToOnboardingValues(data: PlanFormData): OnboardingFormValues {
-  return {
-    topic: data.topic,
-    skillLevel: data.skillLevel,
-    weeklyHours: data.weeklyHours,
-    learningStyle: data.learningStyle,
-    notes: undefined,
-    startDate: getTodayDateString(),
-    deadlineDate: deadlineWeeksToDate(data.deadlineWeeks),
-  };
 }
 
 /**
@@ -84,7 +51,7 @@ export function ManualCreatePanel({
       return;
     }
 
-    const mappingResult = buildCreatePayload(data);
+    const mappingResult = buildManualCreatePayloadFromPlanForm(data);
     if (!mappingResult.ok) {
       clientLogger.error('Failed to map form values', mappingResult.error);
       toast.error('Please double-check the form and try again.');

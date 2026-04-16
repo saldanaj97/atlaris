@@ -8,10 +8,4 @@ export type DropdownOption<TValue extends string = string> = {
   description?: string;
 };
 
-export type PlanFormData = {
-  topic: string;
-  skillLevel: string;
-  weeklyHours: string;
-  learningStyle: string;
-  deadlineWeeks: string;
-};
+export type { PlanFormData } from '@/features/plans/plan-form.types';

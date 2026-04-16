@@ -3,12 +3,18 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
+import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
 import { clientLogger } from '@/lib/logging/client';
 
 const RETRY_COOLDOWN_MS = 5000;
 
-type RetryStatus = 'idle' | 'retrying' | 'success' | 'error';
+/** Derived retry UI phase; `cancelled` is a resolved retry stream (e.g. user disconnect), not idle. */
+export type RetryStatus =
+  | 'idle'
+  | 'retrying'
+  | 'success'
+  | 'error'
+  | 'cancelled';
 
 interface UseRetryGenerationReturn {
   status: RetryStatus;
@@ -17,13 +23,18 @@ interface UseRetryGenerationReturn {
   retryGeneration: () => Promise<void>;
 }
 
+/**
+ * Retry cooldown + stream delegation. Pass the same `session` instance used
+ * elsewhere on the surface (e.g. pending page) to avoid duplicate session hooks.
+ */
 export function useRetryGeneration(
   planId: string,
   maxAttempts: number,
-  currentAttempts: number
+  currentAttempts: number,
+  session: UsePlanGenerationSessionResult
 ): UseRetryGenerationReturn {
   const router = useRouter();
-  const { state, startSession, cancel } = usePlanGenerationSession();
+  const { state, startSession, cancel } = session;
   const [cooldownActive, setCooldownActive] = useState(false);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryInFlightRef = useRef(false);
@@ -48,6 +59,8 @@ export function useRetryGeneration(
         return 'success';
       case 'error':
         return 'error';
+      case 'cancelled':
+        return 'cancelled';
       default:
         return 'idle';
     }

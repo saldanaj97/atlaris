@@ -158,5 +158,34 @@ describe('usePlanStatus', () => {
     await advance(6000);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('T053 stops polling after repeated retriable HTTP failures', async () => {
+    let calls = 0;
+    (global.fetch as unknown as Mock).mockImplementation(() => {
+      calls += 1;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            error: 'upstream unavailable',
+            code: 'BAD_GATEWAY',
+          }),
+          { status: 502, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-upstream', 'pending')
+    );
+
+    let guard = 0;
+    while (result.current.pollingError === null && guard++ < 200) {
+      await advance(250);
+    }
+
+    expect(result.current.pollingError).toContain('upstream');
+    expect(result.current.isPolling).toBe(false);
+    expect(calls).toBeGreaterThanOrEqual(3);
+  });
 });
 // light subset

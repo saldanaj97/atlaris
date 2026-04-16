@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { type ReactElement, useEffect, useRef, useState } from 'react';
+import { type ReactElement, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   PdfExtractionPreview,
@@ -10,46 +10,23 @@ import {
 import { PdfGeneratingState } from '@/app/plans/new/components/PdfGeneratingState';
 import {
   type ErrorCode,
-  isKnownErrorCode,
   PdfUploadError,
 } from '@/app/plans/new/components/PdfUploadError';
 import { PdfUploadingState } from '@/app/plans/new/components/PdfUploadingState';
 import { PdfUploadZone } from '@/app/plans/new/components/PdfUploadZone';
 import { handleStreamingPlanError } from '@/app/plans/new/components/streamingPlanError';
-import { extractionApiResponseSchema } from '@/features/pdf/validation/pdf';
 import type {
-  ExtractionApiResponseData,
   ExtractionProofData,
   ExtractionSection,
   TruncationData,
 } from '@/features/pdf/validation/pdf.types';
 import { mapPdfSettingsToCreateInput } from '@/features/plans/create-mapper';
+import { usePdfExtraction } from '@/hooks/usePdfExtraction';
 import {
   isStreamingError,
   useStreamingPlanGeneration,
 } from '@/hooks/useStreamingPlanGeneration';
-import { normalizeApiErrorResponse } from '@/lib/api/error-response';
-import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-
-const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
-
-type ExtractionApiParseResult =
-  | { ok: true; data: ExtractionApiResponseData }
-  | { ok: false; error: string };
-
-function parseExtractionApiResponse(
-  rawData: unknown
-): ExtractionApiParseResult {
-  const result = extractionApiResponseSchema.safeParse(rawData);
-  if (!result.success) {
-    return {
-      ok: false,
-      error: result.error.issues[0]?.message ?? 'Invalid extraction response.',
-    };
-  }
-  return { ok: true, data: result.data };
-}
 
 const TRUNCATION_REASON_LABELS: Record<string, string> = {
   text_char_cap: 'raw text length limit',
@@ -77,26 +54,6 @@ function truncationReasonsSummary(
     .filter(Boolean);
   if (labels.length === 0) return null;
   return labels.join('; ');
-}
-
-function handleExtractionApiError(params: {
-  rawData: unknown;
-  status: number;
-  fallbackMessage: string;
-}): { error: string; code?: ErrorCode } {
-  const normalizedError = normalizeApiErrorResponse(params.rawData, {
-    status: params.status,
-    fallbackMessage: params.fallbackMessage,
-  });
-
-  const code: ErrorCode | undefined = isKnownErrorCode(normalizedError.code)
-    ? normalizedError.code
-    : undefined;
-
-  return {
-    error: normalizedError.error,
-    code,
-  };
 }
 
 interface PdfCreatePanelProps {
@@ -231,175 +188,88 @@ export function PdfCreatePanel({
   onSwitchToManual,
 }: PdfCreatePanelProps): ReactElement {
   const router = useRouter();
-  const [state, setState] = useState<PageState>({ status: 'idle' });
+  const extraction = usePdfExtraction();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<{
+    message: string;
+    code?: ErrorCode;
+  } | null>(null);
+
   const isSubmittingRef = useRef(false);
   const planIdRef = useRef<string | undefined>(undefined);
   const cancellationToastShownRef = useRef(false);
-  const extractionAbortControllerRef = useRef<AbortController | null>(null);
-  const extractionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
-  const extractionAbortReasonRef = useRef<'timeout' | 'cancel' | null>(null);
+  const truncationToastProofRef = useRef<string | null>(null);
   const { startGeneration } = useStreamingPlanGeneration();
 
-  const clearExtractionTimeout = () => {
-    if (extractionTimeoutRef.current !== null) {
-      clearTimeout(extractionTimeoutRef.current);
-      extractionTimeoutRef.current = null;
+  const pageState = useMemo((): PageState => {
+    if (isGenerating) {
+      return { status: 'generating' };
     }
-  };
-
-  const abortExtraction = (reason: 'timeout' | 'cancel') => {
-    extractionAbortReasonRef.current = reason;
-    extractionAbortControllerRef.current?.abort();
-    extractionAbortControllerRef.current = null;
-    clearExtractionTimeout();
-  };
-
-  const clearExtractionTracking = () => {
-    extractionAbortControllerRef.current = null;
-    extractionAbortReasonRef.current = null;
-    clearExtractionTimeout();
-  };
-
-  useEffect(() => {
-    return () => {
-      extractionAbortReasonRef.current = 'cancel';
-      extractionAbortControllerRef.current?.abort();
-      extractionAbortControllerRef.current = null;
-      if (extractionTimeoutRef.current !== null) {
-        clearTimeout(extractionTimeoutRef.current);
-        extractionTimeoutRef.current = null;
-      }
-    };
-  }, []);
-
-  const handleFileSelect = (file: File) => {
-    if (file.type !== 'application/pdf') {
-      toast.error('Please select a PDF file');
-      return;
+    if (generationError) {
+      return {
+        status: 'error',
+        error: generationError.message,
+        code: generationError.code,
+      };
     }
-
-    if (extractionAbortControllerRef.current) {
-      abortExtraction('cancel');
-    }
-
-    setState({ status: 'uploading' });
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const controller = new AbortController();
-    extractionAbortControllerRef.current = controller;
-    extractionAbortReasonRef.current = null;
-    clearExtractionTimeout();
-    extractionTimeoutRef.current = setTimeout(() => {
-      abortExtraction('timeout');
-    }, PDF_EXTRACTION_TIMEOUT_MS);
-
-    void fetch('/api/v1/plans/from-pdf/extract', {
-      method: 'POST',
-      body: formData,
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const rawData: unknown = await response.json();
-        const parseResult = parseExtractionApiResponse(rawData);
-
-        if (!parseResult.ok) {
-          const normalizedApiError = handleExtractionApiError({
-            rawData,
-            status: response.status,
-            fallbackMessage: 'Invalid response from server. Please try again.',
-          });
-
-          clientLogger.error('PDF extraction response validation failed', {
-            error: parseResult.error,
-            responseOk: response.ok,
-          });
-          setState({
-            status: 'error',
-            error: normalizedApiError.error,
-            code: normalizedApiError.code,
-          });
-          return;
-        }
-
-        const data = parseResult.data;
-
-        if (!response.ok || !data.success || !data.extraction || !data.proof) {
-          const normalizedApiError = handleExtractionApiError({
-            rawData: data,
-            status: response.status,
-            fallbackMessage: 'Failed to extract PDF content',
-          });
-
-          setState({
-            status: 'error',
-            error: normalizedApiError.error,
-            code: normalizedApiError.code,
-          });
-          return;
-        }
-
-        setState({
+    switch (extraction.state.phase) {
+      case 'idle':
+        return { status: 'idle' };
+      case 'uploading':
+        return { status: 'uploading' };
+      case 'success':
+        return {
           status: 'preview',
           extraction: {
-            mainTopic: data.extraction.structure.suggestedMainTopic,
-            sections: data.extraction.structure.sections,
-            pageCount: data.extraction.pageCount,
-            confidence: data.extraction.structure.confidence,
-            truncation: data.extraction.truncation,
+            mainTopic: extraction.state.data.extraction.mainTopic,
+            sections: extraction.state.data.extraction.sections,
+            pageCount: extraction.state.data.extraction.pageCount,
+            confidence: extraction.state.data.extraction.confidence,
+            truncation: extraction.state.data.extraction.truncation,
           },
-          proof: data.proof,
-        });
-
-        if (data.extraction.truncation?.truncated) {
-          const summary = truncationReasonsSummary(
-            data.extraction.truncation.reasons
-          );
-          const message = summary
-            ? `Content trimmed: ${summary}. You can still edit the extracted sections before generating.`
-            : 'Large PDF content was trimmed for safety. You can still edit the extracted sections before generating.';
-          toast.info(message);
-        }
-      })
-      .catch((error: unknown) => {
-        if (isAbortError(error)) {
-          if (extractionAbortReasonRef.current === 'cancel') {
-            toast.info('Upload cancelled');
-            setState({ status: 'idle' });
-            return;
-          }
-
-          setState({
-            status: 'error',
-            error: 'Upload timed out. Please try again.',
-          });
-          return;
-        }
-
-        clientLogger.error('PDF extraction failed', error);
-        setState({
+          proof: extraction.state.data.proof,
+        };
+      case 'error':
+        return {
           status: 'error',
-          error:
-            error instanceof Error
-              ? error.message
-              : 'An unexpected error occurred',
-        });
-      })
-      .finally(() => {
-        clearExtractionTracking();
-      });
+          error: extraction.state.message,
+          code: extraction.state.code,
+        };
+    }
+  }, [extraction.state, generationError, isGenerating]);
+
+  useEffect(() => {
+    if (extraction.state.phase !== 'success') {
+      return;
+    }
+    const notice = extraction.state.notice;
+    if (!notice?.truncated) {
+      return;
+    }
+    const token = extraction.state.data.proof.token;
+    if (truncationToastProofRef.current === token) {
+      return;
+    }
+    truncationToastProofRef.current = token;
+    const summary = truncationReasonsSummary(notice.reasonCodes);
+    const message = summary
+      ? `Content trimmed: ${summary}. You can still edit the extracted sections before generating.`
+      : 'Large PDF content was trimmed for safety. You can still edit the extracted sections before generating.';
+    toast.info(message);
+  }, [extraction.state]);
+
+  const handleFileSelect = (file: File) => {
+    setGenerationError(null);
+    truncationToastProofRef.current = null;
+    if (!extraction.startExtraction(file)) {
+      toast.error('Please select a PDF file');
+    }
   };
 
   const handleCancelUpload = () => {
-    if (!extractionAbortControllerRef.current) {
-      setState({ status: 'idle' });
-      return;
+    if (extraction.cancelExtraction()) {
+      toast.info('Upload cancelled');
     }
-
-    abortExtraction('cancel');
   };
 
   const handleGenerate = (editedData: {
@@ -407,19 +277,19 @@ export function PdfCreatePanel({
     sections: ExtractionData['sections'];
     settings: PdfPlanSettings;
   }) => {
-    if (state.status === 'generating' || isSubmittingRef.current) {
+    if (isGenerating || isSubmittingRef.current) {
       return;
     }
 
-    if (state.status !== 'preview') {
+    if (pageState.status !== 'preview') {
       return;
     }
 
-    const { proof } = state;
+    const { proof } = pageState;
 
     isSubmittingRef.current = true;
     cancellationToastShownRef.current = false;
-    setState({ status: 'generating' });
+    setIsGenerating(true);
 
     const payloadResult = buildPdfCreatePayload({
       mainTopic: editedData.mainTopic,
@@ -432,10 +302,10 @@ export function PdfCreatePanel({
       clientLogger.error('Failed to build plan payload from PDF settings', {
         error: payloadResult.error,
       });
-      setState({
-        status: 'error',
-        error: 'Failed to create learning plan. Please try again.',
+      setGenerationError({
+        message: 'Failed to create learning plan. Please try again.',
       });
+      setIsGenerating(false);
       isSubmittingRef.current = false;
       return;
     }
@@ -459,7 +329,9 @@ export function PdfCreatePanel({
           logMessage: 'Plan generation failed',
           fallbackMessage: 'Failed to create learning plan. Please try again.',
           onAbort: () => {
-            setState({ status: 'idle' });
+            extraction.resetToIdle();
+            setGenerationError(null);
+            setIsGenerating(false);
           },
         });
 
@@ -467,36 +339,42 @@ export function PdfCreatePanel({
           return;
         }
 
-        const errorCode = isStreamingError(normalizedError)
-          ? normalizedError.code === 'QUOTA_EXCEEDED'
-            ? ('QUOTA_EXCEEDED' as ErrorCode)
-            : undefined
-          : undefined;
+        let errorCode: ErrorCode | undefined;
+        if (isStreamingError(normalizedError)) {
+          errorCode =
+            normalizedError.code === 'QUOTA_EXCEEDED'
+              ? 'QUOTA_EXCEEDED'
+              : undefined;
+        }
 
-        setState({
-          status: 'error',
-          error: message,
+        setGenerationError({
+          message,
           code: errorCode,
         });
       })
       .finally(() => {
         isSubmittingRef.current = false;
+        setIsGenerating(false);
       });
   };
 
   const handleRetry = () => {
     isSubmittingRef.current = false;
-    setState({ status: 'idle' });
+    setGenerationError(null);
+    setIsGenerating(false);
+    extraction.resetToIdle();
   };
 
   const handleBack = () => {
     isSubmittingRef.current = false;
-    setState({ status: 'idle' });
+    setGenerationError(null);
+    setIsGenerating(false);
+    extraction.resetToIdle();
   };
 
   return (
     <PdfCreatePanelBody
-      state={state}
+      state={pageState}
       onFileSelect={handleFileSelect}
       onCancelUpload={handleCancelUpload}
       onGenerate={handleGenerate}
