@@ -39,3 +39,19 @@
 **Rule:** In Vitest specs that need to change `NODE_ENV`, `VITEST_WORKER_ID`, or similar env flags, use `vi.stubEnv()` plus `vi.unstubAllEnvs()` instead of direct assignment to `process.env`.
 
 **Impact:** This keeps env-sensitive tests aligned with the repo's existing test helpers and avoids read-only env typing regressions that block CI at type-check time.
+
+## 2026-04-15: Honor explicit surface exclusions during review triage
+
+**Context:** A CodeRabbit triage plan initially included several PDF-related findings because they were technically valid, but the user clarified that all PDF functionality should be ignored since that surface will be removed later.
+
+**Rule:** When the user explicitly excludes a product surface from current work, remove that surface from plans and todos entirely even if some findings would otherwise merit fixes. Record the exclusion, but do not turn it into separate removal planning unless requested.
+
+**Impact:** This keeps the plan aligned with the user's real priorities and avoids spending review effort on code that is about to be deleted.
+
+## 2026-04-15: Keep new test imports Biome-sorted
+
+**Context:** Two new unit specs passed locally but failed `check:full` because their imports were not sorted to Biome's expected order.
+
+**Rule:** When adding or editing Vitest specs, keep imports organized up front or run the formatter before the final baseline so the new files do not create avoidable lint churn.
+
+**Impact:** This avoids a second validation pass for trivial import-order fixes and keeps the final check focused on real regressions.

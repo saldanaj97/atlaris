@@ -1,5 +1,11 @@
 # Technical Debt
 
+## `tests/integration/db/jobs.queue.spec.ts` failure under `pnpm test:changed`
+
+`pnpm test:changed` currently fails in `tests/integration/db/jobs.queue.spec.ts` with ordering assertions in the job queue service suite.
+
+This is unrelated to the current CodeRabbit follow-up work and is intentionally deferred for a later pass.
+
 ## ~~Reserved `plan_generation` job type~~ *(resolved)*
 
 Resolved by removing the `plan_generation` value from the job-type enum, the
