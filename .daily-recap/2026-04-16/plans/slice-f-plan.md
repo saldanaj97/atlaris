@@ -2,7 +2,7 @@
 
 ## Step F.0 — Confirm scope / acceptance criteria
 
-- Primary source of truth: `.plans/prelim-refactor-findings/prelim-plan.md` and `.plans/prelim-refactor-findings/prelim-research.md` (Slice F section, lines 425-490).
+- Archived context: this slice plan was originally derived from the shared prelim refactor findings umbrella docs and now stands on its own as the archived Slice F record.
 - Keep Slice F in the suggested execution order: after Slices A-E, as post-structure cleanup rather than a new architecture pass. Slices A-E are already merged; this slice must not reopen their decisions.
 - In scope:
   - Standardize repeated route JSON parsing in:
@@ -201,4 +201,3 @@ If the barrel cleanup is tiny, commits 2 and 3 can be combined, but keep route p
   - Proof: `src/features/plans/lifecycle/index.ts` is smaller/clearer, the known consumers compile against the narrowed surface, duplicated section comments are gone, and no lifecycle internals are rewritten. `pnpm check:type` passes without changes to any non-enumerated file.
 - **AC: Slice F remains aligned with the prelim execution order and does not become a backdoor rewrite.**
   - Proof: the final diff is limited to `src/lib/api/parse-json-body.ts`, the enumerated route call sites, new/extended tests in the paths listed in F.1, the lifecycle barrel, and minimal import updates only.
-

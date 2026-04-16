@@ -2,7 +2,7 @@
 
 ## Step A.0 — Confirm scope / acceptance criteria
 
-**Primary source of truth:** `.plans/prelim-refactor-findings/prelim-plan.md` and `.plans/prelim-refactor-findings/prelim-research.md`
+**Archived context:** This slice plan was originally derived from the shared prelim refactor findings umbrella docs and now stands on its own as the archived Slice A record.
 
 **Slice scope confirmed**
 

@@ -4,7 +4,7 @@
 
 - **Slice:** D
 - **Execution order:** After Slice A and Slice B; begin only once Slice C is complete or its remaining items are explicitly confirmed non-overlapping; before Slice E/F.
-- **Primary source of truth:** `.plans/prelim-refactor-findings/prelim-research.md` (Slice D section) plus the shared execution order in `.plans/prelim-refactor-findings/prelim-plan.md`.
+- **Archived context:** This slice plan was originally derived from the shared prelim refactor findings umbrella docs and now stands on its own as the archived Slice D record.
 - **In scope:** one lifecycle authority for create/retry/stream generation; thinner HTTP-only route adapters; split stream emission vs cleanup/persistence helpers; narrower boundaries for `PlanLifecycleService`, AI orchestrator, jobs queries, and attempt persistence.
 - **Out of scope:** client controller work from Slice E, generic route parsing cleanup from Slice F, and edits to shared prelim research/todos artifacts.
 
@@ -31,11 +31,9 @@
 
 ---
 
-## Step D.0 — confirm scope / ACs from prelim-plan + prelim-research
+## Step D.0 — confirm scope / ACs from the original shared prelim findings
 
-1. Reconfirm the slice boundary from:
-   - `.plans/prelim-refactor-findings/prelim-plan.md` → Slice D row + suggested execution order.
-   - `.plans/prelim-refactor-findings/prelim-research.md` → Slice D current state, file map, overlap notes, and planning note that `stream/helpers.ts` is transitional while `stream-session.ts` is the current primary donor for emission/cleanup extraction.
+1. Reconfirm the slice boundary from the original shared prelim findings that scoped Slice D, especially the execution order, overlap notes, and the planning note that `stream/helpers.ts` was transitional while `stream-session.ts` was the primary donor for emission/cleanup extraction.
 2. Lock the non-negotiable behavioral contracts before moving files:
    - Stream route still creates a plan, starts SSE with `plan_start`, and ends with current `complete` / `error` / `cancelled` semantics.
    - Retry route still rejects ineligible plan states up front and otherwise emits the same SSE contract.
