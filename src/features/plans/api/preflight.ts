@@ -17,7 +17,7 @@ import {
 import {
   atomicCheckAndInsertPlan,
   checkPlanDurationCap,
-} from '@/features/plans/lifecycle';
+} from '@/features/plans/lifecycle/plan-operations';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { AttemptCapExceededError, ForbiddenError } from '@/lib/api/errors';
 import type { DbUser } from '@/lib/db/queries/types/users.types';

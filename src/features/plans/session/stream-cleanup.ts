@@ -1,5 +1,5 @@
 import type { ErrorLike } from '@/features/ai/streaming/error-sanitizer';
-import { markPlanGenerationFailure } from '@/features/plans/lifecycle';
+import { markPlanGenerationFailure } from '@/features/plans/lifecycle/plan-operations';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import {
   safeStringifyUnknown,

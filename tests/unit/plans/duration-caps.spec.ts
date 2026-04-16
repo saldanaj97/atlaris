@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkPlanDurationCap } from '@/features/plans/lifecycle';
+import { checkPlanDurationCap } from '@/features/plans/lifecycle/plan-operations';
 
 describe('checkPlanDurationCap', () => {
   it('blocks free > 2 weeks', () => {

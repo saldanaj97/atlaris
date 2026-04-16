@@ -7,7 +7,7 @@
 
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle';
+import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle/plan-operations';
 import { learningPlans, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 

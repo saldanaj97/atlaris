@@ -9,7 +9,7 @@ import { incrementUsage } from '@/features/billing/usage-metrics';
 import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
-} from '@/features/plans/lifecycle';
+} from '@/features/plans/lifecycle/plan-operations';
 import type { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';

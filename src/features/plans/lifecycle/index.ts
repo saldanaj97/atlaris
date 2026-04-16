@@ -1,28 +1,5 @@
-// ─── Service ─────────────────────────────────────────────────────
-
-// ─── Service ─────────────────────────────────────────────────────
-export { GenerationAdapter } from './adapters/generation-adapter';
-export { PdfOriginAdapter } from './adapters/pdf-origin-adapter';
-export { PlanPersistenceAdapter } from './adapters/plan-persistence-adapter';
-
-// ─── Adapters ────────────────────────────────────────────────────
-// ─── Adapters ────────────────────────────────────────────────────
-export { QuotaAdapter } from './adapters/quota-adapter';
-export { UsageRecordingAdapter } from './adapters/usage-recording-adapter';
-// ─── Factory ─────────────────────────────────────────────────────
 // ─── Factory ─────────────────────────────────────────────────────
 export { createPlanLifecycleService } from './factory';
-// ─── Plan Operations ─────────────────────────────────────────────
-// ─── Plan Operations ─────────────────────────────────────────────
-export {
-  atomicCheckAndInsertPlan,
-  checkPlanDurationCap,
-  checkPlanLimit,
-  findRecentDuplicatePlan,
-  markPlanGenerationFailure,
-  markPlanGenerationSuccess,
-} from './plan-operations';
-// ─── Ports ───────────────────────────────────────────────────────
 // ─── Ports ───────────────────────────────────────────────────────
 export type {
   GenerationPort,
@@ -32,6 +9,7 @@ export type {
   QuotaPort,
   UsageRecordingPort,
 } from './ports';
+// ─── Service ─────────────────────────────────────────────────────
 export type { PlanLifecycleServicePorts } from './service';
 export { PlanLifecycleService } from './service';
 // ─── Types ───────────────────────────────────────────────────────
@@ -60,5 +38,4 @@ export type {
   RetryableFailure,
   SubscriptionTier,
 } from './types';
-// ─── Types ───────────────────────────────────────────────────────
 export { isRetryableClassification } from './types';

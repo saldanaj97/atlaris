@@ -1,7 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
-import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle';
+import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle/plan-operations';
 import { aiUsageEvents, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
