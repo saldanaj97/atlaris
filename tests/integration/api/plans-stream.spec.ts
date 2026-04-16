@@ -197,6 +197,32 @@ afterAll(() => {
 });
 
 describe('POST /api/v1/plans/stream', () => {
+  it('returns 400 with reason details when body is not valid JSON', async () => {
+    const authUserId = buildTestAuthUserId('stream-bad-json');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    const request = new Request('http://localhost/api/v1/plans/stream', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: '{ not json',
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+    const body = expectJsonObject(await response.json());
+    expect(body.error).toBe('Invalid request body.');
+    expect(body.details).toEqual({
+      reason: 'Malformed or invalid JSON payload.',
+    });
+  });
+
   it('streams generation and persists plan data', async () => {
     const authUserId = buildTestAuthUserId('stream-user');
     await ensureUser({

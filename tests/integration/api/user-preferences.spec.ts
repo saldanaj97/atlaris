@@ -156,6 +156,23 @@ describe('PATCH /api/v1/user/preferences', () => {
     clearTestUser();
   });
 
+  it('returns 400 when PATCH body is not valid JSON', async () => {
+    setTestUser(testAuthUserId);
+
+    const request = new Request('http://localhost/api/v1/user/preferences', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: '{ not json',
+    });
+
+    const response = await PATCH(request);
+    expect(response.status).toBe(400);
+    const data = expectJsonObject(await response.json());
+    expect(data.error).toBe('Invalid JSON in request body');
+  });
+
   it('accepts valid model ID', async () => {
     setTestUser(testAuthUserId);
 

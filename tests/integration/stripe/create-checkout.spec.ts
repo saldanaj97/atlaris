@@ -234,6 +234,59 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     );
   });
 
+  it('returns 400 when body is not valid JSON', async () => {
+    await ensureUser({
+      authUserId: 'user_bad_json_checkout',
+      email: 'bad.json.checkout@example.com',
+    });
+
+    setTestUser('user_bad_json_checkout');
+
+    const request = new Request(
+      'http://localhost:3000/api/v1/stripe/create-checkout',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: '{ not json',
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Invalid JSON in request body',
+    });
+  });
+
+  it('returns 400 when JSON body is empty but content-type is application/json', async () => {
+    await ensureUser({
+      authUserId: 'user_empty_json_checkout',
+      email: 'empty.json.checkout@example.com',
+    });
+
+    setTestUser('user_empty_json_checkout');
+
+    const request = new Request(
+      'http://localhost:3000/api/v1/stripe/create-checkout',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Invalid JSON in request body',
+    });
+  });
+
   it('returns 400 when priceId is missing', async () => {
     await ensureUser({
       authUserId: 'user_missing_price',

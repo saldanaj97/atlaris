@@ -157,6 +157,26 @@ describe('PUT /api/v1/user/profile', () => {
     expect(updated?.name).toBeNull();
   });
 
+  it('returns 400 when PUT body is not valid JSON', async () => {
+    const { PUT } = await import('@/app/api/v1/user/profile/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/profile',
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: '{ not json',
+      }
+    );
+
+    const response = await PUT(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe('Invalid JSON in request body');
+  });
+
   it('rejects payloads with unknown fields', async () => {
     const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(

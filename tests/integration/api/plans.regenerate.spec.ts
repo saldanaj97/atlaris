@@ -181,6 +181,29 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(body.error).toBe('Learning plan not found.');
   });
 
+  it('returns 400 with invalid JSON message when body is not JSON', async () => {
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: authEmail,
+      subscriptionTier: 'pro',
+    });
+
+    const plan = await createPlan(userId);
+
+    const request = new Request(`${BASE_URL}/${plan.id}/regenerate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{ not json',
+    });
+    const context = { params: Promise.resolve({ planId: plan.id }) };
+
+    const res = await POST(request, context);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe('Invalid JSON in request body.');
+  });
+
   describe('invalid overrides schema', () => {
     it('rejects topic that is too short', async () => {
       setTestUser(authUserId);

@@ -120,6 +120,79 @@ describe('Stripe API Routes', () => {
       });
     });
 
+    it('creates portal session with empty POST body (optional JSON)', async () => {
+      const userId = await createAuthTestUser();
+      await markUserAsSubscribed(userId, {
+        subscriptionStatus: 'active',
+      });
+
+      const mockStripe = {
+        billingPortal: {
+          sessions: {
+            create: vi.fn().mockResolvedValue({
+              url: 'https://billing.stripe.com/session_empty_body',
+            }),
+          },
+        },
+      } as unknown as Stripe;
+
+      const portalPOST = createCreatePortalHandler(mockStripe);
+
+      const request = new Request(
+        'http://localhost/api/v1/stripe/create-portal',
+        {
+          method: 'POST',
+        }
+      );
+
+      const response = await portalPOST(request);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.portalUrl).toBe(
+        'https://billing.stripe.com/session_empty_body'
+      );
+      expect(mockStripe.billingPortal.sessions.create).toHaveBeenCalled();
+    });
+
+    it('returns 400 for malformed JSON when content-type is application/json', async () => {
+      const userId = await createAuthTestUser();
+      await markUserAsSubscribed(userId, {
+        subscriptionStatus: 'active',
+      });
+
+      const mockCreateSession = vi
+        .fn()
+        .mockRejectedValue(new Error('Should not be called'));
+      const mockStripe = {
+        billingPortal: {
+          sessions: {
+            create: mockCreateSession,
+          },
+        },
+      } as unknown as Stripe;
+      const portalPOST = createCreatePortalHandler(mockStripe);
+
+      const request = new Request(
+        'http://localhost/api/v1/stripe/create-portal',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: '{ not valid json',
+        }
+      );
+
+      const response = await portalPOST(request);
+
+      expect(response.status).toBe(400);
+      expect(mockCreateSession).not.toHaveBeenCalled();
+      await expect(response.json()).resolves.toMatchObject({
+        error: 'Malformed JSON body',
+      });
+    });
+
     it.each([
       'https://evil.example/phish',
       'javascript:alert(1)',
