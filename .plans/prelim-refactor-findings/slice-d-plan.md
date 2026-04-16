@@ -3,7 +3,7 @@
 ## Scope snapshot
 
 - **Slice:** D
-- **Execution order:** After Slice A, Slice B, and Slice C; before Slice E/F.
+- **Execution order:** After Slice A and Slice B; begin only once Slice C is complete or its remaining items are explicitly confirmed non-overlapping; before Slice E/F.
 - **Primary source of truth:** `.plans/prelim-refactor-findings/prelim-research.md` (Slice D section) plus the shared execution order in `.plans/prelim-refactor-findings/prelim-plan.md`.
 - **In scope:** one lifecycle authority for create/retry/stream generation; thinner HTTP-only route adapters; split stream emission vs cleanup/persistence helpers; narrower boundaries for `PlanLifecycleService`, AI orchestrator, jobs queries, and attempt persistence.
 - **Out of scope:** client controller work from Slice E, generic route parsing cleanup from Slice F, and edits to shared prelim research/todos artifacts.
@@ -11,7 +11,7 @@
 ## Dependencies and sequencing
 
 - **Hard dependency on Slice B:** reuse the feature-owned destination for session/lifecycle facades so Slice D does not invent a parallel abstraction.
-- **Soft dependency on Slice C:** preserve current ready/failed/generating semantics because Slice C and Slice E consume them; Slice D should not rename statuses or change terminal meaning.
+- **Execution gate on Slice C:** preserve current ready/failed/generating semantics because Slice C and Slice E consume them; do not begin Slice D until the remaining Slice C work is either complete or explicitly verified to avoid file-path/import overlap with this slice.
 - **Cross-slice contract for Slice E:** SSE event names/order must remain backward-compatible unless this plan explicitly includes a migration path.
 - **Cross-slice contract for Slice F:** leave generic JSON/body parsing standardization for later; only move route logic that is lifecycle-specific.
 
@@ -19,9 +19,10 @@
 
 1. Create and retry generation flows execute through one feature-owned backend session orchestration path.
 2. `src/app/api/v1/plans/stream/route.ts` and `src/app/api/v1/plans/[planId]/retry/route.ts` become HTTP adapters: auth/rate-limit/preflight/request parsing in the route, lifecycle/session orchestration below the route.
-3. `src/app/api/v1/plans/stream/helpers.ts` is no longer a mixed-ownership module.
-   - SSE event formatting/emission lives in a feature-owned stream-events module.
+3. `src/features/plans/session/stream-session.ts` is decomposed by runtime concern, and `src/app/api/v1/plans/stream/helpers.ts` is reduced to a compatibility shim or deleted.
+   - SSE event formatting/emission lives in a feature-owned emitters module with a name that stays distinct from the existing `session-events.ts` type-definition file.
    - Cleanup / safe-failure helpers live in a feature-owned cleanup module.
+   - `emitCancelledEvent` and `tryRecordUsage` have explicit homes instead of remaining as leftovers in the app-route helper layer.
    - Unused legacy handlers are deleted once tests prove no remaining consumers.
 4. `PlanLifecycleService` has clearer internal boundaries: shared creation pipeline plus explicit origin-specific strategy modules for AI vs PDF creation, without changing external behavior.
 5. `src/features/ai/orchestrator.ts` is narrowed so provider selection / timeout wiring / failure finalization are no longer one large procedural block.
@@ -34,16 +35,18 @@
 
 1. Reconfirm the slice boundary from:
    - `.plans/prelim-refactor-findings/prelim-plan.md` → Slice D row + suggested execution order.
-   - `.plans/prelim-refactor-findings/prelim-research.md` → Slice D current state, file map, overlap notes, and planning note that `stream/helpers.ts` is transitional.
+   - `.plans/prelim-refactor-findings/prelim-research.md` → Slice D current state, file map, overlap notes, and planning note that `stream/helpers.ts` is transitional while `stream-session.ts` is the current primary donor for emission/cleanup extraction.
 2. Lock the non-negotiable behavioral contracts before moving files:
    - Stream route still creates a plan, starts SSE with `plan_start`, and ends with current `complete` / `error` / `cancelled` semantics.
    - Retry route still rejects ineligible plan states up front and otherwise emits the same SSE contract.
    - Regeneration worker still relies on `PlanLifecycleService.processGenerationAttempt()` semantics staying stable.
 3. Confirm legacy-helper disposition up front:
-   - **Move** `buildPlanStartEvent`, `emitSanitizedFailureEvent`, `emitCancelledEvent`, `emitModuleSummaries`, and `executeLifecycleGenerationStream` into a feature-owned emission/session module.
+   - **Move** `buildPlanStartEvent`, `emitSanitizedFailureEvent`, `emitModuleSummaries`, and `executeLifecycleGenerationStream` out of the current `stream-session.ts` donor file into a feature-owned emission/session module.
+   - **Move** `emitCancelledEvent` out of `stream/helpers.ts` into the same feature-owned emission module so cancellation signaling is not stranded in the app-route helper layer.
    - **Move** `safeMarkPlanFailed` and any remaining cleanup-only helpers into a feature-owned cleanup module.
+   - **Move** `tryRecordUsage` into an explicit session/lifecycle or usage-recording home below `src/features/plans/session/` instead of leaving it as a hidden side-effect helper in `stream/helpers.ts`.
    - **Delete** `handleSuccessfulGeneration`, `handleFailedGeneration`, and `withFallbackCleanup` if parity search/tests confirm they remain unused after extraction.
-   - **Delete or inline** fallback-only serialization helpers from `stream/helpers.ts` if the moved cleanup module becomes their only caller.
+   - **Delete or inline** fallback-only serialization helpers from the compatibility layer if the moved cleanup module becomes their only caller, and prefer Slice A's shared primitives (`unknownThrownCore`, `safeStringifyUnknown`, `coerceUnknownToMessage`) over carrying duplicate wrappers forward.
 4. Record implementation guardrails for the coding agent:
    - Do not change SSE event names unless a migration is planned and tests are updated together.
    - Do not add new route/business leakage from `src/features/*` back up into `src/app/*`.
@@ -62,6 +65,7 @@
 3. Lock lower-level helper behavior before splitting modules:
    - keep `tests/unit/ai/streaming/helpers.spec.ts` for `safeMarkPlanFailed`-style swallowing/logging behavior until the helper lands in its new module
    - keep `tests/unit/app/api/v1/plans/stream/helpers-usage.spec.ts` or its replacement focused on usage-recording semantics if that logic moves
+   - keep `tests/unit/app/api/v1/plans/stream/fallback-error-like.spec.ts` or its replacement pinned to the chosen fallback-normalization wrapper while that behavior still exists
 4. Expand persistence/queue regression coverage before broad file splits:
    - `tests/integration/db/jobs.queries.spec.ts`
    - `tests/integration/db/jobs.queue.spec.ts`
@@ -71,12 +75,11 @@
 
 ## Step D.2 — introduce one feature-owned generation session authority
 
-1. Create a shared feature module (preferred name from research: `src/features/plans/session/plan-generation-session.ts`) that owns:
-   - stream-scoped DB acquisition / cleanup
-   - construction of the SSE response
+1. Introduce or complete a shared feature module (preferred name from research: `src/features/plans/session/plan-generation-session.ts`) that becomes the main create/retry session entrypoint and owns:
+   - construction of the SSE response currently handled by `createPlanGenerationSessionResponse()`
    - invocation of `processGenerationAttempt()`
    - unhandled-error cleanup callback wiring
-2. Keep `server-session.ts` as the lower-level stream/DB utility layer or fold it into the new session module, but the final ownership should be entirely under `src/features/plans/session/`.
+2. Default end-state: move `createPlanGenerationSessionResponse()` into `plan-generation-session.ts`, keep `createStreamDbClient()` as a thin stream-DB utility under `src/features/plans/session/`, and only delete/merge `server-session.ts` if it becomes trivial after the move.
 3. Target end-state API shape:
    - one entrypoint for **create-and-stream** generation
    - one entrypoint for **retry-and-stream** generation
@@ -88,9 +91,9 @@
    - if model resolution remains stream-only, pass a resolved `modelOverride` into the shared session module rather than letting the route keep the entire orchestration.
    - do **not** implicitly add query-parameter model override behavior to retry unless product behavior is intentionally expanded.
 
-## Step D.3 — split `stream/helpers.ts` into emission vs cleanup and remove the transitional layer
+## Step D.3 — split `stream-session.ts` / `stream/helpers.ts` by runtime concern and remove the transitional layer
 
-1. Create **emission-only** module(s), preferably under `src/features/plans/session/stream-events.ts`, for:
+1. Create **emission-only** module(s), preferably under `src/features/plans/session/stream-emitters.ts` (or another name that stays distinct from the existing `session-events.ts` type-definition file), sourced primarily from the current `stream-session.ts` donor file, for:
    - `buildPlanStartEvent`
    - `emitSanitizedFailureEvent`
    - `emitCancelledEvent`
@@ -100,13 +103,15 @@
    - `safeMarkPlanFailed`
    - any remaining fallback error-shaping used only for cleanup/logging
 3. Remove mixed ownership from route space:
-   - `src/features/plans/session/server-session.ts` must stop importing from `src/app/api/v1/plans/stream/helpers.ts`.
+   - if `src/app/api/v1/plans/stream/helpers.ts` survives temporarily, keep it as a compatibility wrapper/re-export only.
    - routes should import feature session APIs only.
 4. Legacy helper disposition:
+   - `emitCancelledEvent` → move to the emission module with the other SSE event emitters.
+   - `tryRecordUsage` → move to an explicit session/lifecycle or usage-recording home; do not leave it behind in the compatibility wrapper.
    - `handleSuccessfulGeneration` → delete unless a new non-lifecycle consumer is introduced during refactor; current search shows no callers.
    - `handleFailedGeneration` → delete unless a new non-lifecycle consumer is introduced during refactor; current search shows no callers.
    - `withFallbackCleanup` → delete if no caller remains after cleanup extraction; otherwise keep only in the cleanup module with a caller-driven name.
-   - `toFallbackErrorLike` / `omitCircularFields` → move only if still required by cleanup/emission internals; otherwise replace with existing shared error-normalization helpers from Slice A if already available.
+   - `toFallbackErrorLike` / `omitCircularFields` → keep only if still required by cleanup/emission internals; otherwise replace or narrow them around `unknownThrownCore`, `safeStringifyUnknown`, and `coerceUnknownToMessage` from `src/lib/errors/normalize-unknown.ts`.
 5. End-state rule: no feature module under `src/features/plans/session/` should need to import from `src/app/api/...`.
 
 ## Step D.4 — narrow `PlanLifecycleService` around explicit creation strategies
@@ -193,9 +198,11 @@ Run these after the implementation, preferring changed-only/targeted commands fi
    - `pnpm exec tsx scripts/tests/run.ts unit tests/unit/db/attempts-persistence.spec.ts`
    - `pnpm exec tsx scripts/tests/run.ts unit tests/unit/ai/streaming/helpers.spec.ts`
    - `pnpm exec tsx scripts/tests/run.ts unit tests/unit/app/api/v1/plans/stream/helpers-usage.spec.ts`
+   - `pnpm exec tsx scripts/tests/run.ts unit tests/unit/app/api/v1/plans/stream/fallback-error-like.spec.ts`
    - `pnpm exec tsx scripts/tests/run.ts unit tests/unit/ai/orchestrator-pacing.spec.ts`
    - `pnpm exec tsx scripts/tests/run.ts unit tests/unit/ai/orchestrator-timeout.spec.ts`
    - `pnpm exec tsx scripts/tests/run.ts unit tests/unit/features/plans/lifecycle/lifecycle-consolidation.spec.ts`
+   - `pnpm exec tsx scripts/tests/run.ts unit tests/unit/architecture/import-boundaries.spec.ts`
 2. Type/lint checks:
    - `pnpm check:type`
    - `pnpm check:lint`
@@ -216,8 +223,8 @@ Walk each acceptance criterion with proof points after implementation:
    - Proof: stream/retry routes contain only parsing/preflight/error mapping and delegation, not stream DB lifetime management.
    - Proof command: inspect `git diff -- src/app/api/v1/plans/stream/route.ts src/app/api/v1/plans/[planId]/retry/route.ts`
 3. **`stream/helpers.ts` no longer mixes concerns**
-   - Proof: emission helpers live under feature session modules, cleanup helpers live in cleanup module, and unused legacy helpers are deleted.
-   - Proof command: `rg "handleSuccessfulGeneration|handleFailedGeneration|withFallbackCleanup" src -n`
+   - Proof: emission helpers live under feature session modules, cleanup helpers live in cleanup module, `emitCancelledEvent` / `tryRecordUsage` have explicit homes, and `stream/helpers.ts` is only a compatibility shim or is deleted entirely.
+   - Proof command: `rg "handleSuccessfulGeneration|handleFailedGeneration|withFallbackCleanup|emitCancelledEvent|tryRecordUsage" src -n`
 4. **`PlanLifecycleService` boundaries are narrower**
    - Proof: AI vs PDF creation branches delegate to extracted strategy helpers, while `processGenerationAttempt()` remains the single execution authority.
    - Proof command: `rg "origin-strategies|processGenerationAttempt\\(" src/features/plans/lifecycle -n`
@@ -236,17 +243,19 @@ Walk each acceptance criterion with proof points after implementation:
 
 1. **Commit 1 — lock lifecycle parity tests**
    - Add/adjust stream, retry, queue, and persistence coverage before moving code.
-2. **Commit 2 — shared session authority + route thinning**
-   - Introduce feature-owned generation session module, move emission/cleanup helpers, make routes HTTP-only.
-3. **Commit 3 — lifecycle/orchestrator narrowing**
+2. **Commit 2 — shared session authority + helper split**
+   - Introduce or finish the feature-owned generation session module, split `stream-session.ts` by runtime concern, and move cancellation/usage helpers to explicit homes.
+3. **Commit 3 — route thinning + compatibility cleanup**
+   - Make routes HTTP-only, update them to the shared session entrypoints, and reduce `stream/helpers.ts` to a compatibility shim or delete it.
+4. **Commit 4 — lifecycle/orchestrator narrowing**
    - Extract origin strategies and orchestrator helper modules while preserving public APIs.
-4. **Commit 4 — queue/persistence module split + final cleanup**
+5. **Commit 5 — queue/persistence module split + final cleanup**
    - Split `jobs.ts`, split attempts persistence helpers, delete transitional legacy helpers, run final baselines.
 
 ## Open decisions to settle before coding
 
 1. **Model override ownership:** keep retry semantics unchanged and pass resolved model config from the route, or intentionally expand retry to accept the same override path as stream.
-2. **Session module shape:** keep `server-session.ts` as a thin transport primitive vs replace it outright with `plan-generation-session.ts`.
-3. **Error normalization dependency:** if Slice A already landed a canonical unknown-error helper, reuse it during `stream/helpers.ts` cleanup instead of carrying local fallback serializers forward.
+2. **Session module shape:** default to moving `createPlanGenerationSessionResponse()` into `plan-generation-session.ts`, keep `createStreamDbClient()` as a thin stream-DB utility under `src/features/plans/session/`, and only delete/merge `server-session.ts` if it becomes trivial after the move.
+3. **Error normalization dependency:** reuse `unknownThrownCore`, `safeStringifyUnknown`, and `coerceUnknownToMessage` from `src/lib/errors/normalize-unknown.ts` during `stream/helpers.ts` cleanup unless a remaining SSE-specific wrapper still needs a narrower adapter.
 4. **Jobs split surface:** preserve `src/lib/db/queries/jobs.ts` as a compatibility barrel during the slice vs update all imports in one pass.
 5. **Attempt persistence extraction depth:** stop at normalization/persistence separation in this slice; avoid redesigning reservation/finalization public APIs unless tests expose a real need.
