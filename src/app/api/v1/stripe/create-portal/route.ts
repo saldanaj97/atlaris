@@ -9,6 +9,7 @@ import { getCustomerPortalUrl } from '@/features/billing/subscriptions';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 
@@ -40,23 +41,15 @@ export function createCreatePortalHandler(stripeInstance?: Stripe) {
         );
       }
 
-      let body: unknown = {};
-      try {
-        body = await req.json();
-      } catch (err) {
-        const contentType = req.headers.get('content-type') ?? '';
-        const contentLength = req.headers.get('content-length');
-        const hasBody =
-          contentType.includes('application/json') ||
-          (contentLength !== null && contentLength !== '0');
-
-        if (err instanceof SyntaxError && hasBody) {
-          throw new ValidationError('Malformed JSON body', undefined, {
+      const body = await parseJsonBody(req, {
+        mode: 'optional',
+        fallback: {},
+        onMalformedJson: (err) =>
+          new ValidationError('Malformed JSON body', undefined, {
             userId: user.id,
-            parseError: err.message,
-          });
-        }
-      }
+            parseError: err instanceof Error ? err.message : String(err),
+          }),
+      });
 
       const parseResult = createPortalBodySchema.safeParse(body);
       if (!parseResult.success) {

@@ -19,6 +19,7 @@ import type { PlanRegenerationOverridesInput } from '@/features/plans/validation
 import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, RateLimitError, ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -56,12 +57,11 @@ export const POST: PlainHandler = withErrorBoundary(
         dbClient: db,
       });
 
-      let body: unknown;
-      try {
-        body = await req.json();
-      } catch {
-        throw new ValidationError('Invalid JSON in request body.');
-      }
+      const body = await parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: () =>
+          new ValidationError('Invalid JSON in request body.'),
+      });
 
       let overrides: PlanRegenerationOverridesInput | undefined;
       try {

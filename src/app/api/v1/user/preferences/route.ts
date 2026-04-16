@@ -5,6 +5,7 @@ import { validateModelForTier } from '@/features/ai/model-resolver';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
 import { updateUserPreferredAiModel } from '@/lib/db/queries/users';
 import {
@@ -83,12 +84,11 @@ export const PATCH = withErrorBoundary(
 
     logger.info('Updating user preferences');
 
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      throw new ValidationError('Invalid JSON in request body');
-    }
+    const body = await parseJsonBody(req, {
+      mode: 'required',
+      onMalformedJson: () =>
+        new ValidationError('Invalid JSON in request body'),
+    });
     const parsed = updatePreferencesSchema.safeParse(body);
 
     if (!parsed.success) {

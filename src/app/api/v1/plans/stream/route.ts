@@ -10,6 +10,7 @@ import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -40,16 +41,26 @@ export function createStreamHandler(deps?: {
       async ({ req, userId, user: currentUser }) => {
         logger.info({ authUserId: userId }, 'Plan stream handler entered');
 
+        const parsedBody = await parseJsonBody(req, {
+          mode: 'required',
+          onMalformedJson: (error) =>
+            new ValidationError(
+              'Invalid request body.',
+              { reason: 'Malformed or invalid JSON payload.' },
+              { authUserId: userId, error: serializeError(error) }
+            ),
+        });
+
+        logger.info(
+          {
+            authUserId: userId,
+            payload: toPayloadLog(parsedBody),
+          },
+          'Plan stream request payload received'
+        );
+
         let body: CreateLearningPlanInput;
         try {
-          const parsedBody: unknown = await req.json();
-          logger.info(
-            {
-              authUserId: userId,
-              payload: toPayloadLog(parsedBody),
-            },
-            'Plan stream request payload received'
-          );
           body = createLearningPlanSchema.parse(parsedBody);
         } catch (error) {
           if (error instanceof ZodError) {

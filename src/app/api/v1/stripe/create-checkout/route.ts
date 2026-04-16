@@ -12,6 +12,7 @@ import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
 import { stripeEnv } from '@/lib/config/env';
 
@@ -34,12 +35,11 @@ export function createCreateCheckoutHandler(
 ): PlainHandler {
   return withErrorBoundary(
     withAuthAndRateLimit('billing', async ({ req, user }) => {
-      let body: unknown;
-      try {
-        body = await req.json();
-      } catch {
-        throw new ValidationError('Invalid JSON in request body');
-      }
+      const body = await parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: () =>
+          new ValidationError('Invalid JSON in request body'),
+      });
 
       const parseResult = createCheckoutBodySchema.safeParse(body);
       if (!parseResult.success) {
