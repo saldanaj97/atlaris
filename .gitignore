@@ -59,8 +59,5 @@ jscpd-report/
 # local Copilot hook logs
 .github/hooks/logs/
 
-# plan files
-plans/*
-
 # CocoIndex Code (ccc)
 /.cocoindex_code/
