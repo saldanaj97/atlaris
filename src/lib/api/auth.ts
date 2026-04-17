@@ -16,10 +16,7 @@ import { AuthError } from './errors';
 import { withRateLimit } from './middleware';
 import type { UserRateLimitCategory } from './user-rate-limit';
 
-export type {
-  PlainHandler,
-  RouteHandlerContext,
-} from '@/lib/api/types/auth.types';
+export type { PlainHandler } from '@/lib/api/types/auth.types';
 
 type MaybePromise<T> = T | Promise<T>;
 

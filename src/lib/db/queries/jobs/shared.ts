@@ -5,7 +5,6 @@ import type {
   JobsDbClient,
 } from '@/lib/db/queries/types/jobs.types';
 import { jobQueue } from '@/lib/db/schema';
-import { MAX_JOB_MONITORING_ROWS } from '@/lib/db/schema/constants';
 import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,
@@ -14,8 +13,6 @@ import type { Job } from '@/shared/types/jobs.types';
 
 /** Cap for exponential retry delay in seconds (5 minutes). */
 const MAX_RETRY_DELAY_SECONDS = JOB_RETRY_MAX_DELAY_SECONDS;
-
-export { MAX_JOB_MONITORING_ROWS };
 
 export const jobQueueSelect = {
   id: jobQueue.id,

@@ -1,40 +1,7 @@
 import { z } from 'zod';
-import { TOPIC_MAX_LENGTH } from '@/shared/constants/learning-plans';
-import { pdfExtractedSectionSchema } from '@/shared/schemas/pdf-validation.schemas';
 
-export {
-  pdfExtractedSectionSchema,
-  pdfPreviewEditSchema,
-} from '@/shared/schemas/pdf-validation.schemas';
-export {
-  extractionApiResponseSchema,
-  extractionApiSectionSchema,
-  extractionProofSchema,
-  truncationDataSchema,
-} from './pdf.schemas';
-export type {
-  ExtractionApiResponseData,
-  ExtractionProofData,
-  ExtractionSection,
-  PdfPreviewEditInput,
-  TruncationData,
-} from './pdf.types';
-
-export const pdfExtractionRequestSchema = z
-  .object({
-    fileName: z.string().trim().min(1).max(200),
-    fileType: z.string().trim().min(1).max(200),
-    sizeBytes: z.number().int().positive(),
-  })
-  .strict();
-
-export const pdfExtractedContentSchema = z
-  .object({
-    mainTopic: z.string().trim().min(3).max(TOPIC_MAX_LENGTH),
-    sections: z.array(pdfExtractedSectionSchema).min(1).max(50),
-    confidence: z.enum(['high', 'medium', 'low']),
-  })
-  .strict();
+export { pdfPreviewEditSchema } from '@/shared/schemas/pdf-validation.schemas';
+export { extractionApiResponseSchema } from './pdf.schemas';
 
 type PdfUploadFile = {
   size: number;

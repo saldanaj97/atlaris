@@ -7,32 +7,16 @@ import {
 } from 'date-fns';
 import { z } from 'zod';
 
-export {
-  createLearningPlanObject,
-  createLearningPlanSchema,
-} from '@/shared/schemas/learning-plans.schemas';
+export { createLearningPlanSchema } from '@/shared/schemas/learning-plans.schemas';
 export { planRegenerationOverridesSchema } from './learningPlans.schemas';
-export type {
-  CreateLearningPlanInput,
-  OnboardingFormValues,
-  PlanRegenerationOverridesInput,
-} from './learningPlans.types';
-export {
-  NOTES_MAX_LENGTH,
-  TOPIC_MAX_LENGTH,
-  weeklyHoursSchema,
-} from './shared';
 
 import {
   onboardingFormObject,
   planRegenerationOverridesSchema,
 } from './learningPlans.schemas';
 
-// Time constants in milliseconds
 export const MILLISECONDS_PER_WEEK = 7 * 24 * 3600 * 1000;
 export const DEFAULT_PLAN_DURATION_WEEKS = 2;
-export const DEFAULT_PLAN_DURATION_MS =
-  DEFAULT_PLAN_DURATION_WEEKS * MILLISECONDS_PER_WEEK;
 
 export const planRegenerationRequestSchema = z
   .object({
@@ -57,7 +41,7 @@ type OnboardingDateFields = Pick<
   'startDate' | 'deadlineDate'
 >;
 
-export function validateOnboardingDateFields(
+function validateOnboardingDateFields(
   data: OnboardingDateFields,
   ctx: z.RefinementCtx
 ): void {

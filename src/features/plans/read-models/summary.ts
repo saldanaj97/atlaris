@@ -47,8 +47,6 @@ export type LightweightModuleMetricsRow = {
   completedMinutes: number;
 };
 
-export type { PlanSummaryReadStatus } from '@/features/plans/status/read-status';
-
 export type SummaryStatusInput = {
   plan: Pick<LearningPlan, 'generationStatus'>;
   completion: number;

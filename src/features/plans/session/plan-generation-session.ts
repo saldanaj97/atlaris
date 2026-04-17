@@ -28,8 +28,6 @@ import {
   executeLifecycleGenerationStream,
 } from './stream-emitters';
 
-export { createStreamDbClient } from './stream-db';
-
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
 const PLAN_CREATION_FAILURE_MAP: Record<
