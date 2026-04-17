@@ -12,7 +12,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-
+import type { PdfContext } from '@/shared/types/pdf-context.types';
 import {
   type GenerationAttemptStatus,
   generationStatus,
@@ -44,9 +44,8 @@ export const learningPlans = pgTable(
     deadlineDate: date('deadline_date'),
     visibility: text('visibility').notNull().default('private'),
     origin: planOrigin('origin').notNull().default('ai'),
-    // extracted_context persists JSON only. Application-level validation/casting
-    // happens outside the schema layer before reads/writes.
-    extractedContext: jsonb('extracted_context').$type<unknown>(),
+    // extracted_context stores sanitized PDF context payloads when present.
+    extractedContext: jsonb('extracted_context').$type<PdfContext | null>(),
     generationStatus: generationStatus('generation_status')
       .notNull()
       .default('generating'),

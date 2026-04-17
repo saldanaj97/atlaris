@@ -1,8 +1,3 @@
-/**
- * Compatibility barrel — import from `@/lib/config/env` (stable public surface).
- * Domain facets live under `./env/*.ts`.
- */
-
 export {
   type AiEnvConfig,
   type AiEnvFacets,

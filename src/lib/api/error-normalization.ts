@@ -86,20 +86,3 @@ export function toAttemptError(error: unknown): AttemptErrorResult {
 
   return { message: coerceUnknownToMessage(error) };
 }
-
-export function stringifyThrownValue(value: unknown): string {
-  return coerceUnknownToMessage(value);
-}
-
-/**
- * Ensures the value is an Error instance. Wraps non-Error thrown values in an Error.
- */
-export function normalizeThrownError(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
-  }
-
-  return new Error(
-    `Non-Error thrown during retry generation: ${stringifyThrownValue(error)}`
-  );
-}

@@ -11,9 +11,6 @@ export const USERS_AUTHENTICATED_UPDATE_COLUMNS = [
   'updated_at',
 ] as const;
 
-export type UsersAuthenticatedUpdateColumn =
-  (typeof USERS_AUTHENTICATED_UPDATE_COLUMNS)[number];
-
 /** Comma-separated identifiers for `GRANT UPDATE (...)` embedding. */
 export const USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL =
   USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ');

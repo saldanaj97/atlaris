@@ -118,6 +118,13 @@ function initializeDb(): ServiceRoleDb {
   return _db;
 }
 
+function getLazyProxyProperty<T extends object>(
+  initialize: () => T,
+  prop: string | symbol
+): unknown {
+  return Reflect.get(initialize(), prop);
+}
+
 /**
  * Postgres client - lazily initialized on first access.
  *
@@ -133,11 +140,7 @@ export const client = new Proxy(
   {},
   {
     get(_target, prop: string | symbol): unknown {
-      const actualClient = initializeClient();
-
-      return (actualClient as unknown as Record<string | symbol, unknown>)[
-        prop
-      ];
+      return getLazyProxyProperty(initializeClient, prop);
     },
   }
 ) as Sql;
@@ -155,9 +158,7 @@ export const serviceRoleDb = new Proxy(
   {},
   {
     get(_target, prop: string | symbol): unknown {
-      const actualDb = initializeDb();
-
-      return (actualDb as unknown as Record<string | symbol, unknown>)[prop];
+      return getLazyProxyProperty(initializeDb, prop);
     },
   }
   // Cast the proxy to the concrete Drizzle client type

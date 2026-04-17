@@ -61,14 +61,7 @@ export async function checkPdfSizeLimit(
     throw new Error('sizeBytes must be a positive finite number');
   }
 
-  let tier: SubscriptionTier;
-  try {
-    tier = await deps.resolveTier(userId, dbClient);
-  } catch (err) {
-    throw new Error(
-      `resolveTier failed: ${err instanceof Error ? err.message : String(err)}`
-    );
-  }
+  const tier = await deps.resolveTier(userId, dbClient);
 
   const limits = toLimitDetails(tier);
   const maxSizeBytes = limits.maxPdfSizeMb * 1024 * 1024;
@@ -151,7 +144,6 @@ type ThrottleStore = Map<string, number[]> | LRUCache<string, number[]>;
 type PdfThrottleDeps = {
   store?: ThrottleStore;
   now?: () => number;
-  headers?: Record<string, string | undefined>;
 };
 
 type PdfGlobalExtractionDeps = {
@@ -184,9 +176,6 @@ export function acquirePdfExtractionSlot(
   deps: PdfThrottleDeps = {}
 ): PdfThrottleResult {
   const now = deps.now?.() ?? Date.now();
-  // Header input is accepted for call-site compatibility but intentionally ignored:
-  // throttling is keyed by trusted userId, not spoofable IP headers.
-  void deps.headers;
   const store = deps.store ?? extractionTimestamps;
   const windowStart = now - PDF_EXTRACTION_WINDOW_MS;
 
@@ -209,16 +198,6 @@ export function acquirePdfExtractionSlot(
   store.set(userId, recent);
 
   return { allowed: true };
-}
-
-/**
- * @deprecated Use acquirePdfExtractionSlot to make side effects explicit.
- */
-export function checkPdfExtractionThrottle(
-  userId: string,
-  deps: PdfThrottleDeps = {}
-): PdfThrottleResult {
-  return acquirePdfExtractionSlot(userId, deps);
 }
 
 export function acquireGlobalPdfExtractionSlot(

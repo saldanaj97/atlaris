@@ -8,8 +8,8 @@ import { isAbortError } from '@/lib/errors';
 export type ParseJsonBodyOptions = {
   /**
    * `required`: any non-abort rejection from `req.json()` is passed to `onMalformedJson`.
-   * `optional`: only `SyntaxError` when `detectBody(req)` is true throws via `onMalformedJson`;
-   * otherwise returns `fallback` (default `{}`).
+   * `optional`: only an empty-body `SyntaxError` falls back to `fallback` (default `{}`).
+   * If a body is present, malformed JSON throws via `onMalformedJson`; other read failures rethrow.
    */
   mode: 'required' | 'optional';
   onMalformedJson: (err: unknown) => Error;
@@ -66,10 +66,15 @@ export async function parseJsonBody(
       throw options.onMalformedJson(err);
     }
 
-    if (detectBody(req) && err instanceof SyntaxError) {
+    const bodyDetected = detectBody(req);
+
+    if (err instanceof SyntaxError) {
+      if (!bodyDetected) {
+        return options.fallback ?? {};
+      }
       throw options.onMalformedJson(err);
     }
 
-    return options.fallback ?? {};
+    throw err;
   }
 }

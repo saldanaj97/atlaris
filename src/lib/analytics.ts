@@ -4,11 +4,35 @@
  * with any analytics provider (Google Analytics, Mixpanel, etc.)
  */
 
-interface TrackEventParams {
+type AnalyticsValue = string | number | boolean | null | undefined;
+
+type AnalyticsEventParams = Record<string, AnalyticsValue>;
+
+type GtagEventPayload = AnalyticsEventParams & {
+  event_category: string;
+  event_label?: string;
+  cta_location?: string;
+};
+
+type DataLayerEvent = AnalyticsEventParams & {
+  event: string;
+  ctaLocation?: string;
+  ctaLabel?: string;
+};
+
+type AnalyticsWindow = Window & {
+  gtag?: (
+    command: 'event',
+    eventName: string,
+    payload: GtagEventPayload
+  ) => void;
+  dataLayer?: DataLayerEvent[];
+};
+
+interface TrackEventParams extends AnalyticsEventParams {
   event: string;
   label?: string;
   location?: string;
-  [key: string]: unknown;
 }
 
 /**
@@ -23,23 +47,21 @@ export function trackEvent(params: TrackEventParams): void {
   }
 
   try {
+    const analyticsWindow = window as AnalyticsWindow;
+
     // Track with Google Analytics if available
-    if ('gtag' in window) {
-      (window as typeof window & { gtag: (...args: unknown[]) => void }).gtag(
-        'event',
-        event,
-        {
-          event_category: 'engagement',
-          event_label: label,
-          cta_location: location,
-          ...rest,
-        }
-      );
+    if (typeof analyticsWindow.gtag === 'function') {
+      analyticsWindow.gtag('event', event, {
+        event_category: 'engagement',
+        event_label: label,
+        cta_location: location,
+        ...rest,
+      });
     }
 
     // Track with generic dataLayer push (GTM compatible)
-    if ('dataLayer' in window) {
-      (window as typeof window & { dataLayer: unknown[] }).dataLayer.push({
+    if (Array.isArray(analyticsWindow.dataLayer)) {
+      analyticsWindow.dataLayer.push({
         event,
         ctaLocation: location,
         ctaLabel: label,

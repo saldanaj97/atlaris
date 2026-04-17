@@ -7,24 +7,16 @@ import {
 } from 'date-fns';
 import { z } from 'zod';
 
+export {
+  createLearningPlanObject,
+  createLearningPlanSchema,
+} from '@/shared/schemas/learning-plans.schemas';
+export { planRegenerationOverridesSchema } from './learningPlans.schemas';
 export type {
   CreateLearningPlanInput,
   OnboardingFormValues,
   PlanRegenerationOverridesInput,
 } from './learningPlans.types';
-
-import {
-  LEARNING_STYLE_ENUM,
-  NOTES_MAX_LENGTH,
-  SKILL_LEVEL_ENUM,
-  TOPIC_MAX_LENGTH,
-  weeklyHoursSchema,
-} from './shared';
-
-export {
-  createLearningPlanObject,
-  createLearningPlanSchema,
-} from '@/shared/schemas/learning-plans.schemas';
 export {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
@@ -32,63 +24,15 @@ export {
 } from './shared';
 
 import {
-  createLearningPlanObject,
-  topicSchema,
-} from '@/shared/schemas/learning-plans.schemas';
+  onboardingFormObject,
+  planRegenerationOverridesSchema,
+} from './learningPlans.schemas';
 
 // Time constants in milliseconds
 export const MILLISECONDS_PER_WEEK = 7 * 24 * 3600 * 1000;
 export const DEFAULT_PLAN_DURATION_WEEKS = 2;
 export const DEFAULT_PLAN_DURATION_MS =
   DEFAULT_PLAN_DURATION_WEEKS * MILLISECONDS_PER_WEEK;
-
-const planNotesOverrideSchema = z
-  .string()
-  .trim()
-  .max(
-    NOTES_MAX_LENGTH,
-    `notes must be ${NOTES_MAX_LENGTH} characters or fewer.`
-  )
-  .transform((value) => (value.length > 0 ? value : null));
-
-const planTopicOverrideSchema = z
-  .string()
-  .trim()
-  .min(3, 'topic must be at least 3 characters long.')
-  .max(
-    TOPIC_MAX_LENGTH,
-    `topic must be ${TOPIC_MAX_LENGTH} characters or fewer.`
-  );
-
-const planStartDateOverrideSchema = z
-  .string()
-  .trim()
-  .refine(
-    (value) => !Number.isNaN(Date.parse(value)),
-    'Start date must be a valid ISO date string.'
-  )
-  .transform((value) => (value ? value : null));
-
-const planDeadlineDateOverrideSchema = z
-  .string()
-  .trim()
-  .refine(
-    (value) => !Number.isNaN(Date.parse(value)),
-    'Deadline date must be a valid ISO date string.'
-  )
-  .transform((value) => (value ? value : null));
-
-export const planRegenerationOverridesSchema = z
-  .object({
-    topic: planTopicOverrideSchema.optional(),
-    notes: planNotesOverrideSchema.optional().nullable(),
-    skillLevel: SKILL_LEVEL_ENUM.optional(),
-    weeklyHours: weeklyHoursSchema.optional(),
-    learningStyle: LEARNING_STYLE_ENUM.optional(),
-    startDate: planStartDateOverrideSchema.optional().nullable(),
-    deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
-  })
-  .strict();
 
 export const planRegenerationRequestSchema = z
   .object({
@@ -107,45 +51,6 @@ function toDateOnly(value: string): Date {
   // but are not strict ISO calendar dates, such as 2025-02-30.
   return startOfDay(new Date(`${value}T12:00:00`));
 }
-
-const onboardingFormObject = z.object({
-  topic: topicSchema,
-  skillLevel: z
-    .string()
-    .trim()
-    .min(1, 'Please choose a skill level.')
-    .transform((value) => value.toLowerCase()),
-  weeklyHours: z.union([
-    weeklyHoursSchema,
-    z.string().trim().min(1, 'Please select your weekly availability.'),
-  ]),
-  learningStyle: z.string().trim().min(1, 'Please choose a learning style.'),
-  notes: createLearningPlanObject.shape.notes,
-  startDate: z
-    .string()
-    .trim()
-    .optional()
-    .refine(
-      (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
-      'Start date must be in YYYY-MM-DD format.'
-    )
-    .refine(
-      (value) => !value || !Number.isNaN(Date.parse(value)),
-      'Start date must be a valid date.'
-    ),
-  deadlineDate: z
-    .string()
-    .trim()
-    .min(1, 'Please select a deadline date.')
-    .refine(
-      (value) => /^\d{4}-\d{2}-\d{2}$/.test(value),
-      'Deadline date must be in YYYY-MM-DD format.'
-    )
-    .refine(
-      (value) => !Number.isNaN(Date.parse(value)),
-      'Deadline date must be a valid date.'
-    ),
-});
 
 type OnboardingDateFields = Pick<
   z.output<typeof onboardingFormObject>,

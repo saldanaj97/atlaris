@@ -13,7 +13,7 @@ import {
 import type { Job } from '@/shared/types/jobs.types';
 
 /** Cap for exponential retry delay in seconds (5 minutes). */
-export const MAX_RETRY_DELAY_SECONDS = JOB_RETRY_MAX_DELAY_SECONDS;
+const MAX_RETRY_DELAY_SECONDS = JOB_RETRY_MAX_DELAY_SECONDS;
 
 export { MAX_JOB_MONITORING_ROWS };
 

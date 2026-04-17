@@ -112,6 +112,18 @@ const defaultDeletePlanDeps: DeletePlanDeps = {
   selectOwnedPlanById,
 };
 
+const LIGHTWEIGHT_PLAN_LIST_SELECTION = {
+  id: learningPlans.id,
+  topic: learningPlans.topic,
+  skillLevel: learningPlans.skillLevel,
+  learningStyle: learningPlans.learningStyle,
+  visibility: learningPlans.visibility,
+  origin: learningPlans.origin,
+  generationStatus: learningPlans.generationStatus,
+  createdAt: learningPlans.createdAt,
+  updatedAt: learningPlans.updatedAt,
+} as const;
+
 function applyPlanListOrderingAndPagination(
   planQuery: {
     orderBy: <TOrderByArg>(column: TOrderByArg) => unknown;
@@ -132,6 +144,37 @@ function applyPlanListOrderingAndPagination(
 
 function userPlanListWhere(userId: string) {
   return eq(learningPlans.userId, userId);
+}
+
+async function fetchUserPlanListRows(
+  client: DbClient,
+  userId: string,
+  options?: PaginationOptions
+): Promise<LearningPlan[]>;
+async function fetchUserPlanListRows(
+  client: DbClient,
+  userId: string,
+  options: PaginationOptions | undefined,
+  selection: typeof LIGHTWEIGHT_PLAN_LIST_SELECTION
+): Promise<LightweightPlanListRow[]>;
+async function fetchUserPlanListRows(
+  client: DbClient,
+  userId: string,
+  options?: PaginationOptions,
+  selection?: typeof LIGHTWEIGHT_PLAN_LIST_SELECTION
+): Promise<LearningPlan[] | LightweightPlanListRow[]> {
+  const planQuery = (selection ? client.select(selection) : client.select())
+    .from(learningPlans)
+    .where(userPlanListWhere(userId))
+    .$dynamic();
+
+  applyPlanListOrderingAndPagination(
+    planQuery,
+    desc(learningPlans.createdAt),
+    options
+  );
+
+  return await planQuery;
 }
 
 async function getPlanAttemptCounts(
@@ -169,20 +212,7 @@ export async function getPlanSummaryRowsForUser(
 ): Promise<PlanSummaryRows> {
   const client = dbClient ?? getDb();
   assertValidPaginationOptions(options);
-
-  const planQuery = client
-    .select()
-    .from(learningPlans)
-    .where(userPlanListWhere(userId))
-    .$dynamic();
-
-  applyPlanListOrderingAndPagination(
-    planQuery,
-    desc(learningPlans.createdAt),
-    options
-  );
-
-  const planRows = await planQuery;
+  const planRows = await fetchUserPlanListRows(client, userId, options);
 
   if (!planRows.length) {
     return {
@@ -239,30 +269,12 @@ export async function getLightweightPlanSummaryRowsForUser(
 ): Promise<LightweightPlanSummaryRows> {
   const client = dbClient ?? getDb();
   assertValidPaginationOptions(options);
-
-  const planQuery = client
-    .select({
-      id: learningPlans.id,
-      topic: learningPlans.topic,
-      skillLevel: learningPlans.skillLevel,
-      learningStyle: learningPlans.learningStyle,
-      visibility: learningPlans.visibility,
-      origin: learningPlans.origin,
-      generationStatus: learningPlans.generationStatus,
-      createdAt: learningPlans.createdAt,
-      updatedAt: learningPlans.updatedAt,
-    })
-    .from(learningPlans)
-    .where(userPlanListWhere(userId))
-    .$dynamic();
-
-  applyPlanListOrderingAndPagination(
-    planQuery,
-    desc(learningPlans.createdAt),
-    options
+  const planRows = await fetchUserPlanListRows(
+    client,
+    userId,
+    options,
+    LIGHTWEIGHT_PLAN_LIST_SELECTION
   );
-
-  const planRows = await planQuery;
 
   if (!planRows.length) {
     return {
@@ -564,7 +576,7 @@ export async function getPlanSummaryCount(
   const [result] = await client
     .select({ total: count() })
     .from(learningPlans)
-    .where(eq(learningPlans.userId, userId));
+    .where(userPlanListWhere(userId));
 
   return result?.total ?? 0;
 }

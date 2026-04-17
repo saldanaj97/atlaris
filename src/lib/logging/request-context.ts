@@ -18,7 +18,6 @@ export function createRequestContext(
 ): RequestContext {
   const requestId = ensureCorrelationId(request, REQUEST_ID_HEADER);
 
-  // Set isolation scope so Sentry logs include request_id (snake_case per Sentry docs)
   Sentry.getIsolationScope().setAttributes({ request_id: requestId });
 
   return {

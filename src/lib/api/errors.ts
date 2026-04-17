@@ -168,27 +168,6 @@ export class AttemptCapExceededError extends AppError {
   }
 }
 
-export class IntegrationSyncError extends AppError {
-  constructor(message = 'Google Calendar sync failed', details?: unknown) {
-    super(message, {
-      status: 500,
-      code: 'GOOGLE_CALENDAR_SYNC_FAILED',
-      details,
-    });
-  }
-}
-
-export class ExportQuotaExceededError extends AppError {
-  constructor(message = 'Export quota exceeded', details?: unknown) {
-    super(message, {
-      status: 403,
-      code: 'EXPORT_QUOTA_EXCEEDED',
-      details,
-      classification: 'rate_limit',
-    });
-  }
-}
-
 /**
  * Extracts a string `code` property from an unknown thrown value (e.g. Stripe errors).
  * Returns `undefined` when the value has no string `code` field.

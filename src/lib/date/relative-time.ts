@@ -25,7 +25,7 @@ export function toValidDate(value: ValidDateInput): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-export type RelativePastOptions = {
+type RelativePastOptions = {
   referenceDate: ValidDateInput;
   style: 'compact' | 'verbose';
   invalidLabel?: string;
