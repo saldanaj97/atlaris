@@ -44,24 +44,23 @@ describe('error-response', () => {
       });
     });
 
-    it('normalizes legacy nested error shape', () => {
+    it('falls back when payload uses the deprecated nested error shape', () => {
+      // The wire contract is a flat object (see openapi.ts errorResponseSchema);
+      // a stray nested envelope from a misbehaving proxy degrades to fallback
+      // rather than silently extracting fields from { error: { message } }.
       const result = normalizeApiErrorResponse(
         {
           error: {
             message: 'Legacy format',
             code: 'LEGACY_CODE',
-            classification: 'validation',
-            details: { field: 'email' },
           },
         },
         { status: 400, fallbackMessage: 'Fallback' }
       );
 
       expect(result).toEqual({
-        error: 'Legacy format',
-        code: 'LEGACY_CODE',
-        classification: 'validation',
-        details: { field: 'email' },
+        error: 'Fallback',
+        code: 'BAD_REQUEST',
       });
     });
 

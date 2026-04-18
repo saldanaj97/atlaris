@@ -128,6 +128,15 @@ function asRetryAfter(value: unknown): number | undefined {
   return undefined;
 }
 
+/**
+ * Normalize a JSON error body into the canonical {@link ApiErrorResponse}.
+ *
+ * The wire contract (documented in `src/lib/api/openapi.ts errorResponseSchema`)
+ * is a flat object: `{ error, code, classification?, details?, retryAfter? }`.
+ * If a third-party proxy ever emits a nested `{ error: { message } }` shape,
+ * the message degrades gracefully to `fallbackMessage` rather than digging
+ * into the nested object.
+ */
 export function normalizeApiErrorResponse(
   body: unknown,
   options: { status: number; fallbackMessage: string }
@@ -135,28 +144,19 @@ export function normalizeApiErrorResponse(
   const { status, fallbackMessage } = options;
 
   const root = asObject(body);
-  const nestedError = asObject(root?.error);
 
   const message =
     asNonEmptyString(root?.error) ??
     asNonEmptyString(root?.message) ??
-    asNonEmptyString(nestedError?.message) ??
     fallbackMessage;
 
-  const code =
-    asNonEmptyString(root?.code) ??
-    asNonEmptyString(nestedError?.code) ??
-    getDefaultErrorCode(status);
+  const code = asNonEmptyString(root?.code) ?? getDefaultErrorCode(status);
 
-  const classification =
-    asFailureClassification(root?.classification) ??
-    asFailureClassification(nestedError?.classification);
+  const classification = asFailureClassification(root?.classification);
 
-  const details =
-    root?.details !== undefined ? root.details : nestedError?.details;
+  const details = root?.details;
 
-  const retryAfter =
-    asRetryAfter(root?.retryAfter) ?? asRetryAfter(nestedError?.retryAfter);
+  const retryAfter = asRetryAfter(root?.retryAfter);
 
   return {
     error: message,
