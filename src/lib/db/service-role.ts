@@ -48,39 +48,14 @@ configureLocalNeon();
 
 type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 
-// ============================================================================
-// SERVICE ROLE CLIENT - RLS BYPASSED
-// ============================================================================
+// SERVICE ROLE CLIENT — BYPASSES RLS.
+// Connects as the DB owner (BYPASSRLS), so policies are not enforced and there is
+// no tenant isolation. Reserved for workers doing cross-tenant work, schema
+// migrations, and test setup that spans multiple users.
+// See @/lib/db/rls.ts for the RLS-enforced client.
 //
-// This client connects as the database owner with BYPASSRLS privilege.
-// It does NOT set session variables and does NOT enforce RLS policies.
-//
-// Architecture notes:
-// - Uses owner role which has rolbypassrls = true
-// - RLS policies are bypassed for this role (BYPASSRLS privilege)
-// - All data is accessible regardless of user_id
-// - No tenant isolation - can read/write ALL users' data
-//
-// This is intentional for:
-// - Workers that need cross-tenant operations
-// - Migrations that modify schema
-// - Test setup that creates data for multiple users
-//
-// See @/lib/db/rls.ts for RLS-enforced client implementation.
-// ============================================================================
-
-// ============================================================================
-// LAZY INITIALIZATION - ONLY CONNECTS WHEN ACCESSED
-// ============================================================================
-//
-// Previously, the postgres client was initialized at module scope (top-level),
-// which required DATABASE_URL to be present at build time. Next.js imports
-// API routes during the build process to analyze them, which would trigger
-// the initialization and fail if DATABASE_URL was missing.
-//
-// This lazy initialization defers the database connection to the first
-// time it's actually accessed, allowing builds to succeed without DATABASE_URL.
-// The connection is then reused for the lifetime of the process.
+// Lazy init: postgres client + drizzle are constructed on first access so Next.js
+// build-time imports of API routes don't require DATABASE_URL to be present.
 
 let _client: Sql | null = null;
 let _db: ServiceRoleDb | null = null;

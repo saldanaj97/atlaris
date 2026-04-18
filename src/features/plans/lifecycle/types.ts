@@ -10,13 +10,10 @@ import type { PdfContext } from '@/features/pdf/context.types';
 import type { FailureClassification } from '@/shared/types/client.types';
 
 // Re-export commonly used types so the service can import from one place
-// Re-export commonly used types so the service can import from one place
 export type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 export type { PdfContext } from '@/features/pdf/context.types';
 export type { FailureClassification } from '@/shared/types/client.types';
 export { isRetryableClassification } from '@/shared/types/failure-classification';
-
-// ─── Input types ─────────────────────────────────────────────────
 
 /** Input for creating an AI-origin learning plan. */
 export type CreateAiPlanInput = {

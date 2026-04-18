@@ -22,7 +22,6 @@ const SESSION_DAYS_OFFSET = [0, 2, 4]; // Mon, Wed, Fri (0=Mon, 2=Wed, 4=Fri)
 export function distributeTasksToSessions(
   inputs: ScheduleInputs
 ): ScheduleJson {
-  // Input validation
   if (inputs.weeklyHours <= 0) {
     throw new Error('weeklyHours must be greater than 0');
   }
@@ -31,7 +30,6 @@ export function distributeTasksToSessions(
     throw new Error('tasks must be an array');
   }
 
-  // Validate each task
   for (const task of inputs.tasks) {
     if (task.estimatedMinutes < 0) {
       throw new Error(
@@ -40,13 +38,11 @@ export function distributeTasksToSessions(
     }
   }
 
-  // Calculate total minutes and required weeks
   const totalMinutes = inputs.tasks.reduce(
     (sum, t) => sum + t.estimatedMinutes,
     0
   );
 
-  // Handle empty tasks case
   if (totalMinutes === 0) {
     return {
       weeks: [],
@@ -58,13 +54,11 @@ export function distributeTasksToSessions(
   const minutesPerWeek = inputs.weeklyHours * 60;
   const totalWeeks = Math.ceil(totalMinutes / minutesPerWeek);
 
-  // Sort tasks by order to ensure deterministic distribution
-  // Filter out tasks with zero estimatedMinutes as they don't need scheduling
+  // Sort by order for deterministic distribution; drop zero-minute tasks (no session capacity used).
   const sortedTasks = inputs.tasks
     .filter((t) => t.estimatedMinutes > 0)
     .toSorted((a, b) => a.order - b.order);
 
-  // Distribute tasks across weeks and sessions
   const weeks: Week[] = [];
   let taskIndex = 0;
   let remainingTaskMinutes = sortedTasks[0]?.estimatedMinutes || 0;
@@ -74,7 +68,6 @@ export function distributeTasksToSessions(
     const { startDate, endDate } = getWeekBoundaries(inputs.startDate, weekNum);
     const days: Day[] = [];
 
-    // Create 3 session days (Mon, Wed, Fri) per week
     for (
       let sessionIdx = 0;
       sessionIdx < DEFAULT_SESSIONS_PER_WEEK;
@@ -85,7 +78,6 @@ export function distributeTasksToSessions(
       const sessions: SessionAssignment[] = [];
       let allocatedMinutes = 0;
 
-      // Fill session with tasks until capacity is reached
       while (
         allocatedMinutes < sessionMinutes &&
         taskIndex < sortedTasks.length

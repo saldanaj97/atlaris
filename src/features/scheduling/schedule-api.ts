@@ -167,16 +167,13 @@ export async function getPlanSchedule(
     timezone,
   };
 
-  // Compute hash
   const inputsHash = computeInputsHash(inputs);
 
-  // Check cache
   const cached = await getPlanScheduleCache(planId, userId, db);
   if (cached && cached.inputsHash === inputsHash) {
     return cached.scheduleJson;
   }
 
-  // Generate new schedule
   let schedule: ScheduleJson;
   try {
     schedule = distributeTasksToSessions(inputs);
@@ -188,7 +185,6 @@ export async function getPlanSchedule(
     );
   }
 
-  // Write through cache
   await upsertPlanScheduleCache(
     planId,
     userId,

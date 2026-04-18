@@ -1,8 +1,4 @@
-// Plan lifecycle operations — plan creation, status transitions, duration caps.
-//
-// Moved from features/billing/usage.ts. These functions manage the plan
-// lifecycle state machine (create → generating → ready/failed) and plan
-// quota enforcement. They belong in the plans domain, not in billing.
+// Plan lifecycle: creation, status transitions, duration caps, and quota enforcement.
 
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { selectUserSubscriptionTierForUpdate } from '@/features/billing/quota';
@@ -34,10 +30,6 @@ type PlanDurationCapResult = {
 
 type PlanWriteClient = Pick<DbClient, 'update'>;
 
-/**
- * Check if user can create more plans
- * @returns true if user can create more plans, false otherwise
- */
 export async function checkPlanLimit(
   userId: string,
   dbClient: DbClient

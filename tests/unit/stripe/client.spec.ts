@@ -83,7 +83,6 @@ describe('Stripe Client', () => {
     it('does not create Stripe instance until getStripe is called', async () => {
       process.env.STRIPE_SECRET_KEY = 'sk_test_lazy';
 
-      // Import the module (but don't call getStripe)
       const module = await import('@/features/billing/client');
 
       // Instance should not be created yet

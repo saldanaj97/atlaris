@@ -26,7 +26,6 @@ export async function ModuleDetailContent({
 }: ModuleDetailContentProps) {
   const moduleResult = await getModuleForPage(moduleId);
 
-  // Handle module access errors with explicit error codes
   if (!isModuleSuccess(moduleResult)) {
     const error = getModuleError(moduleResult);
     const code = error.code;
@@ -73,7 +72,6 @@ export async function ModuleDetailContent({
     }
   }
 
-  // TypeScript now knows moduleResult.success is true, so data exists
   return <ModuleDetail moduleData={moduleResult.data} />;
 }
 
