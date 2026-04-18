@@ -6,6 +6,7 @@
  * these interfaces — never on concrete implementations.
  */
 
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 import type {
@@ -143,18 +144,7 @@ export type GenerationRunParams = {
   planId: string;
   userId: string;
   tier: SubscriptionTier;
-  input: {
-    topic: string;
-    skillLevel: 'beginner' | 'intermediate' | 'advanced';
-    weeklyHours: number;
-    learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-    startDate?: string | null;
-    deadlineDate?: string | null;
-    notes?: string | null;
-    pdfContext?: PdfContext | null;
-    pdfExtractionHash?: string;
-    pdfProofVersion?: 1;
-  };
+  input: Readonly<GenerationInput>;
   modelOverride?: string | null;
   signal?: AbortSignal;
 };

@@ -7,6 +7,7 @@ import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
+import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 
 /**
  * GET /api/v1/plans/:planId/status
@@ -61,16 +62,17 @@ export const GET = withErrorBoundary(
       );
     }
 
-    return json(
-      {
-        planId: statusSnapshot.planId,
-        status: statusSnapshot.status,
-        attempts: statusSnapshot.attempts,
-        latestError,
-        createdAt: statusSnapshot.createdAt,
-        updatedAt: statusSnapshot.updatedAt,
-      },
-      { headers: { 'Cache-Control': 'max-age=1, stale-while-revalidate=2' } }
-    );
+    const body = PlanStatusResponseSchema.parse({
+      planId: statusSnapshot.planId,
+      status: statusSnapshot.status,
+      attempts: statusSnapshot.attempts,
+      latestError,
+      createdAt: statusSnapshot.createdAt,
+      updatedAt: statusSnapshot.updatedAt,
+    });
+
+    return json(body, {
+      headers: { 'Cache-Control': 'max-age=1, stale-while-revalidate=2' },
+    });
   })
 );

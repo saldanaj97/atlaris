@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { z } from 'zod';
+import { ZodError } from 'zod';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 import { computeNextDelay, INITIAL_POLL_MS } from '@/shared/constants/polling';
-import { PLAN_STATUSES } from '@/shared/types/client';
+import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 import type { PlanStatus } from '@/shared/types/client.types';
 
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -23,15 +23,6 @@ class RetriableError extends Error {
     this.name = 'RetriableError';
   }
 }
-
-const StatusResponseSchema = z.object({
-  planId: z.string(),
-  status: z.enum(PLAN_STATUSES),
-  attempts: z.number(),
-  latestError: z.string().nullable(),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
-});
 
 interface UsePlanStatusReturn {
   status: PlanStatus;
@@ -83,7 +74,7 @@ export function usePlanStatus(
       consecutiveFailuresRef.current = 0;
 
       const raw = (await response.json()) as unknown;
-      const parseResult = StatusResponseSchema.safeParse(raw);
+      const parseResult = PlanStatusResponseSchema.safeParse(raw);
       if (!parseResult.success) {
         throw parseResult.error;
       }
@@ -101,7 +92,7 @@ export function usePlanStatus(
         setIsPolling(false);
       }
     } catch (err) {
-      if (err instanceof z.ZodError) {
+      if (err instanceof ZodError) {
         clientLogger.error('Plan status response validation failed', {
           planId,
           error: err.flatten(),

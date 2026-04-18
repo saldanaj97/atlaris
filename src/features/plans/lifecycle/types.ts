@@ -6,6 +6,7 @@
  */
 
 import type { PdfContext } from '@/features/pdf/context.types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/client.types';
 
@@ -174,18 +175,7 @@ export type ProcessGenerationInput = {
   readonly planId: string;
   readonly userId: string;
   readonly tier: SubscriptionTier;
-  readonly input: {
-    readonly topic: string;
-    readonly skillLevel: 'beginner' | 'intermediate' | 'advanced';
-    readonly weeklyHours: number;
-    readonly learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-    readonly startDate?: string | null;
-    readonly deadlineDate?: string | null;
-    readonly notes?: string | null;
-    readonly pdfContext?: PdfContext | null;
-    readonly pdfExtractionHash?: string;
-    readonly pdfProofVersion?: 1;
-  };
+  readonly input: Readonly<GenerationInput>;
   readonly modelOverride?: string | null;
   readonly signal?: AbortSignal;
 };
