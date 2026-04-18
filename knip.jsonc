@@ -1,7 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "entry": [
-    "src/app/plans/page.tsx",
     "scripts/tests/smoke/run.ts",
     "scripts/tests/smoke/start-app.ts"
   ],
@@ -31,6 +30,9 @@
       "enumMembers",
       "namespaceMembers",
       "unlisted"
+    ],
+    "src/lib/db/schema/constants.ts": [
+      "duplicates"
     ]
   },
   "rules": {

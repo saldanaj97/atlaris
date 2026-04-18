@@ -11,7 +11,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
-export interface PricingCardProps {
+interface PricingCardProps {
   name: string;
   price: string;
   intervalLabel: string;

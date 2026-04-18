@@ -4,7 +4,7 @@ import { learningPlans, usageMetrics } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 
 import { UsageMetricsLoadError } from './errors';
-import { type DbClient, getUserTier } from './tier';
+import { type DbClient, resolveUserTier } from './tier';
 import { TIER_LIMITS } from './tier-limits';
 import type { SubscriptionTier } from './tier-limits.types';
 
@@ -148,7 +148,7 @@ export async function getUsageSummary(
   userId: string,
   dbClient: DbClient = getDb()
 ): Promise<UsageSummary> {
-  const tier = await getUserTier(userId, dbClient);
+  const tier = await resolveUserTier(userId, dbClient);
   const limits = TIER_LIMITS[tier];
   const month = getCurrentMonth();
   const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);

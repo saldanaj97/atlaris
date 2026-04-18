@@ -50,5 +50,3 @@ export function attachRequestIdHeader(
     statusText: response.statusText,
   });
 }
-
-export default getRequestContext;

@@ -207,32 +207,10 @@ export function isPlanSuccess(
 }
 
 /**
- * Type guard to check if schedule access result is successful
- */
-export function isScheduleSuccess(
-  result: ScheduleAccessResult
-): result is { success: true; data: ScheduleJson } {
-  return result.success === true;
-}
-
-/**
  * Helper to safely extract error from plan access result
  * Only call this after checking !isPlanSuccess(result)
  */
 export function getPlanError(result: PlanAccessResult): PlanAccessError {
-  if (result.success === false) {
-    return result.error;
-  }
-  throw new Error('Cannot get error from successful result');
-}
-
-/**
- * Helper to safely extract error from schedule access result
- * Only call this after checking !isScheduleSuccess(result)
- */
-export function getScheduleError(
-  result: ScheduleAccessResult
-): PlanAccessError {
   if (result.success === false) {
     return result.error;
   }

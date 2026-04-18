@@ -146,15 +146,10 @@ export const client = new Proxy(
 ) as Sql;
 
 /**
- * Service role database client - BYPASSES RLS (lazily initialized)
- *
- * ⚠️ This export is intentionally named to make it obvious it's dangerous.
+ * Service role database client - BYPASSES RLS (lazily initialized).
  * Use getDb() from @/lib/db/runtime in request handlers instead.
- *
- * Initialization is deferred until first access, allowing builds without
- * DATABASE_URL.
  */
-export const serviceRoleDb = new Proxy(
+export const db: ServiceRoleDb = new Proxy(
   {},
   {
     get(_target, prop: string | symbol): unknown {
@@ -163,12 +158,6 @@ export const serviceRoleDb = new Proxy(
   }
   // Cast the proxy to the concrete Drizzle client type
 ) as ServiceRoleDb;
-
-/**
- * Shorter alias for serviceRoleDb.
- * Both names are equally valid - use whichever is clearer in context.
- */
-export const db: ServiceRoleDb = serviceRoleDb;
 
 /**
  * Check if the database client has been initialized.
