@@ -91,7 +91,7 @@ function buildGenerationInput(
   };
 }
 
-export async function processNextRegenerationJob(): Promise<ProcessRegenerationJobResult> {
+async function processNextRegenerationJob(): Promise<ProcessRegenerationJobResult> {
   const job = await getNextJob([JOB_TYPES.PLAN_REGENERATION]);
 
   if (!job) {

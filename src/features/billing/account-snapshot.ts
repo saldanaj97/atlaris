@@ -12,7 +12,7 @@ import { logger } from '@/lib/logging/logger';
 
 type DbClient = ReturnType<typeof getDb>;
 
-export class BillingSnapshotNotFoundError extends Error {
+class BillingSnapshotNotFoundError extends Error {
   constructor(userId: string, correlationId?: string) {
     super(
       correlationId
@@ -23,7 +23,7 @@ export class BillingSnapshotNotFoundError extends Error {
   }
 }
 
-export interface BillingAccountSnapshot {
+interface BillingAccountSnapshot {
   tier: SubscriptionTier;
   subscriptionStatus: 'active' | 'canceled' | 'past_due' | 'trialing' | null;
   subscriptionPeriodEnd: Date | null;

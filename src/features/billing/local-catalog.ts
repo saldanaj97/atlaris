@@ -11,8 +11,7 @@ export const LOCAL_PRICE_IDS = {
   proYearly: 'price_local_pro_yearly',
 } as const;
 
-export type LocalPriceId =
-  (typeof LOCAL_PRICE_IDS)[keyof typeof LOCAL_PRICE_IDS];
+type LocalPriceId = (typeof LOCAL_PRICE_IDS)[keyof typeof LOCAL_PRICE_IDS];
 
 const PRICE_TO_TIER: Record<LocalPriceId, 'starter' | 'pro'> = {
   [LOCAL_PRICE_IDS.starterMonthly]: 'starter',
@@ -32,7 +31,7 @@ export function isLocalPriceId(priceId: string): priceId is LocalPriceId {
 }
 
 /** Display amounts for pricing UI when not calling live Stripe. */
-export const LOCAL_STRIPE_DISPLAY_AMOUNTS: Record<
+const LOCAL_STRIPE_DISPLAY_AMOUNTS: Record<
   'starter' | 'pro',
   { monthly: string; yearly: string }
 > = {

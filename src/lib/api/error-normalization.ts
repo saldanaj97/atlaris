@@ -19,7 +19,7 @@ type AttemptErrorResult = {
   httpStatus?: number;
 };
 
-export function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
+function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
   if (obj === null || typeof obj !== 'object') {
     return false;
   }

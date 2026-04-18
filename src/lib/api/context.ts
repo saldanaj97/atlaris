@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { DbClient } from '@/lib/db/types';
 
-export type RequestContext = {
+type RequestContext = {
   correlationId: string;
   userId?: string;
   user?: {
@@ -49,7 +49,7 @@ type HeaderSource =
  *   Headers implementation).
  * @returns The header value as a string, or `undefined` if missing/falsy.
  */
-export function readHeader(
+function readHeader(
   source: HeaderSource | undefined,
   key: string
 ): string | undefined {

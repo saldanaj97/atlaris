@@ -36,7 +36,7 @@ export const jobQueueSelect = {
 } as const;
 
 /** Transaction client type for use inside dbClient.transaction() callbacks. */
-export type JobsTransaction = Parameters<
+type JobsTransaction = Parameters<
   Parameters<JobsDbClient['transaction']>[0]
 >[0];
 
@@ -46,7 +46,7 @@ export type JobsTransaction = Parameters<
  *
  * @returns null if job not found, else { row, isTerminal } with isTerminal true when status is completed or failed
  */
-export async function lockJobAndCheckTerminal(
+async function lockJobAndCheckTerminal(
   tx: JobsTransaction,
   jobId: string
 ): Promise<{ row: JobQueueRow; isTerminal: boolean } | null> {

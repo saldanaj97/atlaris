@@ -10,7 +10,7 @@ import type {
   SubscriptionTier,
 } from './types';
 
-export type CreationLifecycleLabel = 'create' | 'create_pdf';
+type CreationLifecycleLabel = 'create' | 'create_pdf';
 
 export interface CreationGatePorts
   extends Pick<PlanPersistencePort, 'findCappedPlanWithoutModules'>,
@@ -19,7 +19,7 @@ export interface CreationGatePorts
       'resolveUserTier' | 'checkDurationCap' | 'normalizePlanDuration'
     > {}
 
-export type CreationGateResult =
+type CreationGateResult =
   | { blocked: true; result: CreatePlanResult }
   | {
       blocked: false;

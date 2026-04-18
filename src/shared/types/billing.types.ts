@@ -1,10 +1,4 @@
 export type SubscriptionTier = 'free' | 'starter' | 'pro';
-export type PaidSubscriptionTier = Exclude<SubscriptionTier, 'free'>;
-
-export const PAID_SUBSCRIPTION_TIERS = [
-  'starter',
-  'pro',
-] as const satisfies readonly PaidSubscriptionTier[];
 
 export type TierLimitConfig = {
   maxActivePlans: number;
