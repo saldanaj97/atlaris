@@ -196,8 +196,18 @@ jobs:
             ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build Next.js app
         env:
-            NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
-            NEON_AUTH_COOKIE_SECRET: ${{ secrets.NEON_AUTH_COOKIE_SECRET }}
+          NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
+          NEON_AUTH_COOKIE_SECRET: ${{ secrets.NEON_AUTH_COOKIE_SECRET }}
+          # `next build` runs with NODE_ENV=production and prerenders /pricing,
+          # which evaluates `stripeEnv.pricing.*` in `src/lib/config/env/billing.ts`.
+          # The localMode escape hatch is refused under NODE_ENV=production, so the
+          # build needs the real (test-mode) Stripe secrets. Vercel handles the
+          # actual production deploy; CI only validates compilation.
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_STARTER_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_MONTHLY_PRICE_ID }}
+          STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
+          STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_PRO_MONTHLY_PRICE_ID }}
+          STRIPE_PRO_YEARLY_PRICE_ID: ${{ secrets.STRIPE_PRO_YEARLY_PRICE_ID }}
         run: pnpm build
       - name: Save Next.js cache
         if: always()
