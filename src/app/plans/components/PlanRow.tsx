@@ -14,8 +14,8 @@ import { useState } from 'react';
 import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
 import {
   getNextTaskName,
+  getPlanLastActivityRelative,
   getPlanStatus,
-  getRelativeTime,
 } from '@/app/plans/components/plan-utils';
 import type { PlanStatus } from '@/app/plans/types';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ export function PlanRow({
   const progressPercent = Math.round(summary.completion * 100);
   const status = getPlanStatus(summary, referenceTimestamp);
   const nextTask = getNextTaskName(summary);
-  const lastActivity = getRelativeTime(
+  const lastActivity = getPlanLastActivityRelative(
     plan.updatedAt ?? plan.createdAt,
     referenceTimestamp
   );

@@ -4,42 +4,38 @@ import { z } from 'zod';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseListPaginationParams } from '@/lib/api/pagination';
 import { json } from '@/lib/api/response';
 import { resourceType } from '@/lib/db/enums';
 import { getDb } from '@/lib/db/runtime';
 import { resources } from '@/lib/db/schema';
+import { PAGINATION_MAX_LIMIT } from '@/shared/constants/pagination';
 
 const DEFAULT_RESOURCES_LIMIT = 50;
-const MAX_RESOURCES_LIMIT = 100;
 
-const resourcesQuerySchema = z.object({
+const resourcesTypeQuerySchema = z.object({
   type: z.enum(resourceType.enumValues).optional(),
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_RESOURCES_LIMIT)
-    .default(DEFAULT_RESOURCES_LIMIT),
-  offset: z.coerce.number().int().min(0).default(0),
 });
 
 // GET /api/v1/resources
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req }) => {
     const url = new URL(req.url);
-    const queryInput = {
-      type: url.searchParams.get('type') ?? undefined,
-      limit: url.searchParams.get('limit') ?? undefined,
-      offset: url.searchParams.get('offset') ?? undefined,
-    };
 
-    const parsedQuery = resourcesQuerySchema.safeParse(queryInput);
-    if (!parsedQuery.success) {
+    const parsedTypeQuery = resourcesTypeQuerySchema.safeParse({
+      type: url.searchParams.get('type') ?? undefined,
+    });
+    if (!parsedTypeQuery.success) {
       throw new ValidationError(
         'Invalid resources query parameters',
-        parsedQuery.error.flatten()
+        parsedTypeQuery.error.flatten()
       );
     }
+
+    const { limit, offset } = parseListPaginationParams(url.searchParams, {
+      defaultLimit: DEFAULT_RESOURCES_LIMIT,
+      maxLimit: PAGINATION_MAX_LIMIT,
+    });
 
     const db = getDb();
     const rows = await db
@@ -55,13 +51,13 @@ export const GET = withErrorBoundary(
       })
       .from(resources)
       .where(
-        parsedQuery.data.type
-          ? eq(resources.type, parsedQuery.data.type)
+        parsedTypeQuery.data.type
+          ? eq(resources.type, parsedTypeQuery.data.type)
           : undefined
       )
       .orderBy(desc(resources.createdAt))
-      .limit(parsedQuery.data.limit)
-      .offset(parsedQuery.data.offset);
+      .limit(limit)
+      .offset(offset);
 
     return json(rows);
   })

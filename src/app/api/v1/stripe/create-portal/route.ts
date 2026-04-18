@@ -11,6 +11,7 @@ import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
+import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import { logger } from '@/lib/logging/logger';
 
 const DEFAULT_BILLING_SETTINGS_PATH = '/settings/billing';
@@ -69,14 +70,14 @@ export function createCreatePortalHandler(
           typeof (body as { returnUrl?: unknown }).returnUrl === 'string'
             ? (body as { returnUrl: string }).returnUrl
             : undefined;
-        const firstError = parseResult.error.issues[0];
+        const firstMessage = getFirstZodIssueMessage(parseResult.error);
         throw new ValidationError(
-          firstError?.message ?? 'Invalid request body',
+          firstMessage ?? 'Invalid request body',
           undefined,
           {
             userId: user.id,
             returnUrl: rawReturnUrl,
-            validationMessage: firstError?.message,
+            validationMessage: firstMessage,
           }
         );
       }

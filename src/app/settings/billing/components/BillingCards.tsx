@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
+import { isUnlimitedNumber } from '@/app/plans/components/usage-types';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -41,16 +42,15 @@ export async function BillingCards(): Promise<JSX.Element> {
       })
     : '—';
 
-  // Helper to compute usage percentage for progress bars
-  // Returns 0 for unlimited (Infinity) since there's no cap to show progress against
+  // Returns 0 for unlimited limits since there's no cap to show progress against.
   const getUsagePercent = (used: number, limit: number): number => {
-    if (limit === Infinity || limit <= 0) return 0;
+    if (isUnlimitedNumber(limit) || limit <= 0) return 0;
     return Math.min(100, Math.round((used / limit) * 100));
   };
   const formatLimitLabel = (limit: number): string =>
-    limit === Infinity ? 'unlimited' : String(limit);
+    isUnlimitedNumber(limit) ? 'unlimited' : String(limit);
   const formatLimitValue = (limit: number): string =>
-    limit === Infinity ? '∞' : String(limit);
+    isUnlimitedNumber(limit) ? '∞' : String(limit);
 
   const plansValue = getUsagePercent(
     snapshot.usage.activePlans.current,

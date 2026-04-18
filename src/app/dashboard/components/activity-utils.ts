@@ -113,7 +113,7 @@ export function findActivePlan(
   return rankedSummaries[0]?.summary;
 }
 
-export function getRelativeTime(date: Date, now?: Date): string {
+export function getActivityRelativeLabel(date: Date, now?: Date): string {
   return formatScheduledEventRelative(date, now ?? new Date());
 }
 

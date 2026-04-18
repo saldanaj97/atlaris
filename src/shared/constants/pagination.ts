@@ -3,7 +3,7 @@
  * These are route-level limits, not database schema constraints.
  */
 const DEFAULT_PAGE_SIZE = 20 as const;
-const MAX_PAGE_SIZE = 100 as const;
+export const PAGINATION_MAX_LIMIT = 100 as const;
 
 const PAGINATION_DEFAULTS = {
   limit: DEFAULT_PAGE_SIZE,
@@ -34,7 +34,7 @@ export function isValidPaginationValue(
 }
 
 export function clampPageSize(value: number): number {
-  return Math.min(value, MAX_PAGE_SIZE);
+  return Math.min(value, PAGINATION_MAX_LIMIT);
 }
 
 export function assertValidPaginationOptions(

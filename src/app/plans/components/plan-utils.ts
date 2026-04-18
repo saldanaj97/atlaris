@@ -24,13 +24,13 @@ type DateInput = Date | string | null | undefined;
  *
  * @example
  * ```ts
- * getRelativeTime(new Date()) // "Just now"
- * getRelativeTime(new Date(Date.now() - 5 * 60 * 1000)) // "5m ago"
- * getRelativeTime(new Date(Date.now() - 2 * 60 * 60 * 1000)) // "2 hours ago"
- * getRelativeTime(null) // "Recently"
+ * getPlanLastActivityRelative(new Date()) // "Just now"
+ * getPlanLastActivityRelative(new Date(Date.now() - 5 * 60 * 1000)) // "5m ago"
+ * getPlanLastActivityRelative(new Date(Date.now() - 2 * 60 * 60 * 1000)) // "2 hours ago"
+ * getPlanLastActivityRelative(null) // "Recently"
  * ```
  */
-export function getRelativeTime(
+export function getPlanLastActivityRelative(
   date: DateInput,
   referenceDate: DateInput
 ): string {

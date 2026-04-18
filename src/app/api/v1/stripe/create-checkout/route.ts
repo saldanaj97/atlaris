@@ -14,6 +14,7 @@ import { AppError, ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
+import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import { stripeEnv } from '@/lib/config/env';
 
 const createCheckoutBodySchema = z
@@ -43,9 +44,8 @@ export function createCreateCheckoutHandler(
 
       const parseResult = createCheckoutBodySchema.safeParse(body);
       if (!parseResult.success) {
-        const firstError = parseResult.error.issues[0];
         throw new ValidationError(
-          firstError?.message ?? 'Invalid request body'
+          getFirstZodIssueMessage(parseResult.error) ?? 'Invalid request body'
         );
       }
 

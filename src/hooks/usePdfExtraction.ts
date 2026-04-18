@@ -13,6 +13,7 @@ import type {
   TruncationData,
 } from '@/features/pdf/validation/pdf.types';
 import { normalizeApiErrorResponse } from '@/lib/api/error-response';
+import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 
@@ -62,7 +63,8 @@ function parseExtractionApiResponse(
   if (!result.success) {
     return {
       ok: false,
-      error: result.error.issues[0]?.message ?? 'Invalid extraction response.',
+      error:
+        getFirstZodIssueMessage(result.error) ?? 'Invalid extraction response.',
     };
   }
   return { ok: true, data: result.data };

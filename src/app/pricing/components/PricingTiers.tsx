@@ -1,3 +1,4 @@
+import { isUnlimitedNumber } from '@/app/plans/components/usage-types';
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -11,11 +12,11 @@ interface TierConfig {
 }
 
 function formatTierLimit(value: number | null): string {
-  return value === Infinity || value === null ? 'Unlimited' : String(value);
+  return isUnlimitedNumber(value) ? 'Unlimited' : String(value);
 }
 
 function formatSchedulingHorizon(value: number | null): string {
-  return value === null ? 'Unlimited' : `${value}-week`;
+  return isUnlimitedNumber(value) ? 'Unlimited' : `${value}-week`;
 }
 
 export const PRICING_TIERS: Record<SubscriptionTier, TierConfig> = {

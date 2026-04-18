@@ -1,3 +1,4 @@
+import { parseRunnerArgs } from '../shared/cli';
 import { runVitest } from '../shared/vitest-runner';
 
 function printHelp(): void {
@@ -20,44 +21,19 @@ function printHelp(): void {
 }
 
 export async function runUnitCommand(args: string[]): Promise<number> {
-  let testPath = 'tests/unit';
-  let remainingArgs = args;
+  const parsed = parseRunnerArgs(args, { defaultTestPath: 'tests/unit' });
 
-  if (remainingArgs[0] && !remainingArgs[0].startsWith('-')) {
-    testPath = remainingArgs[0];
-    remainingArgs = remainingArgs.slice(1);
-  }
-
-  let watch = false;
-  let changed = false;
-  const extraArgs: string[] = [];
-
-  for (const arg of remainingArgs) {
-    switch (arg) {
-      case '--watch':
-      case '-w':
-        watch = true;
-        break;
-      case '--changed':
-      case '-c':
-        changed = true;
-        break;
-      case '--help':
-      case '-h':
-        printHelp();
-        return 0;
-      default:
-        extraArgs.push(arg);
-        break;
-    }
+  if (parsed.helpRequested) {
+    printHelp();
+    return 0;
   }
 
   return await runVitest({
     project: 'unit',
-    testPath,
-    extraArgs,
-    watch,
-    changed,
+    testPath: parsed.testPath,
+    extraArgs: parsed.extraArgs,
+    watch: parsed.watch,
+    changed: parsed.changed,
     env: {
       SKIP_DB_TEST_SETUP: 'true',
     },

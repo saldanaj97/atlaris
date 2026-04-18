@@ -24,6 +24,7 @@ import {
   validatePdfUpload,
 } from '@/lib/api/pdf-rate-limit';
 import { json } from '@/lib/api/response';
+import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
@@ -141,8 +142,8 @@ async function postHandlerImpl(
   const formObject = Object.fromEntries(formData.entries());
   const parseResult = pdfExtractionFormDataSchema.safeParse(formObject);
   if (!parseResult.success) {
-    const firstError = parseResult.error.issues[0];
-    const message = firstError?.message ?? 'Invalid request.';
+    const message =
+      getFirstZodIssueMessage(parseResult.error) ?? 'Invalid request.';
     const isMimeError = message.includes('PDF files');
     return toExtractionError(message, isMimeError ? 415 : 400);
   }
