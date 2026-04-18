@@ -26,6 +26,20 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 export const DEFAULT_OUTPUT_TOKEN_CEILING = 32_768;
 
 /**
+ * Thrown by {@link computeCostCents} when the model is missing from the
+ * pricing registry. Distinct error class so callers can decide whether to
+ * surface as a partial-usage record or hard-fail.
+ */
+export class UnknownModelError extends Error {
+  constructor(public readonly modelId: string) {
+    super(
+      `Unknown model "${modelId}" in computeCostCents — cannot determine pricing.`
+    );
+    this.name = 'UnknownModelError';
+  }
+}
+
+/**
  * Compute estimated cost in **USD cents** from model pricing and token counts.
  *
  * Throws when the model is not in the registry (unknown models must not
@@ -51,9 +65,7 @@ export function computeCostCents(
   const model = getModelById(modelId);
   if (!model) {
     logger.error({ modelId }, 'Unknown model in computeCostCents');
-    throw new Error(
-      `Unknown model "${modelId}" in computeCostCents — cannot determine pricing.`
-    );
+    throw new UnknownModelError(modelId);
   }
   if (inputTokens === 0 && outputTokens === 0) return 0;
 

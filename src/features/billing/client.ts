@@ -4,6 +4,7 @@ import {
   resolveStripeClientBaseUrl,
 } from '@/features/billing/local-stripe';
 import { stripeEnv } from '@/lib/config/env';
+import { EnvValidationError } from '@/lib/config/env/shared';
 
 /**
  * Stripe client singleton
@@ -25,8 +26,15 @@ export function getStripe(): Stripe {
     let secretKey: string;
     try {
       secretKey = stripeEnv.secretKey;
-    } catch {
-      throw new Error('STRIPE_SECRET_KEY is not set in environment variables');
+    } catch (err) {
+      // Only translate the env-validation case to a user-facing message; any
+      // other unexpected error must propagate so we can debug it.
+      if (err instanceof EnvValidationError) {
+        throw new Error(
+          'STRIPE_SECRET_KEY is not set in environment variables'
+        );
+      }
+      throw err;
     }
 
     stripeInstance = new Stripe(secretKey, {

@@ -97,7 +97,16 @@ export async function getPdfPageCountFromBuffer(
     });
     const infoResult = await Promise.race([infoPromise, timeoutPromise]);
     return infoResult.total;
-  } catch {
+  } catch (err) {
+    // Tier-limit logic depends on a page count, so callers always need a
+    // number back. Timeout is an expected fallback path; everything else
+    // (corrupt PDF, parser bug) gets logged so it stops being invisible.
+    if (!(err instanceof Error && err.message === 'PAGE_COUNT_TIMEOUT')) {
+      logger.warn(
+        { err, event: 'pdf_page_count_estimate_used' },
+        'PDF page-count probe failed; using size-based estimate'
+      );
+    }
     return Math.max(1, Math.ceil(buffer.length / BYTES_PER_PAGE_ESTIMATE));
   } finally {
     clearTimeout(timer);

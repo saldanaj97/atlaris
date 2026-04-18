@@ -38,7 +38,14 @@ export function PdfUploadZone({
         return false;
       }
       return PDF_MAGIC_BYTES.every((byte, index) => bytes[index] === byte);
-    } catch {
+    } catch (err) {
+      // Distinguish a genuine read failure (Blob revoked, browser quota, etc.)
+      // from a "not a PDF" verdict so the silent path stops swallowing bugs.
+      clientLogger.warn('pdf_magic_byte_read_failed', {
+        err,
+        fileName: file.name,
+        fileSize: file.size,
+      });
       return false;
     }
   }, []);

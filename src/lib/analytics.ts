@@ -4,6 +4,8 @@
  * with any analytics provider (Google Analytics, Mixpanel, etc.)
  */
 
+import { clientLogger } from '@/lib/logging/client';
+
 type AnalyticsValue = string | number | boolean | null | undefined;
 
 type AnalyticsEventParams = Record<string, AnalyticsValue>;
@@ -69,9 +71,11 @@ export function trackEvent(params: TrackEventParams): void {
       });
     }
   } catch (error) {
-    // Silently handle analytics errors to not affect app flow
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[Analytics] Failed to track event:', error);
-    }
+    clientLogger.warn('analytics_track_failed', {
+      err: error,
+      event,
+      label,
+      location,
+    });
   }
 }

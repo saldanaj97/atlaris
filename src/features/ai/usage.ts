@@ -10,7 +10,7 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
-import { computeCostCents } from '@/features/ai/cost';
+import { computeCostCents, UnknownModelError } from '@/features/ai/cost';
 import { usdCostToMicrousdInteger } from '@/features/ai/provider-cost-microusd';
 import { logger } from '@/lib/logging/logger';
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
@@ -48,17 +48,32 @@ export function normalizeToCanonicalUsage(
   const resolvedOutputTokens = usage?.completionTokens ?? 0;
   const resolvedTotalTokens =
     usage?.totalTokens ?? resolvedInputTokens + resolvedOutputTokens;
-  let estimatedCostCents: number;
+  // Mock providers and synthetic flows legitimately call this with models
+  // that are not in the pricing registry; record cost as 0 in that case but
+  // log it explicitly so the silent path stops being invisible. Any other
+  // error from computeCostCents (invalid token counts, registry bug) must
+  // propagate.
+  let estimatedCostCents = 0;
   try {
     estimatedCostCents = computeCostCents(
       resolvedModel,
       resolvedInputTokens,
       resolvedOutputTokens
     );
-  } catch {
-    // Unknown models default to 0 cost here; the IncompleteUsageError
-    // thrown below already surfaces the missing/unknown model field.
-    estimatedCostCents = 0;
+  } catch (error) {
+    if (error instanceof UnknownModelError) {
+      logger.warn(
+        {
+          source: 'canonical-usage',
+          event: 'unknown_model_cost_skipped',
+          modelId: resolvedModel,
+          provider: resolvedProvider,
+        },
+        `Unknown model "${resolvedModel}" — recording 0 estimated cost`
+      );
+    } else {
+      throw error;
+    }
   }
 
   const isPartial = missingFields.length > 0;
