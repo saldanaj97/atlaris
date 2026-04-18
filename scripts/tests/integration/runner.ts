@@ -11,6 +11,10 @@ function printHelp(): void {
   console.log('  --watch, -w         Run in watch mode');
   console.log('  --help, -h          Show this help message');
   console.log('');
+  console.log('Environment:');
+  console.log('  INTEGRATION_MAX_WORKERS   Override integration worker count (default: 4 with Testcontainers)');
+  console.log('  TEST_DB_DEBUG=true        Log worker-to-database mapping during setup');
+  console.log('');
   console.log('Examples:');
   console.log('  tsx scripts/tests/run.ts integration');
   console.log('  tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts');

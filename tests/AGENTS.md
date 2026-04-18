@@ -98,7 +98,11 @@ SKIP_TESTCONTAINERS=true DATABASE_URL="..." pnpm vitest run --project integratio
 
 ## DB Lifecycle (Integration/E2E/Security)
 
-`tests/setup.ts` runs `resetDbForIntegrationTestFile()` in `beforeEach` to truncate all tables. Guardrails prevent truncating non-test databases.
+`tests/setup/db.ts` runs `waitForInlineRegenerationDrains()` then `resetDbForIntegrationTestFile()` in `beforeEach` to avoid leaked regeneration drains racing the next test, then truncates all tables. Guardrails prevent truncating non-test databases.
+
+Integration Vitest workers default to **4** (`vitest.config.ts`); override with `INTEGRATION_MAX_WORKERS` (e.g. `2` for a slower, lighter run). `SKIP_TESTCONTAINERS=true` still forces a single worker.
+
+Unless set in the environment, `tests/setup/test-env.ts` sets `REGENERATION_INLINE_PROCESSING=false` so specs opt in explicitly when they need inline queue drains.
 
 ## Do's and Don'ts
 

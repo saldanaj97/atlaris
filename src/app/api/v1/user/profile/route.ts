@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { updateUserProfileSchema } from '@/app/api/v1/user/profile/validation';
 import { requireInternalUserByAuthId } from '@/features/plans/api/route-context';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
@@ -60,11 +60,15 @@ export const PUT = withErrorBoundary(
     }
 
     const db = getDb();
+    // updatedAt must use the DB clock (sql`now()`), not `new Date()`, so it shares
+    // the same clock as defaultNow() on insert. Otherwise Node-vs-Postgres clock
+    // skew can let updatedAt land at or before createdAt under concurrent load
+    // and break the strict-monotone assertion in tests/integration/api/user-profile.spec.ts.
     const updatedRows = await db
       .update(users)
       .set({
         name: parsed.data.name,
-        updatedAt: new Date(),
+        updatedAt: sql<Date>`now()`,
       })
       .where(eq(users.authUserId, userId))
       .returning();

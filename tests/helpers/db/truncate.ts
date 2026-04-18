@@ -33,8 +33,14 @@ function assertSafeToTruncate() {
   }
 
   const dbName = parsed.pathname.replace(/^\//, '');
+  // Allow shapes:
+  // - bare `test` / `tests` or any `*_test` / `*_tests` (legacy test DBs)
+  // - `atlaris_test` plus the worker-isolated variants (`_w<digits>`, `_template`, `_base`).
+  // Reject ambiguous middle-of-name matches like `myapp_test_archive` so this guard
+  // does not silently accept production-adjacent databases.
   const looksLikeTestDb =
-    /(^|_)(test|tests)$/.test(dbName) || /_test$/.test(dbName);
+    /(^|_)(test|tests)$/.test(dbName) ||
+    /^atlaris_test(_w\d+|_template|_base)?$/.test(dbName);
 
   if (!looksLikeTestDb) {
     throw new Error(

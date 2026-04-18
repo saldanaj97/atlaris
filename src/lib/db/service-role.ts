@@ -126,26 +126,6 @@ function getLazyProxyProperty<T extends object>(
 }
 
 /**
- * Postgres client - lazily initialized on first access.
- *
- * This Proxy wraps the actual client to defer initialization until first use.
- * This allows the module to be imported at build time without requiring
- * DATABASE_URL to be present.
- *
- * ⚠️ DATABASE_URL will be required when the client is first accessed,
- * not when this module is imported.
- */
-
-export const client = new Proxy(
-  {},
-  {
-    get(_target, prop: string | symbol): unknown {
-      return getLazyProxyProperty(initializeClient, prop);
-    },
-  }
-) as Sql;
-
-/**
  * Service role database client - BYPASSES RLS (lazily initialized).
  * Use getDb() from @/lib/db/runtime in request handlers instead.
  */
@@ -167,4 +147,24 @@ export const db: ServiceRoleDb = new Proxy(
  */
 export function isClientInitialized(): boolean {
   return _client !== null;
+}
+
+/**
+ * Test-only escape hatch to clear the cached client after setup swaps DB URLs.
+ * Throws in production to prevent accidental misuse closing the live pool.
+ */
+export async function resetServiceRoleClientForTests(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'resetServiceRoleClientForTests is test-only and must not run in production.'
+    );
+  }
+
+  const clientToClose = _client;
+  _db = null;
+  _client = null;
+
+  if (clientToClose) {
+    await clientToClose.end();
+  }
 }

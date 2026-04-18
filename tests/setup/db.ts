@@ -1,5 +1,5 @@
-import { Mutex } from 'async-mutex';
-import { afterEach, beforeEach } from 'vitest';
+import { beforeEach } from 'vitest';
+import { waitForInlineRegenerationDrains } from '@/features/jobs/regeneration-worker';
 
 import {
   ensureStripeWebhookEvents,
@@ -7,24 +7,11 @@ import {
 } from '../helpers/db';
 
 const skipDbSetup = process.env.SKIP_DB_TEST_SETUP === 'true';
-const dbLock = new Mutex();
-let releaseDbLock: (() => void) | null = null;
 
 if (!skipDbSetup) {
   beforeEach(async () => {
-    releaseDbLock = await dbLock.acquire();
-    try {
-      await resetDbForIntegrationTestFile();
-      await ensureStripeWebhookEvents();
-    } catch (error) {
-      releaseDbLock?.();
-      releaseDbLock = null;
-      throw error;
-    }
-  });
-
-  afterEach(() => {
-    releaseDbLock?.();
-    releaseDbLock = null;
+    await waitForInlineRegenerationDrains();
+    await resetDbForIntegrationTestFile();
+    await ensureStripeWebhookEvents();
   });
 }
