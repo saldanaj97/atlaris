@@ -1,12 +1,22 @@
 import { NeonAuthUIProvider } from '@neondatabase/auth/react';
 import type { Metadata } from 'next';
 import { Work_Sans, Young_Serif } from 'next/font/google';
+import type { ComponentProps } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/app/ThemeProvider';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { authClient } from '@/lib/auth/client';
 import './globals.css';
+
+// `@neondatabase/auth` (alpha) bundles types from `better-auth@1.4.6` while we
+// run the patched `~1.4.22` (closes GHSA two-factor cookie-cache bypass). The
+// runtime API is identical inside the 1.4.x line; only the static type for
+// `useActiveMember` shifted from a function to a nanostores atom. Cast at the
+// boundary so the type system doesn't block a security patch we want shipped.
+type NeonAuthUIProviderAuthClient = ComponentProps<
+  typeof NeonAuthUIProvider
+>['authClient'];
 
 const workSans = Work_Sans({
   subsets: ['latin'],
@@ -83,7 +93,7 @@ export default function RootLayout({
         className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
       >
         <NeonAuthUIProvider
-          authClient={authClient}
+          authClient={authClient as unknown as NeonAuthUIProviderAuthClient}
           redirectTo="/dashboard"
           emailOTP
           social={{ providers: ['google'] }}
