@@ -36,7 +36,7 @@ export function getProcessEnvSource(): EnvSource {
   return process.env as EnvSource;
 }
 
-export type NodeEnv = 'development' | 'production' | 'test';
+type NodeEnv = 'development' | 'production' | 'test';
 
 const NodeEnvSchema = z.enum(['development', 'production', 'test']);
 

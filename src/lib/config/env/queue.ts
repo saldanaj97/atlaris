@@ -9,7 +9,7 @@ import {
 /**
  * Regeneration queue env flags consumed by API routes and worker triggers.
  */
-export interface RegenerationQueueEnv {
+interface RegenerationQueueEnv {
   readonly enabled: boolean;
   readonly inlineProcessingEnabled: boolean;
   readonly maxJobsPerDrain: number;

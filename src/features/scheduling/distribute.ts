@@ -5,7 +5,7 @@ import type {
   ScheduleJson,
   SessionAssignment,
   Week,
-} from '@/features/scheduling/types';
+} from '@/shared/types/scheduling.types';
 
 const DEFAULT_SESSIONS_PER_WEEK = 3;
 const SESSION_DAYS_OFFSET = [0, 2, 4]; // Mon, Wed, Fri (0=Mon, 2=Wed, 4=Fri)

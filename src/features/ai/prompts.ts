@@ -29,7 +29,7 @@ type LearningPlanPromptSchema = {
   readonly task: readonly PromptSchemaField[];
 };
 
-export const LEARNING_PLAN_PROMPT_SCHEMA: LearningPlanPromptSchema = {
+const LEARNING_PLAN_PROMPT_SCHEMA: LearningPlanPromptSchema = {
   module: [
     { name: 'title', type: 'string', required: true },
     { name: 'description', type: 'string', required: false },

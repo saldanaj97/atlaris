@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { formatMinutes } from '@/features/plans/formatters';
-import type { ScheduleJson } from '@/features/scheduling/types';
+import type { ScheduleJson } from '@/shared/types/scheduling.types';
 
 interface ScheduleWeekListProps {
   schedule: ScheduleJson;

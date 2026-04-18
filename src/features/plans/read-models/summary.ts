@@ -17,16 +17,16 @@ import type {
   TaskProgress,
 } from '@/shared/types/db.types';
 
-export type SummaryTaskRow = {
+type SummaryTaskRow = {
   id: string;
   moduleId: string;
   planId: string;
   estimatedMinutes: number | null;
 };
 
-export type ProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
+type ProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
 
-export type LightweightPlanRow = Pick<
+type LightweightPlanRow = Pick<
   LearningPlan,
   | 'id'
   | 'topic'
@@ -39,7 +39,7 @@ export type LightweightPlanRow = Pick<
   | 'updatedAt'
 >;
 
-export type LightweightModuleMetricsRow = {
+type LightweightModuleMetricsRow = {
   planId: string;
   totalTasks: number;
   completedTasks: number;
@@ -47,7 +47,7 @@ export type LightweightModuleMetricsRow = {
   completedMinutes: number;
 };
 
-export type SummaryStatusInput = {
+type SummaryStatusInput = {
   plan: Pick<LearningPlan, 'generationStatus'>;
   completion: number;
   modules: Array<{ id: string }>;

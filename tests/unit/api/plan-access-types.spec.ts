@@ -19,8 +19,8 @@ import type {
   ScheduleAccessResult,
 } from '@/app/plans/[id]/types';
 import { toClientPlanDetail } from '@/features/plans/read-models/detail-dto';
-import type { ScheduleJson } from '@/features/scheduling/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
+import type { ScheduleJson } from '@/shared/types/scheduling.types';
 import { buildPlanDetail } from '../../fixtures/plan-detail';
 
 // Builder function for creating mock schedule data

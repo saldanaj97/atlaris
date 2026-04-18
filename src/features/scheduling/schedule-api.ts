@@ -2,13 +2,16 @@ import { format } from 'date-fns';
 import { and, asc, eq } from 'drizzle-orm';
 import { distributeTasksToSessions } from '@/features/scheduling/distribute';
 import { computeInputsHash } from '@/features/scheduling/hash';
-import type { ScheduleInputs, ScheduleJson } from '@/features/scheduling/types';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
 } from '@/lib/db/queries/schedules';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
+import type {
+  ScheduleInputs,
+  ScheduleJson,
+} from '@/shared/types/scheduling.types';
 
 interface GetPlanScheduleParams {
   planId: string;
@@ -156,6 +159,7 @@ export async function getPlanSchedule(
       estimatedMinutes: task.estimatedMinutes,
       order: idx + 1,
       moduleId: task.moduleId,
+      moduleTitle: task.moduleTitle,
     })),
     startDate: plan.startDate ?? format(plan.createdAt, 'yyyy-MM-dd'),
     deadline: plan.deadlineDate,

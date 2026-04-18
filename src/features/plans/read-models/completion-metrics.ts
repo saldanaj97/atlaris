@@ -1,4 +1,4 @@
-export type TaskProgressStatus = 'completed' | 'in_progress' | 'not_started';
+type TaskProgressStatus = 'completed' | 'in_progress' | 'not_started';
 
 type TaskProgressSnapshot = {
   status: TaskProgressStatus;
@@ -108,7 +108,7 @@ export function countCompletedModulesFromFlatTasks(params: {
 }
 
 /** Running totals while folding pre-aggregated per-module metrics rows. */
-export type LightweightModuleMetricsTotals = {
+type LightweightModuleMetricsTotals = {
   completedTasks: number;
   totalTasks: number;
   totalMinutes: number;

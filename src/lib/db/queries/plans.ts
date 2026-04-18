@@ -35,16 +35,16 @@ import type {
 type DbClient = ReturnType<typeof getDb>;
 type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
 
-export type PlanSummaryTaskRow = {
+type PlanSummaryTaskRow = {
   id: string;
   moduleId: string;
   planId: string;
   estimatedMinutes: number | null;
 };
 
-export type PlanProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
+type PlanProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
 
-export type LightweightPlanListRow = Pick<
+type LightweightPlanListRow = Pick<
   LearningPlan,
   | 'id'
   | 'topic'
@@ -57,7 +57,7 @@ export type LightweightPlanListRow = Pick<
   | 'updatedAt'
 >;
 
-export type LightweightModuleMetricsRow = {
+type LightweightModuleMetricsRow = {
   planId: string;
   totalTasks: number;
   completedTasks: number;
@@ -65,7 +65,7 @@ export type LightweightModuleMetricsRow = {
   completedMinutes: number;
 };
 
-export type PlanSummaryRows = {
+type PlanSummaryRows = {
   planRows: LearningPlan[];
   moduleRows: Module[];
   taskRows: PlanSummaryTaskRow[];
@@ -73,12 +73,12 @@ export type PlanSummaryRows = {
   attemptCountsByPlanId: Map<string, number>;
 };
 
-export type LightweightPlanSummaryRows = {
+type LightweightPlanSummaryRows = {
   planRows: LightweightPlanListRow[];
   moduleMetricsRows: LightweightModuleMetricsRow[];
 };
 
-export type LearningPlanDetailRows = {
+type LearningPlanDetailRows = {
   plan: LearningPlan;
   moduleRows: Module[];
   taskRows: Task[];
@@ -88,7 +88,7 @@ export type LearningPlanDetailRows = {
   attemptsCount: number;
 };
 
-export type PlanStatusRows = {
+type PlanStatusRows = {
   plan: Pick<
     LearningPlan,
     'id' | 'generationStatus' | 'createdAt' | 'updatedAt'

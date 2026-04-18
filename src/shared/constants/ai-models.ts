@@ -8,7 +8,7 @@
 
 export const AI_DEFAULT_MODEL = 'openrouter/free';
 
-export const AI_MODEL_IDS = [
+const AI_MODEL_IDS = [
   'openrouter/free',
   'google/gemini-2.0-flash-exp:free',
   'openai/gpt-oss-20b:free',
@@ -24,8 +24,6 @@ export const AI_MODEL_IDS = [
   'openai/gpt-5.1',
   'openai/gpt-5.2',
 ] as const;
-
-export type AiModelId = (typeof AI_MODEL_IDS)[number];
 
 const MODEL_ID_SET: ReadonlySet<string> = new Set(AI_MODEL_IDS);
 

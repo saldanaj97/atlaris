@@ -6,13 +6,12 @@
  */
 
 import { formatSkillLevel } from '@/features/plans/formatters';
-
-import type { ScheduleJson } from '@/features/scheduling/types';
 import type {
   ClientModule,
   ClientPlanDetail,
 } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import type { ScheduleJson } from '@/shared/types/scheduling.types';
 import type {
   PlanAccessError,
   PlanAccessErrorCode,

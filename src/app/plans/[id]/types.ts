@@ -6,8 +6,8 @@
  * and not-found cases.
  */
 
-import type { ScheduleJson } from '@/features/scheduling/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
+import type { ScheduleJson } from '@/shared/types/scheduling.types';
 
 /**
  * Error codes for plan access failures.

@@ -1,11 +1,11 @@
 import { hashSha256 } from '@/lib/crypto/hash';
 
-import type { ScheduleInputs } from './types';
+import type { ScheduleInputs } from '@/shared/types/scheduling.types';
 
 /**
  * Create a deterministic SHA-256 hex digest representing the given schedule inputs for cache validation.
  *
- * The digest reflects the canonicalized inputs: `planId`, `tasks` (each with `id`, `title`, `estimatedMinutes`, `order`, and `moduleId` preserved in their original array order), `startDate`, `deadline`, `weeklyHours`, and `timezone`. The hash changes when any of these included fields change.
+ * The digest reflects the canonicalized inputs: `planId`, `tasks` (each with `id`, `title`, `estimatedMinutes`, `order`, `moduleId`, and optional `moduleTitle` preserved in their original array order), `startDate`, `deadline`, `weeklyHours`, and `timezone`. The hash changes when any of these included fields change.
  *
  * @param inputs - Schedule inputs to include in the canonical representation used for hashing
  * @returns The SHA-256 hex digest of the canonicalized inputs
@@ -23,6 +23,7 @@ export function computeInputsHash(inputs: ScheduleInputs): string {
         estimatedMinutes: t.estimatedMinutes,
         order: t.order,
         moduleId: t.moduleId,
+        moduleTitle: t.moduleTitle ?? null,
       })),
     startDate: inputs.startDate,
     deadline: inputs.deadline,

@@ -4,8 +4,6 @@ import {
   EnvValidationError,
   getProcessEnvSource,
   getServerOptional,
-  getServerRequired,
-  getServerRequiredProdOnly,
   isProdRuntimeEnv,
   requireEnvFrom,
 } from '@/lib/config/env/shared';
@@ -21,7 +19,7 @@ const neonAuthFields = z.object({
   cookieSecret: z.string(),
 });
 
-export type NeonAuthEnv = z.infer<typeof neonAuthFields>;
+type NeonAuthEnv = z.infer<typeof neonAuthFields>;
 
 /**
  * Parse Neon Auth config from an explicit env source (unit tests; no process mutation).
@@ -95,24 +93,6 @@ export const neonAuthEnv = {
   },
   get cookieSecret() {
     return loadNeonAuthFromProcess().cookieSecret;
-  },
-} as const;
-
-export const googleOAuthEnv = {
-  get clientId() {
-    return getServerRequiredProdOnly('GOOGLE_CLIENT_ID');
-  },
-  get clientSecret() {
-    return getServerRequiredProdOnly('GOOGLE_CLIENT_SECRET');
-  },
-  get redirectUri() {
-    return getServerRequiredProdOnly('GOOGLE_REDIRECT_URI');
-  },
-} as const;
-
-export const oauthEncryptionEnv = {
-  get encryptionKey() {
-    return getServerRequired('OAUTH_ENCRYPTION_KEY');
   },
 } as const;
 

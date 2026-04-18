@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const sessionAssignmentSchema = z.object({
+const sessionAssignmentSchema = z.object({
   taskId: z.string(),
   taskTitle: z.string(),
   estimatedMinutes: z.number().int().min(1),
@@ -8,13 +8,13 @@ export const sessionAssignmentSchema = z.object({
   moduleName: z.string(),
 });
 
-export const daySchema = z.object({
+const daySchema = z.object({
   dayNumber: z.number().int().min(1).max(7),
   date: z.string(), // ISO date string
   sessions: z.array(sessionAssignmentSchema),
 });
 
-export const weekSchema = z.object({
+const weekSchema = z.object({
   weekNumber: z.number().int().min(1),
   startDate: z.string(), // ISO date string
   endDate: z.string(), // ISO date string

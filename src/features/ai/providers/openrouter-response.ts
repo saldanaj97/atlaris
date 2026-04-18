@@ -7,7 +7,7 @@ import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import type { ProviderUsage } from '@/features/ai/types/provider.types';
 
-export type TextPart = {
+type TextPart = {
   type: string;
   text?: string;
 };
@@ -61,7 +61,7 @@ export function parseContent(
   return text.length > 0 ? text : null;
 }
 
-export function extractChunkText(event: StreamEventLike): string {
+function extractChunkText(event: StreamEventLike): string {
   if (typeof event.delta === 'string' && event.delta.length > 0) {
     return event.delta;
   }
@@ -109,7 +109,7 @@ export function normalizeUsage(
   return base;
 }
 
-export const USAGE_TOKEN_FIELDS = [
+const USAGE_TOKEN_FIELDS = [
   'promptTokens',
   'completionTokens',
   'totalTokens',
@@ -118,7 +118,7 @@ export const USAGE_TOKEN_FIELDS = [
   'total_tokens',
 ] as const;
 
-export function isTextPartArray(value: unknown): value is TextPart[] {
+function isTextPartArray(value: unknown): value is TextPart[] {
   return (
     Array.isArray(value) &&
     value.every((part) => {
@@ -157,7 +157,7 @@ export function isUsageShape(value: unknown): value is OpenRouterUsage {
   return true;
 }
 
-export function describeResponseValue(value: unknown): string {
+function describeResponseValue(value: unknown): string {
   if (value === null) {
     return 'null';
   }
@@ -190,7 +190,7 @@ export function describeResponseValue(value: unknown): string {
   return typeof value;
 }
 
-export function createInvalidShapeError(
+function createInvalidShapeError(
   fieldPath: string,
   expected: string,
   actual: unknown
@@ -277,7 +277,7 @@ export function getStatusCodeFromError(error: unknown): number | undefined {
   return undefined;
 }
 
-export type StreamUsageEventContext = {
+type StreamUsageEventContext = {
   /**
    * True when `event.usage` is a plain object record; arrays are excluded because
    * malformed list payloads should not become authoritative for streaming cost.

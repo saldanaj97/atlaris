@@ -4,7 +4,7 @@ import type { GenerationStatus } from '@/shared/types/db.types';
 /**
  * Canonical read-layer status used by detail and polling consumers.
  */
-export type PlanReadStatus = ClientPlanStatus;
+type PlanReadStatus = ClientPlanStatus;
 
 /**
  * Summary/list-layer status derived from the canonical read status plus progress.
@@ -18,7 +18,7 @@ export type PlanSummaryReadStatus =
 /**
  * Raw plan lifecycle inputs needed to derive the canonical read status.
  */
-export type PlanReadStatusInput = {
+type PlanReadStatusInput = {
   generationStatus: GenerationStatus;
   hasModules: boolean;
   attemptsCount?: number;
@@ -28,7 +28,7 @@ export type PlanReadStatusInput = {
 /**
  * Summary inputs layered on top of the canonical read status.
  */
-export type PlanSummaryStatusInput = {
+type PlanSummaryStatusInput = {
   readStatus: PlanReadStatus;
   completion: number;
 };

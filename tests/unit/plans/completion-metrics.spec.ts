@@ -7,10 +7,14 @@ import {
   computeTaskRowCompletionMetrics,
   countCompletedModulesFromFlatTasks,
 } from '@/features/plans/read-models/completion-metrics';
-import {
-  buildPlanSummaries,
-  type SummaryTaskRow,
-} from '@/features/plans/read-models/summary';
+import { buildPlanSummaries } from '@/features/plans/read-models/summary';
+
+type SummaryTaskRow = {
+  id: string;
+  moduleId: string;
+  planId: string;
+  estimatedMinutes: number | null;
+};
 
 function buildTaskRow(
   overrides: Partial<SummaryTaskRow> &
