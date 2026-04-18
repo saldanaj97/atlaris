@@ -20,6 +20,8 @@ Persistent user preferences and durable workspace facts maintained by the `conti
 - When running local Playwright smoke on this machine during active development, prefer serial execution over project-level parallelism if the user indicates the machine is resource-constrained; faster on paper is irrelevant if the run becomes less trustworthy.
 - When the user asks you to **review or improve a plan/slice markdown file** (e.g. under `.plans/`), apply better approaches by **editing existing sections inline**—do not add a trailing “new section” appendage unless they want that structure.
 - For Vitest tests that should be skipped when a runtime global is unavailable (for example `DOMException`), prefer declaration-level skips like `it.skipIf(...)` over runtime early returns or `context.skip()` so the runner records the skip explicitly.
+- When a handoff-style prompt attaches a plan and says "to-do's have already been created; do not create them again; mark them as in_progress as you work; don't stop until you have completed all the to-dos," honor that contract literally: do not re-create todos, move through the existing list one in_progress item at a time, execute end-to-end without stopping for confirmation, and do not edit the referenced plan file unless explicitly asked.
+- For token-efficient work, delegate codebase exploration, search, and trivial research to `explore` subagents on a cheaper/faster model (e.g. `composer-2-fast`) and have them report back only the important findings; reserve the parent agent for synthesis and final edits.
 
 ## Learned Workspace Facts
 
