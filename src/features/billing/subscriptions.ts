@@ -203,9 +203,11 @@ export async function syncSubscriptionToDb(
 
   const status = statusMap[subscription.status];
 
-  // Get period end timestamp (type assertion needed for API version compatibility)
-  const periodEnd = (subscription as unknown as { current_period_end?: number })
-    .current_period_end;
+  // current_period_end is present on the wire but missing from Stripe.Subscription
+  // typings on this SDK pin; intersect rather than double-cast.
+  const periodEnd = (
+    subscription as Stripe.Subscription & { current_period_end?: number }
+  ).current_period_end;
 
   await db
     .update(users)
