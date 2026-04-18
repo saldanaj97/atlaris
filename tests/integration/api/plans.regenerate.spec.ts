@@ -55,8 +55,8 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
     const body = await res.json();
     expect(body.status).toBe('pending');
-    expect(body.generationId).toBe(plan.id);
     expect(body.planId).toBe(plan.id);
+    expect(body.generationId).toBeUndefined();
 
     // Verify job was enqueued
     const jobs = await db
