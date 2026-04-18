@@ -1,13 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  type Mock,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePlanStatus } from '@/hooks/usePlanStatus';
 
 // Helper to flush timers in jsdom environment
@@ -18,16 +10,16 @@ async function advance(ms: number) {
 }
 
 describe('usePlanStatus', () => {
-  const originalFetch = global.fetch;
+  const getFetchMock = () => vi.mocked(globalThis.fetch);
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(global, 'fetch');
+    vi.stubGlobal('fetch', vi.fn() as typeof fetch);
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    (global.fetch as any) = originalFetch;
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -45,7 +37,7 @@ describe('usePlanStatus', () => {
       'ready',
     ];
     let fetchIndex = 0;
-    (global.fetch as unknown as Mock).mockImplementation(() => {
+    getFetchMock().mockImplementation(() => {
       const at = Math.min(fetchIndex, statusSequence.length - 1);
       const status = statusSequence[at] ?? 'ready';
       fetchIndex += 1;
@@ -86,14 +78,14 @@ describe('usePlanStatus', () => {
     expect(guard).toBeLessThan(120); // sanity: ensure we didn't timeout waiting for ready
     expect(result.current.status).toBe('ready');
 
-    const fetchCallsAfterReady = (global.fetch as Mock).mock.calls.length;
+    const fetchCallsAfterReady = getFetchMock().mock.calls.length;
 
     guard = 0;
     while (guard++ < 60) {
       await advance(100);
     }
 
-    expect((global.fetch as Mock).mock.calls.length).toBe(fetchCallsAfterReady);
+    expect(getFetchMock().mock.calls.length).toBe(fetchCallsAfterReady);
     expect(result.current.isPolling).toBe(false);
   });
 
@@ -101,7 +93,7 @@ describe('usePlanStatus', () => {
     // First two polls return processing (Strict Mode may run two immediate polls);
     // the next poll returns failed.
     let callCount = 0;
-    (global.fetch as unknown as Mock).mockImplementation(() => {
+    getFetchMock().mockImplementation(() => {
       callCount += 1;
       const body =
         callCount <= 2
@@ -139,21 +131,21 @@ describe('usePlanStatus', () => {
     expect(result.current.status).toBe('failed');
     expect(result.current.error).toBe('Provider timeout');
 
-    const fetchCallsAfterFail = (global.fetch as Mock).mock.calls.length;
+    const fetchCallsAfterFail = getFetchMock().mock.calls.length;
     await advance(6000);
-    expect((global.fetch as Mock).mock.calls.length).toBe(fetchCallsAfterFail);
+    expect(getFetchMock().mock.calls.length).toBe(fetchCallsAfterFail);
     expect(result.current.isPolling).toBe(false);
   });
 
   it('T052 does not poll when initial status is ready', async () => {
-    const fetchSpy = global.fetch as Mock;
+    const fetchSpy = getFetchMock();
     renderHook(() => usePlanStatus('plan-ready', 'ready'));
     await advance(6000);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('T052 does not poll when initial status is failed', async () => {
-    const fetchSpy = global.fetch as Mock;
+    const fetchSpy = getFetchMock();
     renderHook(() => usePlanStatus('plan-failed', 'failed'));
     await advance(6000);
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -161,7 +153,7 @@ describe('usePlanStatus', () => {
 
   it('T053 stops polling after repeated retriable HTTP failures', async () => {
     let calls = 0;
-    (global.fetch as unknown as Mock).mockImplementation(() => {
+    getFetchMock().mockImplementation(() => {
       calls += 1;
       return Promise.resolve(
         new Response(

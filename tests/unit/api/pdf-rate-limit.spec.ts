@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   acquireGlobalPdfExtractionSlot,
   acquirePdfExtractionSlot,
@@ -11,6 +11,10 @@ import {
 const fakeDb = {} as never;
 
 describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   describe('Extraction throttling', () => {
     it('allows first extraction', () => {
       const mockStore = new Map<string, number[]>();
@@ -187,38 +191,25 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
     it('automatically reclaims leaked slots after lease timeout', () => {
       const tracker = createTracker();
-      let leaseCallback: (() => void) | null = null;
-      const fakeSetTimeout = (
-        callback: () => void
-      ): ReturnType<typeof setTimeout> => {
-        leaseCallback = callback;
-        return 1 as unknown as ReturnType<typeof setTimeout>;
-      };
-      const fakeClearTimeout = vi.fn(
-        (_id: ReturnType<typeof setTimeout>): void => {
-          // no-op; lease timer is cleared on release
-        }
-      );
+      vi.useFakeTimers();
+
       const slot = acquireGlobalPdfExtractionSlot({
         state: tracker,
         leaseMs: 5,
-        setTimeoutFn: fakeSetTimeout as typeof setTimeout,
-        clearTimeoutFn: fakeClearTimeout as unknown as typeof clearTimeout,
       });
       expect(slot.allowed).toBe(true);
       if (!slot.allowed) {
         throw new Error('Expected slot to be allowed');
       }
       expect(tracker.inFlight).toBe(1);
+      expect(vi.getTimerCount()).toBe(1);
 
-      expect(leaseCallback).toBeTypeOf('function');
-      const runLeaseCallback: () => void = leaseCallback ?? (() => {});
-      runLeaseCallback();
+      vi.advanceTimersByTime(5);
       expect(tracker.inFlight).toBe(0);
+      expect(vi.getTimerCount()).toBe(0);
 
       slot.release();
       expect(tracker.inFlight).toBe(0);
-      expect(fakeClearTimeout).toHaveBeenCalledTimes(1);
     });
 
     it('withGlobalPdfSlot always releases the slot in finally', async () => {

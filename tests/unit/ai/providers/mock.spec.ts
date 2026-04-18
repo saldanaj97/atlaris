@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseGenerationStream } from '@/features/ai/parser';
 import { getGenerationProvider } from '@/features/ai/providers/factory';
@@ -36,6 +36,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env = originalEnv;
   });
 
@@ -48,8 +49,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('returns MockGenerationProvider in development when AI_PROVIDER not set', () => {
-      // Cast to any to allow setting NODE_ENV in test environment; TS types mark it as readonly
-      (process.env as any).NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
       delete process.env.AI_PROVIDER;
 
       const provider = getGenerationProvider();

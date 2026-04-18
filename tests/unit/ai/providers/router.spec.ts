@@ -63,6 +63,7 @@ describe('RouterGenerationProvider', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env = originalEnv;
   });
 
@@ -126,7 +127,7 @@ describe('RouterGenerationProvider', () => {
 
     it('config.useMock=false overrides AI_USE_MOCK env when set to true', async () => {
       process.env.AI_USE_MOCK = 'true';
-      (process.env as any).NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
 
       const provider = new RouterGenerationProvider({
         useMock: false,
@@ -139,7 +140,7 @@ describe('RouterGenerationProvider', () => {
 
     it('uses MockGenerationProvider when AI_USE_MOCK is "true" in non-production', async () => {
       process.env.AI_USE_MOCK = 'true';
-      (process.env as any).NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
 
       const provider = new RouterGenerationProvider();
       const result = await provider.generate(mockInput);
