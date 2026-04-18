@@ -2,6 +2,10 @@
 
 import { BookOpen, RefreshCw, Share2, Trophy } from 'lucide-react';
 import Link from 'next/link';
+import {
+  formatUsageLimit,
+  type UsageData,
+} from '@/app/plans/components/usage-types';
 import { Badge } from '@/components/ui/badge';
 import {
   HoverCard,
@@ -10,20 +14,9 @@ import {
 } from '@/components/ui/hover-card';
 import type { SubscriptionTier } from '@/features/billing/tier-limits';
 
-interface UsageData {
-  tier: string;
-  activePlans: { current: number; limit: number };
-  regenerations: { used: number; limit: number };
-  exports: { used: number; limit: number };
-}
-
 interface UsageHoverCardProps {
   usage: UsageData;
   children: React.ReactNode;
-}
-
-function formatLimit(value: number): string {
-  return value === Infinity ? '∞' : String(value);
 }
 
 const tierVariants: Record<
@@ -66,7 +59,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
               </div>
               <span className="font-medium">
                 {usage.activePlans.current} /{' '}
-                {formatLimit(usage.activePlans.limit)}
+                {formatUsageLimit(usage.activePlans.limit)}
               </span>
             </div>
 
@@ -77,7 +70,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
               </div>
               <span className="font-medium">
                 {usage.regenerations.used} /{' '}
-                {formatLimit(usage.regenerations.limit)}
+                {formatUsageLimit(usage.regenerations.limit)}
               </span>
             </div>
 
@@ -87,7 +80,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
                 Exports
               </div>
               <span className="font-medium">
-                {usage.exports.used} / {formatLimit(usage.exports.limit)}
+                {usage.exports.used} / {formatUsageLimit(usage.exports.limit)}
               </span>
             </div>
           </div>

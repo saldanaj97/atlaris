@@ -6,16 +6,10 @@ import { useMemo, useState } from 'react';
 import { EmptyPlansList } from '@/app/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/plans/components/PlanRow';
 import { getPlanStatus } from '@/app/plans/components/plan-utils';
+import type { UsageData } from '@/app/plans/components/usage-types';
 import type { FilterStatus, PlanStatus } from '@/app/plans/types';
 import { Button } from '@/components/ui/button';
 import type { PlanSummary } from '@/shared/types/db.types';
-
-interface UsageData {
-  tier: string;
-  activePlans: { current: number; limit: number };
-  regenerations: { used: number; limit: number };
-  exports: { used: number; limit: number };
-}
 
 interface PlansListProps {
   summaries: PlanSummary[];
