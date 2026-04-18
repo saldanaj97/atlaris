@@ -82,7 +82,7 @@ export function isProdRuntimeEnv(env: EnvSource): boolean {
 }
 
 /** True for development and test runtimes (not production). */
-export function isNonProductionRuntimeEnv(env: EnvSource): boolean {
+function isNonProductionRuntimeEnv(env: EnvSource): boolean {
   return !isProdRuntimeEnv(env);
 }
 

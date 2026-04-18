@@ -13,9 +13,7 @@ type NormalizedEffortResult = {
   clamped: boolean;
 };
 
-export type { NormalizedEffortResult };
-
-export function normalizeEffort(
+function normalizeEffort(
   minutes: number,
   min: number,
   max: number

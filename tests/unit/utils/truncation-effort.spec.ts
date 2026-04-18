@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
 import {
   aggregateNormalizationFlags,
   MODULE_MAX_MINUTES,
@@ -8,8 +9,7 @@ import {
   normalizeTaskMinutes,
   TASK_MAX_MINUTES,
   TASK_MIN_MINUTES,
-} from '@/features/plans/effort';
-import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
+} from '@/shared/constants/effort';
 
 describe('truncateToLength', () => {
   it('returns original value when within bounds', () => {

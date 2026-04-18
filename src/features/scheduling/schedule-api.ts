@@ -37,7 +37,7 @@ export function resolveScheduleTimezone(
   return DEFAULT_SCHEDULE_TIMEZONE;
 }
 
-export const SCHEDULE_FETCH_ERROR_CODE = {
+const SCHEDULE_FETCH_ERROR_CODE = {
   PLAN_NOT_FOUND_OR_ACCESS_DENIED: 'PLAN_NOT_FOUND_OR_ACCESS_DENIED',
   INVALID_WEEKLY_HOURS: 'INVALID_WEEKLY_HOURS',
   SCHEDULE_GENERATION_FAILED: 'SCHEDULE_GENERATION_FAILED',
@@ -46,7 +46,7 @@ export const SCHEDULE_FETCH_ERROR_CODE = {
 type ScheduleFetchErrorCode =
   (typeof SCHEDULE_FETCH_ERROR_CODE)[keyof typeof SCHEDULE_FETCH_ERROR_CODE];
 
-export class ScheduleFetchError extends Error {
+class ScheduleFetchError extends Error {
   readonly code: ScheduleFetchErrorCode;
 
   constructor(
