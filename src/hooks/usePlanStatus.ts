@@ -24,16 +24,7 @@ class RetriableError extends Error {
   }
 }
 
-interface StatusResponse {
-  planId: string;
-  status: PlanStatus;
-  attempts: number;
-  latestError: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-const StatusResponseSchema: z.ZodType<StatusResponse> = z.object({
+const StatusResponseSchema = z.object({
   planId: z.string(),
   status: z.enum(PLAN_STATUSES),
   attempts: z.number(),

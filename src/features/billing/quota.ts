@@ -2,11 +2,10 @@ import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { usageMetrics, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { UsageMetricsLockError, UserNotFoundError } from './errors';
 import type { DbClient } from './tier';
 import { TIER_LIMITS } from './tier-limits';
-import type { SubscriptionTier } from './tier-limits.types';
 import {
   ensureUsageMetricsExist,
   getCurrentMonth,

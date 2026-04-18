@@ -1,10 +1,9 @@
 import * as Sentry from '@sentry/nextjs';
 import { ZodError } from 'zod';
-import type {
-  GenerationAttemptResult,
-  ProcessGenerationInput,
-} from '@/features/plans/lifecycle';
-import { createAndStreamPlanGenerationSession } from '@/features/plans/session/plan-generation-session';
+import {
+  createAndStreamPlanGenerationSession,
+  type PlanGenerationHandlerOverrides,
+} from '@/features/plans/session/plan-generation-session';
 import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
@@ -19,16 +18,6 @@ import {
 import { getDb } from '@/lib/db/runtime';
 import { type Logger, logger } from '@/lib/logging/logger';
 
-/**
- * Dependency injection interface for tests.
- * Tests can override `processGenerationAttempt` to inject mocked generation behavior.
- */
-export interface StreamDependencyOverrides {
-  processGenerationAttempt?: (
-    input: ProcessGenerationInput
-  ) => Promise<GenerationAttemptResult>;
-}
-
 type StreamRouteLogger = Pick<Logger, 'error' | 'info' | 'warn'>;
 
 /**
@@ -36,7 +25,7 @@ type StreamRouteLogger = Pick<Logger, 'error' | 'info' | 'warn'>;
  * Used by integration tests to supply mocks; production uses the default lifecycle service.
  */
 export function createStreamHandler(deps?: {
-  overrides?: StreamDependencyOverrides;
+  overrides?: PlanGenerationHandlerOverrides;
   logger?: StreamRouteLogger;
 }): PlainHandler {
   const routeLogger = deps?.logger ?? logger;

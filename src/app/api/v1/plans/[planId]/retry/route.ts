@@ -3,11 +3,10 @@ import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
 } from '@/features/plans/api/route-context';
-import type {
-  GenerationAttemptResult,
-  ProcessGenerationInput,
-} from '@/features/plans/lifecycle';
-import { retryAndStreamPlanGenerationSession } from '@/features/plans/session/plan-generation-session';
+import {
+  type PlanGenerationHandlerOverrides,
+  retryAndStreamPlanGenerationSession,
+} from '@/features/plans/session/plan-generation-session';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
@@ -24,21 +23,11 @@ export const maxDuration = 60;
 const RETRYABLE_STATUSES = new Set(['failed', 'pending_retry']);
 
 /**
- * Dependency injection interface for tests.
- * Tests can override `processGenerationAttempt` to inject mocked generation behavior.
- */
-export interface RetryDependencyOverrides {
-  processGenerationAttempt?: (
-    input: ProcessGenerationInput
-  ) => Promise<GenerationAttemptResult>;
-}
-
-/**
  * Creates the retry POST handler with optional dependency overrides.
  * Used by integration tests to supply mocks; production uses the default lifecycle service.
  */
 export function createRetryHandler(deps?: {
-  overrides?: RetryDependencyOverrides;
+  overrides?: PlanGenerationHandlerOverrides;
 }): PlainHandler {
   return withErrorBoundary(
     withAuthAndRateLimit(

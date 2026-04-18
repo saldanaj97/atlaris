@@ -1,6 +1,5 @@
 import { eq } from 'drizzle-orm';
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
-import type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 import {
   getUsageSummary,
   type UsageSummary,
@@ -9,6 +8,7 @@ import { getCorrelationId } from '@/lib/api/context';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 type DbClient = ReturnType<typeof getDb>;
 

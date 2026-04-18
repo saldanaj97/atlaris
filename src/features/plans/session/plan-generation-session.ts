@@ -52,6 +52,17 @@ const noopJobQueue: JobQueuePort = {
 };
 
 /**
+ * Test override surface shared by the create (`stream`) and `retry` route
+ * factories: integration tests inject a stub generation function instead of
+ * exercising the full lifecycle service.
+ */
+export interface PlanGenerationHandlerOverrides {
+  processGenerationAttempt?: (
+    input: ProcessGenerationInput
+  ) => Promise<GenerationAttemptResult>;
+}
+
+/**
  * Parameters for the shared SSE response constructor used by both create and retry flows.
  */
 interface CreatePlanGenerationSessionResponseParams {

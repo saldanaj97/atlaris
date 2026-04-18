@@ -5,13 +5,13 @@
  * as well as the discriminated union result types for lifecycle operations.
  */
 
-import type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 import type { PdfContext } from '@/features/pdf/context.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/client.types';
 
 // Re-export commonly used types so the service can import from one place
-export type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 export type { PdfContext } from '@/features/pdf/context.types';
+export type { SubscriptionTier } from '@/shared/types/billing.types';
 export type { FailureClassification } from '@/shared/types/client.types';
 export { isRetryableClassification } from '@/shared/types/failure-classification';
 

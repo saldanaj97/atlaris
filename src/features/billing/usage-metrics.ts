@@ -2,11 +2,10 @@ import { and, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { UsageMetricsLoadError } from './errors';
 import { type DbClient, resolveUserTier } from './tier';
 import { TIER_LIMITS } from './tier-limits';
-import type { SubscriptionTier } from './tier-limits.types';
 
 // Usage type for incrementing counters
 type UsageType = 'plan' | 'regeneration' | 'export';

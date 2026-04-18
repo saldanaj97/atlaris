@@ -4,12 +4,12 @@ import { and, eq, gte, sql } from 'drizzle-orm';
 import { selectUserSubscriptionTierForUpdate } from '@/features/billing/quota';
 import { resolveUserTier } from '@/features/billing/tier';
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
-import type { SubscriptionTier } from '@/features/billing/tier-limits.types';
 import type { PdfContext } from '@/features/pdf/context.types';
 import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-generation-status';
 import { learningPlans } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { PlanCreationError, PlanLimitReachedError } from '../errors';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
