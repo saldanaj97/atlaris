@@ -26,8 +26,6 @@ export const jobQueueSelect = {
   payload: jobQueue.payload,
   result: jobQueue.result,
   error: jobQueue.error,
-  lockedAt: jobQueue.lockedAt,
-  lockedBy: jobQueue.lockedBy,
   scheduledFor: jobQueue.scheduledFor,
   startedAt: jobQueue.startedAt,
   completedAt: jobQueue.completedAt,

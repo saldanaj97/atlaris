@@ -183,6 +183,13 @@
       "when": 1776541532842,
       "tag": "0025_daily_bloodscream",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776550737387,
+      "tag": "0026_known_aaron_stack",
+      "breakpoints": true
     }
   ]
 }
