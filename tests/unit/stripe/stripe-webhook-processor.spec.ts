@@ -4,13 +4,17 @@
  * Focus: verifies that the function uses deps.db (injected) for both the
  * idempotency insert and the rollback delete — not a module-level global.
  */
+
+import { makeDbClient } from '@tests/fixtures/db-mocks';
+import { makeStripeSubscription } from '@tests/fixtures/stripe-mocks';
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   handleStripeWebhookDedupeAndApply,
   type StripeWebhookSideEffectDeps,
 } from '@/features/billing/stripe-webhook-processor';
-import { makeStripeSubscription } from '../../fixtures/stripe-mocks';
+import { users } from '@/lib/db/schema';
+import { createLogger } from '@/lib/logging/logger';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -74,16 +78,34 @@ function buildMockDb(
     returning: vi.fn().mockResolvedValue(insertReturns),
   });
 
-  return { insert: insertMock, update: updateMock, delete: deleteMock };
+  return Object.assign(makeDbClient(), {
+    insert: insertMock,
+    update: updateMock,
+    delete: deleteMock,
+  });
 }
 
 function makeLogger() {
+  return Object.assign(
+    createLogger({ test: 'stripe-webhook-processor.spec' }),
+    {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    }
+  );
+}
+
+function makeDeps(
+  overrides: Partial<StripeWebhookSideEffectDeps> = {}
+): StripeWebhookSideEffectDeps {
   return {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  } as unknown as StripeWebhookSideEffectDeps['logger'];
+    db: buildMockDb(),
+    logger: makeLogger(),
+    users,
+    ...overrides,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -102,11 +124,10 @@ describe('handleStripeWebhookDedupeAndApply', () => {
     it('returns "duplicate" when insert returns no rows (conflict)', async () => {
       const db = buildMockDb({ insertReturns: [] });
       const logger = makeLogger();
-      const deps = {
+      const deps = makeDeps({
         db,
         logger,
-        users: {},
-      } as unknown as StripeWebhookSideEffectDeps;
+      });
 
       const result = await handleStripeWebhookDedupeAndApply(makeEvent(), deps);
 
@@ -116,11 +137,10 @@ describe('handleStripeWebhookDedupeAndApply', () => {
     it('logs the event id and type on duplicate', async () => {
       const db = buildMockDb({ insertReturns: [] });
       const logger = makeLogger();
-      const deps = {
+      const deps = makeDeps({
         db,
         logger,
-        users: {},
-      } as unknown as StripeWebhookSideEffectDeps;
+      });
       const event = makeEvent({
         id: 'evt_dup_xyz',
         type: 'invoice.payment_failed',
@@ -136,11 +156,10 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 
     it('does NOT call delete when a duplicate is detected', async () => {
       const db = buildMockDb({ insertReturns: [] });
-      const deps = {
+      const deps = makeDeps({
         db,
         logger: makeLogger(),
-        users: {},
-      } as unknown as StripeWebhookSideEffectDeps;
+      });
 
       await handleStripeWebhookDedupeAndApply(makeEvent(), deps);
 
@@ -154,11 +173,10 @@ describe('handleStripeWebhookDedupeAndApply', () => {
   describe('successful insertion', () => {
     it('returns "inserted" when no duplicate', async () => {
       const db = buildMockDb();
-      const deps = {
+      const deps = makeDeps({
         db,
         logger: makeLogger(),
-        users: {},
-      } as unknown as StripeWebhookSideEffectDeps;
+      });
 
       const result = await handleStripeWebhookDedupeAndApply(makeEvent(), deps);
 
@@ -167,11 +185,10 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 
     it('calls deps.db.insert with correct event fields', async () => {
       const db = buildMockDb();
-      const deps = {
+      const deps = makeDeps({
         db,
         logger: makeLogger(),
-        users: {},
-      } as unknown as StripeWebhookSideEffectDeps;
+      });
       const event = makeEvent({
         id: 'evt_abc',
         type: 'invoice.payment_failed',
@@ -206,11 +223,10 @@ describe('handleStripeWebhookDedupeAndApply', () => {
         updateThrows: applyError,
       });
       const logger = makeLogger();
-      const deps = {
+      const deps = makeDeps({
         db,
         logger,
-        users: { stripeCustomerId: 'col' },
-      } as unknown as StripeWebhookSideEffectDeps;
+      });
 
       const event = makeEvent({
         id: 'evt_rollback',
@@ -235,11 +251,10 @@ describe('handleStripeWebhookDedupeAndApply', () => {
         updateThrows: applyError,
       });
       const logger = makeLogger();
-      const deps = {
+      const deps = makeDeps({
         db,
         logger,
-        users: { stripeCustomerId: 'col' },
-      } as unknown as StripeWebhookSideEffectDeps;
+      });
 
       const event = makeEvent({
         id: 'evt_rollback2',
@@ -271,11 +286,10 @@ describe('handleStripeWebhookDedupeAndApply', () => {
         deleteThrows: cleanupError,
       });
       const logger = makeLogger();
-      const deps = {
+      const deps = makeDeps({
         db,
         logger,
-        users: { stripeCustomerId: 'col' },
-      } as unknown as StripeWebhookSideEffectDeps;
+      });
 
       const event = makeEvent({
         id: 'evt_double_fail',

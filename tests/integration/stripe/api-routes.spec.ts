@@ -1,7 +1,11 @@
+import {
+  makeStripeInvoice,
+  makeStripeMock,
+  makeStripeSubscription,
+} from '@tests/fixtures/stripe-mocks';
 import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
 import {
   createWebhookHandler,
@@ -27,6 +31,22 @@ async function createAuthTestUser() {
   return userId;
 }
 
+function makeStripeEvent({
+  dataObject,
+  ...overrides
+}: Omit<Partial<Stripe.Event>, 'data'> & {
+  dataObject?: unknown;
+} = {}): Stripe.Event {
+  return {
+    id: 'evt_test_123',
+    object: 'event',
+    type: 'checkout.session.completed',
+    livemode: false,
+    data: { object: (dataObject ?? {}) as Stripe.Event.Data['object'] },
+    ...overrides,
+  } as Stripe.Event;
+}
+
 describe('Stripe API Routes', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -43,7 +63,7 @@ describe('Stripe API Routes', () => {
         subscriptionStatus: 'active',
       });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         billingPortal: {
           sessions: {
             create: vi.fn().mockResolvedValue({
@@ -51,7 +71,7 @@ describe('Stripe API Routes', () => {
             }),
           },
         },
-      } as unknown as Stripe;
+      });
 
       const portalPOST = createCreatePortalHandler(mockStripe);
 
@@ -90,13 +110,13 @@ describe('Stripe API Routes', () => {
       const mockCreateSession = vi
         .fn()
         .mockRejectedValue(new Error('Should not be called'));
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         billingPortal: {
           sessions: {
             create: mockCreateSession,
           },
         },
-      } as unknown as Stripe;
+      });
       const portalPOST = createCreatePortalHandler(mockStripe);
 
       const request = new Request(
@@ -126,7 +146,7 @@ describe('Stripe API Routes', () => {
         subscriptionStatus: 'active',
       });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         billingPortal: {
           sessions: {
             create: vi.fn().mockResolvedValue({
@@ -134,7 +154,7 @@ describe('Stripe API Routes', () => {
             }),
           },
         },
-      } as unknown as Stripe;
+      });
 
       const portalPOST = createCreatePortalHandler(mockStripe);
 
@@ -164,13 +184,13 @@ describe('Stripe API Routes', () => {
       const mockCreateSession = vi
         .fn()
         .mockRejectedValue(new Error('Should not be called'));
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         billingPortal: {
           sessions: {
             create: mockCreateSession,
           },
         },
-      } as unknown as Stripe;
+      });
       const portalPOST = createCreatePortalHandler(mockStripe);
 
       const request = new Request(
@@ -208,13 +228,13 @@ describe('Stripe API Routes', () => {
       const mockCreateSession = vi
         .fn()
         .mockRejectedValue(new Error('Should not be called'));
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         billingPortal: {
           sessions: {
             create: mockCreateSession,
           },
         },
-      } as unknown as Stripe;
+      });
       const portalPOST = createCreatePortalHandler(mockStripe);
 
       const request = new Request(
@@ -247,17 +267,15 @@ describe('Stripe API Routes', () => {
     });
 
     it('handles checkout.session.completed event', async () => {
-      const event = {
+      const event = makeStripeEvent({
         id: 'evt_test123',
         type: 'checkout.session.completed',
         livemode: false,
-        data: {
-          object: {
-            id: 'cs_test123',
-            customer: 'cus_test123',
-          },
+        dataObject: {
+          id: 'cs_test123',
+          customer: 'cus_test123',
         },
-      } as unknown as Stripe.Event;
+      });
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -294,29 +312,27 @@ describe('Stripe API Routes', () => {
         'webhook-created'
       );
 
-      const event = {
+      const event = makeStripeEvent({
         id: eventId,
         type: 'customer.subscription.created',
         livemode: false,
-        data: {
-          object: {
-            id: expectedSubscriptionId,
-            customer: stripeCustomerId,
-            status: 'active',
-            cancel_at_period_end: cancelAtPeriodEnd,
-            items: {
-              data: [
-                {
-                  price: 'price_starter',
-                },
-              ],
-            },
-            current_period_end: 1735689600,
+        dataObject: makeStripeSubscription({
+          id: expectedSubscriptionId,
+          customer: stripeCustomerId,
+          status: 'active',
+          cancel_at_period_end: cancelAtPeriodEnd,
+          items: {
+            data: [
+              {
+                price: { id: 'price_starter' },
+              },
+            ],
           },
-        },
-      } as unknown as Stripe.Event;
+          current_period_end: 1735689600,
+        }),
+      });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         prices: {
           retrieve: vi.fn().mockResolvedValue({
             id: 'price_starter',
@@ -325,7 +341,7 @@ describe('Stripe API Routes', () => {
             },
           }),
         },
-      } as unknown as Stripe;
+      });
 
       const webhookPOSTWithMock = createWebhookHandler(mockStripe);
 
@@ -368,27 +384,18 @@ describe('Stripe API Routes', () => {
         'webhook-deleted'
       );
 
-      const event = {
+      const event = makeStripeEvent({
         id: 'evt_sub_deleted',
         type: 'customer.subscription.deleted',
         livemode: false,
-        data: {
-          object: {
-            id: expectedSubscriptionId,
-            customer: stripeCustomerId,
-          },
-        },
-      } as unknown as Stripe.Event;
+        dataObject: makeStripeSubscription({
+          id: expectedSubscriptionId,
+          customer: stripeCustomerId,
+        }),
+      });
 
-      const constructEventMock = vi
-        .spyOn(Stripe.webhooks, 'constructEvent')
-        .mockReturnValue(event);
-      const mockStripe = {
-        webhooks: {
-          constructEvent: constructEventMock,
-        },
-      } as unknown as Stripe;
-      const webhookPOSTWithMock = createWebhookHandler(mockStripe);
+      vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
+      const webhookPOSTWithMock = createWebhookHandler();
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -421,35 +428,35 @@ describe('Stripe API Routes', () => {
         'webhook-paid'
       );
 
-      const event = {
+      const event = makeStripeEvent({
         id: 'evt_invoice_paid',
         type: 'invoice.payment_succeeded',
         livemode: false,
-        data: {
-          object: {
-            id: 'in_paid',
-            customer: stripeCustomerId,
-            subscription: expectedSubscriptionId,
-          },
-        },
-      } as unknown as Stripe.Event;
+        dataObject: makeStripeInvoice({
+          id: 'in_paid',
+          customer: stripeCustomerId,
+          subscription: expectedSubscriptionId,
+        }),
+      });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         subscriptions: {
-          retrieve: vi.fn().mockResolvedValue({
-            id: expectedSubscriptionId,
-            customer: stripeCustomerId,
-            status: 'active',
-            cancel_at_period_end: false,
-            items: {
-              data: [
-                {
-                  price: 'price_starter',
-                },
-              ],
-            },
-            current_period_end: 1735689600,
-          }),
+          retrieve: vi.fn().mockResolvedValue(
+            makeStripeSubscription({
+              id: expectedSubscriptionId,
+              customer: stripeCustomerId,
+              status: 'active',
+              cancel_at_period_end: false,
+              items: {
+                data: [
+                  {
+                    price: { id: 'price_starter' },
+                  },
+                ],
+              },
+              current_period_end: 1735689600,
+            })
+          ),
         },
         prices: {
           retrieve: vi.fn().mockResolvedValue({
@@ -459,7 +466,7 @@ describe('Stripe API Routes', () => {
             },
           }),
         },
-      } as unknown as Stripe;
+      });
 
       const webhookPOSTWithMock = createWebhookHandler(mockStripe);
 

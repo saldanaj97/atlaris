@@ -100,7 +100,9 @@ export function makeStripeMock(partial: DeepPartial<LocalStripe> = {}): Stripe {
  * SDK's pinned typings (see src/features/billing/account-transitions.ts).
  */
 export function makeStripeSubscription(
-  partial: Partial<Stripe.Subscription> & { current_period_end?: number } = {}
+  partial: DeepPartial<Stripe.Subscription> & {
+    current_period_end?: number;
+  } = {}
 ): Stripe.Subscription & { current_period_end?: number } {
   return {
     id: partial.id ?? 'sub_test',
@@ -118,7 +120,7 @@ export function makeStripeSubscription(
  * Build a partial Stripe.Invoice object suitable for webhook test fixtures.
  */
 export function makeStripeInvoice(
-  partial: Partial<Stripe.Invoice> = {}
+  partial: DeepPartial<Stripe.Invoice> = {}
 ): Stripe.Invoice {
   return {
     id: partial.id ?? 'in_test',

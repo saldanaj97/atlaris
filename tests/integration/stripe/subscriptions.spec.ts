@@ -1,3 +1,8 @@
+import {
+  makeStripeInvoice,
+  makeStripeMock,
+  makeStripeSubscription,
+} from '@tests/fixtures/stripe-mocks';
 import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,6 +20,7 @@ import {
 } from '@/features/billing/subscriptions';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { createLogger } from '@/lib/logging/logger';
 import { ensureUser } from '../../helpers/db';
 import {
   buildStripeCustomerId,
@@ -30,12 +36,12 @@ async function createUniqueUser() {
 }
 
 function makeTransitionDeps(stripe?: Stripe): TransitionDeps {
-  const logger = {
+  const logger = Object.assign(createLogger({ test: 'subscriptions.spec' }), {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
-  } as unknown as TransitionDeps['logger'];
+  });
 
   return {
     stripe,
@@ -59,11 +65,11 @@ describe('Subscription Management', () => {
         id: expectedCustomerId,
       });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         customers: {
           create: createStripeCustomer,
         },
-      } as unknown as Stripe;
+      });
 
       const customerId = await createCustomer(
         userId,
@@ -99,11 +105,11 @@ describe('Subscription Management', () => {
 
       const createStripeCustomer = vi.fn(); // Should not be called
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         customers: {
           create: createStripeCustomer,
         },
-      } as unknown as Stripe;
+      });
 
       const customerId = await createCustomer(
         userId,
@@ -159,7 +165,7 @@ describe('Subscription Management', () => {
         'sync-starter'
       );
 
-      const mockSubscription = {
+      const mockSubscription = makeStripeSubscription({
         id: expectedSubscriptionId,
         customer: stripeCustomerId,
         status: 'active',
@@ -169,19 +175,14 @@ describe('Subscription Management', () => {
             {
               price: {
                 id: 'price_starter',
-                product: {
-                  metadata: {
-                    tier: 'starter',
-                  },
-                },
-              },
+              } as Stripe.Price,
             },
           ],
         },
         current_period_end: 1735689600, // 2025-01-01 00:00:00 UTC
-      } as unknown as Stripe.Subscription;
+      });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         prices: {
           retrieve: vi.fn().mockResolvedValue({
             id: 'price_starter',
@@ -190,7 +191,7 @@ describe('Subscription Management', () => {
             },
           }),
         },
-      } as unknown as Stripe;
+      });
 
       await applySubscriptionSync(
         mockSubscription,
@@ -219,7 +220,7 @@ describe('Subscription Management', () => {
         'sync-canceled'
       );
 
-      const mockSubscription = {
+      const mockSubscription = makeStripeSubscription({
         id: expectedSubscriptionId,
         customer: stripeCustomerId,
         status: 'canceled',
@@ -228,19 +229,14 @@ describe('Subscription Management', () => {
             {
               price: {
                 id: 'price_pro',
-                product: {
-                  metadata: {
-                    tier: 'pro',
-                  },
-                },
-              },
+              } as Stripe.Price,
             },
           ],
         },
         current_period_end: 1735689600,
-      } as unknown as Stripe.Subscription;
+      });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         prices: {
           retrieve: vi.fn().mockResolvedValue({
             id: 'price_pro',
@@ -249,7 +245,7 @@ describe('Subscription Management', () => {
             },
           }),
         },
-      } as unknown as Stripe;
+      });
 
       await applySubscriptionSync(
         mockSubscription,
@@ -276,7 +272,7 @@ describe('Subscription Management', () => {
         'past-due'
       );
 
-      const mockSubscription = {
+      const mockSubscription = makeStripeSubscription({
         id: expectedSubscriptionId,
         customer: stripeCustomerId,
         status: 'past_due',
@@ -285,19 +281,14 @@ describe('Subscription Management', () => {
             {
               price: {
                 id: 'price_starter',
-                product: {
-                  metadata: {
-                    tier: 'starter',
-                  },
-                },
-              },
+              } as Stripe.Price,
             },
           ],
         },
         current_period_end: 1735689600,
-      } as unknown as Stripe.Subscription;
+      });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         prices: {
           retrieve: vi.fn().mockResolvedValue({
             id: 'price_starter',
@@ -306,7 +297,7 @@ describe('Subscription Management', () => {
             },
           }),
         },
-      } as unknown as Stripe;
+      });
 
       await applySubscriptionSync(
         mockSubscription,
@@ -331,7 +322,7 @@ describe('Subscription Management', () => {
         'no-tier'
       );
 
-      const mockSubscription = {
+      const mockSubscription = makeStripeSubscription({
         id: expectedSubscriptionId,
         customer: stripeCustomerId,
         status: 'active',
@@ -340,17 +331,14 @@ describe('Subscription Management', () => {
             {
               price: {
                 id: 'price_no_metadata',
-                product: {
-                  metadata: {}, // No tier metadata
-                },
-              },
+              } as Stripe.Price,
             },
           ],
         },
         current_period_end: 1735689600,
-      } as unknown as Stripe.Subscription;
+      });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         prices: {
           retrieve: vi.fn().mockResolvedValue({
             id: 'price_no_metadata',
@@ -359,7 +347,7 @@ describe('Subscription Management', () => {
             },
           }),
         },
-      } as unknown as Stripe;
+      });
 
       await applySubscriptionSync(
         mockSubscription,
@@ -373,7 +361,7 @@ describe('Subscription Management', () => {
     });
 
     it('does not crash if user not found for customer ID', async () => {
-      const mockSubscription = {
+      const mockSubscription = makeStripeSubscription({
         id: 'sub_no_user',
         customer: 'cus_nonexistent',
         status: 'active',
@@ -386,13 +374,13 @@ describe('Subscription Management', () => {
             },
           ],
         },
-      } as unknown as Stripe.Subscription;
+      });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         prices: {
           retrieve: vi.fn(),
         },
-      } as unknown as Stripe;
+      });
 
       // Should log error but not throw
       await expect(
@@ -416,7 +404,7 @@ describe('Subscription Management', () => {
         })
         .where(sql`id = ${userId}`);
 
-      const mockSubscription = {
+      const mockSubscription = makeStripeSubscription({
         id: buildStripeSubscriptionId(userId, 'price-lookup-failure'),
         customer: stripeCustomerId,
         status: 'active',
@@ -431,15 +419,15 @@ describe('Subscription Management', () => {
           ],
         },
         current_period_end: 1735689600,
-      } as unknown as Stripe.Subscription;
+      });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         prices: {
           retrieve: vi
             .fn()
             .mockRejectedValue(new Error('Stripe price lookup failed')),
         },
-      } as unknown as Stripe;
+      });
 
       await expect(
         applySubscriptionSync(mockSubscription, makeTransitionDeps(mockStripe))
@@ -466,10 +454,10 @@ describe('Subscription Management', () => {
           subscriptionPeriodEnd: new Date('2026-06-01T00:00:00.000Z'),
         });
 
-      const subscription = {
+      const subscription = makeStripeSubscription({
         id: stripeSubscriptionId,
         customer: stripeCustomerId,
-      } as unknown as Stripe.Subscription;
+      });
 
       await applySubscriptionDeleted(subscription, makeTransitionDeps());
 
@@ -493,12 +481,12 @@ describe('Subscription Management', () => {
           subscriptionPeriodEnd: retainedUntil,
         });
 
-      const subscription = {
+      const subscription = makeStripeSubscription({
         id: stripeSubscriptionId,
         customer: stripeCustomerId,
         cancel_at_period_end: true,
         current_period_end: currentPeriodEnd,
-      } as unknown as Stripe.Subscription;
+      });
 
       await applySubscriptionDeleted(subscription, makeTransitionDeps());
 
@@ -520,10 +508,10 @@ describe('Subscription Management', () => {
         subscriptionStatus: 'active',
       });
 
-      const invoice = {
+      const invoice = makeStripeInvoice({
         id: 'in_payment_failed',
         customer: stripeCustomerId,
-      } as unknown as Stripe.Invoice;
+      });
 
       await applyPaymentFailed(invoice, makeTransitionDeps());
 
@@ -540,10 +528,10 @@ describe('Subscription Management', () => {
         subscriptionStatus: 'active',
       });
 
-      const invoice = {
+      const invoice = makeStripeInvoice({
         id: 'in_payment_failed_free_tier',
         customer: stripeCustomerId,
-      } as unknown as Stripe.Invoice;
+      });
 
       await applyPaymentFailed(invoice, makeTransitionDeps());
 
@@ -555,10 +543,10 @@ describe('Subscription Management', () => {
     });
 
     it('applySubscriptionDeleted resolves when no mapped user exists', async () => {
-      const subscription = {
+      const subscription = makeStripeSubscription({
         id: 'sub_no_user',
         customer: 'cus_nonexistent',
-      } as unknown as Stripe.Subscription;
+      });
 
       await expect(
         applySubscriptionDeleted(subscription, makeTransitionDeps())
@@ -566,10 +554,10 @@ describe('Subscription Management', () => {
     });
 
     it('applyPaymentFailed resolves when no mapped user exists', async () => {
-      const invoice = {
+      const invoice = makeStripeInvoice({
         id: 'in_no_user',
         customer: 'cus_nonexistent',
-      } as unknown as Stripe.Invoice;
+      });
 
       await expect(
         applyPaymentFailed(invoice, makeTransitionDeps())
@@ -590,11 +578,11 @@ describe('Subscription Management', () => {
         cancel_at_period_end: true,
       });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         subscriptions: {
           update: updateSubscription,
         },
-      } as unknown as Stripe;
+      });
 
       await cancelSubscription(userId, mockStripe);
 
@@ -618,13 +606,13 @@ describe('Subscription Management', () => {
         url: 'https://billing.stripe.com/session_abc123',
       });
 
-      const mockStripe = {
+      const mockStripe = makeStripeMock({
         billingPortal: {
           sessions: {
             create: createPortalSession,
           },
         },
-      } as unknown as Stripe;
+      });
 
       const testCustomerId = buildStripeCustomerId('portal-customer', 'portal');
       const url = await getCustomerPortalUrl(

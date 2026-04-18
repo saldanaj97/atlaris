@@ -1,5 +1,5 @@
+import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
 import { sql } from 'drizzle-orm';
-import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '@/../tests/helpers/auth';
 import {
@@ -51,7 +51,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       url: 'https://checkout.stripe.com/pay/cs_test123',
     });
 
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: createCustomer,
       },
@@ -60,7 +60,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           create: createCheckoutSession,
         },
       },
-    } as unknown as Stripe;
+    });
 
     const POST = createCreateCheckoutHandler(mockStripe);
 
@@ -132,7 +132,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       url: 'https://checkout.stripe.com/pay/cs_test456',
     });
 
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: createCustomer,
       },
@@ -141,7 +141,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           create: createCheckoutSession,
         },
       },
-    } as unknown as Stripe;
+    });
 
     const handlerPOST = createCreateCheckoutHandler(mockStripe);
 
@@ -193,7 +193,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       url: 'https://checkout.stripe.com/pay/cs_default123',
     });
 
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: createCustomer,
       },
@@ -202,7 +202,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           create: createCheckoutSession,
         },
       },
-    } as unknown as Stripe;
+    });
 
     const handlerPOST = createCreateCheckoutHandler(mockStripe);
 
@@ -323,7 +323,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     setTestUser('user_invalid_catalog_price');
 
     const createCheckoutSession = vi.fn();
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: vi.fn().mockResolvedValue({
           id: 'cus_invalid_catalog',
@@ -334,7 +334,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           create: createCheckoutSession,
         },
       },
-    } as unknown as Stripe;
+    });
 
     const handlerPOST = createCreateCheckoutHandler(mockStripe);
 
@@ -421,11 +421,11 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       .fn()
       .mockRejectedValue(new Error('Stripe API error: Invalid request'));
 
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: createCustomer,
       },
-    } as unknown as Stripe;
+    });
 
     const handlerPOST = createCreateCheckoutHandler(mockStripe);
 
