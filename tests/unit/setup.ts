@@ -10,8 +10,11 @@ if (!process.env.NODE_ENV) {
 
 // Prevent unit tests from importing a real DB client.
 // This avoids requiring DATABASE_URL in unit test runs and catches accidental DB usage.
-vi.mock('@/lib/db/service-role', () => {
+vi.mock('@/lib/db/service-role', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/db/service-role')>();
+
   return {
+    ...actual,
     client: { end: vi.fn() },
     db: {
       select: vi.fn(),

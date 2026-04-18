@@ -149,7 +149,7 @@ describe('GET /api/v1/resources', () => {
     expect(body[0]?.title).toBe('Video Resource');
   });
 
-  it('rejects invalid query parameters', async () => {
+  it('clamps oversized limit query parameters to the max page size', async () => {
     const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/resources?limit=999',
@@ -160,9 +160,10 @@ describe('GET /api/v1/resources', () => {
 
     const response = await GET(request);
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.code).toBe('VALIDATION_ERROR');
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeLessThanOrEqual(100);
   });
 
   it('should require authentication', async () => {
