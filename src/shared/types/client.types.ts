@@ -8,17 +8,13 @@ import type {
   ProgressStatus,
 } from '@/shared/types/db.types';
 
+export type { FailureClassification } from '@/shared/types/failure-classification.types';
+
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
 export type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
 export type AttemptStatus = 'success' | 'failure' | 'in_progress';
-
-export type FailureClassification =
-  | 'validation'
-  | 'conflict'
-  | 'provider_error'
-  | 'rate_limit'
-  | 'timeout'
-  | 'capped';
 
 export type ClientGenerationAttempt = {
   id: string;

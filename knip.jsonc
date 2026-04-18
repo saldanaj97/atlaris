@@ -30,7 +30,16 @@
     ],
     "src/lib/db/schema/constants.ts": [
       "duplicates"
-    ]
+    ],
+    // Helpers + schemas exported as part of an internal "public surface" so
+    // future tests / consumers don't need to re-introduce inline shapes.
+    "scripts/tests/shared/cli.ts": ["types"],
+    "src/lib/api/pagination.ts": ["types"],
+    "src/lib/config/env/ai.ts": ["types"],
+    "src/shared/schemas/plan-status.ts": ["types"],
+    "tests/fixtures/stripe-mocks.ts": ["exports", "types"],
+    "tests/fixtures/db-mocks.ts": ["exports"],
+    "tests/helpers/console-spy.ts": ["files"]
   },
   "rules": {
     "files": "warn"

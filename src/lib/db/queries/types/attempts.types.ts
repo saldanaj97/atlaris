@@ -7,7 +7,7 @@ import type {
   GenerationInput,
   ProviderMetadata,
 } from '@/shared/types/ai-provider.types';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 type DbSchemaModule = typeof import('@/lib/db/schema');
 

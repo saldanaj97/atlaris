@@ -22,19 +22,11 @@ export function getPaginationDefault(field: PaginationField): number {
   return PAGINATION_DEFAULTS[field];
 }
 
-export function getPaginationMinimum(field: PaginationField): number {
-  return PAGINATION_MINIMUMS[field];
-}
-
-export function isValidPaginationValue(
+function isValidPaginationValue(
   field: PaginationField,
   value: number
 ): boolean {
   return Number.isInteger(value) && value >= PAGINATION_MINIMUMS[field];
-}
-
-export function clampPageSize(value: number): number {
-  return Math.min(value, PAGINATION_MAX_LIMIT);
 }
 
 export function assertValidPaginationOptions(
