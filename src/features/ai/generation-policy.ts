@@ -7,7 +7,7 @@ import {
 /**
  * Reads the normalized per-plan attempt cap from an injected dependency.
  */
-export type AttemptCapReader = () => number;
+type AttemptCapReader = () => number;
 
 export function createGetAttemptCap(
   readAttemptCap: AttemptCapReader = getConfiguredAttemptCap

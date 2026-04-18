@@ -1,4 +1,4 @@
-export type ModelResolutionErrorCode = 'PROVIDER_INIT_FAILED';
+type ModelResolutionErrorCode = 'PROVIDER_INIT_FAILED';
 
 type ModelResolutionErrorOptions = {
   code?: ModelResolutionErrorCode;

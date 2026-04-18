@@ -10,11 +10,11 @@ import {
 } from '@/lib/date/format-local-ymd';
 import { normalizeThrown } from '@/lib/errors';
 
-export type ManualCreatePayloadResult =
+type ManualCreatePayloadResult =
   | { ok: true; payload: CreateLearningPlanInput }
   | { ok: false; error: ManualCreatePayloadError };
 
-export type ManualCreatePayloadError = {
+type ManualCreatePayloadError = {
   message: string;
   name: string;
   stack?: string;
@@ -39,7 +39,7 @@ function normalizeManualCreatePayloadError(
   };
 }
 
-export function convertPlanFormToOnboardingValues(
+function convertPlanFormToOnboardingValues(
   data: PlanFormData
 ): OnboardingFormValues {
   return {

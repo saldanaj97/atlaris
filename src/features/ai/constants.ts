@@ -27,6 +27,3 @@ export const PDF_SECTION_TITLE_MAX_CHARS = 200;
 
 /** Default failure classification when error type is unrecognized. */
 export const DEFAULT_CLASSIFICATION = 'provider_error' as const;
-
-/** Retry backoff range (ms) for p-retry on transient provider failures. */
-export const RETRY_BACKOFF_MS = { min: 300, max: 700 } as const;

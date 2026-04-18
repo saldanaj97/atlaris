@@ -54,53 +54,10 @@ export function emitSanitizedFailureEvent({
   });
 }
 
-interface EmitCancelledEventParams {
-  emit: SessionEmitFn;
-  error: GenerationError | ErrorLike;
-  planId: string;
-  userId: string;
-  getCorrelationId?: typeof getCorrelationId;
-}
-
-/**
- * Emits a dedicated `cancelled` event when generation is aborted/cancelled.
- * This intentionally does not emit a terminal `error` event.
- */
-export function emitCancelledEvent({
-  emit,
-  error,
-  planId,
-  userId,
-  getCorrelationId: getCorrelationIdOverride,
-}: EmitCancelledEventParams): void {
-  const requestId = (getCorrelationIdOverride ?? getCorrelationId)();
-  const cancellationReason =
-    error instanceof Error
-      ? error.message || error.name
-      : typeof error === 'string'
-        ? error
-        : undefined;
-  logger.info(
-    { planId, userId, cancellationReason },
-    'Generation stream cancelled'
-  );
-
-  emit({
-    type: 'cancelled',
-    data: {
-      planId,
-      classification: 'cancelled',
-      retryable: true,
-      message: 'Plan generation was cancelled.',
-      ...(requestId ? { requestId } : {}),
-    },
-  });
-}
-
 /**
  * Emits module summaries and progress events for each parsed module.
  */
-export function emitModuleSummaries(
+function emitModuleSummaries(
   modules: ParsedModule[],
   planId: string,
   emit: SessionEmitFn
@@ -164,7 +121,7 @@ export function buildPlanStartEvent({
   };
 }
 
-export interface LifecycleGenerationStreamParams {
+interface LifecycleGenerationStreamParams {
   reqSignal: AbortSignal;
   streamSignal: AbortSignal;
   planId: string;

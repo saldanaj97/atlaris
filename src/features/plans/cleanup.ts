@@ -16,7 +16,7 @@ export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
  * Rows are locked inside a transaction before failure transitions so cleanup
  * does not race concurrent generation state updates.
  */
-export type CleanupStuckPlansDependencies = {
+type CleanupStuckPlansDependencies = {
   markFailure?: typeof markPlanGenerationFailure;
 };
 

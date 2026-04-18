@@ -19,7 +19,7 @@ import {
   JOB_RETRY_MAX_DELAY_SECONDS,
 } from '@/shared/constants/retry-policy';
 
-export interface RetryDecision {
+interface RetryDecision {
   shouldRetry: boolean;
   delay?: number; // ms
   reason: string;

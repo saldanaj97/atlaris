@@ -1,26 +1,21 @@
 import { isRetryableClassification } from '@/features/ai/failures';
-import type {
-  ErrorLike,
-  GenerationError,
-} from '@/features/ai/streaming/error-sanitizer';
 import type { GenerationResult } from '@/features/ai/types/orchestrator.types';
 import { safeNormalizeUsage } from '@/features/ai/usage';
 import { incrementUsage } from '@/features/billing/usage-metrics';
 import {
   markPlanGenerationFailure,
-  markPlanGenerationSuccess,
+  type markPlanGenerationSuccess,
 } from '@/features/plans/lifecycle/plan-operations';
 import type { getCorrelationId } from '@/lib/api/context';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
 import {
-  emitModuleSummaries,
   emitSanitizedFailureEvent,
   type SessionEmitFn,
 } from './stream-emitters';
 
-export interface StreamingHelperDependencies {
+interface StreamingHelperDependencies {
   markPlanGenerationFailure?: typeof markPlanGenerationFailure;
   markPlanGenerationSuccess?: typeof markPlanGenerationSuccess;
   recordUsage?: typeof recordUsage;
@@ -34,51 +29,6 @@ interface GenerationContext extends StreamingHelperDependencies {
   userId: string;
   dbClient: AttemptsDbClient;
   emit: SessionEmitFn;
-}
-
-type SuccessContext = GenerationContext;
-
-/**
- * Handle a successful plan generation result.
- * Emits module summaries, marks the plan generation as successful, records usage,
- * and emits a final 'complete' event with counts and duration.
- *
- * @param result - Generation result (status 'success')
- * @param ctx - Context containing planId, userId, dbClient, and emit function
- */
-export async function handleSuccessfulGeneration(
-  result: Extract<GenerationResult, { status: 'success' }>,
-  ctx: SuccessContext
-): Promise<void> {
-  const { planId, userId, emit, dbClient } = ctx;
-  const markSuccess =
-    ctx.markPlanGenerationSuccess ?? markPlanGenerationSuccess;
-  const modules = result.modules;
-  const modulesCount = modules.length;
-  const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
-  const totalMinutes = modules.reduce(
-    (sum, module) => sum + module.estimatedMinutes,
-    0
-  );
-
-  emitModuleSummaries(modules, planId, emit);
-
-  await markSuccess(planId, dbClient);
-  await tryRecordUsage(userId, result, dbClient, {
-    recordUsage: ctx.recordUsage,
-    incrementUsage: ctx.incrementUsage,
-    canonicalUsageToRecordParams: ctx.canonicalUsageToRecordParams,
-  });
-
-  emit({
-    type: 'complete',
-    data: {
-      planId,
-      modulesCount,
-      tasksCount,
-      totalMinutes,
-    },
-  });
 }
 
 /**
@@ -162,5 +112,3 @@ export async function tryRecordUsage(
     );
   }
 }
-
-export type { ErrorLike, GenerationError };
