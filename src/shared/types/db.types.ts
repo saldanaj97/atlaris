@@ -1,8 +1,5 @@
 import type { InferSelectModel } from 'drizzle-orm';
-import type {
-  ModuleWithTasks,
-  TaskResourceWithResource,
-} from '@/lib/db/queries/types/modules.types';
+import type { ModuleWithTasks } from '@/lib/db/queries/types/modules.types';
 
 type DbEnumsModule = typeof import('@/lib/db/enums');
 type DbSchemaModule = typeof import('@/lib/db/schema');
@@ -16,19 +13,13 @@ export type ProgressStatus =
 export type GenerationStatus =
   DbEnumsModule['generationStatus']['enumValues'][number];
 
-export type User = InferSelectModel<DbSchemaModule['users']>;
 export type LearningPlan = InferSelectModel<DbSchemaModule['learningPlans']>;
 export type Module = InferSelectModel<DbSchemaModule['modules']>;
 export type Task = InferSelectModel<DbSchemaModule['tasks']>;
-export type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
 export type TaskProgress = InferSelectModel<DbSchemaModule['taskProgress']>;
 export type GenerationAttempt = InferSelectModel<
   DbSchemaModule['generationAttempts']
 >;
-
-export type TaskWithResources = Task & {
-  resources: TaskResourceWithResource[];
-};
 
 export type LearningPlanWithModules = LearningPlan & {
   modules: ModuleWithTasks[];

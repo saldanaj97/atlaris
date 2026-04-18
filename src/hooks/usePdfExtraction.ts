@@ -16,9 +16,9 @@ import { normalizeApiErrorResponse } from '@/lib/api/error-response';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 
-export const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
+const PDF_EXTRACTION_TIMEOUT_MS = 45_000;
 
-export type PdfExtractionExtractionPayload = {
+type PdfExtractionExtractionPayload = {
   mainTopic: string;
   sections: ExtractionSection[];
   pageCount: number;
@@ -26,17 +26,17 @@ export type PdfExtractionExtractionPayload = {
   truncation?: TruncationData;
 };
 
-export type PdfExtractionSuccess = {
+type PdfExtractionSuccess = {
   extraction: PdfExtractionExtractionPayload;
   proof: ExtractionProofData;
 };
 
-export type PdfExtractionTruncationNotice = {
+type PdfExtractionTruncationNotice = {
   truncated: boolean;
   reasonCodes: string[];
 };
 
-export type PdfExtractionState =
+type PdfExtractionState =
   | { phase: 'idle' }
   | { phase: 'uploading' }
   | {
@@ -88,7 +88,7 @@ function handleExtractionApiError(params: {
   };
 }
 
-export function buildPdfTruncationNotice(
+function buildPdfTruncationNotice(
   truncation: TruncationData | undefined
 ): PdfExtractionTruncationNotice | undefined {
   if (!truncation?.truncated) {
@@ -100,7 +100,7 @@ export function buildPdfTruncationNotice(
   };
 }
 
-export interface UsePdfExtractionResult {
+interface UsePdfExtractionResult {
   state: PdfExtractionState;
   /** Returns false when the file is not a PDF (caller may toast). */
   startExtraction: (file: File) => boolean;
@@ -109,7 +109,7 @@ export interface UsePdfExtractionResult {
   resetToIdle: () => void;
 }
 
-export type UsePdfExtractionOptions = {
+type UsePdfExtractionOptions = {
   /** Override for tests; production should omit. */
   extractionTimeoutMs?: number;
 };

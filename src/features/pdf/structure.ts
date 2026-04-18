@@ -19,7 +19,7 @@ const UTF8_ENCODER = new TextEncoder();
 /** Max iterations for the byte-cap trim loop to avoid runaway trimming. */
 const MAX_TRIM_ITERATIONS = 20;
 
-export const DEFAULT_EXTRACTION_RESPONSE_CAPS: ExtractionResponseCapConfig = {
+const DEFAULT_EXTRACTION_RESPONSE_CAPS: ExtractionResponseCapConfig = {
   maxBytes: 120_000,
   maxTextChars: 40_000,
   maxSections: 20,

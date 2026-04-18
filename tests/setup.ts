@@ -1,6 +1,9 @@
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
-import { client, isClientInitialized } from '@/lib/db/service-role';
+import {
+  isClientInitialized,
+  resetServiceRoleClientForTests,
+} from '@/lib/db/service-role';
 
 // Log test configuration for debugging
 beforeAll(() => {
@@ -15,6 +18,6 @@ afterEach(() => {
 
 afterAll(async () => {
   if (isClientInitialized()) {
-    await client.end();
+    await resetServiceRoleClientForTests();
   }
 });

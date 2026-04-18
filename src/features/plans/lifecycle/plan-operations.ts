@@ -32,7 +32,7 @@ type PlanDurationCapResult = {
   upgradeUrl?: string;
 };
 
-export type PlanWriteClient = Pick<DbClient, 'update'>;
+type PlanWriteClient = Pick<DbClient, 'update'>;
 
 /**
  * Check if user can create more plans

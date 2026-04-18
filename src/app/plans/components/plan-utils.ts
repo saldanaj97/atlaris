@@ -4,9 +4,6 @@ import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/s
 import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 import type { PlanSummary } from '@/shared/types/db.types';
 
-export const ALL_TASKS_COMPLETED_LABEL = 'All tasks completed';
-export const CONTINUE_LEARNING_LABEL = 'Continue learning';
-
 type DateInput = Date | string | null | undefined;
 
 /**
@@ -152,8 +149,8 @@ export function getNextTaskName(summary: PlanSummary): string {
   }
 
   if (deriveCanonicalPlanSummaryStatus(summary) === 'completed') {
-    return ALL_TASKS_COMPLETED_LABEL;
+    return 'All tasks completed';
   }
 
-  return CONTINUE_LEARNING_LABEL;
+  return 'Continue learning';
 }

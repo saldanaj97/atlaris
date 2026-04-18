@@ -17,7 +17,7 @@ const SCHEDULED_EVENT_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
   day: 'numeric',
 });
 
-export type ValidDateInput = Date | string | null | undefined;
+type ValidDateInput = Date | string | null | undefined;
 
 export function toValidDate(value: ValidDateInput): Date | null {
   if (!value) return null;
@@ -25,7 +25,7 @@ export function toValidDate(value: ValidDateInput): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-export type RelativePastOptions = {
+type RelativePastOptions = {
   referenceDate: ValidDateInput;
   style: 'compact' | 'verbose';
   invalidLabel?: string;

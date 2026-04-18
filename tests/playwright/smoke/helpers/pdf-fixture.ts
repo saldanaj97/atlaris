@@ -31,7 +31,7 @@ function escapePdfString(text: string): string {
   return escaped;
 }
 
-export function buildMinimalPdfBuffer(text: string, pageCount = 1): Buffer {
+function buildMinimalPdfBuffer(text: string, pageCount = 1): Buffer {
   if (pageCount < 1) {
     throw new Error('buildMinimalPdfBuffer requires pageCount >= 1');
   }

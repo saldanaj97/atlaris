@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   acquireGlobalPdfExtractionSlot,
-  checkPdfExtractionThrottle,
+  acquirePdfExtractionSlot,
   checkPdfSizeLimit,
   type GlobalExtractionState,
   validatePdfUpload,
@@ -14,7 +14,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
   describe('Extraction throttling', () => {
     it('allows first extraction', () => {
       const mockStore = new Map<string, number[]>();
-      const result = checkPdfExtractionThrottle('user-123', {
+      const result = acquirePdfExtractionSlot('user-123', {
         store: mockStore,
       });
 
@@ -28,12 +28,12 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
       // Make 10 extractions
       for (let i = 0; i < 10; i++) {
-        const result = checkPdfExtractionThrottle(userId, { store: mockStore });
+        const result = acquirePdfExtractionSlot(userId, { store: mockStore });
         expect(result.allowed).toBe(true);
       }
 
       // 11th should be blocked
-      const result = checkPdfExtractionThrottle(userId, { store: mockStore });
+      const result = acquirePdfExtractionSlot(userId, { store: mockStore });
       expect(result.allowed).toBe(false);
       expect(result.retryAfterMs).toBeGreaterThan(0);
     });
@@ -45,17 +45,17 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
       // Max out user1
       for (let i = 0; i < 10; i++) {
-        checkPdfExtractionThrottle(user1, { store: mockStore });
+        acquirePdfExtractionSlot(user1, { store: mockStore });
       }
 
       // User1 should be blocked
       expect(
-        checkPdfExtractionThrottle(user1, { store: mockStore }).allowed
+        acquirePdfExtractionSlot(user1, { store: mockStore }).allowed
       ).toBe(false);
 
       // User2 should still be allowed
       expect(
-        checkPdfExtractionThrottle(user2, { store: mockStore }).allowed
+        acquirePdfExtractionSlot(user2, { store: mockStore }).allowed
       ).toBe(true);
     });
 
@@ -65,14 +65,14 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
       let now = 1_700_000_000_000;
 
       for (let i = 0; i < 10; i++) {
-        const result = checkPdfExtractionThrottle(userId, {
+        const result = acquirePdfExtractionSlot(userId, {
           store: mockStore,
           now: () => now,
         });
         expect(result.allowed).toBe(true);
       }
 
-      const blocked = checkPdfExtractionThrottle(userId, {
+      const blocked = acquirePdfExtractionSlot(userId, {
         store: mockStore,
         now: () => now,
       });
@@ -80,7 +80,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
       expect(blocked.retryAfterMs).toBeGreaterThan(0);
 
       now += 10 * 60 * 1000 + 1;
-      const allowedAgain = checkPdfExtractionThrottle(userId, {
+      const allowedAgain = acquirePdfExtractionSlot(userId, {
         store: mockStore,
         now: () => now,
       });
@@ -95,13 +95,13 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
       // Fill the window
       for (let i = 0; i < 10; i++) {
-        checkPdfExtractionThrottle(userId, {
+        acquirePdfExtractionSlot(userId, {
           store: mockStore,
           now: () => now,
         });
       }
 
-      const blocked = checkPdfExtractionThrottle(userId, {
+      const blocked = acquirePdfExtractionSlot(userId, {
         store: mockStore,
         now: () => now,
       });
@@ -110,7 +110,7 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
       expect(blocked.retryAfterMs).toBeGreaterThan(0);
 
       now += 5 * 60 * 1000;
-      const partiallyExpired = checkPdfExtractionThrottle(userId, {
+      const partiallyExpired = acquirePdfExtractionSlot(userId, {
         store: mockStore,
         now: () => now,
       });
@@ -121,21 +121,15 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
       );
     });
 
-    it('cannot bypass user-based throttle with spoofed IP headers', () => {
+    it('keeps throttling keyed to user id', () => {
       const userId = 'user-spoof-test';
       const mockStore = new Map<string, number[]>();
 
       for (let i = 0; i < 10; i++) {
-        checkPdfExtractionThrottle(userId, { store: mockStore });
+        acquirePdfExtractionSlot(userId, { store: mockStore });
       }
 
-      const blocked = checkPdfExtractionThrottle(userId, {
-        store: mockStore,
-        headers: {
-          'x-forwarded-for': '1.2.3.4',
-          'x-real-ip': '1.2.3.4',
-        },
-      });
+      const blocked = acquirePdfExtractionSlot(userId, { store: mockStore });
       expect(blocked.allowed).toBe(false);
     });
   });
@@ -318,6 +312,16 @@ describe('PDF DoS hardening (Task 4 - Phase 2)', () => {
 
       expect(freeResult.allowed).toBe(false);
       expect(proResult.allowed).toBe(true);
+    });
+
+    it('propagates resolveTier failures without wrapping them', async () => {
+      await expect(
+        checkPdfSizeLimit('user-123', 1024, fakeDb, {
+          resolveTier: async () => {
+            throw new Error('tier lookup failed');
+          },
+        })
+      ).rejects.toThrow('tier lookup failed');
     });
   });
 

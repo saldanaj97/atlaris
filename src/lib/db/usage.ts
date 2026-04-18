@@ -1,9 +1,7 @@
-import { eq, sql } from 'drizzle-orm';
-
 import { buildModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
 import { microusdIntegerToBigint } from '@/features/ai/provider-cost-microusd';
 import { getDb } from '@/lib/db/runtime';
-import { aiUsageEvents, users } from '@/lib/db/schema';
+import { aiUsageEvents } from '@/lib/db/schema';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { ModelPricingSnapshotV1 } from '@/shared/types/model-pricing-snapshot.types';
 
@@ -67,24 +65,4 @@ export async function recordUsage(
     modelPricingSnapshot: params.modelPricingSnapshot ?? null,
     requestId: params.requestId ?? null,
   });
-}
-
-export async function incrementExportUsage(
-  userId: string,
-  dbClient: DbClient = getDb()
-): Promise<void> {
-  const updated = await dbClient
-    .update(users)
-    .set({
-      monthlyExportCount: sql`${users.monthlyExportCount} + 1`,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, userId))
-    .returning({ id: users.id });
-
-  if (!updated.length) {
-    throw new Error(
-      `Failed to increment export usage: user ${userId} not found`
-    );
-  }
 }

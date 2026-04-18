@@ -16,7 +16,6 @@
 import { execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
@@ -26,15 +25,22 @@ import {
   bootstrapDatabase,
   grantRlsPermissions,
 } from '@tests/helpers/db/bootstrap';
+import { applyRuntimeDatabaseFixups } from '@tests/helpers/db/runtime-fixups';
+import { resetServiceRoleClientForTests } from '@/lib/db/service-role';
+
+import {
+  buildTestDbRuntimeState,
+  createAdminDatabaseUrl,
+  createDatabaseUrl,
+  ensureDatabaseExists,
+  ensureTemplateDatabase,
+  getBaseDbName,
+  getTemplateDbName,
+  TESTCONTAINERS_ENV_FILE,
+} from './db-provisioning';
 
 let container: StartedPostgreSqlContainer | null = null;
 const testDbPassword = randomUUID();
-
-/**
- * Path to the temp file used to pass the container connection URL
- * from globalSetup (main process) to test workers.
- */
-const TC_ENV_FILE = join(__dirname, '..', '.testcontainers-env.json');
 
 /**
  * Apply migrations so DB policy SQL matches the migration chain (e.g. ALTER POLICY
@@ -63,44 +69,53 @@ export async function setup(): Promise<void> {
   console.log('[Testcontainers] Starting PostgreSQL 17 container…');
 
   container = await new PostgreSqlContainer('postgres:17-alpine')
-    .withDatabase('atlaris_test')
+    .withDatabase('atlaris_runtime')
     .withUsername('postgres')
     .withPassword(testDbPassword)
     .withExposedPorts(5432)
     .start();
 
-  const connectionUrl = container.getConnectionUri();
+  const containerUrl = container.getConnectionUri();
+  const adminConnectionUrl = createAdminDatabaseUrl(containerUrl);
+  const baseDbName = getBaseDbName();
+  const templateDbName = getTemplateDbName();
+  const baseConnectionUrl = createDatabaseUrl(containerUrl, baseDbName);
 
   console.log('[Testcontainers] Container started, bootstrapping database…');
 
-  await bootstrapDatabase(connectionUrl);
+  await ensureDatabaseExists(adminConnectionUrl, baseDbName);
+
+  process.env.DATABASE_URL = baseConnectionUrl;
+  process.env.DATABASE_URL_NON_POOLING = baseConnectionUrl;
+  process.env.DATABASE_URL_UNPOOLED = baseConnectionUrl;
+  process.env.ALLOW_DB_TRUNCATE = 'true';
+
+  await bootstrapDatabase(baseConnectionUrl);
 
   console.log('[Testcontainers] Applying migrations via pnpm db:migrate…');
 
-  applySchema(connectionUrl);
+  applySchema(baseConnectionUrl);
 
   console.log('[Testcontainers] Granting RLS permissions…');
 
-  await grantRlsPermissions(connectionUrl);
+  await grantRlsPermissions(baseConnectionUrl);
 
-  // Expose connection URL to all test workers via env vars.
-  // Vitest globalSetup env mutations are inherited by worker processes.
-  process.env.DATABASE_URL = connectionUrl;
-  process.env.DATABASE_URL_NON_POOLING = connectionUrl;
-  process.env.DATABASE_URL_UNPOOLED = connectionUrl;
-  process.env.ALLOW_DB_TRUNCATE = 'true';
+  console.log('[Testcontainers] Applying one-time test DB fixups…');
 
-  // Write env to a temp file for cross-process propagation.
-  // setupFiles (test-env.ts) can read this when process.env wasn't inherited.
-  writeFileSync(
-    TC_ENV_FILE,
-    JSON.stringify({
-      DATABASE_URL: connectionUrl,
-      DATABASE_URL_NON_POOLING: connectionUrl,
-      DATABASE_URL_UNPOOLED: connectionUrl,
-      ALLOW_DB_TRUNCATE: 'true',
-    })
-  );
+  await applyRuntimeDatabaseFixups();
+  await resetServiceRoleClientForTests();
+
+  console.log('[Testcontainers] Creating template database…');
+
+  await ensureTemplateDatabase({
+    adminConnectionUrl,
+    baseDbName,
+    templateDbName,
+  });
+
+  // setupFiles (test-env.ts) read this metadata and derive worker-specific URLs.
+  const runtimeState = buildTestDbRuntimeState(containerUrl);
+  writeFileSync(TESTCONTAINERS_ENV_FILE, JSON.stringify(runtimeState));
 
   console.log('[Testcontainers] Ready ✓');
 }
@@ -108,7 +123,7 @@ export async function setup(): Promise<void> {
 export async function teardown(): Promise<void> {
   // Clean up the temp env file
   try {
-    unlinkSync(TC_ENV_FILE);
+    unlinkSync(TESTCONTAINERS_ENV_FILE);
   } catch {
     // File may not exist if setup was skipped
   }

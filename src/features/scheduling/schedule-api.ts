@@ -2,13 +2,16 @@ import { format } from 'date-fns';
 import { and, asc, eq } from 'drizzle-orm';
 import { distributeTasksToSessions } from '@/features/scheduling/distribute';
 import { computeInputsHash } from '@/features/scheduling/hash';
-import type { ScheduleInputs, ScheduleJson } from '@/features/scheduling/types';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
 } from '@/lib/db/queries/schedules';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
+import type {
+  ScheduleInputs,
+  ScheduleJson,
+} from '@/shared/types/scheduling.types';
 
 interface GetPlanScheduleParams {
   planId: string;
@@ -34,7 +37,7 @@ export function resolveScheduleTimezone(
   return DEFAULT_SCHEDULE_TIMEZONE;
 }
 
-export const SCHEDULE_FETCH_ERROR_CODE = {
+const SCHEDULE_FETCH_ERROR_CODE = {
   PLAN_NOT_FOUND_OR_ACCESS_DENIED: 'PLAN_NOT_FOUND_OR_ACCESS_DENIED',
   INVALID_WEEKLY_HOURS: 'INVALID_WEEKLY_HOURS',
   SCHEDULE_GENERATION_FAILED: 'SCHEDULE_GENERATION_FAILED',
@@ -43,7 +46,7 @@ export const SCHEDULE_FETCH_ERROR_CODE = {
 type ScheduleFetchErrorCode =
   (typeof SCHEDULE_FETCH_ERROR_CODE)[keyof typeof SCHEDULE_FETCH_ERROR_CODE];
 
-export class ScheduleFetchError extends Error {
+class ScheduleFetchError extends Error {
   readonly code: ScheduleFetchErrorCode;
 
   constructor(
@@ -156,6 +159,7 @@ export async function getPlanSchedule(
       estimatedMinutes: task.estimatedMinutes,
       order: idx + 1,
       moduleId: task.moduleId,
+      moduleTitle: task.moduleTitle,
     })),
     startDate: plan.startDate ?? format(plan.createdAt, 'yyyy-MM-dd'),
     deadline: plan.deadlineDate,

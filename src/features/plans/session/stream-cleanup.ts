@@ -20,7 +20,7 @@ function maybeExtractCause(value: unknown): ErrorLike['cause'] | undefined {
   return undefined;
 }
 
-export type SafeMarkPlanFailedDeps = {
+type SafeMarkPlanFailedDeps = {
   markPlanGenerationFailure?: typeof markPlanGenerationFailure;
   logger?: Pick<typeof logger, 'error'>;
 };

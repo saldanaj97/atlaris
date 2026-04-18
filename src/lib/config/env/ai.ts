@@ -24,7 +24,7 @@ const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 /**
  * Mock-provider-specific env flags used by AI generation tests and local flows.
  */
-export interface AiMockEnv {
+interface AiMockEnv {
   readonly delayMs: number | undefined;
   readonly failureRate: number | undefined;
 }
@@ -32,7 +32,7 @@ export interface AiMockEnv {
 /**
  * Core AI env facets used by provider selection and generation defaults.
  */
-export interface AiEnvConfig {
+interface AiEnvConfig {
   readonly provider: string | undefined;
   readonly useMock: boolean | undefined;
   readonly mockSeed: number | undefined;
@@ -44,7 +44,7 @@ export interface AiEnvConfig {
 /**
  * Timeout-related AI env values derived from the shared server env source.
  */
-export interface AiTimeoutEnv {
+interface AiTimeoutEnv {
   readonly baseMs: number;
   readonly extensionMs: number;
   readonly extensionThresholdMs: number;
@@ -53,7 +53,7 @@ export interface AiTimeoutEnv {
 /**
  * OpenRouter request configuration exposed through env accessors.
  */
-export interface OpenRouterEnv {
+interface OpenRouterEnv {
   readonly apiKey: string | undefined;
   readonly siteUrl: string | undefined;
   readonly appName: string | undefined;
@@ -63,14 +63,14 @@ export interface OpenRouterEnv {
 /**
  * Attempt-cap env values used to normalize generation retry limits.
  */
-export interface AttemptsEnv {
+interface AttemptsEnv {
   readonly cap: number;
 }
 
 /**
  * Grouped AI env facets built from a shared server env access helper.
  */
-export interface AiEnvFacets {
+interface AiEnvFacets {
   readonly aiEnv: AiEnvConfig;
   readonly aiTimeoutEnv: AiTimeoutEnv;
   readonly openRouterEnv: OpenRouterEnv;
@@ -242,7 +242,6 @@ const defaultAiFacets = createAiEnvFacets(defaultAiAccess);
 export const aiEnv = defaultAiFacets.aiEnv;
 export const aiTimeoutEnv = defaultAiFacets.aiTimeoutEnv;
 export const openRouterEnv = defaultAiFacets.openRouterEnv;
-export const attemptsEnv = defaultAiFacets.attemptsEnv;
 
 /** Per-plan generation attempt cap (env-overridable, validated >= 1). */
 export function getAttemptCap(): number {

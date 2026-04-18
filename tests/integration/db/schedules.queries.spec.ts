@@ -2,7 +2,6 @@ import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { ScheduleJson } from '@/features/scheduling/types';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
@@ -10,6 +9,7 @@ import {
 } from '@/lib/db/queries/schedules';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
 import { db } from '@/lib/db/service-role';
+import type { ScheduleJson } from '@/shared/types/scheduling.types';
 
 function buildScheduleJson(
   overrides: Partial<ScheduleJson> = {}

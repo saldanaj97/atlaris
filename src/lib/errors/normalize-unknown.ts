@@ -86,7 +86,7 @@ export function coerceUnknownToMessage(value: unknown): string {
   }
 }
 
-export type UnknownThrownCore = {
+type UnknownThrownCore = {
   primaryMessage: string;
   errorInstance: Error | undefined;
   name: string | undefined;

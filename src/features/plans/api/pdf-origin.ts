@@ -8,12 +8,12 @@ import { AppError, ForbiddenError } from '@/lib/api/errors';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 
-export type PdfProvenance = {
+type PdfProvenance = {
   extractionHash: string;
   proofVersion: 1;
 };
 
-export type PreparedPlanInput = {
+type PreparedPlanInput = {
   origin: CreateLearningPlanInput['origin'];
   extractedContext: PdfContext | null;
   topic: string;

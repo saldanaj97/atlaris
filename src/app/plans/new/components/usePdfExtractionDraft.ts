@@ -146,13 +146,13 @@ interface PreviousInitialData {
   sectionSeed: string;
 }
 
-export interface UsePdfExtractionDraftParams {
+interface UsePdfExtractionDraftParams {
   initialTopic: string;
   initialSections: ExtractedSection[];
   sectionSeed: string;
 }
 
-export interface UsePdfExtractionDraftResult {
+interface UsePdfExtractionDraftResult {
   draft: PdfExtractionPreviewState;
   canGenerate: boolean;
   onMainTopicChange: (value: string) => void;

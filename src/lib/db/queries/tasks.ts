@@ -58,7 +58,7 @@ export async function getAllTasksInPlan(
  * @returns A promise that resolves to the task progress record.
  * @throws Error if the task is not found or access is denied
  */
-export async function setTaskProgress(
+async function setTaskProgress(
   userId: string,
   taskId: string,
   status: ProgressStatus,

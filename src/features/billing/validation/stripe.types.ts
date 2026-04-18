@@ -1,19 +1,9 @@
 import type { infer as ZodInfer } from 'zod';
+import type {
+  stripePriceFieldsSchema,
+  stripeProductFieldsSchema,
+} from './stripe.schemas';
 
-type StripeValidationModule = typeof import('./stripe');
+export type StripePriceFields = ZodInfer<typeof stripePriceFieldsSchema>;
 
-export type CreateCheckoutResponse = ZodInfer<
-  StripeValidationModule['createCheckoutResponseSchema']
->;
-
-export type CreatePortalResponse = ZodInfer<
-  StripeValidationModule['createPortalResponseSchema']
->;
-
-export type StripePriceFields = ZodInfer<
-  StripeValidationModule['stripePriceFieldsSchema']
->;
-
-export type StripeProductFields = ZodInfer<
-  StripeValidationModule['stripeProductFieldsSchema']
->;
+export type StripeProductFields = ZodInfer<typeof stripeProductFieldsSchema>;

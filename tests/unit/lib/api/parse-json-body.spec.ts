@@ -215,7 +215,7 @@ describe('parseJsonBody', () => {
     expect(factory).toHaveBeenCalledWith(syntaxErr);
   });
 
-  it('optional mode: silent fallback for non-SyntaxError even when body detected', async () => {
+  it('optional mode: rethrows non-SyntaxError when body detection is optional', async () => {
     const req = mockRequest({
       headers: { 'content-type': 'application/json' },
       json: () => Promise.reject(new TypeError('read failed')),
@@ -227,7 +227,7 @@ describe('parseJsonBody', () => {
         onMalformedJson: factory,
         fallback: {},
       })
-    ).resolves.toEqual({});
+    ).rejects.toThrow('read failed');
     expect(factory).not.toHaveBeenCalled();
   });
 
@@ -242,5 +242,23 @@ describe('parseJsonBody', () => {
         onMalformedJson: () => new Error('x'),
       })
     ).resolves.toEqual({});
+  });
+
+  it('optional mode: rethrows non-SyntaxError when no body is detected', async () => {
+    const typeErr = new TypeError('stream failed');
+    const req = mockRequest({
+      headers: {},
+      json: () => Promise.reject(typeErr),
+    });
+    const factory = vi.fn(() => new Error('should not run'));
+
+    await expect(
+      parseJsonBody(req, {
+        mode: 'optional',
+        onMalformedJson: factory,
+        fallback: {},
+      })
+    ).rejects.toBe(typeErr);
+    expect(factory).not.toHaveBeenCalled();
   });
 });

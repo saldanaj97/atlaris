@@ -10,7 +10,7 @@ import type {
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 
-export type ModelPreferencesSelectorProps = {
+type ModelPreferencesSelectorProps = {
   currentModel: string | null;
   userTier: SubscriptionTier;
   availableModels: AvailableModel[];

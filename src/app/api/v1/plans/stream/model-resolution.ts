@@ -3,7 +3,7 @@ import { validateModelForTier } from '@/features/ai/model-resolver';
 import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import { logger } from '@/lib/logging/logger';
 
-export type StreamModelResolution = {
+type StreamModelResolution = {
   modelOverride?: string;
   resolutionSource:
     | 'query_override'

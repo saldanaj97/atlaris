@@ -1,0 +1,41 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  "entry": [
+    "scripts/tests/smoke/run.ts",
+    "scripts/tests/smoke/start-app.ts"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx"
+  ],
+  "ignoreBinaries": [
+    "brew",
+    "tsgo"
+  ],
+  "ignoreDependencies": [
+    "postcss",
+    "tailwindcss",
+    "tw-animate-css",
+  ],
+  "ignoreFiles": [
+    "src/components/ui/**"
+  ],
+  "ignoreIssues": {
+    "src/components/ui/**": [
+      "exports",
+      "types",
+      "enumMembers",
+      "namespaceMembers",
+      "unlisted"
+    ],
+    "src/lib/db/schema/constants.ts": [
+      "duplicates"
+    ]
+  },
+  "rules": {
+    "files": "warn"
+  }
+}

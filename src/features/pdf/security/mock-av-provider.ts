@@ -3,7 +3,7 @@ import type {
   ScanVerdict,
 } from '@/features/pdf/security/scanner.types';
 
-export type AvMockScenario = 'clean' | 'infected' | 'timeout' | 'malformed';
+type AvMockScenario = 'clean' | 'infected' | 'timeout' | 'malformed';
 
 /**
  * In-process AV mock for local product testing. Runs after heuristic pass when

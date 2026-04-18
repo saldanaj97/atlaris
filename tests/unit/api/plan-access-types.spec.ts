@@ -7,31 +7,14 @@
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  planError,
-  planSuccess,
-  scheduleError,
-  scheduleSuccess,
-} from '@/app/plans/[id]/helpers';
+import { planError, planSuccess } from '@/app/plans/[id]/helpers';
 import type {
   PlanAccessErrorCode,
   PlanAccessResult,
-  ScheduleAccessResult,
 } from '@/app/plans/[id]/types';
 import { toClientPlanDetail } from '@/features/plans/read-models/detail-dto';
-import type { ScheduleJson } from '@/features/scheduling/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { buildPlanDetail } from '../../fixtures/plan-detail';
-
-// Builder function for creating mock schedule data
-function buildSchedule(overrides: Partial<ScheduleJson> = {}): ScheduleJson {
-  return {
-    weeks: [],
-    totalWeeks: 0,
-    totalSessions: 0,
-    ...overrides,
-  } satisfies ScheduleJson;
-}
 
 function buildClientPlanDetail(
   overrides: Parameters<typeof buildPlanDetail>[0] = {}
@@ -133,81 +116,6 @@ describe('Plan Access Types', () => {
       } else {
         // This branch should have data property
         expect(result.data.id).toBeDefined();
-      }
-    });
-  });
-
-  describe('scheduleSuccess', () => {
-    it('should create a success result with schedule data', () => {
-      const mockScheduleData = buildSchedule({
-        totalWeeks: 4,
-        totalSessions: 16,
-      });
-      const result = scheduleSuccess(mockScheduleData);
-
-      expect(result.success).toBe(true);
-      expect(result).toHaveProperty('data');
-      if (result.success) {
-        expect(result.data).toBe(mockScheduleData);
-        expect(result.data.totalWeeks).toBe(4);
-        expect(result.data.totalSessions).toBe(16);
-      }
-    });
-
-    it('should allow type narrowing via success discriminant', () => {
-      const mockScheduleData = buildSchedule();
-      const result: ScheduleAccessResult = scheduleSuccess(mockScheduleData);
-
-      if (result.success) {
-        expect(result.data.weeks).toBeDefined();
-        expect(result.data.totalWeeks).toBeDefined();
-      } else {
-        expect(result.error.code).toBeDefined();
-      }
-    });
-
-    it('should preserve schedule with weeks data', () => {
-      const mockScheduleData = buildSchedule({
-        totalWeeks: 2,
-        totalSessions: 8,
-        weeks: [
-          {
-            weekNumber: 1,
-            startDate: '2024-01-01',
-            endDate: '2024-01-07',
-            days: [],
-          },
-          {
-            weekNumber: 2,
-            startDate: '2024-01-08',
-            endDate: '2024-01-14',
-            days: [],
-          },
-        ],
-      });
-      const result = scheduleSuccess(mockScheduleData);
-
-      if (result.success) {
-        expect(result.data.weeks).toHaveLength(2);
-        expect(result.data.weeks[0].weekNumber).toBe(1);
-      }
-    });
-  });
-
-  describe('scheduleError', () => {
-    it.each<{ code: PlanAccessErrorCode; message: string }>([
-      { code: 'UNAUTHORIZED', message: 'You must be signed in.' },
-      { code: 'NOT_FOUND', message: 'Schedule not found.' },
-      { code: 'FORBIDDEN', message: 'Access denied.' },
-      { code: 'INTERNAL_ERROR', message: 'Failed to load schedule.' },
-    ])('should create error result for $code', ({ code, message }) => {
-      const result = scheduleError(code, message);
-
-      expect(result.success).toBe(false);
-      expect(result).toHaveProperty('error');
-      if (!result.success) {
-        expect(result.error.code).toBe(code);
-        expect(result.error.message).toBe(message);
       }
     });
   });

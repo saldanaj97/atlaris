@@ -12,6 +12,17 @@ on:
       - '**/*.log'
   merge_group:
     branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      integration_workers:
+        description: 'Workers for integration tests (4 default, 2 fallback)'
+        type: choice
+        options: ['4', '2']
+        default: '4'
+      test_db_debug:
+        description: 'Log per-worker DB mapping during integration tests'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -276,20 +287,11 @@ jobs:
       matrix:
         shard: [1, 2]
         total: [2]
-    services:
-      postgres:
-        image: postgres:17
-        ports:
-          - '5432:5432'
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd="pg_isready -U postgres -d postgres"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
+    env:
+      # Default 4 workers; override via repo variable INTEGRATION_MAX_WORKERS or
+      # the workflow_dispatch input integration_workers ('4' or '2').
+      INTEGRATION_MAX_WORKERS: ${{ github.event.inputs.integration_workers || vars.INTEGRATION_MAX_WORKERS || '4' }}
+      TEST_DB_DEBUG: ${{ github.event.inputs.test_db_debug || 'false' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -312,68 +314,6 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Prepare ephemeral database
-        env:
-          PGPASSWORD: postgres
-        run: |
-          # Wait for database readiness
-          for i in {1..30}; do
-            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
-            sleep 1
-          done
-
-          DB_NAME="ci_${GITHUB_RUN_ID}_integration_${{ matrix.shard }}_${GITHUB_JOB}"
-          echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
-          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
-
-          # Defensive bootstrap (idempotent)
-          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE EXTENSION IF NOT EXISTS pgcrypto;
-          DO $$ BEGIN CREATE ROLE anonymous NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE neondb_owner NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          CREATE SCHEMA IF NOT EXISTS auth;
-          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-          LANGUAGE sql
-          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
-          SQL
-
-          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
-      - name: Apply schema with Drizzle
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
-        run: pnpm db:push
-      - name: Grant RLS bypass and role permissions
-        env:
-          PGPASSWORD: postgres
-        run: |
-          # Grant BYPASSRLS to postgres user to allow direct test access
-          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 -c "ALTER ROLE postgres BYPASSRLS;"
-
-          # Grant table permissions to authenticated role for RLS testing
-          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
-          GRANT USAGE ON SCHEMA public TO authenticated;
-          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
-          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
-          SQL
-
-          # Restrict authenticated role to user-editable columns on users table (matches migration 0018)
-          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
-          REVOKE UPDATE ON "users" FROM authenticated;
-          GRANT UPDATE (name, preferred_ai_model, updated_at) ON "users" TO authenticated;
-          SQL
-
-          # Grant read-only permissions to anonymous role
-          psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
-          GRANT USAGE ON SCHEMA public TO anonymous;
-          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anonymous;
-          SQL
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
         id: restore-vitest-cache
@@ -385,13 +325,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run integration tests (shard ${{ matrix.shard }}/${{ matrix.total }})
-        # Minimized env to reduce secret exposure; rely on mocks/defaults.
         env:
           NODE_ENV: 'test'
-          ALLOW_DB_TRUNCATE: 'true'
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
           ENABLE_CURATION: 'false'
+          # No DATABASE_URL: tests/setup/testcontainers.ts spins up Postgres and
+          # tests/setup/test-env.ts derives per-worker DBs from VITEST_POOL_ID.
         run: |
           set -e
           FILES=$(find tests/integration -type f \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \) | wc -l || echo 0)
@@ -463,15 +401,6 @@ jobs:
             node_modules/.vite
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
-      - name: Cleanup ephemeral database
-        if: always()
-        env:
-          PGPASSWORD: postgres
-        run: |
-          if [ -n "${{ env.DB_NAME }}" ]; then
-            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
-            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
-          fi
 
   security-tests:
     name: Security (RLS)

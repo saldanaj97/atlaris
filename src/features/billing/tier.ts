@@ -27,6 +27,3 @@ export async function resolveUserTier(
 
   return user.subscriptionTier;
 }
-
-// Internal alias for backward compatibility
-export const getUserTier = resolveUserTier;

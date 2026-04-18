@@ -28,8 +28,6 @@ import {
   executeLifecycleGenerationStream,
 } from './stream-emitters';
 
-export { createStreamDbClient } from './stream-db';
-
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
 const PLAN_CREATION_FAILURE_MAP: Record<
@@ -56,7 +54,7 @@ const noopJobQueue: JobQueuePort = {
 /**
  * Parameters for the shared SSE response constructor used by both create and retry flows.
  */
-export interface CreatePlanGenerationSessionResponseParams {
+interface CreatePlanGenerationSessionResponseParams {
   req: Request;
   authUserId: string;
   dbClient: AttemptsDbClient;
@@ -80,7 +78,7 @@ export interface CreatePlanGenerationSessionResponseParams {
 /**
  * Parameters for create-and-stream generation, after HTTP validation is complete.
  */
-export interface CreateAndStreamPlanGenerationSessionParams {
+interface CreateAndStreamPlanGenerationSessionParams {
   req: Request;
   authUserId: string;
   userId: string;
@@ -95,7 +93,7 @@ export interface CreateAndStreamPlanGenerationSessionParams {
 /**
  * Minimal plan snapshot needed to retry generation without route-owned session wiring.
  */
-export interface RetryPlanGenerationPlanSnapshot {
+interface RetryPlanGenerationPlanSnapshot {
   topic: string;
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
   weeklyHours: number;
@@ -109,7 +107,7 @@ export interface RetryPlanGenerationPlanSnapshot {
 /**
  * Parameters for retry-and-stream generation, after ownership/status preflight is complete.
  */
-export interface RetryAndStreamPlanGenerationSessionParams {
+interface RetryAndStreamPlanGenerationSessionParams {
   req: Request;
   authUserId: string;
   userId: string;
@@ -123,7 +121,7 @@ export interface RetryAndStreamPlanGenerationSessionParams {
   ) => Promise<GenerationAttemptResult>;
 }
 
-export async function createPlanGenerationSessionResponse({
+async function createPlanGenerationSessionResponse({
   req,
   authUserId,
   dbClient,

@@ -72,7 +72,7 @@ function getStripeErrorMeta(error: unknown): {
  * Applies a verified Stripe event after idempotency insert succeeded.
  * Used by the production webhook route and local billing completion flow.
  */
-export async function applyStripeWebhookEvent(
+async function applyStripeWebhookEvent(
   event: Stripe.Event,
   deps: StripeWebhookSideEffectDeps
 ): Promise<void> {

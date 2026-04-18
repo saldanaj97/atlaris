@@ -9,12 +9,7 @@ import { clientLogger } from '@/lib/logging/client';
 const RETRY_COOLDOWN_MS = 5000;
 
 /** Derived retry UI phase; `cancelled` is a resolved retry stream (e.g. user disconnect), not idle. */
-export type RetryStatus =
-  | 'idle'
-  | 'retrying'
-  | 'success'
-  | 'error'
-  | 'cancelled';
+type RetryStatus = 'idle' | 'retrying' | 'success' | 'error' | 'cancelled';
 
 interface UseRetryGenerationReturn {
   status: RetryStatus;

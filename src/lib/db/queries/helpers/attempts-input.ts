@@ -12,7 +12,7 @@ import {
 } from '@/shared/constants/learning-plans';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
-export function stableSerialize(value: unknown): string {
+function stableSerialize(value: unknown): string {
   if (value === undefined) {
     return 'null';
   }

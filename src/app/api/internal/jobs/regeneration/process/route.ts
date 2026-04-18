@@ -6,7 +6,7 @@ import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
-import getRequestContext from '@/lib/logging/request-context';
+import { getRequestContext } from '@/lib/logging/request-context';
 
 function readWorkerToken(request: Request): string | null {
   const authHeader = request.headers.get('authorization');

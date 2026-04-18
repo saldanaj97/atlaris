@@ -10,7 +10,7 @@ import {
 } from '@tests/helpers/db/bootstrap';
 import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 
-export function applySmokeMigrations(connectionUrl: string): void {
+function applySmokeMigrations(connectionUrl: string): void {
   execSync('pnpm db:migrate', {
     stdio: 'inherit',
     env: {

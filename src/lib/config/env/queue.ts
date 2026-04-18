@@ -9,7 +9,7 @@ import {
 /**
  * Regeneration queue env flags consumed by API routes and worker triggers.
  */
-export interface RegenerationQueueEnv {
+interface RegenerationQueueEnv {
   readonly enabled: boolean;
   readonly inlineProcessingEnabled: boolean;
   readonly maxJobsPerDrain: number;
@@ -59,10 +59,7 @@ export const regenerationQueueEnv: RegenerationQueueEnv = {
     return Math.max(1, Math.floor(parsed));
   },
   /**
-   * Shared bearer token used by scheduled worker trigger calls.
-   * This getter delegates to {@link getServerRequiredProdOnly}('REGENERATION_WORKER_TOKEN'),
-   * which returns `undefined` in non-production (dev/test) environments. Callers must handle
-   * a possibly undefined token when using this value outside production.
+   * Shared bearer token for scheduled worker triggers. Undefined outside production.
    */
   get workerToken(): string | undefined {
     return defaultQueueAccess.getServerRequiredProdOnly(

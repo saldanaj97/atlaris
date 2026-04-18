@@ -1,5 +1,3 @@
-import { RETRY_BACKOFF_MS } from '@/features/ai/constants';
-
 import type { AdaptiveTimeoutConfig } from '@/features/ai/types/timeout.types';
 
 const DEFAULT_CONFIG: AdaptiveTimeoutConfig = {
@@ -24,19 +22,6 @@ type AdaptiveTimeoutController = {
   cancel(): void;
   elapsed(): number;
 };
-/**
- * Returns p-retry backoff options (minTimeout, maxTimeout).
- * Use with pRetry options alongside retries and randomize.
- */
-export function getRetryBackoffConfig(): {
-  minTimeout: number;
-  maxTimeout: number;
-} {
-  return {
-    minTimeout: RETRY_BACKOFF_MS.min,
-    maxTimeout: RETRY_BACKOFF_MS.max,
-  };
-}
 
 export function createAdaptiveTimeout(
   config: Partial<AdaptiveTimeoutConfig> = {}

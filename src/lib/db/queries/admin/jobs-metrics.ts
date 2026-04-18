@@ -10,7 +10,7 @@ import { jobQueue } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
 import { JOB_TYPES } from '@/shared/types/jobs.types';
 
-export type SystemWideJobMetrics = {
+type SystemWideJobMetrics = {
   stuckJobsCount: number;
   backlogCount: number;
   pendingRegenerationCount: number;

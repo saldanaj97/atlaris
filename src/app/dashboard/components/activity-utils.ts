@@ -11,7 +11,7 @@ import type { ActivityItem, ScheduledEvent } from '../types';
 /**
  * Formats a Date object into a human-readable "time ago" string.
  */
-export function formatTimeAgo(date: Date, now: Date = new Date()): string {
+function formatTimeAgo(date: Date, now: Date = new Date()): string {
   return formatRelativePast(date, { referenceDate: now, style: 'verbose' });
 }
 
@@ -164,7 +164,7 @@ export function getEventTypeConfig(type: ScheduledEvent['type']) {
   return configs[type];
 }
 
-export function formatEstimatedTime(
+function _formatEstimatedTime(
   totalMinutes: number,
   completedMinutes: number
 ): string {

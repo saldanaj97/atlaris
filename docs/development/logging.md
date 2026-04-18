@@ -57,7 +57,7 @@ For API routes, use `getRequestContext()` to get a request-scoped logger with co
 import { getRequestContext } from '@/lib/logging/request-context';
 
 export async function POST(request: Request) {
-  const { requestId, logger } = getRequestContext();
+  const { requestId, logger } = getRequestContext(request);
 
   logger.info('Creating new plan', { userId });
   // All logs will include requestId automatically

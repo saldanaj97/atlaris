@@ -9,7 +9,7 @@ export type ContentBlock = {
   content: string;
 };
 
-export type PlaceholderContentOptions = {
+type PlaceholderContentOptions = {
   seed?: number;
   topic?: string;
   minSections?: number;

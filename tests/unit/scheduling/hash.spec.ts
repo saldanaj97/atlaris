@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeInputsHash } from '@/features/scheduling/hash';
-import type { ScheduleInputs } from '@/features/scheduling/types';
+import type { ScheduleInputs } from '@/shared/types/scheduling.types';
 
 describe('computeInputsHash', () => {
   it('should produce same hash for identical inputs', () => {
@@ -124,6 +124,36 @@ describe('computeInputsHash', () => {
     const inputs2: ScheduleInputs = {
       ...inputs1,
       startDate: '2025-02-02',
+    };
+
+    const hash1 = computeInputsHash(inputs1);
+    const hash2 = computeInputsHash(inputs2);
+
+    expect(hash1).not.toBe(hash2);
+  });
+
+  it('should produce different hash when module title changes', () => {
+    const inputs1: ScheduleInputs = {
+      planId: 'plan-123',
+      tasks: [
+        {
+          id: 'task-1',
+          title: 'Task 1',
+          estimatedMinutes: 60,
+          order: 1,
+          moduleId: 'mod-1',
+          moduleTitle: 'Module Alpha',
+        },
+      ],
+      startDate: '2025-02-01',
+      deadline: '2025-03-01',
+      weeklyHours: 10,
+      timezone: 'America/New_York',
+    };
+
+    const inputs2: ScheduleInputs = {
+      ...inputs1,
+      tasks: [{ ...inputs1.tasks[0], moduleTitle: 'Module Beta' }],
     };
 
     const hash1 = computeInputsHash(inputs1);

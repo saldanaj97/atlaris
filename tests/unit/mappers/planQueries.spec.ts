@@ -3,8 +3,6 @@ import { buildLearningPlanDetail } from '@/features/plans/read-models/detail-agg
 import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
-  type ProgressStatusRow,
-  type SummaryTaskRow,
 } from '@/features/plans/read-models/summary';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
@@ -16,6 +14,15 @@ import type {
 } from '@/shared/types/db.types';
 
 import { createId } from '../../fixtures/ids';
+
+type SummaryTaskRow = {
+  id: string;
+  moduleId: string;
+  planId: string;
+  estimatedMinutes: number | null;
+};
+
+type ProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
 
 function createLearningPlan(
   overrides: Partial<LearningPlan> = {}

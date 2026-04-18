@@ -91,7 +91,7 @@ function buildGenerationInput(
   };
 }
 
-export async function processNextRegenerationJob(): Promise<ProcessRegenerationJobResult> {
+async function processNextRegenerationJob(): Promise<ProcessRegenerationJobResult> {
   const job = await getNextJob([JOB_TYPES.PLAN_REGENERATION]);
 
   if (!job) {
@@ -248,22 +248,44 @@ type DrainRegenerationQueueOptions = {
   processNextJob?: () => Promise<ProcessRegenerationJobResult>;
 };
 
-/** In-memory guard to prevent concurrent inline drains (thundering herd). */
-let inlineDrainLockHeld = false;
+/**
+ * In-flight inline drain promises (same-process). Used as the lock: while non-empty, another inline
+ * drain must not start. Callers must invoke {@link registerInlineDrain} synchronously after
+ * {@link tryAcquireInlineDrainLock} returns true.
+ */
+const inlineInFlightDrains = new Set<Promise<unknown>>();
 
 /**
- * Tries to acquire the inline drain lock. Returns true if acquired, false if another drain is in progress.
- * Call {@link releaseInlineDrainLock} when the drain promise settles (success or failure).
+ * Tries to acquire the inline drain lock. Returns true if no drain is in progress, false otherwise.
+ * Must be followed synchronously by {@link registerInlineDrain} with the drain promise.
  */
 export function tryAcquireInlineDrainLock(): boolean {
-  if (inlineDrainLockHeld) return false;
-  inlineDrainLockHeld = true;
-  return true;
+  return inlineInFlightDrains.size === 0;
 }
 
-/** Releases the inline drain lock. Must be called when drain finishes (e.g. in promise .finally). */
-export function releaseInlineDrainLock(): void {
-  inlineDrainLockHeld = false;
+/**
+ * Registers a drain promise so tests (or shutdown hooks) can await completion via
+ * {@link waitForInlineRegenerationDrains}. Removes the promise from the set when it settles.
+ */
+export function registerInlineDrain(promise: Promise<unknown>): void {
+  inlineInFlightDrains.add(promise);
+  void promise.finally(() => {
+    inlineInFlightDrains.delete(promise);
+  });
+}
+
+/**
+ * Awaits all in-flight inline drains started in this process (e.g. between integration test files).
+ */
+export async function waitForInlineRegenerationDrains(): Promise<void> {
+  if (inlineInFlightDrains.size === 0) {
+    return;
+  }
+  const snapshot = [...inlineInFlightDrains];
+  await Promise.allSettled(snapshot);
+  if (inlineInFlightDrains.size > 0) {
+    await waitForInlineRegenerationDrains();
+  }
 }
 
 export async function drainRegenerationQueue(

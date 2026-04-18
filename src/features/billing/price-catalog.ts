@@ -5,7 +5,7 @@ function isNonEmptyString(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-export function getAllowedCheckoutPriceIds(): string[] {
+function getAllowedCheckoutPriceIds(): string[] {
   const pricingValues = [
     stripeEnv.pricing.starterMonthly,
     stripeEnv.pricing.proMonthly,

@@ -23,24 +23,11 @@ import {
   modules,
   PROGRESS_STATUSES,
   type ProgressStatus,
-  setTaskProgress,
   setTaskProgressBatch,
   tasks,
   withServerActionContext,
 } from '@/app/plans/[id]/server/task-progress-action-deps';
 import { getModuleDetail } from '@/lib/db/queries/modules';
-
-interface UpdateTaskProgressInput {
-  planId: string;
-  moduleId: string;
-  taskId: string;
-  status: ProgressStatus;
-}
-
-interface UpdateTaskProgressResult {
-  taskId: string;
-  status: ProgressStatus;
-}
 
 async function ensureBatchModuleTaskOwnership(
   db: ReturnType<typeof getDb>,
@@ -111,56 +98,6 @@ export async function getModuleForPage(
       'You must be signed in to view this module.'
     );
   }
-  return result;
-}
-
-/**
- * Server action to update task progress from the module detail page.
- * Revalidates both the module page and the parent plan page.
- */
-export async function updateModuleTaskProgressAction({
-  planId,
-  moduleId,
-  taskId,
-  status,
-}: UpdateTaskProgressInput): Promise<UpdateTaskProgressResult> {
-  assertNonEmpty(planId, 'A plan id is required to update progress.');
-  assertNonEmpty(moduleId, 'A module id is required to update progress.');
-  assertNonEmpty(taskId, 'A task id is required to update progress.');
-
-  if (!PROGRESS_STATUSES.includes(status)) {
-    throw new Error('Invalid progress status.');
-  }
-
-  const result = await withServerActionContext(async (user, rlsDb) => {
-    try {
-      const taskProgress = await setTaskProgress(
-        user.id,
-        taskId,
-        status,
-        rlsDb
-      );
-      revalidatePath(`/plans/${planId}/modules/${moduleId}`);
-      revalidatePath(`/plans/${planId}`);
-      revalidatePath('/plans');
-      return { taskId: taskProgress.taskId, status: taskProgress.status };
-    } catch (error) {
-      logger.error(
-        {
-          planId,
-          moduleId,
-          taskId,
-          userId: user.id,
-          status,
-          error,
-        },
-        'Failed to update module task progress'
-      );
-      throw new Error('Unable to update task progress right now.');
-    }
-  });
-
-  if (!result) throw new Error('You must be signed in to update progress.');
   return result;
 }
 

@@ -48,35 +48,3 @@ export interface ExtractedStructure {
   suggestedMainTopic: string;
   confidence: 'high' | 'medium' | 'low';
 }
-
-export type PdfValidationResult =
-  | {
-      success: true;
-      sizeBytes: number;
-      pageCount: number;
-      message?: string;
-    }
-  | {
-      success: false;
-      error:
-        | 'invalid_mime'
-        | 'too_large'
-        | 'too_many_pages'
-        | 'no_text'
-        | 'invalid_size'
-        | 'invalid_page_count'
-        | 'empty_document';
-      message: string;
-    };
-
-export interface PdfValidationInput {
-  mimeType: string;
-  sizeBytes: number;
-  pageCount: number;
-  text?: string;
-}
-
-export interface PdfValidationLimits {
-  maxSizeBytes: number;
-  maxPages: number;
-}

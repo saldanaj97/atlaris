@@ -1,8 +1,3 @@
-/**
- * Ops alerting helpers. Report billing/usage reconciliation failures to Sentry
- * so they can be alerted on and paged.
- */
-
 import * as Sentry from '@sentry/nextjs';
 
 type BillingReconciliationContext = {
@@ -11,10 +6,6 @@ type BillingReconciliationContext = {
   jobId: string;
 };
 
-/**
- * Records a billing reconciliation failure (e.g. rollback of usage after dedupe failed).
- * Sends the error and context to Sentry so ops can be alerted and paged.
- */
 export function recordBillingReconciliationRequired(
   context: BillingReconciliationContext,
   error: unknown

@@ -2,8 +2,8 @@
  * API response pagination bounds for list endpoints.
  * These are route-level limits, not database schema constraints.
  */
-export const DEFAULT_PAGE_SIZE = 20 as const;
-export const MAX_PAGE_SIZE = 100 as const;
+const DEFAULT_PAGE_SIZE = 20 as const;
+const MAX_PAGE_SIZE = 100 as const;
 
 const PAGINATION_DEFAULTS = {
   limit: DEFAULT_PAGE_SIZE,

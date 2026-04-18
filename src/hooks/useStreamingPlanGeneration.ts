@@ -29,7 +29,7 @@ export type StreamingPlanState = {
   error?: GenerationError;
 };
 
-export type StreamingError = Error & {
+type StreamingError = Error & {
   status?: number;
   planId?: string;
   data?: { planId?: string };
@@ -55,7 +55,7 @@ export function isStreamingError(error: unknown): error is StreamingError {
   );
 }
 
-export type StartGenerationOptions = {
+type StartGenerationOptions = {
   onPlanIdReady?: (planId: string) => void;
 };
 

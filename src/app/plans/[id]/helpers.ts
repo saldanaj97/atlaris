@@ -6,8 +6,6 @@
  */
 
 import { formatSkillLevel } from '@/features/plans/formatters';
-
-import type { ScheduleJson } from '@/features/scheduling/types';
 import type {
   ClientModule,
   ClientPlanDetail,
@@ -19,7 +17,6 @@ import type {
   PlanAccessResult,
   PlanDetailsCardStats,
   PlanOverviewStats,
-  ScheduleAccessResult,
 } from './types';
 
 /**
@@ -181,23 +178,6 @@ export function planError(
 }
 
 /**
- * Helper to create schedule success result
- */
-export function scheduleSuccess(data: ScheduleJson): ScheduleAccessResult {
-  return { success: true, data };
-}
-
-/**
- * Helper to create schedule error result
- */
-export function scheduleError(
-  code: PlanAccessErrorCode,
-  message: string
-): ScheduleAccessResult {
-  return { success: false, error: { code, message } };
-}
-
-/**
  * Type guard to check if plan access result is successful
  */
 export function isPlanSuccess(
@@ -207,32 +187,10 @@ export function isPlanSuccess(
 }
 
 /**
- * Type guard to check if schedule access result is successful
- */
-export function isScheduleSuccess(
-  result: ScheduleAccessResult
-): result is { success: true; data: ScheduleJson } {
-  return result.success === true;
-}
-
-/**
  * Helper to safely extract error from plan access result
  * Only call this after checking !isPlanSuccess(result)
  */
 export function getPlanError(result: PlanAccessResult): PlanAccessError {
-  if (result.success === false) {
-    return result.error;
-  }
-  throw new Error('Cannot get error from successful result');
-}
-
-/**
- * Helper to safely extract error from schedule access result
- * Only call this after checking !isScheduleSuccess(result)
- */
-export function getScheduleError(
-  result: ScheduleAccessResult
-): PlanAccessError {
   if (result.success === false) {
     return result.error;
   }

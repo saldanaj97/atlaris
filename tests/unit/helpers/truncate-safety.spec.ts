@@ -41,6 +41,32 @@ describe('assertSafeToTruncate (via truncateAll)', () => {
     await expect(truncateAll()).resolves.not.toThrow();
   });
 
+  it('passes for worker-isolated test database names', async () => {
+    process.env.DATABASE_URL = 'postgres://host/atlaris_test_w2';
+    await expect(truncateAll()).resolves.not.toThrow();
+  });
+
+  it('passes for the template and base atlaris test databases', async () => {
+    process.env.DATABASE_URL = 'postgres://host/atlaris_test_template';
+    await expect(truncateAll()).resolves.not.toThrow();
+    process.env.DATABASE_URL = 'postgres://host/atlaris_test_base';
+    await expect(truncateAll()).resolves.not.toThrow();
+    process.env.DATABASE_URL = 'postgres://host/atlaris_test';
+    await expect(truncateAll()).resolves.not.toThrow();
+  });
+
+  it('rejects ambiguous middle-of-name test matches that look production-adjacent', async () => {
+    process.env.DATABASE_URL = 'postgres://host/myapp_test_archive';
+    await expect(truncateAll()).rejects.toThrow(
+      /Refusing to truncate non-test database "myapp_test_archive"/
+    );
+
+    process.env.DATABASE_URL = 'postgres://host/prod_tests_data';
+    await expect(truncateAll()).rejects.toThrow(
+      /Refusing to truncate non-test database "prod_tests_data"/
+    );
+  });
+
   it('throws specific message for a non-test DB name', async () => {
     process.env.DATABASE_URL = 'postgres://host/myapp_prod';
     await expect(truncateAll()).rejects.toThrow(

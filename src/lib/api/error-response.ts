@@ -1,6 +1,6 @@
 import type { FailureClassification } from '@/shared/types/client.types';
 
-export type ApiErrorResponse = {
+type ApiErrorResponse = {
   error: string;
   code: string;
   classification?: FailureClassification;
@@ -35,7 +35,6 @@ const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
 
 const FAILURE_CLASSIFICATIONS = [
   'validation',
-  // State/resource-conflict errors (e.g., generation already in progress)
   'conflict',
   'provider_error',
   'rate_limit',
@@ -101,7 +100,7 @@ function asNonEmptyString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-export function isFailureClassification(
+function isFailureClassification(
   value: unknown
 ): value is FailureClassification {
   return (

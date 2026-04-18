@@ -135,10 +135,6 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
   } as unknown as Stripe;
 }
 
-export function resetLocalStripeMockForTests(): void {
-  localStripeMock = null;
-}
-
 /** Used by billing client; avoids importing env before app URL is available. */
 export function resolveStripeClientBaseUrl(): string {
   return appEnv.url;

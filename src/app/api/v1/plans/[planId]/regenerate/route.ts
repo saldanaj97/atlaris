@@ -6,7 +6,7 @@ import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import { enqueueJobWithResult } from '@/features/jobs/queue';
 import {
   drainRegenerationQueue,
-  releaseInlineDrainLock,
+  registerInlineDrain,
   tryAcquireInlineDrainLock,
 } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
@@ -172,8 +172,8 @@ export const POST: PlainHandler = withErrorBoundary(
 
       if (regenerationQueueEnv.inlineProcessingEnabled) {
         if (tryAcquireInlineDrainLock()) {
-          void drainRegenerationQueue({ maxJobs: 1 })
-            .catch((error: unknown) => {
+          const drainPromise = drainRegenerationQueue({ maxJobs: 1 }).catch(
+            (error: unknown) => {
               logger.error(
                 {
                   planId,
@@ -185,8 +185,9 @@ export const POST: PlainHandler = withErrorBoundary(
                 },
                 'Inline regeneration queue drain failed'
               );
-            })
-            .finally(releaseInlineDrainLock);
+            }
+          );
+          registerInlineDrain(drainPromise);
         }
       }
 

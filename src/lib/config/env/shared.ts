@@ -36,7 +36,7 @@ export function getProcessEnvSource(): EnvSource {
   return process.env as EnvSource;
 }
 
-export type NodeEnv = 'development' | 'production' | 'test';
+type NodeEnv = 'development' | 'production' | 'test';
 
 const NodeEnvSchema = z.enum(['development', 'production', 'test']);
 
@@ -82,7 +82,7 @@ export function isProdRuntimeEnv(env: EnvSource): boolean {
 }
 
 /** True for development and test runtimes (not production). */
-export function isNonProductionRuntimeEnv(env: EnvSource): boolean {
+function isNonProductionRuntimeEnv(env: EnvSource): boolean {
   return !isProdRuntimeEnv(env);
 }
 

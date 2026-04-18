@@ -16,10 +16,7 @@ import { AuthError } from './errors';
 import { withRateLimit } from './middleware';
 import type { UserRateLimitCategory } from './user-rate-limit';
 
-export type {
-  PlainHandler,
-  RouteHandlerContext,
-} from '@/lib/api/types/auth.types';
+export type { PlainHandler } from '@/lib/api/types/auth.types';
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -54,6 +51,8 @@ export async function getEffectiveAuthUserId(options?: {
  * end user rather than a test/development override.
  *
  * Only call from Route Handlers or Server Actions (not Server Components).
+ *
+ * @public Intentional library surface for OAuth and security-sensitive flows (see docs).
  */
 export async function getAuthUserId(): Promise<string | null> {
   const { data: session } = await auth.getSession();
@@ -64,7 +63,7 @@ export async function getAuthUserId(): Promise<string | null> {
  * Resolves the current auth user ID or throws AuthError.
  * Used internally by `withAuth` and `requireCurrentUserRecord`.
  */
-export async function requireUser(): Promise<string> {
+async function requireUser(): Promise<string> {
   const userId = await getEffectiveAuthUserId({ strict: true });
   if (!userId) throw new AuthError();
   return userId;

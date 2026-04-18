@@ -5,7 +5,6 @@ import type {
   JobsDbClient,
 } from '@/lib/db/queries/types/jobs.types';
 import { jobQueue } from '@/lib/db/schema';
-import { MAX_JOB_MONITORING_ROWS } from '@/lib/db/schema/constants';
 import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,
@@ -13,9 +12,7 @@ import {
 import type { Job } from '@/shared/types/jobs.types';
 
 /** Cap for exponential retry delay in seconds (5 minutes). */
-export const MAX_RETRY_DELAY_SECONDS = JOB_RETRY_MAX_DELAY_SECONDS;
-
-export { MAX_JOB_MONITORING_ROWS };
+const MAX_RETRY_DELAY_SECONDS = JOB_RETRY_MAX_DELAY_SECONDS;
 
 export const jobQueueSelect = {
   id: jobQueue.id,
@@ -39,7 +36,7 @@ export const jobQueueSelect = {
 } as const;
 
 /** Transaction client type for use inside dbClient.transaction() callbacks. */
-export type JobsTransaction = Parameters<
+type JobsTransaction = Parameters<
   Parameters<JobsDbClient['transaction']>[0]
 >[0];
 
@@ -49,7 +46,7 @@ export type JobsTransaction = Parameters<
  *
  * @returns null if job not found, else { row, isTerminal } with isTerminal true when status is completed or failed
  */
-export async function lockJobAndCheckTerminal(
+async function lockJobAndCheckTerminal(
   tx: JobsTransaction,
   jobId: string
 ): Promise<{ row: JobQueueRow; isTerminal: boolean } | null> {

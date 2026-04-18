@@ -19,7 +19,7 @@ const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
 /**
  * App/runtime env facets derived from an explicit env source and server access helper.
  */
-export interface AppEnv {
+interface AppEnv {
   readonly nodeEnv: NodeEnv;
   readonly vitestWorkerId: string | undefined;
   readonly isProduction: boolean;

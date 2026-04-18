@@ -163,11 +163,7 @@ export async function completeJobRecord(
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
-  return runJobMutationIfEditable(client, jobId, async (tx, current) => {
-    if (current.status === 'completed' || current.status === 'failed') {
-      return mapRowToJob(current);
-    }
-
+  return runJobMutationIfEditable(client, jobId, async (tx) => {
     const completedAt = new Date();
     const [updated] = await tx
       .update(jobQueue)
@@ -198,10 +194,6 @@ export async function failJobRecord(
   const client = dbClient ?? getDb();
 
   return runJobMutationIfEditable(client, jobId, async (tx, current) => {
-    if (current.status === 'completed' || current.status === 'failed') {
-      return mapRowToJob(current);
-    }
-
     const nextAttempts = current.attempts + 1;
     const now = new Date();
     const shouldRetry = computeShouldRetry(

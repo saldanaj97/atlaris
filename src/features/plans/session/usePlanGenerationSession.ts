@@ -41,7 +41,7 @@ export type PlanGenerationResult =
   | { status: 'cancelled'; planId?: string }
   | { status: 'completed'; planId: string; result: string };
 
-export class StreamingError extends Error {
+class StreamingError extends Error {
   status?: number;
   planId?: string;
   data?: { planId?: string };

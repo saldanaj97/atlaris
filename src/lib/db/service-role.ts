@@ -118,56 +118,26 @@ function initializeDb(): ServiceRoleDb {
   return _db;
 }
 
-/**
- * Postgres client - lazily initialized on first access.
- *
- * This Proxy wraps the actual client to defer initialization until first use.
- * This allows the module to be imported at build time without requiring
- * DATABASE_URL to be present.
- *
- * ⚠️ DATABASE_URL will be required when the client is first accessed,
- * not when this module is imported.
- */
-
-export const client = new Proxy(
-  {},
-  {
-    get(_target, prop: string | symbol): unknown {
-      const actualClient = initializeClient();
-
-      return (actualClient as unknown as Record<string | symbol, unknown>)[
-        prop
-      ];
-    },
-  }
-) as Sql;
+function getLazyProxyProperty<T extends object>(
+  initialize: () => T,
+  prop: string | symbol
+): unknown {
+  return Reflect.get(initialize(), prop);
+}
 
 /**
- * Service role database client - BYPASSES RLS (lazily initialized)
- *
- * ⚠️ This export is intentionally named to make it obvious it's dangerous.
+ * Service role database client - BYPASSES RLS (lazily initialized).
  * Use getDb() from @/lib/db/runtime in request handlers instead.
- *
- * Initialization is deferred until first access, allowing builds without
- * DATABASE_URL.
  */
-export const serviceRoleDb = new Proxy(
+export const db: ServiceRoleDb = new Proxy(
   {},
   {
     get(_target, prop: string | symbol): unknown {
-      const actualDb = initializeDb();
-
-      return (actualDb as unknown as Record<string | symbol, unknown>)[prop];
+      return getLazyProxyProperty(initializeDb, prop);
     },
   }
   // Cast the proxy to the concrete Drizzle client type
 ) as ServiceRoleDb;
-
-/**
- * Shorter alias for serviceRoleDb.
- * Both names are equally valid - use whichever is clearer in context.
- */
-export const db: ServiceRoleDb = serviceRoleDb;
 
 /**
  * Check if the database client has been initialized.
@@ -177,4 +147,24 @@ export const db: ServiceRoleDb = serviceRoleDb;
  */
 export function isClientInitialized(): boolean {
   return _client !== null;
+}
+
+/**
+ * Test-only escape hatch to clear the cached client after setup swaps DB URLs.
+ * Throws in production to prevent accidental misuse closing the live pool.
+ */
+export async function resetServiceRoleClientForTests(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'resetServiceRoleClientForTests is test-only and must not run in production.'
+    );
+  }
+
+  const clientToClose = _client;
+  _db = null;
+  _client = null;
+
+  if (clientToClose) {
+    await clientToClose.end();
+  }
 }

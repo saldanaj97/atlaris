@@ -127,7 +127,7 @@ export function mergeSmokeProcessEnv(
   return merged as NodeJS.ProcessEnv;
 }
 
-export type SmokeAppMode = 'anon' | 'auth';
+type SmokeAppMode = 'anon' | 'auth';
 
 export function parseSmokeAppMode(argv: string[]): SmokeAppMode {
   const raw = argv

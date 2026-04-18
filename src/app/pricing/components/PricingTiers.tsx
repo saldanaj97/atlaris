@@ -1,7 +1,7 @@
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-export interface TierConfig {
+interface TierConfig {
   name: string;
   price: string | null;
   description: string;

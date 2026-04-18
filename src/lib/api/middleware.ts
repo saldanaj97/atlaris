@@ -43,12 +43,9 @@ export function withRateLimit(
       const rateLimitHeaders = getUserRateLimitHeaders(ctx.userId, category);
       const headers = new Headers(response.headers);
       for (const [name, value] of Object.entries(rateLimitHeaders)) {
-        // Use set() so existing values are replaced case-insensitively.
         headers.set(name, value);
       }
 
-      // Handlers are expected to return a fresh, unread Response object; this
-      // wrapper only augments headers before the body stream is consumed.
       return new Response(response.body, {
         status: response.status,
         statusText: response.statusText,

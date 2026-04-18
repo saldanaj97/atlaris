@@ -1,12 +1,12 @@
 import { spawn } from 'node:child_process';
 
-export type CommandRunOptions = {
+type CommandRunOptions = {
   command: string;
   args: string[];
   env?: Partial<NodeJS.ProcessEnv>;
 };
 
-export type VitestRunOptions = {
+type VitestRunOptions = {
   project: string;
   testPath: string;
   extraArgs?: string[];

@@ -1,5 +1,1 @@
-export type {
-  SubscriptionTier,
-  TierLimitConfig,
-  TierLimits,
-} from '@/shared/types/billing.types';
+export type { SubscriptionTier } from '@/shared/types/billing.types';

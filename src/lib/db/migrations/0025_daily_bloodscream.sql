@@ -1,0 +1,3 @@
+ALTER TABLE "ai_usage_events" ADD CONSTRAINT "ai_usage_events_input_tokens_nonneg" CHECK ("ai_usage_events"."input_tokens" >= 0);--> statement-breakpoint
+ALTER TABLE "ai_usage_events" ADD CONSTRAINT "ai_usage_events_output_tokens_nonneg" CHECK ("ai_usage_events"."output_tokens" >= 0);--> statement-breakpoint
+ALTER TABLE "ai_usage_events" ADD CONSTRAINT "ai_usage_events_cost_cents_nonneg" CHECK ("ai_usage_events"."cost_cents" >= 0);

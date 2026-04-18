@@ -53,8 +53,11 @@ describe('authenticated users UPDATE allowlist sync', () => {
 
     const workflowMatches = extractUsersUpdateGrantColumns(workflowContents);
 
-    expect(workflowMatches).toHaveLength(2);
-    expect(workflowMatches).toEqual([expectedColumns, expectedColumns]);
+    // Only `e2e-tests` still uses the inline `services: postgres` bootstrap.
+    // `integration-tests` runs on Testcontainers via tests/helpers/db/bootstrap.ts,
+    // covered by the dedicated bootstrap test below.
+    expect(workflowMatches).toHaveLength(1);
+    expect(workflowMatches[0]).toEqual(expectedColumns);
   });
 
   it('keeps shared Postgres bootstrap using the canonical column list for users UPDATE', () => {

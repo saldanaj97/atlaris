@@ -1,7 +1,5 @@
 import type { PdfContext } from '@/shared/types/pdf-context.types';
 
-export type IsoDateString = string & { readonly __brand: 'IsoDateString' };
-
 export type GenerationInput = {
   topic: string;
   notes?: string | null;
