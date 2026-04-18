@@ -12,16 +12,13 @@
     "tests/**/*.tsx"
   ],
   "ignoreBinaries": [
-    "brew",
-    "tsgo"
+    "brew"
   ],
   "ignoreDependencies": [
     "postcss",
     "tailwindcss",
     "tw-animate-css",
-  ],
-  "ignoreFiles": [
-    "src/components/ui/**"
+    "@better-auth/passkey"
   ],
   "ignoreIssues": {
     "src/components/ui/**": [
