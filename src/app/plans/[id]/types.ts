@@ -7,7 +7,6 @@
  */
 
 import type { ClientPlanDetail } from '@/shared/types/client.types';
-import type { ScheduleJson } from '@/shared/types/scheduling.types';
 
 /**
  * Error codes for plan access failures.
@@ -37,14 +36,6 @@ export type PlanAccessError = {
  */
 export type PlanAccessResult =
   | { success: true; data: ClientPlanDetail }
-  | { success: false; error: PlanAccessError };
-
-/**
- * Result type for schedule fetch operations.
- * Uses discriminated union for exhaustive error handling.
- */
-export type ScheduleAccessResult =
-  | { success: true; data: ScheduleJson }
   | { success: false; error: PlanAccessError };
 
 /**

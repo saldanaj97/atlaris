@@ -11,14 +11,12 @@ import type {
   ClientPlanDetail,
 } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { ScheduleJson } from '@/shared/types/scheduling.types';
 import type {
   PlanAccessError,
   PlanAccessErrorCode,
   PlanAccessResult,
   PlanDetailsCardStats,
   PlanOverviewStats,
-  ScheduleAccessResult,
 } from './types';
 
 /**
@@ -176,23 +174,6 @@ export function planError(
   code: PlanAccessErrorCode,
   message: string
 ): PlanAccessResult {
-  return { success: false, error: { code, message } };
-}
-
-/**
- * Helper to create schedule success result
- */
-export function scheduleSuccess(data: ScheduleJson): ScheduleAccessResult {
-  return { success: true, data };
-}
-
-/**
- * Helper to create schedule error result
- */
-export function scheduleError(
-  code: PlanAccessErrorCode,
-  message: string
-): ScheduleAccessResult {
   return { success: false, error: { code, message } };
 }
 
