@@ -57,12 +57,11 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       expect(provider).toBeInstanceOf(MockGenerationProvider);
     });
 
-    it('returns OpenAI provider when AI_PROVIDER=openai', () => {
-      process.env.AI_PROVIDER = 'openai';
+    it('returns Router provider when AI_PROVIDER=router', () => {
+      process.env.AI_PROVIDER = 'router';
       const provider = getGenerationProvider();
 
-      // OpenAIGenerationProvider is the default, but we can't import it without circular deps
-      // So we just check it's not MockGenerationProvider
+      // RouterGenerationProvider is the only non-mock implementation today.
       expect(provider).not.toBeInstanceOf(MockGenerationProvider);
     });
 

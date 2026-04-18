@@ -10,13 +10,23 @@ function parseMockSeed(): number | undefined {
     : undefined;
 }
 
-/** Returns true when mock providers should be used (test/dev default, explicit opt-in). */
+/**
+ * Returns true when mock providers should be used.
+ *
+ * Resolution order:
+ * 1. `AI_PROVIDER=mock` → mock
+ * 2. `AI_PROVIDER=router` → router (real provider)
+ * 3. `AI_PROVIDER` unset, test env → `AI_USE_MOCK ?? true`
+ * 4. `AI_PROVIDER` unset, development → mock
+ * 5. Production fallback → router (real provider)
+ *
+ * Any other `AI_PROVIDER` value throws at env-parse time (see ai.ts), so we
+ * only see the two legal explicit values here.
+ */
 function shouldUseMock(): boolean {
   const provider = aiEnv.provider;
   if (provider === 'mock') return true;
-  // Explicit non-mock provider always overrides mock defaults
-  if (provider) return false;
-  // No explicit provider — fall back to environment defaults
+  if (provider === 'router') return false;
   if (appEnv.isTest) {
     return aiEnv.useMock ?? true;
   }

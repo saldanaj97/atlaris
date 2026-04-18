@@ -12,7 +12,9 @@ describe('AI Router (mock in tests)', () => {
   let email: string;
 
   beforeEach(() => {
-    process.env.AI_PROVIDER = 'router';
+    // Force the mock provider in this integration test rather than relying on
+    // the (now-removed) `AI_PROVIDER=router` magic string.
+    delete process.env.AI_PROVIDER;
     process.env.AI_USE_MOCK = 'true';
 
     authUserId = buildTestAuthUserId('ai-router');

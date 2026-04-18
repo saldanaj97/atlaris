@@ -118,8 +118,8 @@ describe('AI Provider Factory', () => {
       expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('returns RouterGenerationProvider for explicit non-mock providers', async () => {
-      const providers = ['openai', 'anthropic', 'google', 'OPENAI'];
+    it('returns RouterGenerationProvider for explicit AI_PROVIDER=router', async () => {
+      const providers = ['router', 'ROUTER', '  router  '];
       const { getGenerationProvider } = await loadProviderFactory();
 
       providers.forEach((providerType) => {
@@ -129,6 +129,16 @@ describe('AI Provider Factory', () => {
 
         expect(provider.constructor.name).toBe('RouterGenerationProvider');
       });
+    });
+
+    it('throws EnvValidationError for unsupported AI_PROVIDER values', async () => {
+      const { getGenerationProvider } = await loadProviderFactory();
+
+      for (const providerType of ['openai', 'anthropic', 'google']) {
+        process.env.AI_PROVIDER = providerType;
+
+        expect(() => getGenerationProvider()).toThrow(/AI_PROVIDER must be/);
+      }
     });
   });
 
@@ -157,8 +167,8 @@ describe('AI Provider Factory', () => {
       expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('returns RouterGenerationProvider for any non-mock provider in production', async () => {
-      process.env.AI_PROVIDER = 'openai';
+    it('returns RouterGenerationProvider when AI_PROVIDER=router in production', async () => {
+      process.env.AI_PROVIDER = 'router';
       const provider = await withServerWindowHiddenAsync(async () => {
         const { getGenerationProvider } = await loadProviderFactory();
         return getGenerationProvider();

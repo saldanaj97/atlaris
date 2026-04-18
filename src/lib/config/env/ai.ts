@@ -30,10 +30,17 @@ interface AiMockEnv {
 }
 
 /**
+ * Accepted values for `AI_PROVIDER`. Historically the env accepted any
+ * string and treated everything except `mock` as "use the real router";
+ * tighten to this fixed union so unintended typos surface at parse time.
+ */
+export type AiProviderEnvValue = 'mock' | 'router';
+
+/**
  * Core AI env facets used by provider selection and generation defaults.
  */
 interface AiEnvConfig {
-  readonly provider: string | undefined;
+  readonly provider: AiProviderEnvValue | undefined;
   readonly useMock: boolean | undefined;
   readonly mockSeed: number | undefined;
   readonly mockScenario: string | undefined;
@@ -110,7 +117,16 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
   const aiEnv: AiEnvConfig = {
     get provider() {
       const raw = access.getServerOptional('AI_PROVIDER');
-      return raw?.toLowerCase();
+      if (raw === undefined) return undefined;
+      const normalized = raw.trim().toLowerCase();
+      if (normalized === '') return undefined;
+      if (normalized === 'mock' || normalized === 'router') {
+        return normalized;
+      }
+      throw new EnvValidationError(
+        `AI_PROVIDER must be one of: mock, router (or unset to use environment defaults). Received: ${raw}`,
+        'AI_PROVIDER'
+      );
     },
     get useMock() {
       return parseOptionalBooleanFlag(

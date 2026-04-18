@@ -392,14 +392,27 @@ describe('Environment Configuration', () => {
     });
 
     describe('provider', () => {
-      it('should return normalized lowercase provider', () => {
-        vi.stubEnv('AI_PROVIDER', 'OpenAI');
+      it('should return normalized lowercase mock value', () => {
+        vi.stubEnv('AI_PROVIDER', 'MOCK');
 
-        expect(aiEnv.provider).toBe('openai');
+        expect(aiEnv.provider).toBe('mock');
+      });
+
+      it('should return normalized lowercase router value', () => {
+        vi.stubEnv('AI_PROVIDER', 'Router');
+
+        expect(aiEnv.provider).toBe('router');
       });
 
       it('should return undefined when not set', () => {
         expect(aiEnv.provider).toBeUndefined();
+      });
+
+      it('should throw EnvValidationError for unsupported provider names', () => {
+        vi.stubEnv('AI_PROVIDER', 'openai');
+
+        expect(() => aiEnv.provider).toThrow(EnvValidationError);
+        expect(() => aiEnv.provider).toThrow(/AI_PROVIDER must be one of/);
       });
     });
 
