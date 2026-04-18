@@ -176,6 +176,13 @@
       "when": 1774906575293,
       "tag": "0024_massive_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1776541532842,
+      "tag": "0025_daily_bloodscream",
+      "breakpoints": true
     }
   ]
 }
