@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { safeMarkPlanFailed } from '@/app/api/v1/plans/stream/helpers';
+import { safeMarkPlanFailed } from '@/features/plans/session/stream-cleanup';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { createId } from '../../../fixtures/ids';
 

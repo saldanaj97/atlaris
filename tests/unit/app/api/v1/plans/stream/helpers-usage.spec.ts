@@ -3,15 +3,15 @@ import {
   makeOpenRouterGpt4oProviderMetadata,
 } from '@tests/fixtures/canonical-usage.factory';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  handleFailedGeneration,
-  tryRecordUsage,
-} from '@/app/api/v1/plans/stream/helpers';
 import type {
   GenerationFailureResult,
   GenerationSuccessResult,
 } from '@/features/ai/types/orchestrator.types';
 import { safeNormalizeUsage } from '@/features/ai/usage';
+import {
+  handleFailedGeneration,
+  tryRecordUsage,
+} from '@/features/plans/session/stream-outcomes';
 import type {
   AttemptsDbClient,
   GenerationAttemptRecord,

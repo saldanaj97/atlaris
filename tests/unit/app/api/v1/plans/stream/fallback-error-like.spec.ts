@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toFallbackErrorLike } from '@/app/api/v1/plans/stream/helpers';
+import { toFallbackErrorLike } from '@/features/plans/session/stream-cleanup';
 
 describe('toFallbackErrorLike', () => {
   it('maps Error instances', () => {
