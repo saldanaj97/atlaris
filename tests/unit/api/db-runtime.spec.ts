@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { getDb, MissingRequestDbContextError } from '@/lib/db/runtime';
 import { db as serviceDb } from '@/lib/db/service-role';
+import { makeDbClient } from '../../fixtures/db-mocks';
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 const ORIGINAL_VITEST_WORKER_ID = process.env.VITEST_WORKER_ID;
@@ -49,9 +50,7 @@ describe('getDb runtime safety', () => {
   it('returns request-scoped db when context is present in non-test runtime', () => {
     setNonTestRuntime();
 
-    const requestDb = {
-      select: () => undefined,
-    } as unknown as ReturnType<typeof getDb>;
+    const requestDb = makeDbClient({ select: vi.fn() });
 
     const resolvedDb = withRequestContext(
       createRequestContext(new Request('http://localhost/runtime-test'), {

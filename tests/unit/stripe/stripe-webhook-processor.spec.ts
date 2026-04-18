@@ -10,6 +10,7 @@ import {
   handleStripeWebhookDedupeAndApply,
   type StripeWebhookSideEffectDeps,
 } from '@/features/billing/stripe-webhook-processor';
+import { makeStripeSubscription } from '../../fixtures/stripe-mocks';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -19,10 +20,7 @@ function makeSubscription(fields: {
   id: string;
   customer: string;
 }): Stripe.Subscription {
-  return {
-    items: { data: [] },
-    ...fields,
-  } as unknown as Stripe.Subscription;
+  return makeStripeSubscription(fields);
 }
 
 function makeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {

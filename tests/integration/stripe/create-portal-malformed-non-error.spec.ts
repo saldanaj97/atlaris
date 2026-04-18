@@ -1,9 +1,9 @@
-import type Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
 import type { ParseJsonBodyOptions } from '@/lib/api/parse-json-body';
 import { logger } from '@/lib/logging/logger';
+import { makeStripeMock } from '../../fixtures/stripe-mocks';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { markUserAsSubscribed } from '../../helpers/subscription';
@@ -22,7 +22,7 @@ const defaultParseJsonBodyImplementation = async (
 };
 
 function createMockStripe() {
-  return {
+  return makeStripeMock({
     billingPortal: {
       sessions: {
         create: vi.fn().mockResolvedValue({
@@ -30,7 +30,7 @@ function createMockStripe() {
         }),
       },
     },
-  } as unknown as Stripe;
+  });
 }
 
 describe('create-portal malformed JSON factory (non-Error err)', () => {
