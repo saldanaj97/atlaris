@@ -5,8 +5,8 @@ import {
   isPersistableModelId,
   resolveSavedPreferenceForSettings,
 } from '@/features/ai/model-preferences';
-import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
 const PRO_PERSISTABLE_MODELS = getPersistableModelsForTier('pro');

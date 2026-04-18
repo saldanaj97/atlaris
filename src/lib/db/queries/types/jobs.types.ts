@@ -1,5 +1,5 @@
 import type { InferSelectModel } from 'drizzle-orm';
-import type { getDb } from '@/lib/db/runtime';
+import type { DbClient } from '@/lib/db/types';
 import type { JobErrorHistoryEntry } from '@/shared/types/jobs.types';
 
 type DbSchemaModule = typeof import('@/lib/db/schema');
@@ -10,7 +10,7 @@ type DbSchemaModule = typeof import('@/lib/db/schema');
  */
 export type JobQueueRow = InferSelectModel<DbSchemaModule['jobQueue']>;
 
-export type JobsDbClient = ReturnType<typeof getDb>;
+export type JobsDbClient = DbClient;
 
 export interface JobEnqueueResult {
   id: string;

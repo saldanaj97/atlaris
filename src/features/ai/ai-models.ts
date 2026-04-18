@@ -8,7 +8,8 @@
  * @module lib/ai/ai-models
  */
 import { AI_DEFAULT_MODEL, isValidModelId } from '@/shared/constants/ai-models';
-import type { AvailableModel, SubscriptionTier } from './types/model.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import type { AvailableModel } from './types/model.types';
 
 export { AI_DEFAULT_MODEL, isValidModelId };
 

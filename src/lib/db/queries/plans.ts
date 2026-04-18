@@ -19,6 +19,7 @@ import {
   taskProgress,
   tasks,
 } from '@/lib/db/schema';
+import type { DbClient } from '@/lib/db/types';
 import {
   assertValidPaginationOptions,
   type PaginationOptions,
@@ -31,8 +32,6 @@ import type {
   TaskProgress,
 } from '@/shared/types/db.types';
 
-/** RLS-enforced database client for plan queries (default: getDb()). */
-type DbClient = ReturnType<typeof getDb>;
 type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
 
 type PlanSummaryTaskRow = {

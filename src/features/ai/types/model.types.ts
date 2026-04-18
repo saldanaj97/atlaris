@@ -1,14 +1,9 @@
 /**
- * Subscription tier required to access a model.
+ * Subscription tier required to access a model. The AI model catalog only
+ * splits between `free`-accessible and `pro`-only tiers, regardless of how
+ * many subscription tiers the billing surface defines.
  */
 export type ModelTier = 'free' | 'pro';
-
-/**
- * User subscription tier (free, starter, or pro).
- * Starter tier has access to free models only.
- * Pro tier has access to all models.
- */
-export type SubscriptionTier = 'free' | 'starter' | 'pro';
 
 /**
  * Metadata for an available AI model.

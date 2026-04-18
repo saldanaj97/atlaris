@@ -3,12 +3,10 @@
 import { useRouter } from 'next/navigation';
 import type { JSX } from 'react';
 import { ModelSelector } from '@/app/settings/ai/components/model-selector';
-import type {
-  AvailableModel,
-  SubscriptionTier,
-} from '@/features/ai/types/model.types';
+import type { AvailableModel } from '@/features/ai/types/model.types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 type ModelPreferencesSelectorProps = {
   currentModel: string | null;

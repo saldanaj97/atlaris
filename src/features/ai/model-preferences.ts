@@ -5,13 +5,11 @@
 
 import { getModelsForTier } from '@/features/ai/ai-models';
 import { validateModelForTier } from '@/features/ai/model-resolver';
-import type {
-  AvailableModel,
-  SubscriptionTier,
-} from '@/features/ai/types/model.types';
+import type { AvailableModel } from '@/features/ai/types/model.types';
 import { preferredAiModel } from '@/lib/db/enums';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 const PERSISTABLE_MODEL_IDS = new Set<string>(preferredAiModel.enumValues);
 

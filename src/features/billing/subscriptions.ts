@@ -3,10 +3,10 @@ import type Stripe from 'stripe';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import { getStripe } from './client';
 
-type DbClient = ReturnType<typeof getDb>;
 const CUSTOMER_PROVISION_LOCK_KEY = 2;
 const CUSTOMER_PROVISION_REQUEST_TIMEOUT_MS = 10_000;
 const CUSTOMER_PROVISION_WARN_THRESHOLD_MS = 500;

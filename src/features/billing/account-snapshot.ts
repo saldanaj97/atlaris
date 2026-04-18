@@ -7,10 +7,9 @@ import {
 import { getCorrelationId } from '@/lib/api/context';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
+import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-
-type DbClient = ReturnType<typeof getDb>;
 
 class BillingSnapshotNotFoundError extends Error {
   constructor(userId: string, correlationId?: string) {

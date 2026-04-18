@@ -1,4 +1,5 @@
 import { JOB_TYPE_MAP, type JobTypeValue } from '@/shared/constants/jobs';
+import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
 export const JOB_TYPES = JOB_TYPE_MAP;
 
@@ -17,9 +18,9 @@ export interface PlanRegenerationJobData {
   overrides?: Partial<{
     topic: string;
     notes: string | null;
-    skillLevel: 'beginner' | 'intermediate' | 'advanced';
+    skillLevel: SkillLevel;
     weeklyHours: number;
-    learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+    learningStyle: LearningStyle;
     startDate: string | null;
     deadlineDate: string | null;
   }>;

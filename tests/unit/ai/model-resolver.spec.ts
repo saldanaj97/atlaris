@@ -6,9 +6,8 @@ import {
   resolveModelForTier,
   validateModelForTier,
 } from '@/features/ai/model-resolver';
-
-import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 describe('Model resolver (Task 2 - Phase 2)', () => {
   const getModelIdBy = (

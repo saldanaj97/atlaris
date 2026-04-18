@@ -1,5 +1,9 @@
 import type { InferSelectModel } from 'drizzle-orm';
-import type { ModuleWithTasks } from '@/lib/db/queries/types/modules.types';
+import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.types';
+import type {
+  Module,
+  ModuleWithTasks,
+} from '@/lib/db/queries/types/modules.types';
 
 type DbEnumsModule = typeof import('@/lib/db/enums');
 type DbSchemaModule = typeof import('@/lib/db/schema');
@@ -14,12 +18,22 @@ export type GenerationStatus =
   DbEnumsModule['generationStatus']['enumValues'][number];
 
 export type LearningPlan = InferSelectModel<DbSchemaModule['learningPlans']>;
-export type Module = InferSelectModel<DbSchemaModule['modules']>;
-export type Task = InferSelectModel<DbSchemaModule['tasks']>;
-export type TaskProgress = InferSelectModel<DbSchemaModule['taskProgress']>;
-export type GenerationAttempt = InferSelectModel<
-  DbSchemaModule['generationAttempts']
->;
+
+// Canonical row shapes live in lib/db/queries/types; re-export here so existing
+// callers that already pull from @/shared/types/db.types keep working.
+export type {
+  Module,
+  Task,
+  TaskProgress,
+} from '@/lib/db/queries/types/modules.types';
+
+/**
+ * Canonical name for the generation_attempts row; aliased here so existing
+ * callers that import from `@/shared/types/db.types` continue to work.
+ * Prefer `GenerationAttemptRecord` from `@/lib/db/queries/types/attempts.types`
+ * in new code.
+ */
+export type GenerationAttempt = GenerationAttemptRecord;
 
 export type LearningPlanWithModules = LearningPlan & {
   modules: ModuleWithTasks[];
@@ -47,7 +61,11 @@ export type PlanSummary = ProgressMetrics & {
   attemptsCount?: number;
 };
 
-type LightweightPlanListFields = Pick<
+/**
+ * Field subset shared by lightweight plan list rows (API + read-models).
+ * Exported so summary builders use the same shape the API contract assumes.
+ */
+export type LightweightPlanListRow = Pick<
   LearningPlan,
   | 'id'
   | 'topic'
@@ -61,7 +79,7 @@ type LightweightPlanListFields = Pick<
 >;
 
 /** Lightweight plan summary for API list views. */
-export type LightweightPlanSummary = LightweightPlanListFields &
+export type LightweightPlanSummary = LightweightPlanListRow &
   ProgressMetrics & {
     moduleCount: number;
   };

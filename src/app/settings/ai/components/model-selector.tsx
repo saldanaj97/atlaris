@@ -23,12 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type {
-  AvailableModel,
-  SubscriptionTier,
-} from '@/features/ai/types/model.types';
+import type { AvailableModel } from '@/features/ai/types/model.types';
 import { ROUTES } from '@/features/navigation';
 import { clientLogger } from '@/lib/logging/client';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /** Placeholder value so Radix Select stays controlled (never uncontrolled↔controlled). */
 const NO_MODEL_VALUE = '__no_model_selected__';

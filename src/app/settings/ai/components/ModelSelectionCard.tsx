@@ -13,9 +13,9 @@ import {
   getPersistableModelsForTier,
   resolveSavedPreferenceForSettings,
 } from '@/features/ai/model-preferences';
-import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /**
  * Async component that fetches user subscription data and renders the model selector.

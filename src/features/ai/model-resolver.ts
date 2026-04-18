@@ -13,9 +13,9 @@ import {
 } from '@/features/ai/ai-models';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
-import type { SubscriptionTier } from '@/features/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export type ModelResolution = {
   modelId: string;

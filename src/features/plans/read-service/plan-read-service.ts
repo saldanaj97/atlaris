@@ -19,7 +19,7 @@ import {
   getPlanSummaryCount,
   getPlanSummaryRowsForUser,
 } from '@/lib/db/queries/plans';
-import type { getDb } from '@/lib/db/runtime';
+import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import type { PaginationOptions } from '@/shared/constants/pagination';
 import type {
@@ -31,7 +31,7 @@ import type {
   PlanSummary,
 } from '@/shared/types/db.types';
 
-export type PlanDbClient = ReturnType<typeof getDb>;
+export type PlanDbClient = DbClient;
 
 async function listPlanSummaries(params: {
   userId: string;

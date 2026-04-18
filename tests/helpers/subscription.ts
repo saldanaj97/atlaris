@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm';
 
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-type SubscriptionTier = 'free' | 'starter' | 'pro';
 type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
 
 interface MarkUserAsSubscribedOptions {

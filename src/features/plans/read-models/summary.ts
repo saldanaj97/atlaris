@@ -11,6 +11,7 @@ import {
 } from '@/features/plans/status/read-status';
 import type {
   LearningPlan,
+  LightweightPlanListRow,
   LightweightPlanSummary,
   Module,
   PlanSummary,
@@ -25,19 +26,6 @@ type SummaryTaskRow = {
 };
 
 type ProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
-
-type LightweightPlanRow = Pick<
-  LearningPlan,
-  | 'id'
-  | 'topic'
-  | 'skillLevel'
-  | 'learningStyle'
-  | 'visibility'
-  | 'origin'
-  | 'generationStatus'
-  | 'createdAt'
-  | 'updatedAt'
->;
 
 type LightweightModuleMetricsRow = {
   planId: string;
@@ -157,7 +145,7 @@ export function deriveCanonicalPlanSummaryStatus(
 }
 
 export function buildLightweightPlanSummaries(params: {
-  planRows: LightweightPlanRow[];
+  planRows: LightweightPlanListRow[];
   moduleMetricsRows: LightweightModuleMetricsRow[];
 }): LightweightPlanSummary[] {
   const { planRows, moduleMetricsRows } = params;

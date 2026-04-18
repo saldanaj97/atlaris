@@ -1,5 +1,6 @@
 import type { InferSelectModel } from 'drizzle-orm';
 
+import type { DbClient } from '@/lib/db/types';
 import type { EffortNormalizationFlags } from '@/shared/constants/effort';
 import type { ParsedModule } from '@/shared/types/ai-parser.types';
 import type {
@@ -16,9 +17,7 @@ type DbSchemaModule = typeof import('@/lib/db/schema');
  * When using the RLS client returned by {@link getDb}, callers are responsible for releasing
  * it by calling its `cleanup()` method. Do this in a `finally` block.
  */
-export type AttemptsDbClient = ReturnType<
-  typeof import('@/lib/db/runtime').getDb
->;
+export type AttemptsDbClient = DbClient;
 
 export type GenerationAttemptRecord = InferSelectModel<
   DbSchemaModule['generationAttempts']

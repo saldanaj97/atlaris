@@ -12,10 +12,8 @@ import {
 import '../../mocks/unit/client-logger.unit';
 import '../../mocks/unit/sonner.unit';
 
-import type {
-  AvailableModel,
-  SubscriptionTier,
-} from '@/features/ai/types/model.types';
+import type { AvailableModel } from '@/features/ai/types/model.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { createTestModel } from '../../fixtures/model.factory';
 
 const FREE_MODELS: AvailableModel[] = [

@@ -1,11 +1,10 @@
 import { eq } from 'drizzle-orm';
-import type { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
+import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { UserNotFoundError } from './errors';
 
-// Type for DB client (compatible with both runtime and service-role clients)
-export type DbClient = ReturnType<typeof getDb>;
+export type { DbClient };
 
 /**
  * Resolve user's subscription tier from database

@@ -5,13 +5,10 @@ import {
   mapDbRowToScheduleCacheRow,
 } from '@/lib/db/queries/helpers/schedule-helpers';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
-import type { getDb } from '@/lib/db/runtime';
 import { planSchedules } from '@/lib/db/schema';
+import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
-
-/** RLS-enforced database client for schedule queries. */
-type DbClient = ReturnType<typeof getDb>;
 
 /**
  * Validates that the user owns the plan. Throws if the plan is not found or access is denied.

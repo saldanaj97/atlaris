@@ -4,14 +4,12 @@ import { and, eq, gt } from 'drizzle-orm';
 import { pdfPreviewEditSchema } from '@/features/pdf/validation/pdf';
 import type { PdfPreviewEditInput } from '@/features/pdf/validation/pdf.types';
 import { hashSha256 } from '@/lib/crypto/hash';
-import type { getDb } from '@/lib/db/runtime';
 import { oauthStateTokens } from '@/lib/db/schema';
+import type { DbClient } from '@/lib/db/types';
 
 const PDF_PROOF_PROVIDER = 'pdf_extraction_proof_v1';
 const PDF_PROOF_VERSION = 1 as const;
 const PDF_PROOF_TTL_MS = 10 * 60 * 1000;
-
-type DbClient = ReturnType<typeof getDb>;
 
 type CanonicalPdfExtractedContent = {
   mainTopic: string;
