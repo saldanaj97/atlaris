@@ -12,14 +12,11 @@ import { ensureUser } from '../../../helpers/db';
  * The health endpoint now requires a Request argument for IP-based rate limiting.
  */
 function createMockRequest(ip: string = '127.0.0.1'): Request {
-  return {
+  return new Request('http://localhost/api/health/worker', {
     headers: {
-      get: (name: string) => {
-        if (name.toLowerCase() === 'x-forwarded-for') return ip;
-        return null;
-      },
+      'x-forwarded-for': ip,
     },
-  } as unknown as Request;
+  });
 }
 
 describe('Health Endpoint', () => {

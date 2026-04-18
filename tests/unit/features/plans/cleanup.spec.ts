@@ -33,6 +33,7 @@ function createMockDbClient(resultCount: number) {
   const setFn = vi.fn().mockReturnValue({ where: whereFn });
   const updateFn = vi.fn().mockReturnValue({ set: setFn });
 
+  // NOTE: keeps a bespoke chainable Drizzle stub instead of tests/fixtures/db-mocks.ts#makeDbClient because this test asserts transaction plus select().from().where().limit().for() behavior via the chain.
   const client = {
     select: selectFn,
     update: updateFn,

@@ -699,7 +699,7 @@ describe('PlanLifecycleService', () => {
       const result = await service.createPdfPlan({
         ...validPdfInput,
         extractedContent: null,
-      } as unknown as CreatePdfPlanInput);
+      });
 
       expect(result.status).toBe('permanent_failure');
       if (result.status === 'permanent_failure') {

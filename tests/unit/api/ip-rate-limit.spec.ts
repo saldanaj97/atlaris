@@ -11,11 +11,9 @@ import {
 import { logger } from '@/lib/logging/logger';
 
 function createMockRequest(headers: Record<string, string> = {}): Request {
-  return {
-    headers: {
-      get: (name: string) => headers[name.toLowerCase()] ?? null,
-    },
-  } as unknown as Request;
+  return new Request('http://localhost/test', {
+    headers,
+  });
 }
 
 describe('IP Rate Limiting', () => {

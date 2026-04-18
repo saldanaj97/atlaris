@@ -24,6 +24,11 @@ type MockAttemptsDbClient = {
   transaction: () => unknown;
 };
 
+function asAttemptsDbClient(dbClient: MockAttemptsDbClient): AttemptsDbClient {
+  // NOTE: keeps a bespoke AttemptsDbClient double instead of tests/fixtures/db-mocks.ts#makeAttemptsDbClient because this test injects a timeout-specific mock shape rather than the full query client.
+  return dbClient as unknown as AttemptsDbClient;
+}
+
 type AttemptOperationsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;
   finalizeAttemptSuccess: typeof finalizeAttemptSuccess;
@@ -245,7 +250,7 @@ describe('runGenerationAttempt timeout wiring', () => {
         },
       },
       {
-        dbClient: mockDbClient as unknown as AttemptsDbClient,
+        dbClient: asAttemptsDbClient(mockDbClient),
         attemptOperations,
         provider,
       }
@@ -290,7 +295,7 @@ describe('runGenerationAttempt timeout wiring', () => {
         },
       },
       {
-        dbClient: mockDbClient as unknown as AttemptsDbClient,
+        dbClient: asAttemptsDbClient(mockDbClient),
         attemptOperations,
         provider,
         timeoutConfig: {

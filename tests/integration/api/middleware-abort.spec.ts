@@ -26,10 +26,13 @@ describe('withErrorBoundary client abort (integration)', () => {
     const { PUT } = await import('@/app/api/v1/user/profile/route');
     const abort = new Error('aborted');
     abort.name = 'AbortError';
-    const request = {
+    const request = new Request('http://localhost/api/v1/user/profile', {
+      method: 'PUT',
       headers: new Headers({ 'Content-Type': 'application/json' }),
-      json: () => Promise.reject(abort),
-    } as unknown as Request;
+    });
+    Object.defineProperty(request, 'json', {
+      value: () => Promise.reject(abort),
+    });
 
     const response = await PUT(request);
 

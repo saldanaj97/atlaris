@@ -8,10 +8,7 @@ import { findRecentDuplicatePlan } from '@/features/plans/lifecycle/plan-operati
  * Build a chainable mock DbClient that resolves with the given rows.
  * Mimics the Drizzle query builder chain: select → from → where → limit.
  *
- * Uses `as unknown as` double cast because Drizzle's internal query-builder
- * types are deeply nested generics that cannot be satisfied with a simple
- * partial mock. The cast is safe here since we only exercise the fluent
- * chain methods the function under test actually calls.
+ * NOTE: keeps a bespoke chainable Drizzle stub instead of tests/fixtures/db-mocks.ts#makeDbClient because this test asserts select().from().where().limit() behavior via the chain. Drizzle's query-builder types are deeply nested generics, so the cast stays local to this helper.
  */
 function createMockDbClient(rows: Array<{ id: string }>) {
   const limitFn = vi.fn().mockResolvedValue(rows);

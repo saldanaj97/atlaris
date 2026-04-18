@@ -15,7 +15,11 @@ function mockRequest(init: {
       headers.set(k, v);
     }
   }
-  return { headers, json: init.json } as unknown as Request;
+  const request = new Request('http://localhost/parse-json-body', { headers });
+  Object.defineProperty(request, 'json', {
+    value: init.json,
+  });
+  return request;
 }
 
 describe('detectJsonBodyPresence', () => {

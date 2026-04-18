@@ -504,8 +504,10 @@ describe('Job queue service', () => {
     // Deliberately bypass TS at call site to test runtime guard
     const invalidTypes = [
       'plan_regeneration" ) or true -- ',
-    ] as unknown as JobType[];
+    ] satisfies readonly string[];
 
-    await expect(getNextJob(invalidTypes)).rejects.toThrow('Invalid job type');
+    await expect(getNextJob([...invalidTypes] as JobType[])).rejects.toThrow(
+      'Invalid job type'
+    );
   });
 });
