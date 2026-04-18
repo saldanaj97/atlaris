@@ -47,6 +47,7 @@ describe('Stripe DB schema', () => {
       await expect(
         db
           .update(users)
+          // Negative-path coverage: intentionally bypass TS so Postgres rejects the invalid enum value.
           .set({ subscriptionTier: 'gold' as any })
           .where(sql`id = ${userId}`)
       ).rejects.toThrow();

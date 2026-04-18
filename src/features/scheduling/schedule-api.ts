@@ -32,7 +32,7 @@ export const DEFAULT_SCHEDULE_TIMEZONE = 'UTC';
  */
 export function resolveScheduleTimezone(
   _userId: string,
-  _db: DbClient
+  _db: DbClient | null
 ): string {
   return DEFAULT_SCHEDULE_TIMEZONE;
 }

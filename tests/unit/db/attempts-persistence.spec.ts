@@ -1,10 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type MockedFunction,
+  vi,
+} from 'vitest';
 
 import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence';
 import * as rlsJwtClaims from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import type { DbClient } from '@/lib/db/types';
 
 // Minimal mock attempt record returned by the generationAttempts update
 const mockAttemptRecord = {
@@ -135,8 +143,14 @@ function createMockTx(options?: {
 
 /** Wire db.transaction to invoke the callback with the given mock tx. */
 function useMockTransaction(mockTx: ReturnType<typeof createMockTx>): void {
-  (vi.mocked(db).transaction as any).mockImplementation(
-    (fn: (tx: unknown) => Promise<unknown>) => fn(mockTx)
+  const transactionMock = vi.mocked(db).transaction as MockedFunction<
+    DbClient['transaction']
+  >;
+
+  transactionMock.mockImplementation(
+    // Drizzle's transaction callback type is wider than the chain this test
+    // stubs, but the helper only exercises execute/delete/insert/update.
+    (fn) => fn(mockTx as never)
   );
 }
 

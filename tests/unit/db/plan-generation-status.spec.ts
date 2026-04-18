@@ -49,6 +49,7 @@ describe('plan-generation-status helpers', () => {
         capturedTable = table;
         return { set: mockSet };
       };
+      // TODO(W27): keep this narrow transactional stub for now; tests/fixtures/db-mocks.ts#makeDbClient cannot model the callback tx shape here yet.
       const tx = { update: mockUpdate } as unknown as Parameters<
         typeof setLearningPlanGenerating
       >[0];
