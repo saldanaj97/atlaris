@@ -10,7 +10,7 @@ import {
   weeklyHoursSchema,
 } from '@/shared/schemas/plan-validation.schemas';
 
-export const pdfExtractedSectionSchema = z
+const pdfExtractedSectionSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
     content: z.string().trim().max(5000),

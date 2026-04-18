@@ -5,10 +5,7 @@
 
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
-import {
-  getAttemptCap,
-  PLAN_GENERATION_LIMIT,
-} from '@/features/ai/generation-policy';
+import { PLAN_GENERATION_LIMIT } from '@/features/ai/generation-policy';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
@@ -138,25 +135,5 @@ export async function seedFailedAttemptsForDurableWindow(
     durationMs,
     promptHash: `${promptHashPrefix}-${index}`,
     metadata,
-  }));
-}
-
-type GenerationAttemptInsert = InferInsertModel<typeof generationAttempts>;
-
-/**
- * Seeds ATTEMPT_CAP failed attempts for a plan to simulate max retries reached.
- * Uses status 'failure', classification 'validation', varying durationMs,
- * modulesCount/tasksCount 0, and unique promptHash per row. Accepts optional
- * overrides for future schema changes (applied before per-row fields).
- */
-export async function seedMaxAttemptsForPlan(
-  planId: string,
-  overrides?: Partial<GenerationAttemptInsert>
-): Promise<GenerationAttemptRow[]> {
-  return createFailedAttemptsInDb(planId, getAttemptCap(), (index) => ({
-    ...overrides,
-    classification: 'validation',
-    durationMs: 500 + index,
-    promptHash: `retry-capped-${index}`,
   }));
 }

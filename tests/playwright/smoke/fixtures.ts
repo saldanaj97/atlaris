@@ -22,7 +22,7 @@ export const ANON_PROTECTED_ROUTES = [
   '/analytics/achievements',
 ] as const;
 
-export interface PlanInput {
+interface PlanInput {
   deadline: string;
   learningStyle: string;
   skillLevel: string;
@@ -45,7 +45,7 @@ export function createPlanInput(overrides: Partial<PlanInput> = {}): PlanInput {
   };
 }
 
-export type HeadingName = RegExp | string;
+type HeadingName = RegExp | string;
 
 export function assertRedirectToSignIn(
   response: APIResponse,

@@ -38,7 +38,7 @@ function generateProofToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
-export function canonicalizePdfExtractedContent(
+function canonicalizePdfExtractedContent(
   input: Pick<PdfPreviewEditInput, 'mainTopic' | 'sections'>
 ): CanonicalPdfExtractedContent {
   const parsed = pdfPreviewEditSchema.parse({
@@ -116,7 +116,7 @@ export async function issuePdfExtractionProof(params: {
   return { token, expiresAt };
 }
 
-export async function consumePdfExtractionProof(params: {
+async function consumePdfExtractionProof(params: {
   authUserId: string;
   token: string;
   extractionHash: string;
