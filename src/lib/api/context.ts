@@ -24,7 +24,7 @@ export function withRequestContext<T>(
 }
 
 export function getRequestContext(): RequestContext | undefined {
-  return storage.getStore() ?? undefined;
+  return storage.getStore();
 }
 
 export function getCorrelationId(): string | undefined {

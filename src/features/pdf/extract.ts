@@ -101,7 +101,9 @@ export async function getPdfPageCountFromBuffer(
     return Math.max(1, Math.ceil(buffer.length / BYTES_PER_PAGE_ESTIMATE));
   } finally {
     clearTimeout(timer);
-    await parser?.destroy().catch(() => {});
+    await parser?.destroy().catch((err: unknown) => {
+      logger.debug({ err }, 'pdf-parse parser destroy failed');
+    });
   }
 }
 
