@@ -4,8 +4,8 @@ import {
   requirePlanIdFromRequest,
 } from '@/features/plans/api/route-context';
 import {
-  type PlanGenerationHandlerOverrides,
-  retryAndStreamPlanGenerationSession,
+  createPlanGenerationSessionBoundary,
+  type PlanGenerationSessionBoundary,
 } from '@/features/plans/session/plan-generation-session';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
@@ -22,13 +22,22 @@ export const maxDuration = 60;
 
 const RETRYABLE_STATUSES = new Set(['failed', 'pending_retry']);
 
+const defaultBoundary: PlanGenerationSessionBoundary =
+  createPlanGenerationSessionBoundary();
+
 /**
  * Creates the retry POST handler with optional dependency overrides.
- * Used by integration tests to supply mocks; production uses the default lifecycle service.
+ *
+ * Tests inject a fake `boundary` (typically built via
+ * `createPlanGenerationSessionBoundary({ createLifecycleService })`) to swap
+ * the lifecycle service under the boundary; production uses the default
+ * boundary singleton.
  */
 export function createRetryHandler(deps?: {
-  overrides?: PlanGenerationHandlerOverrides;
+  boundary?: PlanGenerationSessionBoundary;
 }): PlainHandler {
+  const boundary = deps?.boundary ?? defaultBoundary;
+
   return withErrorBoundary(
     withAuthAndRateLimit(
       'aiGeneration',
@@ -75,13 +84,12 @@ export function createRetryHandler(deps?: {
           );
         }
 
-        return await retryAndStreamPlanGenerationSession({
+        return await boundary.respondRetryStream({
           req,
           authUserId,
-          userId: internalUserId,
+          internalUserId,
           planId,
           attemptNumber,
-          requestDb: db,
           plan: {
             topic: plan.topic,
             skillLevel: plan.skillLevel,
@@ -95,8 +103,8 @@ export function createRetryHandler(deps?: {
                 ? parsePersistedPdfContext(plan.extractedContext)
                 : null,
           },
-          processGenerationAttempt: deps?.overrides?.processGenerationAttempt,
-          headers: generationRateLimitHeaders,
+          tierDb: db,
+          responseHeaders: generationRateLimitHeaders,
         });
       }
     )

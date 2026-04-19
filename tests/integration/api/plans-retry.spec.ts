@@ -1,10 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  createRetryHandler,
-  POST,
-} from '@/app/api/v1/plans/[planId]/retry/route';
-import type { GenerationAttemptResult } from '@/features/plans/lifecycle';
+
+import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
@@ -59,10 +56,9 @@ async function withRunGenerationAttemptSpy<T>(
   }
 }
 
-function createRetryRequest(planId: string, signal?: AbortSignal): Request {
+function createRetryRequest(planId: string): Request {
   return new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
     method: 'POST',
-    signal,
   });
 }
 
@@ -117,16 +113,6 @@ function expectTerminalEventAfterStart(
   return terminalEvent;
 }
 
-function expectNoTerminalEvent(
-  events: Awaited<ReturnType<typeof readStreamingResponse>>
-) {
-  expect(
-    events.some((event) =>
-      ['complete', 'error', 'cancelled'].includes(event.type)
-    )
-  ).toBe(false);
-}
-
 async function listAttempts(planId: string) {
   return db
     .select({
@@ -138,18 +124,8 @@ async function listAttempts(planId: string) {
     .orderBy(desc(generationAttempts.createdAt));
 }
 
-async function getPlanGenerationStatus(planId: string) {
-  const [plan] = await db
-    .select({ generationStatus: learningPlans.generationStatus })
-    .from(learningPlans)
-    .where(eq(learningPlans.id, planId))
-    .limit(1);
-
-  return plan?.generationStatus;
-}
-
-describe('POST /api/v1/plans/:planId/retry', () => {
-  it('streams retry success with incremented attempt numbering and success classification semantics', async () => {
+describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary smoke', () => {
+  it('streams retry success with incremented attempt numbering via the default boundary', async () => {
     const authUserId = 'auth_retry_success';
     setTestUser(authUserId);
     const userId = await ensureUser({
@@ -245,247 +221,6 @@ describe('POST /api/v1/plans/:planId/retry', () => {
       expect(body.code).toBe('VALIDATION_ERROR');
       expect(body.error).toContain('not eligible for retry');
       expect(runSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  it('emits SSE error event when plan attempt cap is already reached', async () => {
-    const authUserId = 'auth_retry_capped';
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: 'retry-capped@example.com',
-    });
-
-    const plan = await createTestPlanWithAttempt({
-      userId,
-      planOverrides: { topic: 'Capped plan' },
-    });
-
-    const cappedResult: GenerationAttemptResult = {
-      status: 'permanent_failure',
-      classification: 'capped',
-      error: new Error('Generation attempt cap reached'),
-    };
-
-    const postWithCappedMock = createRetryHandler({
-      overrides: {
-        processGenerationAttempt: async () => cappedResult,
-      },
-    });
-
-    const response = await postWithCappedMock(createRetryRequest(plan.id));
-
-    expect(response.status).toBe(200);
-    const events = await readStreamingResponse(response);
-    expectPlanStartEvent(events, 1);
-    const errorEvent = expectTerminalEventAfterStart(events, 'error');
-    const errorData = expectJsonObject(errorEvent.data);
-    expect(errorData.code).toBe('ATTEMPTS_EXHAUSTED');
-    expect(errorData.classification).toBe('capped');
-    expect(errorData.retryable).toBe(false);
-    await expect(getPlanGenerationStatus(plan.id)).resolves.toBe('failed');
-    await expect(listAttempts(plan.id)).resolves.toHaveLength(0);
-  });
-
-  it('emits SSE error event when another attempt is already in progress', async () => {
-    const authUserId = 'auth_retry_in_progress';
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: 'retry-in-progress@example.com',
-    });
-
-    const plan = await createTestPlanWithAttempt({
-      userId,
-      planOverrides: { topic: 'Plan in progress' },
-    });
-
-    const conflictResult: GenerationAttemptResult = {
-      status: 'retryable_failure',
-      classification: 'rate_limit',
-      error: new Error(
-        'A generation is already in progress for this plan (concurrent conflict)'
-      ),
-    };
-
-    const postWithConflictMock = createRetryHandler({
-      overrides: {
-        processGenerationAttempt: async () => conflictResult,
-      },
-    });
-
-    const response = await postWithConflictMock(createRetryRequest(plan.id));
-
-    expect(response.status).toBe(200);
-    const events = await readStreamingResponse(response);
-    expectPlanStartEvent(events, 1);
-    const errorEvent = expectTerminalEventAfterStart(events, 'error');
-    const errorData = expectJsonObject(errorEvent.data);
-    expect(errorData.code).toBe('RATE_LIMITED');
-    expect(errorData.classification).toBe('rate_limit');
-    expect(errorData.retryable).toBe(true);
-    await expect(getPlanGenerationStatus(plan.id)).resolves.toBe('failed');
-    await expect(listAttempts(plan.id)).resolves.toHaveLength(0);
-  });
-
-  it('emits permanent failure parity for validation-classified retry failures', async () => {
-    const authUserId = 'auth_retry_permanent';
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: 'retry-permanent@example.com',
-    });
-
-    const plan = await createTestPlanWithAttempt({ userId });
-    const postWithPermanentFailure = createRetryHandler({
-      overrides: {
-        processGenerationAttempt: async () => ({
-          status: 'permanent_failure',
-          classification: 'validation',
-          error: new Error('generated modules failed validation'),
-        }),
-      },
-    });
-
-    const response = await postWithPermanentFailure(
-      createRetryRequest(plan.id)
-    );
-    expect(response.status).toBe(200);
-
-    const events = await readStreamingResponse(response);
-    expectPlanStartEvent(events, 1);
-    const errorEvent = expectTerminalEventAfterStart(events, 'error');
-    expect(errorEvent.data).toMatchObject({
-      code: 'INVALID_OUTPUT',
-      classification: 'validation',
-      retryable: false,
-    });
-    await expect(getPlanGenerationStatus(plan.id)).resolves.toBe('failed');
-    await expect(listAttempts(plan.id)).resolves.toHaveLength(0);
-  });
-
-  it('marks the plan failed but leaves the reserved retry attempt in progress on unexpected errors', async () => {
-    const authUserId = 'auth_retry_unhandled';
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: 'retry-unhandled@example.com',
-    });
-
-    const plan = await createTestPlanWithAttempt({
-      userId,
-      attemptOverrides: {
-        status: 'failure',
-        classification: 'timeout',
-        durationMs: 500,
-        promptHash: 'retry-unhandled-first-attempt',
-      },
-    });
-
-    const postWithUnhandledFailure = createRetryHandler({
-      overrides: {
-        processGenerationAttempt: async (input) => {
-          await db.insert(generationAttempts).values({
-            planId: input.planId,
-            status: 'in_progress',
-            classification: null,
-            durationMs: 0,
-            modulesCount: 0,
-            tasksCount: 0,
-            promptHash: 'retry-unhandled-second-attempt',
-          });
-          throw new Error('retry crashed unexpectedly');
-        },
-      },
-    });
-
-    const response = await postWithUnhandledFailure(
-      createRetryRequest(plan.id)
-    );
-    expect(response.status).toBe(200);
-
-    const events = await readStreamingResponse(response);
-    expectPlanStartEvent(events, 2);
-    const errorEvent = expectTerminalEventAfterStart(events, 'error');
-    expect(errorEvent.data).toMatchObject({
-      code: 'GENERATION_FAILED',
-      classification: 'provider_error',
-      retryable: true,
-    });
-
-    const attempts = await listAttempts(plan.id);
-    const [persistedPlan] = await db
-      .select({ generationStatus: learningPlans.generationStatus })
-      .from(learningPlans)
-      .where(eq(learningPlans.id, plan.id))
-      .limit(1);
-
-    expect(persistedPlan?.generationStatus).toBe('failed');
-    expect(attempts).toHaveLength(2);
-    expect(attempts[0]).toMatchObject({
-      status: 'in_progress',
-      classification: null,
-    });
-  });
-
-  it('suppresses terminal retry SSE events on cancellation while still marking the plan failed', async () => {
-    const authUserId = 'auth_retry_cancelled';
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: 'retry-cancelled@example.com',
-    });
-
-    const plan = await createTestPlanWithAttempt({
-      userId,
-      attemptOverrides: {
-        status: 'failure',
-        classification: 'provider_error',
-        durationMs: 750,
-        promptHash: 'retry-cancelled-first-attempt',
-      },
-    });
-
-    const controller = new AbortController();
-    const postWithCancellation = createRetryHandler({
-      overrides: {
-        processGenerationAttempt: async (input) => {
-          await db.insert(generationAttempts).values({
-            planId: input.planId,
-            status: 'in_progress',
-            classification: null,
-            durationMs: 0,
-            modulesCount: 0,
-            tasksCount: 0,
-            promptHash: 'retry-cancelled-second-attempt',
-          });
-          controller.abort();
-          throw new DOMException('Client disconnected', 'AbortError');
-        },
-      },
-    });
-
-    const response = await postWithCancellation(
-      createRetryRequest(plan.id, controller.signal)
-    );
-    expect(response.status).toBe(200);
-
-    const events = await readStreamingResponse(response);
-    expectPlanStartEvent(events, 2);
-    expectNoTerminalEvent(events);
-
-    const attempts = await listAttempts(plan.id);
-    const [persistedPlan] = await db
-      .select({ generationStatus: learningPlans.generationStatus })
-      .from(learningPlans)
-      .where(eq(learningPlans.id, plan.id))
-      .limit(1);
-
-    expect(persistedPlan?.generationStatus).toBe('failed');
-    expect(attempts).toHaveLength(2);
-    expect(attempts[0]).toMatchObject({
-      status: 'in_progress',
-      classification: null,
     });
   });
 });

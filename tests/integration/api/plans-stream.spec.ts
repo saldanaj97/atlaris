@@ -8,17 +8,7 @@ import {
   computePdfExtractionHash,
   issuePdfExtractionProof,
 } from '@/features/pdf/security/pdf-extraction-proof';
-import type {
-  GenerationAttemptResult,
-  ProcessGenerationInput,
-} from '@/features/plans/lifecycle';
-import type { PreferredAiModel } from '@/lib/db/enums';
-import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  users,
-} from '@/lib/db/schema';
+import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import {
   createPdfProof,
@@ -36,47 +26,9 @@ const NUMERIC_HEADER_PATTERN = /^\d+$/;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
   ({ tier, id }) => tier === 'free' && id !== 'openrouter/free'
 )?.id;
-const PRO_TIER_MODEL = AVAILABLE_MODELS.find(({ tier }) => tier === 'pro')?.id;
 
-if (!FREE_QUERY_OVERRIDE_MODEL || !PRO_TIER_MODEL) {
-  throw new Error(
-    'Expected free and pro model fixtures for plans stream tests'
-  );
-}
-
-const STREAM_MOCK_SUCCESS: GenerationAttemptResult = {
-  status: 'generation_success',
-  data: {
-    modules: [
-      {
-        title: 'Captured Module',
-        estimatedMinutes: 60,
-        tasks: [{ title: 'T', estimatedMinutes: 30 }],
-      },
-    ],
-    metadata: {
-      provider: 'mock',
-      model: 'mock-model',
-      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
-    },
-    durationMs: 5,
-  },
-};
-
-function createCapturingHandler(): {
-  post: ReturnType<typeof createStreamHandler>;
-  captured: ProcessGenerationInput[];
-} {
-  const captured: ProcessGenerationInput[] = [];
-  const post = createStreamHandler({
-    overrides: {
-      processGenerationAttempt: async (input: ProcessGenerationInput) => {
-        captured.push(input);
-        return STREAM_MOCK_SUCCESS;
-      },
-    },
-  });
-  return { post, captured };
+if (!FREE_QUERY_OVERRIDE_MODEL) {
+  throw new Error('Expected free model fixture for plans stream tests');
 }
 
 function assertNumericHeader(response: Response, name: string): void {
@@ -155,14 +107,6 @@ function expectTerminalEventAfterStart(
   return terminalEvent;
 }
 
-function expectNoTerminalEvent(events: StreamingEvent[]): void {
-  expect(
-    events.some((event) =>
-      ['complete', 'error', 'cancelled'].includes(event.type)
-    )
-  ).toBe(false);
-}
-
 async function listAttempts(planId: string) {
   return db
     .select({
@@ -196,7 +140,7 @@ afterAll(() => {
   vi.unstubAllEnvs();
 });
 
-describe('POST /api/v1/plans/stream', () => {
+describe('POST /api/v1/plans/stream — HTTP preflight + default boundary smoke', () => {
   it('returns 400 with reason details when body is not valid JSON', async () => {
     const authUserId = buildTestAuthUserId('stream-bad-json');
     await ensureUser({
@@ -286,7 +230,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(response.status).toBe(400);
   });
 
-  it('streams generation and persists plan data', async () => {
+  it('streams generation and persists plan data via the default boundary', async () => {
     const authUserId = buildTestAuthUserId('stream-user');
     await ensureUser({
       authUserId,
@@ -351,251 +295,6 @@ describe('POST /api/v1/plans/stream', () => {
     });
   });
 
-  it('emits fallback error and preserves reserved attempt on unexpected generation errors', async () => {
-    const authUserId = buildTestAuthUserId('stream-failure');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-
-    const postWithFailingGeneration = createStreamHandler({
-      overrides: {
-        processGenerationAttempt: async (input: ProcessGenerationInput) => {
-          await db.insert(generationAttempts).values({
-            planId: input.planId,
-            status: 'in_progress',
-            classification: null,
-            durationMs: 0,
-            modulesCount: 0,
-            tasksCount: 0,
-            promptHash: 'stream-unhandled-exception',
-          });
-          throw new Error('boom');
-        },
-      },
-    });
-
-    const payload = {
-      topic: 'Failing Plan',
-      skillLevel: 'beginner',
-      weeklyHours: 1,
-      learningStyle: 'mixed',
-      deadlineDate: '2030-01-01',
-      visibility: 'private',
-      origin: 'ai',
-    };
-
-    const request = new Request('http://localhost/api/v1/plans/stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const response = await postWithFailingGeneration(request);
-    expect(response.status).toBe(200);
-
-    const events: StreamingEvent[] = await readStreamingResponse(response);
-    const { planId } = expectPlanStartEvent(events, 1);
-    const errorEvent = expectTerminalEventAfterStart(events, 'error');
-    expect(errorEvent.data).toMatchObject({
-      code: 'GENERATION_FAILED',
-      classification: 'provider_error',
-      retryable: true,
-    });
-    const attempts = await listAttempts(planId);
-
-    const [plan] = await db
-      .select()
-      .from(learningPlans)
-      .where(eq(learningPlans.id, planId))
-      .limit(1);
-
-    expect(plan?.generationStatus).toBe('failed');
-    expect(attempts).toHaveLength(1);
-    expect(attempts[0]).toMatchObject({
-      status: 'in_progress',
-      classification: null,
-    });
-  });
-
-  it('returns sanitized SSE error payloads to clients on generation failure', async () => {
-    const authUserId = buildTestAuthUserId('stream-sanitized-error');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-    const mockedFailure: GenerationAttemptResult = {
-      status: 'retryable_failure',
-      classification: 'provider_error',
-      error: new Error(
-        'OpenRouter upstream failure: api_key=sk-live-secret-value'
-      ),
-    };
-
-    const postWithMockedFailure = createStreamHandler({
-      overrides: {
-        processGenerationAttempt: async () => mockedFailure,
-      },
-    });
-
-    const payload = {
-      topic: 'Sanitized Failure Plan',
-      skillLevel: 'beginner',
-      weeklyHours: 2,
-      learningStyle: 'mixed',
-      deadlineDate: '2030-01-01',
-      visibility: 'private',
-      origin: 'ai',
-    };
-
-    const request = new Request('http://localhost/api/v1/plans/stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const response = await postWithMockedFailure(request);
-    expect(response.status).toBe(200);
-
-    const events = await readStreamingResponse(response);
-    expectPlanStartEvent(events, 1);
-    const errorEvent = expectTerminalEventAfterStart(events, 'error');
-
-    const errorData = expectJsonObject(errorEvent.data);
-    expect(errorData).toMatchObject({
-      code: 'GENERATION_FAILED',
-      message: 'Plan generation encountered an error. Please try again.',
-      classification: 'provider_error',
-      retryable: true,
-    });
-    expect(errorData.requestId).toEqual(expect.any(String));
-    const errorMessage =
-      typeof errorData.message === 'string' ? errorData.message : '';
-    expect(errorMessage).not.toContain('api_key');
-    expect(errorMessage).not.toContain('sk-live-secret-value');
-  });
-
-  it('emits permanent failure parity for validation-classified stream failures', async () => {
-    const authUserId = buildTestAuthUserId('stream-permanent-failure');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-
-    const postWithPermanentFailure = createStreamHandler({
-      overrides: {
-        processGenerationAttempt: async () => ({
-          status: 'permanent_failure',
-          classification: 'validation',
-          error: new Error('invalid generated payload'),
-        }),
-      },
-    });
-
-    const request = new Request('http://localhost/api/v1/plans/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        topic: 'Permanent Failure Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 2,
-        learningStyle: 'mixed',
-        deadlineDate: '2030-01-01',
-        visibility: 'private',
-        origin: 'ai',
-      }),
-    });
-
-    const response = await postWithPermanentFailure(request);
-    expect(response.status).toBe(200);
-
-    const events = await readStreamingResponse(response);
-    expectPlanStartEvent(events, 1);
-    const errorEvent = expectTerminalEventAfterStart(events, 'error');
-    expect(errorEvent.data).toMatchObject({
-      code: 'INVALID_OUTPUT',
-      classification: 'validation',
-      retryable: false,
-    });
-  });
-
-  it('suppresses terminal SSE events on client cancellation but still marks the plan failed', async () => {
-    const authUserId = buildTestAuthUserId('stream-cancelled');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-
-    const controller = new AbortController();
-    const postWithCancellation = createStreamHandler({
-      overrides: {
-        processGenerationAttempt: async (input: ProcessGenerationInput) => {
-          await db.insert(generationAttempts).values({
-            planId: input.planId,
-            status: 'in_progress',
-            classification: null,
-            durationMs: 0,
-            modulesCount: 0,
-            tasksCount: 0,
-            promptHash: 'stream-cancelled-attempt',
-          });
-          controller.abort();
-          throw new DOMException('Client disconnected', 'AbortError');
-        },
-      },
-    });
-
-    const request = new Request('http://localhost/api/v1/plans/stream', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        topic: 'Cancelled Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 2,
-        learningStyle: 'mixed',
-        deadlineDate: '2030-01-01',
-        visibility: 'private',
-        origin: 'ai',
-      }),
-    });
-
-    const response = await postWithCancellation(request);
-    expect(response.status).toBe(200);
-
-    const events = await readStreamingResponse(response);
-    const { planId } = expectPlanStartEvent(events, 1);
-    expectNoTerminalEvent(events);
-
-    const [plan] = await db
-      .select({
-        generationStatus: learningPlans.generationStatus,
-      })
-      .from(learningPlans)
-      .where(eq(learningPlans.id, planId))
-      .limit(1);
-
-    const attempts = await listAttempts(planId);
-    expect(plan?.generationStatus).toBe('failed');
-    expect(attempts).toHaveLength(1);
-    expect(attempts[0]).toMatchObject({
-      status: 'in_progress',
-      classification: null,
-    });
-  });
-
   it('accepts valid model override via query param', async () => {
     const authUserId = buildTestAuthUserId('stream-model-override');
     await ensureUser({
@@ -615,15 +314,11 @@ describe('POST /api/v1/plans/stream', () => {
       origin: 'ai',
     };
 
-    // Use a different valid model to verify override is working
-    // (using a model different from the default AI_DEFAULT_MODEL)
     const request = new Request(
       `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       }
     );
@@ -654,204 +349,6 @@ describe('POST /api/v1/plans/stream', () => {
       origin: 'ai',
     };
 
-    // Use an invalid model override - should fall back to default
-    const request = new Request(
-      'http://localhost/api/v1/plans/stream?model=invalid/model-id',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      }
-    );
-
-    const response = await POST(request);
-    // Should succeed with default model fallback, not error
-    expect(response.status).toBe(200);
-
-    const events = await readStreamingResponse(response);
-    await expectCompletedPlanId(events);
-  });
-
-  it('works without model param (uses default)', async () => {
-    const authUserId = buildTestAuthUserId('stream-no-model');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-
-    const payload = {
-      topic: 'Learning Python',
-      skillLevel: 'advanced',
-      weeklyHours: 10,
-      learningStyle: 'practice',
-      deadlineDate: '2030-12-01',
-      visibility: 'private',
-      origin: 'ai',
-    };
-
-    // No model param - should use default
-    const request = new Request('http://localhost/api/v1/plans/stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const response = await POST(request);
-    expect(response.status).toBe(200);
-
-    const events = await readStreamingResponse(response);
-    await expectCompletedPlanId(events);
-  });
-
-  it('uses tier default when DB has no saved preference', async () => {
-    const authUserId = buildTestAuthUserId('stream-db-null-pref');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-
-    await db
-      .update(users)
-      .set({ preferredAiModel: null })
-      .where(eq(users.authUserId, authUserId));
-
-    const { post, captured } = createCapturingHandler();
-
-    const payload = {
-      topic: 'Learning Python',
-      skillLevel: 'advanced',
-      weeklyHours: 10,
-      learningStyle: 'practice',
-      deadlineDate: '2030-12-01',
-      visibility: 'private',
-      origin: 'ai',
-    };
-
-    const request = new Request('http://localhost/api/v1/plans/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const response = await post(request);
-    expect(response.status).toBe(200);
-    expect(captured).toHaveLength(1);
-    expect(captured[0]?.modelOverride).toBeUndefined();
-  });
-
-  it('passes saved preferred model when no query param', async () => {
-    const authUserId = buildTestAuthUserId('stream-saved-pref');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-
-    await db
-      .update(users)
-      .set({ preferredAiModel: FREE_QUERY_OVERRIDE_MODEL as PreferredAiModel })
-      .where(eq(users.authUserId, authUserId));
-
-    const { post, captured } = createCapturingHandler();
-
-    const payload = {
-      topic: 'Learning Python',
-      skillLevel: 'advanced',
-      weeklyHours: 10,
-      learningStyle: 'practice',
-      deadlineDate: '2030-12-01',
-      visibility: 'private',
-      origin: 'ai',
-    };
-
-    const request = new Request('http://localhost/api/v1/plans/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const response = await post(request);
-    expect(response.status).toBe(200);
-    expect(captured).toHaveLength(1);
-    expect(captured[0]?.modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
-  });
-
-  it('query model override beats saved preference', async () => {
-    const authUserId = buildTestAuthUserId('stream-query-beats-saved');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-
-    await db
-      .update(users)
-      .set({ preferredAiModel: FREE_QUERY_OVERRIDE_MODEL as PreferredAiModel })
-      .where(eq(users.authUserId, authUserId));
-
-    const { post, captured } = createCapturingHandler();
-
-    const payload = {
-      topic: 'Learning Rust',
-      skillLevel: 'beginner',
-      weeklyHours: 4,
-      learningStyle: 'reading',
-      deadlineDate: '2030-08-01',
-      visibility: 'private',
-      origin: 'ai',
-    };
-
-    const request = new Request(
-      `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }
-    );
-
-    const response = await post(request);
-    expect(response.status).toBe(200);
-    expect(captured).toHaveLength(1);
-    expect(captured[0]?.modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
-  });
-
-  it('ignores invalid query param and uses saved preference', async () => {
-    const authUserId = buildTestAuthUserId('stream-invalid-query-saved');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'pro',
-    });
-    setTestUser(authUserId);
-
-    await db
-      .update(users)
-      .set({ preferredAiModel: FREE_QUERY_OVERRIDE_MODEL as PreferredAiModel })
-      .where(eq(users.authUserId, authUserId));
-
-    const { post, captured } = createCapturingHandler();
-
-    const payload = {
-      topic: 'Learning Go',
-      skillLevel: 'intermediate',
-      weeklyHours: 6,
-      learningStyle: 'mixed',
-      deadlineDate: '2030-09-01',
-      visibility: 'private',
-      origin: 'ai',
-    };
-
     const request = new Request(
       'http://localhost/api/v1/plans/stream?model=invalid/model-id',
       {
@@ -861,54 +358,12 @@ describe('POST /api/v1/plans/stream', () => {
       }
     );
 
-    const response = await post(request);
+    const response = await POST(request);
+    // Should succeed with default model fallback, not error.
     expect(response.status).toBe(200);
-    expect(captured).toHaveLength(1);
-    expect(captured[0]?.modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
-  });
 
-  it('ignores tier-invalid saved preference and uses tier default', async () => {
-    const authUserId = buildTestAuthUserId('stream-tier-invalid-saved');
-    await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
-    });
-    setTestUser(authUserId);
-
-    await db
-      .update(users)
-      .set({
-        preferredAiModel: PRO_TIER_MODEL as PreferredAiModel,
-      })
-      .where(eq(users.authUserId, authUserId));
-
-    const { post, captured } = createCapturingHandler();
-
-    const withinFreeTierWeeks = new Date();
-    withinFreeTierWeeks.setUTCDate(withinFreeTierWeeks.getUTCDate() + 10);
-    const deadlineDate = withinFreeTierWeeks.toISOString().slice(0, 10);
-
-    const payload = {
-      topic: 'Learning Kotlin',
-      skillLevel: 'beginner',
-      weeklyHours: 3,
-      learningStyle: 'video',
-      deadlineDate,
-      visibility: 'private',
-      origin: 'ai',
-    };
-
-    const request = new Request('http://localhost/api/v1/plans/stream', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const response = await post(request);
-    expect(response.status).toBe(200);
-    expect(captured).toHaveLength(1);
-    expect(captured[0]?.modelOverride).toBeUndefined();
+    const events = await readStreamingResponse(response);
+    await expectCompletedPlanId(events);
   });
 
   it('rejects PDF-origin stream request with forged extraction hash', async () => {
@@ -957,9 +412,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     const request = new Request('http://localhost/api/v1/plans/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -1012,24 +465,19 @@ describe('POST /api/v1/plans/stream', () => {
 
     const firstRequest = new Request('http://localhost/api/v1/plans/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
     const firstResponse = await POST(firstRequest);
     expect(firstResponse.status).toBe(200);
-    // Drain firstResponse stream intentionally before replay test (from POST(firstRequest) above).
-    // readStreamingResponse(firstResponse) ensures the server connection/state is settled before we
-    // attempt the replay POST; the discarded result is deliberate.
+    // Drain firstResponse stream intentionally before the replay test so the
+    // server connection settles before we send the second POST.
     await readStreamingResponse(firstResponse);
 
     const replayRequest = new Request('http://localhost/api/v1/plans/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -1090,9 +538,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     const request = new Request('http://localhost/api/v1/plans/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -1148,9 +594,7 @@ describe('POST /api/v1/plans/stream', () => {
 
     const request = new Request('http://localhost/api/v1/plans/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -1160,7 +604,7 @@ describe('POST /api/v1/plans/stream', () => {
     expect(body.error).toBe('Invalid or expired PDF extraction proof.');
   });
 
-  it('persists PDF context and forwards it to generation input', async () => {
+  it('persists PDF context end-to-end via the default boundary', async () => {
     const authUserId = buildTestAuthUserId('stream-pdf-context');
     await ensureUser({
       authUserId,
@@ -1188,32 +632,6 @@ describe('POST /api/v1/plans/stream', () => {
       dbClient: db,
     });
 
-    const capturedInputs: ProcessGenerationInput[] = [];
-    const postWithCapturing = createStreamHandler({
-      overrides: {
-        processGenerationAttempt: async (input: ProcessGenerationInput) => {
-          capturedInputs.push(input);
-          // Delegate to the default lifecycle service behavior.
-          // We import createPlanLifecycleService + getDb inline for the real path.
-          const { createPlanLifecycleService: createSvc } = await import(
-            '@/features/plans/lifecycle'
-          );
-          const { getDb: getDbFn } = await import('@/lib/db/runtime');
-          const svc = createSvc({
-            dbClient: getDbFn(),
-            jobQueue: {
-              async enqueueJob() {
-                return '';
-              },
-              async completeJob() {},
-              async failJob() {},
-            },
-          });
-          return svc.processGenerationAttempt(input);
-        },
-      },
-    });
-
     const payload = {
       origin: 'pdf',
       extractedContent,
@@ -1230,47 +648,15 @@ describe('POST /api/v1/plans/stream', () => {
 
     const request = new Request('http://localhost/api/v1/plans/stream', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
-    const response = await postWithCapturing(request);
+    const response = await POST(request);
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
     const planId = await expectCompletedPlanId(events);
-
-    expect(capturedInputs).toHaveLength(1);
-    const capturedInput = capturedInputs[0];
-    expect(capturedInput).toBeDefined();
-    if (!capturedInput) {
-      throw new Error('Expected captured generation input');
-    }
-    expect(capturedInput.input).toMatchObject({
-      pdfContext: expect.objectContaining({
-        mainTopic: 'TypeScript from PDF context',
-        sections: expect.arrayContaining([
-          expect.objectContaining({
-            title: 'Core concepts',
-            content: expect.any(String),
-          }),
-        ]),
-      }),
-      pdfExtractionHash: extractionHash,
-      pdfProofVersion: DEFAULT_PDF_PROOF_VERSION,
-    });
-
-    const capturedSection = capturedInput.input.pdfContext?.sections?.[0];
-    const extractedSection = extractedContent.sections?.[0];
-    expect(capturedSection).toBeDefined();
-    expect(extractedSection).toBeDefined();
-    if (extractedSection && capturedSection) {
-      expect(capturedSection.content.length).toBeLessThan(
-        extractedSection.content.length
-      );
-    }
 
     const [plan] = await db
       .select()
