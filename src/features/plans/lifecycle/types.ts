@@ -71,19 +71,6 @@ export type NormalizedDuration = {
   readonly totalWeeks: number;
 };
 
-/** Result of a PDF quota reservation attempt. */
-export type PdfQuotaReservationResult =
-  | {
-      readonly allowed: true;
-      readonly newCount: number;
-      readonly limit: number;
-    }
-  | {
-      readonly allowed: false;
-      readonly currentCount: number;
-      readonly limit: number;
-    };
-
 // ─── Lifecycle result types (discriminated union) ────────────────
 
 /** Plan was successfully created. */

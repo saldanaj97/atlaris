@@ -47,12 +47,6 @@ function createMockPorts(overrides?: PortOverrides): PlanLifecycleServicePorts {
         deadlineDate: '2025-01-15',
         totalWeeks: 2,
       }),
-      reservePdfQuota: async () => ({
-        allowed: true as const,
-        newCount: 1,
-        limit: 3,
-      }),
-      rollbackPdfQuota: async () => {},
     },
     pdfOrigin: {
       preparePlanInput: async (): Promise<PreparePlanInputSuccess> => ({

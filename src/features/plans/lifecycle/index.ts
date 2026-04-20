@@ -30,7 +30,6 @@ export type {
   GenerationSuccess,
   GenerationSuccessData,
   NormalizedDuration,
-  PdfQuotaReservationResult,
   PermanentFailure,
   PlanInsertData,
   ProcessGenerationInput,

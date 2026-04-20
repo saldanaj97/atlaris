@@ -17,7 +17,6 @@ import type {
   GeneratedModule,
   NormalizedDuration,
   PdfContext,
-  PdfQuotaReservationResult,
   PlanInsertData,
   SubscriptionTier,
 } from './types';
@@ -81,19 +80,6 @@ export interface QuotaPort {
       today?: Date;
     }
   ): NormalizedDuration;
-
-  /** Reserve a PDF quota slot for PDF-origin plans. */
-  reservePdfQuota(
-    this: void,
-    userId: string
-  ): Promise<PdfQuotaReservationResult>;
-
-  /** Roll back a previously reserved PDF quota slot on failure. */
-  rollbackPdfQuota(
-    this: void,
-    userId: string,
-    reserved: boolean
-  ): Promise<void>;
 }
 
 // ─── PdfOriginPort ───────────────────────────────────────────────
