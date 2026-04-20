@@ -5,8 +5,10 @@
  */
 
 import { resolveUserTier } from '@/features/billing/tier';
-import { normalizePlanDurationForTier } from '@/features/plans/api/shared';
-import { checkPlanDurationCap } from '@/features/plans/lifecycle/plan-operations';
+import {
+  checkPlanDurationCap,
+  normalizePlanDurationForTier,
+} from '@/features/plans/policy/duration';
 import type { DbClient } from '@/lib/db/types';
 
 import type { QuotaPort } from '../ports';

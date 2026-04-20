@@ -268,7 +268,7 @@ export async function finalizeAttemptSuccess({
  * Finalizes a previously reserved attempt as failed.
  * Updates only the in-progress attempt row.
  * Plan-level failure transitions are handled separately by lifecycle helpers
- * such as markPlanGenerationFailure() in features/plans/lifecycle/plan-operations.ts.
+ * such as markPlanGenerationFailure() in features/plans/lifecycle/adapters/plan-persistence-store.ts.
  */
 export async function finalizeAttemptFailure({
   attemptId,

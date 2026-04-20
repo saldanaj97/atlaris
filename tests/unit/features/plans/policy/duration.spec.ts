@@ -1,5 +1,67 @@
 import { describe, expect, it } from 'vitest';
-import { checkPlanDurationCap } from '@/features/plans/lifecycle/plan-operations';
+import {
+  calculateTotalWeeks,
+  checkPlanDurationCap,
+  normalizePlanDurationForTier,
+} from '@/features/plans/policy/duration';
+
+describe('calculateTotalWeeks', () => {
+  it('returns default weeks when no deadline', () => {
+    expect(
+      calculateTotalWeeks({
+        startDate: '2025-01-01',
+        deadlineDate: null,
+        today: new Date('2025-01-15T12:00:00Z'),
+        defaultWeeks: 4,
+      })
+    ).toBe(4);
+  });
+
+  it('computes weeks from start to deadline in UTC', () => {
+    expect(
+      calculateTotalWeeks({
+        startDate: '2025-01-01',
+        deadlineDate: '2025-01-22',
+        today: new Date('2025-01-01T12:00:00Z'),
+      })
+    ).toBe(3);
+  });
+
+  it('returns at least 1 week for same-day start and deadline', () => {
+    expect(
+      calculateTotalWeeks({
+        startDate: '2025-01-01',
+        deadlineDate: '2025-01-01',
+        today: new Date('2025-01-01T12:00:00Z'),
+      })
+    ).toBe(1);
+  });
+});
+
+describe('normalizePlanDurationForTier', () => {
+  it('clamps deadline by maxWeeks for free tier', () => {
+    const res = normalizePlanDurationForTier({
+      tier: 'free',
+      weeklyHours: 5,
+      startDate: '2025-01-01',
+      deadlineDate: '2025-06-01',
+      today: new Date('2025-01-01T12:00:00Z'),
+    });
+    expect(res.startDate).toBe('2025-01-01');
+    expect(res.deadlineDate).toBe('2025-01-15');
+    expect(res.totalWeeks).toBe(2);
+  });
+
+  it('returns null start when no startDate passed', () => {
+    const res = normalizePlanDurationForTier({
+      tier: 'pro',
+      weeklyHours: 10,
+      deadlineDate: null,
+      today: new Date('2025-01-15T12:00:00Z'),
+    });
+    expect(res.startDate).toBeNull();
+  });
+});
 
 describe('checkPlanDurationCap', () => {
   it('blocks free > 2 weeks', () => {
@@ -90,17 +152,4 @@ describe('checkPlanDurationCap', () => {
     expect(res.allowed).toBe(false);
     expect(res.reason).toMatch(/starter/);
   });
-
-  // Note: maxHours test is not applicable yet since all tiers have maxHours: null
-  // When maxHours limits are implemented, add a test like:
-  // it('blocks when maxHours exceeded', () => {
-  //   const res = checkPlanDurationCap({
-  //     tier: 'free',
-  //     weeklyHours: 50,
-  //     totalWeeks: 2,
-  //   });
-  //   expect(res.allowed).toBe(false);
-  //   expect(res.reason).toMatch(/total hours/);
-  //   expect(res.upgradeUrl).toBe('/pricing');
-  // });
 });

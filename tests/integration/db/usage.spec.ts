@@ -1,7 +1,7 @@
+import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
-import { atomicCheckAndInsertPlan } from '@/features/plans/lifecycle/plan-operations';
 import { aiUsageEvents, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
@@ -55,18 +55,14 @@ describe('AI usage logging', () => {
     });
 
     // Check the limit and create the plan in a single atomic transaction
-    const plan = await atomicCheckAndInsertPlan(
-      userId,
-      {
-        topic: 'Test Topic',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      },
-      db
-    );
+    const plan = await atomicInsertPlanOrThrow(db, userId, {
+      topic: 'Test Topic',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      visibility: 'private',
+      origin: 'ai',
+    });
 
     expect(plan.id).toBeDefined();
 

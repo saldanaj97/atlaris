@@ -1,4 +1,4 @@
-import { calculateTotalWeeks } from '@/features/plans/api/shared';
+import { calculateTotalWeeks } from '@/features/plans/policy/duration';
 import { logger } from '@/lib/logging/logger';
 
 import type { PlanPersistencePort, QuotaPort } from './ports';

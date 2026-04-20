@@ -14,6 +14,7 @@ import {
   type ProcessGenerationInput,
   type RetryableFailure,
 } from '@/features/plans/lifecycle';
+import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
@@ -285,7 +286,7 @@ async function prepareCreate(
       await safeMarkPlanFailed(
         createResult.planId,
         internalUserId,
-        sessionDbClient
+        new PlanPersistenceAdapter(sessionDbClient)
       );
     },
   };
@@ -340,7 +341,11 @@ async function prepareRetry(
         'Unhandled exception during retry generation; marking plan failed'
       );
 
-      await safeMarkPlanFailed(planId, internalUserId, sessionDbClient);
+      await safeMarkPlanFailed(
+        planId,
+        internalUserId,
+        new PlanPersistenceAdapter(sessionDbClient)
+      );
     },
   };
 }

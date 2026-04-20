@@ -1,6 +1,7 @@
-import { and, count, eq, gte, notExists } from 'drizzle-orm';
+/**
+ * Pure plan duration / tier cap policy — no DB or Drizzle.
+ */
 
-import { getAttemptCap } from '@/features/ai/generation-policy';
 import {
   type SubscriptionTier,
   TIER_LIMITS,
@@ -9,8 +10,19 @@ import {
   DEFAULT_PLAN_DURATION_WEEKS,
   MILLISECONDS_PER_WEEK,
 } from '@/features/plans/validation/learningPlans';
-import type { getDb } from '@/lib/db/runtime';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
+
+// Explicit upgrade path mapping: current tier -> recommended next tier
+const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {
+  free: 'starter',
+  starter: 'pro',
+  pro: 'pro',
+};
+
+export type PlanDurationCapResult = {
+  allowed: boolean;
+  reason?: string;
+  upgradeUrl?: string;
+};
 
 export function calculateTotalWeeks({
   startDate,
@@ -113,28 +125,29 @@ export function normalizePlanDurationForTier({
   };
 }
 
-export async function findCappedPlanWithoutModules(
-  userDbId: string,
-  db: ReturnType<typeof getDb>
-): Promise<string | null> {
-  const [row] = await db
-    .select({ planId: generationAttempts.planId })
-    .from(generationAttempts)
-    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
-    .where(
-      and(
-        eq(learningPlans.userId, userDbId),
-        notExists(
-          db
-            .select({ planId: modules.planId })
-            .from(modules)
-            .where(eq(modules.planId, generationAttempts.planId))
-        )
-      )
-    )
-    .groupBy(generationAttempts.planId)
-    .having(gte(count(generationAttempts.id), getAttemptCap()))
-    .limit(1);
-
-  return row?.planId ?? null;
+export function checkPlanDurationCap(params: {
+  tier: SubscriptionTier;
+  weeklyHours: number;
+  totalWeeks: number;
+}): PlanDurationCapResult {
+  const caps = TIER_LIMITS[params.tier];
+  if (caps.maxWeeks !== null && params.totalWeeks > caps.maxWeeks) {
+    const recommended = UPGRADE_PATH[params.tier];
+    return {
+      allowed: false,
+      reason: `${params.tier} tier limited to ${caps.maxWeeks}-week plans. Upgrade to ${recommended} for longer plans.`,
+      upgradeUrl: '/pricing',
+    };
+  }
+  if (
+    caps.maxHours !== null &&
+    params.weeklyHours * params.totalWeeks > caps.maxHours
+  ) {
+    return {
+      allowed: false,
+      reason: `${params.tier} tier limited to ${caps.maxHours} total hours. Upgrade for more time.`,
+      upgradeUrl: '/pricing',
+    };
+  }
+  return { allowed: true };
 }

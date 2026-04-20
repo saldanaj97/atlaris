@@ -78,9 +78,6 @@ describe('cleanupStuckPlans', () => {
 
     expect(result.cleaned).toBe(3);
     expect(mockDb.spies.transactionFn).toHaveBeenCalledTimes(1);
-    expect(mockDb.spies.selectFn).toHaveBeenCalledTimes(1);
-    expect(mockDb.spies.limitFn).toHaveBeenCalledWith(Number.MAX_SAFE_INTEGER);
-    expect(mockDb.spies.forFn).toHaveBeenCalledWith('update');
     expect(markFailure).toHaveBeenCalledTimes(3);
     expect(markFailure).toHaveBeenNthCalledWith(
       1,

@@ -1,5 +1,5 @@
 import { and, eq, isNull, lt, sql } from 'drizzle-orm';
-import { markPlanGenerationFailure } from '@/features/plans/lifecycle/plan-operations';
+import { markPlanGenerationFailure } from '@/features/plans/lifecycle/adapters/plan-persistence-store';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';

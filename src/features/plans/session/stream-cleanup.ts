@@ -1,6 +1,5 @@
 import type { ErrorLike } from '@/features/ai/streaming/error-sanitizer';
-import { markPlanGenerationFailure } from '@/features/plans/lifecycle/plan-operations';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import type { PlanGenerationStatusPort } from '@/features/plans/lifecycle/ports';
 import {
   safeStringifyUnknown,
   unknownThrownCore,
@@ -21,7 +20,6 @@ function maybeExtractCause(value: unknown): ErrorLike['cause'] | undefined {
 }
 
 type SafeMarkPlanFailedDeps = {
-  markPlanGenerationFailure?: typeof markPlanGenerationFailure;
   logger?: Pick<typeof logger, 'error'>;
 };
 
@@ -31,15 +29,13 @@ type SafeMarkPlanFailedDeps = {
 export async function safeMarkPlanFailed(
   planId: string,
   userId: string,
-  dbClient: AttemptsDbClient,
+  persistence: PlanGenerationStatusPort,
   deps?: SafeMarkPlanFailedDeps
 ): Promise<void> {
   const errorLogger = deps?.logger ?? logger;
 
   try {
-    const markFailure =
-      deps?.markPlanGenerationFailure ?? markPlanGenerationFailure;
-    await markFailure(planId, dbClient);
+    await persistence.markGenerationFailure(planId);
   } catch (markErr) {
     errorLogger.error(
       { error: markErr, planId, userId },

@@ -35,14 +35,15 @@ recommended server-component wrapper for authenticated DB work.
 Resolved by extracting `setLearningPlanGenerating()` and
 `PLAN_GENERATING_INSERT_DEFAULTS` into
 `src/lib/db/queries/helpers/plan-generation-status.ts`. Both
-`reserveAttemptSlot` (UPDATE on retry) and `atomicCheckAndInsertPlan` (INSERT
-on creation) now use the shared helper/constant, eliminating the inline drift
-risk while preserving the `lib/ → features/` dependency direction.
+`reserveAttemptSlot` (UPDATE on retry) and the lifecycle persistence store’s
+atomic insert (INSERT on creation) use the shared helper/constant, eliminating
+the inline drift risk while preserving the `lib/ → features/` dependency direction.
 
 Success/failure transitions (`markPlanGenerationSuccess`,
-`markPlanGenerationFailure`) remain in `plan-operations.ts` by design — they
-touch billing-adjacent fields (`isQuotaEligible`, `finalizedAt`) and belong
-in the plans feature domain.
+`markPlanGenerationFailure`) live in
+`src/features/plans/lifecycle/adapters/plan-persistence-store.ts` (adapter-private)
+— they touch billing-adjacent fields (`isQuotaEligible`, `finalizedAt`) and
+belong in the plans feature domain.
 
 ## RLS JWT claim re-application inside attempt transactions
 

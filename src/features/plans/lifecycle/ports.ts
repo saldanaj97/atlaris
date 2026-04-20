@@ -51,6 +51,12 @@ export interface PlanPersistencePort {
   markGenerationFailure(this: void, planId: string): Promise<void>;
 }
 
+/** Narrow persistence capability for session/cleanup status transitions only. */
+export type PlanGenerationStatusPort = Pick<
+  PlanPersistencePort,
+  'markGenerationSuccess' | 'markGenerationFailure'
+>;
+
 // ─── QuotaPort ───────────────────────────────────────────────────
 
 export interface QuotaPort {

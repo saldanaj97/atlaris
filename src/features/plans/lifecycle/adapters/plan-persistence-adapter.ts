@@ -1,21 +1,19 @@
 /**
  * PlanPersistenceAdapter — production implementation of PlanPersistencePort.
- *
- * Thin wrapper around existing Drizzle queries and billing usage functions.
  */
 
-import { findCappedPlanWithoutModules } from '@/features/plans/api/shared';
 import { PlanLimitReachedError } from '@/features/plans/errors';
-import {
-  atomicCheckAndInsertPlan,
-  findRecentDuplicatePlan,
-  markPlanGenerationFailure,
-  markPlanGenerationSuccess,
-} from '@/features/plans/lifecycle/plan-operations';
 import type { DbClient } from '@/lib/db/types';
 
 import type { PlanPersistencePort } from '../ports';
 import type { AtomicInsertResult, PlanInsertData } from '../types';
+import {
+  atomicCheckAndInsertPlan,
+  findCappedPlanWithoutModules,
+  findRecentDuplicatePlan,
+  markPlanGenerationFailure,
+  markPlanGenerationSuccess,
+} from './plan-persistence-store';
 
 export class PlanPersistenceAdapter implements PlanPersistencePort {
   constructor(private readonly dbClient: DbClient) {}

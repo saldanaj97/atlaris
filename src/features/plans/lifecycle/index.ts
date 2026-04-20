@@ -4,6 +4,7 @@ export { createPlanLifecycleService } from './factory';
 export type {
   GenerationPort,
   JobQueuePort,
+  PlanGenerationStatusPort,
   PlanPersistencePort,
   QuotaPort,
   UsageRecordingPort,

@@ -12,13 +12,7 @@ import {
   handleFailedGeneration,
   tryRecordUsage,
 } from '@/features/plans/session/stream-outcomes';
-import type {
-  AttemptsDbClient,
-  GenerationAttemptRecord,
-} from '@/lib/db/queries/types/attempts.types';
-import { canonicalUsageToRecordParams } from '@/lib/db/usage';
-
-const mockDbClient = {} as AttemptsDbClient;
+import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.types';
 
 function buildAttemptRecord(): GenerationAttemptRecord {
   return {
@@ -71,35 +65,28 @@ function makeFailureResult(
 }
 
 describe('tryRecordUsage', () => {
-  it('passes recordUsage the same params as canonicalUsageToRecordParams(safeNormalizeUsage(metadata), userId)', async () => {
-    const mockRecordUsage = vi.fn();
-    const mockIncrementUsage = vi.fn();
+  it('records canonical usage with kind plan via UsageRecordingPort', async () => {
+    const usageRecording = {
+      recordUsage: vi.fn().mockResolvedValue(undefined),
+    };
 
     const metadata = makeOpenRouterGpt4oProviderMetadata();
     const canonical = safeNormalizeUsage(metadata);
-    const expected = canonicalUsageToRecordParams(canonical, 'user-1');
-    const mockToRecordParams = vi.fn().mockReturnValue(expected);
 
-    await tryRecordUsage('user-1', makeSuccessResult(metadata), mockDbClient, {
-      recordUsage: mockRecordUsage,
-      incrementUsage: mockIncrementUsage,
-      canonicalUsageToRecordParams: mockToRecordParams,
+    await tryRecordUsage('user-1', makeSuccessResult(metadata), usageRecording);
+
+    expect(usageRecording.recordUsage).toHaveBeenCalledTimes(1);
+    expect(usageRecording.recordUsage).toHaveBeenCalledWith({
+      userId: 'user-1',
+      usage: canonical,
+      kind: 'plan',
     });
-
-    expect(mockToRecordParams).toHaveBeenCalledWith(canonical, 'user-1');
-    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
-    expect(mockRecordUsage).toHaveBeenCalledWith(expected, mockDbClient);
-    expect(mockIncrementUsage).toHaveBeenCalledTimes(1);
-    expect(mockIncrementUsage).toHaveBeenCalledWith(
-      'user-1',
-      'plan',
-      mockDbClient
-    );
   });
 
   it('gates provider-only fields when metadata normalizes to partial usage', async () => {
-    const mockRecordUsage = vi.fn();
-    const mockIncrementUsage = vi.fn();
+    const usageRecording = {
+      recordUsage: vi.fn().mockResolvedValue(undefined),
+    };
 
     const metadata = {
       model: CATALOG_MODEL_OPENAI_GPT4O,
@@ -113,22 +100,19 @@ describe('tryRecordUsage', () => {
     expect(canonical.isPartial).toBe(true);
     expect(canonical.missingFields).toContain('provider');
 
-    const expected = canonicalUsageToRecordParams(canonical, 'user-2');
-    const mockToRecordParams = vi.fn().mockReturnValue(expected);
+    await tryRecordUsage('user-2', makeSuccessResult(metadata), usageRecording);
 
-    await tryRecordUsage('user-2', makeSuccessResult(metadata), mockDbClient, {
-      recordUsage: mockRecordUsage,
-      incrementUsage: mockIncrementUsage,
-      canonicalUsageToRecordParams: mockToRecordParams,
+    expect(usageRecording.recordUsage).toHaveBeenCalledWith({
+      userId: 'user-2',
+      usage: canonical,
+      kind: 'plan',
     });
-
-    expect(mockToRecordParams).toHaveBeenCalledWith(canonical, 'user-2');
-    expect(mockRecordUsage).toHaveBeenCalledWith(expected, mockDbClient);
   });
 
-  it('deep-merges nested provider metadata overrides in the fixture', async () => {
-    const mockRecordUsage = vi.fn();
-    const mockIncrementUsage = vi.fn();
+  it('passes merged provider metadata into recordUsage', async () => {
+    const usageRecording = {
+      recordUsage: vi.fn().mockResolvedValue(undefined),
+    };
 
     const metadata = makeOpenRouterGpt4oProviderMetadata({
       usage: {
@@ -136,13 +120,10 @@ describe('tryRecordUsage', () => {
       },
     });
 
-    await tryRecordUsage('user-3', makeSuccessResult(metadata), mockDbClient, {
-      recordUsage: mockRecordUsage,
-      incrementUsage: mockIncrementUsage,
-    });
+    await tryRecordUsage('user-3', makeSuccessResult(metadata), usageRecording);
 
-    const params = mockRecordUsage.mock.calls[0]?.[0];
-    expect(params).toMatchObject({
+    const call = usageRecording.recordUsage.mock.calls[0]?.[0];
+    expect(call?.usage).toMatchObject({
       provider: 'openrouter',
       model: CATALOG_MODEL_OPENAI_GPT4O,
       inputTokens: 99,
@@ -150,53 +131,38 @@ describe('tryRecordUsage', () => {
     });
   });
 
-  it('swallows usage recording failures without incrementing usage', async () => {
-    const mockRecordUsage = vi
-      .fn()
-      .mockRejectedValue(new Error('usage write failed'));
-    const mockIncrementUsage = vi.fn();
+  it('swallows usage recording failures without throwing', async () => {
+    const usageRecording = {
+      recordUsage: vi.fn().mockRejectedValue(new Error('usage write failed')),
+    };
 
     await expect(
       tryRecordUsage(
         'user-4',
         makeSuccessResult(makeOpenRouterGpt4oProviderMetadata()),
-        mockDbClient,
-        {
-          recordUsage: mockRecordUsage,
-          incrementUsage: mockIncrementUsage,
-        }
+        usageRecording
       )
     ).resolves.toBeUndefined();
 
-    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
-    expect(mockIncrementUsage).not.toHaveBeenCalled();
+    expect(usageRecording.recordUsage).toHaveBeenCalledTimes(1);
   });
 
-  it('normalizes missing metadata before building record params', async () => {
-    const mockRecordUsage = vi.fn();
-    const mockIncrementUsage = vi.fn();
-    const mockToRecordParams = vi.fn().mockReturnValue({
-      userId: 'user-5',
-      kind: 'plan',
-    });
+  it('normalizes missing metadata before recording usage', async () => {
+    const usageRecording = {
+      recordUsage: vi.fn().mockResolvedValue(undefined),
+    };
 
     await tryRecordUsage(
       'user-5',
       makeFailureResult('validation'),
-      mockDbClient,
-      {
-        recordUsage: mockRecordUsage,
-        incrementUsage: mockIncrementUsage,
-        canonicalUsageToRecordParams: mockToRecordParams,
-      }
+      usageRecording
     );
 
-    expect(mockToRecordParams).toHaveBeenCalledWith(
-      safeNormalizeUsage(undefined),
-      'user-5'
-    );
-    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
-    expect(mockIncrementUsage).toHaveBeenCalledTimes(1);
+    expect(usageRecording.recordUsage).toHaveBeenCalledWith({
+      userId: 'user-5',
+      usage: safeNormalizeUsage(undefined),
+      kind: 'plan',
+    });
   });
 });
 
@@ -218,19 +184,22 @@ describe('handleFailedGeneration usage semantics', () => {
     retryable,
   }) => {
     const emit = vi.fn();
-    const mockMarkPlanGenerationFailure = vi.fn().mockResolvedValue(undefined);
+    const persistence = {
+      markGenerationFailure: vi.fn().mockResolvedValue(undefined),
+      markGenerationSuccess: vi.fn(),
+    };
+    const usageRecording = { recordUsage: vi.fn() };
 
     await handleFailedGeneration(makeFailureResult(classification), {
       planId: 'plan-classification',
       userId: 'user-classification',
-      dbClient: mockDbClient,
       emit,
-      markPlanGenerationFailure: mockMarkPlanGenerationFailure,
+      persistence,
+      usageRecording,
     });
 
-    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
-      'plan-classification',
-      mockDbClient
+    expect(persistence.markGenerationFailure).toHaveBeenCalledWith(
+      'plan-classification'
     );
     expect(emit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -245,26 +214,24 @@ describe('handleFailedGeneration usage semantics', () => {
 
   it('marks retryable failures without recording usage', async () => {
     const emit = vi.fn();
-    const mockMarkPlanGenerationFailure = vi.fn().mockResolvedValue(undefined);
-    const mockRecordUsage = vi.fn();
-    const mockIncrementUsage = vi.fn();
+    const persistence = {
+      markGenerationFailure: vi.fn().mockResolvedValue(undefined),
+      markGenerationSuccess: vi.fn(),
+    };
+    const usageRecording = { recordUsage: vi.fn() };
 
     await handleFailedGeneration(makeFailureResult('timeout'), {
       planId: 'plan-retryable',
       userId: 'user-retryable',
-      dbClient: mockDbClient,
       emit,
-      markPlanGenerationFailure: mockMarkPlanGenerationFailure,
-      recordUsage: mockRecordUsage,
-      incrementUsage: mockIncrementUsage,
+      persistence,
+      usageRecording,
     });
 
-    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
-      'plan-retryable',
-      mockDbClient
+    expect(persistence.markGenerationFailure).toHaveBeenCalledWith(
+      'plan-retryable'
     );
-    expect(mockRecordUsage).not.toHaveBeenCalled();
-    expect(mockIncrementUsage).not.toHaveBeenCalled();
+    expect(usageRecording.recordUsage).not.toHaveBeenCalled();
     expect(emit).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'error',
@@ -278,30 +245,30 @@ describe('handleFailedGeneration usage semantics', () => {
 
   it('records usage for permanent failures before emitting the fallback error', async () => {
     const emit = vi.fn();
-    const mockMarkPlanGenerationFailure = vi.fn().mockResolvedValue(undefined);
-    const mockRecordUsage = vi.fn().mockResolvedValue(undefined);
-    const mockIncrementUsage = vi.fn().mockResolvedValue(undefined);
+    const persistence = {
+      markGenerationFailure: vi.fn().mockResolvedValue(undefined),
+      markGenerationSuccess: vi.fn(),
+    };
+    const usageRecording = {
+      recordUsage: vi.fn().mockResolvedValue(undefined),
+    };
 
     await handleFailedGeneration(
       makeFailureResult('validation', makeOpenRouterGpt4oProviderMetadata()),
       {
         planId: 'plan-permanent',
         userId: 'user-permanent',
-        dbClient: mockDbClient,
         emit,
-        markPlanGenerationFailure: mockMarkPlanGenerationFailure,
-        recordUsage: mockRecordUsage,
-        incrementUsage: mockIncrementUsage,
+        persistence,
+        usageRecording,
       }
     );
 
-    expect(mockMarkPlanGenerationFailure).toHaveBeenCalledWith(
-      'plan-permanent',
-      mockDbClient
+    expect(persistence.markGenerationFailure).toHaveBeenCalledWith(
+      'plan-permanent'
     );
-    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
-    expect(mockIncrementUsage).toHaveBeenCalledTimes(1);
-    expect(mockRecordUsage.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(usageRecording.recordUsage).toHaveBeenCalledTimes(1);
+    expect(usageRecording.recordUsage.mock.invocationCallOrder[0]).toBeLessThan(
       emit.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
     expect(emit).toHaveBeenCalledWith(

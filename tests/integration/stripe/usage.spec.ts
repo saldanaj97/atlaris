@@ -6,7 +6,7 @@ import {
   getUsageSummaryForTier,
   incrementUsage,
 } from '@/features/billing/usage-metrics';
-import { checkPlanLimit } from '@/features/plans/lifecycle/plan-operations';
+import { checkPlanLimit } from '@/features/plans/quota/check-plan-limit';
 import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
