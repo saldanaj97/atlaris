@@ -15,7 +15,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 export class BillingSnapshotNotFoundError extends AppError {
   constructor(userId: string, correlationId?: string) {
     super('Billing account snapshot not found', {
-      status: 500,
+      status: 404,
       code: 'BILLING_SNAPSHOT_NOT_FOUND',
       details: { userId },
       logMeta: correlationId ? { userId, correlationId } : { userId },

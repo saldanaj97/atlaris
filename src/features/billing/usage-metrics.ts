@@ -1,6 +1,8 @@
 import { and, eq, sql } from 'drizzle-orm';
+import { ValidationError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics } from '@/lib/db/schema';
+import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { UsageMetricsLoadError } from './errors';
 import { type DbClient, resolveUserTier } from './tier';
@@ -118,7 +120,17 @@ export async function getUsageSummaryForTier(args: {
   dbClient?: DbClient;
 }): Promise<UsageSummary> {
   const { userId, tier, dbClient = getDb() } = args;
-  const limits = TIER_LIMITS[tier];
+  const limits = TIER_LIMITS[tier as keyof typeof TIER_LIMITS];
+  if (limits === undefined) {
+    logger.info(
+      { userId, tier },
+      '[getUsageSummaryForTier] audit: invalid subscription tier for usage limits'
+    );
+    throw new ValidationError('Invalid subscription tier for usage limits', {
+      userId,
+      tier,
+    });
+  }
   const month = getCurrentMonth();
   const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
 
