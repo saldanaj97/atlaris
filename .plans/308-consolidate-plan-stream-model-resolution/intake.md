@@ -28,25 +28,27 @@ Both implement the same 4-step fallback sequence:
 **The Trust Problem:** This split creates a test/runtime mismatch:
 
 - **Production code** (`plan-generation-session.ts`) imports **from session/**
-- **Unit tests** (`tests/unit/api/model-validation.spec.ts`) import **from route/**
+- **Unit tests** (before fix) imported **from route/**; coverage now lives in
+  `tests/unit/features/plans/session/model-resolution.spec.ts` on the session
+  module.
 
 This means CI can validate one implementation while production runs another. A future bug fix or behavior change landing in only one file will silently split tested behavior from runtime behavior.
 
 ## Acceptance Criteria
 
-- [ ] Create one canonical `src/features/plans/session/model-resolution.ts` module that owns model resolution policy as a single source of truth.
-- [ ] The canonical module explicitly `export`s the stable public surface:
+- [x] Create one canonical `src/features/plans/session/model-resolution.ts` module that owns model resolution policy as a single source of truth.
+- [x] The canonical module explicitly `export`s the stable public surface:
       the `resolveStreamModelResolution()` function, the `StreamModelResolution`
       result type, and the `StreamModelValidationError` metadata type.
-- [ ] All production code imports from the canonical session module (verify: `plan-generation-session.ts`).
-- [ ] All tests import from the canonical session module.
-- [ ] **Delete** the route-tree copy at `src/app/api/v1/plans/stream/model-resolution.ts` outright. No re-export seam is created, because `src/app/api/v1/plans/stream/route.ts` does not import the local helper and only the test file currently references it.
-- [ ] Test coverage is consolidated: the stream-resolution assertions move to a session-owned spec (`tests/unit/features/plans/session/model-resolution.spec.ts`); the remaining five unrelated describe blocks in `tests/unit/api/model-validation.spec.ts` (query-param parsing, `isValidModelId` logic, tier-gated validation, preferences schema, `isValidModelId` integration) stay put.
-- [ ] Canonical semantics match the session copy (the behaviorally-equivalent `validationError !== undefined` predicate is preserved, with its clarifying comment).
-- [ ] Invalid-override logging behavior is exercised against the canonical helper via `vi.spyOn(logger, 'warn')` (no DI widening; the helper keeps its current single-argument shape).
-- [ ] The pre-existing follow-up note in `.plans/003-deepen-session-boundary/todos.md` (lines ~79–83) is cleared/removed to reflect that this cleanup has shipped.
-- [ ] Post-consolidation sanity: `rg 'plans/stream/model-resolution'` returns no hits in `src/`, `tests/`, or `docs/` other than in this plan's own artifacts.
-- [ ] All tests pass: `pnpm test:changed` and `pnpm check:full`.
+- [x] All production code imports from the canonical session module (verify: `plan-generation-session.ts`).
+- [x] All tests import from the canonical session module.
+- [x] **Delete** the route-tree copy at `src/app/api/v1/plans/stream/model-resolution.ts` outright. No re-export seam is created, because `src/app/api/v1/plans/stream/route.ts` does not import the local helper and only the test file currently references it.
+- [x] Test coverage is consolidated: the stream-resolution assertions move to a session-owned spec (`tests/unit/features/plans/session/model-resolution.spec.ts`); the remaining five unrelated describe blocks in `tests/unit/api/model-validation.spec.ts` (query-param parsing, `isValidModelId` logic, tier-gated validation, preferences schema, `isValidModelId` integration) stay put.
+- [x] Canonical semantics match the session copy (the behaviorally-equivalent `validationError !== undefined` predicate is preserved, with its clarifying comment).
+- [x] Invalid-override logging behavior is exercised against the canonical helper via `vi.spyOn(logger, 'warn')` (no DI widening; the helper keeps its current single-argument shape).
+- [x] The pre-existing follow-up note in `.plans/003-deepen-session-boundary/todos.md` (lines ~79–83) is cleared/removed to reflect that this cleanup has shipped.
+- [x] Post-consolidation sanity: `rg 'plans/stream/model-resolution'` returns no hits in `src/`, `tests/`, or `docs/` other than in this plan's own artifacts.
+- [x] All tests pass: `pnpm test:changed` and `pnpm check:full`.
 
 ## Scope & Non-Goals
 
@@ -88,7 +90,7 @@ Files to create:
 - **Session boundary home:** `src/features/plans/session/` (lines 1-75 in model-resolution.ts)
 - **Route tree location (to delete):** `src/app/api/v1/plans/stream/model-resolution.ts` (lines 1-69)
 - **Session orchestration consumer:** `src/features/plans/session/plan-generation-session.ts` (line ~36, imports from ./model-resolution)
-- **Test consumer:** `tests/unit/api/model-validation.spec.ts` (line 2, imports from @/app/api/v1/plans/stream/model-resolution)
+- **Test consumer (post-fix):** `tests/unit/features/plans/session/model-resolution.spec.ts` (imports `@/features/plans/session/model-resolution`)
 - **Shared validators (no changes):** `src/features/ai/model-resolver.ts` and `src/features/ai/model-preferences.ts`
 
 ### Historical Context

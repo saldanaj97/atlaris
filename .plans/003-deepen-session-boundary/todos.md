@@ -76,11 +76,10 @@ Source: GitHub issue [#303](https://github.com/saldanaj97/atlaris/issues/303) â€
 
 ### Notes / follow-ups
 
-- The duplicate `model-resolution.ts` at `src/app/api/v1/plans/stream/`
-  (vs. the canonical one at `src/features/plans/session/model-resolution.ts`)
-  remains out of scope for this issue. The API-layer copy is unused by
-  production but referenced by `tests/unit/api/model-validation.spec.ts`.
-  Flagged as a future cleanup.
+- **Done (GitHub #308):** The duplicate `model-resolution.ts` under
+  `src/app/api/v1/plans/stream/` was removed; canonical policy lives only in
+  `src/features/plans/session/model-resolution.ts`, with tests in
+  `tests/unit/features/plans/session/model-resolution.spec.ts`.
 - The session module no longer leaks `PlanLifecycleService` shape to test
   authors: the only injected seam is `(db) => PlanLifecycleService`, so future
   refactors of the lifecycle's internal port wiring will not ripple into

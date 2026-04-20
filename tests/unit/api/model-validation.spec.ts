@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveStreamModelResolution } from '@/app/api/v1/plans/stream/model-resolution';
 import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 import {
   AI_DEFAULT_MODEL,
@@ -40,7 +39,7 @@ const stubLogger = {
   error: vi.fn(),
 };
 
-describe('Model Validation (API Layer)', () => {
+describe('Model validation helpers (preferences + tier gating)', () => {
   describe('Model override query param parsing', () => {
     it('extracts model ID from query param', () => {
       const url = new URL(
@@ -70,67 +69,6 @@ describe('Model Validation (API Layer)', () => {
       );
       const modelOverride = url.searchParams.get('model');
       expect(modelOverride).toBe(FREE_PERSISTABLE_MODEL);
-    });
-  });
-
-  describe('Stream model resolution helper', () => {
-    it('prefers a valid query override', () => {
-      const resolution = resolveStreamModelResolution({
-        searchParams: new URLSearchParams({ model: FREE_QUERY_OVERRIDE_MODEL }),
-        tier: 'pro',
-        savedPreferredAiModel: FREE_PERSISTABLE_MODEL,
-      });
-
-      expect(resolution).toEqual({
-        modelOverride: FREE_QUERY_OVERRIDE_MODEL,
-        resolutionSource: 'query_override',
-        suppliedModel: FREE_QUERY_OVERRIDE_MODEL,
-      });
-    });
-
-    it('falls back to saved preference when query override fails validation', () => {
-      const resolution = resolveStreamModelResolution({
-        searchParams: new URLSearchParams({ model: 'invalid/model-id' }),
-        tier: 'free',
-        savedPreferredAiModel: FREE_PERSISTABLE_MODEL,
-      });
-
-      expect(resolution).toEqual({
-        modelOverride: FREE_PERSISTABLE_MODEL,
-        resolutionSource: 'saved_preference',
-        suppliedModel: 'invalid/model-id',
-        validationError: {
-          reason: expect.stringMatching(/invalid_model|tier_denied/),
-        },
-      });
-    });
-
-    it('returns query_override_invalid when override fails and no saved preference exists', () => {
-      const resolution = resolveStreamModelResolution({
-        searchParams: new URLSearchParams({ model: 'invalid/model-id' }),
-        tier: 'free',
-        savedPreferredAiModel: null,
-      });
-
-      expect(resolution).toEqual({
-        resolutionSource: 'query_override_invalid',
-        suppliedModel: 'invalid/model-id',
-        validationError: {
-          reason: expect.stringMatching(/invalid_model|tier_denied/),
-        },
-      });
-    });
-
-    it('falls back to tier default when no usable override exists', () => {
-      const resolution = resolveStreamModelResolution({
-        searchParams: new URLSearchParams(),
-        tier: 'free',
-        savedPreferredAiModel: PRO_PERSISTABLE_MODEL,
-      });
-
-      expect(resolution).toEqual({
-        resolutionSource: 'tier_default',
-      });
     });
   });
 
