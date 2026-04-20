@@ -20,7 +20,7 @@ describe('UsageRecordingAdapter', () => {
     mockIncrementUsage.mockResolvedValue(undefined);
   });
 
-  it('calls recordUsage with the same RecordUsageParams as tryRecordUsage for equivalent metadata', async () => {
+  it('calls recordUsage with RecordUsageParams derived from safeNormalizeUsage for equivalent metadata', async () => {
     const metadata = makeOpenRouterGpt4oProviderMetadata();
     const canonical = safeNormalizeUsage(metadata);
     const expected: RecordUsageParams = {

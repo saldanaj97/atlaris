@@ -51,7 +51,12 @@ export interface PlanPersistencePort {
   markGenerationFailure(this: void, planId: string): Promise<void>;
 }
 
-/** Narrow persistence capability for session/cleanup status transitions only. */
+/**
+ * Narrow persistence capability: persist **generation completion** only
+ * (`markGenerationSuccess` / `markGenerationFailure` on `learning_plans`), e.g.
+ * after a stream error path or stuck-plan cleanup. Not for general session
+ * orchestration, SSE, or unrelated cleanup.
+ */
 export type PlanGenerationStatusPort = Pick<
   PlanPersistencePort,
   'markGenerationSuccess' | 'markGenerationFailure'

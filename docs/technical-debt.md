@@ -93,8 +93,9 @@ Constants live in `src/lib/db/schema/constants.ts`; drift is caught by
 
 Normalization, gating, and the shared `CanonicalAIUsage` → `recordUsage` mapper
 live in `src/features/ai/usage.ts`, `src/features/ai/model-pricing-snapshot.ts`,
-and `src/lib/db/usage.ts`. Both persistence paths (`usage-recording-adapter`,
-plan stream `tryRecordUsage`) use the same mapper.
+and `src/lib/db/usage.ts`. Generation usage flows through
+`UsageRecordingAdapter` / `UsageRecordingPort` (and the lifecycle service), which
+use the same mapper.
 
 Persistable vs runtime-only models and tier-aware listing remain in
 [`src/features/ai/model-preferences.ts`](../src/features/ai/model-preferences.ts),

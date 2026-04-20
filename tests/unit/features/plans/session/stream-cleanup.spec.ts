@@ -34,10 +34,13 @@ describe('stream-cleanup safeMarkPlanFailed', () => {
       markGenerationSuccess: vi.fn(),
     };
 
-    await safeMarkPlanFailed(planId, userId, persistence, {
-      logger: { error: loggerError },
-    });
+    await expect(
+      safeMarkPlanFailed(planId, userId, persistence, {
+        logger: { error: loggerError },
+      })
+    ).resolves.toBeUndefined();
 
+    expect(persistence.markGenerationFailure).toHaveBeenCalledWith(planId);
     expect(loggerError).not.toHaveBeenCalled();
   });
 });

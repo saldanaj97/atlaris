@@ -91,8 +91,8 @@ describe('PlanPersistenceAdapter (integration)', () => {
     expect(dupId).toBe(inserted.id);
   });
 
-  it('markGenerationSuccess and markGenerationFailure update persisted flags', async () => {
-    const authUserId = buildTestAuthUserId('persist-adapter-status');
+  it('markGenerationSuccess updates persisted flags', async () => {
+    const authUserId = buildTestAuthUserId('persist-adapter-status-success');
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
@@ -102,7 +102,7 @@ describe('PlanPersistenceAdapter (integration)', () => {
 
     const inserted = await adapter.atomicInsertPlan(userId, {
       ...planPayload,
-      topic: `${planPayload.topic} status`,
+      topic: `${planPayload.topic} status-success`,
     });
     expect(inserted.success).toBe(true);
     if (!inserted.success) return;
@@ -116,6 +116,23 @@ describe('PlanPersistenceAdapter (integration)', () => {
     expect(readyRow?.generationStatus).toBe('ready');
     expect(readyRow?.isQuotaEligible).toBe(true);
     expect(readyRow?.finalizedAt).toBeInstanceOf(Date);
+  });
+
+  it('markGenerationFailure updates persisted flags', async () => {
+    const authUserId = buildTestAuthUserId('persist-adapter-status-fail');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    const adapter = new PlanPersistenceAdapter(db);
+
+    const inserted = await adapter.atomicInsertPlan(userId, {
+      ...planPayload,
+      topic: `${planPayload.topic} status-fail`,
+    });
+    expect(inserted.success).toBe(true);
+    if (!inserted.success) return;
 
     await adapter.markGenerationFailure(inserted.id);
 
